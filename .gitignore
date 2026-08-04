@@ -54,9 +54,10 @@ CodeCoverage/
 # Project-specific
 # ---------------------------------------------------------------------------
 
-# The deployed copy the MCP configs launch (see README section 3) - a build
-# artifact, kept out of bin/ so a running server never locks the build output.
-dist/
+# Note: the binary the MCP clients launch lives in bin/Release/net8.0/ and is
+# therefore ignored like any other build output - a fresh clone must run
+# build.ps1 once before the registered server can start. That is deliberate:
+# there is exactly ONE compiled artifact, so nothing can drift out of sync.
 
 # Scratch output from AIXML round-trips
 *.aixml

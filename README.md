@@ -85,9 +85,10 @@ coordinates, so LabVIEW decides the whole layout. Generate, export the PNG, look
 
 ### 0. Prerequisites
 
-- Build once — the config points at a compiled `.exe`, not at `dotnet run`:
+- Build once — every config points at the compiled `.exe` in `bin\Debug\net8.0\`, not at
+  `dotnet run`, and `bin/` is gitignored so a fresh clone has to produce it:
   ```bash
-  dotnet build src/LabVIEWMCP/LabVIEWMCP.csproj -c Debug
+  powershell -ExecutionPolicy Bypass -File build.ps1
   ```
 - The .NET 8 runtime must be installed (it is, if the build worked).
 - **LabVIEW does not have to be running yet.** The connection is made lazily on the first tool
@@ -122,10 +123,10 @@ Backslashes must be doubled in JSON. If you put the project somewhere other than
 If you use the `claude` CLI (not installed on this machine — `npm i -g @anthropic-ai/claude-code`):
 
 ```bash
-claude mcp add labview -- C:\Projects\LabVIEWMCP\dist\LabVIEWMCP.exe
+claude mcp add labview -- C:\Projects\LabVIEWMCP\src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe
 ```
 
-Always register the copy in `dist\`, never anything under `bin\` — see section 3 for why.
+That Debug binary is the only artifact ever executed — see section 3.
 
 | Scope | Flag | Registered for |
 |---|---|---|
@@ -139,50 +140,61 @@ Since this server is useful from anywhere you keep LabVIEW code — not only fro
 `-s user` is usually the better choice for daily work:
 
 ```bash
-claude mcp add labview -s user -- C:\Projects\LabVIEWMCP\dist\LabVIEWMCP.exe
+claude mcp add labview -s user -- C:\Projects\LabVIEWMCP\src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe
 ```
 
-### 3. Deploy from `dist/`, never from `bin/`
+### 3. One artifact, one configuration
 
-Every config must point at `dist\LabVIEWMCP.exe`, and that separation is not cosmetic. A running
-MCP server holds an OS lock on its own executable, so pointing a config at `bin\` means every
-later `dotnet build` and `dotnet test` fails with `MSB3027 ... locked by: LabVIEWMCP`. That was
-the original setup here and it blocked the build on three separate occasions — once with three
-server processes locking Debug *and* Release at the same time.
+Everything — the registered server, the tests, every build — uses **Debug**, and there is
+exactly one compiled binary that ever gets executed:
 
-`dist/` is the deployed copy; `bin/` stays a pure build output that nothing ever executes:
+```
+src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe
+```
 
-Deploy with **every Claude client closed**:
+No copy step, no second location, no second build flavour, so "what is running" cannot drift
+from "what was built". Two earlier layouts were rejected for having exactly that hole: a
+published copy in `dist/` (edit code, tests green, server still serving the old build, no error
+anywhere), and a Debug/Release split (immune to the lock, but nobody keeps two flavours
+straight).
+
+Build it with:
 
 ```bash
-powershell -ExecutionPolicy Bypass -File deploy.ps1
+powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-The script refuses to run while a server process is alive, then publishes and verifies that
-the embedded documents really made it into the assembly. `dotnet publish -o dist` by hand does
-the same thing, but fails half-way if a client is running.
+The script stops any running server first, builds, and then verifies that `docs/*.md` are
+embedded **verbatim** in the assembly — "build succeeded" says nothing about that, and checking
+for the resource *name* would prove nothing either, since that string is a `const` in the
+source. `-NoKill` makes it fail instead of stopping anything.
 
-Why closing the client is unavoidable: MSBuild copies through `src/LabVIEWMCP/bin/Release`
-*before* the publish folder, so one live server locks **both** locations and you get
-`MSB3021`/`MSB3027`. A loaded assembly cannot be hot-swapped. Building and testing stay
-unaffected — only a deliberate deploy needs the window.
+**The price of a single configuration.** A running server holds an OS lock on that exe, so any
+build touching the main project must stop it — and `dotnet test` builds the same project as a
+dependency. Two consequences:
 
-`dist/` is gitignored, so after a fresh clone run `deploy.ps1` once before the configured
-server can start.
+- Use `.githooks\run-tests.ps1` rather than a bare `dotnet test`. It stops the server first.
+  A bare `dotnet test` succeeds while the main sources are unchanged and fails with `MSB3027`
+  the moment they are not — an intermittent mystery instead of an error.
+- **The Claude client does not restart a killed MCP server inside a session.** After a build or
+  a test run the `lvai_*` tools stay gone until the client is restarted. Nothing is lost — no
+  state lives in the process — but plan the restart.
 
-**Verify the desktop registration after a restart.** Editing `claude_desktop_config.json`
-directly works — a removal survived a restart here — but one earlier path change to that same
-file did not, and the stale entry then left the server registered twice with `bin/` locked
-again. So the edit is not reliably durable: after restarting, check that exactly one process
-runs and that it runs from `dist`.
+`bin/` is gitignored like any build output, so a fresh clone must run `build.ps1` once before
+the registered server can start.
+
+**Verify the registration after a restart.** Editing `claude_desktop_config.json` directly
+works — changes have survived restarts here — but one earlier path change to that file did not,
+and the stale entry then left the server registered twice. Treat the edit as not reliably
+durable and check:
 
 ```bash
 powershell -Command "Get-Process LabVIEWMCP | Select-Object Id,Path"
 ```
 
-Registering in both `claude_desktop_config.json` (global) and `.mcp.json` (this project) is
-harmless as long as **both point at `dist`** — you simply get a second idle process while
-working in this repo. What must never happen is a registration pointing into `bin/`.
+Every path must be `…\bin\Debug\net8.0\LabVIEWMCP.exe`. Registering in both
+`claude_desktop_config.json` (global) and `.mcp.json` (this project) is harmless — you just get
+a second idle process while working in this repo.
 
 ### 4. Optional: pin the port
 
@@ -215,7 +227,7 @@ Inside Claude Code the tools are namespaced `mcp__labview__lvai_*`.
 
 ### 6. Let the read-only tools run without asking
 
-[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 11
+[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 13
 passive tools, so reads run uninterrupted while all 8 mutating tools still ask every time:
 
 ```json
@@ -232,13 +244,15 @@ passive tools, so reads run uninterrupted while all 8 mutating tools still ask e
       "mcp__labview__lvai_filter_palette_search_candidates",
       "mcp__labview__lvai_filter_example_search_candidates",
       "mcp__labview__lvai_convert_vi_to_aixml",
-      "mcp__labview__lvai_validate_aixml"
+      "mcp__labview__lvai_validate_aixml",
+      "mcp__labview__lvai_aixml_reference",
+      "mcp__labview__lvai_dqmh_reference"
     ]
   }
 }
 ```
 
-That is 11 of the 17 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
+That is 13 of the 19 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
 deliberately left out: they are read-only in the sense that they only wait, but they block for
 up to `timeoutSeconds` and their `replyJson` argument writes content back into LabVIEW's UI —
 so they are worth a prompt. Add them if you are actively developing against the monitor hooks.
@@ -260,8 +274,13 @@ Do **not** allow-list the whole server (`mcp__labview`) — that would wave thro
 
 ## Tools
 
-25 tools over 23 RPCs (`lvai_status` and `lvai_dump_schema` are additions). Mutating tools
-carry the MCP `destructiveHint` annotation, so a client can gate them.
+**27 tools over 23 RPCs.** Four are additions that map to no RPC: `lvai_status`,
+`lvai_dump_schema`, and the two knowledge tools below. 19 carry `readOnlyHint`, 8 carry
+`destructiveHint`, so a client can gate the writes.
+
+The server also exposes the same two documents as **MCP resources** —
+`labview://aixml-reference` and `labview://dqmh-patterns` — for clients that read resources
+rather than call tools.
 
 ### Read — safe
 
@@ -269,6 +288,8 @@ carry the MCP `destructiveHint` annotation, so a client can gate them.
 |---|---|
 | `lvai_status` | — (discovery + health + reflection) |
 | `lvai_dump_schema` | — (server reflection) |
+| `lvai_aixml_reference` | — (embedded [AIXML reference](docs/aixml-reference.md)) |
+| `lvai_dqmh_reference` | — (embedded [DQMH reference](docs/dqmh-patterns.md)) |
 | `lvai_get_application_configuration` | `GetApplicationConfiguration` |
 | `lvai_describe_vi` | `GetDescribeVIPromptInfo` |
 | `lvai_describe_project` | `GetDescribeProjectPromptInfo` |
@@ -313,7 +334,11 @@ IDE, and the client answers on the request stream. This is the same hook NI's ow
 dotnet test
 ```
 
-201 tests, no LabVIEW required — they run in about 10 seconds.
+247 tests, no LabVIEW required — they run in about 10 seconds.
+
+A `pre-push` hook runs them before every push and rejects the push unless all pass. It is
+activated automatically on the first build (see [`.githooks/README.md`](.githooks/README.md));
+bypass in an emergency with `git push --no-verify`.
 
 The tool tests do **not** mock the gRPC client. They stand up a real ASP.NET Core gRPC server
 implementing `lvai.LVAI` ([`FakeLvaiService`](tests/LabVIEWMCP.Tests/Fakes/FakeLvaiService.cs),
@@ -325,7 +350,8 @@ and an open-ended mode for driving the timeout paths.
 
 | Area | Covered |
 |---|---|
-| All 25 tools | request mapping, response rendering, error paths |
+| All 27 tools | request mapping, response rendering, error paths |
+| `KnowledgeTools` | embedded documents byte-identical to `docs/`, section lookup, keyword aliases |
 | `Rpc` | list/JSON/map parsing, deadline clamping, error-to-data guard, stream collection |
 | `Json` | default-value retention, extra fields, stream and error envelopes |
 | `SchemaRenderer` | rpc/enum/message rendering, streaming markers, map-entry skipping |
@@ -352,13 +378,124 @@ AIXML is LabVIEW's textual block-diagram format — nodes with a `uid`, wires ex
 <Node _name="Add" inputs="x:1306.value,y:1274.value" outputs="x+y:143.x+y" uid="143"/>
 ```
 
-There is **no XSD anywhere in the install**, so the working method is imitation:
+There is **no XSD anywhere in the install**, so the rules were derived empirically and written
+down: [`docs/aixml-reference.md`](docs/aixml-reference.md), served by `lvai_aixml_reference`.
+Read it before authoring AIXML — two of its rules fail silently. A `uid.terminal` string names
+a **net**, not a pointer to an element, and terminal names are literal LabVIEW labels that must
+be looked up rather than guessed (`Increment` → `x+1`, but `Greater?` → `x > y?`, with spaces).
 
-1. `lvai_convert_vi_to_aixml` on a VI that already resembles the target → study the dialect
-2. edit the XML
-3. `lvai_validate_aixml` — the cheap failure path, always do this
-4. `lvai_convert_aixml_to_vi` to a scratch path (or `lvai_apply_aixml_to_vi` on a **copy**)
-5. `lvai_describe_vi` on the result to confirm what LabVIEW actually built
+The working loop:
+
+1. `lvai_aixml_reference` → the rules, and the verified terminal-name table
+2. `lvai_convert_vi_to_aixml` on a VI that already resembles the target → study the dialect
+3. edit the XML
+4. `lvai_validate_aixml` — the cheap failure path, always do this
+5. `lvai_convert_aixml_to_vi` to a scratch path (`lvai_apply_aixml_to_vi` does **not** work,
+   see Caveats)
+6. `--diagram` on the result — AIXML has no coordinates, so LabVIEW picks the whole layout and
+   looking is the only way to know what you got
+
+[`docs/dqmh-patterns.md`](docs/dqmh-patterns.md) (served by `lvai_dqmh_reference`) does the
+same for DQMH modules: the framework inventory, the two-loop `Main.vi`, the request/broadcast
+VI internals, and what cannot be generated.
+
+## Creating a project
+
+The format itself — every element, attribute, item type, property scope, the containment grammar
+and the build-specification vocabulary — is written up in
+[`docs/lvproj-structure.md`](docs/lvproj-structure.md), derived by census over 65 production
+`.lvproj` files. Read that before generating anything larger than the blank project below. Unlike
+the other two documents in `docs/` it is **not** embedded in the assembly and has no knowledge
+tool.
+
+**No RPC creates one.** The 23 RPCs act on VIs, and on projects that already exist:
+`ConvertAIXMLToVI` writes a `.vi`, `OpenFile` opens a path that has to be there already, and
+nothing writes a `.lvproj`. A new project is therefore made by writing the XML yourself and then
+making LabVIEW confirm it:
+
+1. Write the file (skeleton below) to the target path.
+2. `lvai_open_file` with `projectPath` + `projectName` — `errorCode 0` means LabVIEW parsed it.
+3. `lvai_describe_project` — the check that actually matters. `OpenFile` reports on *opening*;
+   `describe_project` reports on *content*, so it is what catches a file that parses while
+   saying the wrong thing. A blank project answers with one `My Computer` target and empty
+   `vis`, `libraries`, `buildSpecifications` and `missingFiles`.
+
+Verified end to end against a live LabVIEW 2026 (26.3f0) — this exact file loads clean:
+
+```xml
+<?xml version='1.0' encoding='UTF-8'?>
+<Project Type="Project" LVVersion="26008000">
+	<Property Name="NI.LV.All.SourceOnly" Type="Bool">false</Property>
+	<Property Name="NI.Project.Description" Type="Str"></Property>
+	<Item Name="My Computer" Type="My Computer">
+		<Property Name="IOScan.Faults" Type="Str"></Property>
+		<Property Name="IOScan.NetVarPeriod" Type="UInt">100</Property>
+		<Property Name="IOScan.NetWatchdogEnabled" Type="Bool">false</Property>
+		<Property Name="IOScan.Period" Type="UInt">10000</Property>
+		<Property Name="IOScan.PowerupMode" Type="UInt">0</Property>
+		<Property Name="IOScan.Priority" Type="UInt">9</Property>
+		<Property Name="IOScan.ReportModeConflict" Type="Bool">true</Property>
+		<Property Name="IOScan.StartEngineOnDeploy" Type="Bool">false</Property>
+		<Property Name="server.app.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="server.control.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="server.tcp.enabled" Type="Bool">false</Property>
+		<Property Name="server.tcp.port" Type="Int">0</Property>
+		<Property Name="server.tcp.serviceName" Type="Str">My Computer/VI Server</Property>
+		<Property Name="server.tcp.serviceName.default" Type="Str">My Computer/VI Server</Property>
+		<Property Name="server.vi.callsEnabled" Type="Bool">true</Property>
+		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="specify.custom.address" Type="Bool">false</Property>
+		<Item Name="Dependencies" Type="Dependencies"/>
+		<Item Name="Build Specifications" Type="Build"/>
+	</Item>
+</Project>
+```
+
+- **`LVVersion` is the editor version** and has to match the LabVIEW being targeted —
+  `26008000` for 2026. Read it off the first line of a shipped project rather than guessing the
+  encoding: `<LabVIEW>\ProjectTemplates\Source\Core\` has one per template.
+- **Formatting does not matter.** That file went to disk as UTF-8 with **bare LF and no BOM** —
+  not what LabVIEW itself writes (CRLF, tabs) — and parsed anyway.
+- **Only this skeleton was verified.** Whether a smaller subset loads, dropping the `IOScan.*`
+  or `server.*` properties, was not tested. Add to it rather than trimming it.
+
+Beyond blank: an `Item` with `Type="VI"` and a `URL` adds a VI, `Type="Folder"` nests, and
+`describe_project`'s `missingFiles` finds a `URL` you got wrong. **A `URL` is resolved against the
+`.lvproj` *file path*, not its directory** — so `../Main.vi` is the *sibling* of the project file,
+which is why `../` prefixes 98.6 % of all URLs in the corpus. Getting this backwards puts every
+reference one directory too high.
+
+### Editing a project, and what verification cannot see
+
+A virtual folder is a `Folder` item with **no** `URL` — `<Item Name="MyModule" Type="Folder"/>`.
+Adding a `URL` makes it an auto-populating folder instead, which is a different thing.
+
+Two limits found while adding one, both measured:
+
+- **`describe_project` does not report folders at all.** Its `infoJson` has `vis`, `libraries`,
+  `classes`, `otherFiles`, `missingFiles`, `ioItems` … and no folder field anywhere, so an empty
+  virtual folder is invisible to it. Output before and after adding one is byte-identical. It
+  confirms *files*, not project structure — for a folder, the file on disk and the IDE tree are
+  the only evidence.
+- **It parses from disk — including for a project that is currently open.** A never-opened
+  `.lvproj` carrying a marker in `NI.Project.Description` came back with that marker, which is
+  also the cheapest way to prove a hand-written file parses: `errorCode 0` plus a target. Later,
+  a `VI` item added by hand to a project *while LabVIEW had it open* was reported on the next
+  call. So the RPC reflects the file, not a stale in-memory copy.
+
+The RPC being trustworthy does not make editing safe, though: **do not hand-edit a `.lvproj` that
+is open in the IDE.** The IDE window keeps its own copy of the tree and **does not reload a project
+changed underneath it** — observed directly: a `VI` item nested into a virtual folder on disk still
+showed at target root in the tree. A save from that stale window writes its copy over the file,
+which is when the edit is actually lost. Close the project first, or close it without saving and
+reopen. There is no `CloseFile` RPC, so this step is manual.
+
+**A trap that makes the stale tree look like a placement bug:** calling `lvai_open_file` with a
+`viPath` while a stale project is loaded opens that VI and shows it under the **target root**,
+because the in-memory project has no record of where the edited file puts it. The tree then looks
+authoritative and wrong at the same time. When verifying an edit, open only the project — and
+remember `describe_project` cannot settle it either, since it has no field for folders. For
+nesting, the file on disk and a freshly reopened tree are the only evidence.
 
 ## Caveats
 
@@ -369,9 +506,41 @@ There is **no XSD anywhere in the install**, so the working method is imitation:
   LabVIEW restart heals on the next tool call.
 - **The connection is plaintext HTTP/2 on loopback.** No TLS, no auth — anything on the
   machine that can reach the port can drive LabVIEW.
-- **The mutating RPCs have never touched real LabVIEW.** They are unit-tested against the fake
-  server, so the request mapping is verified — but everything in the read table has additionally
-  been confirmed against a live LabVIEW, and the write table has not. Start on throwaway copies.
+- **What the mutating RPCs actually do, measured against a live LabVIEW:**
+  `ConvertAIXMLToVI` works — it generated real, runnable VIs. `OpenFile` works. But
+  **`ApplyAIXMLToVI` is unusable**: it failed with `Error 42 (generic)` in six distinct
+  configurations — delta and full-state XML, a clean VI and a VI containing an Express VI, the
+  VI open and closed, and with LabVIEW's own byte-exact canonical export as input. The sixth,
+  on LabVIEW 2026 (26.3f0), was constructed to be the best possible case and still failed:
+  a three-element self-contained VI whose AIXML round-trips byte-for-byte, an additive change
+  (one `FreeLabel`, one fan-out `Indicator`) that `ValidateAIXML` accepts with `errorCode 0`,
+  the VI closed, outside any library. `viBytesBefore == viBytesAfter` — nothing was written.
+
+  **The likely reason, and the one untried route.** This RPC is the one behind LabVIEW's own AI
+  code completion, which does work — so it is plausibly not broken but *session-bound*, usable
+  only inside the context `MonitorCodeCompletion` establishes rather than as a standalone call.
+  That inverts the direction: instead of calling Apply, you wait on the monitor, LabVIEW hands
+  you a `request`, and you answer with `suggestions[].changes` — which is AIXML that **LabVIEW
+  itself applies**. Editing an existing VI that way is untested here and needs a human to trigger
+  the AI feature in the IDE, but it is the designed path and the only one not yet ruled out.
+
+  `RunVIAsTopLevel`,
+  `BuildFromBuildSpecification`, `FindPaletteItem` and `DropPaletteItem` are still only
+  unit-tested against the fake server — start those on throwaway copies.
+- **Not every VI can be regenerated.** `ConvertAIXMLToVI` rejects a `Call` to a project- or
+  library-local subVI (`Unsupported SubVI`), and Express VIs fail the same way, so generated
+  VIs must be self-contained. A whole DQMH module therefore cannot be generated at all.
+- **No RPC creates a file container.** `ConvertAIXMLToVI` writes a `.vi`, but nothing writes a
+  `.lvproj`, `.lvlib` or `.lvclass`, and `OpenFile` only opens a path that already exists. Write
+  the XML yourself — see [Creating a project](#creating-a-project).
+- **An empty AIXML export is not an empty VI.** A 100–200 byte export containing only the
+  `<VI …/>` element means the diagram was not readable — and `ConvertVIToAIXML` still returns
+  `errorCode 0`. Cross-check with `--diagram`: no `viImage` either confirms it.
+- **Two whole categories of file are unreadable.** `describe_vi` rejects a `.ctl` with
+  `errorCode 5001 — Unsupported VI type`, so **control typedefs cannot be read at all** — which
+  matters because that is where DQMH keeps every event's argument cluster. And a password-protected
+  VI returns `errorCode 5002`, which covers the entire Delacor DQMH scripting toolchain. Both are
+  hard walls, not timeouts: no argument or retry gets past them.
 - **Monitor contention:** `NigelLocalService` may already be attached to those streams.
   Whether a second client also receives events is unverified — a timeout can mean "no user
   activity" *or* "Nigel consumed it". Closing the LabVIEW chat window removes the contention.
@@ -381,6 +550,21 @@ There is **no XSD anywhere in the install**, so the working method is imitation:
 ## Layout
 
 ```
+build.ps1                       stop the server, build Debug, verify embedded docs
+Directory.Build.targets         activates .githooks once per clone, on the first build
+.gitattributes                  forces LF on the hook stub (sh.exe fails on CRLF)
+.mcp.json                       project-scope MCP registration -> bin/Debug/net8.0/
+.claude/settings.json           allow-lists the 13 passive tools
+
+docs/
+  aixml-reference.md            the AIXML dialect, derived empirically; embedded in the dll
+  dqmh-patterns.md              DQMH module structure; embedded in the dll
+  lvproj-structure.md           the .lvproj format, by census over 65 projects; NOT embedded
+
+.githooks/
+  pre-push                      sh stub git invokes
+  run-tests.ps1                 bin/-lock check, then dotnet test
+
 src/LabVIEWMCP/
   Program.cs                    entry point: MCP stdio server + CLI modes
   Protos/
@@ -392,15 +576,19 @@ src/LabVIEWMCP/
   Infra/
     Json.cs                     protobuf -> JSON result rendering
     Rpc.cs                      error-to-data guard, stream collection, deadlines
+    SchemaRenderer.cs           FileDescriptorProto -> readable .proto text
   Tools/
     StatusTools.cs              status, schema dump, app config
     InspectTools.cs             describe VI/project, info cache, filters
     AixmlTools.cs               the AIXML round-trip
     ActionTools.cs              run, build, open, palette, telemetry
     MonitorTools.cs             the six inverted monitor streams
+    KnowledgeTools.cs           serves the embedded docs/ as tools and MCP resources
   Cli/
     CommandLine.cs              flag parsing for the CLI side-modes
     SelfTest.cs                 "what works on my machine"
+    Watch.cs                    long monitor waits, outside the MCP timeout
+    Diagram.cs                  save a VI's rendered block diagram as PNG
 
 tests/LabVIEWMCP.Tests/
   Fakes/

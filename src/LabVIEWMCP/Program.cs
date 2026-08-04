@@ -35,6 +35,9 @@ if (CommandLine.HasFlag(args, "--diagram"))
     return await Diagram.RunAsync(portOverride, CommandLine.StringArg(args, "--diagram"),
         CommandLine.StringArg(args, "--out"));
 
+if (CommandLine.HasFlag(args, "--ensure-labview"))
+    return await EnsureLabView.RunAsync(portOverride, CommandLine.IntArg(args, "--timeout") ?? 300);
+
 // ---- default: MCP server over stdio ----
 var builder = Host.CreateApplicationBuilder(args);
 

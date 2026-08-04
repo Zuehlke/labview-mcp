@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "labview": {
-      "command": "C:\\Projects\\LabVIEWMCP\\dist\\LabVIEWMCP.exe",
+      "command": "C:\\Projects\\LabVIEWMCP\\src\\LabVIEWMCP\\bin\\Debug\\net8.0\\LabVIEWMCP.exe",
       "args": [],
       "env": {}
     }

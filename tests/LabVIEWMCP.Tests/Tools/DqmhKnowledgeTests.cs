@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -48,18 +51,78 @@ public class DqmhKnowledgeTests
     public void KeyFindingsArePresent(string needle) =>
         Assert.Contains(needle, KnowledgeTools.Load("dqmh-patterns.md"));
 
-    [Fact]
-    public void NoCustomerOrProductIdentifiersLeakedIntoTheNote()
+    /// <summary>
+    /// SHA-256 of the lowercased customer, product and module tokens this repo must never
+    /// contain. They are hashed on purpose: a plain denylist would make THIS file the one
+    /// place where the customer and their products are named together — the guard would be
+    /// the leak. Hashes still fail the build on a real leak, and a failure prints the
+    /// offending token, which by then is in the document anyway.
+    ///
+    /// To extend: hash the lowercased token with SHA-256 and add it here.
+    /// </summary>
+    private static readonly HashSet<string> ForbiddenTokenHashes =
+    [
+        "aa7e5b234e1d55967bf0a316395a2eab6cb3370332c0f251f0e44a5afb84fc68",
+        "15e389361ec9345a955d2d1832275a7885b20c663ab535cffd134174cdec9dc1",
+        "0e9dbf302dc48c67dfb50487c3e7473b1f5cdb0cd4e57d1bac600d3043cc38e8",
+        "3aecd5bfd5c9a1afad2768b60682b97110c79a959203bb91a5487d0633ff8e71",
+        "980a0b90bc158a429b9233476b5f4fb751f145871bcfddb9d54d40079a3edf63",
+        "5050945cdfa28646d140e7765f89567ad52f8f3585c37effbab5ad575da8d012",
+        "3be7a505483c0050243c5cbad4700da13925aa4137a55e9e33efd8bc4d05850f",
+        "62b0f1b617cae30dc776251b674fc4b7a5b6fd31647e4c297f6af72214e3831e",
+        "0c873ecbd3c57a0116ca9190d67c9d72bc0154efc4f81cca5d11c62181846184",
+        "27301716ef81140f720afd91224766d14e49fd37854a3a5ad1b9d270f4dd9634",
+    ];
+
+    [Theory]
+    [InlineData("dqmh-patterns.md")]
+    [InlineData("aixml-reference.md")]
+    public void NoCustomerOrProductIdentifiersLeakedIntoTheNotes(string document)
     {
-        // The note was derived from a customer application. It must carry the framework's
+        // Both notes were derived from a customer application. They must carry framework
         // vocabulary only - never the names of that project, its products or its modules.
-        var text = KnowledgeTools.Load("dqmh-patterns.md");
-        foreach (var forbidden in new[]
-                 {
-                     "Medela", "TFW_", "Magic", "EOL_DRW", "FEASA",
-                     "DataStore", "DiagnosticCom", "Kingfisher",
-                 })
-            Assert.DoesNotContain(forbidden, text, StringComparison.OrdinalIgnoreCase);
+        // Split on anything that is not a letter or digit, so a compound like
+        // "Prefix_SomeName" decomposes into the atomic tokens the hashes cover.
+        var text = KnowledgeTools.Load(document);
+
+        foreach (var token in Regex.Split(text, "[^A-Za-z0-9]+"))
+        {
+            if (token.Length < 3) continue;
+
+            var hash = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes(token.ToLowerInvariant()))).ToLowerInvariant();
+
+            Assert.False(ForbiddenTokenHashes.Contains(hash),
+                $"{document} contains the forbidden identifier \"{token}\" - anonymise it.");
+        }
+    }
+
+    [Fact]
+    public void TheHashSetIsIntact()
+    {
+        // A truncated or corrupted list would pass every document silently.
+        Assert.Equal(10, ForbiddenTokenHashes.Count);
+        Assert.All(ForbiddenTokenHashes, h =>
+            Assert.Matches("^[0-9a-f]{64}$", h));
+    }
+
+    [Fact]
+    public void TheGuardMechanismActuallyCatchesALeak()
+    {
+        // Proves tokenising + hashing + matching works, using a made-up canary so that no
+        // real identifier has to appear here. A guard that cannot fail is not a guard.
+        const string canary = "zzzcanaryidentifier";
+        var canaryHash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(canary))).ToLowerInvariant();
+
+        var document = $"Some prose mentioning MyLib_{canary}.lvlib in passing.";
+        var caught = Regex.Split(document, "[^A-Za-z0-9]+")
+            .Where(t => t.Length >= 3)
+            .Select(t => Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes(t.ToLowerInvariant()))).ToLowerInvariant())
+            .Any(h => h == canaryHash);
+
+        Assert.True(caught, "the underscore-splitting tokeniser missed an embedded identifier");
     }
 
     [Fact]

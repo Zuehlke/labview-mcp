@@ -11,7 +11,9 @@
       "mcp__labview__lvai_filter_palette_search_candidates",
       "mcp__labview__lvai_filter_example_search_candidates",
       "mcp__labview__lvai_convert_vi_to_aixml",
-      "mcp__labview__lvai_validate_aixml"
+      "mcp__labview__lvai_validate_aixml",
+      "mcp__labview__lvai_aixml_reference",
+      "mcp__labview__lvai_dqmh_reference"
     ]
   }
 }

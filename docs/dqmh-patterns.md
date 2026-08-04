@@ -117,9 +117,48 @@ Note the `\3A` escape in call targets: a library-qualified subVI appears as
 
 ## 5. Consequences for generating code
 
-- **You cannot generate a DQMH module.** Every framework VI is a `Call` to a
-  project- or library-local subVI, and those are rejected as `Unsupported SubVI`
-  (see the AIXML reference, §9). Generated VIs must be self-contained.
+- **You cannot generate a DQMH module** — and this is not merely an observed limit.
+  NI's published "not-yet-supported" list for the LabVIEW Coding Agent names **DQMH**
+  explicitly, alongside QMH-with-Event-Structure and the Actor Framework. Four further
+  entries on that list each block a module on their own: `.lvlib`, `.lvclass`, `.ctl`
+  typedefs, and "user VIs outside the supported node catalog". A fifth, `Event Structure`,
+  rules out the event handling loop. See the AIXML reference, §9.
+- The measurements below were taken before that list was known. They agree with it, and they
+  add the part NI does not spell out: *which* error you get, and how far a single VI gets.
+- **Measured, on a freshly scripted singleton module.** `ConvertVIToAIXML` on its `Main.vi`
+  succeeds (47 kB, `errorCode 0`) — reading works. Feeding that byte-exact export straight back
+  into `ValidateAIXML` **fails**, which kills the obvious workaround of *regenerating* a whole VI
+  instead of editing it. Three distinct causes in one report:
+  - ~20 × `Unsupported SubVI: <Module>.lvlib:<X>.vi` — every framework call is library-qualified.
+    One is class-qualified (`Delacor_lib_QMH_Message Queue.lvclass:…`).
+  - `Control with type=UDClassInst is not supported` and `Property Node with type=UDClassInst is
+    not supported` — DQMH 5's `Module Admin` is a **class object**, which AIXML's type grammar
+    cannot express at all. This wall stands even if every subVI were self-contained.
+  - `Object terminal not found for input: …` and `Could not find control with name "Pane" to apply
+    fixup` — fallout from the two above.
+
+  Two further obstacles apply even to a hypothetically valid regeneration: overwriting `Main.vi`
+  would break its `.lvlib` membership and linker info (DQMH ships
+  `Write VI Linker Info to Change Library.vi` precisely because relinking is non-trivial), and
+  AIXML carries no coordinates, so the two-loop diagram would be re-laid-out from scratch.
+- **How close a *request VI* is — measured on `Show Panel.vi`.** Unlike `Main.vi`, a public API
+  request VI has no class object on its connector pane, only `error in`/`error out` clusters, so
+  the `UDClassInst` wall does not apply. Its export is complete and small (4.3 kB), and validating
+  that export for regeneration reports **exactly two errors and nothing else**:
+  ```
+  Unsupported SubVI: <Module>.lvlib:Obtain Request Events.vi
+  Unsupported SubVI: <Module>.lvlib:Module Not Running--error.vi
+  ```
+  The silence on everything else is the finding: the whole surrounding structure **is** expressible
+  in AIXML — the case structure with its tunnels and two frames, `Generate User Event`,
+  `Bundle`/`Unbundle By Name`, `Not A Number/Path/Refnum?`, `Merge Errors`, the cluster type
+  strings and the typedef'd argument constant. A request VI is therefore two resolved call targets
+  away from being generatable, not architecturally out of reach like `Main.vi`.
+- **Which makes one hypothesis worth testing.** `ApplyAIXMLToVI` fails standalone but is the RPC
+  behind LabVIEW's own code completion, where LabVIEW applies the AIXML *from inside the target
+  VI's own context*. A VI that already belongs to the module library may well resolve
+  `<Module>.lvlib:…` targets that a standalone generation cannot. Untested — but it is the only
+  route that would close the two-error gap above.
 - **You can read one.** Analysis, review, documentation and dependency mapping all work,
   including inside packed libraries — see §6.
 - What is realistic today: generate self-contained leaf VIs (pure computation from
@@ -128,6 +167,32 @@ Note the `\3A` escape in call targets: a library-qualified subVI appears as
 - Use the DQMH scripting tools in LabVIEW for creating modules, events and requests. They
   maintain the naming conventions, the typedefs and the connector panes together; producing
   that by hand through AIXML would be both impossible (see above) and pointless.
+- **The scripting tools cannot be driven through this server either — they are password
+  protected.** `lvai_describe_vi` on `<LabVIEW>\project\Delacor\DQMH\Module\Add New DQMH
+  Module.vi` and on the engine behind it, `_DQMH New Module\Script New Module.vi`, both return
+  `errorCode 5002 — Password protected VI without cached password`. So they cannot be inspected,
+  and running an uninspected interactive dialog VI through `lvai_run_vi_as_top_level` would at
+  best block on a modal dialog in the user's IDE. Two further dead ends, checked: there is **no
+  static module template to copy** — `_DQMH New Module` holds 16 *scripting* VIs, not a file tree,
+  so the module is generated at run time via VI Server; and `RunVIAsTopLevel` passes inputs as
+  strings, while the scripting engine needs a live project reference, which no string can carry.
+- **The same applies to events.** `Event\Create New DQMH Event.vi` is password protected too
+  (`errorCode 5002`), and an event is not an additive file drop: it *edits* existing code — a new
+  refnum field in `Request Events--cluster.ctl`, a new case in `Main.vi`, and matching changes in
+  `Obtain`/`Destroy Request Events.vi`. The only RPC that edits an existing VI is
+  `ApplyAIXMLToVI`, which is non-functional (see the README caveats), and the new request VI would
+  itself `Call` library-local framework subVIs, which generation rejects. So there is no partial
+  path either — and a half-wired event leaves the module broken, which is worse than no event.
+- **Net effect:** creating a DQMH module or event is a manual step in the IDE (*Tools » Delacor »
+  DQMH » …*, or the project's right-click menu). Nothing in the 23 RPCs substitutes for it — no RPC
+  writes a `.lvlib` either.
+- **What is verifiable afterwards, and what is not.** `lvai_describe_project` reports the module's
+  library under `libraries` with its full item inventory — every framework VI, every
+  `… Argument--cluster.ctl`, and each item's `scope` (public/private) — plus `missingItems`, which
+  is the fastest check that scaffolding is complete. `describe_vi` works on `Main.vi`, so a new
+  event case can be confirmed. But `describe_vi` **cannot read a `.ctl`** (`errorCode 5001`), so
+  the *contents* of an argument cluster — whether the argument is actually a string — cannot be
+  checked from here at all. That one needs eyes on the typedef.
 
 ## 6. Packed libraries are readable
 

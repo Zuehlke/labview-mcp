@@ -19,6 +19,28 @@ below use neutral placeholders.
 | Comments | yes, `FreeLabel` |
 | **Positions, sizes, layout** | **no — no coordinate attribute exists at all** |
 | Colours, fonts, decorations | no |
+| Terminal display mode (*View As Icon*) | no — see the measurement below |
+
+### Terminal display mode is not in the format — and it is not a comment-style guess
+
+Generated VIs show front-panel terminals as **large icons**. That is a LabVIEW option
+(*Tools → Options → Block Diagram → "Place front panel terminals as icons"*), on by default,
+applied when the generator creates the terminals — not something AIXML carries.
+
+Measured, both directions:
+
+1. A generated VI's terminals were switched to the small representation **by hand** in LabVIEW.
+   The diagram visibly changed — large framed icons became `DBL` / `abc` / `[DBL]` stubs.
+2. Re-exporting that VI produced an AIXML file **attribute-identical** to the authored input.
+   No new attribute, no `style` addition, nothing.
+
+So the property is real in the VI and absent from the format. Two consequences: you cannot
+request the small representation in AIXML, and **a manual fix is lost the moment the VI is
+regenerated**. Turn the LabVIEW option off if you want it to stick.
+
+This is the same shape as the empty-export trap in §11 — the export not changing does not mean
+the VI did not change. Render the diagram (`--diagram`) when the question is what a VI *looks*
+like.
 
 ### Practical consequence for comments
 
@@ -62,6 +84,17 @@ layout: `conIdx=` contains the characters `x=`.
 ```
 
 - Root element is `VI`. No XML declaration, no namespace.
+- **`description` on `VI` is mandatory**, even when it is the only attribute besides `_name`.
+  Omitting it fails validation, not generation: `lvai_validate_aixml` answers `errorCode 1` with
+  `Error -2628 … missing required attribute 'description'`. It may be any non-empty string. So
+  the smallest legal document — and the way to generate an **empty** VI — is a single
+  self-closing element with no children:
+  ```xml
+  <VI _name="Empty.vi" description="Empty VI."/>
+  ```
+  That was validated and generated a real, openable 4.9 kB VI. Note the asymmetry with export:
+  a *read* that returns only a bare `<VI …/>` means the diagram could not be parsed (§11), but a
+  bare `<VI …/>` as *input* legitimately means "no diagram".
 - LabVIEW writes CRLF line endings and two-space indentation. Neither appears to be
   required, but matching them keeps diffs against fresh exports readable.
 - **Document order carries no meaning and is not preserved.** On export LabVIEW groups by
@@ -128,12 +161,12 @@ consistency matters. Widely spaced values leave room to insert elements later.
 | Element | Purpose | Attributes |
 |---|---|---|
 | `VI` | root | `_name`, `description` |
-| `Control` | front-panel input | `_name`, `type`, `value`, `conIdx`, `connection`, `style`, `description`, `outputs` |
+| `Control` | front-panel input | `_name`, `type`, `value`, `conIdx`, `connection`, `style`, `description`, `items`, `values`, `outputs` |
 | `Indicator` | front-panel output | same, but `inputs` instead of `outputs` |
 | `Constant` | diagram constant | `_name`, `type`, `value`, `outputs` |
 | `FixedConst` | fixed terminal (e.g. loop iteration) | `_name`, `outputs` |
 | `Node` | primitive / palette function | `_name`, `inputs`, `outputs`, `fields`, `element`, `type` |
-| `Call` | subVI call | `target`, `inputs`, `outputs` |
+| `Call` | subVI call | `target`, `instance`, `adapt`, `inputs`, `outputs` |
 | `Structure` | loop / case / event container | `_name`, `count`, `label`, `selectin`, `maxin`, `maxout` |
 | `CaseFrame` | one frame of a case or event structure | `selector`, `selectout`, `label` |
 | `Diagram` | one frame of a disable structure | `selector`, `label` |
@@ -190,6 +223,7 @@ ref{UserEvent}{ELEM}
 ref{LV.Boolean} | ref{LV.Control} | ref{LV.String}      control refnums
 ref{LV.VI}                                     VI refnum
 ref{UDClassInst}                               reference to a user-defined class instance
+tag{14}                                        IO name control (a DAQmx physical channel)
 {LV.VI} | {LV.Control} | {LV.String}           VI/control class references
 ```
 
@@ -227,6 +261,11 @@ Both `:` and `,` are separators inside `inputs`/`outputs`, which is why they are
 everywhere — including in free text. You may write a literal comma in a `comment` and
 LabVIEW will accept it, but it comes back as `\2C` on the next export, so emit `\2C`
 yourself if you want authored and exported files to match.
+
+**What is accepted is wider than what is emitted.** `\3B` for a semicolon was accepted on
+input and came back as a plain `;`. So the decoder handles the general `\XX` form, while the
+encoder escapes only the characters it must. Do not infer the escape set from an export
+alone — but for round-trip stability, emit only what an export emits.
 
 So a library-qualified call target is written `MyLib.lvlib\3AHelper.vi`, and a nested
 property is `Front Panel Window\3ACloseable`.
@@ -280,6 +319,20 @@ Same shape; `count` carries the iteration count wire.
 - Nesting works by pointing the inner `uid_parent` at the frame's `uid`.
 
 ### Event Structure
+
+> **Reading only — and it fails *silently*.** NI lists `Event Structure` (and `Timed Loop`)
+> among the node families the generator does not support (§9). Exports are complete and the
+> syntax below is accurate, but authoring one does not produce an error. Measured:
+>
+> - `ValidateAIXML` on an event structure with one `CaseFrame` → `errorCode 0`
+> - `ConvertAIXMLToVI` → `errorCode 0`, a real 8 KB VI
+> - re-export of that VI → the `Structure _name="Event Structure"` is there, but **every
+>   `CaseFrame` is gone**, and the `Event Data Node` came back as `fields="Source,Type,Time"`
+>   instead of the requested `NewVal`
+> - the rendered diagram shows a single frame labelled **`[0] Timeout`**
+>
+> So the shell is created and the event registration is dropped. You get a plausible-looking
+> event structure that handles nothing. See the silent-degradation entry in §11.
 
 ```xml
 <Structure _name="Event Structure" uid="615" uid_parent="1390">
@@ -361,7 +414,45 @@ string verbatim.
 `_name` is optional on `Constant` — anonymous constants are normal. Array literals are
 written JSON-style in `value`, e.g. `type="array{double}" value="[1.5,2.5,3.5]"`.
 
-## 9. What the generator accepts — measured
+### Polymorphic subVI calls
+
+A `Call` to a **polymorphic** VI names the concrete instance in a separate attribute:
+
+```xml
+<Call adapt="true"
+      instance="DAQmx Create Channel (AI-Voltage-Basic).vi"
+      target="DAQmx Create Virtual Channel.vi"
+      inputs="task in:,physical channels:100.value,minimum value:110.value,…"
+      outputs="task out:200.task out,error out:200.error out"
+      uid="200" uid_parent="root"/>
+```
+
+- `target` is the polymorphic VI, `instance` the selected member. Without `instance` the
+  generator has no way to know which terminal set you mean.
+- `adapt="true"` appears on calls whose type adapts to the wired data.
+- The terminals in `inputs`/`outputs` are the **instance's**, not the polymorphic wrapper's.
+
+Instance names follow LabVIEW's own convention and are worth copying from an export rather
+than inventing — `DAQmx Read (Analog 1D DBL NChan 1Samp).vi`,
+`DAQmx Read (Analog 1D Wfm NChan NSamp).vi`. A wrong instance name is reported by
+`ValidateAIXML`, so it is cheap to check.
+
+### Ring and enum controls
+
+A `Ring` carries its items and their numeric values as two parallel attributes:
+
+```xml
+<Control _name="Terminal Configuration" style="Ring" type="int32"
+         items="default,RSE,NRSE,Differential,Pseudodifferential"
+         values="[-1,10083,10078,10106,12529]"
+         value="-1" outputs="value:2154.value" uid="2154" uid_parent="root"/>
+```
+
+Note the difference from an enum, which encodes its labels inside the *type*
+(`uint8{Label A,Label B}`, §5): a Ring keeps `type` plain and lists the labels separately,
+because its values need not be consecutive.
+
+## 9. What the generator accepts
 
 Round-trip validation (`ValidateAIXML`) of the 13-VI corpus: **11 passed, 2 failed.** All
 failures share one cause.
@@ -381,13 +472,117 @@ Object terminal not found for input: parameter 0:4971.value on Call
 ```
 
 The second line is a knock-on effect: an unresolvable target has no terminals, so its
-wires fail too. Express VIs (`Ex_Inst_*.vi`) fail the same way. Calls to
-palette-reachable VIs under `vi.lib` did validate in a separate corpus, so the boundary
-appears to be "resolvable from the palette" rather than "is a subVI" — I did not isolate
-the exact rule, so verify before relying on it.
+wires fail too. Express VIs (`Ex_Inst_*.vi`) fail the same way.
 
-**Practical consequence: generated VIs must be self-contained.** Build them from
-primitives. A VI that must call your own subVIs cannot currently be produced this way.
+**The boundary is palette-reachability, not library membership — now isolated.** The trick is
+that the error message itself discriminates: `Unsupported SubVI` means the target was never
+resolved, while `Object terminal not found` means it *was* resolved and only the terminal name
+was wrong. Feeding a deliberately bogus terminal name therefore probes resolution alone:
+
+| `Call target=` | Result | Reading |
+|---|---|---|
+| `General Error Handler.vi` (vi.lib, on the palette) | `Object terminal not found for input: bogusTerminalName` | **resolved** |
+| `ScratchEdit.vi` (a plain `.vi` on disk, in no library) | `Unsupported SubVI: ScratchEdit.vi` | **not resolved** |
+| an absolute path, `C\3A\5CTemp\5C…\5CX.vi` | `Unsupported SubVI: C:\Temp\…\X.vi` | **not resolved** |
+| `<Module>.lvlib:X.vi`, library loaded in the IDE | `Unsupported SubVI: <Module>.lvlib:X.vi` | **not resolved** |
+
+There is therefore **no target syntax that reaches your own code** — not a bare name, not a full
+path, and not a library-qualified name even while that library is open in LabVIEW.
+
+**This is not a DQMH quirk — it stops NI's own example applications too.** `Temperature
+Monitoring.vi` from `examples\Industry Applications\` exports cleanly (39.6 kB, `errorCode 0`) and
+then fails regeneration with ~30 `Unsupported SubVI` errors, hitting both forms at once: its two
+project libraries (`… Message Queue.lvlib:Enqueue Message.vi`) *and* its five loose support VIs
+referenced by bare name (`Simulate Temperature Acquisition.vi`). Any application organised the way
+real LabVIEW applications are organised — support VIs in a folder, a couple of `.lvlib`s — is
+outside regeneration. Treat "export succeeded" as saying nothing whatsoever about whether the same
+XML can be generated back: the two directions are independent, and reading is the one that works
+broadly.
+
+> **Escape the backslashes in a path target, or debug a phantom.** `target` is an ordinary AIXML
+> attribute value, so `\` starts an escape (§6) — a literal backslash is `\5C`, a colon `\3A`.
+> Writing `C:\Scratch\Demo\Libraries\…` raw silently mangles the string, and the error then reports
+> the *corrupted* path — `Unsupported SubVI: C:cratchemoibraries` — which looks like a resolution
+> bug and is really a quoting bug. Escaped correctly the path arrives intact; it simply still does
+> not resolve.
+
+So a generated VI may freely call the palette — every `vi.lib` utility, referenced by bare file
+name, no path. What it may not call is *your* code: project-local, library-local, and even a
+loose `.vi` sitting in a directory. Two consequences worth stating plainly:
+
+- **Generated VIs cannot call each other.** A VI this server just produced is not
+  palette-reachable, so it is not a legal `Call` target for the next one. There is no way to
+  build a hierarchy of generated code.
+- **"No subVIs" is the wrong mental model.** Do not strip subVI calls out of a design; keep the
+  palette-reachable ones, which covers a great deal — error handling, file and string utilities,
+  timing, the instrument and DAQ palettes.
+
+**Practical consequence: generated VIs must be self-contained *with respect to your own code*.**
+Build them from primitives plus the palette. A VI that must call your own subVIs cannot be
+produced this way.
+
+### NI's published unsupported list
+
+NI publishes a "not-yet-supported" list for the **LabVIEW Coding Agent** — the same generator
+these RPCs drive. It constrains **generation only**: everything below still *reads* fine
+through `ConvertVIToAIXML`, which is how this document was written in the first place.
+
+**Program types and domains**
+
+- external-language interop wrappers (Python, C#)
+- VIs with complex UI or front-panel design requirements
+- FPGA-targeted and Real-Time-targeted VIs
+- SCPI and serial VIs needing robust parsing, framing or session patterns
+- **QMH with Event Structure**, **DQMH**, **Actor Framework**
+- plugin generation other than FlexLogger (VeriStand, measurement plugins, VI Analyzer
+  tests, CLI commands)
+- **VIs that depend on user VIs outside the supported LabVIEW node catalog**
+- new polymorphic VIs, new malleable VIs
+- custom controls or typedefs (`.ctl`), Global Variable VIs
+- **LabVIEW libraries (`.lvlib`)**, **classes or interfaces (`.lvclass`)**, XNodes, XControls,
+  **project files (`.lvproj`)**
+- non-default VI properties beyond basic `description`
+- VI icon graphics
+- **connector pane layout or wiring**
+
+**Node families:** `Timed Loop`, `Event Structure`.
+
+How this squares with the measurements above:
+
+| Measured here | NI's wording |
+|---|---|
+| `Unsupported SubVI` for project-local and Express VIs, while a vi.lib VI resolved | "user VIs outside the supported **node catalog**" — catalogue membership, not library membership or palette presence. Use the probe in the table above to test a specific target. |
+| **`conIdx` survives generation.** A VI authored with `conIdx` 0/1/2 in and 5/6 out came back from a fresh export with those indices intact — so terminals really are assigned to the connector pane. `connection` is dropped only when no `conIdx` accompanies it. | "connector pane layout or wiring" is not supported. Read that as the pane *pattern* and its wiring, not the index assignment, which demonstrably works. |
+| `description` survives; nothing else was attempted | "non-default VI properties beyond basic description" |
+| Event structures **export** correctly and their syntax is documented in §7 | they are not *generatable*. §7 is a reading aid for them, not an authoring recipe. |
+| A DQMH module needs `.lvlib` + `.ctl` + `.lvclass` + cross-calling VIs | each of those four is independently on the list |
+
+Two practical consequences. Generated VIs stay **self-contained and flat**: primitives, loops,
+case structures, shift registers, typed front-panel terminals — no custom types, no calls into
+your own code, no event handling. And a failure is not always a bug in your XML: check this
+list before debugging.
+
+**How the two kinds of refusal differ** — this matters more than the list itself:
+
+| | Unresolvable `Call` | Unsupported node family |
+|---|---|---|
+| `ValidateAIXML` | `errorCode 1`, `Unsupported SubVI: X` | `errorCode 0` |
+| `ConvertAIXMLToVI` | refuses, no VI written | `errorCode 0`, VI written |
+| Result | nothing | container built, configuration silently discarded |
+
+So the list's entries are not equally visible. A `Call` tells you. A node family does not.
+
+### A trick that does not work: wrapping in a Disable Structure
+
+Putting an unresolvable `Call` inside the `Disabled` diagram of a `Diagram Disable Structure`
+changes nothing. Measured with a control — the identical call at root level and inside a
+disabled diagram produce the **same** message, `Unsupported SubVI: <name>`.
+
+The reason is not arbitrary: *disabled* means excluded from execution, not absent. The code
+still exists on the diagram, so the generator must still instantiate the node, and resolution
+happens before any question of compilation. Deleting the call and substituting constants for
+its wired outputs does avoid the error — but see the silent-degradation row in §11 before
+concluding that the result is what you wanted.
 
 ## 10. Workflow
 
@@ -408,8 +603,10 @@ messages are specific enough to work from.
 |---|---|
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
+| `Control with type=UDClassInst is not supported` / `Property Node with type=UDClassInst is not supported` | **LabVIEW classes cannot be expressed at all.** A class instance is rejected both as a front-panel control and inside a property node, so any VI whose connector pane carries an object — all LabVIEW OOP, and DQMH 5's `Module Admin` — is outside the type grammar. This is a *deeper* wall than `Unsupported SubVI`: inlining the subVIs would not help, because the VI's own terminal cannot be typed. Usually accompanied by `Could not find control with name "X" to apply fixup`. |
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
 | An export of 100–200 bytes containing only `<VI _name=… description=…/>` | **Silent failure, not an empty VI.** The diagram was not readable — inaccessible, password-protected or otherwise withheld — and `ConvertVIToAIXML` still returns `errorCode 0 / "No Error"`. Cross-check with the rendered diagram: if `GetDescribeVIPromptInfo` also carries no `viImage`, the diagram is unavailable. Never conclude "this VI is empty" from a childless `<VI>` element. |
+| **Everything reports success and the VI is hollow** | The generator has two ways of refusing. A `Call` it cannot resolve is a *hard* error (`Unsupported SubVI`). An unsupported **node family** is silent: the container is created, its configuration is discarded, `errorCode` stays 0. Measured on `Event Structure` — frames dropped, one `[0] Timeout` frame left (§7). Never take `errorCode 0` as proof that what you asked for was built: re-export the result and compare, or render it with `--diagram`. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | Applying to an existing VI failed in **five** distinct configurations — delta and full-state XML, clean VI and VI-with-Express-VI, VI open and closed, and with LabVIEW's own byte-exact canonical export as input. Treat this RPC as non-functional as a standalone call. The AIXML delta path that *is* used in practice travels the `MonitorCodeCompletion` stream inside an open transaction with a `guid`, which suggests the standalone call is missing that context. Untested. |
 
 ## 12. This document has been tested
@@ -431,14 +628,19 @@ name (section 8) or a `Call` target (section 9) before suspecting the structure 
 - Whether `MonitorCodeCompletion` accepts AIXML in `CodeSuggestion.changes` and thereby
   provides a working write path into an existing VI. No inbound monitor event has been
   observed on this station yet, so this is unverified in both directions.
-- The precise rule separating an acceptable `Call` target from an "Unsupported SubVI".
 - Whether `Tunnel.cond` has meanings beyond the observed `true`.
-- The full set of `Structure._name` values. Five kinds are confirmed (While Loop, For Loop,
-  Case Structure, Event Structure, Flat Sequence Frame) and both disable structures are
-  confirmed as `Node`+`Diagram`. Still unseen: Stacked Sequence, Timed Loop, In Place
-  Element Structure.
+- The full set of `Structure._name` values **for reading**. Five kinds are confirmed (While
+  Loop, For Loop, Case Structure, Event Structure, Flat Sequence Frame) and both disable
+  structures are confirmed as `Node`+`Diagram`. Still unseen: Stacked Sequence, In Place
+  Element Structure. (Timed Loop is on NI's unsupported list for *generation*; whether it
+  exports is untested.)
+- What exactly the "supported node catalog" contains. NI names the concept (§9) but does not
+  enumerate it, so the resolution probe remains the way to test a specific target. One data
+  point: the **DAQmx** API resolves and generates fine — including its polymorphic
+  `Create Virtual Channel` and `Read` — although it ships as an LVAddon rather than in core
+  `vi.lib`. So the catalog is not limited to what LabVIEW installs by itself.
 
-## 13. Reach
+## 14. Reach
 
 `ConvertVIToAIXML` works on VIs inside **packed libraries** (`.lvlibp`) as well — a compiled
 module still yields its complete block diagram (~200 KB of AIXML for a large one). Paths
@@ -447,3 +649,23 @@ succeeds: address the VI by its path through the `.lvlibp` file.
 
 That makes read-only analysis possible on projects that link only compiled components, with
 no source checkout. Writing back is a different matter — see §9 and §11.
+
+### Finding VIs on disk: two containers that hide them
+
+Both bit here, and both produce a *false negative* that looks like "the driver is not
+installed":
+
+- **`.llb` is a single file, not a directory.** `find … -iname "DAQmx Read.vi"` can never
+  match a VI inside one, no matter which root you search. A driver's whole API can live in a
+  handful of `.llb`s — e.g. `read.llb`, `write.llb`, `create/channels.llb`.
+- **LVAddons live outside the LabVIEW tree.** Drivers ship as add-ons under
+  `C:\Program Files\NI\LVAddons\<name>\<version>\`, with their own `vi.lib`, `examples` and
+  `menus`. Searching every `…\National Instruments\LabVIEW <year>\` directory finds nothing.
+
+So: search for the `.llb` files themselves, and check `LVAddons` before concluding anything
+is missing. The reliable existence test is not the filesystem at all — it is a `Call` in a
+small AIXML file put through `ValidateAIXML` (§9).
+
+A related trap in shell probes: suppressing `2>/dev/null` turns a path typo into an empty
+result that reads exactly like "no matches". Keep stderr visible when a negative result would
+change a conclusion.
