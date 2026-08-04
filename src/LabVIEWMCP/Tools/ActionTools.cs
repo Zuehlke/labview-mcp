@@ -1,0 +1,178 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Text.Json.Nodes;
+using LabVIEWMcp.Grpc;
+using LabVIEWMcp.Infra;
+using LabVIEWMcp.Lvai;
+using ModelContextProtocol.Server;
+
+namespace LabVIEWMcp.Tools;
+
+/// <summary>
+/// Everything that acts on the running IDE or on disk: open, run, build, palette drops.
+/// These are the RPCs Nigel itself never uses - running and building are the capabilities
+/// that make this more than an editor assistant.
+/// </summary>
+[McpServerToolType]
+internal sealed class ActionTools(LvaiConnection connection)
+{
+    [McpServerTool(Name = "lvai_run_vi_as_top_level", Destructive = true, OpenWorld = true,
+                   Title = "Run a VI as top level")]
+    [Description("""
+        RPC RunVIAsTopLevel. MUTATING: actually EXECUTES the VI in LabVIEW with the given
+        control values and returns its indicator values. Side effects are whatever the VI does
+        - it can drive hardware, write files or move a stage.
+        inputs/outputs are string maps: LabVIEW coerces from/to the control's real type, so
+        pass numbers as their text form ("42", "3.14", "true").
+        Never run a VI you have not inspected with lvai_describe_vi first.
+        """)]
+    public async Task<string> RunViAsTopLevelAsync(
+        [Description(@"Absolute path to the .vi to run")] string viPath,
+        [Description("""
+            Control values as JSON object, e.g. {"X":"3","Y":"4"}. Keys are control labels.
+            Omit for a VI that needs no inputs.
+            """)]
+        string? inputsJson = null,
+        [Description("Local budget in seconds - raise it for long-running VIs")]
+        int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var request = new RunVIAsTopLevelRequest { ViPath = viPath };
+            foreach (var (key, value) in Rpc.ParseStringMap(inputsJson, nameof(inputsJson)))
+                request.Inputs[key] = value;
+
+            var stopwatch = Stopwatch.StartNew();
+            var response = await connection.InvokeAsync((c, t) =>
+                c.RunVIAsTopLevelAsync(request,
+                    deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            stopwatch.Stop();
+
+            return Json.Message(response,
+                ("inputsSent", JsonValue.Create(request.Inputs.Count)),
+                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
+        });
+
+    [McpServerTool(Name = "lvai_build_from_build_specification", Destructive = true, OpenWorld = true,
+                   Title = "Build a project build specification")]
+    [Description("""
+        RPC BuildFromBuildSpecification. MUTATING: runs a build specification of a .lvproj and
+        returns the generated files. Writes build output to disk and can take minutes - raise
+        timeoutSeconds accordingly. This is the CI-shaped capability of the interface.
+        """)]
+    public async Task<string> BuildFromBuildSpecificationAsync(
+        [Description(@"Absolute path to the .lvproj")] string projectPath,
+        [Description("Exact name of the build specification as it appears in the project")]
+        string buildSpecificationName,
+        [Description("Local budget in seconds - builds are slow")] int timeoutSeconds = 900,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var response = await connection.InvokeAsync((c, t) =>
+                c.BuildFromBuildSpecificationAsync(new BuildFromBuildSpecificationRequest
+                {
+                    ProjectPath = projectPath,
+                    BuildSpecificationName = buildSpecificationName,
+                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            stopwatch.Stop();
+
+            return Json.Message(response, ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
+        });
+
+    [McpServerTool(Name = "lvai_open_file", Destructive = true, OpenWorld = true,
+                   Title = "Open a VI or project in the LabVIEW IDE")]
+    [Description("""
+        RPC OpenFile. MUTATING (IDE state): opens a VI and/or a project in the running LabVIEW
+        editor. Pass the VI pair, the project pair, or both. Harmless but visible to whoever is
+        sitting in front of LabVIEW.
+        """)]
+    public async Task<string> OpenFileAsync(
+        [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,
+        [Description("VI name, or empty")] string? viName = null,
+        [Description(@"Absolute path to the .lvproj, or empty")] string? projectPath = null,
+        [Description("Project name, or empty")] string? projectName = null,
+        [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var response = await connection.InvokeAsync((c, t) =>
+                c.OpenFileAsync(new OpenFileRequest
+                {
+                    ViPath = viPath ?? "",
+                    ViName = viName ?? "",
+                    ProjectPath = projectPath ?? "",
+                    ProjectName = projectName ?? "",
+                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            return Json.Message(response);
+        });
+
+    [McpServerTool(Name = "lvai_find_palette_item", Destructive = true,
+                   Title = "Highlight a palette item in the IDE")]
+    [Description("""
+        RPC FindPaletteItem. MUTATING (IDE state): makes LabVIEW reveal/highlight the palette
+        item with the given GUID. Purely a UI action - useful to confirm a GUID resolves.
+        """)]
+    public async Task<string> FindPaletteItemAsync(
+        [Description("Palette item GUID")] string guid,
+        [Description("Local budget in seconds")] int timeoutSeconds = 60,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var response = await connection.InvokeAsync((c, t) =>
+                c.FindPaletteItemAsync(new FindPaletteItemRequest { Guid = guid },
+                    deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            return Json.Message(response);
+        });
+
+    [McpServerTool(Name = "lvai_drop_palette_item", Destructive = true, OpenWorld = true,
+                   Title = "Drop a palette item onto a VI")]
+    [Description("""
+        RPC DropPaletteItem. MUTATING: places the palette item with the given GUID onto the
+        block diagram of the target VI. This edits real code. Prefer the AIXML path
+        (lvai_apply_aixml_to_vi) when you need control over placement and wiring - a drop
+        gives you neither.
+        """)]
+    public async Task<string> DropPaletteItemAsync(
+        [Description("Palette item GUID")] string guid,
+        [Description(@"Absolute path to the target .vi")] string? viPath = null,
+        [Description("VI name, or empty")] string? viName = null,
+        [Description(@"Absolute path to the owning .lvproj, or empty")] string? projectPath = null,
+        [Description("Project name, or empty")] string? projectName = null,
+        [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var response = await connection.InvokeAsync((c, t) =>
+                c.DropPaletteItemAsync(new DropPaletteItemRequest
+                {
+                    Guid = guid,
+                    ViPath = viPath ?? "",
+                    ViName = viName ?? "",
+                    ProjectPath = projectPath ?? "",
+                    ProjectName = projectName ?? "",
+                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            return Json.Message(response);
+        });
+
+    [McpServerTool(Name = "lvai_log_usage_data", Destructive = true, Idempotent = false,
+                   Title = "Write a usage-telemetry key/value")]
+    [Description("""
+        RPC LogUsageData. Writes a key/value pair into LabVIEW's usage telemetry. Included for
+        completeness of the interface; it emits analytics data, so there is rarely a reason to
+        call it.
+        """)]
+    public async Task<string> LogUsageDataAsync(
+        [Description("Telemetry key")] string key,
+        [Description("Telemetry value")] string value,
+        [Description("Local budget in seconds")] int timeoutSeconds = 30,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var response = await connection.InvokeAsync((c, t) =>
+                c.LogUsageDataAsync(new LogUsageDataRequest { Key = key, Value = value },
+                    deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            return Json.Message(response);
+        });
+
+}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "labview": {
+      "command": "C:\\Projects\\LabVIEWMCP\\dist\\LabVIEWMCP.exe",
+      "args": [],
+      "env": {}
+    }
+  }
+}

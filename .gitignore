@@ -1,0 +1,68 @@
+## Based on the standard .NET ignore set
+## (https://github.com/github/gitignore/blob/main/Dotnet.gitignore),
+## trimmed to what this repo can actually produce, plus the project-specific
+## entries at the bottom.
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# MSBuild binary / structured log
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+
+# Code coverage
+CodeCoverage/
+
+# dotenv
+.env
+
+# Editors and OS
+.vs/
+.idea/
+*.user
+*.suo
+~$*
+*~
+
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
+
+# The deployed copy the MCP configs launch (see README section 3) - a build
+# artifact, kept out of bin/ so a running server never locks the build output.
+dist/
+
+# Scratch output from AIXML round-trips
+*.aixml
+schema.txt
+
+# Claude Code settings: the SHARED file is part of the repo on purpose - it
+# allow-lists the read-only lvai_* tools so they run without a prompt
+# (README section 6). Only the per-machine overrides are ignored.
+.claude/settings.local.json

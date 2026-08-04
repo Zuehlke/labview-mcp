@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LabVIEWMcp</RootNamespace>
+    <AssemblyName>LabVIEWMCP</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- stdio MCP server: a stray Console.Write would corrupt the protocol stream -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.31.1" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- lvai is generated as Both: the SERVER base class is what the test suite implements
+         to stand up a fake LabVIEW, so the tools can be exercised over a real channel. -->
+    <Protobuf Include="Protos\lvai_grpc_interface.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos\reflection_v1alpha.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LabVIEWMCP.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The AIXML reference is served BY the server but authored as a normal reviewable
+         markdown file. Embedding the same file keeps one source of truth: the bytes the
+         server hands out are the bytes in docs/, so the two cannot drift. -->
+    <EmbeddedResource Include="..\..\docs\aixml-reference.md" LogicalName="aixml-reference.md" />
+    <EmbeddedResource Include="..\..\docs\dqmh-patterns.md" LogicalName="dqmh-patterns.md" />
+  </ItemGroup>
+
+</Project>
