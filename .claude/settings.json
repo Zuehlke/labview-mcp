@@ -13,7 +13,9 @@
       "mcp__labview__lvai_convert_vi_to_aixml",
       "mcp__labview__lvai_validate_aixml",
       "mcp__labview__lvai_aixml_reference",
-      "mcp__labview__lvai_dqmh_reference"
+      "mcp__labview__lvai_dqmh_reference",
+      "mcp__labview__lvai_lvproj_reference",
+      "mcp__labview__lvai_list_labview_installations"
     ]
   }
 }
