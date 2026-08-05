@@ -58,6 +58,9 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                         "No LabVIEW installation found under the program-files roots.", new
                         {
                             searched = "…\\National Instruments\\LabVIEW*\\LabVIEW.exe",
+                            // Naming the roots turns "found nothing" into something diagnosable:
+                            // an empty or unexpected list points at the environment, not at LabVIEW.
+                            rootsProbed = LabViewLocator.ProgramFilesRoots(),
                             note = "LabVIEW NXG is excluded - it does not host the lvai service.",
                         });
 
@@ -142,6 +145,12 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 ["wouldBeStarted"] = pick is not null && pick.ExePath == i.ExePath,
             });
 
+        // The roots are reported alongside the result: an empty or unexpected list is the
+        // signature of a scrubbed environment rather than of a missing LabVIEW.
+        var rootsProbed = new JsonArray();
+        foreach (var root in LabViewLocator.ProgramFilesRoots())
+            rootsProbed.Add(root);
+
         var runningPaths = new JsonArray();
         foreach (var p in running)
         {
@@ -154,6 +163,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
         {
             ["ok"] = true,
             ["installationCount"] = installs.Count,
+            ["rootsProbed"] = rootsProbed,
             ["alreadyRunning"] = runningPaths,
             ["selection"] = pick?.Describe(),
             ["rule"] = "newest release first, 32-bit preferred within a release, NXG excluded",

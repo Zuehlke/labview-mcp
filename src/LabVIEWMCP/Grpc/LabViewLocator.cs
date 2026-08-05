@@ -139,13 +139,45 @@ internal static class LabViewLocator
         }
     }
 
-    private static IEnumerable<string> ProgramFilesRoots()
+    /// <summary>
+    /// The program-files roots to probe, 32-bit first: on this platform the lvai service lives
+    /// in 32-bit LabVIEW.
+    ///
+    /// Why several sources rather than just the environment: an MCP host may start this server
+    /// with a scrubbed environment, and an env-only lookup then yields no roots at all — so
+    /// <see cref="Discover"/> reports zero installations on a machine with four of them, without
+    /// raising anything. The known-folder API does not read the environment, and the literal
+    /// layout on the system drive closes the remaining gap.
+    /// </summary>
+    internal static IReadOnlyList<string> ProgramFilesRoots()
     {
-        // Prefer the 32-bit root: on this platform the lvai service lives in 32-bit LabVIEW.
-        foreach (var variable in new[] { "ProgramFiles(x86)", "ProgramFiles" })
+        var roots = new List<string>();
+
+        Add(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
+        Add(Environment.GetEnvironmentVariable("ProgramFiles(x86)"));
+        Add(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+        Add(Environment.GetEnvironmentVariable("ProgramFiles"));
+
+        // In a 32-bit process the two lookups above both name the x86 root; this is the 64-bit one.
+        Add(Environment.GetEnvironmentVariable("ProgramW6432"));
+
+        var systemDrive = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System));
+        if (!string.IsNullOrWhiteSpace(systemDrive))
         {
-            var value = Environment.GetEnvironmentVariable(variable);
-            if (!string.IsNullOrWhiteSpace(value)) yield return value;
+            Add(Path.Combine(systemDrive, "Program Files (x86)"));
+            Add(Path.Combine(systemDrive, "Program Files"));
+        }
+
+        return roots;
+
+        void Add(string? candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) return;
+
+            var trimmed = candidate.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (trimmed.Length == 0) return;
+
+            if (!roots.Contains(trimmed, StringComparer.OrdinalIgnoreCase)) roots.Add(trimmed);
         }
     }
 }

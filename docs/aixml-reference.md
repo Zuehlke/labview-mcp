@@ -653,8 +653,8 @@ Measured on a VI patched through NI's own assistant:
 One added line. All 56 other elements byte-identical, every `uid` unchanged, order preserved.
 So "apply" is literal — not a regenerate-and-overwrite behind a friendly name.
 
-**From a third-party client it always returns `Error 42 (generic)`.** Fifteen configurations
-were ruled out as the cause. Every run carried two controls in the same call —
+**From a third-party client it always returns `Error 42 (generic)`.** Sixteen variables were
+ruled out as the cause. Every run carried two controls in the same call —
 `ValidateAIXML` and `ConvertVIToAIXML` against the same payload and the same target — and both
 returned `errorCode 0` every single time. So the server, the payload and the target VI were
 demonstrably fine in each attempt.
@@ -664,13 +664,18 @@ demonstrably fine in each attempt.
 | XML shape | full state, delta, `<Changes>` root, minimal single `FreeLabel` |
 | Target VI | the *same* VI that NI's assistant patches seconds earlier still fails |
 | Editor state | VI open, VI active, project open, project closed |
-| `uid` value or range | 5000, 5001, 90000, and low unused values 61–70 |
+| `uid` value or range | 5000, 5001, 90000, and low unused values 61–71 |
 | Client stack | C# (`Grpc.Net.Client`) **and** Python (`grpcio`) with hand-generated stubs — so it is not an artefact of one implementation |
 | LabVIEW process | before a crash, after it, and on a freshly started instance |
 | Assistant service | running, killed, and disabled via the registry |
 | Assistant login | logged in **and** logged out |
+| **VI activated for the assistant** | `labview:set_active_file` confirmed successful in the log, `Apply` fired 31 s later — still 42. See below; this is the decisive one. |
 | Paths | a missing XML file or VI gives a clean `Error 7` instead |
 | Parsing | malformed XML gives `Error -2628` ("error occurred while parsing"), so well-formed input *is* parsed and 42 comes later |
+
+**It fails cleanly.** Exporting the target afterwards shows none of the attempted `uid`s and a
+`.vi` of unchanged size — there is no partial write. Attempting it costs nothing but the round
+trip, which is worth knowing before experimenting on real code.
 
 What it is instead: a **per-VI attachment**. The assistant's own trace shows the sequence
 
@@ -694,9 +699,9 @@ The attachment is established by the IDE's **"Discuss with Nigel…"** command, 
   though a third-party watch had subscribed first, while the hook was free
 
 **So the monitors are single-subscriber streams, and NI's service always wins.** That single
-fact explains every unanswered monitor wait in this project, and it closes the write path:
-`ConvertAIXMLToVI` (regenerate to a new file) is the only way a third-party client changes a
-VI. Section 12 covers what that costs.
+fact explains every unanswered monitor wait in this project. It also rules out intercepting the
+attachment — though as the settled experiment below shows, holding the attachment would not have
+helped anyway.
 
 ### The startup race, measured
 
@@ -732,19 +737,34 @@ appear next to calls that demonstrably *succeeded* — the patch above was appli
 call carrying that line. The message describes the usage counter, not the outcome. Verify by
 exporting the VI, never by reading that log line.
 
-### Still open: one experiment
+### Settled: the attachment is caller-bound, not process-wide
 
-Whether the attachment is *process-wide* or *caller-bound* is not settled. The assistant's
-chat accepts a direct command, `labview:set_active_file <VI name>`, which activates a VI
-without any right-click. If a third-party `ApplyAIXMLToVI` succeeds immediately after that
-command, the attachment is process-wide and can be borrowed; if it still returns 42, the
-attachment is tied to the caller.
+The assistant's chat accepts a direct command that activates a VI without any right-click. Run
+it, then immediately call `ApplyAIXMLToVI` from your own client: if the attachment were
+process-wide it would now succeed. Measured:
 
-The experiment needs a working assistant login, which was unavailable (server side) when this
-was written. To run it: activate the VI with that chat command, then call `ApplyAIXMLToVI` from
-your own client with a minimal single-`FreeLabel` payload and a fresh `uid`. Either outcome
-sharpens this section; neither overturns it, because a third-party client cannot establish the
-attachment itself in any case.
+```
+14:15:05  [PROMPT] labview:set_active_file C:\Temp\...\Start Module - Stub.vi
+14:15:09  [INVOKING TOOL] labview-set_active_file(filePath)
+14:15:10  [TOOL INVOCATION COMPLETE]        <- succeeded, no FAILED line
+14:15:41  third-party ApplyAIXMLToVI        -> Error 42
+```
+
+Activation succeeded and changed nothing. **The gate is on the caller, not on the VI.** A
+third-party client cannot borrow the attachment by arranging for the VI to be attached — NI's
+assistant is permitted because it brings its own session over `lv_ai_assistant_service`.
+
+That closes the question. `ConvertAIXMLToVI` (regenerate to a new file) is the only write path
+available to a third-party client; §12 covers what it costs.
+
+Two details from running this, in case anyone repeats it:
+
+- **`labview:set_active_file` needs the full path.** Passing just the file name logs
+  `[TOOL INVOCATION FAILED]`; the parameter is called `filePath` and means it literally.
+- **Check the log before trusting the precondition.** The first attempt here looked like a
+  clean negative result but the activation had silently failed — the `Apply` measurement was
+  meaningless. Confirm `[TOOL INVOCATION COMPLETE]` without a preceding `FAILED` line, then
+  measure.
 
 ## 15. Reach
 
