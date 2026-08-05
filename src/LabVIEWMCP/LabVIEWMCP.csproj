@@ -36,6 +36,7 @@
          markdown file. Embedding the same file keeps one source of truth: the bytes the
          server hands out are the bytes in docs/, so the two cannot drift. -->
     <EmbeddedResource Include="..\..\docs\aixml-reference.md" LogicalName="aixml-reference.md" />
+    <EmbeddedResource Include="..\..\docs\lvproj-structure.md" LogicalName="lvproj-structure.md" />
     <EmbeddedResource Include="..\..\docs\dqmh-patterns.md" LogicalName="dqmh-patterns.md" />
   </ItemGroup>
 
