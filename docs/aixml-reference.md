@@ -607,7 +607,7 @@ messages are specific enough to work from.
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
 | An export of 100–200 bytes containing only `<VI _name=… description=…/>` | **Silent failure, not an empty VI.** The diagram was not readable — inaccessible, password-protected or otherwise withheld — and `ConvertVIToAIXML` still returns `errorCode 0 / "No Error"`. Cross-check with the rendered diagram: if `GetDescribeVIPromptInfo` also carries no `viImage`, the diagram is unavailable. Never conclude "this VI is empty" from a childless `<VI>` element. |
 | **Everything reports success and the VI is hollow** | The generator has two ways of refusing. A `Call` it cannot resolve is a *hard* error (`Unsupported SubVI`). An unsupported **node family** is silent: the container is created, its configuration is discarded, `errorCode` stays 0. Measured on `Event Structure` — frames dropped, one `[0] Timeout` frame left (§7). Never take `errorCode 0` as proof that what you asked for was built: re-export the result and compare, or render it with `--diagram`. |
-| `Error 42 ... Generic error` from `ApplyAIXMLToVI` | Applying to an existing VI failed in **five** distinct configurations — delta and full-state XML, clean VI and VI-with-Express-VI, VI open and closed, and with LabVIEW's own byte-exact canonical export as input. Treat this RPC as non-functional as a standalone call. The AIXML delta path that *is* used in practice travels the `MonitorCodeCompletion` stream inside an open transaction with a `guid`, which suggests the standalone call is missing that context. Untested. |
+| `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
 
 ## 12. This document has been tested
 
@@ -625,9 +625,9 @@ name (section 8) or a `Call` target (section 9) before suspecting the structure 
 
 ## 13. Open questions
 
-- Whether `MonitorCodeCompletion` accepts AIXML in `CodeSuggestion.changes` and thereby
-  provides a working write path into an existing VI. No inbound monitor event has been
-  observed on this station yet, so this is unverified in both directions.
+- Whether `MonitorCodeCompletion` accepts AIXML in `CodeSuggestion.changes`. Probably moot:
+  the monitors deliver to a single subscriber and NI's own service always wins that race
+  (§14), so a third-party client never receives the event to answer in the first place.
 - Whether `Tunnel.cond` has meanings beyond the observed `true`.
 - The full set of `Structure._name` values **for reading**. Five kinds are confirmed (While
   Loop, For Loop, Case Structure, Event Structure, Flat Sequence Frame) and both disable
@@ -640,7 +640,113 @@ name (section 8) or a `Call` target (section 9) before suspecting the structure 
   `Create Virtual Channel` and `Read` — although it ships as an LVAddon rather than in core
   `vi.lib`. So the catalog is not limited to what LabVIEW installs by itself.
 
-## 14. Reach
+## 14. `ApplyAIXMLToVI` works — but not for you
+
+This RPC patches an existing VI *surgically*, and that is worth knowing before writing it off.
+Measured on a VI patched through NI's own assistant:
+
+```diff
+1a2
+>   <FreeLabel comment="Hello World" uid="60" uid_parent="root"/>
+```
+
+One added line. All 56 other elements byte-identical, every `uid` unchanged, order preserved.
+So "apply" is literal — not a regenerate-and-overwrite behind a friendly name.
+
+**From a third-party client it always returns `Error 42 (generic)`.** Fifteen configurations
+were ruled out as the cause. Every run carried two controls in the same call —
+`ValidateAIXML` and `ConvertVIToAIXML` against the same payload and the same target — and both
+returned `errorCode 0` every single time. So the server, the payload and the target VI were
+demonstrably fine in each attempt.
+
+| Ruled out | How |
+|---|---|
+| XML shape | full state, delta, `<Changes>` root, minimal single `FreeLabel` |
+| Target VI | the *same* VI that NI's assistant patches seconds earlier still fails |
+| Editor state | VI open, VI active, project open, project closed |
+| `uid` value or range | 5000, 5001, 90000, and low unused values 61–70 |
+| Client stack | C# (`Grpc.Net.Client`) **and** Python (`grpcio`) with hand-generated stubs — so it is not an artefact of one implementation |
+| LabVIEW process | before a crash, after it, and on a freshly started instance |
+| Assistant service | running, killed, and disabled via the registry |
+| Assistant login | logged in **and** logged out |
+| Paths | a missing XML file or VI gives a clean `Error 7` instead |
+| Parsing | malformed XML gives `Error -2628` ("error occurred while parsing"), so well-formed input *is* parsed and 42 comes later |
+
+What it is instead: a **per-VI attachment**. The assistant's own trace shows the sequence
+
+```
+GetUserAttachedVIPathsAsync()   ->  which VIs is the user working on?
+ConvertLabVIEWVIToAIXMLAsync()  ->  read it
+ApplyLabVIEWAIXMLToVIAsync()    ->  patch it
+```
+
+and its chat agent is equipped with a tool named **`labview-set_active_file`**. That tool is
+not among the 23 RPCs of `lvai.LVAI`; the corresponding operations (`SetActiveVI`,
+`ObserveForActiveVIChange`) live in a *second* service, `lv_ai_assistant_service`, which is
+not reachable over gRPC.
+
+The attachment is established by the IDE's **"Discuss with Nigel…"** command, which fires
+`MonitorDiscussVI`. And that event cannot be intercepted:
+
+- with NI's service running, it consumes the event; a second subscriber gets nothing
+- with the service **stopped**, the click *starts it* (measured: service up at 10:55:43,
+  `[Discuss VI] Started monitoring` at 10:55:44), and the event still goes to it — even
+  though a third-party watch had subscribed first, while the hook was free
+
+**So the monitors are single-subscriber streams, and NI's service always wins.** That single
+fact explains every unanswered monitor wait in this project, and it closes the write path:
+`ConvertAIXMLToVI` (regenerate to a new file) is the only way a third-party client changes a
+VI. Section 12 covers what that costs.
+
+### The startup race, measured
+
+The last hope was to subscribe *before* NI's service exists: stop the service, close LabVIEW,
+attach a watcher that polls for the port, then start LabVIEW. The watcher attached 6 seconds
+after the port opened and still lost:
+
+```
+11:11:40   NI's service:  [Discuss VI] Started monitoring for requests
+11:11:46   third-party watcher: attached on port 59533
+           -> 0 events received; stream ended DEADLINE_EXCEEDED
+```
+
+LabVIEW brings its own consumer up with the service, and the service is launched on demand —
+by LabVIEW starting, or by the very click one is trying to observe. There is no window.
+
+### Two side effects worth knowing
+
+**Disabling the assistant in the registry disables this interface too.** With the assistant
+switched off, LabVIEW started but never opened an lvai port at all: 220 s of polling, no
+reflection endpoint anywhere on the machine, `VI Server` on 3363 the only thing listening.
+`lvai.LVAI` is part of the AI feature, not a separate service — so "LabVIEW with the AI
+feature active" in the README is a hard requirement, not a preference. Expect a slower first
+start afterwards too: 115 s against the usual 30–70 s.
+
+**The assistant's own tool calls can look like failures in its log.** Lines such as
+
+```
+Usage count for Code Generation feature left at 1 because operation failed or was canceled.
+```
+
+appear next to calls that demonstrably *succeeded* — the patch above was applied by the very
+call carrying that line. The message describes the usage counter, not the outcome. Verify by
+exporting the VI, never by reading that log line.
+
+### Still open: one experiment
+
+Whether the attachment is *process-wide* or *caller-bound* is not settled. The assistant's
+chat accepts a direct command, `labview:set_active_file <VI name>`, which activates a VI
+without any right-click. If a third-party `ApplyAIXMLToVI` succeeds immediately after that
+command, the attachment is process-wide and can be borrowed; if it still returns 42, the
+attachment is tied to the caller.
+
+The experiment needs a working assistant login, which was unavailable (server side) when this
+was written. To run it: activate the VI with that chat command, then call `ApplyAIXMLToVI` from
+your own client with a minimal single-`FreeLabel` payload and a fresh `uid`. Either outcome
+sharpens this section; neither overturns it, because a third-party client cannot establish the
+attachment itself in any case.
+
+## 15. Reach
 
 `ConvertVIToAIXML` works on VIs inside **packed libraries** (`.lvlibp`) as well — a compiled
 module still yields its complete block diagram (~200 KB of AIXML for a large one). Paths

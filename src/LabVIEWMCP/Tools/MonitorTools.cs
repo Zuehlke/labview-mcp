@@ -20,10 +20,18 @@ namespace LabVIEWMcp.Tools;
 /// opening exactly these five monitors ("[Code Completion] Started monitoring for
 /// requests."). So these tools let this MCP server occupy the same hooks.
 ///
-/// Caveat worth knowing before you debug for an hour: NigelLocalService may already be
-/// attached to these streams. Whether a SECOND client also receives events is unverified -
-/// a timeout here can mean "no user activity" OR "Nigel consumed it". Closing the LabVIEW
-/// chat window takes the hooks out of contention.
+/// MEASURED, and it decides how useful these tools are: the monitors are
+/// SINGLE-SUBSCRIBER streams, and NI's own service always wins.
+///
+/// "Discuss with Nigel..." was triggered while a watch was subscribed and the hook was free -
+/// NI's service had been stopped beforehand. The click STARTED the service (up at 10:55:43,
+/// "[Discuss VI] Started monitoring" at 10:55:44) and the event went to it, not to the
+/// already-waiting subscriber. Stopping the service therefore does not free the hook; LabVIEW
+/// brings its own consumer along.
+///
+/// So a timeout here is the normal outcome whenever NI's assistant is installed, and these
+/// tools are diagnostic rather than a usable integration point. See section 14 of
+/// docs/aixml-reference.md.
 ///
 /// A single MCP tool call cannot hold a stream open across calls, so the shape is
 /// "wait for one item, optionally answer it, hang up".
