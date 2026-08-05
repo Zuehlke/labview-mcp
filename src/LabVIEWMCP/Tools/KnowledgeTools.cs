@@ -24,6 +24,7 @@ internal sealed class KnowledgeTools
 {
     private const string ResourceName = "aixml-reference.md";
     private const string DqmhResourceName = "dqmh-patterns.md";
+    private const string LvprojResourceName = "lvproj-structure.md";
 
     /// <summary>The handful of rules that stop a first attempt from being silently wrong.</summary>
     private const string Essentials = """
@@ -114,6 +115,29 @@ internal sealed class KnowledgeTools
                       Title = "DQMH module structure reference")]
     [Description("The structure of a DQMH module as seen through AIXML.")]
     public static string DqmhReferenceResource() => Load(DqmhResourceName);
+
+    [McpServerTool(Name = "lvai_lvproj_reference", ReadOnly = true,
+                   Title = "LabVIEW project file (.lvproj) reference")]
+    [Description("""
+        The grammar of a LabVIEW `.lvproj` file: item types, virtual versus auto-populating
+        folders, the `URL` forms, property scopes, build specifications, formatting rules and
+        recipes for generating one. Derived by census over a corpus of real project files, with
+        counts throughout so a rule can be told apart from a single observation.
+        Read this before parsing or writing a `.lvproj`. Two traps it documents: a project's
+        own library members are NOT listed in the file (the `.lvlib` owns them), and no RPC adds
+        a file to a project - `.lvproj` generation is on NI's unsupported list, so any project
+        edit is plain XML work outside the AIXML path.
+        Without arguments: a section list. With section: that section, or 'all'.
+        """)]
+    public static string LvprojReference(
+        [Description("Section number or title fragment; 'all' for everything; omit for the section list")]
+        string? section = null) => Serve(LvprojResourceName, section);
+
+    [McpServerResource(Name = "lvproj-structure", UriTemplate = "labview://lvproj-structure",
+                      MimeType = "text/markdown",
+                      Title = "LabVIEW project file reference")]
+    [Description("How a LabVIEW .lvproj file is structured, and how to generate one.")]
+    public static string LvprojReferenceResource() => Load(LvprojResourceName);
 
     // ---------- internals ----------
 

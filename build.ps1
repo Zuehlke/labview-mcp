@@ -77,12 +77,21 @@ if (-not (Test-Path $dll)) {
 $raw = [System.IO.File]::ReadAllBytes($dll)
 $hay = [System.Text.Encoding]::UTF8.GetString($raw)
 
+# Which documents are DECLARED as embedded? Read the csproj rather than hardcoding a list,
+# so adding a fourth document cannot silently go unverified.
+$declared = Select-String -Path $project -Pattern 'EmbeddedResource Include="\.\.\\\.\.\\(docs\\[^"]+)"' |
+    ForEach-Object { $_.Matches[0].Groups[1].Value }
+
 $missing = 0
 Write-Host ''
-foreach ($doc in @('docs\aixml-reference.md', 'docs\dqmh-patterns.md')) {
+if ($declared.Count -eq 0) {
+    Write-Host '  MISSING  the csproj declares no embedded documents at all' -ForegroundColor Red
+    $missing++
+}
+foreach ($doc in $declared) {
     $path = Join-Path $repo $doc
     if (-not (Test-Path $path)) {
-        Write-Host "  MISSING  $doc does not exist" -ForegroundColor Red
+        Write-Host "  MISSING  $doc is declared but does not exist" -ForegroundColor Red
         $missing++
         continue
     }
@@ -93,6 +102,14 @@ foreach ($doc in @('docs\aixml-reference.md', 'docs\dqmh-patterns.md')) {
         Write-Host "  MISMATCH $doc is NOT the version inside the assembly" -ForegroundColor Red
         $missing++
     }
+}
+
+# A document in docs/ that nobody declared is almost certainly an oversight: it exists for
+# readers of the repo but the shipped binary knows nothing about it.
+$undeclared = Get-ChildItem (Join-Path $repo 'docs') -Filter '*.md' -ErrorAction SilentlyContinue |
+    Where-Object { $declared -notcontains "docs\$($_.Name)" }
+foreach ($doc in $undeclared) {
+    Write-Host "  NOTE     docs\$($doc.Name) is not embedded - the binary ships without it" -ForegroundColor Yellow
 }
 
 $info = Get-Item $dll

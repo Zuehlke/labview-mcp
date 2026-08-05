@@ -31,4 +31,27 @@ internal static class Res
             $"Key '{key}' missing or null. Payload: {Trim(json)}");
 
     private static string Trim(string s) => s.Length > 400 ? s[..400] + "..." : s;
+
+    /// <summary>
+    /// Locate a repo-relative file. Anchored on this source file's compile-time path rather
+    /// than the output directory, because the build output is not always inside the repo -
+    /// a redirected OutDir (used when a running MCP server locks bin/) would otherwise make
+    /// a test fail for a reason that has nothing to do with the code.
+    /// </summary>
+    public static string? FindRepoFile(
+        string relative, [System.Runtime.CompilerServices.CallerFilePath] string sourceFile = "")
+    {
+        foreach (var anchor in new[] { Path.GetDirectoryName(sourceFile), AppContext.BaseDirectory })
+        {
+            var directory = string.IsNullOrEmpty(anchor) ? null : new DirectoryInfo(anchor);
+            while (directory is not null)
+            {
+                var candidate = Path.Combine(
+                    directory.FullName, relative.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(candidate)) return candidate;
+                directory = directory.Parent;
+            }
+        }
+        return null;
+    }
 }
