@@ -24,13 +24,39 @@ Tab-separated so a single `grep` answers "what do I wire to this node":
 grep -P "^\{LV\.VI\}\t" docs/vi-server-methods.tsv
 ```
 
+## When this is the wrong book
+
+These two files cover **Invoke Nodes and Property Nodes only**. They do not contain primitives and
+they do not contain palette subVIs — no `Read from Text File`, no `Sort 1D Array`, no `Build Array`.
+For those, use `lvai_palette_index` to find the VI and an AIXML export of a VI that already uses the
+node to get its terminal names; the verified table in
+[`aixml-reference.md`](aixml-reference.md) §8 collects the ones measured so far.
+
+The distinction that decides which index to open is not the size of the operation but its *kind*:
+
+- a computation **on data** — parse, sort, compare, read a file — is a primitive or a subVI
+- a property or action **of a LabVIEW object** — a VI, a control, a front panel, a project, the
+  application itself — is a Property or Invoke Node, and this is its only index
+
+The second kind is easy to overlook, because it does not feel like a missing function. "Get this
+VI's icon", "list the items in a project", "is this VI broken", "read a control's value by name",
+"what does this VI call" appear in no palette at all. If a search for a function comes up empty,
+ask whether the thing you want is really a property of something — and look here.
+
 ## Where the data comes from
 
-Exported with `ConvertVIToAIXML` from three VIs that ship with the LabVIEW 2026 installation
-under `wizard\ZE_Links\`: `All_Methods.vi`, `All_Properties.vi`, `All_Decorations.vi`. Each holds
-one node per method, and one Property Node per class listing that class's properties. The
-catalogue is therefore LabVIEW's own vocabulary, not a hand-written list — but it is a snapshot of
-one install, so re-export after a LabVIEW upgrade rather than trusting it forever.
+Exported with `ConvertVIToAIXML` from two collector VIs — one holding an Invoke Node per method,
+one holding a Property Node per class — and then flattened into the two tables. The catalogue is
+therefore LabVIEW's own vocabulary as its exporter writes it, not a hand-written list.
+
+**To rebuild it after a LabVIEW upgrade** you need those collector VIs, and they are not part of a
+stock installation: they were local to the machine this snapshot came from, under the IDE's
+`wizard\` folder. Any VI works as long as it carries one node per entry — drop the nodes onto a
+blank diagram, save, export, and run the same flattening. Do not treat the table as valid forever:
+it is a snapshot of one install, and the private interface behind it changes between versions.
+
+A third collector for **decorations** was exported too and yielded nothing usable, which is the
+finding recorded further down: AIXML does not carry decorations at all.
 
 ## Using it to author AIXML
 
@@ -76,8 +102,8 @@ print methods. The duplication is in LabVIEW's export, not in the extraction, an
 verbatim because repeated terminal names are also how genuinely expandable nodes (`Index Array`
 with two `index` entries) are described. When a call fails on a row like that, wire each name once.
 
-**Decorations cannot be generated.** `All_Decorations.vi` exports as 47 boolean indicators named
-after decorations (`Down Tee`, `Left Tee`, …) inside a Stacked Sequence Structure, and no
+**Decorations cannot be generated.** A collector VI holding one of each decoration exports as 47
+boolean indicators named after them (`Down Tee`, `Left Tee`, …) inside a Stacked Sequence Structure, and no
 decoration element of any kind. The AIXML exporter drops them, so a generated VI cannot carry
 arrows, boxes or separators. `FreeLabel` is the one annotation that does survive.
 

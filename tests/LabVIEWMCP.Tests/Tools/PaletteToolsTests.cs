@@ -7,7 +7,7 @@ namespace LabVIEWMCP.Tests.Tools;
 
 /// <summary>
 /// Two layers, neither needing LabVIEW: the length-prefixed parser (easy to read as plain text
-/// and get subtly wrong - that is how "&amp;BM_Property Dialog.vi" happens), and a scan over a
+/// and get subtly wrong - that is how "&amp;My Property Dialog.vi" happens), and a scan over a
 /// synthetic menus folder, in the same spirit as the fake gRPC server the rest of the suite uses.
 /// One opportunistic test additionally checks the real installation when there is one.
 /// </summary>
@@ -49,8 +49,8 @@ public class PaletteToolsTests : IDisposable
     public void LengthPrefixIsConsumedRatherThanReadAsPartOfTheName()
     {
         // 38 characters -> length byte 0x26, which is '&' in ASCII. Reading the buffer as text
-        // yields "&BM_Property Dialog_Toggle RW Symbol.vi"; the length-prefixed read must not.
-        const string name = "BM_Property Dialog_Toggle RW Symbol.vi";
+        // yields "&My Property Dialog Toggle RW Symbol.vi"; the length-prefixed read must not.
+        const string name = "My Property Dialog Toggle RW Symbol.vi";
         Assert.Equal(38, name.Length);
 
         Assert.Equal([name], PaletteIndex.PascalStrings(Pascal(name)).ToList());

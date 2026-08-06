@@ -265,6 +265,37 @@ so they are worth a prompt. Add them if you are actively developing against the 
 Do **not** allow-list the whole server (`mcp__labview`) — that would wave through
 `lvai_run_vi_as_top_level` and `lvai_apply_aixml_to_vi` too.
 
+### 7. Installing on another machine, binary only
+
+Copying `bin\Debug\net8.0\` is enough for the **tools and the knowledge**: all nine embedded
+resources travel inside `LabVIEWMCP.dll` and `build.ps1` proves it byte for byte on every build, so
+`lvai_aixml_reference`, `lvai_vi_server_reference` and the rest answer identically with no
+repository present.
+
+Two things are not reachable through a tool and need one command:
+
+- the **documentation agent** — Claude Code loads an agent from a file under `.claude\agents`, not
+  from an MCP resource
+- the **tool allow-list**, which lives in a settings file
+
+Both are copied next to the exe at build time, into `claude\`. Put them where Claude Code looks:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\Install-ClaudeAssets.ps1 -Scope User -Confirm
+```
+
+`-Scope User` installs the agent for every project on the machine. `-Scope Project
+-TargetProject <path>` installs the agent, the allow-list and `CLAUDE.md` into one repository
+instead. Without `-Confirm` the script only prints what it would do, and it backs up anything it
+overwrites to `*.bak-labviewmcp`.
+
+`lvai_status` reports both locations as `scriptsDirectory` and `claudeAssetsDirectory`, so an agent
+never has to guess a path — the working directory is whatever the client chose, and a binary-only
+install has no repository root.
+
+What still has to exist on the target machine: LabVIEW with its AI feature, the .NET 8 runtime,
+and — only for the documentation generator — `python-docx` and a Chromium browser.
+
 ### Troubleshooting
 
 | Symptom | Cause and fix |

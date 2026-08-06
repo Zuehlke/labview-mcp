@@ -46,6 +46,12 @@
          also why they are TSV rather than markdown tables. -->
     <EmbeddedResource Include="..\..\docs\vi-server-methods.tsv" LogicalName="vi-server-methods.tsv" />
     <EmbeddedResource Include="..\..\docs\vi-server-properties.tsv" LogicalName="vi-server-properties.tsv" />
+    <!-- The agent definition is embedded for the same reason as the documents: a binary-only
+         install must be able to hand it out. It is ALSO copied to the output directory below,
+         because Claude Code loads an agent from a file in .claude\agents, not from a resource. -->
+    <EmbeddedResource Include="..\..\.claude\agents\labview-doc-generator.md"
+                      LogicalName="labview-doc-generator.md" />
+    <EmbeddedResource Include="..\..\CLAUDE.md" LogicalName="CLAUDE.md" />
   </ItemGroup>
 
   <ItemGroup>
@@ -55,6 +61,16 @@
          scriptsDirectory. Same arrangement as the TestStand MCP server. -->
     <None Include="..\..\scripts\**\*"
           Link="scripts\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <!-- The agent, the allow-list and the working rules, so that everything a fresh machine needs
+         sits next to the exe. Install-ClaudeAssets.ps1 copies them where Claude Code looks. -->
+    <None Include="..\..\.claude\agents\*.md"
+          Link="claude\agents\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\.claude\settings.json"
+          Link="claude\settings.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\CLAUDE.md" Link="claude\CLAUDE.md"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

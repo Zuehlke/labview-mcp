@@ -108,7 +108,7 @@ internal static class PaletteIndex
     /// Every length-prefixed string in the buffer that names a .vi or .vim.
     ///
     /// Reading these as plain text instead would drag the length byte in with the name -
-    /// "&amp;BM_Property Dialog.vi" for a 38-character entry - which looks like a real name and
+    /// "&amp;My Property Dialog.vi" for a 38-character entry - which looks like a real name and
     /// is not one.
     /// </summary>
     internal static IEnumerable<string> PascalStrings(byte[] bytes)

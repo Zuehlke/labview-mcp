@@ -52,6 +52,7 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["discoveredVia"] = connection.DiscoveredVia,
                 ["applicationLanguage"] = config.Language,
                 ["scriptsDirectory"] = ScriptsDirectory(),
+                ["claudeAssetsDirectory"] = ClaudeAssetsDirectory(),
                 ["services"] = services,
                 ["reflectionError"] = reflectionError,
             }.ToJsonString(Indented);
@@ -66,6 +67,18 @@ internal sealed class StatusTools(LvaiConnection connection)
     internal static string? ScriptsDirectory()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "scripts");
+        return Directory.Exists(path) ? path : null;
+    }
+
+    /// <summary>
+    /// Absolute path of the Claude Code assets copied next to the exe - the documentation agent,
+    /// the tool allow-list and CLAUDE.md - or null when absent. The embedded documents are served
+    /// by tools, but an AGENT has to exist as a file where Claude Code looks for it, so a
+    /// binary-only install needs this path plus scripts\Install-ClaudeAssets.ps1.
+    /// </summary>
+    internal static string? ClaudeAssetsDirectory()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "claude");
         return Directory.Exists(path) ? path : null;
     }
 

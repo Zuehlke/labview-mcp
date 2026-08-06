@@ -16,6 +16,10 @@ public class ViServerKnowledgeTests
     [InlineData("vi-server-methods.tsv", "docs/vi-server-methods.tsv")]
     [InlineData("vi-server-properties.tsv", "docs/vi-server-properties.tsv")]
     [InlineData("lvlib-lvclass-structure.md", "docs/lvlib-lvclass-structure.md")]
+    // Not documents but assets: a binary-only install must be able to hand out the agent and
+    // the working rules, because neither is reachable through a tool.
+    [InlineData("labview-doc-generator.md", ".claude/agents/labview-doc-generator.md")]
+    [InlineData("CLAUDE.md", "CLAUDE.md")]
     public void EmbeddedResourceIsByteIdenticalToTheFileInDocs(string resource, string relative)
     {
         var onDisk = Res.FindRepoFile(relative);
@@ -159,5 +163,51 @@ public class ViServerKnowledgeTests
         // must never happen is a path that is reported and does not exist.
         var path = StatusTools.ScriptsDirectory();
         if (path is not null) Assert.True(Directory.Exists(path), $"reported but missing: {path}");
+    }
+
+    [Fact]
+    public void ClaudeAssetsDirectoryIsEitherAbsentOrARealDirectory()
+    {
+        var path = StatusTools.ClaudeAssetsDirectory();
+        if (path is not null) Assert.True(Directory.Exists(path), $"reported but missing: {path}");
+    }
+
+    [Fact]
+    public void TheAgentTravelsWithTheBinaryAndNamesItsOwnTools()
+    {
+        // A binary-only install has no repository, so the agent has to come out of the assembly.
+        var agent = KnowledgeTools.Load("labview-doc-generator.md");
+
+        Assert.Contains("name: labview-doc-generator", agent);
+        Assert.Contains("lvai_convert_vi_to_aixml", agent);
+        Assert.Contains("scriptsDirectory", agent);   // it must not hardcode a repository path
+    }
+
+    [Fact]
+    public void TheWorkingRulesTravelWithTheBinary()
+    {
+        var rules = KnowledgeTools.Load("CLAUDE.md");
+
+        Assert.Contains("lvai_palette_index", rules);
+        Assert.Contains("palette reachability", rules, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void EveryEmbeddedResourceDeclaredInTheCsprojIsLoadable()
+    {
+        // build.ps1 verifies the bytes; this verifies the LogicalName actually resolves at run
+        // time, which is what a tool call depends on.
+        var csproj = Res.FindRepoFile("src/LabVIEWMCP/LabVIEWMCP.csproj");
+        Assert.NotNull(csproj);
+
+        var names = System.Text.RegularExpressions.Regex
+            .Matches(File.ReadAllText(csproj!), "LogicalName=\"([^\"]+)\"")
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+
+        Assert.True(names.Count >= 9, $"expected at least 9 embedded resources, found {names.Count}");
+        foreach (var name in names)
+            Assert.False(string.IsNullOrWhiteSpace(KnowledgeTools.Load(name)),
+                         $"embedded resource '{name}' did not load");
     }
 }
