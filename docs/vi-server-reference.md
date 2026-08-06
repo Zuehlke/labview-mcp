@@ -212,10 +212,16 @@ itself appears. So an unwired Application reference in a generated VI is not the
 application instance, and this property cannot confirm residency of a user VI. Untested whether
 wiring an explicit `Open Application Reference` changes that.
 
-`FP.Set Close If Lonely` sits next to `FP.Close` in the catalogue and is what lets the VI leave
-memory once the reference closes — worth chaining in when the point of closing is to release the
-name, since a VI left in memory blocks `ConvertAIXMLToVI` from overwriting that path with
-`Error 1051`.
+**Closing the windows is not the same as unloading the VI, and unloading is not available.** The
+reason to want it: a VI in memory blocks `ConvertAIXMLToVI` from overwriting that path
+(`Error 1357`). `FP.Set Close If Lonely` sits next to `FP.Close` in the catalogue and reads like the
+answer, but measured it is not enough. One helper run — write `Front Panel Window\3AOpen` **and**
+`Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` —
+reported no error at all, and the regeneration still failed with 1357. There is no unload or
+remove-from-memory method anywhere in the 3 078 entries. `FP.Set Close If Lonely` presumably does
+what it says for a VI that VI Server alone ever loaded; for one the **IDE** has opened, nothing here
+gets it back out. Plan around it: fresh name per iteration, and do not open a VI you still intend to
+regenerate.
 
 ## What this opens up
 
