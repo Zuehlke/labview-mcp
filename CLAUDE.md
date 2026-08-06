@@ -45,17 +45,28 @@ Invoke and Property nodes; for primitives, export an example.
 `Read from Text File` with `readLines="true"` still returns a scalar string until `count` is
 wired. Copy a variant that is already in the state you want.
 
-**A loaded VI blocks its own path, and the way out runs through the active project.**
-`ConvertAIXMLToVI` cannot overwrite a path LabVIEW has loaded — `Error 1357`, "a LabVIEW file
-from that path already exists in memory" — and `lvai_open_file` alone is enough to cause it.
-To release it, reach the **IDE's** application instance via `{LV.Application}` →
-`Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference there, and
-write `Front Panel Window\3AState` = `Closed`. The recipe is in `docs/vi-server-reference.md`.
+**Always generate a VI into a project.** If it does not already belong to one, write a minimal
+`.lvproj` first (§2 of `lvai_lvproj_reference`), list the VI in it, and open it with **both**
+the VI pair and the project pair. This is not tidiness — it is the precondition for being able
+to change the VI again afterwards.
+
+The reason: `ConvertAIXMLToVI` cannot overwrite a path LabVIEW has loaded — `Error 1357`, "a
+LabVIEW file from that path already exists in memory" — and `lvai_open_file` alone is enough to
+cause it. The only thing that releases it is reaching the **IDE's** application instance,
+`{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, opening the VI
+reference *there*, and writing `Front Panel Window\3AState` = `Closed`. Recipe in
+`docs/vi-server-reference.md`.
+
+That route needs the project **twice over**, and both halves were measured separately: a project
+must be *active* in the IDE, or `Project\3AActive Project` returns `Error 1055`; and the VI must
+be a *member* of it, opened through it. A VI opened loose while some other project is active
+fails at the `State` write and stays stuck at `1357`. Hence the rule at the top: put it in a
+project at generation time, not afterwards.
+
 Do not bother with `FP.Close`, `FP.Set Close If Lonely` or `Front Panel Window\3AOpen` = `False`
-from a generated helper: those run in the **addon's** application instance, where the VI's
-windows do not exist, so they report success and do nothing. Needing a project to be active is
-the catch — without one, fall back to a fresh name per iteration. `Error 1051` is the sibling
-error and means something else: same *filename*, different path.
+from a generated helper. Those run in the **addon's** application instance, where the VI's
+windows do not exist, so they report success and do nothing. `Error 1051` is the sibling of 1357
+and means something else: same *filename*, different path.
 
 **Ask which application instance you are in before believing any window measurement.** A
 generated helper runs inside the AI addon's instance. It cannot see the IDE's open panels, so

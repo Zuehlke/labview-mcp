@@ -321,6 +321,21 @@ and the recipe below releases it. Everything further down that says otherwise pr
 Measured as a controlled A/B, three times through the cycle: `OpenFile` the VI → regenerate →
 `1357`; run this helper → regenerate → **`errorCode 0`**.
 
+**The VI must belong to the active project, not merely coexist with one.** This is the
+precondition that decides whether the recipe works at all, and it was isolated with a second
+A/B against the *same* active project:
+
+| VI | member of the active project, opened with both pairs | `State` write | regenerate after |
+|---|---|---|---|
+| in the project | yes | succeeds | **`errorCode 0`** |
+| loose on disk | no | **fails**, naming `Front Panel Window\3AState` | `1357` |
+
+So an active project is necessary but not sufficient. A VI opened loose is loaded into a context
+where the project's application cannot see its panel, and the write fails exactly as it does in
+the addon's instance. The practical consequence is a rule about *generation*, not about repair:
+**generate every VI into a project** — write a minimal `.lvproj`, list the VI, open both — because
+retrofitting one afterwards means the VI is already loaded in the wrong place.
+
 **Both halves are necessary, and the discriminating test says which does the work.** The identical
 chain *without* the `Front Panel Window\3AState` write — reach the project's application, open the
 VI reference, close the reference — leaves the regeneration failing with `1357`. Reaching the right
