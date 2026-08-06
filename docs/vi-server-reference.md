@@ -83,6 +83,21 @@ prefix per property, and one output terminal per field:
 Nested properties use `:` in their name, written `\3A` in AIXML —
 `Printing:Header Content:VI Icon?` becomes `Printing\3AHeader Content\3AVI Icon?`.
 
+**An enum-valued property needs its exact item list.** Writing one means feeding the node a
+`Constant` whose `type` carries the labels, and the generator checks that list strictly:
+
+```xml
+<Constant _name="Front Panel Window\3AState" outputs="value:344.value"
+          type="uint32{Invalid,Standard,Closed,Hidden,Minimized,Maximized}" uid="344" value="2"/>
+```
+
+`Invalid` occupies index 0, so `Closed` is **2**, not 1. Get the list wrong and validation says only
+`Wire: enumeration conflict` — naming neither the property nor the items it expected, which makes
+guess-and-retry blind. The **base type is not** checked as strictly: a `uint16` constant with the
+same labels validated. So exporting a VI that already carries the node is the only reliable way to
+obtain the list, and the constant above came from exactly that — a hand-built diagram put through
+`ConvertVIToAIXML`.
+
 ## Four things the data will not tell you
 
 **The `access` column is not a capability.** 6 445 of the entries were configured for reading in
@@ -169,6 +184,12 @@ Two ways of closing look interchangeable and are not. **What decides is who open
 |---|---|---|
 | the **IDE** — `OpenFile`, or a person double-clicking | **error**; `source` names `Front Panel\3AClose` | closes it; `source` empty, `errorCode 0` |
 | **VI Server**, `write+…Open` = `True` on the same refnum | **closes it**; `source` empty | — |
+
+`Front Panel Window:State` — the property a diagram labels `FP.State` — looks like the better answer
+and is not. `write+` with `Closed` was **refused twice**: on a VI the IDE had just opened, and on one
+with no windows left at all, the error naming `Property Node (arg 1) … Front Panel Window\3AState`
+both times. Its error code was not captured, so read-only versus state-dependent is still open.
+`write+Front Panel Window\3AOpen` = `False` remains the only thing measured to work.
 
 So `FP.Close` does not mean "close this VI". It closes a front panel *that VI Server opened*; an
 editor window belongs to the IDE and it will not touch it. The property write governs the window
