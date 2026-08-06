@@ -46,6 +46,17 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
     public string? XmlFileContent { get; set; }
     /// <summary>When set, ConvertAIXMLToVI writes this to the requested viPath.</summary>
     public string? ViFileContent { get; set; }
+    /// <summary>
+    /// Per-RPC override of <see cref="ErrorCode"/>, honoured by ValidateAIXML,
+    /// ConvertAIXMLToVI and RunVIAsTopLevel. A COMPOSED tool makes several calls in one
+    /// invocation, so reaching its later failure paths needs the earlier calls to succeed -
+    /// lvai_set_vi_icon validates before it generates, and a single global code cannot
+    /// express "validation passes, generation fails".
+    /// </summary>
+    public Dictionary<string, int> ErrorCodeByMethod { get; } = [];
+
+    private int CodeFor(string method) =>
+        ErrorCodeByMethod.TryGetValue(method, out var code) ? code : ErrorCode;
 
     public IReadOnlyList<(string Method, IMessage Message)> Received
     {
@@ -223,8 +234,11 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
 
     public override Task<ValidateAIXMLResponse> ValidateAIXML(
         ValidateAIXMLRequest request, ServerCallContext context) =>
-        Unary(nameof(ValidateAIXML), request,
-            () => new ValidateAIXMLResponse { ErrorCode = ErrorCode, ErrorMessage = ErrorMessage });
+        Unary(nameof(ValidateAIXML), request, () => new ValidateAIXMLResponse
+        {
+            ErrorCode = CodeFor(nameof(ValidateAIXML)),
+            ErrorMessage = ErrorMessage,
+        });
 
     public override Task<ApplyAIXMLToVIResponse> ApplyAIXMLToVI(
         ApplyAIXMLToVIRequest request, ServerCallContext context) =>
@@ -246,7 +260,11 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
         {
             if (ViFileContent is not null)
                 File.WriteAllText(request.ViPath, ViFileContent);
-            return new ConvertAIXMLToVIResponse { ErrorCode = ErrorCode, ErrorMessage = ErrorMessage };
+            return new ConvertAIXMLToVIResponse
+            {
+                ErrorCode = CodeFor(nameof(ConvertAIXMLToVI)),
+                ErrorMessage = ErrorMessage,
+            };
         });
 
     public override Task<RunVIAsTopLevelResponse> RunVIAsTopLevel(
@@ -255,7 +273,7 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
         {
             var response = new RunVIAsTopLevelResponse
             {
-                ErrorCode = ErrorCode,
+                ErrorCode = CodeFor(nameof(RunVIAsTopLevel)),
                 ErrorMessage = ErrorMessage,
             };
             foreach (var (key, value) in Outputs) response.Outputs[key] = value;

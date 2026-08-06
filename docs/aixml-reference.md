@@ -464,6 +464,7 @@ are surprising. Verified from exports:
 | `Select` | `t`, `s`, `f` | `s? t\3Af` |
 | `Add` | `x`, `y` | `x+y` |
 | `Subtract` | `x`, `y` | `x-y` |
+| `Multiply` | `x`, `y` | `x*y` |
 | `Quotient & Remainder` | `x`, `y` | `x-y*floor(x/y)`, `floor(x/y)` |
 | `Array Size` | `array` | `size(s)` |
 | `Index Array` | `array`, `index` | `element` |
@@ -695,6 +696,7 @@ How this squares with the measurements above:
 | `Unsupported SubVI` for project-local and Express VIs, while a vi.lib VI resolved | "user VIs outside the supported **node catalog**" — catalogue membership, not library membership or palette presence. Use the probe in the table above to test a specific target. |
 | **`conIdx` survives generation.** A VI authored with `conIdx` 0/1/2 in and 5/6 out came back from a fresh export with those indices intact — so terminals really are assigned to the connector pane. `connection` is dropped only when no `conIdx` accompanies it. | "connector pane layout or wiring" is not supported. Read that as the pane *pattern* and its wiring, not the index assignment, which demonstrably works. |
 | `description` survives; nothing else was attempted | "non-default VI properties beyond basic description" |
+| **An icon can be applied after generation.** A generated helper VI calling `Set VI Icon from File` + `Save\3AInstrument`, driven by `RunVIAsTopLevel`, replaced a generated VI's icon with a 32×32 PNG; the read-back was pixel-identical. Recipe in [`vi-server-reference.md`](vi-server-reference.md). | "VI icon graphics" — true of the *generator*. The icon is not out of reach, only out of AIXML. |
 | Event structures **export** correctly and their syntax is documented in §7 | they are not *generatable*. §7 is a reading aid for them, not an authoring recipe. |
 | A DQMH module needs `.lvlib` + `.ctl` + `.lvclass` + cross-calling VIs | each of those four is independently on the list |
 
@@ -769,10 +771,11 @@ pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026
 | `string` in, `string` out | works |
 | `path` **in** | `Error 91 ... Control Value\3ASet` — the variant will not coerce string to path, and it fails *before* the VI runs (`inputsSent` counts the attempt) |
 | `array` or `cluster` **out** | `Error 91 ... Variant To Data` — **the VI has already run correctly**; only the read-back fails, and the outputs come back as empty strings |
+| `double` **in** | `Error 91 ... Control Value\3ASet` — the same wall as `path`, and it also fails *before* the VI runs. Measured twice on the same control, as the JSON string `"100"` and as the JSON number `100`: neither coerces to a DBL. **This contradicts `lvai_run_vi_as_top_level`'s own description**, which says to pass numbers as their text form; that does not work. Numeric controls cannot be driven at all — take the number in as `string` and convert on the diagram. |
 
 Consequences for authoring:
 
-- Take paths in as `string` and convert on the diagram with `String To Path`
+- Take paths **and numbers** in as `string` and convert on the diagram — `String To Path`
   (`inputs="string:…"` → `outputs="path:…"`). This is why the icon/connector-pane helper VI in
   `scripts\lvdoc_print.xml` has string controls and three conversion nodes.
 - Return scalars. Unbundle an error cluster into `status` / `code` / `source` indicators if you

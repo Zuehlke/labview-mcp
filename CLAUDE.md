@@ -14,6 +14,7 @@ function for this":
 |---|---|---|
 | a computation on **data** — read a file, sort, parse, compare | primitive `Node`, or a subVI `Call` | `lvai_palette_index`; terminal names from an export |
 | a **property or action of a LabVIEW object** — a VI, control, panel, project, the application | `Property Node` / `Invoke Node` | `lvai_vi_server_reference` |
+| a **VI's icon** | neither — AIXML cannot carry one | `lvai_set_vi_icon`, which drives VI Server for you |
 
 The second row is the one that gets forgotten. "Get this VI's icon", "list a project's items",
 "is this VI broken", "read a control by name", "what does this VI call" are none of them functions
@@ -74,6 +75,7 @@ literally it argued away 600 usable palette VIs.
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
+| How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 
 All seven documents are **embedded in the assembly** and byte-verified on every build, so a

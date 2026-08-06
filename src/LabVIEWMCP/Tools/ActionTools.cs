@@ -22,8 +22,13 @@ internal sealed class ActionTools(LvaiConnection connection)
         RPC RunVIAsTopLevel. MUTATING: actually EXECUTES the VI in LabVIEW with the given
         control values and returns its indicator values. Side effects are whatever the VI does
         - it can drive hardware, write files or move a stage.
-        inputs/outputs are string maps: LabVIEW coerces from/to the control's real type, so
-        pass numbers as their text form ("42", "3.14", "true").
+        inputs/outputs are string maps, and the values really do cross as STRINGS: measured,
+        LabVIEW does NOT coerce them to the control's type. String controls work; a numeric or
+        path control fails with errorCode 91 at Control Value:Set BEFORE the VI runs - as "42"
+        and as 42 alike. So take numbers and paths in as strings and convert them on the
+        diagram. On the way out an array or cluster indicator also fails to marshal, and there
+        errorCode 91 arrives AFTER the VI has run correctly - it is not proof of failure.
+        Details and the measurements in lvai_aixml_reference section 10.
         Never run a VI you have not inspected with lvai_describe_vi first.
         """)]
     public async Task<string> RunViAsTopLevelAsync(

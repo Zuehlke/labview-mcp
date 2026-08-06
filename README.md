@@ -310,9 +310,10 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 
 ## Tools
 
-**33 tools over 23 RPCs.** Ten are additions that map to no RPC: `lvai_status`,
-`lvai_dump_schema`, `lvai_palette_index`, and the seven knowledge tools below. 24 carry
-`readOnlyHint`, 9 carry
+**34 tools over 23 RPCs.** Eleven are additions that map to no RPC: `lvai_status`,
+`lvai_dump_schema`, `lvai_palette_index`, `lvai_set_vi_icon` — which composes three RPCs
+rather than wrapping one — and the seven knowledge tools below. 24 carry
+`readOnlyHint`, 10 carry
 `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
@@ -349,6 +350,7 @@ resources rather than call tools.
 | `lvai_convert_aixml_to_vi` | `ConvertAIXMLToVI` | **creates/overwrites a `.vi`** |
 | `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **edits an existing `.vi`** |
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
+| `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
 | `lvai_build_from_build_specification` | `BuildFromBuildSpecification` | writes build output |
 | `lvai_open_file` | `OpenFile` | IDE state |
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |

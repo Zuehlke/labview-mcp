@@ -121,8 +121,11 @@ internal static class Rpc
 
     /// <summary>
     /// Parse a JSON object into a flat string map, the shape RunVIAsTopLevel wants for
-    /// control values. Numbers and booleans are accepted and stringified — LabVIEW coerces
-    /// to the control's real type, so {"X":3} and {"X":"3"} must behave the same.
+    /// control values. Numbers and booleans are accepted and stringified, so {"X":3} and
+    /// {"X":"3"} behave the same — they are the same request on the wire. Note that this is
+    /// where the equivalence ends: LabVIEW does NOT coerce the string onto a numeric control,
+    /// it fails at Control Value:Set. Only the caller can fix that, by taking the value in as
+    /// a string control and converting on the diagram.
     /// </summary>
     public static IEnumerable<KeyValuePair<string, string>> ParseStringMap(
         string? json, string parameterName = "json")

@@ -107,6 +107,42 @@ boolean indicators named after them (`Down Tee`, `Left Tee`, …) inside a Stack
 decoration element of any kind. The AIXML exporter drops them, so a generated VI cannot carry
 arrows, boxes or separators. `FreeLabel` is the one annotation that does survive.
 
+## Writing back: setting a VI's icon
+
+AIXML cannot carry an icon — "VI icon graphics" is on NI's not-supported list for the generator
+([`aixml-reference.md`](aixml-reference.md) §9), and none of the 23 RPCs sets one. VI Server does,
+so the same generate-run-read loop that *reads* the icon also writes it. Measured on LabVIEW 2026
+against a freshly generated VI:
+
+| Step | Node |
+|---|---|
+| open the target | `Open VI Reference` fed by `String To Path` — `RunVIAsTopLevel` cannot set a path control |
+| set the icon | `Invoke Node` `Set VI Icon from File`, `type="{LV.VI}"`, input `Image File` |
+| persist it | `Invoke Node` `Save\3AInstrument` — without it the change dies with the reference |
+| verify | `Invoke Node` `Save VI Icon to File`, input `Image File` |
+
+Three things this measured that the catalogue does not say:
+
+- **`Set VI Icon from File` accepts a 32×32 PNG directly.** Neither `Set VI Icon from Image Data`
+  nor a flattened LabVIEW image cluster is needed — a plain file from any image library is enough.
+- **`Save VI Icon to File` writes a PNG when `Image Format` and `Image Depth` are left unwired**
+  (32×32, `89 50 4E 47` magic), so the default enum value 0 is PNG. That makes it the verification
+  step: the round-tripped file came back pixel-identical to the input.
+- **`Save\3AInstrument` needs no `Path to saved file`.** Unwired, it saves in place.
+
+The run reports **`errorCode 91` with all three indicators empty** — the known read-back artifact
+(§10 of the AIXML reference), not a failure. Verify out of band, as the rule there says: the target
+`.vi` grew from 4 643 to 5 191 bytes with a fresh timestamp, and the read-back PNG matched the
+input pixel for pixel.
+
+One trap met while generating the demo VI. `ConvertAIXMLToVI` refused the target name
+`Celsius To Fahrenheit.vi` with `Error 1051 … already exists in memory` on `Save\3AInstrument`,
+and kept refusing it on every retry — **a failed generation leaves that name occupied in LabVIEW
+for the rest of the session**, so retrying the same path can never succeed. Renaming the target
+fixed it immediately. The first failure happened while a second `ConvertAIXMLToVI` call was running
+concurrently; that is not proven to be the cause, but issuing two conversions in parallel is worth
+avoiding until it is.
+
 ## What this opens up
 
 Gaps in the RPC surface that a generated helper VI could close, none of them attempted yet:
