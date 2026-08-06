@@ -14,6 +14,7 @@ function for this":
 |---|---|---|
 | a computation on **data** — read a file, sort, parse, compare | primitive `Node`, or a subVI `Call` | `lvai_palette_index`; terminal names from an export |
 | a **property or action of a LabVIEW object** — a VI, control, panel, project, the application | `Property Node` / `Invoke Node` | `lvai_vi_server_reference` |
+| a **VI's icon** | neither — AIXML cannot carry one | `lvai_set_vi_icon`, which drives VI Server for you |
 
 The second row is the one that gets forgotten. "Get this VI's icon", "list a project's items",
 "is this VI broken", "read a control by name", "what does this VI call" are none of them functions
@@ -43,6 +44,34 @@ Invoke and Property nodes; for primitives, export an example.
 **A mode attribute can change a node's output type, and setting the mode is not enough.**
 `Read from Text File` with `readLines="true"` still returns a scalar string until `count` is
 wired. Copy a variant that is already in the state you want.
+
+**Always generate a VI into a project.** If it does not already belong to one, write a minimal
+`.lvproj` first (§2 of `lvai_lvproj_reference`), list the VI in it, and open it with **both**
+the VI pair and the project pair. This is not tidiness — it is the precondition for being able
+to change the VI again afterwards.
+
+The reason: `ConvertAIXMLToVI` cannot overwrite a path LabVIEW has loaded — `Error 1357`, "a
+LabVIEW file from that path already exists in memory" — and `lvai_open_file` alone is enough to
+cause it. The only thing that releases it is reaching the **IDE's** application instance,
+`{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, opening the VI
+reference *there*, and writing `Front Panel Window\3AState` = `Closed`. Recipe in
+`docs/vi-server-reference.md`.
+
+That route needs the project **twice over**, and both halves were measured separately: a project
+must be *active* in the IDE, or `Project\3AActive Project` returns `Error 1055`; and the VI must
+be a *member* of it, opened through it. A VI opened loose while some other project is active
+fails at the `State` write and stays stuck at `1357`. Hence the rule at the top: put it in a
+project at generation time, not afterwards.
+
+Do not bother with `FP.Close`, `FP.Set Close If Lonely` or `Front Panel Window\3AOpen` = `False`
+from a generated helper. Those run in the **addon's** application instance, where the VI's
+windows do not exist, so they report success and do nothing. `Error 1051` is the sibling of 1357
+and means something else: same *filename*, different path.
+
+**Ask which application instance you are in before believing any window measurement.** A
+generated helper runs inside the AI addon's instance. It cannot see the IDE's open panels, so
+`Front Panel Window\3AOpen` reads `false` for a window that is plainly on screen, and `errorCode
+0` from a window operation is not evidence that a window moved.
 
 **Validate, then verify by running.** `ValidateAIXML` is cheap and its messages name the node and
 terminal. But validation passing says nothing about behaviour, and `RunVIAsTopLevel` reports
@@ -74,6 +103,7 @@ literally it argued away 600 usable palette VIs.
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
+| How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 
 All seven documents are **embedded in the assembly** and byte-verified on every build, so a

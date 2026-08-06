@@ -63,6 +63,10 @@ internal sealed class MonitorTools(LvaiConnection connection)
         await Rpc.GuardAsync(async () =>
         {
             var wait = Rpc.ClampToolWait(timeoutSeconds);
+            // GetClientAsync, NOT InvokeAsync - deliberately, and unlike every other tool.
+            // InvokeAsync retries the whole lambda after re-discovering, which for a stream
+            // that CONSUMES events means replaying a wait that may already have delivered
+            // some. A monitor is better off failing honestly and letting the caller decide.
             var client = await connection.GetClientAsync(ct);
             using var call = client.MonitorProjectChanges(
                 new MonitorProjectChangesRequest(),
@@ -190,6 +194,8 @@ internal sealed class MonitorTools(LvaiConnection connection)
             var reply = replyJson is null ? null : Rpc.ParseJson<TRequest>(replyJson);
 
             var wait = Rpc.ClampToolWait(timeoutSeconds);
+            // GetClientAsync, NOT InvokeAsync - see the note on the other monitor. A bidi
+            // exchange that has already sent a reply must never be replayed by a retry.
             var client = await connection.GetClientAsync(ct);
             using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
             budget.CancelAfter(TimeSpan.FromSeconds(wait));

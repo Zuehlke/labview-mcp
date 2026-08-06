@@ -28,10 +28,15 @@ internal sealed class StatusTools(LvaiConnection connection)
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
-            var client = await connection.GetClientAsync(ct);
-            var config = await client.GetApplicationConfigurationAsync(
-                new GetApplicationConfigurationRequest(),
-                deadline: Rpc.Deadline(15), cancellationToken: ct);
+            // Through InvokeAsync, never GetClientAsync. This tool's own description promises
+            // that a LabVIEW restart is re-discovered automatically, and only InvokeAsync drops
+            // a stale channel and re-scans. Measured: with the direct call, every lvai_status
+            // after a LabVIEW restart returned "Unavailable: Error connecting to subchannel"
+            // and kept doing so - the one tool that claimed to heal itself was the one that
+            // could not, and a unary tool had to be called first to unstick it.
+            var config = await connection.InvokeAsync((c, t) =>
+                c.GetApplicationConfigurationAsync(new GetApplicationConfigurationRequest(),
+                    deadline: Rpc.Deadline(15), cancellationToken: t).ResponseAsync, ct);
 
             var services = new JsonArray();
             string? reflectionError = null;

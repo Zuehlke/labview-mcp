@@ -464,6 +464,8 @@ are surprising. Verified from exports:
 | `Select` | `t`, `s`, `f` | `s? t\3Af` |
 | `Add` | `x`, `y` | `x+y` |
 | `Subtract` | `x`, `y` | `x-y` |
+| `Multiply` | `x`, `y` | `x*y` |
+| `Concatenate Strings` | `string`, repeatable | `concatenated string` |
 | `Quotient & Remainder` | `x`, `y` | `x-y*floor(x/y)`, `floor(x/y)` |
 | `Array Size` | `array` | `size(s)` |
 | `Index Array` | `array`, `index` | `element` |
@@ -695,6 +697,7 @@ How this squares with the measurements above:
 | `Unsupported SubVI` for project-local and Express VIs, while a vi.lib VI resolved | "user VIs outside the supported **node catalog**" — catalogue membership, not library membership or palette presence. Use the probe in the table above to test a specific target. |
 | **`conIdx` survives generation.** A VI authored with `conIdx` 0/1/2 in and 5/6 out came back from a fresh export with those indices intact — so terminals really are assigned to the connector pane. `connection` is dropped only when no `conIdx` accompanies it. | "connector pane layout or wiring" is not supported. Read that as the pane *pattern* and its wiring, not the index assignment, which demonstrably works. |
 | `description` survives; nothing else was attempted | "non-default VI properties beyond basic description" |
+| **An icon can be applied after generation.** A generated helper VI calling `Set VI Icon from File` + `Save\3AInstrument`, driven by `RunVIAsTopLevel`, replaced a generated VI's icon with a 32×32 PNG; the read-back was pixel-identical. Recipe in [`vi-server-reference.md`](vi-server-reference.md). | "VI icon graphics" — true of the *generator*. The icon is not out of reach, only out of AIXML. |
 | Event structures **export** correctly and their syntax is documented in §7 | they are not *generatable*. §7 is a reading aid for them, not an authoring recipe. |
 | A DQMH module needs `.lvlib` + `.ctl` + `.lvclass` + cross-calling VIs | each of those four is independently on the list |
 
@@ -769,14 +772,26 @@ pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026
 | `string` in, `string` out | works |
 | `path` **in** | `Error 91 ... Control Value\3ASet` — the variant will not coerce string to path, and it fails *before* the VI runs (`inputsSent` counts the attempt) |
 | `array` or `cluster` **out** | `Error 91 ... Variant To Data` — **the VI has already run correctly**; only the read-back fails, and the outputs come back as empty strings |
+| `bool`, `int32` or `cluster` **out** | `Error 91 ... Variant To Data`, and **that one indicator** comes back empty. Marshalling is **per indicator, not all-or-nothing**: one response carried a `string` indicator's full value while `status` (bool), `code` (int32) and `error out` (cluster) were all blank. So `errorCode 91` means "at least one output could not be read" — never "the VI failed". |
+| `double` **in** | `Error 91 ... Control Value\3ASet` — the same wall as `path`, and it also fails *before* the VI runs. Measured twice on the same control, as the JSON string `"100"` and as the JSON number `100`: neither coerces to a DBL. **This contradicts `lvai_run_vi_as_top_level`'s own description**, which says to pass numbers as their text form; that does not work. Numeric controls cannot be driven at all — take the number in as `string` and convert on the diagram. |
 
 Consequences for authoring:
 
-- Take paths in as `string` and convert on the diagram with `String To Path`
+- Take paths **and numbers** in as `string` and convert on the diagram — `String To Path`
   (`inputs="string:…"` → `outputs="path:…"`). This is why the icon/connector-pane helper VI in
   `scripts\lvdoc_print.xml` has string controls and three conversion nodes.
-- Return scalars. Unbundle an error cluster into `status` / `code` / `source` indicators if you
-  want to see it; a cluster wired straight to an indicator reads back empty.
+- **Return strings.** Only `string` indicators survive the round trip. `bool`, `int32` and clusters
+  come back blank and raise `errorCode 91` — but *only for themselves*: mixing is fine, the strings
+  still arrive. So convert on the diagram and read text, e.g. `Select` between two string constants
+  to turn a bool into a readable answer, and unbundle an error cluster's `source` rather than wiring
+  the cluster out whole.
+- **An empty string means "no error" at least as often as it means "not marshalled" — this document
+  got that wrong.** An earlier revision claimed a `status`/`code`/`source` trio came back entirely
+  empty because the non-string types poisoned the response. It did not: `source` was blank because
+  the helper had genuinely succeeded, and only `status` and `code` failed to marshal. The reading
+  cost real work, because the icon helper's result was declared unverifiable and checked against the
+  filesystem instead. Give a helper one string output that is **never** empty on success — a state
+  word, a path, anything — and the ambiguity disappears.
 - **`errorCode 91` is not proof of failure.** Distinguish the two: an empty `source` string means
   the VI ran clean, and a non-empty one carries the real error. When the output type cannot be
   read at all, verify out of band — write the result to a file and inspect that, rather than
@@ -788,12 +803,14 @@ Consequences for authoring:
 |---|---|
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
-| `Error 1051 ... A LabVIEW file of that name already exists in memory` on `Save\3AInstrument` | The VI you are regenerating is **loaded in LabVIEW** — `RunVIAsTopLevel` leaves it there, so the second iteration of author-generate-run cannot overwrite it. Generate each iteration under a fresh name, or make LabVIEW release the VI. Merely *opening* a VI with `OpenFile` does not block the overwrite; running it does. |
+| `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` alone is enough** — measured on a VI that was opened and never run, which corrects the claim that used to stand here that only *running* blocks the overwrite. `RunVIAsTopLevel` leaves it loaded too. |
+| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". |
 | `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |
 | `Control with type=UDClassInst is not supported` / `Property Node with type=UDClassInst is not supported` | **LabVIEW classes cannot be expressed at all.** A class instance is rejected both as a front-panel control and inside a property node, so any VI whose connector pane carries an object — all LabVIEW OOP, and DQMH 5's `Module Admin` — is outside the type grammar. This is a *deeper* wall than `Unsupported SubVI`: inlining the subVIs would not help, because the VI's own terminal cannot be typed. Usually accompanied by `Could not find control with name "X" to apply fixup`. |
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
 | An export of 100–200 bytes containing only `<VI _name=… description=…/>` | **Silent failure, not an empty VI.** The diagram was not readable — inaccessible, password-protected or otherwise withheld — and `ConvertVIToAIXML` still returns `errorCode 0 / "No Error"`. Cross-check with the rendered diagram: if `GetDescribeVIPromptInfo` also carries no `viImage`, the diagram is unavailable. Never conclude "this VI is empty" from a childless `<VI>` element. |
 | **Everything reports success and the VI is hollow** | The generator has two ways of refusing. A `Call` it cannot resolve is a *hard* error (`Unsupported SubVI`). An unsupported **node family** is silent: the container is created, its configuration is discarded, `errorCode` stays 0. Measured on `Event Structure` — frames dropped, one `[0] Timeout` frame left (§7). Never take `errorCode 0` as proof that what you asked for was built: re-export the result and compare, or render it with `--diagram`. |
+| **A VI in memory CAN be evicted — via the active project** | **Read this row's ending first: there is a working recipe**, in `vi-server-reference.md` under "Unloading a VI so its path can be regenerated". Reach the IDE's application through `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference *there*, and write `Front Panel Window\3AState` = `Closed`. Measured A/B: `1357` before, `errorCode 0` after. The rest of this row is the long road that found it, kept because every step of it is a thing that does **not** work. The fallback rule remains sound when no project is active: **generate each iteration under a fresh name, and do not `lvai_open_file` a VI you still intend to regenerate.** Measured, in one helper run that itself reported no error: writing `Front Panel Window\3AOpen` **and** `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` — and the regeneration still failed with 1357. The catalogue carries no unload or remove-from-memory method at all across its 3 078 entries. Earlier advice here said "or make LabVIEW release the VI"; that is not achievable through this interface. Closing the VI in the IDE by hand, or restarting LabVIEW, is the reset. **Re-measured on a freshly restarted machine, with the one remaining explanation tested and killed:** the idea that closing the window *modifies* the VI and that a modified VI cannot be unloaded. Reading `Modifications\3AUser Changes` before the close, after it, and after a `Save\3AInstrument` gave **clean, clean, clean** — unsaved changes were never what held it. Same run, no error anywhere in it, regeneration still 1357. What every one of these attempts shared, and what took an evening to see: they all ran in the **addon's** application instance, where the VI's windows do not exist. That is why closing them changed nothing — see the recipe named at the top of this row. **The escape hatch is real, and measured:** a person closing the VI in the IDE by hand frees the path immediately — the very next `ConvertAIXMLToVI` on it returned `errorCode 0`. So when you are stuck on a path, the fix is a human closing that window, not another property write. **Opening the VI inside a project changes nothing** — tested, because "we never opened it in a project, which would be the normal case" is the obvious objection. A hand-written `.lvproj` (§2 of the lvproj reference), the VI generated beside it and opened with both the VI *and* project pairs, `describe_project` confirming it loaded as a real member with `missingFiles: []`: regeneration still `1357`. Project membership is not what holds the file. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
 
 ## 12. This document has been tested

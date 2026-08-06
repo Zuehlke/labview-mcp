@@ -29,14 +29,19 @@ internal sealed class LifecycleTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_ensure_labview", Destructive = true, OpenWorld = true,
                    Title = "Make sure a LabVIEW instance is running")]
     [Description("""
-        Ensure a LabVIEW instance is available for the other lvai_* tools.
-        If one is already running it is used as-is and nothing is started. Otherwise the newest
-        installed LabVIEW is launched, preferring the 32-bit build - that is the one hosting the
-        AI gRPC service. No version number is hardcoded; LabVIEW NXG is ignored.
+        Start a LabVIEW instance. If one is already running it is used as-is and nothing is
+        started. Otherwise the newest installed LabVIEW is launched, preferring the 32-bit build
+        - that is the one hosting the AI gRPC service. No version number is hardcoded; LabVIEW
+        NXG is ignored.
         MUTATING: may start an IDE, which is visible to whoever is at the machine.
-        LabVIEW usually needs longer to answer than one tool call may last. If this reports
-        'starting', simply call it again - the second call finds the instance and waits for the
-        service. For an unattended long wait use the CLI: LabVIEWMCP --ensure-labview.
+        IT CANNOT FINISH THE JOB ALONE. Measured: the 'LV AI gRPC Service' starts with NIGEL,
+        the AI assistant - not with the IDE. A LabVIEW that has been up for twenty minutes can
+        hold 30 open listener ports and serve lvai.LVAI on none of them. So a persistent
+        'starting' with LabVIEW visibly running is not this tool being slow: ask whoever is at
+        the machine to open Nigel, then call lvai_status once.
+        Otherwise, when LabVIEW is still coming up, calling again is right - the second call
+        finds the instance and waits. For an unattended long wait use the CLI:
+        LabVIEWMCP --ensure-labview.
         """)]
     public async Task<string> EnsureLabViewAsync(
         [Description("How long to wait for the gRPC service to answer, in seconds (capped at 45)")]

@@ -303,16 +303,18 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | Server does not appear at all | Config not loaded — restart Claude Code. For project scope, confirm you approved it. |
 | Server fails to start | The `command` path is wrong or unbuilt. Run the `.exe` in a terminal: it should log two `info:` lines to stderr ("transport reading messages", "Application started") and then wait on stdin. Anything else is the real error. |
 | `ok: false`, `InvalidOperationException`, "Could not find a port serving lvai.LVAI" | LabVIEW is not running, or its AI feature is off. The message lists every port that was probed. |
-| Worked, then stopped | LabVIEW restarted and took a new port. The next call re-discovers it — no restart needed. |
+| The same, but **LabVIEW is visibly running** and the probed list is full of `LabVIEW.exe listener` ports answering `Unavailable` | **The service starts with Nigel, not with the IDE.** Measured: LabVIEW up for twenty minutes, 30 listener ports open, `lvai.LVAI` served on none of them; opening Nigel in the IDE brought it up within seconds. `lvai_ensure_labview` cannot do this for you — it starts LabVIEW, and reports `starting` forever while the assistant stays closed. Open Nigel, then call `lvai_status` once. |
+| Worked, then stopped | LabVIEW restarted and took a new port. The next call re-discovers it — no restart needed. The **monitor** tools are the deliberate exception: they fail once with `Unavailable` rather than silently replay a wait that may already have consumed an event. Call them again. |
 | `Unimplemented` on a tool | That LabVIEW version does not have the RPC. Run `lvai_dump_schema` to see what it really serves. |
 | `DeadlineExceeded` | A cold VI or module load inside LabVIEW. Raise the tool's `timeoutSeconds`. |
 | Protocol/parse errors in the client | Something wrote to stdout. All logging goes to stderr by design; a stray `Console.Write` in the server would corrupt the stream. |
 
 ## Tools
 
-**33 tools over 23 RPCs.** Ten are additions that map to no RPC: `lvai_status`,
-`lvai_dump_schema`, `lvai_palette_index`, and the seven knowledge tools below. 24 carry
-`readOnlyHint`, 9 carry
+**34 tools over 23 RPCs.** Eleven are additions that map to no RPC: `lvai_status`,
+`lvai_dump_schema`, `lvai_palette_index`, `lvai_set_vi_icon` — which composes three RPCs
+rather than wrapping one — and the seven knowledge tools below. 24 carry
+`readOnlyHint`, 10 carry
 `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
@@ -349,6 +351,7 @@ resources rather than call tools.
 | `lvai_convert_aixml_to_vi` | `ConvertAIXMLToVI` | **creates/overwrites a `.vi`** |
 | `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **edits an existing `.vi`** |
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
+| `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
 | `lvai_build_from_build_specification` | `BuildFromBuildSpecification` | writes build output |
 | `lvai_open_file` | `OpenFile` | IDE state |
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |
