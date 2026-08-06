@@ -45,13 +45,22 @@ Invoke and Property nodes; for primitives, export an example.
 `Read from Text File` with `readLines="true"` still returns a scalar string until `count` is
 wired. Copy a variant that is already in the state you want.
 
-**Never open a VI you still intend to regenerate, and give every iteration a fresh name.**
+**A loaded VI blocks its own path, and the way out runs through the active project.**
 `ConvertAIXMLToVI` cannot overwrite a path LabVIEW has loaded — `Error 1357`, "a LabVIEW file
-from that path already exists in memory". `lvai_open_file` alone is enough to cause it, and
-there is **no way back**: closing both windows, saving, `FP.Set Close If Lonely` and releasing
-the reference were all measured, all error-free, and all left the regeneration failing. Only
-closing the VI in the IDE by hand or restarting LabVIEW clears it. `Error 1051` is its sibling
-and means something else — same *filename*, different path.
+from that path already exists in memory" — and `lvai_open_file` alone is enough to cause it.
+To release it, reach the **IDE's** application instance via `{LV.Application}` →
+`Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference there, and
+write `Front Panel Window\3AState` = `Closed`. The recipe is in `docs/vi-server-reference.md`.
+Do not bother with `FP.Close`, `FP.Set Close If Lonely` or `Front Panel Window\3AOpen` = `False`
+from a generated helper: those run in the **addon's** application instance, where the VI's
+windows do not exist, so they report success and do nothing. Needing a project to be active is
+the catch — without one, fall back to a fresh name per iteration. `Error 1051` is the sibling
+error and means something else: same *filename*, different path.
+
+**Ask which application instance you are in before believing any window measurement.** A
+generated helper runs inside the AI addon's instance. It cannot see the IDE's open panels, so
+`Front Panel Window\3AOpen` reads `false` for a window that is plainly on screen, and `errorCode
+0` from a window operation is not evidence that a window moved.
 
 **Validate, then verify by running.** `ValidateAIXML` is cheap and its messages name the node and
 terminal. But validation passing says nothing about behaviour, and `RunVIAsTopLevel` reports

@@ -270,12 +270,22 @@ back the *addon's* instance, not the IDE's: a generated VI has no route to the a
 its user is looking at, and no way to enumerate what the IDE has loaded. Residency can only be
 tested indirectly — attempt the regeneration and read `Error 1357`.
 
-**The active project is not a way out of that instance either.** The natural next idea, and it was
-tried: `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, then open
-the VI reference in *that* application. It fails at the first step with **`Error 1055`, "Object
-reference is invalid"** — the addon's instance has no active project, even with a project genuinely
-loaded in the IDE and `describe_project` listing its members. There is no bridge from a generated
-helper to the application object the user is working in.
+**The active project IS the way out of that instance — this is the bridge.** `{LV.Application}` →
+`Project\3AActive Project` → `{LV.Project}` → `Application` hands back the application object the
+*user* is working in, not the addon's. Everything else in this document that reads "there is no way
+to reach the IDE from a generated helper" was written before this was found, and is wrong.
+
+It has one precondition, and getting it wrong is what made this look like a dead end at first: **a
+project must be ACTIVE in the IDE.** With none active, `Project\3AActive Project` returns
+**`Error 1055`, "Object reference is invalid"**, and every step downstream fails for a reason that
+has nothing to do with the step. Opening a project through the `OpenFile` RPC was *not* enough to
+make it active in one measurement and *was* enough in a later one, so treat "active" as the user's
+IDE state, not something this interface sets reliably.
+
+This also explains the entire run of window findings above. The panels that read `closed` while
+plainly visible, and the `Error 1149`s from `FP.Close` on VIs that were obviously open — all of them
+were **measured in the wrong application instance**. The addon's instance genuinely has no such
+panel open. The properties were never lying; they were answering about a different world.
 
 That attempt also carries a lesson about diagnosing chains. The version that first showed the
 problem had a `Clear Errors.vi` between the stages, and it blamed `Open VI Reference` — the *last*
@@ -283,8 +293,47 @@ node to break, three steps downstream of the cause. Removing the error clearing 
 the property node that actually failed. **A chain that clears errors between stages names its last
 casualty, not its first.**
 
-**Closing the windows is not the same as unloading the VI, and unloading is not available.** The
-reason to want it: a VI in memory blocks `ConvertAIXMLToVI` from overwriting that path
+## Unloading a VI so its path can be regenerated
+
+**This works.** A VI in memory blocks `ConvertAIXMLToVI` from overwriting that path (`Error 1357`),
+and the recipe below releases it. Everything further down that says otherwise predates the finding.
+
+```xml
+<Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}"
+      outputs="Project\3AActive Project:20.proj,reference out:,error out:20.error out"
+      uid="20" uid_parent="root"/>
+<Node _name="Property Node" fields="read+Application" type="{LV.Project}"
+      inputs="reference:20.proj,error in (no error):20.error out"
+      outputs="Application:22.app,reference out:,error out:22.error out"
+      uid="22" uid_parent="root"/>
+<Node _name="Open VI Reference"
+      inputs="application reference (local):22.app,vi path:12.path,error in (no error):22.error out"
+      outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+<Constant _name="Closed" type="uint32{Invalid,Standard,Closed,Hidden,Minimized,Maximized}"
+          outputs="value:30.value" value="2" uid="30" uid_parent="root"/>
+<Node _name="Property Node" fields="write+Front Panel Window\3AState" type="{LV.VI}"
+      inputs="reference:24.vi reference,error in (no error):24.error out,Front Panel Window\3AState:30.value"
+      outputs="reference out:32.reference out,error out:32.error out" uid="32" uid_parent="root"/>
+<Node _name="Close Reference" inputs="reference:32.reference out,error in (no error):32.error out"
+      outputs="error out:34.error out" uid="34" uid_parent="root"/>
+```
+
+Measured as a controlled A/B, three times through the cycle: `OpenFile` the VI → regenerate →
+`1357`; run this helper → regenerate → **`errorCode 0`**.
+
+**Both halves are necessary, and the discriminating test says which does the work.** The identical
+chain *without* the `Front Panel Window\3AState` write — reach the project's application, open the
+VI reference, close the reference — leaves the regeneration failing with `1357`. Reaching the right
+application instance is not what releases the VI. **Closing the panel while inside that instance
+is.** And it must be `State` = `Closed` rather than `Open` = `False`, because in the addon's
+instance the panel already reads closed, so that write is the no-op described earlier.
+
+Note `{LV.Project}` and `Project\3AActive Project` appear nowhere in the catalogue — see the fifth
+entry under "things the data will not tell you". Both names came from a hand-built VI.
+
+### The older, weaker findings this replaces
+
+The reason to want it: a VI in memory blocks `ConvertAIXMLToVI` from overwriting that path
 (`Error 1357`). `FP.Set Close If Lonely` sits next to `FP.Close` in the catalogue and reads like the
 answer, but measured it is not enough. One helper run — write `Front Panel Window\3AOpen` **and**
 `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` —
