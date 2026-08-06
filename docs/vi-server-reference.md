@@ -251,8 +251,15 @@ the only ones on `{LV.VI}` are `FP.Close`, `FP.Set Close If Lonely` and
 left unwired — but what comes back is the **addon's own context**: 400-odd VIs, every one of them
 inside `LV AI Core.lvlibp` or `LV AI gRPC Service.lvlibp`. Neither the VI under test nor the helper
 itself appears. So an unwired Application reference in a generated VI is not the IDE's main
-application instance, and this property cannot confirm residency of a user VI. Untested whether
-wiring an explicit `Open Application Reference` changes that.
+application instance, and this property cannot confirm residency of a user VI.
+
+**Wiring an explicit `Open Application Reference` does not change it** — the obvious next move, and
+it fails identically. Same 400-odd packed-library VIs, no user VI, and not even the running helper
+itself. `Application:Exported VIs In Memory` returns the same list, **byte-identical**, 26 495
+characters both times. So `Open Application Reference` called from inside a generated helper hands
+back the *addon's* instance, not the IDE's: a generated VI has no route to the application object
+its user is looking at, and no way to enumerate what the IDE has loaded. Residency can only be
+tested indirectly — attempt the regeneration and read `Error 1357`.
 
 **Closing the windows is not the same as unloading the VI, and unloading is not available.** The
 reason to want it: a VI in memory blocks `ConvertAIXMLToVI` from overwriting that path
