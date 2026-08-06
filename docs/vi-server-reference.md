@@ -163,21 +163,40 @@ about your XML. Do not read `Error 1018` as "my AIXML is broken".
 ## Closing a VI's window
 
 No RPC closes a VI — `OpenFile` has no counterpart — so this is the same generated-helper route.
-`FP.Close` is the obvious method and it **failed** on a VI that had just been opened with
-`OpenFile` and run: the error cluster came back naming `Method Name: Front Panel\3AClose`.
-Writing the property instead worked first time:
+Two ways of closing look interchangeable and are not. **What decides is who opened the panel:**
 
-| Attempt | Result |
-|---|---|
-| `Invoke Node` `FP.Close` | error; `source` names `Front Panel\3AClose` |
-| `Property Node` `write+Front Panel Window\3AOpen` with a `False` constant | panel closed, `source` empty, `errorCode 0` |
+| Panel was opened by | `Invoke Node` `FP.Close` | `Property Node` `write+Front Panel Window\3AOpen` = `False` |
+|---|---|---|
+| the **IDE** — `OpenFile`, or a person double-clicking | **error**; `source` names `Front Panel\3AClose` | closes it; `source` empty, `errorCode 0` |
+| **VI Server**, `write+…Open` = `True` on the same refnum | **closes it**; `source` empty | — |
 
-Two things worth keeping from that. `Front Panel Window:Open` is listed as **`read`** in the
-catalogue and took a `write+` perfectly well — the concrete instance of the warning above that the
-`access` column is not a capability. And reading the property straight back in the same helper
-makes the result self-verifying, provided the answer is turned into a **string** first: wire the
-bool into `Select` between two string constants, because a bool indicator does not marshal back
-(§10 of the AIXML reference).
+So `FP.Close` does not mean "close this VI". It closes a front panel *that VI Server opened*; an
+editor window belongs to the IDE and it will not touch it. The property write governs the window
+either way, which makes it the one to reach for whenever the panel might be an editor window — that
+is, almost always, when acting on somebody's open project.
+
+The bottom row is what settles it, and it took three iterations to get there because the first two
+comparisons each moved two variables at once. Opening the panel with the property and then calling
+`FP.Close` on the very same reference reported `open` → no error → `closed`, and took 710 ms against
+21 ms for the failing call: the window really did appear and go. Guides that describe an Invoke Node
+step called "Close VI" are describing `FP.Close`, and they do not mention this condition.
+
+Two techniques carried that measurement and are worth reusing. `Front Panel Window:Open` is listed
+as **`read`** in the catalogue and took a `write+` perfectly well — the concrete instance of the
+warning above that the `access` column is not a capability. And a helper can be made
+self-verifying: read the property back in the same run, and turn the bool into text with `Select`
+between two string constants, because a bool indicator does not marshal back (§10 of the AIXML
+reference). To time-order a read that must survive a failing node, take its `error in` from *before*
+that node and its `reference` from the node's `reference out` — the reference wire carries the
+ordering while the error wire stays clean.
+
+**Pass a generated helper absolute paths.** `String To Path` turns a bare `HelloWorld.vi` into a
+*relative* path, and `Open VI Reference` resolves it against the calling VI's own directory — which,
+for a helper in the `%TEMP%` cache, is not where the target lives. The error says so explicitly,
+naming the path it tried: `VI Path: …\AppData\Local\Temp\LabVIEWMCP\helpers\HelloWorld.vi`. The same
+bare input *works* when helper and target happen to share a folder, which makes this a trap that
+hides until the helper moves. A bare name means "the VI of that name in memory" only when the string
+reaches `Open VI Reference` **without** `String To Path` in between.
 
 **There is no `Close VI` method.** Searching all 3 078 methods for "close" returns seven rows, and
 the only ones on `{LV.VI}` are `FP.Close`, `FP.Set Close If Lonely` and
