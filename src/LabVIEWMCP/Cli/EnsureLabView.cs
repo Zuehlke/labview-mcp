@@ -43,11 +43,24 @@ internal static class EnsureLabView
             }
 
             Console.WriteLine($"  starting {pick.Describe()} ...");
-            if (LabViewLocator.Start(pick) is null)
+
+            // Same launcher as the MCP tool: strategies tried in order, each judged by whether a
+            // LabVIEW process is still alive afterwards rather than by the launch call's return.
+            var launch = await LabViewLauncher.StartAndConfirmAsync(pick);
+            foreach (var attempt in launch.Attempts)
+                Console.WriteLine(
+                    $"     {attempt.Method,-10} started={attempt.Started,-5} " +
+                    $"appeared={attempt.Appeared,-5} survived={attempt.Survived,-5} {attempt.Detail}");
+
+            if (!launch.Ok)
             {
-                Console.Error.WriteLine($"  could not start {pick.ExePath}");
+                Console.Error.WriteLine("  no LabVIEW process stayed alive - see the attempts above.");
+                Console.Error.WriteLine("  a process that vanishes within a second is being terminated");
+                Console.Error.WriteLine("  from outside; start LabVIEW by hand and re-run.");
                 return 1;
             }
+
+            Console.WriteLine($"  launched via '{launch.Method}' (pid {launch.Pid}).");
         }
 
         var connection = new LvaiConnection(NullLogger<LvaiConnection>.Instance, port);

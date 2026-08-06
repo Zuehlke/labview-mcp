@@ -333,6 +333,22 @@ idiom:
 </Structure>
 ```
 
+**The `Right` terminal's output net leaves the loop on its own — do not add an `Out` tunnel for
+it.** The snippet above is silent on how `146.value` reaches a consumer outside, and the obvious
+completion is wrong. Measured on an accumulate-and-join loop: naming the `Right` output net
+`460.value` and reading it directly from a root-level `Write to Text File` validates; inserting
+`<Tunnel _id="Out1" inputs="value:460.value" outputs="value:470.value"/>` between them fails with
+
+```
+For Loop: Is a member of a cycle
+Wire: Is a member of a cycle
+```
+
+So the shift register's border crossing is implicit in AIXML, and an explicit tunnel on top of it
+makes the loop appear to feed itself. The same holds on the way in: `Left inputs="value:140.value"`
+takes its initialiser straight from a root-level constant with no `In` tunnel. Explicit `Tunnel`
+elements are for wires that cross the border on their own, not for shift-register terminals.
+
 To filter rather than transform, put a `Case Structure` inside the loop, selected by the test, and
 let one frame append while the other passes the accumulator through. **Every frame must declare
 every tunnel** — a frame that does not use one still lists it with an empty net,
@@ -472,6 +488,7 @@ are surprising. Verified from exports:
 | `Wait (ms)` | `milliseconds to wait` | `millisecond timer value` |
 | `Get Waveform Components` | `waveform` | per `fields`, e.g. `Y` |
 | `Sort 1D Array` | `array` | `sorted array` |
+| `Array To Spreadsheet String` | `format string`, `array`, **`delimiter (Tab)`** | `spreadsheet string` |
 | `Build Array` | `array` / `element`, repeatable | `appended array` |
 | `Unbundle By Name` | `input cluster` | one per `fields`, e.g. `status`, `code`, `source` |
 | `String To Path` | `string` | `path` |
@@ -490,6 +507,14 @@ Everything above was measured, most of it by exporting a VI that already used th
 example under `examples\File IO\`, and OpenG's own `Filter 1D Array (String)__ogtk.vi` for the
 accumulating loop. That remains the reliable way to add a row here.
 
+**A terminal's default value is part of its name, in parentheses.** Four rows above show it —
+`prompt (Open existing file)`, `password ("")`, `type of dialog (OK msg\3A1)`,
+`delimiter (Tab)` — and it is the first thing to try when a name that looks obviously right is
+rejected. Measured: `delimiter` on `Array To Spreadsheet String` gives
+`Object terminal not found for input: delimiter:130.value`, while `delimiter (Tab)` validates.
+The same node's `format string` and `array` carry no suffix, so the rule is per terminal, not per
+node: only terminals that actually *have* a documented default get one.
+
 Note `Greater?` uses spaces around the operator while `Add` does not, and `Select`'s
 output contains a colon that must be escaped (`s? t\3Af`) — the escaping rules of
 section 6 apply inside terminal names too. In XML the `<` in `x < y?` additionally needs
@@ -502,6 +527,33 @@ string verbatim.
 
 `_name` is optional on `Constant` — anonymous constants are normal. Array literals are
 written JSON-style in `value`, e.g. `type="array{double}" value="[1.5,2.5,3.5]"`.
+
+**"JSON-style" does not extend to quoting string elements — and getting this wrong frames an
+innocent node.** A string array literal is split on commas and each element taken **literally**,
+quote characters included:
+
+| `type="array{string}" value=` | Elements produced |
+|---|---|
+| `[&quot;Zebra&quot;,&quot;apple&quot;]` | `"Zebra"`, `"apple"` — **five characters plus two quotes each** |
+| `[Zebra,apple]` | `Zebra`, `apple` |
+
+Measured, and it cost a redesign. A VI joining a sorted string array into lines produced
+`"Apple"\n"Mango"\n…`, which was read as `Array To Spreadsheet String` quoting its fields
+CSV-style — an entirely plausible story, since that node really does exist to build spreadsheet
+text. The node was replaced with a `For Loop` + `Concatenate Strings` accumulator, and the output
+came back **still quoted**. Only then was the test data itself the suspect. `Array To Spreadsheet
+String` had been innocent throughout.
+
+The lesson is about attribution, not about arrays: when a node's output is wrong, verify the
+*input constant* before rewriting the node. There is no delimiter and no separator character
+inside `value`'s element text — so an element containing a comma cannot be written this way at
+all, and needs a `Build Array` of scalar constants instead.
+
+**`\0A` in a `value` gives a real LF.** The escape table of §6 is documented against
+`comment`/`description`/`inputs`, but it decodes in `value` too:
+`<Constant type="string" value="\0A"/>` produced a genuine line feed — verified by running the VI
+and reading the written file as bytes (31 bytes for five elements plus five LFs, no CR anywhere).
+That is the portable way to get a line-ending constant onto a generated diagram.
 
 ### Polymorphic subVI calls
 
@@ -805,6 +857,8 @@ Consequences for authoring:
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
 | `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` alone is enough** — measured on a VI that was opened and never run, which corrects the claim that used to stand here that only *running* blocks the overwrite. `RunVIAsTopLevel` leaves it loaded too. |
 | `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". |
+| `<Structure>: Is a member of a cycle` plus `Wire: Is a member of a cycle` | A redundant border crossing, most often an `Out` tunnel added for a shift register's `Right` terminal — see §7. The net already crosses the border implicitly, so the extra tunnel routes the loop's output back to its own input. Delete the tunnel and let consumers outside read the `Right` output net directly. |
+| `Error 1051` on the **first** generation of a path that does not exist yet | A *different* file carrying that VI's internal name is loaded — and the usual cause is self-inflicted: a scratch iteration generated from the deliverable's own XML keeps `_name="Final.vi"` while being saved as `Probe.vi`, so "Final.vi" is in memory under the wrong path. Change `_name` in every scratch variant, not just the file name. Measured: `viExisted: false`, `viExistsNow: false` — nothing was written, and a LabVIEW restart cleared it. |
 | `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |
 | `Control with type=UDClassInst is not supported` / `Property Node with type=UDClassInst is not supported` | **LabVIEW classes cannot be expressed at all.** A class instance is rejected both as a front-panel control and inside a property node, so any VI whose connector pane carries an object — all LabVIEW OOP, and DQMH 5's `Module Admin` — is outside the type grammar. This is a *deeper* wall than `Unsupported SubVI`: inlining the subVIs would not help, because the VI's own terminal cannot be typed. Usually accompanied by `Could not find control with name "X" to apply fixup`. |
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
