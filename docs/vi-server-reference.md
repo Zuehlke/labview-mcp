@@ -198,13 +198,21 @@ state-dependent, not read-only. And `write+…Open` = `False` never won because 
 because writing *false* to an already-false property is a no-op that cannot fail. An earlier version
 of this section read that comparison as a capability difference. It is not one.
 
-**`OpenFile` opens neither window.** Measured on a freshly generated VI, opened with nothing but
-`lvai_open_file` and never otherwise touched: `Front Panel Window\3AOpen` **closed**,
-`Block Diagram Window\3AOpen` **closed**. The VI is unquestionably *loaded* — regenerating its path
-fails with `Error 1357` — but no window of it is open in VI Server's terms. A person opening the VI
-in the IDE is a different matter: `FP.Close` run by hand against such a VI succeeds, which is only
-possible if its panel genuinely is open. The row here that used to lump "`OpenFile`, or a person
-double-clicking" together was therefore wrong; the two are measurably different.
+**A visible window does not make these properties true.** Measured on a freshly generated VI, opened
+with nothing but `lvai_open_file` and never otherwise touched: `Front Panel Window\3AOpen`
+**closed**, `Block Diagram Window\3AOpen` **closed** — while the VI's window was **plainly on
+screen**, confirmed by the person sitting at the machine, who then closed it by hand. So
+`…Window\3AOpen` does not answer "is there a window". It answers something narrower, and a window
+put there by `OpenFile` does not set it. That is precisely the precondition `FP.Close` tests, which
+is why it answers `Error 1149` about a VI you can see with your own eyes.
+
+Do not repeat the mistake this section made twice: **`errorCode 0` from a window operation is not
+evidence that a window moved.** Only a human looking at the screen, or a property that genuinely
+tracks the window, can tell you that.
+
+Still open: whether a VI a **person** opened by double-clicking reads differently from one opened by
+the `OpenFile` RPC. `FP.Close` run by hand against a hand-opened VI was reported to work, which needs
+the property to have read true — so the two may well differ. One measurement would settle it.
 
 So before closing a panel you did not open, **read `Front Panel Window\3AOpen` first**. If it is
 false there is nothing to close, and the two techniques differ only in how they tell you: the
