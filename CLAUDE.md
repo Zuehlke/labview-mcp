@@ -45,6 +45,14 @@ Invoke and Property nodes; for primitives, export an example.
 `Read from Text File` with `readLines="true"` still returns a scalar string until `count` is
 wired. Copy a variant that is already in the state you want.
 
+**Never open a VI you still intend to regenerate, and give every iteration a fresh name.**
+`ConvertAIXMLToVI` cannot overwrite a path LabVIEW has loaded — `Error 1357`, "a LabVIEW file
+from that path already exists in memory". `lvai_open_file` alone is enough to cause it, and
+there is **no way back**: closing both windows, saving, `FP.Set Close If Lonely` and releasing
+the reference were all measured, all error-free, and all left the regeneration failing. Only
+closing the VI in the IDE by hand or restarting LabVIEW clears it. `Error 1051` is its sibling
+and means something else — same *filename*, different path.
+
 **Validate, then verify by running.** `ValidateAIXML` is cheap and its messages name the node and
 terminal. But validation passing says nothing about behaviour, and `RunVIAsTopLevel` reports
 `errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*. When the
