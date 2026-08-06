@@ -303,6 +303,7 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | Server does not appear at all | Config not loaded — restart Claude Code. For project scope, confirm you approved it. |
 | Server fails to start | The `command` path is wrong or unbuilt. Run the `.exe` in a terminal: it should log two `info:` lines to stderr ("transport reading messages", "Application started") and then wait on stdin. Anything else is the real error. |
 | `ok: false`, `InvalidOperationException`, "Could not find a port serving lvai.LVAI" | LabVIEW is not running, or its AI feature is off. The message lists every port that was probed. |
+| The same, but **LabVIEW is visibly running** and the probed list is full of `LabVIEW.exe listener` ports answering `Unavailable` | **The service starts with Nigel, not with the IDE.** Measured: LabVIEW up for twenty minutes, 30 listener ports open, `lvai.LVAI` served on none of them; opening Nigel in the IDE brought it up within seconds. `lvai_ensure_labview` cannot do this for you — it starts LabVIEW, and reports `starting` forever while the assistant stays closed. Open Nigel, then call `lvai_status` once. |
 | Worked, then stopped | LabVIEW restarted and took a new port. The next call re-discovers it — no restart needed. |
 | `Unimplemented` on a tool | That LabVIEW version does not have the RPC. Run `lvai_dump_schema` to see what it really serves. |
 | `DeadlineExceeded` | A cold VI or module load inside LabVIEW. Raise the tool's `timeoutSeconds`. |
