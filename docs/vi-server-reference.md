@@ -111,6 +111,20 @@ arrows, boxes or separators. `FreeLabel` is the one annotation that does survive
 
 Gaps in the RPC surface that a generated helper VI could close, none of them attempted yet:
 
+### Two traps in the palette index
+
+**A palette VI can shadow a primitive's name.** `Close Reference` is a built-in function, and the
+DataFinder add-on also ships a VI called `Close Reference.vi`. `lvai_palette_index` lists the VI,
+because it is one — but a `Call` to that name reaches the add-on VI, not the function. When a name
+you recognise as a primitive turns up in the index, look at the palette file it came from before
+wiring it, and use a `Node` if what you wanted was the primitive.
+
+**Add-on palettes live outside the IDE folder.** Drivers install under
+`%ProgramFiles%\NI\LVAddons\<addon>\<api>\menus`, not into `<LabVIEW>\menus`. The index reads both;
+the first version read only the IDE folder and reported NI-DAQmx as absent while a `Call` to
+`DAQmx Read.vi` resolved perfectly well. If a driver's VIs seem missing, check that its add-on was
+scanned — the tool names the ones it read, and names any it skipped for requiring a newer LabVIEW.
+
 | Gap | Route |
 |---|---|
 | `describe_vi` returned an empty `subvisInfo`, so there is no call graph | `{LV.VI}` properties `Callees' Names`, `Callers' Names` |

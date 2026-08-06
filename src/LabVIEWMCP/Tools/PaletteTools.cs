@@ -23,7 +23,10 @@ internal sealed class PaletteTools
         palette-reachable VI, by bare file name. Project-local, library-local and loose .vi files
         are all rejected as "Unsupported SubVI", so this list is exactly the set of legal targets.
         Scanned from disk at call time because the palette is station-specific - installed
-        toolkits and add-ons hook into it - and cached for the process lifetime.
+        toolkits and add-ons hook into it - and cached for the process lifetime. Both palette
+        locations are read: LabVIEW's own menus folder AND every LVAddon under
+        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install. An
+        add-on entry is labelled with the add-on it came from.
         Without a query: the totals plus the scan location. With query: matching VI names and the
         palette each was found in. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a
         primitive carries only its display label, which is not the AIXML node name (the palette
@@ -36,12 +39,14 @@ internal sealed class PaletteTools
         [Description("Max rows to return (default 40, max 400)")] int limit = DefaultLimit,
         [Description("Rescan instead of using the cached index")] bool refresh = false,
         [Description("Override the LabVIEW installation folder; omit to use the newest installed")]
-        string? installRoot = null)
+        string? installRoot = null,
+        [Description("Override the LVAddons folder; omit to discover it under Program Files")]
+        string? addonsRoot = null)
     {
         PaletteIndex.Result index;
         try
         {
-            index = PaletteIndex.Build(installRoot, refresh);
+            index = PaletteIndex.Build(installRoot, refresh, addonsRoot);
         }
         catch (Exception e)
         {
@@ -50,6 +55,13 @@ internal sealed class PaletteTools
 
         var header = $"{index.Vis.Count} palette-reachable VIs in {index.PaletteFilesScanned} " +
                      $"palette files under {index.MenusFolder}";
+        if (index.AddonsScanned.Count > 0)
+            header += $" plus {index.AddonsScanned.Count} add-on palette(s): " +
+                      string.Join(", ", index.AddonsScanned);
+        // Never drop an add-on silently - that omission is the bug this scan exists to fix.
+        if (index.AddonsSkipped.Count > 0)
+            header += Environment.NewLine + "Skipped, newer LabVIEW required: " +
+                      string.Join("; ", index.AddonsSkipped);
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
