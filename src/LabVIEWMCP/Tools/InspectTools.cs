@@ -29,17 +29,22 @@ internal sealed class InspectTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
-            var client = await connection.GetClientAsync(ct);
-            using var call = client.GetDescribeVIPromptInfo(new GetDescribeVIPromptInfoRequest
+            // Opened AND drained inside InvokeAsync so a stale channel is re-discovered: a
+            // stream cannot be handed a client up front and survive a LabVIEW restart. Safe to
+            // retry because this is a read.
+            return await connection.InvokeAsync(async (client, t) =>
             {
-                ViPath = viPath,
-                ViName = viName ?? "",
-                GetNodesInfo = getNodesInfo,
-            }, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: ct);
+                using var call = client.GetDescribeVIPromptInfo(new GetDescribeVIPromptInfoRequest
+                {
+                    ViPath = viPath,
+                    ViName = viName ?? "",
+                    GetNodesInfo = getNodesInfo,
+                }, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: t);
 
-            var (items, reason) = await Rpc.CollectAsync(
-                call.ResponseStream, maxMessages, timeoutSeconds, ct);
-            return Json.Stream(items, reason, maxMessages);
+                var (items, reason) = await Rpc.CollectAsync(
+                    call.ResponseStream, maxMessages, timeoutSeconds, t);
+                return Json.Stream(items, reason, maxMessages);
+            }, ct);
         });
 
     [McpServerTool(Name = "lvai_describe_project", ReadOnly = true, Title = "Describe a LabVIEW project")]
@@ -56,16 +61,19 @@ internal sealed class InspectTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
-            var client = await connection.GetClientAsync(ct);
-            using var call = client.GetDescribeProjectPromptInfo(new GetDescribeProjectPromptInfoRequest
+            return await connection.InvokeAsync(async (client, t) =>
             {
-                ProjectPath = projectPath,
-                ProjectName = projectName ?? "",
-            }, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: ct);
+                using var call = client.GetDescribeProjectPromptInfo(
+                    new GetDescribeProjectPromptInfoRequest
+                    {
+                        ProjectPath = projectPath,
+                        ProjectName = projectName ?? "",
+                    }, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: t);
 
-            var (items, reason) = await Rpc.CollectAsync(
-                call.ResponseStream, maxMessages, timeoutSeconds, ct);
-            return Json.Stream(items, reason, maxMessages);
+                var (items, reason) = await Rpc.CollectAsync(
+                    call.ResponseStream, maxMessages, timeoutSeconds, t);
+                return Json.Stream(items, reason, maxMessages);
+            }, ct);
         });
 
     [McpServerTool(Name = "lvai_search_info_cache", ReadOnly = true, Title = "Search the LabVIEW info cache")]
@@ -96,13 +104,15 @@ internal sealed class InspectTools(LvaiConnection connection)
             request.SearchTerms.AddRange(Rpc.SplitList(searchTerms));
             request.TagFilters.AddRange(Rpc.SplitList(tagFilters));
 
-            var client = await connection.GetClientAsync(ct);
-            using var call = client.SearchInfoCache(
-                request, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: ct);
+            return await connection.InvokeAsync(async (client, t) =>
+            {
+                using var call = client.SearchInfoCache(
+                    request, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: t);
 
-            var (items, reason) = await Rpc.CollectAsync(
-                call.ResponseStream, maxMessages, timeoutSeconds, ct);
-            return Json.Stream(items, reason, maxMessages);
+                var (items, reason) = await Rpc.CollectAsync(
+                    call.ResponseStream, maxMessages, timeoutSeconds, t);
+                return Json.Stream(items, reason, maxMessages);
+            }, ct);
         });
 
     [McpServerTool(Name = "lvai_lookup_info_cache_items", ReadOnly = true,
@@ -130,13 +140,15 @@ internal sealed class InspectTools(LvaiConnection connection)
             };
             request.Guids.AddRange(Rpc.SplitList(guids));
 
-            var client = await connection.GetClientAsync(ct);
-            using var call = client.LookupInfoCacheItems(
-                request, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: ct);
+            return await connection.InvokeAsync(async (client, t) =>
+            {
+                using var call = client.LookupInfoCacheItems(
+                    request, deadline: Rpc.Deadline(timeoutSeconds + 15), cancellationToken: t);
 
-            var (items, reason) = await Rpc.CollectAsync(
-                call.ResponseStream, maxMessages, timeoutSeconds, ct);
-            return Json.Stream(items, reason, maxMessages);
+                var (items, reason) = await Rpc.CollectAsync(
+                    call.ResponseStream, maxMessages, timeoutSeconds, t);
+                return Json.Stream(items, reason, maxMessages);
+            }, ct);
         });
 
     [McpServerTool(Name = "lvai_filter_palette_search_candidates", ReadOnly = true,
