@@ -227,8 +227,8 @@ Inside Claude Code the tools are namespaced `mcp__labview__lvai_*`.
 
 ### 6. Let the read-only tools run without asking
 
-[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 13
-passive tools, so reads run uninterrupted while all 8 mutating tools still ask every time:
+[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 18
+passive tools, so reads run uninterrupted while all 9 mutating tools still ask every time:
 
 ```json
 {
@@ -246,19 +246,55 @@ passive tools, so reads run uninterrupted while all 8 mutating tools still ask e
       "mcp__labview__lvai_convert_vi_to_aixml",
       "mcp__labview__lvai_validate_aixml",
       "mcp__labview__lvai_aixml_reference",
-      "mcp__labview__lvai_dqmh_reference"
+      "mcp__labview__lvai_dqmh_reference",
+      "mcp__labview__lvai_lvproj_reference",
+      "mcp__labview__lvai_list_labview_installations",
+      "mcp__labview__lvai_lvlib_reference",
+      "mcp__labview__lvai_vi_server_reference",
+      "mcp__labview__lvai_palette_index"
     ]
   }
 }
 ```
 
-That is 13 of the 19 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
+That is 18 of the 24 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
 deliberately left out: they are read-only in the sense that they only wait, but they block for
 up to `timeoutSeconds` and their `replyJson` argument writes content back into LabVIEW's UI —
 so they are worth a prompt. Add them if you are actively developing against the monitor hooks.
 
 Do **not** allow-list the whole server (`mcp__labview`) — that would wave through
 `lvai_run_vi_as_top_level` and `lvai_apply_aixml_to_vi` too.
+
+### 7. Installing on another machine, binary only
+
+Copying `bin\Debug\net8.0\` is enough for the **tools and the knowledge**: all nine embedded
+resources travel inside `LabVIEWMCP.dll` and `build.ps1` proves it byte for byte on every build, so
+`lvai_aixml_reference`, `lvai_vi_server_reference` and the rest answer identically with no
+repository present.
+
+Two things are not reachable through a tool and need one command:
+
+- the **documentation agent** — Claude Code loads an agent from a file under `.claude\agents`, not
+  from an MCP resource
+- the **tool allow-list**, which lives in a settings file
+
+Both are copied next to the exe at build time, into `claude\`. Put them where Claude Code looks:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts\Install-ClaudeAssets.ps1 -Scope User -Confirm
+```
+
+`-Scope User` installs the agent for every project on the machine. `-Scope Project
+-TargetProject <path>` installs the agent, the allow-list and `CLAUDE.md` into one repository
+instead. Without `-Confirm` the script only prints what it would do, and it backs up anything it
+overwrites to `*.bak-labviewmcp`.
+
+`lvai_status` reports both locations as `scriptsDirectory` and `claudeAssetsDirectory`, so an agent
+never has to guess a path — the working directory is whatever the client chose, and a binary-only
+install has no repository root.
+
+What still has to exist on the target machine: LabVIEW with its AI feature, the .NET 8 runtime,
+and — only for the documentation generator — `python-docx` and a Chromium browser.
 
 ### Troubleshooting
 
@@ -274,13 +310,15 @@ Do **not** allow-list the whole server (`mcp__labview`) — that would wave thro
 
 ## Tools
 
-**27 tools over 23 RPCs.** Four are additions that map to no RPC: `lvai_status`,
-`lvai_dump_schema`, and the two knowledge tools below. 19 carry `readOnlyHint`, 8 carry
+**33 tools over 23 RPCs.** Ten are additions that map to no RPC: `lvai_status`,
+`lvai_dump_schema`, `lvai_palette_index`, and the seven knowledge tools below. 24 carry
+`readOnlyHint`, 9 carry
 `destructiveHint`, so a client can gate the writes.
 
-The server also exposes the same two documents as **MCP resources** —
-`labview://aixml-reference` and `labview://dqmh-patterns` — for clients that read resources
-rather than call tools.
+The server also exposes its five embedded documents as **MCP resources** —
+`labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
+`labview://lvlib-lvclass-structure` and `labview://vi-server-reference` — for clients that read
+resources rather than call tools.
 
 ### Read — safe
 
@@ -290,6 +328,10 @@ rather than call tools.
 | `lvai_dump_schema` | — (server reflection) |
 | `lvai_aixml_reference` | — (embedded [AIXML reference](docs/aixml-reference.md)) |
 | `lvai_dqmh_reference` | — (embedded [DQMH reference](docs/dqmh-patterns.md)) |
+| `lvai_lvproj_reference` | — (embedded [.lvproj reference](docs/lvproj-structure.md)) |
+| `lvai_lvlib_reference` | — (embedded [.lvlib/.lvclass reference](docs/lvlib-lvclass-structure.md)) |
+| `lvai_vi_server_reference` | — (embedded [VI Server catalogue](docs/vi-server-reference.md), queried row-wise) |
+| `lvai_palette_index` | — (scans the installed LabVIEW's `menus\*.mnu`) |
 | `lvai_get_application_configuration` | `GetApplicationConfiguration` |
 | `lvai_describe_vi` | `GetDescribeVIPromptInfo` |
 | `lvai_describe_project` | `GetDescribeProjectPromptInfo` |
@@ -350,7 +392,7 @@ and an open-ended mode for driving the timeout paths.
 
 | Area | Covered |
 |---|---|
-| All 27 tools | request mapping, response rendering, error paths |
+| All 33 tools | request mapping, response rendering, error paths |
 | `KnowledgeTools` | embedded documents byte-identical to `docs/`, section lookup, keyword aliases |
 | `Rpc` | list/JSON/map parsing, deadline clamping, error-to-data guard, stream collection |
 | `Json` | default-value retention, extra fields, stream and error envelopes |
@@ -404,9 +446,14 @@ VI internals, and what cannot be generated.
 The format itself — every element, attribute, item type, property scope, the containment grammar
 and the build-specification vocabulary — is written up in
 [`docs/lvproj-structure.md`](docs/lvproj-structure.md), derived by census over 65 production
-`.lvproj` files. Read that before generating anything larger than the blank project below. Unlike
-the other two documents in `docs/` it is **not** embedded in the assembly and has no knowledge
-tool.
+`.lvproj` files. Read that before generating anything larger than the blank project below — it is
+embedded in the assembly and served by `lvai_lvproj_reference`.
+
+Libraries and classes are a separate format, written up the same way in
+[`docs/lvlib-lvclass-structure.md`](docs/lvlib-lvclass-structure.md) (census over 318 `.lvlib` and
+`.lvclass` files). It answers the two questions the gRPC interface cannot: **which members are
+public**, and **which class derives from which** — `describe_project` reports `vis`, `libraries`
+and `classes` but has no field for either.
 
 **No RPC creates one.** The 23 RPCs act on VIs, and on projects that already exist:
 `ConvertAIXMLToVI` writes a `.vi`, `OpenFile` opens a path that has to be there already, and
@@ -536,6 +583,28 @@ nesting, the file on disk and a freshly reopened tree are the only evidence.
 - **An empty AIXML export is not an empty VI.** A 100–200 byte export containing only the
   `<VI …/>` element means the diagram was not readable — and `ConvertVIToAIXML` still returns
   `errorCode 0`. Cross-check with `--diagram`: no `viImage` either confirms it.
+- **No RPC returns a VI icon or a connector pane picture, but you can still get one.**
+  `describe_vi`'s `infoJson` carries exactly `viName`, `viPath`, `viXml`, `viImage`,
+  `controlsIndicators`, `subvisInfo`, `owningProjectPath`, `owningProjectName`, `errorCode`,
+  `errorMessage`, `warnings` — `viImage` is the *block diagram*. The route to the other two
+  pictures is to **generate a helper VI and run it**: `Open VI Reference` → Invoke Node
+  `target="Print.VI To HTML"` → `Close Reference`, built with `ConvertAIXMLToVI` and driven by
+  `RunVIAsTopLevel`. LabVIEW then writes `<stem>c.png` — the connector pane with the icon inside
+  it. Full recipe, including the four things that each cost a debug cycle, in
+  [`.claude/agents/labview-doc-generator.md`](.claude/agents/labview-doc-generator.md).
+  The ActiveX equivalent (`VirtualInstrument.PrintVIToHTML`,
+  [`scripts/Export-VIDoc.ps1`](scripts/Export-VIDoc.ps1)) needs the VI Server **ActiveX**
+  protocol and did not work on the development station in six configurations — the COM object is
+  created but inert (empty `Version`, `NullReferenceException` from `GetVIReference`).
+- **`RunVIAsTopLevel` works against a real LabVIEW** — no longer only fake-tested. Two limits:
+  it sets control values through a variant, so a **path control cannot be set from a string**
+  (`Error 91 … Control Value:Set`; use a string control plus `String To Path` on the diagram),
+  and it reads indicators back as strings, so any **non-string indicator returns `Error 91`**
+  even though the VI ran correctly. Judge success by the VI's own outputs, not by `errorCode`.
+- **To read many VIs, use `ConvertVIToAIXML` with `returnContent: false`, not `describe_vi`.**
+  Both return the same AIXML, but `describe_vi` always includes `viImage`, a base64 PNG of the
+  block diagram, in the tool result. Writing the XML to disk instead keeps the responses to four
+  fields per VI.
 - **Two whole categories of file are unreadable.** `describe_vi` rejects a `.ctl` with
   `errorCode 5001 — Unsupported VI type`, so **control typedefs cannot be read at all** — which
   matters because that is where DQMH keeps every event's argument cluster. And a password-protected
@@ -554,12 +623,25 @@ build.ps1                       stop the server, build Debug, verify embedded do
 Directory.Build.targets         activates .githooks once per clone, on the first build
 .gitattributes                  forces LF on the hook stub (sh.exe fails on CRLF)
 .mcp.json                       project-scope MCP registration -> bin/Debug/net8.0/
-.claude/settings.json           allow-lists the 13 passive tools
+.claude/settings.json           allow-lists the 18 passive tools
 
 docs/
   aixml-reference.md            the AIXML dialect, derived empirically; embedded in the dll
   dqmh-patterns.md              DQMH module structure; embedded in the dll
-  lvproj-structure.md           the .lvproj format, by census over 65 projects; NOT embedded
+  lvproj-structure.md           the .lvproj format, by census over 65 projects
+  lvlib-lvclass-structure.md    .lvlib/.lvclass: access scope and inheritance, by census
+                                over 318 files
+  vi-server-reference.md        how to reach VI Server from a generated VI
+  vi-server-methods.tsv         3078 Invoke Node targets with their terminals, 153 classes
+  vi-server-properties.tsv      6410 Property Node fields
+
+scripts/                        copied next to the exe at build time; path in lvai_status
+  generate_labview_doc.py       documentation JSON -> .docx + structure and UML diagrams
+  lvdoc_print.xml               AIXML for the helper VI that exports icon + connector pane
+  Export-VIDoc.ps1              same over ActiveX; fallback, does not work on every station
+
+.claude/agents/
+  labview-doc-generator.md      the documentation agent that drives the scripts above
 
 .githooks/
   pre-push                      sh stub git invokes
@@ -574,6 +656,7 @@ src/LabVIEWMCP/
     LvaiConnection.cs           channel lifetime, lazy connect, re-discovery
     PortDiscovery.cs            LabVIEW.exe listeners via iphlpapi, then probing
   Infra/
+    PaletteIndex.cs             palette-reachable VIs from the installed LabVIEW's .mnu files
     Json.cs                     protobuf -> JSON result rendering
     Rpc.cs                      error-to-data guard, stream collection, deadlines
     SchemaRenderer.cs           FileDescriptorProto -> readable .proto text
@@ -584,6 +667,7 @@ src/LabVIEWMCP/
     ActionTools.cs              run, build, open, palette, telemetry
     MonitorTools.cs             the six inverted monitor streams
     KnowledgeTools.cs           serves the embedded docs/ as tools and MCP resources
+    PaletteTools.cs             which VIs a generated Call may legally target
   Cli/
     CommandLine.cs              flag parsing for the CLI side-modes
     SelfTest.cs                 "what works on my machine"

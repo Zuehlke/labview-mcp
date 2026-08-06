@@ -25,6 +25,18 @@ internal sealed class KnowledgeTools
     private const string ResourceName = "aixml-reference.md";
     private const string DqmhResourceName = "dqmh-patterns.md";
     private const string LvprojResourceName = "lvproj-structure.md";
+    private const string LvlibResourceName = "lvlib-lvclass-structure.md";
+    private const string ViServerResourceName = "vi-server-reference.md";
+    private const string MethodsResourceName = "vi-server-methods.tsv";
+    private const string PropertiesResourceName = "vi-server-properties.tsv";
+
+    /// <summary>
+    /// Rows returned when a query matches more than this. A deliberate cap: the two
+    /// catalogues are 400 kB together, and the whole point of a query tool is that the
+    /// caller never receives the file. Truncation is always reported, never silent.
+    /// </summary>
+    private const int DefaultLimit = 40;
+    private const int MaxLimit = 400;
 
     /// <summary>The handful of rules that stop a first attempt from being silently wrong.</summary>
     private const string Essentials = """
@@ -139,7 +151,212 @@ internal sealed class KnowledgeTools
     [Description("How a LabVIEW .lvproj file is structured, and how to generate one.")]
     public static string LvprojReferenceResource() => Load(LvprojResourceName);
 
+    [McpServerTool(Name = "lvai_lvlib_reference", ReadOnly = true,
+                   Title = "LabVIEW library and class file (.lvlib/.lvclass) reference")]
+    [Description("""
+        The grammar of a `.lvlib` and a `.lvclass`: the item types, where ACCESS SCOPE is
+        recorded and how it is inherited, and how a class names its parent. Read this before
+        deciding what is public - no RPC reports access scope, so the library file is the only
+        source, and the two scope properties behave differently: on a `.lvlib` the scope sits on
+        the FOLDER and its members inherit it, while a `.lvclass` records it per member.
+        Also covers the encoded parent-class record, which is where inheritance comes from on
+        LabVIEW versions that do not write plain-text Parent items.
+        Without arguments: a section list. With section: that section, or 'all'.
+        """)]
+    public static string LvlibReference(
+        [Description("Section number or title fragment; 'all' for everything; omit for the section list")]
+        string? section = null) => Serve(LvlibResourceName, section);
+
+    [McpServerResource(Name = "lvlib-lvclass-structure",
+                      UriTemplate = "labview://lvlib-lvclass-structure",
+                      MimeType = "text/markdown",
+                      Title = "LabVIEW library and class file reference")]
+    [Description("How .lvlib and .lvclass files record membership, access scope and inheritance.")]
+    public static string LvlibReferenceResource() => Load(LvlibResourceName);
+
+    [McpServerTool(Name = "lvai_vi_server_reference", ReadOnly = true,
+                   Title = "VI Server methods and properties catalogue")]
+    [Description("""
+        Look up the exact Invoke Node / Property Node vocabulary for generating a VI that calls
+        VI Server: 3078 methods and 6410 properties over 153 classes, with their terminal names.
+        Use this whenever you author AIXML containing an Invoke Node or Property Node.
+        A method's `target` string CANNOT be derived any other way - method names are binary IDs
+        inside a .vi, LabVIEW.exe does not carry them as text, and SearchInfoCache covers palette
+        items rather than VI Server. Guessing produces XML that validates and then does nothing.
+        Without arguments: how to use it plus the class list. With query and/or cls: matching
+        rows only. Combine with lvai_run_vi_as_top_level to reach capabilities no RPC exposes -
+        that is how a VI's icon and connector pane are obtained.
+        """)]
+    public static string ViServerReference(
+        [Description("Substring of the method or property name, e.g. 'To HTML', 'Callees'")]
+        string? query = null,
+        [Description("Class filter, with or without braces: 'LV.VI', '{LV.Application}'")]
+        string? cls = null,
+        [Description("'methods', 'properties' or 'both' (default)")] string? kind = null,
+        [Description("Max rows to return (default 40, max 400)")] int limit = DefaultLimit,
+        [Description("Section of the guide document, or 'all'; ignored when query/cls are given")]
+        string? section = null)
+    {
+        var wantMethods = !string.Equals(kind, "properties", StringComparison.OrdinalIgnoreCase);
+        var wantProperties = !string.Equals(kind, "methods", StringComparison.OrdinalIgnoreCase);
+
+        // No filter at all: hand back guidance, not 400 kB of data.
+        if (string.IsNullOrWhiteSpace(query) && string.IsNullOrWhiteSpace(cls))
+            return Serve(ViServerResourceName, section) + Environment.NewLine + Environment.NewLine +
+                   ClassOverview();
+
+        string methods, properties;
+        try
+        {
+            methods = Load(MethodsResourceName);
+            properties = Load(PropertiesResourceName);
+        }
+        catch (Exception e)
+        {
+            return Json.Error(e.GetType().Name,
+                $"The embedded VI Server catalogue could not be read: {e.Message}");
+        }
+
+        limit = Math.Clamp(limit <= 0 ? DefaultLimit : limit, 1, MaxLimit);
+        var sb = new StringBuilder();
+        var total = 0;
+
+        if (wantMethods)
+        {
+            var (rows, count) = Match(methods, query, cls, limit);
+            total += count;
+            sb.AppendLine($"METHODS  (class → target → parameters → returns; "
+                          + "'reference' and 'error in (no error)' are always available)");
+            sb.AppendLine(rows.Count == 0 ? "  (no match)" : string.Join(Environment.NewLine, rows));
+            if (count > rows.Count)
+                sb.AppendLine($"  ... {count - rows.Count} more method rows match; narrow the query or raise limit");
+            sb.AppendLine();
+        }
+
+        if (wantProperties)
+        {
+            var (rows, count) = Match(properties, query, cls, limit);
+            total += count;
+            sb.AppendLine("PROPERTIES  (class → property → access as configured in the source VI, "
+                          + "NOT a statement about writability)");
+            sb.AppendLine(rows.Count == 0 ? "  (no match)" : string.Join(Environment.NewLine, rows));
+            if (count > rows.Count)
+                sb.AppendLine($"  ... {count - rows.Count} more property rows match; narrow the query or raise limit");
+        }
+
+        if (total == 0)
+            return $"Nothing matched query=\"{query}\" cls=\"{cls}\"." + Environment.NewLine +
+                   "Method names carry a category prefix in two interchangeable spellings " +
+                   "('Print VI To HTML' and 'Print.VI To Printer' both occur and both import), " +
+                   "so try a shorter fragment." + Environment.NewLine + Environment.NewLine +
+                   ClassOverview();
+
+        return sb.ToString().TrimEnd();
+    }
+
+    [McpServerResource(Name = "vi-server-reference", UriTemplate = "labview://vi-server-reference",
+                      MimeType = "text/markdown",
+                      Title = "VI Server catalogue guide")]
+    [Description("How to reach VI Server from a generated VI, and what the two catalogues contain.")]
+    public static string ViServerReferenceResource() => Load(ViServerResourceName);
+
     // ---------- internals ----------
+
+    /// <summary>
+    /// Filter a catalogue TSV. Returns the capped rows plus how many matched in total, so the
+    /// caller can say what it dropped instead of pretending the list was complete.
+    /// </summary>
+    private static (List<string> Rows, int Total) Match(string tsv, string? query, string? cls,
+                                                       int limit)
+    {
+        var wantClass = NormalizeClass(cls);
+        var result = Collect(tsv, query, wantClass, exact: true, limit);
+
+        // A bare 'LV.VI' must mean the VI class, not every class whose name merely contains
+        // that text. The catalogue is sorted by class and '}' sorts after every letter, so
+        // {LV.VIRefnum} precedes {LV.VI}: a loose match plus the row cap would fill up with
+        // near-misses and bury the exact class that was asked for. Substring is the fallback.
+        if (result.Total == 0 && wantClass is not null)
+            result = Collect(tsv, query, wantClass, exact: false, limit);
+
+        return result;
+    }
+
+    private static (List<string> Rows, int Total) Collect(string tsv, string? query,
+                                                         string? wantClass, bool exact, int limit)
+    {
+        var rows = new List<string>();
+        var total = 0;
+        var first = true;
+
+        foreach (var line in tsv.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (line.Length == 0) continue;
+            if (first) { first = false; continue; }          // header
+
+            var tab = line.IndexOf('\t');
+            if (tab < 0) continue;
+            var rowClass = line[..tab];
+
+            if (wantClass is not null &&
+                !(exact
+                    ? rowClass.Equals(wantClass, StringComparison.OrdinalIgnoreCase)
+                    : rowClass.Contains(wantClass.Trim('{', '}'), StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            // The name is the second column; matching the whole line would hit parameter
+            // names and return rows whose method has nothing to do with the query.
+            var rest = line[(tab + 1)..];
+            var tab2 = rest.IndexOf('\t');
+            var name = tab2 < 0 ? rest : rest[..tab2];
+
+            if (!string.IsNullOrWhiteSpace(query) &&
+                !name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            total++;
+            if (rows.Count < limit) rows.Add("  " + line);
+        }
+        return (rows, total);
+    }
+
+    /// <summary>Accept 'LV.VI', '{LV.VI}' and 'lv.vi' alike; null when no filter was given.</summary>
+    private static string? NormalizeClass(string? cls)
+    {
+        if (string.IsNullOrWhiteSpace(cls)) return null;
+        var t = cls.Trim();
+        if (!t.StartsWith('{')) t = "{" + t;
+        if (!t.EndsWith('}')) t += "}";
+        return t;
+    }
+
+    /// <summary>The classes that carry the most entries — enough to aim a second query.</summary>
+    private static string ClassOverview()
+    {
+        try
+        {
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var resource in new[] { MethodsResourceName, PropertiesResourceName })
+                foreach (var line in Load(resource).Replace("\r\n", "\n").Split('\n'))
+                {
+                    var tab = line.IndexOf('\t');
+                    if (tab <= 0 || line.StartsWith("class\t", StringComparison.Ordinal)) continue;
+                    var key = line[..tab];
+                    counts[key] = counts.GetValueOrDefault(key) + 1;
+                }
+
+            var sb = new StringBuilder($"Classes: {counts.Count}. The largest, by entry count:");
+            sb.AppendLine();
+            foreach (var (name, n) in counts.OrderByDescending(p => p.Value).Take(15))
+                sb.AppendLine($"  {name}  ({n})");
+            sb.Append("Pass any of these as cls, e.g. cls='LV.VI'.");
+            return sb.ToString();
+        }
+        catch (Exception e)
+        {
+            return $"(class overview unavailable: {e.Message})";
+        }
+    }
 
     /// <summary>Shared section-serving used by every document tool.</summary>
     private static string Serve(string resourceName, string? section)

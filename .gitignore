@@ -67,3 +67,7 @@ schema.txt
 # allow-lists the read-only lvai_* tools so they run without a prompt
 # (README section 6). Only the per-machine overrides are ignored.
 .claude/settings.local.json
+
+# Python build artifacts (scripts/)
+__pycache__/
+*.pyc

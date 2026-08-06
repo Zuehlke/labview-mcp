@@ -77,9 +77,11 @@ if (-not (Test-Path $dll)) {
 $raw = [System.IO.File]::ReadAllBytes($dll)
 $hay = [System.Text.Encoding]::UTF8.GetString($raw)
 
-# Which documents are DECLARED as embedded? Read the csproj rather than hardcoding a list,
-# so adding a fourth document cannot silently go unverified.
-$declared = Select-String -Path $project -Pattern 'EmbeddedResource Include="\.\.\\\.\.\\(docs\\[^"]+)"' |
+# Which files are DECLARED as embedded? Read the csproj rather than hardcoding a list, so adding
+# one more cannot silently go unverified. The pattern deliberately does NOT restrict itself to
+# docs\ : the agent definition and CLAUDE.md are embedded too, and an earlier version of this
+# check only looked at docs\, which left both of them shipping unverified.
+$declared = Select-String -Path $project -Pattern 'EmbeddedResource Include="\.\.\\\.\.\\([^"]+)"' |
     ForEach-Object { $_.Matches[0].Groups[1].Value }
 
 $missing = 0

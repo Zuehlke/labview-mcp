@@ -15,7 +15,10 @@
       "mcp__labview__lvai_aixml_reference",
       "mcp__labview__lvai_dqmh_reference",
       "mcp__labview__lvai_lvproj_reference",
-      "mcp__labview__lvai_list_labview_installations"
+      "mcp__labview__lvai_list_labview_installations",
+      "mcp__labview__lvai_lvlib_reference",
+      "mcp__labview__lvai_vi_server_reference",
+      "mcp__labview__lvai_palette_index"
     ]
   }
 }

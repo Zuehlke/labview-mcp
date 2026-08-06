@@ -1,0 +1,16 @@
+<VI _name="lvdoc_print.vi" description="Print one VI's icon, connector pane and documentation to an HTML file. Driven by RunVIAsTopLevel, which can only set STRING controls - paths are built on the diagram.">
+  <Control _name="VI Path" conIdx="1" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="HTML File Path" conIdx="2" connection="required" outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
+  <Control _name="Image Directory" conIdx="3" connection="required" outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:15.path" uid="15" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
+  <Constant _name="Format" outputs="value:70.value" type="uint16{Custom,Standard,Using Panel,Using SubVI,Complete}" uid="70" uid_parent="root" value="4"/>
+  <Node _name="Invoke Node" target="Print.VI To HTML" type="{LV.VI}" inputs="reference:20.vi reference,error in (no error):20.error out,HTML File Path:14.path,Format:70.value,Image Directory:15.path" outputs="reference out:30.reference out,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:30.reference out,error in (no error):30.error out" outputs="error out:40.error out" uid="40" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:40.error out" outputs="status:60.status,code:60.code,source:60.source" uid="60" uid_parent="root"/>
+  <Indicator _name="status" conIdx="0" connection="recommended" inputs="value:60.status" type="bool" uid="50" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="4" connection="recommended" inputs="value:60.code" type="int32" uid="51" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="5" connection="recommended" inputs="value:60.source" type="string" uid="52" uid_parent="root" value=""/>
+</VI>

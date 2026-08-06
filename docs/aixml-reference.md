@@ -270,6 +270,24 @@ alone — but for round-trip stability, emit only what an export emits.
 So a library-qualified call target is written `MyLib.lvlib\3AHelper.vi`, and a nested
 property is `Front Panel Window\3ACloseable`.
 
+### Write AIXML with a file tool, never through a shell
+
+A backslash escape is exactly what every shell and most string literals also want to consume.
+Passing AIXML through a heredoc into a script ate both escapes of a Windows path:
+`value="C\3A\5Ctemp\5Cout.txt"` arrived as `value="CACtempCout.txt"` — the backslash and the
+first hex digit gone, the second digit left behind as a letter.
+
+The failure then arrives disguised. `ValidateAIXML` answered
+
+```
+Error -2628 ... Load XML String.vi ... An error occurred while parsing the document.
+```
+
+which reads like malformed XML and is really a quoting bug two layers up. **Author AIXML by
+writing the file directly.** If a script must generate it, build the escapes with an explicit
+character map and re-read the file to confirm the escapes survived — never assume the string
+that left your source is the string that reached disk.
+
 ## 7. Structures
 
 ### While Loop
@@ -294,7 +312,32 @@ property is `Front Panel Window\3ACloseable`.
 
 ### For Loop
 
-Same shape; `count` carries the iteration count wire.
+Same shape; `count` carries the iteration count wire, and `maxin` / `maxout` appear alongside it.
+
+**Auto-indexing is `mode="index"` on the tunnel** — the attribute the rest of this section was
+missing. A tunnel *without* `mode` passes its whole value through unchanged; with it, the loop
+indexes one element per iteration and needs no `count`. Measured from OpenG's
+`Filter 1D Array (String)__ogtk.vi`, which is also a compact model of the accumulate-in-a-loop
+idiom:
+
+```xml
+<Structure _name="For Loop" count="" maxin="" maxout="" uid="124" uid_parent="root">
+  <Tunnel _id="In1" inputs="value:341.Output Array" mode="index" outputs="value:131.value" uid="131" uid_parent="124"/>
+  <Tunnel _id="In2" inputs="value:4.value" outputs="value:205.value" uid="205" uid_parent="124"/>
+  <Node _name="Build Array" concat="true" inputs="array:195.array,array:256.Indices"
+        outputs="appended array:195.appended array" uid="195" uid_parent="124"/>
+  <ShiftReg uid="144" uid_parent="124">
+    <Left  inputs="value:160.value"          outputs="value:195.array" uid="148" uid_parent="144"/>
+    <Right inputs="value:195.appended array" outputs="value:146.value" uid="146" uid_parent="144"/>
+  </ShiftReg>
+</Structure>
+```
+
+To filter rather than transform, put a `Case Structure` inside the loop, selected by the test, and
+let one frame append while the other passes the accumulator through. **Every frame must declare
+every tunnel** — a frame that does not use one still lists it with an empty net,
+`<Tunnel _id="In2" outputs="value:" …/>`. A conditional output tunnel was not needed for this and
+its AIXML shape is still unverified.
 
 ### Case Structure
 
@@ -379,6 +422,32 @@ A `Property Node` without the `write+` prefix reads. `Index Array` with two `ind
 entries in `inputs` returns two `element` outputs — repeated terminal names are how
 expandable nodes are described.
 
+### Invoke Nodes
+
+An `Invoke Node` is a `Node` with **`target`** (the method) and **`type`** (the refnum
+class) instead of `fields`. Verified by exporting a VI that calls `FP.Open`:
+
+```xml
+<Node _name="Invoke Node" target="FP.Open" type="{LV.VI}"
+      inputs="reference:97.value,error in (no error):170.value,Activate:88.value,State:"
+      outputs="reference out:,error out:43.error out" uid="43" uid_parent="root"/>
+```
+
+`inputs` starts with `reference` and `error in (no error)`, then carries the method's
+own parameters by their literal LabVIEW names; `outputs` gives `reference out` and
+`error out`. So VI Server scripting **is** expressible in AIXML — an earlier reading of
+this document concluded the opposite from the fact that only `Property Node` was
+documented here.
+
+**But `target` cannot be looked up from outside LabVIEW.** Method names are *not* stored
+as literals in a `.vi` (they are binary IDs — grepping VI files for `FP.Open` finds
+nothing), they are not in `LabVIEW.exe`'s string table beyond a few like `FP.Open`
+itself, and `SearchInfoCache` covers palette items, not VI Server methods. The only
+reliable way to obtain the `target` for a method you have not seen before is to place
+that node in a scratch VI in the IDE and export it with `ConvertVIToAIXML`. Budget for
+that step rather than guessing — a wrong `target` is exactly the kind of thing that
+fails late.
+
 ### Terminal names must be looked up, never guessed
 
 They are the literal LabVIEW terminal labels, spaces, punctuation and all — and several
@@ -400,6 +469,24 @@ are surprising. Verified from exports:
 | `Index Array` | `array`, `index` | `element` |
 | `Wait (ms)` | `milliseconds to wait` | `millisecond timer value` |
 | `Get Waveform Components` | `waveform` | per `fields`, e.g. `Y` |
+| `Sort 1D Array` | `array` | `sorted array` |
+| `Build Array` | `array` / `element`, repeatable | `appended array` |
+| `Unbundle By Name` | `input cluster` | one per `fields`, e.g. `status`, `code`, `source` |
+| `String To Path` | `string` | `path` |
+| `Read from Text File` | `file (use dialog)`, `count`, `error in`, `prompt (Open existing file)` | `refnum out`, `text`, `cancelled`, `error out` |
+| `Write to Text File` | `file (use dialog)`, `text`, `error in`, `prompt (Choose or enter file path)` | `refnum out`, `cancelled`, `error out` |
+| `Close File` | `refnum`, `error in` | `path`, `error out` |
+| `Open VI Reference` | `application reference (local)`, `vi path`, `options`, `error in (no error)`, `type specifier VI Refnum (for type only)`, `password ("")` | `vi reference`, `error out` |
+| `Close Reference` | `reference`, `error in (no error)` | `error out` |
+
+`Build Array` takes `concat="true"` for concatenating mode, and then names each input by what is
+wired to it — `array` for an array, `element` for a scalar — which is why the same node can carry
+`inputs="array:…,element:…"`. `Read from Text File` and `Write to Text File` need no refnum at all
+when handed a path: they open and close the file themselves.
+
+Everything above was measured, most of it by exporting a VI that already used the node — a shipped
+example under `examples\File IO\`, and OpenG's own `Filter 1D Array (String)__ogtk.vi` for the
+accumulating loop. That remains the reliable way to add a row here.
 
 Note `Greater?` uses spaces around the operator while `Add` does not, and `Select`'s
 output contains a colon that must be escaped (`s? t\3Af`) — the escaping rules of
@@ -436,6 +523,29 @@ Instance names follow LabVIEW's own convention and are worth copying from an exp
 than inventing — `DAQmx Read (Analog 1D DBL NChan 1Samp).vi`,
 `DAQmx Read (Analog 1D Wfm NChan NSamp).vi`. A wrong instance name is reported by
 `ValidateAIXML`, so it is cheap to check.
+
+### Mode attributes change a node's output TYPE, and a mode alone is not enough
+
+Some nodes carry boolean attributes for their right-click modes — `Read from Text File` has
+`convertEol` and `readLines`. Setting one is not the whole story: **`readLines="true"` with
+`count` unwired still returns a scalar `string`**, one line. The output only becomes
+`array{string.String}` once `count` is wired, e.g. a `-1` constant for "the whole file":
+
+```xml
+<Constant _name="count" outputs="value:15.value" type="int32" uid="15" uid_parent="root" value="-1"/>
+<Node _name="Read from Text File" convertEol="true" readLines="true"
+      inputs="file (use dialog):10.value,count:15.value,error in:,prompt (Open existing file):"
+      outputs="refnum out:,text:20.text,cancelled:,error out:20.error out" uid="20" uid_parent="root"/>
+```
+
+Wire the scalar form to an array indicator and `ValidateAIXML` says
+`You have connected a scalar type to an array of that type ... The type of the source is string.`
+— a precise message, but only if you are looking for a type problem rather than a mode problem.
+
+The lesson generalises: when a node has modes, copy a **variant that is in the state you want**
+from an export. A single specimen of the node does not reveal the type consequences of its modes.
+`Read from Text File` in read-lines mode also needs no refnum handling at all — hand it a path
+and it opens and closes the file itself.
 
 ### Ring and enum controls
 
@@ -484,10 +594,29 @@ was wrong. Feeding a deliberately bogus terminal name therefore probes resolutio
 | `General Error Handler.vi` (vi.lib, on the palette) | `Object terminal not found for input: bogusTerminalName` | **resolved** |
 | `ScratchEdit.vi` (a plain `.vi` on disk, in no library) | `Unsupported SubVI: ScratchEdit.vi` | **not resolved** |
 | an absolute path, `C\3A\5CTemp\5C…\5CX.vi` | `Unsupported SubVI: C:\Temp\…\X.vi` | **not resolved** |
-| `<Module>.lvlib:X.vi`, library loaded in the IDE | `Unsupported SubVI: <Module>.lvlib:X.vi` | **not resolved** |
+| `<Module>.lvlib:X.vi`, a **project** library loaded in the IDE | `Unsupported SubVI: <Module>.lvlib:X.vi` | **not resolved** |
+| `openg_array.lvlib:Filter 1D Array__ogtk.vi`, a **palette** library | validated, generated and ran | **resolved** |
 
 There is therefore **no target syntax that reaches your own code** — not a bare name, not a full
 path, and not a library-qualified name even while that library is open in LabVIEW.
+
+> **The boundary is palette reachability, not library membership.** An earlier version of this
+> section read the fourth row as "library-qualified targets do not resolve" and concluded that only
+> library-free `vi.lib` VIs are callable. That is wrong, and it costs real work: it argues away the
+> 336 OpenG, 208 MGI and 63 JKI palette entries on a station that has those packages. Measured
+> 2026-08-06 on LabVIEW 2026 — a `Call` with
+> `target="openg_array.lvlib\3AFilter 1D Array__ogtk.vi"` and
+> `instance="openg_array.lvlib\3AFilter 1D Array with Scalar (String)__ogtk.vi"` validated,
+> generated, ran, and produced output byte-identical to the same filter hand-built from a For loop,
+> a Case structure, a shift register and `Build Array`. Three nodes instead of seven elements.
+>
+> The failing row is a **project** library — a library belonging to the code you are editing, which
+> is not on any palette. Both rows are true; the difference is the palette, not the `.lvlib`.
+>
+> **So reuse first.** Query `lvai_palette_index` for the operation before designing a diagram, and
+> rebuild from primitives only when the target genuinely does not resolve. When reuse costs a
+> third-party dependency, name it and let the caller decide — the generated VI will not open on a
+> machine without that package.
 
 **This is not a DQMH quirk — it stops NI's own example applications too.** `Temperature
 Monitoring.vi` from `examples\Industry Applications\` exports cleanly (39.6 kB, `errorCode 0`) and
@@ -506,9 +635,21 @@ broadly.
 > bug and is really a quoting bug. Escaped correctly the path arrives intact; it simply still does
 > not resolve.
 
-So a generated VI may freely call the palette — every `vi.lib` utility, referenced by bare file
-name, no path. What it may not call is *your* code: project-local, library-local, and even a
-loose `.vi` sitting in a directory. Two consequences worth stating plainly:
+So a generated VI may freely call the palette — every `vi.lib` utility by bare file name, and every
+palette VI owned by a library by its qualified name. What it may not call is *your* code:
+project-local, library-local to the project you are editing, and even a loose `.vi` sitting in a
+directory.
+
+**`lvai_palette_index` answers which names those are.** It reads the installed LabVIEW's own
+`menus\*.mnu` palette files, so the set is the one this station actually has — installed toolkits
+hook themselves into the palettes, so it is not a fixed list. Measured on a stock LabVIEW 2026:
+460 palette files, **2 202 reachable VIs**, against 19 322 `.vi` files in `vi.lib` — so roughly
+one file in nine is a legal `Call` target, and guessing from the filesystem is nine times more
+likely to be wrong than right. Built-in functions are deliberately absent from that index: they
+are `Node` elements, not `Call`s, and a palette entry for one carries only its display label,
+which is not the AIXML node name (`To XML` on the palette, `Flatten To XML` in AIXML).
+
+Two consequences worth stating plainly:
 
 - **Generated VIs cannot call each other.** A VI this server just produced is not
   palette-reachable, so it is not a legal `Call` target for the next one. There is no way to
@@ -597,12 +738,58 @@ The reliable loop when authoring something new: export a VI that already contain
 construct, copy its exact shape, edit, validate, generate. Validation is cheap and its
 messages are specific enough to work from.
 
+### Where a node's documentation comes from
+
+The shipped `.chm` files are **stubs** — `help\glang.chm`, the LabVIEW Function and VI
+Reference, is 14 kB and `hh.exe -decompile` extracts nothing from it. The real help is online.
+Locally there is a better source anyway: **an AIXML export carries the Context Help.** A palette
+*VI* exports its own `description` plus a `description` on every `Control`/`Indicator`, with
+default values baked into the terminal names. `General Error Handler.vi` came back with all 15
+terminals documented, e.g.
+
+```
+type of dialog (OK msg\3A1)   "type of dialog determines what type of dialog box to display, if any."
+error out                     "...<a href="nihelplauncher\3A//docs/csh?context=lvcore..."
+```
+
+— the `nihelplauncher://docs/csh?context=…` id even names the online topic. So one export gives
+terminal names *and* their meaning.
+
+This does **not** extend to primitives. `Sort 1D Array`, `Read from Text File` and friends are
+nodes, not VIs: an export gives their terminal names and nothing else. For those, the only
+documentation is the terminal name itself and LabVIEW's online help.
+
+### Driving a generated VI with `RunVIAsTopLevel`
+
+The RPC moves control values as **strings through a variant**, which constrains the connector
+pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026:
+
+| Terminal | Result |
+|---|---|
+| `string` in, `string` out | works |
+| `path` **in** | `Error 91 ... Control Value\3ASet` — the variant will not coerce string to path, and it fails *before* the VI runs (`inputsSent` counts the attempt) |
+| `array` or `cluster` **out** | `Error 91 ... Variant To Data` — **the VI has already run correctly**; only the read-back fails, and the outputs come back as empty strings |
+
+Consequences for authoring:
+
+- Take paths in as `string` and convert on the diagram with `String To Path`
+  (`inputs="string:…"` → `outputs="path:…"`). This is why the icon/connector-pane helper VI in
+  `scripts\lvdoc_print.xml` has string controls and three conversion nodes.
+- Return scalars. Unbundle an error cluster into `status` / `code` / `source` indicators if you
+  want to see it; a cluster wired straight to an indicator reads back empty.
+- **`errorCode 91` is not proof of failure.** Distinguish the two: an empty `source` string means
+  the VI ran clean, and a non-empty one carries the real error. When the output type cannot be
+  read at all, verify out of band — write the result to a file and inspect that, rather than
+  trusting an empty answer either way.
+
 ## 11. Known failure modes
 
 | Symptom | Cause |
 |---|---|
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
+| `Error 1051 ... A LabVIEW file of that name already exists in memory` on `Save\3AInstrument` | The VI you are regenerating is **loaded in LabVIEW** — `RunVIAsTopLevel` leaves it there, so the second iteration of author-generate-run cannot overwrite it. Generate each iteration under a fresh name, or make LabVIEW release the VI. Merely *opening* a VI with `OpenFile` does not block the overwrite; running it does. |
+| `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |
 | `Control with type=UDClassInst is not supported` / `Property Node with type=UDClassInst is not supported` | **LabVIEW classes cannot be expressed at all.** A class instance is rejected both as a front-panel control and inside a property node, so any VI whose connector pane carries an object — all LabVIEW OOP, and DQMH 5's `Module Admin` — is outside the type grammar. This is a *deeper* wall than `Unsupported SubVI`: inlining the subVIs would not help, because the VI's own terminal cannot be typed. Usually accompanied by `Could not find control with name "X" to apply fixup`. |
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
 | An export of 100–200 bytes containing only `<VI _name=… description=…/>` | **Silent failure, not an empty VI.** The diagram was not readable — inaccessible, password-protected or otherwise withheld — and `ConvertVIToAIXML` still returns `errorCode 0 / "No Error"`. Cross-check with the rendered diagram: if `GetDescribeVIPromptInfo` also carries no `viImage`, the diagram is unavailable. Never conclude "this VI is empty" from a childless `<VI>` element. |
