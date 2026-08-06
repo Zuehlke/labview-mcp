@@ -178,11 +178,21 @@ internal sealed class IconTools(LvaiConnection connection)
                 helperViPath = helperVi,
                 errorCode = generation.ErrorCode,
                 viExistsNow = File.Exists(helperVi),
-                hint = generation.ErrorCode == 1051
-                    ? "Error 1051 means a VI of that name is already in LabVIEW's memory - and a " +
-                      "failed generation leaves the name occupied for the rest of the session. " +
-                      "Pass a different helperViPath, or restart LabVIEW."
-                    : null,
+                hint = generation.ErrorCode switch
+                {
+                    1051 => "Error 1051 means a VI of that name is already in LabVIEW's memory - " +
+                            "and a failed generation leaves the name occupied for the rest of the " +
+                            "session. Pass a different helperViPath, or restart LabVIEW.",
+                    // Not the documented "directory does not exist" case: this tool creates the
+                    // directory. Measured under %LOCALAPPDATA%, where Save:Instrument refuses the
+                    // location itself while %TEMP% accepts it.
+                    7 => "Error 7 is LabVIEW refusing to save into " +
+                         $"'{Path.GetDirectoryName(helperVi)}'. The directory does exist - this " +
+                         "tool creates it - so the location itself is being refused; that has been " +
+                         "measured under %LOCALAPPDATA%. Pass helperViPath somewhere else, " +
+                         "somewhere under %TEMP% for instance.",
+                    _ => null,
+                },
             });
     }
 
@@ -198,15 +208,18 @@ internal sealed class IconTools(LvaiConnection connection)
             : null;
 
     /// <summary>
-    /// A per-user cache rather than the scripts folder: an install under Program Files is not
-    /// writable, and the generated helper is a build artifact, not a shipped file.
+    /// Under TEMP rather than in the scripts folder, which an install below Program Files cannot
+    /// write to - and the generated helper is a build artifact, not a shipped file.
+    ///
+    /// Measured, and the reason this is NOT %LOCALAPPDATA%: LabVIEW's Save:Instrument fails with
+    /// Error 7 "File not found" when generating into %LOCALAPPDATA%\LabVIEWMCP\helpers - twice,
+    /// minutes apart, with the directory present and writable by another process - while the very
+    /// same call into %TEMP%\LabVIEWMCP\helpers and into C:\Temp succeeds. The cause is not
+    /// explained; the only difference observed is that a directory under %LOCALAPPDATA% inherits
+    /// an AppContainer ACE which TEMP does not. Error 7 therefore carries its own hint below.
     /// </summary>
-    private static string DefaultHelperViPath()
-    {
-        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrEmpty(root)) root = Path.GetTempPath();
-        return Path.Combine(root, "LabVIEWMCP", "helpers", "lvdoc_set_icon.vi");
-    }
+    private static string DefaultHelperViPath() =>
+        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvdoc_set_icon.vi");
 
     private static string DefaultReadBackPath(string viPath) =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP",

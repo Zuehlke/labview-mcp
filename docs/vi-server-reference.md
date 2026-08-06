@@ -135,6 +135,17 @@ The run reports **`errorCode 91` with all three indicators empty** — the known
 `.vi` grew from 4 643 to 5 191 bytes with a fresh timestamp, and the read-back PNG matched the
 input pixel for pixel.
 
+**Where the helper may be saved is not a free choice.** `ConvertAIXMLToVI` failed with
+`Error 7 … File not found` on `Save\3AInstrument` when the target was
+`%LOCALAPPDATA%\LabVIEWMCP\helpers\lvdoc_set_icon.vi` — twice, minutes apart, with the directory
+present and writable (PowerShell wrote a file into it at the same moment), and `ADS\<user>` holding
+`FullControl`. The identical call succeeded into `%TEMP%\LabVIEWMCP\helpers` and into `C:\Temp`.
+So Error 7 here is **not** the documented "the directory does not exist" case; LabVIEW is refusing
+the location itself. The cause is unexplained — the only difference observed is that a directory
+under `%LOCALAPPDATA%` inherits an AppContainer ACE (`S-1-15-3-…`) which `Temp` does not. This is
+why `lvai_set_vi_icon` defaults its helper to `%TEMP%`, and why it turns Error 7 into a hint that
+names the directory instead of repeating the missing-directory advice.
+
 One trap met while generating the demo VI. `ConvertAIXMLToVI` refused the target name
 `Celsius To Fahrenheit.vi` with `Error 1051 … already exists in memory` on `Save\3AInstrument`,
 and kept refusing it on every retry — **a failed generation leaves that name occupied in LabVIEW

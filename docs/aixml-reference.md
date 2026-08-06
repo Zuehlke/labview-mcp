@@ -465,6 +465,7 @@ are surprising. Verified from exports:
 | `Add` | `x`, `y` | `x+y` |
 | `Subtract` | `x`, `y` | `x-y` |
 | `Multiply` | `x`, `y` | `x*y` |
+| `Concatenate Strings` | `string`, repeatable | `concatenated string` |
 | `Quotient & Remainder` | `x`, `y` | `x-y*floor(x/y)`, `floor(x/y)` |
 | `Array Size` | `array` | `size(s)` |
 | `Index Array` | `array`, `index` | `element` |

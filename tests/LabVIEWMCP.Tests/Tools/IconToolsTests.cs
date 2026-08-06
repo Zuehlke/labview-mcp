@@ -309,6 +309,27 @@ public sealed class IconToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Error_7_while_generating_blames_the_directory_not_the_missing_file()
+    {
+        // Measured: LabVIEW refuses to save into some directories that demonstrably exist and
+        // are writable - %LOCALAPPDATA%\LabVIEWMCP\helpers did, %TEMP% did not. Reporting the
+        // documented "the directory does not exist" cause would send the reader the wrong way,
+        // because this tool creates the directory itself.
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ErrorCodeByMethod["ConvertAIXMLToVI"] = 7;
+        server.Service.ErrorMessage = "File not found";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), WritePng("icon.png"), At("r.png"), At(@"helpers\helper.vi"),
+            ShippedHelperAixml());
+
+        var hint = Res.Obj(result)["detail"]!["hint"]!.GetValue<string>();
+        Assert.Contains("does exist", hint);
+        Assert.Contains(At("helpers"), hint);
+        Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
+    [Fact]
     public async Task A_helper_that_reports_success_but_writes_no_file_is_a_failure()
     {
         // The silent-failure shape this interface is known for: errorCode 0 and nothing on disk.
