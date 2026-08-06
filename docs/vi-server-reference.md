@@ -180,27 +180,40 @@ about your XML. Do not read `Error 1018` as "my AIXML is broken".
 No RPC closes a VI — `OpenFile` has no counterpart — so this is the same generated-helper route.
 Two ways of closing look interchangeable and are not. **What decides is who opened the panel:**
 
-| Panel was opened by | `Invoke Node` `FP.Close` | `Property Node` `write+Front Panel Window\3AOpen` = `False` |
+| `Front Panel Window\3AOpen` reads | `Invoke Node` `FP.Close` | `Property Node` `write+Front Panel Window\3AOpen` = `False` |
 |---|---|---|
-| the **IDE** — `OpenFile`, or a person double-clicking | **error**; `source` names `Front Panel\3AClose` | closes it; `source` empty, `errorCode 0` |
-| **VI Server**, `write+…Open` = `True` on the same refnum | **closes it**; `source` empty | — |
+| **false** | **Error 1149** | reports success — and does nothing |
+| **true** (e.g. after `write+…Open` = `True` on the same refnum) | **closes it**; `source` empty | closes it |
 
-`Front Panel Window:State` — the property a diagram labels `FP.State` — looks like the better answer
-and is not. `write+` with `Closed` was **refused twice**: on a VI the IDE had just opened, and on one
-with no windows left at all, the error naming `Property Node (arg 1) … Front Panel Window\3AState`
-both times. Its error code was not captured, so read-only versus state-dependent is still open.
-`write+Front Panel Window\3AOpen` = `False` remains the only thing measured to work.
+**Error 1149 is the whole explanation**, and it says so itself:
 
-So `FP.Close` does not mean "close this VI". It closes a front panel *that VI Server opened*; an
-editor window belongs to the IDE and it will not touch it. The property write governs the window
-either way, which makes it the one to reach for whenever the panel might be an editor window — that
-is, almost always, when acting on somebody's open project.
+> Cannot close or set the state of a closed front panel. The front panel must already be open
+> before you close it or set its state.
 
-The bottom row is what settles it, and it took three iterations to get there because the first two
-comparisons each moved two variables at once. Opening the panel with the property and then calling
-`FP.Close` on the very same reference reported `open` → no error → `closed`, and took 710 ms against
-21 ms for the failing call: the window really did appear and go. Guides that describe an Invoke Node
-step called "Close VI" are describing `FP.Close`, and they do not mention this condition.
+One sentence settles three separate puzzles. `FP.Close` does not refuse because the window belongs
+to the IDE — it refuses because, as far as VI Server is concerned, **there is no open panel to
+close**. The `Front Panel Window:State` = `Closed` writes that were refused twice fail for exactly
+the same reason: the message covers "or set its state" in so many words, so that property is
+state-dependent, not read-only. And `write+…Open` = `False` never won because it does more — it wins
+because writing *false* to an already-false property is a no-op that cannot fail. An earlier version
+of this section read that comparison as a capability difference. It is not one.
+
+**`OpenFile` opens neither window.** Measured on a freshly generated VI, opened with nothing but
+`lvai_open_file` and never otherwise touched: `Front Panel Window\3AOpen` **closed**,
+`Block Diagram Window\3AOpen` **closed**. The VI is unquestionably *loaded* — regenerating its path
+fails with `Error 1357` — but no window of it is open in VI Server's terms. A person opening the VI
+in the IDE is a different matter: `FP.Close` run by hand against such a VI succeeds, which is only
+possible if its panel genuinely is open. The row here that used to lump "`OpenFile`, or a person
+double-clicking" together was therefore wrong; the two are measurably different.
+
+So before closing a panel you did not open, **read `Front Panel Window\3AOpen` first**. If it is
+false there is nothing to close, and the two techniques differ only in how they tell you: the
+property write reports a success it did not achieve, `FP.Close` gives you the honest 1149.
+
+Opening the panel with the property and then calling `FP.Close` on the very same reference reported
+`open` → no error → `closed`, and took 710 ms against 21 ms for the failing call: the window really
+did appear and go. Guides that describe an Invoke Node step called "Close VI" are describing
+`FP.Close`, and none of them mentions this precondition.
 
 Two techniques carried that measurement and are worth reusing. `Front Panel Window:Open` is listed
 as **`read`** in the catalogue and took a `write+` perfectly well — the concrete instance of the
