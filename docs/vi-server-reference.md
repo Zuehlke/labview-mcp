@@ -98,7 +98,7 @@ same labels validated. So exporting a VI that already carries the node is the on
 obtain the list, and the constant above came from exactly that — a hand-built diagram put through
 `ConvertVIToAIXML`.
 
-## Four things the data will not tell you
+## Five things the data will not tell you
 
 **The `access` column is not a capability.** 6 445 of the entries were configured for reading in
 the source VI and only 44 for writing, so almost everything reads `read`. That says how the node
@@ -121,6 +121,15 @@ with two `index` entries) are described. When a call fails on a row like that, w
 boolean indicators named after them (`Down Tee`, `Left Tee`, …) inside a Stacked Sequence Structure, and no
 decoration element of any kind. The AIXML exporter drops them, so a generated VI cannot carry
 arrows, boxes or separators. `FreeLabel` is the one annotation that does survive.
+
+**The whole PROJECT surface is missing.** Grep both files for `Project`: across 153 classes and
+9 488 entries there is **not one** hit — no `{LV.Project}` class, and no `Project\3AActive Project`
+on `{LV.Application}`. Yet both names are real: a hand-built VI using them exported cleanly,
+validated, and ran. So the collector VIs this catalogue was flattened from simply did not include
+the project classes, and the claim above that this is the *only* index for "a property or action of
+a LabVIEW object" has a hole in it exactly where projects are. When a name is missing here, it does
+not follow that it does not exist — **build the node by hand in the IDE and export that VI**, which
+is how these two were recovered. That is also the standing recipe for extending this catalogue.
 
 ## Writing back: setting a VI's icon
 
@@ -260,6 +269,19 @@ characters both times. So `Open Application Reference` called from inside a gene
 back the *addon's* instance, not the IDE's: a generated VI has no route to the application object
 its user is looking at, and no way to enumerate what the IDE has loaded. Residency can only be
 tested indirectly — attempt the regeneration and read `Error 1357`.
+
+**The active project is not a way out of that instance either.** The natural next idea, and it was
+tried: `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, then open
+the VI reference in *that* application. It fails at the first step with **`Error 1055`, "Object
+reference is invalid"** — the addon's instance has no active project, even with a project genuinely
+loaded in the IDE and `describe_project` listing its members. There is no bridge from a generated
+helper to the application object the user is working in.
+
+That attempt also carries a lesson about diagnosing chains. The version that first showed the
+problem had a `Clear Errors.vi` between the stages, and it blamed `Open VI Reference` — the *last*
+node to break, three steps downstream of the cause. Removing the error clearing moved the report to
+the property node that actually failed. **A chain that clears errors between stages names its last
+casualty, not its first.**
 
 **Closing the windows is not the same as unloading the VI, and unloading is not available.** The
 reason to want it: a VI in memory blocks `ConvertAIXMLToVI` from overwriting that path
