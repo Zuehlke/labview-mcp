@@ -32,6 +32,10 @@ internal sealed class IconTools(LvaiConnection connection)
         scripts\lvdoc_set_icon.xml (once, then reused), run it, read the icon back out.
         Measured on LabVIEW 2026: a 32x32 PNG is applied as-is and the icon read back out of
         the VI is pixel-identical. Other formats and sizes are untested.
+        CALL THIS LAST. lvai_convert_aixml_to_vi over an existing path DESTROYS the icon -
+        measured on two VIs - so re-apply after every regeneration. It is safe in the other
+        direction: setting an icon does not leave the VI in memory, so the path can still be
+        regenerated afterwards.
         DO NOT judge the result by errorCode: 91 with empty outputs is the known
         RunVIAsTopLevel read-back artifact and appears on success. Use the `verified` field,
         and look at the read-back PNG to see what actually landed in the VI.

@@ -133,6 +133,25 @@ is how these two were recovered. That is also the standing recipe for extending 
 
 ## Writing back: setting a VI's icon
 
+**Set the icon LAST. Regenerating the VI destroys it.** `ConvertAIXMLToVI` over an existing path
+leaves LabVIEW's default icon behind — measured twice, on two different VIs, by reading the icon
+back out with `Save VI Icon to File` and looking at it. So in any generate-edit-regenerate loop the
+icon has to be re-applied after *every* generation, and the sequence is always generate → set icon,
+never the reverse.
+
+File size will not tell you this and briefly suggested the opposite: the regenerated VI was *larger*
+than the one carrying the icon (7 570 vs 5 022 bytes), which looked like something had been
+preserved. It had not. A VI freshly generated from the same AIXML in that same LabVIEW session came
+out at 7 033 bytes — the session simply writes bigger VIs than the earlier one did. **Compare icons
+by reading them back, never by byte count.**
+
+**Setting an icon does not burn the path.** The helper opens a VI reference, writes, saves, reads
+back and closes the reference — and afterwards `ConvertAIXMLToVI` on that same path still returns
+`errorCode 0`. This is the distinction that matters for `Error 1357`: a helper that opens and closes
+a *reference* releases the VI, while `lvai_open_file` and `RunVIAsTopLevel` leave it loaded.
+Generation itself is clean too — two `ConvertAIXMLToVI` calls to the same path, back to back, both
+succeed.
+
 AIXML cannot carry an icon — "VI icon graphics" is on NI's not-supported list for the generator
 ([`aixml-reference.md`](aixml-reference.md) §9), and none of the 23 RPCs sets one. VI Server does,
 so the same generate-run-read loop that *reads* the icon also writes it. Measured on LabVIEW 2026
