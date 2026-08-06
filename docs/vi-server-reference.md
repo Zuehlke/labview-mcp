@@ -164,19 +164,44 @@ against a freshly generated VI:
 | persist it | `Invoke Node` `Save\3AInstrument` — without it the change dies with the reference |
 | verify | `Invoke Node` `Save VI Icon to File`, input `Image File` |
 
-Three things this measured that the catalogue does not say:
+Four things this measured that the catalogue does not say:
 
 - **`Set VI Icon from File` accepts a 32×32 PNG directly.** Neither `Set VI Icon from Image Data`
   nor a flattened LabVIEW image cluster is needed — a plain file from any image library is enough.
 - **`Save VI Icon to File` writes a PNG when `Image Format` and `Image Depth` are left unwired**
   (32×32, `89 50 4E 47` magic), so the default enum value 0 is PNG. That makes it the verification
-  step: the round-tripped file came back pixel-identical to the input.
+  step.
+- **The round trip is pixel-identical only for web-safe colours.** This document used to say
+  "pixel-identical" without qualification, which makes an exact comparison look broken when it is
+  working correctly. LabVIEW quantises an icon to the web-safe cube — each channel in
+  `{00,33,66,99,CC,FF}` — and geometry is untouched. Measured on a 32×32 icon of four bars, an
+  arrow and a frame: **189 of 1 024 pixels differed**, and every one of them was a colour
+  substitution, not a moved pixel:
+
+  | Source | Read back | Pixels |
+  |---|---|---|
+  | `FFFFFF` | `FFFFFF` | 711 — unchanged, already web-safe |
+  | `000000` | `000000` | 124 — unchanged, already web-safe |
+  | `1A5FA0` | `336699` | 120 — **snapped** |
+  | `C8501E` | `CC6633` | 69 — **snapped** |
+
+  Re-rendering the same icon with `336699` and `CC6633` and re-applying gave **0 of 1 024
+  differing**. So pick icon colours from the cube and the read-back becomes a clean equality
+  check; use arbitrary colours and you must compare geometry instead, or accept the nearest
+  cube entry. Note the failure is silent and pretty — the quantised icon looks right, so a
+  difference count is the only way to see it.
 - **`Save\3AInstrument` needs no `Path to saved file`.** Unwired, it saves in place.
 
 The run reports **`errorCode 91` with all three indicators empty** — the known read-back artifact
 (§10 of the AIXML reference), not a failure. Verify out of band, as the rule there says: the target
 `.vi` grew from 4 643 to 5 191 bytes with a fresh timestamp, and the read-back PNG matched the
-input pixel for pixel.
+input (pixel for pixel, subject to the web-safe caveat above).
+
+**Applying an icon twice in a row is safe, and the second one is free of side effects.** Measured
+while correcting the colours of an already-iconised VI: the first apply grew the target from 7 526
+to 8 074 bytes, the second left it at 8 074 with `viResaved: true`. So re-applying to fix a colour
+or a design is a normal operation, not something to avoid — which matters because the icon has to
+be re-applied after every `ConvertAIXMLToVI` anyway.
 
 **Where the helper may be saved is not a free choice.** `ConvertAIXMLToVI` failed with
 `Error 7 … File not found` on `Save\3AInstrument` when the target was
