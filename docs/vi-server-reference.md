@@ -154,6 +154,30 @@ fixed it immediately. The first failure happened while a second `ConvertAIXMLToV
 concurrently; that is not proven to be the cause, but issuing two conversions in parallel is worth
 avoiding until it is.
 
+## Closing a VI's window
+
+No RPC closes a VI — `OpenFile` has no counterpart — so this is the same generated-helper route.
+`FP.Close` is the obvious method and it **failed** on a VI that had just been opened with
+`OpenFile` and run: the error cluster came back naming `Method Name: Front Panel\3AClose`.
+Writing the property instead worked first time:
+
+| Attempt | Result |
+|---|---|
+| `Invoke Node` `FP.Close` | error; `source` names `Front Panel\3AClose` |
+| `Property Node` `write+Front Panel Window\3AOpen` with a `False` constant | panel closed, `source` empty, `errorCode 0` |
+
+Two things worth keeping from that. `Front Panel Window:Open` is listed as **`read`** in the
+catalogue and took a `write+` perfectly well — the concrete instance of the warning above that the
+`access` column is not a capability. And reading the property straight back in the same helper
+makes the result self-verifying, provided the answer is turned into a **string** first: wire the
+bool into `Select` between two string constants, because a bool indicator does not marshal back
+(§10 of the AIXML reference).
+
+`FP.Set Close If Lonely` sits next to `FP.Close` in the catalogue and is what lets the VI leave
+memory once the reference closes — worth chaining in when the point of closing is to release the
+name, since a VI left in memory blocks `ConvertAIXMLToVI` from overwriting that path with
+`Error 1051`.
+
 ## What this opens up
 
 Gaps in the RPC surface that a generated helper VI could close, none of them attempted yet:

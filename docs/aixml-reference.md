@@ -772,6 +772,7 @@ pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026
 | `string` in, `string` out | works |
 | `path` **in** | `Error 91 ... Control Value\3ASet` — the variant will not coerce string to path, and it fails *before* the VI runs (`inputsSent` counts the attempt) |
 | `array` or `cluster` **out** | `Error 91 ... Variant To Data` — **the VI has already run correctly**; only the read-back fails, and the outputs come back as empty strings |
+| `bool` + `int32` + `string` **out** together | `Error 91 ... Variant To Data`, and **all three** outputs empty — measured twice on the icon helper. A string-only VI answered `errorCode 0` in the same session, so the failure is one of the two non-string types, not the count of indicators. |
 | `double` **in** | `Error 91 ... Control Value\3ASet` — the same wall as `path`, and it also fails *before* the VI runs. Measured twice on the same control, as the JSON string `"100"` and as the JSON number `100`: neither coerces to a DBL. **This contradicts `lvai_run_vi_as_top_level`'s own description**, which says to pass numbers as their text form; that does not work. Numeric controls cannot be driven at all — take the number in as `string` and convert on the diagram. |
 
 Consequences for authoring:
@@ -779,8 +780,13 @@ Consequences for authoring:
 - Take paths **and numbers** in as `string` and convert on the diagram — `String To Path`
   (`inputs="string:…"` → `outputs="path:…"`). This is why the icon/connector-pane helper VI in
   `scripts\lvdoc_print.xml` has string controls and three conversion nodes.
-- Return scalars. Unbundle an error cluster into `status` / `code` / `source` indicators if you
-  want to see it; a cluster wired straight to an indicator reads back empty.
+- **Return strings — not merely scalars.** This bullet used to say "unbundle an error cluster into
+  `status` / `code` / `source` indicators"; measured, that trio comes back as `errorCode 91` with
+  all three outputs *empty*, twice. A helper whose indicators are **only** strings returned its
+  values with `errorCode 0` in the same session. Which of `bool` and `int32` breaks it was not
+  isolated, so the safe shape is to convert on the diagram and return text: `Select` between two
+  string constants turns a bool into a readable answer. A cluster wired straight to an indicator
+  reads back empty either way.
 - **`errorCode 91` is not proof of failure.** Distinguish the two: an empty `source` string means
   the VI ran clean, and a non-empty one carries the real error. When the output type cannot be
   read at all, verify out of band — write the result to a file and inspect that, rather than
