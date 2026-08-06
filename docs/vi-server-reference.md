@@ -150,9 +150,15 @@ One trap met while generating the demo VI. `ConvertAIXMLToVI` refused the target
 `Celsius To Fahrenheit.vi` with `Error 1051 … already exists in memory` on `Save\3AInstrument`,
 and kept refusing it on every retry — **a failed generation leaves that name occupied in LabVIEW
 for the rest of the session**, so retrying the same path can never succeed. Renaming the target
-fixed it immediately. The first failure happened while a second `ConvertAIXMLToVI` call was running
-concurrently; that is not proven to be the cause, but issuing two conversions in parallel is worth
-avoiding until it is.
+fixed it immediately.
+
+**Never call this service concurrently — one RPC at a time.** That first failure happened while a
+second `ConvertAIXMLToVI` ran at the same moment, which was only a suspicion when it was written
+here. A second, cleaner observation settled it: two `ValidateAIXML` calls issued in parallel *both*
+came back with `Error 1018 … Unspecified error occurred` and `Method Name: Get Errors`, and each of
+the two files then validated cleanly on its own, byte-for-byte unchanged. So a concurrent second
+call spoils both, and the symptom is an error thrown from *inside* the service — not a complaint
+about your XML. Do not read `Error 1018` as "my AIXML is broken".
 
 ## Closing a VI's window
 
@@ -172,6 +178,20 @@ catalogue and took a `write+` perfectly well — the concrete instance of the wa
 makes the result self-verifying, provided the answer is turned into a **string** first: wire the
 bool into `Select` between two string constants, because a bool indicator does not marshal back
 (§10 of the AIXML reference).
+
+**There is no `Close VI` method.** Searching all 3 078 methods for "close" returns seven rows, and
+the only ones on `{LV.VI}` are `FP.Close`, `FP.Set Close If Lonely` and
+`Remote Panel Close Connection To Client`. Guides that describe an Invoke Node step called
+"Close VI" are describing `FP.Close` under its UI label; releasing the last reference with
+`Close Reference` is what actually closes a VI.
+
+**Verifying that a VI left memory does not work the obvious way.** `{LV.Application}` carries
+`Application:All VIs In Memory`, and a generated helper can read it with the `reference` terminal
+left unwired — but what comes back is the **addon's own context**: 400-odd VIs, every one of them
+inside `LV AI Core.lvlibp` or `LV AI gRPC Service.lvlibp`. Neither the VI under test nor the helper
+itself appears. So an unwired Application reference in a generated VI is not the IDE's main
+application instance, and this property cannot confirm residency of a user VI. Untested whether
+wiring an explicit `Open Application Reference` changes that.
 
 `FP.Set Close If Lonely` sits next to `FP.Close` in the catalogue and is what lets the VI leave
 memory once the reference closes — worth chaining in when the point of closing is to release the
