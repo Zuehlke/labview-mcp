@@ -38,6 +38,24 @@
     <EmbeddedResource Include="..\..\docs\aixml-reference.md" LogicalName="aixml-reference.md" />
     <EmbeddedResource Include="..\..\docs\lvproj-structure.md" LogicalName="lvproj-structure.md" />
     <EmbeddedResource Include="..\..\docs\dqmh-patterns.md" LogicalName="dqmh-patterns.md" />
+    <EmbeddedResource Include="..\..\docs\lvlib-lvclass-structure.md" LogicalName="lvlib-lvclass-structure.md" />
+    <EmbeddedResource Include="..\..\docs\vi-server-reference.md" LogicalName="vi-server-reference.md" />
+    <!-- The two catalogues are DATA, not prose: 3078 methods and 6410 properties. They are
+         embedded so a binary-only install can still answer "what do I wire to this node",
+         and served row-wise by lvai_vi_server_reference - never as whole files, which is
+         also why they are TSV rather than markdown tables. -->
+    <EmbeddedResource Include="..\..\docs\vi-server-methods.tsv" LogicalName="vi-server-methods.tsv" />
+    <EmbeddedResource Include="..\..\docs\vi-server-properties.tsv" LogicalName="vi-server-properties.tsv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The documentation generator is invoked as a FILE by an agent, so it cannot be an
+         embedded resource. Copying scripts/ next to the exe gives it one absolute location
+         that works from any working directory - the path is reported by lvai_status as
+         scriptsDirectory. Same arrangement as the TestStand MCP server. -->
+    <None Include="..\..\scripts\**\*"
+          Link="scripts\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

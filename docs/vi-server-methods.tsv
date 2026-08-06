@@ -1,0 +1,3079 @@
+class	method	parameters	returns
+{LV.AbsTimeConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.AbsTimeConstant}	Delete		
+{LV.AbsTimeConstant}	Discon Typedef		Discon Typedef
+{LV.AbsTimeConstant}	GetProperty	Index	GetProperty
+{LV.AbsTimeConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.AbsTimeConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.AbsTimeConstant}	Move	position; owner; duplicate	
+{LV.AbsTimeConstant}	ObjHighlight		
+{LV.AbsTimeConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.AbsTimeConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.AbsTimeConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.AbsTimeConstant}	SetProperty	Index; Value	
+{LV.AbsTimeConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.AbsTimeConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.AbsTimeConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.AbsTimeConstant}	Update Typedef		Update Typedef
+{LV.AbsTime}	AttachDataSocket	url; mode; enabled	
+{LV.AbsTime}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.AbsTime}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.AbsTime}	Create Control Ref		Create Control Ref
+{LV.AbsTime}	Create Invoke Node		Create Invoke Node
+{LV.AbsTime}	Create Local		Create Local
+{LV.AbsTime}	Create Property Node		Create Property Node
+{LV.AbsTime}	Delete		
+{LV.AbsTime}	Discon Typedef		Discon Typedef
+{LV.AbsTime}	Get Image	image depth; bg color	image data
+{LV.AbsTime}	Get Term Image	image depth; background color	image data
+{LV.AbsTime}	GetProperty	Index	GetProperty
+{LV.AbsTime}	GetPropertyCallData		GetPropertyCallData
+{LV.AbsTime}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.AbsTime}	Move	position; owner; duplicate	
+{LV.AbsTime}	ObjHighlight		
+{LV.AbsTime}	Reinit To Dflt		
+{LV.AbsTime}	RemoveDataSocket		
+{LV.AbsTime}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.AbsTime}	Replace	Style; Path; PaletteString	Replace
+{LV.AbsTime}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.AbsTime}	SetProperty	Index; Value	
+{LV.AbsTime}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.AbsTime}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.AbsTime}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.AbsTime}	Update Typedef		Update Typedef
+{LV.ActiveXContainer}	AttachDataSocket	url; mode; enabled	
+{LV.ActiveXContainer}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ActiveXContainer}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.ActiveXContainer}	Create Control Ref		Create Control Ref
+{LV.ActiveXContainer}	Create Invoke Node		Create Invoke Node
+{LV.ActiveXContainer}	Create Local		Create Local
+{LV.ActiveXContainer}	Create Property Node		Create Property Node
+{LV.ActiveXContainer}	Delete		
+{LV.ActiveXContainer}	Discon Typedef		Discon Typedef
+{LV.ActiveXContainer}	Get Image	image depth; bg color	image data
+{LV.ActiveXContainer}	Get Term Image	image depth; background color	image data
+{LV.ActiveXContainer}	GetProperty	Index	GetProperty
+{LV.ActiveXContainer}	GetPropertyCallData		GetPropertyCallData
+{LV.ActiveXContainer}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ActiveXContainer}	Move	position; owner; duplicate	
+{LV.ActiveXContainer}	ObjHighlight		
+{LV.ActiveXContainer}	Reinit To Dflt		
+{LV.ActiveXContainer}	RemoveDataSocket		
+{LV.ActiveXContainer}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ActiveXContainer}	Replace	Style; Path; PaletteString	Replace
+{LV.ActiveXContainer}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ActiveXContainer}	SetProperty	Index; Value	
+{LV.ActiveXContainer}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ActiveXContainer}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ActiveXContainer}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ActiveXContainer}	Update Typedef		Update Typedef
+{LV.Application}	.NET.Convert Obj To LV Variant	Object	Convert .NET Object To LV Variant; Err Msg
+{LV.Application}	.NET.Convert To .NET Type	Type	Convert To .NET Type; Err Msg
+{LV.Application}	Add Password to Cache	Password	
+{LV.Application}	Add Probe To Cache	Probe Path	
+{LV.Application}	Are Obj Refs Same?	ref 1; ref 2	Are Obj Refs Same?
+{LV.Application}	Bring To Front		
+{LV.Application}	Browse DataSocket	Selected URL	Selected URL
+{LV.Application}	Build Distribution	file list; flags	
+{LV.Application}	Build.Application	application path; LLB path; OLE server name; app memory size; lvrt target dialog; shell path; appFlags; axInfo; genNewAXGuids; defaultLang; supportedLangs; Lib Dep Info; Consolidated Types; LEIF Build Data	axInfo
+{LV.Application}	CallInternalCmd	XMLTaggedOptStrg; Params	CallInternalCmd
+{LV.Application}	Check In Out	vi path; out; sync dates	
+{LV.Application}	Check Out Status	vi path	Check Out Status
+{LV.Application}	CheckFileIsVI	VIPath	IsVI?
+{LV.Application}	Checkout Mod Dates	vi path	user mod date; orig mod date; disk mod date
+{LV.Application}	Clipboard.Empty		
+{LV.Application}	Clipboard.Get Image	image depth	image; colors; bounds
+{LV.Application}	Compare Types	Type Desc 1; Type Desc 2; Options	Compare Types
+{LV.Application}	Compare VIs	VI 1; VI 2; interactive?; VI attributes?; FP?; FP pos/size?; BD?; BD cosmetic?; BD pos/size?	same?; description
+{LV.Application}	Compile VIs Needing Compilation		
+{LV.Application}	Conn Responsive.Check		
+{LV.Application}	Conn Responsive.Info	PingDelay; PingTimeout	PrevPingDelay; PrevPingTimeout
+{LV.Application}	Convert Function Panel	Function Panel Path; Function Panel Path; Destination LLB Path; Destination LLB Path	Convert Function Panel
+{LV.Application}	Convert Type and Data	To LV 4.x; Type Descriptor In; Flat Data In	Type Descriptor Out; Flat Data Out
+{LV.Application}	Create LV Class Instance	Class ID	Create LV Class Instance
+{LV.Application}	DNGetAsmFullName	asmPath	DNGetAsmStrongName
+{LV.Application}	Data Color	Type Desc	Data Color
+{LV.Application}	Disconnect From Slave		
+{LV.Application}	Drop Control Or Function	Name	Drop Control Or Function
+{LV.Application}	Get Class Operator	ClassID; OpName	GetClassOp; VIRef
+{LV.Application}	Get Pal Menu Info	Pal Menu Name	Get Palette Menu Info
+{LV.Application}	Get VI Desc	VI Path	VI Desc
+{LV.Application}	Get VI Title	VI Path	VI Title
+{LV.Application}	Get VI Version	path	GetVIVers; VI Path
+{LV.Application}	History Since	vi path; date	History Since
+{LV.Application}	Image Data To Byte Array	Image Data; Byte Array Format	Image Data To Byte Array
+{LV.Application}	LVRTCheckDLLs	DLLs to Test	LVRT Check DLLs; DLL Load Results
+{LV.Application}	LVRTSendAppFiles	LVRT Send App Files; Host File Path; Host File Path	
+{LV.Application}	Mass Compile	Directory to Compile; Log File Path; Append to Log File; Number of VIs to Cache; Reload LVSBs	User Stopped
+{LV.Application}	New LabVIEW Document	fileType; parentRef	
+{LV.Application}	Open.VI From Buffer	Buffer; VI Path; Open Flags	VIRef
+{LV.Application}	Print Function To HTML	Function; Function; HTML File Path; HTML File Path; Append?; Append?	
+{LV.Application}	Print Function To Printer	Function; Format; Scale Panel?; Scale Diagram?; Page Headers?; Page Breaks?; Section Headers?	
+{LV.Application}	Print Function To RTF	Function; Function; RTF File Path; RTF File Path; Append?; Append?; Format	
+{LV.Application}	Print Function To Text	Function; Function; Text File Path	
+{LV.Application}	Pwd.Clear Cache		
+{LV.Application}	Query Internal Operation Tracking Data		QueryIntOperationTrackingData
+{LV.Application}	RP.Client Network Load	beginTime	endTime; Netload
+{LV.Application}	RP.Open Connection To Server	VIName; ServerAddr; ServerPort; RequestControl; SecureConn	
+{LV.Application}	RP.Server Network Load	beginTime	endTime; NetLoad
+{LV.Application}	Read Linker Info from File	paths to read; recursive?; newthing	Read Linker Info from File
+{LV.Application}	Remote Panel Client Release Control	VIName; ServerAddress; ServerPort	
+{LV.Application}	Remote Panel Client Request Control	VIName; ServerAddress; ServerPort	
+{LV.Application}	Remote Panel Close Connection To Server	VIName; ClientAddress; ClientPort	
+{LV.Application}	Remove Class Operator	Class ID; OpName	RemoveClassOp; VIRef
+{LV.Application}	RemoveAllOp	OpName	RemoveAllOp
+{LV.Application}	Resolve Symbolic Path	SymbolicPath	ActualPath
+{LV.Application}	Set Class Operator	ClassID; OpName; VIRef	SetClassOp; oldVIRef
+{LV.Application}	ShowIPTerms	Show; Flags	
+{LV.Application}	SwitchExecTarget		
+{LV.Application}	UI.Hilight Pal Menu Item	func name; Position	Hilite Pal Menu Item
+{LV.Application}	Write Linker Info from File	files to change; new paths; old names	
+{LV.ArrayConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ArrayConstant}	Delete		
+{LV.ArrayConstant}	Discon Typedef		Discon Typedef
+{LV.ArrayConstant}	GetProperty	Index	GetProperty
+{LV.ArrayConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ArrayConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ArrayConstant}	Move	position; owner; duplicate	
+{LV.ArrayConstant}	ObjHighlight		
+{LV.ArrayConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ArrayConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ArrayConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ArrayConstant}	SetProperty	Index; Value	
+{LV.ArrayConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ArrayConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ArrayConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ArrayConstant}	Update Typedef		Update Typedef
+{LV.ArrayToCluster}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ArrayToCluster}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ArrayToCluster}	Delete		
+{LV.ArrayToCluster}	GetProperty	Index	GetProperty
+{LV.ArrayToCluster}	GetPropertyCallData		GetPropertyCallData
+{LV.ArrayToCluster}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ArrayToCluster}	Move	position; owner; duplicate	
+{LV.ArrayToCluster}	ObjHighlight		
+{LV.ArrayToCluster}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ArrayToCluster}	Replace	Style; Path; PaletteString	Replace
+{LV.ArrayToCluster}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ArrayToCluster}	SetProperty	Index; Value	
+{LV.ArrayToCluster}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ArrayToCluster}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ArrayToCluster}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Array}	AttachDataSocket	url; mode; enabled	
+{LV.Array}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Array}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Array}	Create Control Ref		Create Control Ref
+{LV.Array}	Create Invoke Node		Create Invoke Node
+{LV.Array}	Create Local		Create Local
+{LV.Array}	Create Property Node		Create Property Node
+{LV.Array}	Delete		
+{LV.Array}	Discon Typedef		Discon Typedef
+{LV.Array}	Get Image	image depth; bg color	image data
+{LV.Array}	Get Term Image	image depth; background color	image data
+{LV.Array}	GetProperty	Index	GetProperty
+{LV.Array}	GetPropertyCallData		GetPropertyCallData
+{LV.Array}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Array}	Move	position; owner; duplicate	
+{LV.Array}	ObjHighlight		
+{LV.Array}	Reinit To Dflt		
+{LV.Array}	RemoveDataSocket		
+{LV.Array}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Array}	Replace	Style; Path; PaletteString	Replace
+{LV.Array}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Array}	SetProperty	Index; Value	
+{LV.Array}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Array}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Array}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Array}	Update Typedef		Update Typedef
+{LV.BooleanConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.BooleanConstant}	Delete		
+{LV.BooleanConstant}	Discon Typedef		Discon Typedef
+{LV.BooleanConstant}	GetProperty	Index	GetProperty
+{LV.BooleanConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.BooleanConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.BooleanConstant}	Move	position; owner; duplicate	
+{LV.BooleanConstant}	ObjHighlight		
+{LV.BooleanConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.BooleanConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.BooleanConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.BooleanConstant}	SetProperty	Index; Value	
+{LV.BooleanConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.BooleanConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.BooleanConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.BooleanConstant}	Update Typedef		Update Typedef
+{LV.Boolean}	AttachDataSocket	url; mode; enabled	
+{LV.Boolean}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Boolean}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Boolean}	Create Control Ref		Create Control Ref
+{LV.Boolean}	Create Invoke Node		Create Invoke Node
+{LV.Boolean}	Create Local		Create Local
+{LV.Boolean}	Create Property Node		Create Property Node
+{LV.Boolean}	Delete		
+{LV.Boolean}	Discon Typedef		Discon Typedef
+{LV.Boolean}	Get Image	image depth; bg color	image data
+{LV.Boolean}	Get Term Image	image depth; background color	image data
+{LV.Boolean}	GetProperty	Index	GetProperty
+{LV.Boolean}	GetPropertyCallData		GetPropertyCallData
+{LV.Boolean}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Boolean}	Move	position; owner; duplicate	
+{LV.Boolean}	ObjHighlight		
+{LV.Boolean}	Reinit To Dflt		
+{LV.Boolean}	RemoveDataSocket		
+{LV.Boolean}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Boolean}	Replace	Style; Path; PaletteString	Replace
+{LV.Boolean}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Boolean}	SetProperty	Index; Value	
+{LV.Boolean}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Boolean}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Boolean}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Boolean}	Update Typedef		Update Typedef
+{LV.BuildArray}	AddInputAfter	Index	AddInputAfter
+{LV.BuildArray}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.BuildArray}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.BuildArray}	Delete		
+{LV.BuildArray}	GetProperty	Index	GetProperty
+{LV.BuildArray}	GetPropertyCallData		GetPropertyCallData
+{LV.BuildArray}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.BuildArray}	Move	position; owner; duplicate	
+{LV.BuildArray}	ObjHighlight		
+{LV.BuildArray}	RemoveInput	Index	
+{LV.BuildArray}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.BuildArray}	Replace	Style; Path; PaletteString	Replace
+{LV.BuildArray}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.BuildArray}	Resize	bounds	
+{LV.BuildArray}	SetProperty	Index; Value	
+{LV.BuildArray}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.BuildArray}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.BuildArray}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.BuildClusterArray}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.BuildClusterArray}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.BuildClusterArray}	Delete		
+{LV.BuildClusterArray}	GetProperty	Index	GetProperty
+{LV.BuildClusterArray}	GetPropertyCallData		GetPropertyCallData
+{LV.BuildClusterArray}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.BuildClusterArray}	Move	position; owner; duplicate	
+{LV.BuildClusterArray}	ObjHighlight		
+{LV.BuildClusterArray}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.BuildClusterArray}	Replace	Style; Path; PaletteString	Replace
+{LV.BuildClusterArray}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.BuildClusterArray}	Resize	bounds	
+{LV.BuildClusterArray}	SetProperty	Index; Value	
+{LV.BuildClusterArray}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.BuildClusterArray}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.BuildClusterArray}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Bundler}	AddInputAfter	Index	AddInputAfter
+{LV.Bundler}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Bundler}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Bundler}	Delete		
+{LV.Bundler}	GetProperty	Index	GetProperty
+{LV.Bundler}	GetPropertyCallData		GetPropertyCallData
+{LV.Bundler}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Bundler}	Move	position; owner; duplicate	
+{LV.Bundler}	ObjHighlight		
+{LV.Bundler}	RemoveInput	Index	
+{LV.Bundler}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Bundler}	Replace	Style; Path; PaletteString	Replace
+{LV.Bundler}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Bundler}	Resize	bounds	
+{LV.Bundler}	SetProperty	Index; Value	
+{LV.Bundler}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Bundler}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Bundler}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.CIN}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CIN}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.CIN}	Create C File	Path	
+{LV.CIN}	Delete		
+{LV.CIN}	GetProperty	Index	GetProperty
+{LV.CIN}	GetPropertyCallData		GetPropertyCallData
+{LV.CIN}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CIN}	Load Code Resource	Path	
+{LV.CIN}	Move	position; owner; duplicate	
+{LV.CIN}	ObjHighlight		
+{LV.CIN}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CIN}	Replace	Style; Path; PaletteString	Replace
+{LV.CIN}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CIN}	Resize	bounds	
+{LV.CIN}	SetProperty	Index; Value	
+{LV.CIN}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CIN}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CIN}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.CallByRef}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CallByRef}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.CallByRef}	Delete		
+{LV.CallByRef}	GetProperty	Index	GetProperty
+{LV.CallByRef}	GetPropertyCallData		GetPropertyCallData
+{LV.CallByRef}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CallByRef}	Move	position; owner; duplicate	
+{LV.CallByRef}	ObjHighlight		
+{LV.CallByRef}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CallByRef}	Replace	Style; Path; PaletteString	Replace
+{LV.CallByRef}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CallByRef}	SetProperty	Index; Value	
+{LV.CallByRef}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CallByRef}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CallByRef}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.CallLibrary}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CallLibrary}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.CallLibrary}	Delete		
+{LV.CallLibrary}	GetProperty	Index	GetProperty
+{LV.CallLibrary}	GetPropertyCallData		GetPropertyCallData
+{LV.CallLibrary}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CallLibrary}	Move	position; owner; duplicate	
+{LV.CallLibrary}	ObjHighlight		
+{LV.CallLibrary}	Prototype	typedefs?	Proto; W/ TDefs
+{LV.CallLibrary}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CallLibrary}	Replace	Style; Path; PaletteString	Replace
+{LV.CallLibrary}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CallLibrary}	Resize	bounds	
+{LV.CallLibrary}	SetProperty	Index; Value	
+{LV.CallLibrary}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CallLibrary}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CallLibrary}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.CaseStructure}	Add Frame	Reference Frame Index; After? (T)	Add Frame
+{LV.CaseStructure}	Auto Size		
+{LV.CaseStructure}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CaseStructure}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.CaseStructure}	Delete		
+{LV.CaseStructure}	Duplicate Frame	Frame Index	Duplicate Frame
+{LV.CaseStructure}	GetProperty	Index	GetProperty
+{LV.CaseStructure}	GetPropertyCallData		GetPropertyCallData
+{LV.CaseStructure}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CaseStructure}	Move	position; owner; duplicate	
+{LV.CaseStructure}	ObjHighlight		
+{LV.CaseStructure}	Remove Empty Cases		
+{LV.CaseStructure}	Remove Frame	Frame Index	
+{LV.CaseStructure}	Remove Structure		
+{LV.CaseStructure}	RemoveCase	case	
+{LV.CaseStructure}	RemoveDefault		
+{LV.CaseStructure}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CaseStructure}	Replace	Style; Path; PaletteString	Replace
+{LV.CaseStructure}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CaseStructure}	SetDefaultCase	Index	
+{LV.CaseStructure}	SetProperty	Index; Value	
+{LV.CaseStructure}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CaseStructure}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CaseStructure}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ClassSpecifierConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ClassSpecifierConstant}	Delete		
+{LV.ClassSpecifierConstant}	Discon Typedef		Discon Typedef
+{LV.ClassSpecifierConstant}	GetProperty	Index	GetProperty
+{LV.ClassSpecifierConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ClassSpecifierConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ClassSpecifierConstant}	Move	position; owner; duplicate	
+{LV.ClassSpecifierConstant}	ObjHighlight		
+{LV.ClassSpecifierConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ClassSpecifierConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ClassSpecifierConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ClassSpecifierConstant}	SetProperty	Index; Value	
+{LV.ClassSpecifierConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ClassSpecifierConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ClassSpecifierConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ClassSpecifierConstant}	Update Typedef		Update Typedef
+{LV.ClusterConstant}	Auto Size		
+{LV.ClusterConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ClusterConstant}	Delete		
+{LV.ClusterConstant}	Discon Typedef		Discon Typedef
+{LV.ClusterConstant}	GetProperty	Index	GetProperty
+{LV.ClusterConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ClusterConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ClusterConstant}	Move	position; owner; duplicate	
+{LV.ClusterConstant}	ObjHighlight		
+{LV.ClusterConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ClusterConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ClusterConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ClusterConstant}	SetProperty	Index; Value	
+{LV.ClusterConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ClusterConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ClusterConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ClusterConstant}	Update Typedef		Update Typedef
+{LV.Cluster}	AttachDataSocket	url; mode; enabled	
+{LV.Cluster}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Cluster}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Cluster}	Create Control Ref		Create Control Ref
+{LV.Cluster}	Create Invoke Node		Create Invoke Node
+{LV.Cluster}	Create Local		Create Local
+{LV.Cluster}	Create Property Node		Create Property Node
+{LV.Cluster}	Delete		
+{LV.Cluster}	Discon Typedef		Discon Typedef
+{LV.Cluster}	Get Image	image depth; bg color	image data
+{LV.Cluster}	Get Term Image	image depth; background color	image data
+{LV.Cluster}	GetProperty	Index	GetProperty
+{LV.Cluster}	GetPropertyCallData		GetPropertyCallData
+{LV.Cluster}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Cluster}	Move	position; owner; duplicate	
+{LV.Cluster}	ObjHighlight		
+{LV.Cluster}	Reinit To Dflt		
+{LV.Cluster}	RemoveDataSocket		
+{LV.Cluster}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Cluster}	Replace	Style; Path; PaletteString	Replace
+{LV.Cluster}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Cluster}	Set Cluster Order	Element Refs	
+{LV.Cluster}	SetProperty	Index; Value	
+{LV.Cluster}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Cluster}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Cluster}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Cluster}	Update Typedef		Update Typedef
+{LV.ColorBoxConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ColorBoxConstant}	Delete		
+{LV.ColorBoxConstant}	Discon Typedef		Discon Typedef
+{LV.ColorBoxConstant}	GetProperty	Index	GetProperty
+{LV.ColorBoxConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ColorBoxConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ColorBoxConstant}	Move	position; owner; duplicate	
+{LV.ColorBoxConstant}	ObjHighlight		
+{LV.ColorBoxConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ColorBoxConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ColorBoxConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ColorBoxConstant}	SetProperty	Index; Value	
+{LV.ColorBoxConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ColorBoxConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ColorBoxConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ColorBoxConstant}	Update Typedef		Update Typedef
+{LV.ColorBox}	AttachDataSocket	url; mode; enabled	
+{LV.ColorBox}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ColorBox}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.ColorBox}	Create Control Ref		Create Control Ref
+{LV.ColorBox}	Create Invoke Node		Create Invoke Node
+{LV.ColorBox}	Create Local		Create Local
+{LV.ColorBox}	Create Property Node		Create Property Node
+{LV.ColorBox}	Delete		
+{LV.ColorBox}	Discon Typedef		Discon Typedef
+{LV.ColorBox}	Get Image	image depth; bg color	image data
+{LV.ColorBox}	Get Term Image	image depth; background color	image data
+{LV.ColorBox}	GetProperty	Index	GetProperty
+{LV.ColorBox}	GetPropertyCallData		GetPropertyCallData
+{LV.ColorBox}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ColorBox}	Move	position; owner; duplicate	
+{LV.ColorBox}	ObjHighlight		
+{LV.ColorBox}	Reinit To Dflt		
+{LV.ColorBox}	RemoveDataSocket		
+{LV.ColorBox}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ColorBox}	Replace	Style; Path; PaletteString	Replace
+{LV.ColorBox}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ColorBox}	SetProperty	Index; Value	
+{LV.ColorBox}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ColorBox}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ColorBox}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ColorBox}	Update Typedef		Update Typedef
+{LV.ColorGraphScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ColorGraphScale}	Delete		
+{LV.ColorGraphScale}	GetProperty	Index	GetProperty
+{LV.ColorGraphScale}	GetPropertyCallData		GetPropertyCallData
+{LV.ColorGraphScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ColorGraphScale}	Move	position; owner; duplicate	
+{LV.ColorGraphScale}	ObjHighlight		
+{LV.ColorGraphScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ColorGraphScale}	Replace	Style; Path; PaletteString	Replace
+{LV.ColorGraphScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ColorGraphScale}	SetProperty	Index; Value	
+{LV.ColorGraphScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ColorGraphScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ColorGraphScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ColorRamp}	AttachDataSocket	url; mode; enabled	
+{LV.ColorRamp}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ColorRamp}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.ColorRamp}	Create Control Ref		Create Control Ref
+{LV.ColorRamp}	Create Invoke Node		Create Invoke Node
+{LV.ColorRamp}	Create Local		Create Local
+{LV.ColorRamp}	Create Property Node		Create Property Node
+{LV.ColorRamp}	Delete		
+{LV.ColorRamp}	Discon Typedef		Discon Typedef
+{LV.ColorRamp}	Get Image	image depth; bg color	image data
+{LV.ColorRamp}	Get Term Image	image depth; background color	image data
+{LV.ColorRamp}	GetProperty	Index	GetProperty
+{LV.ColorRamp}	GetPropertyCallData		GetPropertyCallData
+{LV.ColorRamp}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ColorRamp}	Move	position; owner; duplicate	
+{LV.ColorRamp}	ObjHighlight		
+{LV.ColorRamp}	Reinit To Dflt		
+{LV.ColorRamp}	RemoveDataSocket		
+{LV.ColorRamp}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ColorRamp}	Replace	Style; Path; PaletteString	Replace
+{LV.ColorRamp}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ColorRamp}	SetProperty	Index; Value	
+{LV.ColorRamp}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ColorRamp}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ColorRamp}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ColorRamp}	Update Typedef		Update Typedef
+{LV.ColorScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ColorScale}	Delete		
+{LV.ColorScale}	GetProperty	Index	GetProperty
+{LV.ColorScale}	GetPropertyCallData		GetPropertyCallData
+{LV.ColorScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ColorScale}	Move	position; owner; duplicate	
+{LV.ColorScale}	ObjHighlight		
+{LV.ColorScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ColorScale}	Replace	Style; Path; PaletteString	Replace
+{LV.ColorScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ColorScale}	SetProperty	Index; Value	
+{LV.ColorScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ColorScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ColorScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ComboBoxConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ComboBoxConstant}	Delete		
+{LV.ComboBoxConstant}	Discon Typedef		Discon Typedef
+{LV.ComboBoxConstant}	GetProperty	Index	GetProperty
+{LV.ComboBoxConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ComboBoxConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ComboBoxConstant}	Move	position; owner; duplicate	
+{LV.ComboBoxConstant}	ObjHighlight		
+{LV.ComboBoxConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ComboBoxConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ComboBoxConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ComboBoxConstant}	SetProperty	Index; Value	
+{LV.ComboBoxConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ComboBoxConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ComboBoxConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ComboBoxConstant}	Update Typedef		Update Typedef
+{LV.ComboBox}	AttachDataSocket	url; mode; enabled	
+{LV.ComboBox}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ComboBox}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.ComboBox}	Create Control Ref		Create Control Ref
+{LV.ComboBox}	Create Invoke Node		Create Invoke Node
+{LV.ComboBox}	Create Local		Create Local
+{LV.ComboBox}	Create Property Node		Create Property Node
+{LV.ComboBox}	Delete		
+{LV.ComboBox}	Discon Typedef		Discon Typedef
+{LV.ComboBox}	Get Image	image depth; bg color	image data
+{LV.ComboBox}	Get Nth Line	index	text; start; end
+{LV.ComboBox}	Get Term Image	image depth; background color	image data
+{LV.ComboBox}	GetProperty	Index	GetProperty
+{LV.ComboBox}	GetPropertyCallData		GetPropertyCallData
+{LV.ComboBox}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ComboBox}	Move	position; owner; duplicate	
+{LV.ComboBox}	ObjHighlight		
+{LV.ComboBox}	Reinit To Dflt		
+{LV.ComboBox}	RemoveDataSocket		
+{LV.ComboBox}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ComboBox}	Replace	Style; Path; PaletteString	Replace
+{LV.ComboBox}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ComboBox}	SetProperty	Index; Value	
+{LV.ComboBox}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ComboBox}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ComboBox}	Size to Text		
+{LV.ComboBox}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ComboBox}	Update Typedef		Update Typedef
+{LV.CompanionDiagram}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CompanionDiagram}	Delete		
+{LV.CompanionDiagram}	GetProperty	Index	GetProperty
+{LV.CompanionDiagram}	GetPropertyCallData		GetPropertyCallData
+{LV.CompanionDiagram}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CompanionDiagram}	MakeSpace	Rect	
+{LV.CompanionDiagram}	Move	position; owner; duplicate	
+{LV.CompanionDiagram}	ObjHighlight		
+{LV.CompanionDiagram}	Paste	Pos	
+{LV.CompanionDiagram}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CompanionDiagram}	Replace	Style; Path; PaletteString	Replace
+{LV.CompanionDiagram}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CompanionDiagram}	Select All		
+{LV.CompanionDiagram}	SetProperty	Index; Value	
+{LV.CompanionDiagram}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CompanionDiagram}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CompanionDiagram}	ShrinkWrapStructs		
+{LV.CompanionDiagram}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Comparison}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Comparison}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Comparison}	Delete		
+{LV.Comparison}	GetProperty	Index	GetProperty
+{LV.Comparison}	GetPropertyCallData		GetPropertyCallData
+{LV.Comparison}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Comparison}	Move	position; owner; duplicate	
+{LV.Comparison}	ObjHighlight		
+{LV.Comparison}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Comparison}	Replace	Style; Path; PaletteString	Replace
+{LV.Comparison}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Comparison}	SetProperty	Index; Value	
+{LV.Comparison}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Comparison}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Comparison}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.CompoundArithmetic}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.CompoundArithmetic}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.CompoundArithmetic}	Delete		
+{LV.CompoundArithmetic}	GetProperty	Index	GetProperty
+{LV.CompoundArithmetic}	GetPropertyCallData		GetPropertyCallData
+{LV.CompoundArithmetic}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.CompoundArithmetic}	Move	position; owner; duplicate	
+{LV.CompoundArithmetic}	ObjHighlight		
+{LV.CompoundArithmetic}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.CompoundArithmetic}	Replace	Style; Path; PaletteString	Replace
+{LV.CompoundArithmetic}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.CompoundArithmetic}	Resize	bounds	
+{LV.CompoundArithmetic}	SetProperty	Index; Value	
+{LV.CompoundArithmetic}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.CompoundArithmetic}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.CompoundArithmetic}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ConfNode}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ConfNode}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ConfNode}	Delete		
+{LV.ConfNode}	FeedsThrough	term1; term2	FeedsThrough
+{LV.ConfNode}	GetProperty	Index	GetProperty
+{LV.ConfNode}	GetPropertyCallData		GetPropertyCallData
+{LV.ConfNode}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ConfNode}	Inline	mkspc; seqwrap	seqrefnum
+{LV.ConfNode}	Move	position; owner; duplicate	
+{LV.ConfNode}	ObjHighlight		
+{LV.ConfNode}	Relink To VI		Relink To VI
+{LV.ConfNode}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ConfNode}	Replace	Style; Path; PaletteString	Replace
+{LV.ConfNode}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ConfNode}	SetProperty	Index; Value	
+{LV.ConfNode}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ConfNode}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ConfNode}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ConnectorPane}	AssignCtrlToTerm	Control; TermIdx	
+{LV.ConnectorPane}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ConnectorPane}	Delete		
+{LV.ConnectorPane}	DiscAllTerms		
+{LV.ConnectorPane}	DiscTerm	TermIdx	
+{LV.ConnectorPane}	FlipHoriz		
+{LV.ConnectorPane}	FlipVert		
+{LV.ConnectorPane}	GetProperty	Index	GetProperty
+{LV.ConnectorPane}	GetPropertyCallData		GetPropertyCallData
+{LV.ConnectorPane}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ConnectorPane}	GetWiringRule	TermIdx	Get Wire Rule
+{LV.ConnectorPane}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ConnectorPane}	Rot90		
+{LV.ConnectorPane}	SetProperty	Index; Value	
+{LV.ConnectorPane}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ConnectorPane}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ConnectorPane}	SetWireRule	TermIdx; Rule	
+{LV.ConnectorPane}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Constant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Constant}	Delete		
+{LV.Constant}	Discon Typedef		Discon Typedef
+{LV.Constant}	GetProperty	Index	GetProperty
+{LV.Constant}	GetPropertyCallData		GetPropertyCallData
+{LV.Constant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Constant}	Move	position; owner; duplicate	
+{LV.Constant}	ObjHighlight		
+{LV.Constant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Constant}	Replace	Style; Path; PaletteString	Replace
+{LV.Constant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Constant}	SetProperty	Index; Value	
+{LV.Constant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Constant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Constant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Constant}	Update Typedef		Update Typedef
+{LV.ControlReferenceConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ControlReferenceConstant}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ControlReferenceConstant}	Delete		
+{LV.ControlReferenceConstant}	GetProperty	Index	GetProperty
+{LV.ControlReferenceConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.ControlReferenceConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ControlReferenceConstant}	Move	position; owner; duplicate	
+{LV.ControlReferenceConstant}	ObjHighlight		
+{LV.ControlReferenceConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ControlReferenceConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.ControlReferenceConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ControlReferenceConstant}	SetProperty	Index; Value	
+{LV.ControlReferenceConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ControlReferenceConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ControlReferenceConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ControlTerminal}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ControlTerminal}	Connect Wire	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ControlTerminal}	Create Constant	Value	Create Constant
+{LV.ControlTerminal}	Create Control	Value	Create Control
+{LV.ControlTerminal}	Create Described Wire	Wire Source; Wire Description; Auto Route? (F)	
+{LV.ControlTerminal}	Create Indicator		Create Indicator
+{LV.ControlTerminal}	Delete		
+{LV.ControlTerminal}	GetProperty	Index	GetProperty
+{LV.ControlTerminal}	GetPropertyCallData		GetPropertyCallData
+{LV.ControlTerminal}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ControlTerminal}	Move	position; owner; duplicate	
+{LV.ControlTerminal}	ObjHighlight		
+{LV.ControlTerminal}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ControlTerminal}	Replace	Style; Path; PaletteString	Replace
+{LV.ControlTerminal}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ControlTerminal}	SetProperty	Index; Value	
+{LV.ControlTerminal}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ControlTerminal}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ControlTerminal}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Control}	AttachDataSocket	url; mode; enabled	
+{LV.Control}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Control}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Control}	Create Control Ref		Create Control Ref
+{LV.Control}	Create Invoke Node		Create Invoke Node
+{LV.Control}	Create Local		Create Local
+{LV.Control}	Create Property Node		Create Property Node
+{LV.Control}	Delete		
+{LV.Control}	Discon Typedef		Discon Typedef
+{LV.Control}	Get Image	image depth; bg color	image data
+{LV.Control}	Get Term Image	image depth; background color	image data
+{LV.Control}	GetProperty	Index	GetProperty
+{LV.Control}	GetPropertyCallData		GetPropertyCallData
+{LV.Control}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Control}	Move	position; owner; duplicate	
+{LV.Control}	ObjHighlight		
+{LV.Control}	Reinit To Dflt		
+{LV.Control}	RemoveDataSocket		
+{LV.Control}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Control}	Replace	Style; Path; PaletteString	Replace
+{LV.Control}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Control}	SetProperty	Index; Value	
+{LV.Control}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Control}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Control}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Control}	Update Typedef		Update Typedef
+{LV.Cursor}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Cursor}	Delete		
+{LV.Cursor}	GetProperty	Index	GetProperty
+{LV.Cursor}	GetPropertyCallData		GetPropertyCallData
+{LV.Cursor}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Cursor}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Cursor}	SetProperty	Index; Value	
+{LV.Cursor}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Cursor}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Cursor}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DAQChannelNameConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DAQChannelNameConstant}	Delete		
+{LV.DAQChannelNameConstant}	Discon Typedef		Discon Typedef
+{LV.DAQChannelNameConstant}	GetProperty	Index	GetProperty
+{LV.DAQChannelNameConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.DAQChannelNameConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DAQChannelNameConstant}	Move	position; owner; duplicate	
+{LV.DAQChannelNameConstant}	ObjHighlight		
+{LV.DAQChannelNameConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DAQChannelNameConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.DAQChannelNameConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DAQChannelNameConstant}	SetProperty	Index; Value	
+{LV.DAQChannelNameConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DAQChannelNameConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DAQChannelNameConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DAQChannelNameConstant}	Update Typedef		Update Typedef
+{LV.DAQChannelName}	AttachDataSocket	url; mode; enabled	
+{LV.DAQChannelName}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DAQChannelName}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.DAQChannelName}	Create Control Ref		Create Control Ref
+{LV.DAQChannelName}	Create Invoke Node		Create Invoke Node
+{LV.DAQChannelName}	Create Local		Create Local
+{LV.DAQChannelName}	Create Property Node		Create Property Node
+{LV.DAQChannelName}	Delete		
+{LV.DAQChannelName}	Discon Typedef		Discon Typedef
+{LV.DAQChannelName}	Get Image	image depth; bg color	image data
+{LV.DAQChannelName}	Get Term Image	image depth; background color	image data
+{LV.DAQChannelName}	GetProperty	Index	GetProperty
+{LV.DAQChannelName}	GetPropertyCallData		GetPropertyCallData
+{LV.DAQChannelName}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DAQChannelName}	Move	position; owner; duplicate	
+{LV.DAQChannelName}	ObjHighlight		
+{LV.DAQChannelName}	Reinit To Dflt		
+{LV.DAQChannelName}	RemoveDataSocket		
+{LV.DAQChannelName}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DAQChannelName}	Replace	Style; Path; PaletteString	Replace
+{LV.DAQChannelName}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DAQChannelName}	SetProperty	Index; Value	
+{LV.DAQChannelName}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DAQChannelName}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DAQChannelName}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DAQChannelName}	Update Typedef		Update Typedef
+{LV.DAQmxNameConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DAQmxNameConstant}	Delete		
+{LV.DAQmxNameConstant}	Discon Typedef		Discon Typedef
+{LV.DAQmxNameConstant}	GetProperty	Index	GetProperty
+{LV.DAQmxNameConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.DAQmxNameConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DAQmxNameConstant}	Move	position; owner; duplicate	
+{LV.DAQmxNameConstant}	ObjHighlight		
+{LV.DAQmxNameConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DAQmxNameConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.DAQmxNameConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DAQmxNameConstant}	SetProperty	Index; Value	
+{LV.DAQmxNameConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DAQmxNameConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DAQmxNameConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DAQmxNameConstant}	Update Typedef		Update Typedef
+{LV.DAQmxName}	AttachDataSocket	url; mode; enabled	
+{LV.DAQmxName}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DAQmxName}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.DAQmxName}	Create Control Ref		Create Control Ref
+{LV.DAQmxName}	Create Invoke Node		Create Invoke Node
+{LV.DAQmxName}	Create Local		Create Local
+{LV.DAQmxName}	Create Property Node		Create Property Node
+{LV.DAQmxName}	Delete		
+{LV.DAQmxName}	Discon Typedef		Discon Typedef
+{LV.DAQmxName}	Get Image	image depth; bg color	image data
+{LV.DAQmxName}	Get Term Image	image depth; background color	image data
+{LV.DAQmxName}	GetProperty	Index	GetProperty
+{LV.DAQmxName}	GetPropertyCallData		GetPropertyCallData
+{LV.DAQmxName}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DAQmxName}	Move	position; owner; duplicate	
+{LV.DAQmxName}	ObjHighlight		
+{LV.DAQmxName}	Reinit To Dflt		
+{LV.DAQmxName}	RemoveDataSocket		
+{LV.DAQmxName}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DAQmxName}	Replace	Style; Path; PaletteString	Replace
+{LV.DAQmxName}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DAQmxName}	SetProperty	Index; Value	
+{LV.DAQmxName}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DAQmxName}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DAQmxName}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DAQmxName}	Update Typedef		Update Typedef
+{LV.DSCTagConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DSCTagConstant}	Delete		
+{LV.DSCTagConstant}	Discon Typedef		Discon Typedef
+{LV.DSCTagConstant}	GetProperty	Index	GetProperty
+{LV.DSCTagConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.DSCTagConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DSCTagConstant}	Move	position; owner; duplicate	
+{LV.DSCTagConstant}	ObjHighlight		
+{LV.DSCTagConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DSCTagConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.DSCTagConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DSCTagConstant}	SetProperty	Index; Value	
+{LV.DSCTagConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DSCTagConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DSCTagConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DSCTagConstant}	Update Typedef		Update Typedef
+{LV.Decoration}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Decoration}	Delete		
+{LV.Decoration}	GetProperty	Index	GetProperty
+{LV.Decoration}	GetPropertyCallData		GetPropertyCallData
+{LV.Decoration}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Decoration}	Move	position; owner; duplicate	
+{LV.Decoration}	ObjHighlight		
+{LV.Decoration}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Decoration}	Replace	Style; Path; PaletteString	Replace
+{LV.Decoration}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Decoration}	SetProperty	Index; Value	
+{LV.Decoration}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Decoration}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Decoration}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Diagram}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Diagram}	Delete		
+{LV.Diagram}	GetProperty	Index	GetProperty
+{LV.Diagram}	GetPropertyCallData		GetPropertyCallData
+{LV.Diagram}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Diagram}	MakeSpace	Rect	
+{LV.Diagram}	Move	position; owner; duplicate	
+{LV.Diagram}	ObjHighlight		
+{LV.Diagram}	Paste	Pos	
+{LV.Diagram}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Diagram}	Replace	Style; Path; PaletteString	Replace
+{LV.Diagram}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Diagram}	Select All		
+{LV.Diagram}	SetProperty	Index; Value	
+{LV.Diagram}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Diagram}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Diagram}	ShrinkWrapStructs		
+{LV.Diagram}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DigitalNumericConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DigitalNumericConstant}	Delete		
+{LV.DigitalNumericConstant}	Discon Typedef		Discon Typedef
+{LV.DigitalNumericConstant}	GetProperty	Index	GetProperty
+{LV.DigitalNumericConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.DigitalNumericConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DigitalNumericConstant}	Move	position; owner; duplicate	
+{LV.DigitalNumericConstant}	ObjHighlight		
+{LV.DigitalNumericConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DigitalNumericConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.DigitalNumericConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DigitalNumericConstant}	SetProperty	Index; Value	
+{LV.DigitalNumericConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DigitalNumericConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DigitalNumericConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DigitalNumericConstant}	Update Typedef		Update Typedef
+{LV.DigitalTable}	AttachDataSocket	url; mode; enabled	
+{LV.DigitalTable}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.DigitalTable}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.DigitalTable}	Create Control Ref		Create Control Ref
+{LV.DigitalTable}	Create Invoke Node		Create Invoke Node
+{LV.DigitalTable}	Create Local		Create Local
+{LV.DigitalTable}	Create Property Node		Create Property Node
+{LV.DigitalTable}	Delete		
+{LV.DigitalTable}	Discon Typedef		Discon Typedef
+{LV.DigitalTable}	Get Image	image depth; bg color	image data
+{LV.DigitalTable}	Get Term Image	image depth; background color	image data
+{LV.DigitalTable}	GetProperty	Index	GetProperty
+{LV.DigitalTable}	GetPropertyCallData		GetPropertyCallData
+{LV.DigitalTable}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.DigitalTable}	Move	position; owner; duplicate	
+{LV.DigitalTable}	ObjHighlight		
+{LV.DigitalTable}	Reinit To Dflt		
+{LV.DigitalTable}	RemoveDataSocket		
+{LV.DigitalTable}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.DigitalTable}	Replace	Style; Path; PaletteString	Replace
+{LV.DigitalTable}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.DigitalTable}	SetProperty	Index; Value	
+{LV.DigitalTable}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.DigitalTable}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.DigitalTable}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.DigitalTable}	Update Typedef		Update Typedef
+{LV.Digital}	AttachDataSocket	url; mode; enabled	
+{LV.Digital}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Digital}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Digital}	Create Control Ref		Create Control Ref
+{LV.Digital}	Create Invoke Node		Create Invoke Node
+{LV.Digital}	Create Local		Create Local
+{LV.Digital}	Create Property Node		Create Property Node
+{LV.Digital}	Delete		
+{LV.Digital}	Discon Typedef		Discon Typedef
+{LV.Digital}	Get Image	image depth; bg color	image data
+{LV.Digital}	Get Term Image	image depth; background color	image data
+{LV.Digital}	GetProperty	Index	GetProperty
+{LV.Digital}	GetPropertyCallData		GetPropertyCallData
+{LV.Digital}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Digital}	Move	position; owner; duplicate	
+{LV.Digital}	ObjHighlight		
+{LV.Digital}	Reinit To Dflt		
+{LV.Digital}	RemoveDataSocket		
+{LV.Digital}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Digital}	Replace	Style; Path; PaletteString	Replace
+{LV.Digital}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Digital}	SetProperty	Index; Value	
+{LV.Digital}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Digital}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Digital}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Digital}	Update Typedef		Update Typedef
+{LV.EnumConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.EnumConstant}	Delete		
+{LV.EnumConstant}	Discon Typedef		Discon Typedef
+{LV.EnumConstant}	GetProperty	Index	GetProperty
+{LV.EnumConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.EnumConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.EnumConstant}	Move	position; owner; duplicate	
+{LV.EnumConstant}	ObjHighlight		
+{LV.EnumConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.EnumConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.EnumConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.EnumConstant}	SetProperty	Index; Value	
+{LV.EnumConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.EnumConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.EnumConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.EnumConstant}	Update Typedef		Update Typedef
+{LV.Enum}	AttachDataSocket	url; mode; enabled	
+{LV.Enum}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Enum}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Enum}	Create Control Ref		Create Control Ref
+{LV.Enum}	Create Invoke Node		Create Invoke Node
+{LV.Enum}	Create Local		Create Local
+{LV.Enum}	Create Property Node		Create Property Node
+{LV.Enum}	Delete		
+{LV.Enum}	Discon Typedef		Discon Typedef
+{LV.Enum}	Get Image	image depth; bg color	image data
+{LV.Enum}	Get Term Image	image depth; background color	image data
+{LV.Enum}	GetProperty	Index	GetProperty
+{LV.Enum}	GetPropertyCallData		GetPropertyCallData
+{LV.Enum}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Enum}	Move	position; owner; duplicate	
+{LV.Enum}	ObjHighlight		
+{LV.Enum}	Reinit To Dflt		
+{LV.Enum}	RemoveDataSocket		
+{LV.Enum}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Enum}	Replace	Style; Path; PaletteString	Replace
+{LV.Enum}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Enum}	SetProperty	Index; Value	
+{LV.Enum}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Enum}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Enum}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Enum}	Update Typedef		Update Typedef
+{LV.EventStructure}	Add Frame	Reference Frame Index; After? (T)	Add Frame
+{LV.EventStructure}	Auto Size		
+{LV.EventStructure}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.EventStructure}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.EventStructure}	Delete		
+{LV.EventStructure}	Duplicate Frame	Frame Index	Duplicate Frame
+{LV.EventStructure}	GetProperty	Index	GetProperty
+{LV.EventStructure}	GetPropertyCallData		GetPropertyCallData
+{LV.EventStructure}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.EventStructure}	Move	position; owner; duplicate	
+{LV.EventStructure}	ObjHighlight		
+{LV.EventStructure}	Remove Frame	Frame Index	
+{LV.EventStructure}	Remove Structure		
+{LV.EventStructure}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.EventStructure}	Replace	Style; Path; PaletteString	Replace
+{LV.EventStructure}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.EventStructure}	SetProperty	Index; Value	
+{LV.EventStructure}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.EventStructure}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.EventStructure}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ExternalNode}	Add Frame	Reference Frame Index; After? (T)	Add Frame
+{LV.ExternalNode}	Add Sequence Local	Edge; Position	Add Sequence Local
+{LV.ExternalNode}	Auto Size		
+{LV.ExternalNode}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ExternalNode}	CallGovVIPropTypes		
+{LV.ExternalNode}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ExternalNode}	Delete		
+{LV.ExternalNode}	Duplicate Frame	Frame Index	Duplicate Frame
+{LV.ExternalNode}	GetProperty	Index	GetProperty
+{LV.ExternalNode}	GetPropertyCallData		GetPropertyCallData
+{LV.ExternalNode}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ExternalNode}	Move	position; owner; duplicate	
+{LV.ExternalNode}	ObjHighlight		
+{LV.ExternalNode}	Prop Types	NodesIn; NodesOut	NodesIn; NodesOut
+{LV.ExternalNode}	Remove Frame	Frame Index	
+{LV.ExternalNode}	Remove Structure		
+{LV.ExternalNode}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ExternalNode}	Replace	Style; Path; PaletteString	Replace
+{LV.ExternalNode}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ExternalNode}	SetProperty	Index; Value	
+{LV.ExternalNode}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ExternalNode}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ExternalNode}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FixedConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FixedConstant}	Delete		
+{LV.FixedConstant}	Discon Typedef		Discon Typedef
+{LV.FixedConstant}	GetProperty	Index	GetProperty
+{LV.FixedConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.FixedConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FixedConstant}	Move	position; owner; duplicate	
+{LV.FixedConstant}	ObjHighlight		
+{LV.FixedConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FixedConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.FixedConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FixedConstant}	SetProperty	Index; Value	
+{LV.FixedConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FixedConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FixedConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FixedConstant}	Update Typedef		Update Typedef
+{LV.FlatSequenceFrame}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FlatSequenceFrame}	Delete		
+{LV.FlatSequenceFrame}	GetProperty	Index	GetProperty
+{LV.FlatSequenceFrame}	GetPropertyCallData		GetPropertyCallData
+{LV.FlatSequenceFrame}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FlatSequenceFrame}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FlatSequenceFrame}	SetProperty	Index; Value	
+{LV.FlatSequenceFrame}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FlatSequenceFrame}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FlatSequenceFrame}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FlatSequenceInnerTunnel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FlatSequenceInnerTunnel}	Delete		
+{LV.FlatSequenceInnerTunnel}	GetProperty	Index	GetProperty
+{LV.FlatSequenceInnerTunnel}	GetPropertyCallData		GetPropertyCallData
+{LV.FlatSequenceInnerTunnel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FlatSequenceInnerTunnel}	Move	position; owner; duplicate	
+{LV.FlatSequenceInnerTunnel}	ObjHighlight		
+{LV.FlatSequenceInnerTunnel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FlatSequenceInnerTunnel}	Replace	Style; Path; PaletteString	Replace
+{LV.FlatSequenceInnerTunnel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FlatSequenceInnerTunnel}	SetProperty	Index; Value	
+{LV.FlatSequenceInnerTunnel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FlatSequenceInnerTunnel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FlatSequenceInnerTunnel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FlatSequenceOuterTunnel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FlatSequenceOuterTunnel}	Delete		
+{LV.FlatSequenceOuterTunnel}	GetProperty	Index	GetProperty
+{LV.FlatSequenceOuterTunnel}	GetPropertyCallData		GetPropertyCallData
+{LV.FlatSequenceOuterTunnel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FlatSequenceOuterTunnel}	Move	position; owner; duplicate	
+{LV.FlatSequenceOuterTunnel}	ObjHighlight		
+{LV.FlatSequenceOuterTunnel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FlatSequenceOuterTunnel}	Replace	Style; Path; PaletteString	Replace
+{LV.FlatSequenceOuterTunnel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FlatSequenceOuterTunnel}	SetProperty	Index; Value	
+{LV.FlatSequenceOuterTunnel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FlatSequenceOuterTunnel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FlatSequenceOuterTunnel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FlatSequence}	Add Frame	Reference Frame Index; After(T)	Add Frame
+{LV.FlatSequence}	Auto Size		
+{LV.FlatSequence}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FlatSequence}	Delete		
+{LV.FlatSequence}	GetProperty	Index	GetProperty
+{LV.FlatSequence}	GetPropertyCallData		GetPropertyCallData
+{LV.FlatSequence}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FlatSequence}	Move	position; owner; duplicate	
+{LV.FlatSequence}	ObjHighlight		
+{LV.FlatSequence}	Remove Flat Sequence		
+{LV.FlatSequence}	Remove Frame	Reference Frame Index	
+{LV.FlatSequence}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FlatSequence}	Replace	Style; Path; PaletteString	Replace
+{LV.FlatSequence}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FlatSequence}	SetProperty	Index; Value	
+{LV.FlatSequence}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FlatSequence}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FlatSequence}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FlattenUnflattenString}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FlattenUnflattenString}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.FlattenUnflattenString}	Delete		
+{LV.FlattenUnflattenString}	GetProperty	Index	GetProperty
+{LV.FlattenUnflattenString}	GetPropertyCallData		GetPropertyCallData
+{LV.FlattenUnflattenString}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FlattenUnflattenString}	Move	position; owner; duplicate	
+{LV.FlattenUnflattenString}	ObjHighlight		
+{LV.FlattenUnflattenString}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FlattenUnflattenString}	Replace	Style; Path; PaletteString	Replace
+{LV.FlattenUnflattenString}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FlattenUnflattenString}	SetProperty	Index; Value	
+{LV.FlattenUnflattenString}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FlattenUnflattenString}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FlattenUnflattenString}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ForLoop}	Add Shift Register	Y Position	Add Shift Register
+{LV.ForLoop}	Auto Size		
+{LV.ForLoop}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ForLoop}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ForLoop}	Delete		
+{LV.ForLoop}	GetProperty	Index	GetProperty
+{LV.ForLoop}	GetPropertyCallData		GetPropertyCallData
+{LV.ForLoop}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ForLoop}	Move	position; owner; duplicate	
+{LV.ForLoop}	ObjHighlight		
+{LV.ForLoop}	Remove Structure		
+{LV.ForLoop}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ForLoop}	Replace	Style; Path; PaletteString	Replace
+{LV.ForLoop}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ForLoop}	SetProperty	Index; Value	
+{LV.ForLoop}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ForLoop}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ForLoop}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FormatScanString}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FormatScanString}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.FormatScanString}	Delete		
+{LV.FormatScanString}	GetProperty	Index	GetProperty
+{LV.FormatScanString}	GetPropertyCallData		GetPropertyCallData
+{LV.FormatScanString}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FormatScanString}	Move	position; owner; duplicate	
+{LV.FormatScanString}	ObjHighlight		
+{LV.FormatScanString}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FormatScanString}	Replace	Style; Path; PaletteString	Replace
+{LV.FormatScanString}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FormatScanString}	Resize	bounds	
+{LV.FormatScanString}	SetProperty	Index; Value	
+{LV.FormatScanString}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FormatScanString}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FormatScanString}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.FormulaParameter}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.FormulaParameter}	Delete		
+{LV.FormulaParameter}	GetProperty	Index	GetProperty
+{LV.FormulaParameter}	GetPropertyCallData		GetPropertyCallData
+{LV.FormulaParameter}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.FormulaParameter}	Move	position; owner; duplicate	
+{LV.FormulaParameter}	ObjHighlight		
+{LV.FormulaParameter}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.FormulaParameter}	Replace	Style; Path; PaletteString	Replace
+{LV.FormulaParameter}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.FormulaParameter}	SetProperty	Index; Value	
+{LV.FormulaParameter}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.FormulaParameter}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.FormulaParameter}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Formula}	Add Input	Position; Name	Add Input
+{LV.Formula}	Add Output	Position; Name	Add Output
+{LV.Formula}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Formula}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Formula}	Delete		
+{LV.Formula}	GetProperty	Index	GetProperty
+{LV.Formula}	GetPropertyCallData		GetPropertyCallData
+{LV.Formula}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Formula}	Move	position; owner; duplicate	
+{LV.Formula}	ObjHighlight		
+{LV.Formula}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Formula}	Replace	Style; Path; PaletteString	Replace
+{LV.Formula}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Formula}	SetProperty	Index; Value	
+{LV.Formula}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Formula}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Formula}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Function}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Function}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Function}	Delete		
+{LV.Function}	GetProperty	Index	GetProperty
+{LV.Function}	GetPropertyCallData		GetPropertyCallData
+{LV.Function}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Function}	Move	position; owner; duplicate	
+{LV.Function}	ObjHighlight		
+{LV.Function}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Function}	Replace	Style; Path; PaletteString	Replace
+{LV.Function}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Function}	SetProperty	Index; Value	
+{LV.Function}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Function}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Function}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.GObject}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.GObject}	Delete		
+{LV.GObject}	GetProperty	Index	GetProperty
+{LV.GObject}	GetPropertyCallData		GetPropertyCallData
+{LV.GObject}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.GObject}	Move	position; owner; duplicate	
+{LV.GObject}	ObjHighlight		
+{LV.GObject}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.GObject}	Replace	Style; Path; PaletteString	Replace
+{LV.GObject}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.GObject}	SetProperty	Index; Value	
+{LV.GObject}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.GObject}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.GObject}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.GPIBReadWrite}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.GPIBReadWrite}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.GPIBReadWrite}	Delete		
+{LV.GPIBReadWrite}	GetProperty	Index	GetProperty
+{LV.GPIBReadWrite}	GetPropertyCallData		GetPropertyCallData
+{LV.GPIBReadWrite}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.GPIBReadWrite}	Move	position; owner; duplicate	
+{LV.GPIBReadWrite}	ObjHighlight		
+{LV.GPIBReadWrite}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.GPIBReadWrite}	Replace	Style; Path; PaletteString	Replace
+{LV.GPIBReadWrite}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.GPIBReadWrite}	SetProperty	Index; Value	
+{LV.GPIBReadWrite}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.GPIBReadWrite}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.GPIBReadWrite}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Generic}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Generic}	Delete		
+{LV.Generic}	GetProperty	Index	GetProperty
+{LV.Generic}	GetPropertyCallData		GetPropertyCallData
+{LV.Generic}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Generic}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Generic}	SetProperty	Index; Value	
+{LV.Generic}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Generic}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Generic}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Global}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Global}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Global}	Delete		
+{LV.Global}	GetProperty	Index	GetProperty
+{LV.Global}	GetPropertyCallData		GetPropertyCallData
+{LV.Global}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Global}	Move	position; owner; duplicate	
+{LV.Global}	ObjHighlight		
+{LV.Global}	Relink To VI		
+{LV.Global}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Global}	Replace	Style; Path; PaletteString	Replace
+{LV.Global}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Global}	SetProperty	Index; Value	
+{LV.Global}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Global}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Global}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.GraphChart}	AttachDataSocket	url; mode; enabled	
+{LV.GraphChart}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.GraphChart}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.GraphChart}	Create Control Ref		Create Control Ref
+{LV.GraphChart}	Create Invoke Node		Create Invoke Node
+{LV.GraphChart}	Create Local		Create Local
+{LV.GraphChart}	Create Property Node		Create Property Node
+{LV.GraphChart}	Delete		
+{LV.GraphChart}	Discon Typedef		Discon Typedef
+{LV.GraphChart}	Get Image	image depth; bg color	image data
+{LV.GraphChart}	Get Term Image	image depth; background color	image data
+{LV.GraphChart}	GetProperty	Index	GetProperty
+{LV.GraphChart}	GetPropertyCallData		GetPropertyCallData
+{LV.GraphChart}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.GraphChart}	Map Coords To XY	Coords; X Scale; Y Scale	Map Coords To XY; XY
+{LV.GraphChart}	Move	position; owner; duplicate	
+{LV.GraphChart}	ObjHighlight		
+{LV.GraphChart}	Reinit To Dflt		
+{LV.GraphChart}	RemoveDataSocket		
+{LV.GraphChart}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.GraphChart}	Replace	Style; Path; PaletteString	Replace
+{LV.GraphChart}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.GraphChart}	SetProperty	Index; Value	
+{LV.GraphChart}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.GraphChart}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.GraphChart}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.GraphChart}	Update Typedef		Update Typedef
+{LV.GraphScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.GraphScale}	Delete		
+{LV.GraphScale}	GetProperty	Index	GetProperty
+{LV.GraphScale}	GetPropertyCallData		GetPropertyCallData
+{LV.GraphScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.GraphScale}	Move	position; owner; duplicate	
+{LV.GraphScale}	ObjHighlight		
+{LV.GraphScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.GraphScale}	Replace	Style; Path; PaletteString	Replace
+{LV.GraphScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.GraphScale}	SetProperty	Index; Value	
+{LV.GraphScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.GraphScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.GraphScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.GrowableFunction}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.GrowableFunction}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.GrowableFunction}	Delete		
+{LV.GrowableFunction}	GetProperty	Index	GetProperty
+{LV.GrowableFunction}	GetPropertyCallData		GetPropertyCallData
+{LV.GrowableFunction}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.GrowableFunction}	Move	position; owner; duplicate	
+{LV.GrowableFunction}	ObjHighlight		
+{LV.GrowableFunction}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.GrowableFunction}	Replace	Style; Path; PaletteString	Replace
+{LV.GrowableFunction}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.GrowableFunction}	Resize	bounds	
+{LV.GrowableFunction}	SetProperty	Index; Value	
+{LV.GrowableFunction}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.GrowableFunction}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.GrowableFunction}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IONameConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IONameConstant}	Delete		
+{LV.IONameConstant}	Discon Typedef		Discon Typedef
+{LV.IONameConstant}	GetProperty	Index	GetProperty
+{LV.IONameConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.IONameConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IONameConstant}	Move	position; owner; duplicate	
+{LV.IONameConstant}	ObjHighlight		
+{LV.IONameConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IONameConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.IONameConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IONameConstant}	SetProperty	Index; Value	
+{LV.IONameConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IONameConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IONameConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IONameConstant}	Update Typedef		Update Typedef
+{LV.IOName}	AttachDataSocket	url; mode; enabled	
+{LV.IOName}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IOName}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.IOName}	Create Control Ref		Create Control Ref
+{LV.IOName}	Create Invoke Node		Create Invoke Node
+{LV.IOName}	Create Local		Create Local
+{LV.IOName}	Create Property Node		Create Property Node
+{LV.IOName}	Delete		
+{LV.IOName}	Discon Typedef		Discon Typedef
+{LV.IOName}	Get Image	image depth; bg color	image data
+{LV.IOName}	Get Term Image	image depth; background color	image data
+{LV.IOName}	GetProperty	Index	GetProperty
+{LV.IOName}	GetPropertyCallData		GetPropertyCallData
+{LV.IOName}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IOName}	Move	position; owner; duplicate	
+{LV.IOName}	ObjHighlight		
+{LV.IOName}	Reinit To Dflt		
+{LV.IOName}	RemoveDataSocket		
+{LV.IOName}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IOName}	Replace	Style; Path; PaletteString	Replace
+{LV.IOName}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IOName}	SetProperty	Index; Value	
+{LV.IOName}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IOName}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IOName}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IOName}	Update Typedef		Update Typedef
+{LV.IVILogicalNameConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IVILogicalNameConstant}	Delete		
+{LV.IVILogicalNameConstant}	Discon Typedef		Discon Typedef
+{LV.IVILogicalNameConstant}	GetProperty	Index	GetProperty
+{LV.IVILogicalNameConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.IVILogicalNameConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IVILogicalNameConstant}	Move	position; owner; duplicate	
+{LV.IVILogicalNameConstant}	ObjHighlight		
+{LV.IVILogicalNameConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IVILogicalNameConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.IVILogicalNameConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IVILogicalNameConstant}	SetClassName	ClassName	
+{LV.IVILogicalNameConstant}	SetProperty	Index; Value	
+{LV.IVILogicalNameConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IVILogicalNameConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IVILogicalNameConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IVILogicalNameConstant}	Update Typedef		Update Typedef
+{LV.IVILogicalName}	AttachDataSocket	url; mode; enabled	
+{LV.IVILogicalName}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IVILogicalName}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.IVILogicalName}	Create Control Ref		Create Control Ref
+{LV.IVILogicalName}	Create Invoke Node		Create Invoke Node
+{LV.IVILogicalName}	Create Local		Create Local
+{LV.IVILogicalName}	Create Property Node		Create Property Node
+{LV.IVILogicalName}	Delete		
+{LV.IVILogicalName}	Discon Typedef		Discon Typedef
+{LV.IVILogicalName}	Get Image	image depth; bg color	image data
+{LV.IVILogicalName}	Get Term Image	image depth; background color	image data
+{LV.IVILogicalName}	GetProperty	Index	GetProperty
+{LV.IVILogicalName}	GetPropertyCallData		GetPropertyCallData
+{LV.IVILogicalName}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IVILogicalName}	Move	position; owner; duplicate	
+{LV.IVILogicalName}	ObjHighlight		
+{LV.IVILogicalName}	Reinit To Dflt		
+{LV.IVILogicalName}	RemoveDataSocket		
+{LV.IVILogicalName}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IVILogicalName}	Replace	Style; Path; PaletteString	Replace
+{LV.IVILogicalName}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IVILogicalName}	SetClassName	ClassName	
+{LV.IVILogicalName}	SetProperty	Index; Value	
+{LV.IVILogicalName}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IVILogicalName}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IVILogicalName}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IVILogicalName}	Update Typedef		Update Typedef
+{LV.IndexArray}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IndexArray}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.IndexArray}	Delete		
+{LV.IndexArray}	GetProperty	Index	GetProperty
+{LV.IndexArray}	GetPropertyCallData		GetPropertyCallData
+{LV.IndexArray}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IndexArray}	Move	position; owner; duplicate	
+{LV.IndexArray}	ObjHighlight		
+{LV.IndexArray}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IndexArray}	Replace	Style; Path; PaletteString	Replace
+{LV.IndexArray}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IndexArray}	Resize	bounds	
+{LV.IndexArray}	SetProperty	Index; Value	
+{LV.IndexArray}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IndexArray}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IndexArray}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.InnerTerminal}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.InnerTerminal}	Connect Wire	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.InnerTerminal}	Create Constant	Value	Create Constant
+{LV.InnerTerminal}	Create Control	Value	Create Control
+{LV.InnerTerminal}	Create Described Wire	Wire Source; Wire Description; Auto Route? (F)	
+{LV.InnerTerminal}	Create Indicator		Create Indicator
+{LV.InnerTerminal}	Delete		
+{LV.InnerTerminal}	GetProperty	Index	GetProperty
+{LV.InnerTerminal}	GetPropertyCallData		GetPropertyCallData
+{LV.InnerTerminal}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.InnerTerminal}	Move	position; owner; duplicate	
+{LV.InnerTerminal}	ObjHighlight		
+{LV.InnerTerminal}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.InnerTerminal}	Replace	Style; Path; PaletteString	Replace
+{LV.InnerTerminal}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.InnerTerminal}	SetProperty	Index; Value	
+{LV.InnerTerminal}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.InnerTerminal}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.InnerTerminal}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IntensityChart}	AttachDataSocket	url; mode; enabled	
+{LV.IntensityChart}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IntensityChart}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.IntensityChart}	Create Control Ref		Create Control Ref
+{LV.IntensityChart}	Create Invoke Node		Create Invoke Node
+{LV.IntensityChart}	Create Local		Create Local
+{LV.IntensityChart}	Create Property Node		Create Property Node
+{LV.IntensityChart}	Delete		
+{LV.IntensityChart}	Discon Typedef		Discon Typedef
+{LV.IntensityChart}	Get Image	image depth; bg color	image data
+{LV.IntensityChart}	Get Term Image	image depth; background color	image data
+{LV.IntensityChart}	GetProperty	Index	GetProperty
+{LV.IntensityChart}	GetPropertyCallData		GetPropertyCallData
+{LV.IntensityChart}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IntensityChart}	Map Coords To XY	Coords; X Scale; Y Scale	Map Coords To XY; XY
+{LV.IntensityChart}	Move	position; owner; duplicate	
+{LV.IntensityChart}	ObjHighlight		
+{LV.IntensityChart}	Reinit To Dflt		
+{LV.IntensityChart}	RemoveDataSocket		
+{LV.IntensityChart}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IntensityChart}	Replace	Style; Path; PaletteString	Replace
+{LV.IntensityChart}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IntensityChart}	SetProperty	Index; Value	
+{LV.IntensityChart}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IntensityChart}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IntensityChart}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IntensityChart}	Update Typedef		Update Typedef
+{LV.IntensityGraph}	AttachDataSocket	url; mode; enabled	
+{LV.IntensityGraph}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.IntensityGraph}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.IntensityGraph}	Create Control Ref		Create Control Ref
+{LV.IntensityGraph}	Create Invoke Node		Create Invoke Node
+{LV.IntensityGraph}	Create Local		Create Local
+{LV.IntensityGraph}	Create Property Node		Create Property Node
+{LV.IntensityGraph}	Delete		
+{LV.IntensityGraph}	Discon Typedef		Discon Typedef
+{LV.IntensityGraph}	Get Image	image depth; bg color	image data
+{LV.IntensityGraph}	Get Term Image	image depth; background color	image data
+{LV.IntensityGraph}	GetProperty	Index	GetProperty
+{LV.IntensityGraph}	GetPropertyCallData		GetPropertyCallData
+{LV.IntensityGraph}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.IntensityGraph}	Map Coords To XY	Coords; X Scale; Y Scale	Map Coords To XY; XY
+{LV.IntensityGraph}	Move	position; owner; duplicate	
+{LV.IntensityGraph}	ObjHighlight		
+{LV.IntensityGraph}	Reinit To Dflt		
+{LV.IntensityGraph}	RemoveDataSocket		
+{LV.IntensityGraph}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.IntensityGraph}	Replace	Style; Path; PaletteString	Replace
+{LV.IntensityGraph}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.IntensityGraph}	SetProperty	Index; Value	
+{LV.IntensityGraph}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.IntensityGraph}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.IntensityGraph}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.IntensityGraph}	Update Typedef		Update Typedef
+{LV.Invoke}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Invoke}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Invoke}	Delete		
+{LV.Invoke}	GetProperty	Index	GetProperty
+{LV.Invoke}	GetPropertyCallData		GetPropertyCallData
+{LV.Invoke}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Invoke}	Move	position; owner; duplicate	
+{LV.Invoke}	ObjHighlight		
+{LV.Invoke}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Invoke}	Replace	Style; Path; PaletteString	Replace
+{LV.Invoke}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Invoke}	Resize	bounds	
+{LV.Invoke}	SetProperty	Index; Value	
+{LV.Invoke}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Invoke}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Invoke}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Knob}	Add Slider		
+{LV.Knob}	AttachDataSocket	url; mode; enabled	
+{LV.Knob}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Knob}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Knob}	Create Control Ref		Create Control Ref
+{LV.Knob}	Create Invoke Node		Create Invoke Node
+{LV.Knob}	Create Local		Create Local
+{LV.Knob}	Create Property Node		Create Property Node
+{LV.Knob}	Delete		
+{LV.Knob}	Delete Slider		
+{LV.Knob}	Discon Typedef		Discon Typedef
+{LV.Knob}	Get Image	image depth; bg color	image data
+{LV.Knob}	Get Term Image	image depth; background color	image data
+{LV.Knob}	GetProperty	Index	GetProperty
+{LV.Knob}	GetPropertyCallData		GetPropertyCallData
+{LV.Knob}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Knob}	Move	position; owner; duplicate	
+{LV.Knob}	ObjHighlight		
+{LV.Knob}	Reinit To Dflt		
+{LV.Knob}	RemoveDataSocket		
+{LV.Knob}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Knob}	Replace	Style; Path; PaletteString	Replace
+{LV.Knob}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Knob}	SetProperty	Index; Value	
+{LV.Knob}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Knob}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Knob}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Knob}	Update Typedef		Update Typedef
+{LV.LVVariant}	AttachDataSocket	url; mode; enabled	
+{LV.LVVariant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.LVVariant}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.LVVariant}	Create Control Ref		Create Control Ref
+{LV.LVVariant}	Create Invoke Node		Create Invoke Node
+{LV.LVVariant}	Create Local		Create Local
+{LV.LVVariant}	Create Property Node		Create Property Node
+{LV.LVVariant}	Delete		
+{LV.LVVariant}	Discon Typedef		Discon Typedef
+{LV.LVVariant}	Get Image	image depth; bg color	image data
+{LV.LVVariant}	Get Term Image	image depth; background color	image data
+{LV.LVVariant}	GetProperty	Index	GetProperty
+{LV.LVVariant}	GetPropertyCallData		GetPropertyCallData
+{LV.LVVariant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.LVVariant}	Move	position; owner; duplicate	
+{LV.LVVariant}	ObjHighlight		
+{LV.LVVariant}	Reinit To Dflt		
+{LV.LVVariant}	RemoveDataSocket		
+{LV.LVVariant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.LVVariant}	Replace	Style; Path; PaletteString	Replace
+{LV.LVVariant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.LVVariant}	SetProperty	Index; Value	
+{LV.LVVariant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.LVVariant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.LVVariant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.LVVariant}	Update Typedef		Update Typedef
+{LV.LeftShiftRegister}	AddElem		AddElem
+{LV.LeftShiftRegister}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.LeftShiftRegister}	Delete		
+{LV.LeftShiftRegister}	GetProperty	Index	GetProperty
+{LV.LeftShiftRegister}	GetPropertyCallData		GetPropertyCallData
+{LV.LeftShiftRegister}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.LeftShiftRegister}	Move	position; owner; duplicate	
+{LV.LeftShiftRegister}	ObjHighlight		
+{LV.LeftShiftRegister}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.LeftShiftRegister}	Replace	Style; Path; PaletteString	Replace
+{LV.LeftShiftRegister}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.LeftShiftRegister}	SetProperty	Index; Value	
+{LV.LeftShiftRegister}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.LeftShiftRegister}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.LeftShiftRegister}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ListBox}	AttachDataSocket	url; mode; enabled	
+{LV.ListBox}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ListBox}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.ListBox}	Create Control Ref		Create Control Ref
+{LV.ListBox}	Create Invoke Node		Create Invoke Node
+{LV.ListBox}	Create Local		Create Local
+{LV.ListBox}	Create Property Node		Create Property Node
+{LV.ListBox}	Delete		
+{LV.ListBox}	Discon Typedef		Discon Typedef
+{LV.ListBox}	Get Image	image depth; bg color	image data
+{LV.ListBox}	Get Term Image	image depth; background color	image data
+{LV.ListBox}	GetProperty	Index	GetProperty
+{LV.ListBox}	GetPropertyCallData		GetPropertyCallData
+{LV.ListBox}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ListBox}	Move	position; owner; duplicate	
+{LV.ListBox}	ObjHighlight		
+{LV.ListBox}	Reinit To Dflt		
+{LV.ListBox}	RemoveDataSocket		
+{LV.ListBox}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ListBox}	Replace	Style; Path; PaletteString	Replace
+{LV.ListBox}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ListBox}	SetProperty	Index; Value	
+{LV.ListBox}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ListBox}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ListBox}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ListBox}	Update Typedef		Update Typedef
+{LV.Local}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Local}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Local}	Delete		
+{LV.Local}	GetProperty	Index	GetProperty
+{LV.Local}	GetPropertyCallData		GetPropertyCallData
+{LV.Local}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Local}	Move	position; owner; duplicate	
+{LV.Local}	ObjHighlight		
+{LV.Local}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Local}	Replace	Style; Path; PaletteString	Replace
+{LV.Local}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Local}	SetProperty	Index; Value	
+{LV.Local}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Local}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Local}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.LoopTunnel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.LoopTunnel}	Delete		
+{LV.LoopTunnel}	GetProperty	Index	GetProperty
+{LV.LoopTunnel}	GetPropertyCallData		GetPropertyCallData
+{LV.LoopTunnel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.LoopTunnel}	Move	position; owner; duplicate	
+{LV.LoopTunnel}	ObjHighlight		
+{LV.LoopTunnel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.LoopTunnel}	Replace	Style; Path; PaletteString	Replace
+{LV.LoopTunnel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.LoopTunnel}	SetProperty	Index; Value	
+{LV.LoopTunnel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.LoopTunnel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.LoopTunnel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Loop}	Add Shift Register	Y Position	Add Shift Register
+{LV.Loop}	Auto Size		
+{LV.Loop}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Loop}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Loop}	Delete		
+{LV.Loop}	GetProperty	Index	GetProperty
+{LV.Loop}	GetPropertyCallData		GetPropertyCallData
+{LV.Loop}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Loop}	Move	position; owner; duplicate	
+{LV.Loop}	ObjHighlight		
+{LV.Loop}	Remove Structure		
+{LV.Loop}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Loop}	Replace	Style; Path; PaletteString	Replace
+{LV.Loop}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Loop}	SetProperty	Index; Value	
+{LV.Loop}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Loop}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Loop}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.MultiFrameStructure}	Add Frame	Reference Frame Index; After? (T)	Add Frame
+{LV.MultiFrameStructure}	Auto Size		
+{LV.MultiFrameStructure}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.MultiFrameStructure}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.MultiFrameStructure}	Delete		
+{LV.MultiFrameStructure}	Duplicate Frame	Frame Index	Duplicate Frame
+{LV.MultiFrameStructure}	GetProperty	Index	GetProperty
+{LV.MultiFrameStructure}	GetPropertyCallData		GetPropertyCallData
+{LV.MultiFrameStructure}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.MultiFrameStructure}	Move	position; owner; duplicate	
+{LV.MultiFrameStructure}	ObjHighlight		
+{LV.MultiFrameStructure}	Remove Frame	Frame Index	
+{LV.MultiFrameStructure}	Remove Structure		
+{LV.MultiFrameStructure}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.MultiFrameStructure}	Replace	Style; Path; PaletteString	Replace
+{LV.MultiFrameStructure}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.MultiFrameStructure}	SetProperty	Index; Value	
+{LV.MultiFrameStructure}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.MultiFrameStructure}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.MultiFrameStructure}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.MulticolumnListbox}	AttachDataSocket	url; mode; enabled	
+{LV.MulticolumnListbox}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.MulticolumnListbox}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.MulticolumnListbox}	Create Control Ref		Create Control Ref
+{LV.MulticolumnListbox}	Create Invoke Node		Create Invoke Node
+{LV.MulticolumnListbox}	Create Local		Create Local
+{LV.MulticolumnListbox}	Create Property Node		Create Property Node
+{LV.MulticolumnListbox}	Delete		
+{LV.MulticolumnListbox}	Discon Typedef		Discon Typedef
+{LV.MulticolumnListbox}	Get Clicked Col Hdr		Get Clicked Column Header
+{LV.MulticolumnListbox}	Get DblClk Row		Get Double-clicked Row
+{LV.MulticolumnListbox}	Get Image	image depth; bg color	image data
+{LV.MulticolumnListbox}	Get Term Image	image depth; background color	image data
+{LV.MulticolumnListbox}	GetProperty	Index	GetProperty
+{LV.MulticolumnListbox}	GetPropertyCallData		GetPropertyCallData
+{LV.MulticolumnListbox}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.MulticolumnListbox}	Move	position; owner; duplicate	
+{LV.MulticolumnListbox}	ObjHighlight		
+{LV.MulticolumnListbox}	Reinit To Dflt		
+{LV.MulticolumnListbox}	RemoveDataSocket		
+{LV.MulticolumnListbox}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.MulticolumnListbox}	Replace	Style; Path; PaletteString	Replace
+{LV.MulticolumnListbox}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.MulticolumnListbox}	SetProperty	Index; Value	
+{LV.MulticolumnListbox}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.MulticolumnListbox}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.MulticolumnListbox}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.MulticolumnListbox}	Update Typedef		Update Typedef
+{LV.NamedBundler}	AddInputAfter	Index	AddInputAfter
+{LV.NamedBundler}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NamedBundler}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.NamedBundler}	Delete		
+{LV.NamedBundler}	GetProperty	Index	GetProperty
+{LV.NamedBundler}	GetPropertyCallData		GetPropertyCallData
+{LV.NamedBundler}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NamedBundler}	Move	position; owner; duplicate	
+{LV.NamedBundler}	ObjHighlight		
+{LV.NamedBundler}	RemoveInput	Index	
+{LV.NamedBundler}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NamedBundler}	Replace	Style; Path; PaletteString	Replace
+{LV.NamedBundler}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NamedBundler}	Resize	bounds	
+{LV.NamedBundler}	SetProperty	Index; Value	
+{LV.NamedBundler}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NamedBundler}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NamedBundler}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NamedNumericConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NamedNumericConstant}	Delete		
+{LV.NamedNumericConstant}	Discon Typedef		Discon Typedef
+{LV.NamedNumericConstant}	GetProperty	Index	GetProperty
+{LV.NamedNumericConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.NamedNumericConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NamedNumericConstant}	Move	position; owner; duplicate	
+{LV.NamedNumericConstant}	ObjHighlight		
+{LV.NamedNumericConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NamedNumericConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.NamedNumericConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NamedNumericConstant}	SetProperty	Index; Value	
+{LV.NamedNumericConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NamedNumericConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NamedNumericConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NamedNumericConstant}	Update Typedef		Update Typedef
+{LV.NamedNumeric}	AttachDataSocket	url; mode; enabled	
+{LV.NamedNumeric}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NamedNumeric}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.NamedNumeric}	Create Control Ref		Create Control Ref
+{LV.NamedNumeric}	Create Invoke Node		Create Invoke Node
+{LV.NamedNumeric}	Create Local		Create Local
+{LV.NamedNumeric}	Create Property Node		Create Property Node
+{LV.NamedNumeric}	Delete		
+{LV.NamedNumeric}	Discon Typedef		Discon Typedef
+{LV.NamedNumeric}	Get Image	image depth; bg color	image data
+{LV.NamedNumeric}	Get Term Image	image depth; background color	image data
+{LV.NamedNumeric}	GetProperty	Index	GetProperty
+{LV.NamedNumeric}	GetPropertyCallData		GetPropertyCallData
+{LV.NamedNumeric}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NamedNumeric}	Move	position; owner; duplicate	
+{LV.NamedNumeric}	ObjHighlight		
+{LV.NamedNumeric}	Reinit To Dflt		
+{LV.NamedNumeric}	RemoveDataSocket		
+{LV.NamedNumeric}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NamedNumeric}	Replace	Style; Path; PaletteString	Replace
+{LV.NamedNumeric}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NamedNumeric}	SetProperty	Index; Value	
+{LV.NamedNumeric}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NamedNumeric}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NamedNumeric}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NamedNumeric}	Update Typedef		Update Typedef
+{LV.NamedUnbundler}	AddOutputAfter	Index	AddOutputAfter
+{LV.NamedUnbundler}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NamedUnbundler}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.NamedUnbundler}	Delete		
+{LV.NamedUnbundler}	GetProperty	Index	GetProperty
+{LV.NamedUnbundler}	GetPropertyCallData		GetPropertyCallData
+{LV.NamedUnbundler}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NamedUnbundler}	Move	position; owner; duplicate	
+{LV.NamedUnbundler}	ObjHighlight		
+{LV.NamedUnbundler}	RemoveOutput	Index	
+{LV.NamedUnbundler}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NamedUnbundler}	Replace	Style; Path; PaletteString	Replace
+{LV.NamedUnbundler}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NamedUnbundler}	Resize	bounds	
+{LV.NamedUnbundler}	SetProperty	Index; Value	
+{LV.NamedUnbundler}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NamedUnbundler}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NamedUnbundler}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Node}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Node}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Node}	Delete		
+{LV.Node}	GetProperty	Index	GetProperty
+{LV.Node}	GetPropertyCallData		GetPropertyCallData
+{LV.Node}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Node}	Move	position; owner; duplicate	
+{LV.Node}	ObjHighlight		
+{LV.Node}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Node}	Replace	Style; Path; PaletteString	Replace
+{LV.Node}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Node}	SetProperty	Index; Value	
+{LV.Node}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Node}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Node}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NumericConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NumericConstant}	Delete		
+{LV.NumericConstant}	Discon Typedef		Discon Typedef
+{LV.NumericConstant}	GetProperty	Index	GetProperty
+{LV.NumericConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.NumericConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NumericConstant}	Move	position; owner; duplicate	
+{LV.NumericConstant}	ObjHighlight		
+{LV.NumericConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NumericConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.NumericConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NumericConstant}	SetProperty	Index; Value	
+{LV.NumericConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NumericConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NumericConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NumericConstant}	Update Typedef		Update Typedef
+{LV.NumericText}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NumericText}	Delete		
+{LV.NumericText}	GetProperty	Index	GetProperty
+{LV.NumericText}	GetPropertyCallData		GetPropertyCallData
+{LV.NumericText}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NumericText}	Move	position; owner; duplicate	
+{LV.NumericText}	MoveToDefLoc		
+{LV.NumericText}	ObjHighlight		
+{LV.NumericText}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NumericText}	Replace	Style; Path; PaletteString	Replace
+{LV.NumericText}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NumericText}	SetProperty	Index; Value	
+{LV.NumericText}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NumericText}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NumericText}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NumericWithScale}	Add Slider		
+{LV.NumericWithScale}	AttachDataSocket	url; mode; enabled	
+{LV.NumericWithScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.NumericWithScale}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.NumericWithScale}	Create Control Ref		Create Control Ref
+{LV.NumericWithScale}	Create Invoke Node		Create Invoke Node
+{LV.NumericWithScale}	Create Local		Create Local
+{LV.NumericWithScale}	Create Property Node		Create Property Node
+{LV.NumericWithScale}	Delete		
+{LV.NumericWithScale}	Delete Slider		
+{LV.NumericWithScale}	Discon Typedef		Discon Typedef
+{LV.NumericWithScale}	Get Image	image depth; bg color	image data
+{LV.NumericWithScale}	Get Term Image	image depth; background color	image data
+{LV.NumericWithScale}	GetProperty	Index	GetProperty
+{LV.NumericWithScale}	GetPropertyCallData		GetPropertyCallData
+{LV.NumericWithScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.NumericWithScale}	Move	position; owner; duplicate	
+{LV.NumericWithScale}	ObjHighlight		
+{LV.NumericWithScale}	Reinit To Dflt		
+{LV.NumericWithScale}	RemoveDataSocket		
+{LV.NumericWithScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.NumericWithScale}	Replace	Style; Path; PaletteString	Replace
+{LV.NumericWithScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.NumericWithScale}	SetProperty	Index; Value	
+{LV.NumericWithScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.NumericWithScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.NumericWithScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.NumericWithScale}	Update Typedef		Update Typedef
+{LV.Numeric}	AttachDataSocket	url; mode; enabled	
+{LV.Numeric}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Numeric}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Numeric}	Create Control Ref		Create Control Ref
+{LV.Numeric}	Create Invoke Node		Create Invoke Node
+{LV.Numeric}	Create Local		Create Local
+{LV.Numeric}	Create Property Node		Create Property Node
+{LV.Numeric}	Delete		
+{LV.Numeric}	Discon Typedef		Discon Typedef
+{LV.Numeric}	Get Image	image depth; bg color	image data
+{LV.Numeric}	Get Term Image	image depth; background color	image data
+{LV.Numeric}	GetProperty	Index	GetProperty
+{LV.Numeric}	GetPropertyCallData		GetPropertyCallData
+{LV.Numeric}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Numeric}	Move	position; owner; duplicate	
+{LV.Numeric}	ObjHighlight		
+{LV.Numeric}	Reinit To Dflt		
+{LV.Numeric}	RemoveDataSocket		
+{LV.Numeric}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Numeric}	Replace	Style; Path; PaletteString	Replace
+{LV.Numeric}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Numeric}	SetProperty	Index; Value	
+{LV.Numeric}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Numeric}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Numeric}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Numeric}	Update Typedef		Update Typedef
+{LV.ObjectFunction}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ObjectFunction}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ObjectFunction}	Delete		
+{LV.ObjectFunction}	GetProperty	Index	GetProperty
+{LV.ObjectFunction}	GetPropertyCallData		GetPropertyCallData
+{LV.ObjectFunction}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ObjectFunction}	Move	position; owner; duplicate	
+{LV.ObjectFunction}	ObjHighlight		
+{LV.ObjectFunction}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ObjectFunction}	Replace	Style; Path; PaletteString	Replace
+{LV.ObjectFunction}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ObjectFunction}	Resize	bounds	
+{LV.ObjectFunction}	SetProperty	Index; Value	
+{LV.ObjectFunction}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ObjectFunction}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ObjectFunction}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.OuterTerminal}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.OuterTerminal}	Connect Wire	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.OuterTerminal}	Create Constant	Value	Create Constant
+{LV.OuterTerminal}	Create Control	Value	Create Control
+{LV.OuterTerminal}	Create Described Wire	Wire Source; Wire Description; Auto Route? (F)	
+{LV.OuterTerminal}	Create Indicator		Create Indicator
+{LV.OuterTerminal}	Delete		
+{LV.OuterTerminal}	GetProperty	Index	GetProperty
+{LV.OuterTerminal}	GetPropertyCallData		GetPropertyCallData
+{LV.OuterTerminal}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.OuterTerminal}	Move	position; owner; duplicate	
+{LV.OuterTerminal}	ObjHighlight		
+{LV.OuterTerminal}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.OuterTerminal}	Replace	Style; Path; PaletteString	Replace
+{LV.OuterTerminal}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.OuterTerminal}	SetProperty	Index; Value	
+{LV.OuterTerminal}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.OuterTerminal}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.OuterTerminal}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.PageSelector}	Add Page	Page; After	
+{LV.PageSelector}	AttachDataSocket	url; mode; enabled	
+{LV.PageSelector}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.PageSelector}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.PageSelector}	Create Control Ref		Create Control Ref
+{LV.PageSelector}	Create Invoke Node		Create Invoke Node
+{LV.PageSelector}	Create Local		Create Local
+{LV.PageSelector}	Create Property Node		Create Property Node
+{LV.PageSelector}	Delete		
+{LV.PageSelector}	Discon Typedef		Discon Typedef
+{LV.PageSelector}	Dup Page	Page	
+{LV.PageSelector}	Get Image	image depth; bg color	image data
+{LV.PageSelector}	Get Term Image	image depth; background color	image data
+{LV.PageSelector}	GetProperty	Index	GetProperty
+{LV.PageSelector}	GetPropertyCallData		GetPropertyCallData
+{LV.PageSelector}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.PageSelector}	Move	position; owner; duplicate	
+{LV.PageSelector}	ObjHighlight		
+{LV.PageSelector}	Reinit To Dflt		
+{LV.PageSelector}	Remove Page	Page	
+{LV.PageSelector}	RemoveDataSocket		
+{LV.PageSelector}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.PageSelector}	Replace	Style; Path; PaletteString	Replace
+{LV.PageSelector}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.PageSelector}	SetProperty	Index; Value	
+{LV.PageSelector}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.PageSelector}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.PageSelector}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.PageSelector}	Update Typedef		Update Typedef
+{LV.Page}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Page}	Delete		
+{LV.Page}	GetProperty	Index	GetProperty
+{LV.Page}	GetPropertyCallData		GetPropertyCallData
+{LV.Page}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Page}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Page}	SetProperty	Index; Value	
+{LV.Page}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Page}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Page}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Panel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Panel}	Clear Selection		
+{LV.Panel}	Copy Selection		
+{LV.Panel}	Delete		
+{LV.Panel}	GetProperty	Index	GetProperty
+{LV.Panel}	GetPropertyCallData		GetPropertyCallData
+{LV.Panel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Panel}	Group Objects	lock	
+{LV.Panel}	Lock Objects	Objects	
+{LV.Panel}	Make Selection	Objects	
+{LV.Panel}	Make Space		
+{LV.Panel}	Move	position; owner; duplicate	
+{LV.Panel}	MoveSelectionBackward		
+{LV.Panel}	MoveSelectionForward		
+{LV.Panel}	MoveSelectionToBack		
+{LV.Panel}	MoveSelectionToFront		
+{LV.Panel}	ObjHighlight		
+{LV.Panel}	Paste Selection	Pos; Pane	
+{LV.Panel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Panel}	Replace	Style; Path; PaletteString	Replace
+{LV.Panel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Panel}	Select All		
+{LV.Panel}	Set Panel Order		
+{LV.Panel}	SetProperty	Index; Value	
+{LV.Panel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Panel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Panel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Panel}	Ungroup Objects	Objects	
+{LV.Panel}	Unlock Objects	Objects	
+{LV.PathConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.PathConstant}	Delete		
+{LV.PathConstant}	Discon Typedef		Discon Typedef
+{LV.PathConstant}	GetProperty	Index	GetProperty
+{LV.PathConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.PathConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.PathConstant}	Move	position; owner; duplicate	
+{LV.PathConstant}	ObjHighlight		
+{LV.PathConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.PathConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.PathConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.PathConstant}	SetProperty	Index; Value	
+{LV.PathConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.PathConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.PathConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.PathConstant}	Update Typedef		Update Typedef
+{LV.Path}	AttachDataSocket	url; mode; enabled	
+{LV.Path}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Path}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Path}	Create Control Ref		Create Control Ref
+{LV.Path}	Create Invoke Node		Create Invoke Node
+{LV.Path}	Create Local		Create Local
+{LV.Path}	Create Property Node		Create Property Node
+{LV.Path}	Delete		
+{LV.Path}	Discon Typedef		Discon Typedef
+{LV.Path}	Get Image	image depth; bg color	image data
+{LV.Path}	Get Term Image	image depth; background color	image data
+{LV.Path}	GetProperty	Index	GetProperty
+{LV.Path}	GetPropertyCallData		GetPropertyCallData
+{LV.Path}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Path}	Move	position; owner; duplicate	
+{LV.Path}	ObjHighlight		
+{LV.Path}	Reinit To Dflt		
+{LV.Path}	RemoveDataSocket		
+{LV.Path}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Path}	Replace	Style; Path; PaletteString	Replace
+{LV.Path}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Path}	SetProperty	Index; Value	
+{LV.Path}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Path}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Path}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Path}	Update Typedef		Update Typedef
+{LV.Picture}	AttachDataSocket	url; mode; enabled	
+{LV.Picture}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Picture}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Picture}	Create Control Ref		Create Control Ref
+{LV.Picture}	Create Invoke Node		Create Invoke Node
+{LV.Picture}	Create Local		Create Local
+{LV.Picture}	Create Property Node		Create Property Node
+{LV.Picture}	Delete		
+{LV.Picture}	Discon Typedef		Discon Typedef
+{LV.Picture}	Get Image	image depth; bg color	image data
+{LV.Picture}	Get Term Image	image depth; background color	image data
+{LV.Picture}	GetProperty	Index	GetProperty
+{LV.Picture}	GetPropertyCallData		GetPropertyCallData
+{LV.Picture}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Picture}	Move	position; owner; duplicate	
+{LV.Picture}	ObjHighlight		
+{LV.Picture}	Reinit To Dflt		
+{LV.Picture}	RemoveDataSocket		
+{LV.Picture}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Picture}	Replace	Style; Path; PaletteString	Replace
+{LV.Picture}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Picture}	SetProperty	Index; Value	
+{LV.Picture}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Picture}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Picture}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Picture}	Update Typedef		Update Typedef
+{LV.Plot}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Plot}	Delete		
+{LV.Plot}	GetProperty	Index	GetProperty
+{LV.Plot}	GetPropertyCallData		GetPropertyCallData
+{LV.Plot}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Plot}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Plot}	SetProperty	Index; Value	
+{LV.Plot}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Plot}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Plot}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.PolymorphicSubVI}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.PolymorphicSubVI}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.PolymorphicSubVI}	Delete		
+{LV.PolymorphicSubVI}	FeedsThrough	term1; term2	FeedsThrough
+{LV.PolymorphicSubVI}	GetProperty	Index	GetProperty
+{LV.PolymorphicSubVI}	GetPropertyCallData		GetPropertyCallData
+{LV.PolymorphicSubVI}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.PolymorphicSubVI}	Inline	mkspc; seqwrap	seqrefnum
+{LV.PolymorphicSubVI}	Move	position; owner; duplicate	
+{LV.PolymorphicSubVI}	ObjHighlight		
+{LV.PolymorphicSubVI}	Relink To VI		Relink To VI
+{LV.PolymorphicSubVI}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.PolymorphicSubVI}	Replace	Style; Path; PaletteString	Replace
+{LV.PolymorphicSubVI}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.PolymorphicSubVI}	SetProperty	Index; Value	
+{LV.PolymorphicSubVI}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.PolymorphicSubVI}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.PolymorphicSubVI}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Probe}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Probe}	Delete		
+{LV.Probe}	GetProperty	Index	GetProperty
+{LV.Probe}	GetPropertyCallData		GetPropertyCallData
+{LV.Probe}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Probe}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Probe}	SetProperty	Index; Value	
+{LV.Probe}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Probe}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Probe}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.PropertyItem}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.PropertyItem}	Delete		
+{LV.PropertyItem}	GetProperty	Index	GetProperty
+{LV.PropertyItem}	GetPropertyCallData		GetPropertyCallData
+{LV.PropertyItem}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.PropertyItem}	Move	position; owner; duplicate	
+{LV.PropertyItem}	ObjHighlight		
+{LV.PropertyItem}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.PropertyItem}	Replace	Style; Path; PaletteString	Replace
+{LV.PropertyItem}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.PropertyItem}	SetProperty	Index; Value	
+{LV.PropertyItem}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.PropertyItem}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.PropertyItem}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Property}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Property}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Property}	Delete		
+{LV.Property}	Get Prop Item	index	Get Prop Item
+{LV.Property}	GetProperty	Index	GetProperty
+{LV.Property}	GetPropertyCallData		GetPropertyCallData
+{LV.Property}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Property}	Move	position; owner; duplicate	
+{LV.Property}	ObjHighlight		
+{LV.Property}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Property}	Replace	Style; Path; PaletteString	Replace
+{LV.Property}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Property}	Resize	bounds	
+{LV.Property}	SetProperty	Index; Value	
+{LV.Property}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Property}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Property}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RadioButtonsControl}	AttachDataSocket	url; mode; enabled	
+{LV.RadioButtonsControl}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.RadioButtonsControl}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.RadioButtonsControl}	Create Control Ref		Create Control Ref
+{LV.RadioButtonsControl}	Create Invoke Node		Create Invoke Node
+{LV.RadioButtonsControl}	Create Local		Create Local
+{LV.RadioButtonsControl}	Create Property Node		Create Property Node
+{LV.RadioButtonsControl}	Delete		
+{LV.RadioButtonsControl}	Discon Typedef		Discon Typedef
+{LV.RadioButtonsControl}	Get Image	image depth; bg color	image data
+{LV.RadioButtonsControl}	Get Term Image	image depth; background color	image data
+{LV.RadioButtonsControl}	GetProperty	Index	GetProperty
+{LV.RadioButtonsControl}	GetPropertyCallData		GetPropertyCallData
+{LV.RadioButtonsControl}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.RadioButtonsControl}	Move	position; owner; duplicate	
+{LV.RadioButtonsControl}	ObjHighlight		
+{LV.RadioButtonsControl}	Reinit To Dflt		
+{LV.RadioButtonsControl}	RemoveDataSocket		
+{LV.RadioButtonsControl}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.RadioButtonsControl}	Replace	Style; Path; PaletteString	Replace
+{LV.RadioButtonsControl}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.RadioButtonsControl}	Set Cluster Order	Element Refs	
+{LV.RadioButtonsControl}	SetProperty	Index; Value	
+{LV.RadioButtonsControl}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.RadioButtonsControl}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.RadioButtonsControl}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RadioButtonsControl}	Update Typedef		Update Typedef
+{LV.ReadWriteFile}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ReadWriteFile}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ReadWriteFile}	Delete		
+{LV.ReadWriteFile}	GetProperty	Index	GetProperty
+{LV.ReadWriteFile}	GetPropertyCallData		GetPropertyCallData
+{LV.ReadWriteFile}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ReadWriteFile}	Move	position; owner; duplicate	
+{LV.ReadWriteFile}	ObjHighlight		
+{LV.ReadWriteFile}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ReadWriteFile}	Replace	Style; Path; PaletteString	Replace
+{LV.ReadWriteFile}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ReadWriteFile}	SetProperty	Index; Value	
+{LV.ReadWriteFile}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ReadWriteFile}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ReadWriteFile}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RefNum}	AttachDataSocket	url; mode; enabled	
+{LV.RefNum}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.RefNum}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.RefNum}	Create Control Ref		Create Control Ref
+{LV.RefNum}	Create Invoke Node		Create Invoke Node
+{LV.RefNum}	Create Local		Create Local
+{LV.RefNum}	Create Property Node		Create Property Node
+{LV.RefNum}	Delete		
+{LV.RefNum}	Discon Typedef		Discon Typedef
+{LV.RefNum}	Get Image	image depth; bg color	image data
+{LV.RefNum}	Get Term Image	image depth; background color	image data
+{LV.RefNum}	GetProperty	Index	GetProperty
+{LV.RefNum}	GetPropertyCallData		GetPropertyCallData
+{LV.RefNum}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.RefNum}	Move	position; owner; duplicate	
+{LV.RefNum}	ObjHighlight		
+{LV.RefNum}	Reinit To Dflt		
+{LV.RefNum}	RemoveDataSocket		
+{LV.RefNum}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.RefNum}	Replace	Style; Path; PaletteString	Replace
+{LV.RefNum}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.RefNum}	SetProperty	Index; Value	
+{LV.RefNum}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.RefNum}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.RefNum}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RefNum}	Update Typedef		Update Typedef
+{LV.RightShiftRegister}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.RightShiftRegister}	Delete		
+{LV.RightShiftRegister}	GetProperty	Index	GetProperty
+{LV.RightShiftRegister}	GetPropertyCallData		GetPropertyCallData
+{LV.RightShiftRegister}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.RightShiftRegister}	Move	position; owner; duplicate	
+{LV.RightShiftRegister}	ObjHighlight		
+{LV.RightShiftRegister}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.RightShiftRegister}	Replace	Style; Path; PaletteString	Replace
+{LV.RightShiftRegister}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.RightShiftRegister}	SetProperty	Index; Value	
+{LV.RightShiftRegister}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.RightShiftRegister}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.RightShiftRegister}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RingConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.RingConstant}	Delete		
+{LV.RingConstant}	Discon Typedef		Discon Typedef
+{LV.RingConstant}	GetProperty	Index	GetProperty
+{LV.RingConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.RingConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.RingConstant}	Move	position; owner; duplicate	
+{LV.RingConstant}	ObjHighlight		
+{LV.RingConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.RingConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.RingConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.RingConstant}	SetProperty	Index; Value	
+{LV.RingConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.RingConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.RingConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.RingConstant}	Update Typedef		Update Typedef
+{LV.Ring}	AttachDataSocket	url; mode; enabled	
+{LV.Ring}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Ring}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Ring}	Create Control Ref		Create Control Ref
+{LV.Ring}	Create Invoke Node		Create Invoke Node
+{LV.Ring}	Create Local		Create Local
+{LV.Ring}	Create Property Node		Create Property Node
+{LV.Ring}	Delete		
+{LV.Ring}	Discon Typedef		Discon Typedef
+{LV.Ring}	Get Image	image depth; bg color	image data
+{LV.Ring}	Get Term Image	image depth; background color	image data
+{LV.Ring}	GetProperty	Index	GetProperty
+{LV.Ring}	GetPropertyCallData		GetPropertyCallData
+{LV.Ring}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Ring}	Move	position; owner; duplicate	
+{LV.Ring}	ObjHighlight		
+{LV.Ring}	Reinit To Dflt		
+{LV.Ring}	RemoveDataSocket		
+{LV.Ring}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Ring}	Replace	Style; Path; PaletteString	Replace
+{LV.Ring}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Ring}	SetProperty	Index; Value	
+{LV.Ring}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Ring}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Ring}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Ring}	Update Typedef		Update Typedef
+{LV.RotaryColorScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.RotaryColorScale}	Delete		
+{LV.RotaryColorScale}	GetProperty	Index	GetProperty
+{LV.RotaryColorScale}	GetPropertyCallData		GetPropertyCallData
+{LV.RotaryColorScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.RotaryColorScale}	Move	position; owner; duplicate	
+{LV.RotaryColorScale}	ObjHighlight		
+{LV.RotaryColorScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.RotaryColorScale}	Replace	Style; Path; PaletteString	Replace
+{LV.RotaryColorScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.RotaryColorScale}	SetProperty	Index; Value	
+{LV.RotaryColorScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.RotaryColorScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.RotaryColorScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Scale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Scale}	Delete		
+{LV.Scale}	GetProperty	Index	GetProperty
+{LV.Scale}	GetPropertyCallData		GetPropertyCallData
+{LV.Scale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Scale}	Move	position; owner; duplicate	
+{LV.Scale}	ObjHighlight		
+{LV.Scale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Scale}	Replace	Style; Path; PaletteString	Replace
+{LV.Scale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Scale}	SetProperty	Index; Value	
+{LV.Scale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Scale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Scale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ScriptNodeParameter}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ScriptNodeParameter}	Delete		
+{LV.ScriptNodeParameter}	GetProperty	Index	GetProperty
+{LV.ScriptNodeParameter}	GetPropertyCallData		GetPropertyCallData
+{LV.ScriptNodeParameter}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ScriptNodeParameter}	Move	position; owner; duplicate	
+{LV.ScriptNodeParameter}	ObjHighlight		
+{LV.ScriptNodeParameter}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ScriptNodeParameter}	Replace	Style; Path; PaletteString	Replace
+{LV.ScriptNodeParameter}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ScriptNodeParameter}	SetProperty	Index; Value	
+{LV.ScriptNodeParameter}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ScriptNodeParameter}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ScriptNodeParameter}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ScriptNode}	Add Input	Position; Name	Add Input
+{LV.ScriptNode}	Add Output	Position; Name	Add Output
+{LV.ScriptNode}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.ScriptNode}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.ScriptNode}	Delete		
+{LV.ScriptNode}	GetProperty	Index	GetProperty
+{LV.ScriptNode}	GetPropertyCallData		GetPropertyCallData
+{LV.ScriptNode}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.ScriptNode}	Move	position; owner; duplicate	
+{LV.ScriptNode}	ObjHighlight		
+{LV.ScriptNode}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.ScriptNode}	Replace	Style; Path; PaletteString	Replace
+{LV.ScriptNode}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.ScriptNode}	SetProperty	Index; Value	
+{LV.ScriptNode}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.ScriptNode}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.ScriptNode}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SequenceLocal}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SequenceLocal}	Delete		
+{LV.SequenceLocal}	GetProperty	Index	GetProperty
+{LV.SequenceLocal}	GetPropertyCallData		GetPropertyCallData
+{LV.SequenceLocal}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SequenceLocal}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SequenceLocal}	SetProperty	Index; Value	
+{LV.SequenceLocal}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SequenceLocal}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SequenceLocal}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Sequence}	Add Frame	Reference Frame Index; After? (T)	Add Frame
+{LV.Sequence}	Add Sequence Local	Edge; Position	Add Sequence Local
+{LV.Sequence}	Auto Size		
+{LV.Sequence}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Sequence}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Sequence}	Delete		
+{LV.Sequence}	Duplicate Frame	Frame Index	Duplicate Frame
+{LV.Sequence}	GetProperty	Index	GetProperty
+{LV.Sequence}	GetPropertyCallData		GetPropertyCallData
+{LV.Sequence}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Sequence}	Move	position; owner; duplicate	
+{LV.Sequence}	ObjHighlight		
+{LV.Sequence}	Remove Frame	Frame Index	
+{LV.Sequence}	Remove Structure		
+{LV.Sequence}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Sequence}	Replace	Style; Path; PaletteString	Replace
+{LV.Sequence}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Sequence}	SetProperty	Index; Value	
+{LV.Sequence}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Sequence}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Sequence}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SimDiagram}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SimDiagram}	CopyToCompanion	TargetDiag	
+{LV.SimDiagram}	Delete		
+{LV.SimDiagram}	GetProperty	Index	GetProperty
+{LV.SimDiagram}	GetPropertyCallData		GetPropertyCallData
+{LV.SimDiagram}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SimDiagram}	MakeSpace	Rect	
+{LV.SimDiagram}	Move	position; owner; duplicate	
+{LV.SimDiagram}	ObjHighlight		
+{LV.SimDiagram}	Paste	Pos	
+{LV.SimDiagram}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SimDiagram}	Replace	Style; Path; PaletteString	Replace
+{LV.SimDiagram}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SimDiagram}	Select All		
+{LV.SimDiagram}	SetProperty	Index; Value	
+{LV.SimDiagram}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SimDiagram}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SimDiagram}	ShrinkWrapStructs		
+{LV.SimDiagram}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SimDiagram}	setNodeMap	NodeMap; SimDiagram; CompSRDiag; SimSRDiag	
+{LV.SimDiagram}	setSignalMap	NodeMap	
+{LV.SimulationDCO}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SimulationDCO}	Delete		
+{LV.SimulationDCO}	GetProperty	Index	GetProperty
+{LV.SimulationDCO}	GetPropertyCallData		GetPropertyCallData
+{LV.SimulationDCO}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SimulationDCO}	Move	position; owner; duplicate	
+{LV.SimulationDCO}	ObjHighlight		
+{LV.SimulationDCO}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SimulationDCO}	Replace	Style; Path; PaletteString	Replace
+{LV.SimulationDCO}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SimulationDCO}	SetProperty	Index; Value	
+{LV.SimulationDCO}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SimulationDCO}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SimulationDCO}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SimulationNode}	Auto Size		
+{LV.SimulationNode}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SimulationNode}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.SimulationNode}	Delete		
+{LV.SimulationNode}	GetProperty	Index	GetProperty
+{LV.SimulationNode}	GetPropertyCallData		GetPropertyCallData
+{LV.SimulationNode}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SimulationNode}	Move	position; owner; duplicate	
+{LV.SimulationNode}	ObjHighlight		
+{LV.SimulationNode}	Remove Structure		
+{LV.SimulationNode}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SimulationNode}	Replace	Style; Path; PaletteString	Replace
+{LV.SimulationNode}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SimulationNode}	SetProperty	Index; Value	
+{LV.SimulationNode}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SimulationNode}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SimulationNode}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SlideScale}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SlideScale}	Delete		
+{LV.SlideScale}	GetProperty	Index	GetProperty
+{LV.SlideScale}	GetPropertyCallData		GetPropertyCallData
+{LV.SlideScale}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SlideScale}	Move	position; owner; duplicate	
+{LV.SlideScale}	ObjHighlight		
+{LV.SlideScale}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SlideScale}	Replace	Style; Path; PaletteString	Replace
+{LV.SlideScale}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SlideScale}	SetProperty	Index; Value	
+{LV.SlideScale}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SlideScale}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SlideScale}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Slide}	Add Slider		
+{LV.Slide}	AttachDataSocket	url; mode; enabled	
+{LV.Slide}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Slide}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Slide}	Create Control Ref		Create Control Ref
+{LV.Slide}	Create Invoke Node		Create Invoke Node
+{LV.Slide}	Create Local		Create Local
+{LV.Slide}	Create Property Node		Create Property Node
+{LV.Slide}	Delete		
+{LV.Slide}	Delete Slider		
+{LV.Slide}	Discon Typedef		Discon Typedef
+{LV.Slide}	Get Image	image depth; bg color	image data
+{LV.Slide}	Get Term Image	image depth; background color	image data
+{LV.Slide}	GetProperty	Index	GetProperty
+{LV.Slide}	GetPropertyCallData		GetPropertyCallData
+{LV.Slide}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Slide}	Move	position; owner; duplicate	
+{LV.Slide}	ObjHighlight		
+{LV.Slide}	Reinit To Dflt		
+{LV.Slide}	RemoveDataSocket		
+{LV.Slide}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Slide}	Replace	Style; Path; PaletteString	Replace
+{LV.Slide}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Slide}	SetProperty	Index; Value	
+{LV.Slide}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Slide}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Slide}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Slide}	Update Typedef		Update Typedef
+{LV.StateDiagramWizard}	AddInitItems	MastrEnum; StateLoop; StateCase; TransEnum; TransCase; StateEnum; TransEnum; TransCase	
+{LV.StateDiagramWizard}	AddNewStateItems	TransEnum; ActCase; StateConst	
+{LV.StateDiagramWizard}	AddNewTransItems	ToStateConst; ToStateConst	
+{LV.StateDiagramWizard}	AddState	stateName; stateBounds	
+{LV.StateDiagramWizard}	AddTransition	transName; fromState; toState; exitAngle; enterAngle; stiffness; labelPos; pinCorner	
+{LV.StateDiagramWizard}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.StateDiagramWizard}	Delete		
+{LV.StateDiagramWizard}	GetProperty	Index	GetProperty
+{LV.StateDiagramWizard}	GetPropertyCallData		GetPropertyCallData
+{LV.StateDiagramWizard}	GetStateData	stateIdx	stateName; stateRect; Terminal?
+{LV.StateDiagramWizard}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.StateDiagramWizard}	GetTransData	fromState; transID	toState; transName; exitAngle; entrAngle; stiffness; labelPos; pinCrnr
+{LV.StateDiagramWizard}	IsLockedByMe	ObjRef	Locked?
+{LV.StateDiagramWizard}	LaunchEditor		
+{LV.StateDiagramWizard}	LockConst	Const; AllowValChg	
+{LV.StateDiagramWizard}	LockObject	ObjRef	
+{LV.StateDiagramWizard}	NumStates		numStates
+{LV.StateDiagramWizard}	NumTrans	stateIdx	numTrans
+{LV.StateDiagramWizard}	RemoveState	stateName	
+{LV.StateDiagramWizard}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.StateDiagramWizard}	RemoveTrans	transName; fromStateIdx	
+{LV.StateDiagramWizard}	ReorderTrans	fromState; transNames	
+{LV.StateDiagramWizard}	SetProperty	Index; Value	
+{LV.StateDiagramWizard}	SetStateData	stateIdx; stateRect; stateRect; Terminal?	
+{LV.StateDiagramWizard}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.StateDiagramWizard}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.StateDiagramWizard}	SetTransData	fromState; transName; newTransName; exitAngle; entrAngle; stiffness; labelPos; pinCrnr; toState	
+{LV.StateDiagramWizard}	SetVisTrans	StateIdx; TransName	
+{LV.StateDiagramWizard}	ToggleSubVICall		
+{LV.StateDiagramWizard}	TransStateOutput	StateIdx	OutputTun
+{LV.StateDiagramWizard}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.StateDiagramWizard}	UnLockConst	Const	
+{LV.StateDiagramWizard}	UnLockObject	ObjRef	
+{LV.StateDiagramWizard}	UpdateStateConsts	StateName; Remove	
+{LV.StaticVIReference}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.StaticVIReference}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.StaticVIReference}	Delete		
+{LV.StaticVIReference}	GetProperty	Index	GetProperty
+{LV.StaticVIReference}	GetPropertyCallData		GetPropertyCallData
+{LV.StaticVIReference}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.StaticVIReference}	Move	position; owner; duplicate	
+{LV.StaticVIReference}	ObjHighlight		
+{LV.StaticVIReference}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.StaticVIReference}	Replace	Style; Path; PaletteString	Replace
+{LV.StaticVIReference}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.StaticVIReference}	SetProperty	Index; Value	
+{LV.StaticVIReference}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.StaticVIReference}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.StaticVIReference}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.StringConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.StringConstant}	Delete		
+{LV.StringConstant}	Discon Typedef		Discon Typedef
+{LV.StringConstant}	GetProperty	Index	GetProperty
+{LV.StringConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.StringConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.StringConstant}	Move	position; owner; duplicate	
+{LV.StringConstant}	ObjHighlight		
+{LV.StringConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.StringConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.StringConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.StringConstant}	SetProperty	Index; Value	
+{LV.StringConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.StringConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.StringConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.StringConstant}	Update Typedef		Update Typedef
+{LV.String}	AttachDataSocket	url; mode; enabled	
+{LV.String}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.String}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.String}	Create Control Ref		Create Control Ref
+{LV.String}	Create Invoke Node		Create Invoke Node
+{LV.String}	Create Local		Create Local
+{LV.String}	Create Property Node		Create Property Node
+{LV.String}	Delete		
+{LV.String}	Discon Typedef		Discon Typedef
+{LV.String}	Get Image	image depth; bg color	image data
+{LV.String}	Get Nth Line	index	text; start; end
+{LV.String}	Get Term Image	image depth; background color	image data
+{LV.String}	GetProperty	Index	GetProperty
+{LV.String}	GetPropertyCallData		GetPropertyCallData
+{LV.String}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.String}	Move	position; owner; duplicate	
+{LV.String}	ObjHighlight		
+{LV.String}	Reinit To Dflt		
+{LV.String}	RemoveDataSocket		
+{LV.String}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.String}	Replace	Style; Path; PaletteString	Replace
+{LV.String}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.String}	SetProperty	Index; Value	
+{LV.String}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.String}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.String}	Size to Text		
+{LV.String}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.String}	Update Typedef		Update Typedef
+{LV.Structure}	Auto Size		
+{LV.Structure}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Structure}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Structure}	Delete		
+{LV.Structure}	GetProperty	Index	GetProperty
+{LV.Structure}	GetPropertyCallData		GetPropertyCallData
+{LV.Structure}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Structure}	Move	position; owner; duplicate	
+{LV.Structure}	ObjHighlight		
+{LV.Structure}	Remove Structure		
+{LV.Structure}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Structure}	Replace	Style; Path; PaletteString	Replace
+{LV.Structure}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Structure}	SetProperty	Index; Value	
+{LV.Structure}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Structure}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Structure}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SubPanel}	AttachDataSocket	url; mode; enabled	
+{LV.SubPanel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SubPanel}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.SubPanel}	Create Control Ref		Create Control Ref
+{LV.SubPanel}	Create Invoke Node		Create Invoke Node
+{LV.SubPanel}	Create Local		Create Local
+{LV.SubPanel}	Create Property Node		Create Property Node
+{LV.SubPanel}	Delete		
+{LV.SubPanel}	Discon Typedef		Discon Typedef
+{LV.SubPanel}	Get Image	image depth; bg color	image data
+{LV.SubPanel}	Get Term Image	image depth; background color	image data
+{LV.SubPanel}	GetProperty	Index	GetProperty
+{LV.SubPanel}	GetPropertyCallData		GetPropertyCallData
+{LV.SubPanel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SubPanel}	Insert VI	VI Ref	
+{LV.SubPanel}	InsertBD	VIRef; ShowHScrollBar?; ShowVScrollBar?	
+{LV.SubPanel}	Move	position; owner; duplicate	
+{LV.SubPanel}	ObjHighlight		
+{LV.SubPanel}	Reinit To Dflt		
+{LV.SubPanel}	Remove VI		
+{LV.SubPanel}	RemoveDataSocket		
+{LV.SubPanel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SubPanel}	Replace	Style; Path; PaletteString	Replace
+{LV.SubPanel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SubPanel}	SetProperty	Index; Value	
+{LV.SubPanel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SubPanel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SubPanel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SubPanel}	Update Typedef		Update Typedef
+{LV.SubVI}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SubVI}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.SubVI}	Delete		
+{LV.SubVI}	FeedsThrough	term1; term2	FeedsThrough
+{LV.SubVI}	GetProperty	Index	GetProperty
+{LV.SubVI}	GetPropertyCallData		GetPropertyCallData
+{LV.SubVI}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SubVI}	Inline	mkspc; seqwrap	seqrefnum
+{LV.SubVI}	Move	position; owner; duplicate	
+{LV.SubVI}	ObjHighlight		
+{LV.SubVI}	Relink To VI		Relink To VI
+{LV.SubVI}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SubVI}	Replace	Style; Path; PaletteString	Replace
+{LV.SubVI}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.SubVI}	SetProperty	Index; Value	
+{LV.SubVI}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SubVI}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SubVI}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SubWizard}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.SubWizard}	Delete		
+{LV.SubWizard}	GetProperty	Index	GetProperty
+{LV.SubWizard}	GetPropertyCallData		GetPropertyCallData
+{LV.SubWizard}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.SubWizard}	IsLockedByMe	ObjRef	Locked?
+{LV.SubWizard}	LockConst	Const; AllowValChg	
+{LV.SubWizard}	LockObject	ObjRef	
+{LV.SubWizard}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.SubWizard}	SetProperty	Index; Value	
+{LV.SubWizard}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.SubWizard}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.SubWizard}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.SubWizard}	UnLockConst	Const	
+{LV.SubWizard}	UnLockObject	ObjRef	
+{LV.TabControl}	Add Page	Page; After	
+{LV.TabControl}	AttachDataSocket	url; mode; enabled	
+{LV.TabControl}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TabControl}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.TabControl}	Create Control Ref		Create Control Ref
+{LV.TabControl}	Create Invoke Node		Create Invoke Node
+{LV.TabControl}	Create Local		Create Local
+{LV.TabControl}	Create Property Node		Create Property Node
+{LV.TabControl}	Delete		
+{LV.TabControl}	Discon Typedef		Discon Typedef
+{LV.TabControl}	Dup Page	Page	
+{LV.TabControl}	Get Image	image depth; bg color	image data
+{LV.TabControl}	Get Term Image	image depth; background color	image data
+{LV.TabControl}	GetProperty	Index	GetProperty
+{LV.TabControl}	GetPropertyCallData		GetPropertyCallData
+{LV.TabControl}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TabControl}	Move	position; owner; duplicate	
+{LV.TabControl}	ObjHighlight		
+{LV.TabControl}	Reinit To Dflt		
+{LV.TabControl}	Remove Page	Page	
+{LV.TabControl}	RemoveDataSocket		
+{LV.TabControl}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TabControl}	Replace	Style; Path; PaletteString	Replace
+{LV.TabControl}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TabControl}	SetProperty	Index; Value	
+{LV.TabControl}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TabControl}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TabControl}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TabControl}	Update Typedef		Update Typedef
+{LV.Table}	AttachDataSocket	url; mode; enabled	
+{LV.Table}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Table}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.Table}	Create Control Ref		Create Control Ref
+{LV.Table}	Create Invoke Node		Create Invoke Node
+{LV.Table}	Create Local		Create Local
+{LV.Table}	Create Property Node		Create Property Node
+{LV.Table}	Delete		
+{LV.Table}	Discon Typedef		Discon Typedef
+{LV.Table}	Get Image	image depth; bg color	image data
+{LV.Table}	Get Term Image	image depth; background color	image data
+{LV.Table}	GetProperty	Index	GetProperty
+{LV.Table}	GetPropertyCallData		GetPropertyCallData
+{LV.Table}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Table}	Move	position; owner; duplicate	
+{LV.Table}	ObjHighlight		
+{LV.Table}	Reinit To Dflt		
+{LV.Table}	RemoveDataSocket		
+{LV.Table}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Table}	Replace	Style; Path; PaletteString	Replace
+{LV.Table}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Table}	Set Cell Value	X Index; Y Index; Value	
+{LV.Table}	SetProperty	Index; Value	
+{LV.Table}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Table}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Table}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Table}	Update Typedef		Update Typedef
+{LV.Terminal}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Terminal}	Connect Wire	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Terminal}	Create Constant	Value	Create Constant
+{LV.Terminal}	Create Control	Value	Create Control
+{LV.Terminal}	Create Described Wire	Wire Source; Wire Description; Auto Route? (F)	
+{LV.Terminal}	Create Indicator		Create Indicator
+{LV.Terminal}	Delete		
+{LV.Terminal}	GetProperty	Index	GetProperty
+{LV.Terminal}	GetPropertyCallData		GetPropertyCallData
+{LV.Terminal}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Terminal}	Move	position; owner; duplicate	
+{LV.Terminal}	ObjHighlight		
+{LV.Terminal}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Terminal}	Replace	Style; Path; PaletteString	Replace
+{LV.Terminal}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Terminal}	SetProperty	Index; Value	
+{LV.Terminal}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Terminal}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Terminal}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Text}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Text}	Delete		
+{LV.Text}	GetProperty	Index	GetProperty
+{LV.Text}	GetPropertyCallData		GetPropertyCallData
+{LV.Text}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Text}	Move	position; owner; duplicate	
+{LV.Text}	MoveToDefLoc		
+{LV.Text}	ObjHighlight		
+{LV.Text}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Text}	Replace	Style; Path; PaletteString	Replace
+{LV.Text}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Text}	SetProperty	Index; Value	
+{LV.Text}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Text}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Text}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TimedLoop}	Add Shift Register	Y Position	Add Shift Register
+{LV.TimedLoop}	Auto Size		
+{LV.TimedLoop}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TimedLoop}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.TimedLoop}	Delete		
+{LV.TimedLoop}	GetProperty	Index	GetProperty
+{LV.TimedLoop}	GetPropertyCallData		GetPropertyCallData
+{LV.TimedLoop}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TimedLoop}	Move	position; owner; duplicate	
+{LV.TimedLoop}	ObjHighlight		
+{LV.TimedLoop}	Remove Structure		
+{LV.TimedLoop}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TimedLoop}	Replace	Style; Path; PaletteString	Replace
+{LV.TimedLoop}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TimedLoop}	Replace With WhileLoop		ReplaceWithWhileLoop
+{LV.TimedLoop}	ReplaceWithTimeLoop		
+{LV.TimedLoop}	SetProperty	Index; Value	
+{LV.TimedLoop}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TimedLoop}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TimedLoop}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TopLevelDiagram}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TopLevelDiagram}	Clear Selection		
+{LV.TopLevelDiagram}	Copy Selection		
+{LV.TopLevelDiagram}	CutSelection		
+{LV.TopLevelDiagram}	Delete		
+{LV.TopLevelDiagram}	GetProperty	Index	GetProperty
+{LV.TopLevelDiagram}	GetPropertyCallData		GetPropertyCallData
+{LV.TopLevelDiagram}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TopLevelDiagram}	Make Selection	Objects	
+{LV.TopLevelDiagram}	MakeSpace	Rect	
+{LV.TopLevelDiagram}	Move	position; owner; duplicate	
+{LV.TopLevelDiagram}	ObjHighlight		
+{LV.TopLevelDiagram}	Paste	Pos	
+{LV.TopLevelDiagram}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TopLevelDiagram}	Replace	Style; Path; PaletteString	Replace
+{LV.TopLevelDiagram}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TopLevelDiagram}	Select All		
+{LV.TopLevelDiagram}	SetProperty	Index; Value	
+{LV.TopLevelDiagram}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TopLevelDiagram}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TopLevelDiagram}	ShrinkWrapStructs		
+{LV.TopLevelDiagram}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TreeControl}	AttachDataSocket	url; mode; enabled	
+{LV.TreeControl}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TreeControl}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.TreeControl}	Create Control Ref		Create Control Ref
+{LV.TreeControl}	Create Invoke Node		Create Invoke Node
+{LV.TreeControl}	Create Local		Create Local
+{LV.TreeControl}	Create Property Node		Create Property Node
+{LV.TreeControl}	Custom Item Symbols:Get Symbol	index	Custom Glyphs:Get Glyph
+{LV.TreeControl}	Custom Item Symbols:Get Symbol Array		Custom Glyphs:Get Glyph Array
+{LV.TreeControl}	Custom Item Symbols:Revert Symbol	index	
+{LV.TreeControl}	Custom Item Symbols:Revert Symbols		
+{LV.TreeControl}	Custom Item Symbols:Set Symbol	index; image	
+{LV.TreeControl}	Custom Item Symbols:Set Symbol Array	glyphs	
+{LV.TreeControl}	Delete		
+{LV.TreeControl}	Discon Typedef		Discon Typedef
+{LV.TreeControl}	Double Click		Double Click
+{LV.TreeControl}	Edit Tree Items:Add Item	Parent Tag; Child Position; Left Cell; Child Text; Child Tag; Child Only?	Edit Tree Items:Add Item
+{LV.TreeControl}	Edit Tree Items:Add Item to End	Left Cell; Child Text; Child Tag; Item Indent; Child Only?	Edit Tree Items:Add Item to End
+{LV.TreeControl}	Edit Tree Items:Delete	tag; Delete Children	
+{LV.TreeControl}	Edit Tree Items:Move Item	tag; New Parent; New Position; Carry Children	
+{LV.TreeControl}	Edit Tree Items:Set Tag	tag; new tag	Edit Tree Items:Set Tag
+{LV.TreeControl}	Edit Tree Items:Sort Children	tag; Sort Column; Case Sensitivity; Sort Recursively; Reverse Order	
+{LV.TreeControl}	Get Image	image depth; bg color	image data
+{LV.TreeControl}	Get Term Image	image depth; background color	image data
+{LV.TreeControl}	GetProperty	Index	GetProperty
+{LV.TreeControl}	GetPropertyCallData		GetPropertyCallData
+{LV.TreeControl}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TreeControl}	Move	position; owner; duplicate	
+{LV.TreeControl}	Navigate Tree:Get Child	Tag	Navigate Tree:Get Child
+{LV.TreeControl}	Navigate Tree:Get Next	Tag	Navigate Tree:Get Next Item
+{LV.TreeControl}	Navigate Tree:Get Parent	tag	Navigate Tree:Get Parent
+{LV.TreeControl}	Navigate Tree:Get Path	tag	Navigate Tree:Get Path
+{LV.TreeControl}	ObjHighlight		
+{LV.TreeControl}	Open/Close:Ensure Visible	tag	
+{LV.TreeControl}	Open/Close:Open/Close All	Open	
+{LV.TreeControl}	Open/Close:Open/Close Item	tag; Open	
+{LV.TreeControl}	Reinit To Dflt		
+{LV.TreeControl}	RemoveDataSocket		
+{LV.TreeControl}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TreeControl}	Replace	Style; Path; PaletteString	Replace
+{LV.TreeControl}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TreeControl}	SetProperty	Index; Value	
+{LV.TreeControl}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TreeControl}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TreeControl}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TreeControl}	Update Typedef		Update Typedef
+{LV.Tunnel}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Tunnel}	Delete		
+{LV.Tunnel}	GetProperty	Index	GetProperty
+{LV.Tunnel}	GetPropertyCallData		GetPropertyCallData
+{LV.Tunnel}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Tunnel}	Move	position; owner; duplicate	
+{LV.Tunnel}	ObjHighlight		
+{LV.Tunnel}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Tunnel}	Replace	Style; Path; PaletteString	Replace
+{LV.Tunnel}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Tunnel}	SetProperty	Index; Value	
+{LV.Tunnel}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Tunnel}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Tunnel}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TypeCast}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TypeCast}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.TypeCast}	Delete		
+{LV.TypeCast}	GetProperty	Index	GetProperty
+{LV.TypeCast}	GetPropertyCallData		GetPropertyCallData
+{LV.TypeCast}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TypeCast}	Move	position; owner; duplicate	
+{LV.TypeCast}	ObjHighlight		
+{LV.TypeCast}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TypeCast}	Replace	Style; Path; PaletteString	Replace
+{LV.TypeCast}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TypeCast}	SetProperty	Index; Value	
+{LV.TypeCast}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TypeCast}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TypeCast}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TypedRefNum}	AttachDataSocket	url; mode; enabled	
+{LV.TypedRefNum}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.TypedRefNum}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.TypedRefNum}	Create Control Ref		Create Control Ref
+{LV.TypedRefNum}	Create Invoke Node		Create Invoke Node
+{LV.TypedRefNum}	Create Local		Create Local
+{LV.TypedRefNum}	Create Property Node		Create Property Node
+{LV.TypedRefNum}	Delete		
+{LV.TypedRefNum}	Discon Typedef		Discon Typedef
+{LV.TypedRefNum}	Get Image	image depth; bg color	image data
+{LV.TypedRefNum}	Get Term Image	image depth; background color	image data
+{LV.TypedRefNum}	GetProperty	Index	GetProperty
+{LV.TypedRefNum}	GetPropertyCallData		GetPropertyCallData
+{LV.TypedRefNum}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.TypedRefNum}	Move	position; owner; duplicate	
+{LV.TypedRefNum}	ObjHighlight		
+{LV.TypedRefNum}	Reinit To Dflt		
+{LV.TypedRefNum}	RemoveDataSocket		
+{LV.TypedRefNum}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.TypedRefNum}	Replace	Style; Path; PaletteString	Replace
+{LV.TypedRefNum}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.TypedRefNum}	SetProperty	Index; Value	
+{LV.TypedRefNum}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.TypedRefNum}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.TypedRefNum}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.TypedRefNum}	Update Typedef		Update Typedef
+{LV.Unbundler}	AddOutputAfter	Index	AddOutputAfter
+{LV.Unbundler}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Unbundler}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.Unbundler}	Delete		
+{LV.Unbundler}	GetProperty	Index	GetProperty
+{LV.Unbundler}	GetPropertyCallData		GetPropertyCallData
+{LV.Unbundler}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Unbundler}	Move	position; owner; duplicate	
+{LV.Unbundler}	ObjHighlight		
+{LV.Unbundler}	RemoveOutput	Index	
+{LV.Unbundler}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Unbundler}	Replace	Style; Path; PaletteString	Replace
+{LV.Unbundler}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Unbundler}	Resize	bounds	
+{LV.Unbundler}	SetProperty	Index; Value	
+{LV.Unbundler}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Unbundler}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Unbundler}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.UnitCast}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.UnitCast}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.UnitCast}	Delete		
+{LV.UnitCast}	GetProperty	Index	GetProperty
+{LV.UnitCast}	GetPropertyCallData		GetPropertyCallData
+{LV.UnitCast}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.UnitCast}	Move	position; owner; duplicate	
+{LV.UnitCast}	ObjHighlight		
+{LV.UnitCast}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.UnitCast}	Replace	Style; Path; PaletteString	Replace
+{LV.UnitCast}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.UnitCast}	SetProperty	Index; Value	
+{LV.UnitCast}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.UnitCast}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.UnitCast}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.VISAResourceNameConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.VISAResourceNameConstant}	Delete		
+{LV.VISAResourceNameConstant}	Discon Typedef		Discon Typedef
+{LV.VISAResourceNameConstant}	GetProperty	Index	GetProperty
+{LV.VISAResourceNameConstant}	GetPropertyCallData		GetPropertyCallData
+{LV.VISAResourceNameConstant}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.VISAResourceNameConstant}	Move	position; owner; duplicate	
+{LV.VISAResourceNameConstant}	ObjHighlight		
+{LV.VISAResourceNameConstant}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.VISAResourceNameConstant}	Replace	Style; Path; PaletteString	Replace
+{LV.VISAResourceNameConstant}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.VISAResourceNameConstant}	SetClassName	ClassName	
+{LV.VISAResourceNameConstant}	SetProperty	Index; Value	
+{LV.VISAResourceNameConstant}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.VISAResourceNameConstant}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.VISAResourceNameConstant}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.VISAResourceNameConstant}	Update Typedef		Update Typedef
+{LV.VISAResourceName}	AttachDataSocket	url; mode; enabled	
+{LV.VISAResourceName}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.VISAResourceName}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.VISAResourceName}	Create Control Ref		Create Control Ref
+{LV.VISAResourceName}	Create Invoke Node		Create Invoke Node
+{LV.VISAResourceName}	Create Local		Create Local
+{LV.VISAResourceName}	Create Property Node		Create Property Node
+{LV.VISAResourceName}	Delete		
+{LV.VISAResourceName}	Discon Typedef		Discon Typedef
+{LV.VISAResourceName}	Get Image	image depth; bg color	image data
+{LV.VISAResourceName}	Get Term Image	image depth; background color	image data
+{LV.VISAResourceName}	GetProperty	Index	GetProperty
+{LV.VISAResourceName}	GetPropertyCallData		GetPropertyCallData
+{LV.VISAResourceName}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.VISAResourceName}	Move	position; owner; duplicate	
+{LV.VISAResourceName}	ObjHighlight		
+{LV.VISAResourceName}	Reinit To Dflt		
+{LV.VISAResourceName}	RemoveDataSocket		
+{LV.VISAResourceName}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.VISAResourceName}	Replace	Style; Path; PaletteString	Replace
+{LV.VISAResourceName}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.VISAResourceName}	SetClassName	ClassName	
+{LV.VISAResourceName}	SetProperty	Index; Value	
+{LV.VISAResourceName}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.VISAResourceName}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.VISAResourceName}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.VISAResourceName}	Update Typedef		Update Typedef
+{LV.VI}	Abort VI		
+{LV.VI}	BD.Get Image Scaled	img depth; max width; max height	img data
+{LV.VI}	BD.Remove Bad Wires		
+{LV.VI}	Cause Type Propagation		
+{LV.VI}	Clear History	Reset Revision	
+{LV.VI}	Create Constant or Control	srcObj; typedesc; style; pos; Make Names Unique	newobjref
+{LV.VI}	Ctrl Val.Get All	Controls	Get All Control Values Variant
+{LV.VI}	Ctrl Val.Get All (Deprecated)	controls	Get All Control Values
+{LV.VI}	Default Vals.Make Curr Default		
+{LV.VI}	Default Vals.Reinit All		
+{LV.VI}	Disconnect Polys And Typedefs	Typedefs?; PolyVIs?; Others?	
+{LV.VI}	Empty		
+{LV.VI}	Export Interface (Deprecated)		image; colors; bounds; termNameRects; captions; status; ioStatus; dataTypes; conNum; TypeDefs; NamedNumericStrings
+{LV.VI}	Export VI Strings	String File; Interactive; Log File; Create Captions; Export Diagram	
+{LV.VI}	Export VI Strings Private	String File; Interactive; Log File; Create Captions; Export Diagram; Free Lbls Only; Save after Creating Captions	
+{LV.VI}	FP.Close		
+{LV.VI}	FP.Get Image	visible area only; image depth	image data
+{LV.VI}	FP.Get Image Scaled	visible area only; image depth; max width; max height	image data
+{LV.VI}	FP.Open	Activate; State	
+{LV.VI}	FP.Open In Window	Host Window; Bounds; Parent Wind	
+{LV.VI}	FP.Set Close If Lonely		
+{LV.VI}	Fake Exec State	state	
+{LV.VI}	FindCtrlWithKeyFocus		FindCtrlWithKeyFocus; CtrlFound?
+{LV.VI}	Generate VHDL	UseDFIR	
+{LV.VI}	GenerateCCode	TargetName; GenerateUI; GenerateDebugInfo; GenerateGuardCode; GenerateSerialOnly; UseStackVariables; MemoryModel; DestinationFolder; FrontPanelScaleFactor; HiRes; Silent	
+{LV.VI}	Get Conpane Image		Get Conpane Image
+{LV.VI}	Get Control Value	Control Name	Get Control Value; Type Descriptor
+{LV.VI}	Get Control Value [Variant]	Control Name	Get Control Value Variant
+{LV.VI}	Get FP Scaling		ScalingMode; ScalableObj
+{LV.VI}	GetTag	TagName	GetTag; IsPersistent; Value
+{LV.VI}	GetVIHierarchySignature	StopAtLocal; IncludeVILib	Signature
+{LV.VI}	GetVIHierarchyUserGUID	StopAtLocal; GUID	GUID
+{LV.VI}	Import VI Strings	String File; Interactive; Log File	
+{LV.VI}	Lock State.Get		Get Lock State; pwd in cache
+{LV.VI}	Open BD In Win	HostWin	
+{LV.VI}	Print Panel to PostScript	PostScript File; Append?; Entire Panel?	
+{LV.VI}	Print VI To HTML	HTML File Path; Append?; Format; Image Format; Image Depth; Image Directory	
+{LV.VI}	Print VI To RTF	RTF File Path; Append?; Format; Image Format; Image Depth; Image Directory; Help Format?	
+{LV.VI}	Print VI To Text	Text File Path; Append?; Format	
+{LV.VI}	Print.Panel To Printer	Entire Panel?	
+{LV.VI}	Print.VI To Printer	Format; Scale Panel?; Scale Diagram?; Page Headers?; Page Breaks?; Section Headers?	
+{LV.VI}	Private Save Instrument	Path to saved file; Save a Copy; Save Level	
+{LV.VI}	RP.Client Connections		Connections; Controller
+{LV.VI}	RP.Lock Control		
+{LV.VI}	RP.Unlock Control		
+{LV.VI}	Remote Panel Close Connection To Client	ClientAddr; ClientPort	
+{LV.VI}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.VI}	RemoveTags	TagName	RemoveTags
+{LV.VI}	Replicate Conpane	CPTM	
+{LV.VI}	Revert VI		
+{LV.VI}	Run VI	Wait until done; Auto Dispose Ref	
+{LV.VI}	Save Run-Time Menu	Path	
+{LV.VI}	Save VI Icon to File	Image File; Image Format; Image Depth	
+{LV.VI}	Save.For Previous	Path to saved file; Oldest compatible target version	Save for previous warnings
+{LV.VI}	Save.Instrument	Path to saved file; Save a Copy; Without Diagram	
+{LV.VI}	Save.Target Instrument	VIPath; SaveACopy; Save Level	
+{LV.VI}	Save.To Buffer	SaveOptions; TargetOS; TargetCPU; App Builder	Buffer
+{LV.VI}	Set Control Value	Control Name; Type Descriptor; Flattened Data	
+{LV.VI}	Set Control Value [Variant]	Control Name; Value	
+{LV.VI}	Set FP Scaling	ScalingMode; ScalableObj	
+{LV.VI}	Set Lock State	lockState; interactive; password; put in Cache	
+{LV.VI}	Set Tags Persistance	TagName; isPersistent	SetTagsPersistence
+{LV.VI}	Set VI Icon from File	Image File	
+{LV.VI}	Set VI Icon from Image Data	ImageData; 16Color; Monochrome	
+{LV.VI}	SetBDMod	Mod	
+{LV.VI}	SetFPMod	Mod	
+{LV.VI}	SetTag	TagName; Value; IsPersistent	SetTag; Old Value
+{LV.VI}	SetTags	TagName; Value	SetTags
+{LV.VI}	Tag.Remove All Tags		Remove All Tags
+{LV.VI}	Transaction.Begin Undo	Name	
+{LV.VI}	Transaction.End Undo		
+{LV.VI}	Transaction.Fail		
+{LV.VI}	Transaction.Redo		
+{LV.VI}	Transaction.Undo		
+{LV.VI}	User Edits.Allow		Allow User Edits
+{LV.VI}	User Edits.Block		Block User Edits
+{LV.VI}	VI Icon.Get as Image Data		ImageData; 16Color; Monochrome
+{LV.WaveformChart}	AttachDataSocket	url; mode; enabled	
+{LV.WaveformChart}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.WaveformChart}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.WaveformChart}	Create Control Ref		Create Control Ref
+{LV.WaveformChart}	Create Invoke Node		Create Invoke Node
+{LV.WaveformChart}	Create Local		Create Local
+{LV.WaveformChart}	Create Property Node		Create Property Node
+{LV.WaveformChart}	Delete		
+{LV.WaveformChart}	Discon Typedef		Discon Typedef
+{LV.WaveformChart}	Get Image	image depth; bg color	image data
+{LV.WaveformChart}	Get Term Image	image depth; background color	image data
+{LV.WaveformChart}	GetProperty	Index	GetProperty
+{LV.WaveformChart}	GetPropertyCallData		GetPropertyCallData
+{LV.WaveformChart}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.WaveformChart}	Map Coords To XY	Coords; X Scale; Y Scale	Map Coords To XY; XY
+{LV.WaveformChart}	Move	position; owner; duplicate	
+{LV.WaveformChart}	ObjHighlight		
+{LV.WaveformChart}	Reinit To Dflt		
+{LV.WaveformChart}	RemoveDataSocket		
+{LV.WaveformChart}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.WaveformChart}	Replace	Style; Path; PaletteString	Replace
+{LV.WaveformChart}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.WaveformChart}	SetProperty	Index; Value	
+{LV.WaveformChart}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.WaveformChart}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.WaveformChart}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.WaveformChart}	Update Typedef		Update Typedef
+{LV.WaveformData}	AttachDataSocket	url; mode; enabled	
+{LV.WaveformData}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.WaveformData}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.WaveformData}	Create Control Ref		Create Control Ref
+{LV.WaveformData}	Create Invoke Node		Create Invoke Node
+{LV.WaveformData}	Create Local		Create Local
+{LV.WaveformData}	Create Property Node		Create Property Node
+{LV.WaveformData}	Delete		
+{LV.WaveformData}	Discon Typedef		Discon Typedef
+{LV.WaveformData}	Get Image	image depth; bg color	image data
+{LV.WaveformData}	Get Term Image	image depth; background color	image data
+{LV.WaveformData}	GetProperty	Index	GetProperty
+{LV.WaveformData}	GetPropertyCallData		GetPropertyCallData
+{LV.WaveformData}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.WaveformData}	Move	position; owner; duplicate	
+{LV.WaveformData}	ObjHighlight		
+{LV.WaveformData}	Reinit To Dflt		
+{LV.WaveformData}	RemoveDataSocket		
+{LV.WaveformData}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.WaveformData}	Replace	Style; Path; PaletteString	Replace
+{LV.WaveformData}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.WaveformData}	SetProperty	Index; Value	
+{LV.WaveformData}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.WaveformData}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.WaveformData}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.WaveformData}	Update Typedef		Update Typedef
+{LV.WaveformGraph}	AttachDataSocket	url; mode; enabled	
+{LV.WaveformGraph}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.WaveformGraph}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
+{LV.WaveformGraph}	Create Control Ref		Create Control Ref
+{LV.WaveformGraph}	Create Invoke Node		Create Invoke Node
+{LV.WaveformGraph}	Create Local		Create Local
+{LV.WaveformGraph}	Create Property Node		Create Property Node
+{LV.WaveformGraph}	Delete		
+{LV.WaveformGraph}	Discon Typedef		Discon Typedef
+{LV.WaveformGraph}	Get Image	image depth; bg color	image data
+{LV.WaveformGraph}	Get Term Image	image depth; background color	image data
+{LV.WaveformGraph}	GetPlotAtPos	InputPt	PlotNum
+{LV.WaveformGraph}	GetProperty	Index	GetProperty
+{LV.WaveformGraph}	GetPropertyCallData		GetPropertyCallData
+{LV.WaveformGraph}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.WaveformGraph}	Map Coords To XY	Coords; X Scale; Y Scale	Map Coords To XY; XY
+{LV.WaveformGraph}	Move	position; owner; duplicate	
+{LV.WaveformGraph}	ObjHighlight		
+{LV.WaveformGraph}	Reinit To Dflt		
+{LV.WaveformGraph}	RemoveDataSocket		
+{LV.WaveformGraph}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.WaveformGraph}	Replace	Style; Path; PaletteString	Replace
+{LV.WaveformGraph}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.WaveformGraph}	SetProperty	Index; Value	
+{LV.WaveformGraph}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.WaveformGraph}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.WaveformGraph}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.WaveformGraph}	Update Typedef		Update Typedef
+{LV.WhileLoop}	Add Shift Register	Y Position	Add Shift Register
+{LV.WhileLoop}	Auto Size		
+{LV.WhileLoop}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.WhileLoop}	Connect Wires	Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)	
+{LV.WhileLoop}	Delete		
+{LV.WhileLoop}	GetProperty	Index	GetProperty
+{LV.WhileLoop}	GetPropertyCallData		GetPropertyCallData
+{LV.WhileLoop}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.WhileLoop}	Move	position; owner; duplicate	
+{LV.WhileLoop}	ObjHighlight		
+{LV.WhileLoop}	Remove Structure		
+{LV.WhileLoop}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.WhileLoop}	Replace	Style; Path; PaletteString	Replace
+{LV.WhileLoop}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.WhileLoop}	ReplaceWithTimeLoop		
+{LV.WhileLoop}	SetProperty	Index; Value	
+{LV.WhileLoop}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.WhileLoop}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.WhileLoop}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Wire}	AttachProbe	ProbeVI; OpenFP?; VIClone	Attach Probe
+{LV.Wire}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
+{LV.Wire}	CleanUpWire		
+{LV.Wire}	CopyProbesToCompanion		
+{LV.Wire}	Create Constant	Value	Create Constant
+{LV.Wire}	Create Control	Value	Create Control
+{LV.Wire}	Create Indicator	Value	Create Indicator
+{LV.Wire}	Delete		
+{LV.Wire}	GetProperty	Index	GetProperty
+{LV.Wire}	GetPropertyCallData		GetPropertyCallData
+{LV.Wire}	GetTag	TagName	GetTag; Value; isPersistent
+{LV.Wire}	Insert Node	Style; Path; PaletteString; InsertPoint	Insert Node
+{LV.Wire}	Move	position; owner; duplicate	
+{LV.Wire}	ObjHighlight		
+{LV.Wire}	Remove Probe	VIClone	
+{LV.Wire}	RemoveLooseEnds		
+{LV.Wire}	RemoveTag	TagName	RemoveTag; OldValue
+{LV.Wire}	Replace	Style; Path; PaletteString	Replace
+{LV.Wire}	Replace No Attrib	Param 0; Param 1; PaletteString	RepNoAttrib
+{LV.Wire}	SetProperty	Index; Value	
+{LV.Wire}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
+{LV.Wire}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
+{LV.Wire}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData

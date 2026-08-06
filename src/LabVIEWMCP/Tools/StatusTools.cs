@@ -21,6 +21,9 @@ internal sealed class StatusTools(LvaiConnection connection)
         how it was found, and the service list reported by server reflection. Start here -
         every other lvai_* tool depends on this connection. The port is ephemeral and
         changes on each LabVIEW restart, so it is re-discovered automatically.
+        Also reports scriptsDirectory: the absolute path of the helper scripts shipped next to
+        this server's exe. Use it instead of a relative path - it works from any working
+        directory, and from a binary-only install with no repository checkout.
         """)]
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -48,10 +51,23 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["port"] = connection.Port,
                 ["discoveredVia"] = connection.DiscoveredVia,
                 ["applicationLanguage"] = config.Language,
+                ["scriptsDirectory"] = ScriptsDirectory(),
                 ["services"] = services,
                 ["reflectionError"] = reflectionError,
             }.ToJsonString(Indented);
         });
+
+    /// <summary>
+    /// Absolute path of the scripts/ folder copied next to the exe at build time, or null when
+    /// it is absent. Reported by lvai_status so an agent never has to guess a relative path:
+    /// the MCP server's working directory is whatever the client chose, which is not the
+    /// repository root, and a binary-only install has no repository at all.
+    /// </summary>
+    internal static string? ScriptsDirectory()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "scripts");
+        return Directory.Exists(path) ? path : null;
+    }
 
     [McpServerTool(Name = "lvai_get_application_configuration", ReadOnly = true,
                    Title = "Get LabVIEW application configuration")]

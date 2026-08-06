@@ -534,7 +534,18 @@ broadly.
 
 So a generated VI may freely call the palette — every `vi.lib` utility, referenced by bare file
 name, no path. What it may not call is *your* code: project-local, library-local, and even a
-loose `.vi` sitting in a directory. Two consequences worth stating plainly:
+loose `.vi` sitting in a directory.
+
+**`lvai_palette_index` answers which names those are.** It reads the installed LabVIEW's own
+`menus\*.mnu` palette files, so the set is the one this station actually has — installed toolkits
+hook themselves into the palettes, so it is not a fixed list. Measured on a stock LabVIEW 2026:
+460 palette files, **2 202 reachable VIs**, against 19 322 `.vi` files in `vi.lib` — so roughly
+one file in nine is a legal `Call` target, and guessing from the filesystem is nine times more
+likely to be wrong than right. Built-in functions are deliberately absent from that index: they
+are `Node` elements, not `Call`s, and a palette entry for one carries only its display label,
+which is not the AIXML node name (`To XML` on the palette, `Flatten To XML` in AIXML).
+
+Two consequences worth stating plainly:
 
 - **Generated VIs cannot call each other.** A VI this server just produced is not
   palette-reachable, so it is not a legal `Call` target for the next one. There is no way to

@@ -227,8 +227,8 @@ Inside Claude Code the tools are namespaced `mcp__labview__lvai_*`.
 
 ### 6. Let the read-only tools run without asking
 
-[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 13
-passive tools, so reads run uninterrupted while all 8 mutating tools still ask every time:
+[`.claude/settings.json`](.claude/settings.json) is already in the repo and allow-lists the 18
+passive tools, so reads run uninterrupted while all 9 mutating tools still ask every time:
 
 ```json
 {
@@ -246,13 +246,18 @@ passive tools, so reads run uninterrupted while all 8 mutating tools still ask e
       "mcp__labview__lvai_convert_vi_to_aixml",
       "mcp__labview__lvai_validate_aixml",
       "mcp__labview__lvai_aixml_reference",
-      "mcp__labview__lvai_dqmh_reference"
+      "mcp__labview__lvai_dqmh_reference",
+      "mcp__labview__lvai_lvproj_reference",
+      "mcp__labview__lvai_list_labview_installations",
+      "mcp__labview__lvai_lvlib_reference",
+      "mcp__labview__lvai_vi_server_reference",
+      "mcp__labview__lvai_palette_index"
     ]
   }
 }
 ```
 
-That is 13 of the 19 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
+That is 18 of the 24 tools carrying `readOnlyHint`. The six `lvai_monitor_*` tools are
 deliberately left out: they are read-only in the sense that they only wait, but they block for
 up to `timeoutSeconds` and their `replyJson` argument writes content back into LabVIEW's UI —
 so they are worth a prompt. Add them if you are actively developing against the monitor hooks.
@@ -274,13 +279,15 @@ Do **not** allow-list the whole server (`mcp__labview`) — that would wave thro
 
 ## Tools
 
-**27 tools over 23 RPCs.** Four are additions that map to no RPC: `lvai_status`,
-`lvai_dump_schema`, and the two knowledge tools below. 19 carry `readOnlyHint`, 8 carry
+**33 tools over 23 RPCs.** Ten are additions that map to no RPC: `lvai_status`,
+`lvai_dump_schema`, `lvai_palette_index`, and the seven knowledge tools below. 24 carry
+`readOnlyHint`, 9 carry
 `destructiveHint`, so a client can gate the writes.
 
-The server also exposes the same two documents as **MCP resources** —
-`labview://aixml-reference` and `labview://dqmh-patterns` — for clients that read resources
-rather than call tools.
+The server also exposes its five embedded documents as **MCP resources** —
+`labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
+`labview://lvlib-lvclass-structure` and `labview://vi-server-reference` — for clients that read
+resources rather than call tools.
 
 ### Read — safe
 
@@ -290,6 +297,10 @@ rather than call tools.
 | `lvai_dump_schema` | — (server reflection) |
 | `lvai_aixml_reference` | — (embedded [AIXML reference](docs/aixml-reference.md)) |
 | `lvai_dqmh_reference` | — (embedded [DQMH reference](docs/dqmh-patterns.md)) |
+| `lvai_lvproj_reference` | — (embedded [.lvproj reference](docs/lvproj-structure.md)) |
+| `lvai_lvlib_reference` | — (embedded [.lvlib/.lvclass reference](docs/lvlib-lvclass-structure.md)) |
+| `lvai_vi_server_reference` | — (embedded [VI Server catalogue](docs/vi-server-reference.md), queried row-wise) |
+| `lvai_palette_index` | — (scans the installed LabVIEW's `menus\*.mnu`) |
 | `lvai_get_application_configuration` | `GetApplicationConfiguration` |
 | `lvai_describe_vi` | `GetDescribeVIPromptInfo` |
 | `lvai_describe_project` | `GetDescribeProjectPromptInfo` |
@@ -350,7 +361,7 @@ and an open-ended mode for driving the timeout paths.
 
 | Area | Covered |
 |---|---|
-| All 27 tools | request mapping, response rendering, error paths |
+| All 33 tools | request mapping, response rendering, error paths |
 | `KnowledgeTools` | embedded documents byte-identical to `docs/`, section lookup, keyword aliases |
 | `Rpc` | list/JSON/map parsing, deadline clamping, error-to-data guard, stream collection |
 | `Json` | default-value retention, extra fields, stream and error envelopes |
@@ -404,8 +415,8 @@ VI internals, and what cannot be generated.
 The format itself — every element, attribute, item type, property scope, the containment grammar
 and the build-specification vocabulary — is written up in
 [`docs/lvproj-structure.md`](docs/lvproj-structure.md), derived by census over 65 production
-`.lvproj` files. Read that before generating anything larger than the blank project below. Unlike
-the two embedded documents it is **not** compiled into the assembly and has no knowledge tool.
+`.lvproj` files. Read that before generating anything larger than the blank project below — it is
+embedded in the assembly and served by `lvai_lvproj_reference`.
 
 Libraries and classes are a separate format, written up the same way in
 [`docs/lvlib-lvclass-structure.md`](docs/lvlib-lvclass-structure.md) (census over 318 `.lvlib` and
@@ -581,16 +592,19 @@ build.ps1                       stop the server, build Debug, verify embedded do
 Directory.Build.targets         activates .githooks once per clone, on the first build
 .gitattributes                  forces LF on the hook stub (sh.exe fails on CRLF)
 .mcp.json                       project-scope MCP registration -> bin/Debug/net8.0/
-.claude/settings.json           allow-lists the 13 passive tools
+.claude/settings.json           allow-lists the 18 passive tools
 
 docs/
   aixml-reference.md            the AIXML dialect, derived empirically; embedded in the dll
   dqmh-patterns.md              DQMH module structure; embedded in the dll
-  lvproj-structure.md           the .lvproj format, by census over 65 projects; NOT embedded
+  lvproj-structure.md           the .lvproj format, by census over 65 projects
   lvlib-lvclass-structure.md    .lvlib/.lvclass: access scope and inheritance, by census
-                                over 318 files; NOT embedded
+                                over 318 files
+  vi-server-reference.md        how to reach VI Server from a generated VI
+  vi-server-methods.tsv         3078 Invoke Node targets with their terminals, 153 classes
+  vi-server-properties.tsv      6410 Property Node fields
 
-scripts/
+scripts/                        copied next to the exe at build time; path in lvai_status
   generate_labview_doc.py       documentation JSON -> .docx + structure and UML diagrams
   lvdoc_print.xml               AIXML for the helper VI that exports icon + connector pane
   Export-VIDoc.ps1              same over ActiveX; fallback, does not work on every station
@@ -611,6 +625,7 @@ src/LabVIEWMCP/
     LvaiConnection.cs           channel lifetime, lazy connect, re-discovery
     PortDiscovery.cs            LabVIEW.exe listeners via iphlpapi, then probing
   Infra/
+    PaletteIndex.cs             palette-reachable VIs from the installed LabVIEW's .mnu files
     Json.cs                     protobuf -> JSON result rendering
     Rpc.cs                      error-to-data guard, stream collection, deadlines
     SchemaRenderer.cs           FileDescriptorProto -> readable .proto text
@@ -621,6 +636,7 @@ src/LabVIEWMCP/
     ActionTools.cs              run, build, open, palette, telemetry
     MonitorTools.cs             the six inverted monitor streams
     KnowledgeTools.cs           serves the embedded docs/ as tools and MCP resources
+    PaletteTools.cs             which VIs a generated Call may legally target
   Cli/
     CommandLine.cs              flag parsing for the CLI side-modes
     SelfTest.cs                 "what works on my machine"

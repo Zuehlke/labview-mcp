@@ -221,8 +221,8 @@ They come from LabVIEW's own documentation printer — reached **not** over Acti
 generating a three-node helper VI and running it. Verified end to end on LabVIEW 2026; the
 ActiveX route is a dead end on at least one station (see the table further down).
 
-**Step 1 — generate the helper once per run.** The AIXML is checked in as
-**`scripts/lvdoc_print.xml`** — do not retype it. Feed that file straight to
+**Step 1 — generate the helper once per run.** The AIXML ships as
+**`<scripts>\lvdoc_print.xml`** (`lvai_status` → `scriptsDirectory`) — do not retype it. Feed that file straight to
 `lvai_validate_aixml`, then to `lvai_convert_aixml_to_vi` with a scratch `viPath`. It validates
 and converts as-is; `Read` it first if you want to see the diagram it describes:
 
@@ -241,7 +241,10 @@ Four details in that file that each cost a cycle to find — keep them if you ev
 - **`Format` must be wired.** Unwired, LabVIEW prints the front panel only. `value="4"` is the
   complete format: connector pane, front panel, block diagram, hierarchy, controls.
 - **Create `Image Directory` yourself first.** A missing directory makes the Invoke Node error.
-- **`target="Print.VI To HTML"`** — with spaces, exactly so.
+- **`target="Print.VI To HTML"`** — with spaces, exactly so. Any other method you need is in
+  [`docs/vi-server-reference.md`](../../docs/vi-server-reference.md) and the two TSV catalogues
+  next to it: 3 078 methods and 6 410 properties with their exact terminal names, so a new node
+  no longer costs a probe VI.
 
 **Step 2 — run it once per VI** with `lvai_run_vi_as_top_level`:
 
@@ -251,10 +254,11 @@ Four details in that file that each cost a cycle to find — keep them if you ev
 
 Seven parallel calls in one message work fine; typical VI ~1 s, a large `Main.vi` ~16 s.
 
-**Step 3 — collect.** LabVIEW names the images after the VI stem: `<stem>c.png` is the
-**connector pane with the icon drawn inside it and the terminal indices labelled** — one file
-covers both of the user's requirements. `<stem>p.png` is the panel, `<stem>d*.png` the diagram,
-`<stem>h.png` the hierarchy; ignore those. Set **only `conpane`** in the data JSON, never both
+**Step 3 — collect.** LabVIEW names the images after the **HTML file** you passed, not after the
+VI: `x.html` produces `xc.png`. Name each HTML after its VI and the two coincide, which is the
+simplest way to keep them apart. `<stem>c.png` is the **connector pane with the icon drawn inside
+it and the terminal indices labelled** — one file covers both of the user's requirements.
+`<stem>p.png` is the panel, `<stem>d*.png` the diagram, `<stem>h.png` the hierarchy; ignore those. Set **only `conpane`** in the data JSON, never both
 to the same path — the generator puts a shared image in the narrow 2.2 cm icon slot, while
 `conpane` alone gets the full 8 cm.
 
@@ -391,7 +395,11 @@ py "<scripts>\generate_labview_doc.py" "<data.json>" "<output.docx>" ^
    --structure-out "<temp>\<Name>_structure.png" --uml-out "<temp>\<Name>_uml.png"
 ```
 
-`<scripts>` is `scripts\` under this repository's root (`C:\Projects\LabVIEWMCP`). The script:
+`<scripts>` comes from **`lvai_status` → `scriptsDirectory`**: an absolute path to the `scripts\`
+folder shipped next to the MCP server's exe. Use it rather than a repository-relative path — your
+working directory is whatever the client chose, and a binary-only install has no repository at
+all. If the field is absent (older server), fall back to `scripts\` under this repository's root.
+The script:
 
 - lays out and renders the **structure diagram** (library → folders → items, folders tinted by
   access scope, non-public branches muted and italic, nested classes as their own node type),
