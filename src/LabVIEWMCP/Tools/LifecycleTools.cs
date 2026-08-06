@@ -34,6 +34,11 @@ internal sealed class LifecycleTools(LvaiConnection connection)
         - that is the one hosting the AI gRPC service. No version number is hardcoded; LabVIEW
         NXG is ignored.
         MUTATING: may start an IDE, which is visible to whoever is at the machine.
+        The launch is VERIFIED, not assumed: a LabVIEW created as a child of this server is
+        killed by the host's job object within about half a second, so the tool tries several
+        launch routes and keeps only one whose process is still alive two seconds later. The
+        winner is reported as launchMethod; if none survives you get errorKind
+        'launch-did-not-survive' listing every attempt, never a hopeful 'starting'.
         IT CANNOT FINISH THE JOB ALONE. Measured: the 'LV AI gRPC Service' starts with NIGEL,
         the AI assistant - not with the IDE. A LabVIEW that has been up for twenty minutes can
         hold 30 open listener ports and serve lvai.LVAI on none of them. So a persistent
@@ -49,10 +54,23 @@ internal sealed class LifecycleTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
-            var budget = Rpc.ClampToolWait(waitSeconds);
+            var budget = TimeSpan.FromSeconds(Rpc.ClampToolWait(waitSeconds));
+            var stopwatch = Stopwatch.StartNew();
+
+            // The budget covers the WHOLE call - launch and poll alike - and it is enforced by a
+            // token, not by a loop condition. It used to be a loop condition only, and that is not
+            // the same thing: one port-discovery pass can take tens of seconds, so the deadline was
+            // checked, a fresh pass started, and the call ran long past its promise. Measured
+            // waitedMs of 53 812 and 47 242 against a nominal 45 000 - and past roughly 60 s the MCP
+            // client stops waiting, answers "Request timed out", and the caller learns nothing at all.
+            using var budgetCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            budgetCts.CancelAfter(budget);
+            var token = budgetCts.Token;
+
             var running = LabViewLocator.RunningInstances();
             var startedNow = false;
             string? launched = null;
+            LaunchOutcome? launch = null;
 
             if (running.Count == 0)
             {
@@ -69,8 +87,21 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                             note = "LabVIEW NXG is excluded - it does not host the lvai service.",
                         });
 
-                if (LabViewLocator.Start(pick) is null)
-                    return Json.Error("start-failed", $"Could not start {pick.ExePath}.");
+                // Not "did the call return without error" but "is a LabVIEW still alive" - see
+                // LabViewLauncher for why those differ by about 500 ms.
+                launch = await LabViewLauncher.StartAndConfirmAsync(pick, token);
+                if (!launch.Ok)
+                    return Json.Error("launch-did-not-survive",
+                        $"Every launch strategy was tried for {pick.Describe()} and no LabVIEW " +
+                        "process stayed alive.", new
+                        {
+                            exe = pick.ExePath,
+                            attempts = launch.Attempts,
+                            note = "A process that appears and vanishes within a second is being " +
+                                   "terminated from outside - normally a job object this server " +
+                                   "belongs to. Starting LabVIEW by hand is the workaround; the " +
+                                   "attempts above say which routes were refused.",
+                        });
 
                 startedNow = true;
                 launched = pick.Describe();
@@ -78,20 +109,17 @@ internal sealed class LifecycleTools(LvaiConnection connection)
 
             // Poll until the service answers. A cold LabVIEW start is far slower than this
             // budget, hence the explicit "call again" outcome rather than a failure.
-            var stopwatch = Stopwatch.StartNew();
-            var deadline = TimeSpan.FromSeconds(budget);
             Exception? last = null;
 
-            while (stopwatch.Elapsed < deadline)
+            while (!token.IsCancellationRequested)
             {
-                ct.ThrowIfCancellationRequested();
                 try
                 {
                     connection.Invalidate();   // the port changes with every LabVIEW start
-                    var client = await connection.GetClientAsync(ct);
+                    var client = await connection.GetClientAsync(token);
                     var config = await client.GetApplicationConfigurationAsync(
                         new GetApplicationConfigurationRequest(),
-                        deadline: Rpc.Deadline(10), cancellationToken: ct);
+                        deadline: Rpc.Deadline(10), cancellationToken: token);
 
                     return new JsonObject
                     {
@@ -99,30 +127,44 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                         ["state"] = "ready",
                         ["startedByThisCall"] = startedNow,
                         ["launched"] = launched,
+                        ["launchMethod"] = launch?.Method,
                         ["port"] = connection.Port,
                         ["discoveredVia"] = connection.DiscoveredVia,
                         ["applicationLanguage"] = config.Language,
                         ["waitedMs"] = stopwatch.ElapsedMilliseconds,
                     }.ToJsonString(Indented);
                 }
-                catch (Exception e)
+                // The caller's own cancellation must still escape; only the budget is absorbed.
+                catch (Exception e) when (!ct.IsCancellationRequested)
                 {
                     last = e;
-                    await Task.Delay(2000, ct);
+                    try { await Task.Delay(2000, token); }
+                    catch (OperationCanceledException) { /* budget spent - the loop ends below */ }
                 }
             }
 
+            ct.ThrowIfCancellationRequested();
+
+            var stillRunning = LabViewLocator.RunningInstances().Count;
             return new JsonObject
             {
                 ["ok"] = false,
                 ["state"] = "starting",
                 ["startedByThisCall"] = startedNow,
                 ["launched"] = launched,
-                ["runningProcesses"] = LabViewLocator.RunningInstances().Count,
+                ["launchMethod"] = launch?.Method,
+                ["runningProcesses"] = stillRunning,
                 ["waitedMs"] = stopwatch.ElapsedMilliseconds,
                 ["lastError"] = last?.Message,
-                ["next"] = "LabVIEW is up but its AI gRPC service is not answering yet. " +
-                           "Call this tool again, or use the CLI --ensure-labview for a long wait.",
+                // "LabVIEW is up" was asserted unconditionally here, and it was wrong exactly when
+                // it mattered: with runningProcesses 0 the advice sent the reader after the AI
+                // service while the IDE itself was gone.
+                ["next"] = stillRunning == 0
+                    ? "No LabVIEW process is running any more - it was started and did not stay up. " +
+                      "Start LabVIEW by hand and call this tool again; the README's Troubleshooting " +
+                      "table has the measurement behind this."
+                    : "LabVIEW is up but its AI gRPC service is not answering yet. " +
+                      "Call this tool again, or use the CLI --ensure-labview for a long wait.",
             }.ToJsonString(Indented);
         });
 
