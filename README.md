@@ -405,8 +405,13 @@ The format itself — every element, attribute, item type, property scope, the c
 and the build-specification vocabulary — is written up in
 [`docs/lvproj-structure.md`](docs/lvproj-structure.md), derived by census over 65 production
 `.lvproj` files. Read that before generating anything larger than the blank project below. Unlike
-the other two documents in `docs/` it is **not** embedded in the assembly and has no knowledge
-tool.
+the two embedded documents it is **not** compiled into the assembly and has no knowledge tool.
+
+Libraries and classes are a separate format, written up the same way in
+[`docs/lvlib-lvclass-structure.md`](docs/lvlib-lvclass-structure.md) (census over 318 `.lvlib` and
+`.lvclass` files). It answers the two questions the gRPC interface cannot: **which members are
+public**, and **which class derives from which** — `describe_project` reports `vis`, `libraries`
+and `classes` but has no field for either.
 
 **No RPC creates one.** The 23 RPCs act on VIs, and on projects that already exist:
 `ConvertAIXMLToVI` writes a `.vi`, `OpenFile` opens a path that has to be there already, and
@@ -536,6 +541,28 @@ nesting, the file on disk and a freshly reopened tree are the only evidence.
 - **An empty AIXML export is not an empty VI.** A 100–200 byte export containing only the
   `<VI …/>` element means the diagram was not readable — and `ConvertVIToAIXML` still returns
   `errorCode 0`. Cross-check with `--diagram`: no `viImage` either confirms it.
+- **No RPC returns a VI icon or a connector pane picture, but you can still get one.**
+  `describe_vi`'s `infoJson` carries exactly `viName`, `viPath`, `viXml`, `viImage`,
+  `controlsIndicators`, `subvisInfo`, `owningProjectPath`, `owningProjectName`, `errorCode`,
+  `errorMessage`, `warnings` — `viImage` is the *block diagram*. The route to the other two
+  pictures is to **generate a helper VI and run it**: `Open VI Reference` → Invoke Node
+  `target="Print.VI To HTML"` → `Close Reference`, built with `ConvertAIXMLToVI` and driven by
+  `RunVIAsTopLevel`. LabVIEW then writes `<stem>c.png` — the connector pane with the icon inside
+  it. Full recipe, including the four things that each cost a debug cycle, in
+  [`.claude/agents/labview-doc-generator.md`](.claude/agents/labview-doc-generator.md).
+  The ActiveX equivalent (`VirtualInstrument.PrintVIToHTML`,
+  [`scripts/Export-VIDoc.ps1`](scripts/Export-VIDoc.ps1)) needs the VI Server **ActiveX**
+  protocol and did not work on the development station in six configurations — the COM object is
+  created but inert (empty `Version`, `NullReferenceException` from `GetVIReference`).
+- **`RunVIAsTopLevel` works against a real LabVIEW** — no longer only fake-tested. Two limits:
+  it sets control values through a variant, so a **path control cannot be set from a string**
+  (`Error 91 … Control Value:Set`; use a string control plus `String To Path` on the diagram),
+  and it reads indicators back as strings, so any **non-string indicator returns `Error 91`**
+  even though the VI ran correctly. Judge success by the VI's own outputs, not by `errorCode`.
+- **To read many VIs, use `ConvertVIToAIXML` with `returnContent: false`, not `describe_vi`.**
+  Both return the same AIXML, but `describe_vi` always includes `viImage`, a base64 PNG of the
+  block diagram, in the tool result. Writing the XML to disk instead keeps the responses to four
+  fields per VI.
 - **Two whole categories of file are unreadable.** `describe_vi` rejects a `.ctl` with
   `errorCode 5001 — Unsupported VI type`, so **control typedefs cannot be read at all** — which
   matters because that is where DQMH keeps every event's argument cluster. And a password-protected
@@ -560,6 +587,16 @@ docs/
   aixml-reference.md            the AIXML dialect, derived empirically; embedded in the dll
   dqmh-patterns.md              DQMH module structure; embedded in the dll
   lvproj-structure.md           the .lvproj format, by census over 65 projects; NOT embedded
+  lvlib-lvclass-structure.md    .lvlib/.lvclass: access scope and inheritance, by census
+                                over 318 files; NOT embedded
+
+scripts/
+  generate_labview_doc.py       documentation JSON -> .docx + structure and UML diagrams
+  lvdoc_print.xml               AIXML for the helper VI that exports icon + connector pane
+  Export-VIDoc.ps1              same over ActiveX; fallback, does not work on every station
+
+.claude/agents/
+  labview-doc-generator.md      the documentation agent that drives the scripts above
 
 .githooks/
   pre-push                      sh stub git invokes

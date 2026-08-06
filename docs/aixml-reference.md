@@ -379,6 +379,32 @@ A `Property Node` without the `write+` prefix reads. `Index Array` with two `ind
 entries in `inputs` returns two `element` outputs — repeated terminal names are how
 expandable nodes are described.
 
+### Invoke Nodes
+
+An `Invoke Node` is a `Node` with **`target`** (the method) and **`type`** (the refnum
+class) instead of `fields`. Verified by exporting a VI that calls `FP.Open`:
+
+```xml
+<Node _name="Invoke Node" target="FP.Open" type="{LV.VI}"
+      inputs="reference:97.value,error in (no error):170.value,Activate:88.value,State:"
+      outputs="reference out:,error out:43.error out" uid="43" uid_parent="root"/>
+```
+
+`inputs` starts with `reference` and `error in (no error)`, then carries the method's
+own parameters by their literal LabVIEW names; `outputs` gives `reference out` and
+`error out`. So VI Server scripting **is** expressible in AIXML — an earlier reading of
+this document concluded the opposite from the fact that only `Property Node` was
+documented here.
+
+**But `target` cannot be looked up from outside LabVIEW.** Method names are *not* stored
+as literals in a `.vi` (they are binary IDs — grepping VI files for `FP.Open` finds
+nothing), they are not in `LabVIEW.exe`'s string table beyond a few like `FP.Open`
+itself, and `SearchInfoCache` covers palette items, not VI Server methods. The only
+reliable way to obtain the `target` for a method you have not seen before is to place
+that node in a scratch VI in the IDE and export it with `ConvertVIToAIXML`. Budget for
+that step rather than guessing — a wrong `target` is exactly the kind of thing that
+fails late.
+
 ### Terminal names must be looked up, never guessed
 
 They are the literal LabVIEW terminal labels, spaces, punctuation and all — and several
