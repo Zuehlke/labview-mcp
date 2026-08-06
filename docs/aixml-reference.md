@@ -772,7 +772,7 @@ pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026
 | `string` in, `string` out | works |
 | `path` **in** | `Error 91 ... Control Value\3ASet` — the variant will not coerce string to path, and it fails *before* the VI runs (`inputsSent` counts the attempt) |
 | `array` or `cluster` **out** | `Error 91 ... Variant To Data` — **the VI has already run correctly**; only the read-back fails, and the outputs come back as empty strings |
-| `bool` + `int32` + `string` **out** together | `Error 91 ... Variant To Data`, and **all three** outputs empty — measured twice on the icon helper. A string-only VI answered `errorCode 0` in the same session, so the failure is one of the two non-string types, not the count of indicators. |
+| `bool`, `int32` or `cluster` **out** | `Error 91 ... Variant To Data`, and **that one indicator** comes back empty. Marshalling is **per indicator, not all-or-nothing**: one response carried a `string` indicator's full value while `status` (bool), `code` (int32) and `error out` (cluster) were all blank. So `errorCode 91` means "at least one output could not be read" — never "the VI failed". |
 | `double` **in** | `Error 91 ... Control Value\3ASet` — the same wall as `path`, and it also fails *before* the VI runs. Measured twice on the same control, as the JSON string `"100"` and as the JSON number `100`: neither coerces to a DBL. **This contradicts `lvai_run_vi_as_top_level`'s own description**, which says to pass numbers as their text form; that does not work. Numeric controls cannot be driven at all — take the number in as `string` and convert on the diagram. |
 
 Consequences for authoring:
@@ -780,13 +780,18 @@ Consequences for authoring:
 - Take paths **and numbers** in as `string` and convert on the diagram — `String To Path`
   (`inputs="string:…"` → `outputs="path:…"`). This is why the icon/connector-pane helper VI in
   `scripts\lvdoc_print.xml` has string controls and three conversion nodes.
-- **Return strings — not merely scalars.** This bullet used to say "unbundle an error cluster into
-  `status` / `code` / `source` indicators"; measured, that trio comes back as `errorCode 91` with
-  all three outputs *empty*, twice. A helper whose indicators are **only** strings returned its
-  values with `errorCode 0` in the same session. Which of `bool` and `int32` breaks it was not
-  isolated, so the safe shape is to convert on the diagram and return text: `Select` between two
-  string constants turns a bool into a readable answer. A cluster wired straight to an indicator
-  reads back empty either way.
+- **Return strings.** Only `string` indicators survive the round trip. `bool`, `int32` and clusters
+  come back blank and raise `errorCode 91` — but *only for themselves*: mixing is fine, the strings
+  still arrive. So convert on the diagram and read text, e.g. `Select` between two string constants
+  to turn a bool into a readable answer, and unbundle an error cluster's `source` rather than wiring
+  the cluster out whole.
+- **An empty string means "no error" at least as often as it means "not marshalled" — this document
+  got that wrong.** An earlier revision claimed a `status`/`code`/`source` trio came back entirely
+  empty because the non-string types poisoned the response. It did not: `source` was blank because
+  the helper had genuinely succeeded, and only `status` and `code` failed to marshal. The reading
+  cost real work, because the icon helper's result was declared unverifiable and checked against the
+  filesystem instead. Give a helper one string output that is **never** empty on success — a state
+  word, a path, anything — and the ambiguity disappears.
 - **`errorCode 91` is not proof of failure.** Distinguish the two: an empty `source` string means
   the VI ran clean, and a non-empty one carries the real error. When the output type cannot be
   read at all, verify out of band — write the result to a file and inspect that, rather than
