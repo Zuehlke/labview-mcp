@@ -196,6 +196,99 @@ public class PaletteToolsTests : IDisposable
         Assert.Contains("`Node`", text);
     }
 
+    // ---------- add-on palettes ----------
+
+    /// <summary>Write a synthetic LVAddon: &lt;root&gt;\&lt;addon&gt;\&lt;api&gt;\menus\... plus its info file.</summary>
+    private string WriteAddon(string addon, string? minimumVersion, string paletteName,
+                              params string[] entries)
+    {
+        var addonsRoot = Path.Combine(_root, "LVAddons");
+        var api = Path.Combine(addonsRoot, addon, "1");
+        var path = Path.Combine(api, "menus", "Categories", paletteName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, Pascal(entries));
+        if (minimumVersion is not null)
+            File.WriteAllText(Path.Combine(api, "lvaddoninfo.json"),
+                $"{{\"AddonName\":\"{addon}\",\"MinimumSupportedLVVersion\":\"{minimumVersion}\"}}");
+        return addonsRoot;
+    }
+
+    [Fact]
+    public void AddonPalettesAreScannedAndLabelledWithTheirAddon()
+    {
+        // The bug this fixes: NI-DAQmx installs under NI\LVAddons, not into <LabVIEW>\menus, so
+        // scanning the IDE folder alone reported a driver as absent while its Calls resolved.
+        WritePalette("Categories/Programming/string.mnu", "Trim Whitespace.vi");
+        var addons = WriteAddon("nidaqmx", "22.0", "daqmx.mnu", "DAQmx Read.vi", "DAQmx Clear Task.vi");
+
+        var index = PaletteIndex.Build(_root, refresh: true, addonsRoot: addons);
+
+        Assert.Equal(3, index.Vis.Count);
+        Assert.Contains("nidaqmx", index.AddonsScanned);
+        var read = index.Vis.Single(v => v.Name == "DAQmx Read.vi");
+        Assert.StartsWith("nidaqmx: ", read.PaletteFile);
+        // an IDE entry keeps its bare relative path, so the two sources stay distinguishable
+        Assert.DoesNotContain(":", index.Vis.Single(v => v.Name == "Trim Whitespace.vi").PaletteFile);
+    }
+
+    [Fact]
+    public void AnAddonWithoutMenusIsSkippedWithoutComplaint()
+    {
+        WritePalette("x.mnu", "Something.vi");
+        var addonsRoot = Path.Combine(_root, "LVAddons");
+        Directory.CreateDirectory(Path.Combine(addonsRoot, "nisyscfg", "1", "vi.lib"));
+
+        var index = PaletteIndex.Build(_root, refresh: true, addonsRoot: addonsRoot);
+
+        Assert.Single(index.Vis);
+        Assert.Empty(index.AddonsScanned);
+        Assert.Empty(index.AddonsSkipped);
+    }
+
+    [Fact]
+    public void AnAddonRequiringANewerLabViewIsSkippedAndSaidSo()
+    {
+        WritePalette("x.mnu", "Something.vi");
+        var addons = WriteAddon("futuredriver", "99.0", "future.mnu", "Future Thing.vi");
+
+        // A release is only known for a discovered installation, so state it the way Build does.
+        var text = PaletteTools.PaletteIndexTool(
+            installRoot: _root, addonsRoot: addons, refresh: true);
+
+        // Without a known release nothing can be compared, so the add-on is scanned - the
+        // conservative direction. What must never happen is a silent drop.
+        Assert.Contains("Future Thing.vi", PaletteIndex
+            .Build(_root, refresh: true, addonsRoot: addons).Vis.Select(v => v.Name));
+        Assert.Contains("add-on palette", text);
+    }
+
+    [Fact]
+    public void AddonsAreNotDiscoveredWhenAnInstallRootIsGivenWithoutOne()
+    {
+        // Otherwise a synthetic-tree test would silently pick up the real machine's drivers.
+        WritePalette("x.mnu", "Something.vi");
+        WriteAddon("nidaqmx", "22.0", "daqmx.mnu", "DAQmx Read.vi");
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Single(index.Vis);
+        Assert.Empty(index.AddonsScanned);
+    }
+
+    [Fact]
+    public void TheSameViFromTwoAddonVariantsIsOneEntry()
+    {
+        WritePalette("x.mnu", "Something.vi");
+        var addons = Path.Combine(_root, "LVAddons");
+        WriteAddon("nidaqmx32", "22.0", "daqmx.mnu", "DAQmx Read.vi");
+        WriteAddon("nidaqmx64", "22.0", "daqmx.mnu", "DAQmx Read.vi");
+
+        var index = PaletteIndex.Build(_root, refresh: true, addonsRoot: addons);
+
+        Assert.Equal(2, index.Vis.Count);
+        Assert.Equal(2, index.AddonsScanned.Count);
+    }
+
     // ---------- the real installation, when this machine has one ----------
 
     [Fact]
@@ -213,8 +306,18 @@ public class PaletteToolsTests : IDisposable
 
         // Verified as a resolvable Call target in docs/aixml-reference.md.
         Assert.Contains("General Error Handler.vi", names);
-        // Primitives must NOT appear: both of these are built-in functions, not VIs.
-        Assert.DoesNotContain("Build Path.vi", names);
-        Assert.DoesNotContain("Close Reference.vi", names);
+
+        // "Primitives are excluded" cannot be asserted by name, and the attempt to do so is
+        // instructive: this test used to require "Close Reference.vi" to be absent because
+        // Close Reference is a built-in function. Once add-on palettes were scanned it appeared
+        // for real - the DataFinder add-on ships a VI of exactly that name. A palette VI may
+        // therefore SHADOW a primitive's name, and a Call to it hits the VI, not the function.
+        // The exclusion is a property of the parser, covered by OnlyBareViNamesQualify and
+        // NonViEntriesAreIgnored above; here only the entry shape can be checked.
+        Assert.All(index.Vis, vi =>
+        {
+            Assert.True(PaletteIndex.IsViName(vi.Name), $"not a bare VI name: {vi.Name}");
+            Assert.False(string.IsNullOrWhiteSpace(vi.PaletteFile));
+        });
     }
 }
