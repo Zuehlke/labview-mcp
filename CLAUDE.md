@@ -23,8 +23,10 @@ index for them.
 
 **Reuse a palette VI before you rebuild anything.** Query `lvai_palette_index` for the operation
 *before* designing a diagram; it lists exactly the VIs a generated `Call` may legally target on
-this station. Rebuilding logic from primitives is the fallback, used only when a target genuinely
-does not resolve.
+this station. **A hit in that index is the design — use it.** The palette path printed beside each
+hit (`Categories\OpenG\functions_oglib_string.mnu`) is the proof that this station has that VI.
+Rebuilding logic from primitives is the fallback, used only when the index has no hit or the target
+genuinely fails to resolve — and say which of the two it was.
 
 The mistake this prevents: an empty-string filter was hand-built from a For loop, a Case
 structure, a shift register and `Build Array` — seven elements — because a `Call` to a
@@ -33,8 +35,16 @@ library-owned VI was believed to be rejected. It is not.
 byte-identical output in three nodes. **The boundary is palette reachability, not library
 membership.**
 
-When reuse costs a third-party dependency — OpenG, MGI and JKI are common — say so and let the
-caller choose. The generated VI will not open where the package is missing.
+**A third-party dependency is not a reason to rebuild.** OpenG, MGI and JKI are installed here and
+their entries are in the index like any other. Name the dependency in your report — the generated
+VI will not open where the package is missing — but name it as information, not as a question, and
+call the VI. Avoid a package only where the caller asked for that up front.
+
+This clause used to read "say so and let the caller choose", and that is exactly how it failed:
+generating `FileSorter.vi` on 2026-08-07 the index returned `1D Array to String__ogtk.vi`, and the
+join was rebuilt from a For loop, a shift register and `Concatenate Strings` anyway, on the grounds
+that the caller might not want OpenG. Nobody had asked for that. Second occurrence of the same
+mistake — hence the sharper wording.
 
 **Look terminal names up, never guess them.** They are literal LabVIEW labels and several are
 surprising (`Increment` → `x+1`, but `Greater?` → `x > y?` with spaces). The reliable move is to
