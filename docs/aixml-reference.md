@@ -374,8 +374,49 @@ its AIXML shape is still unverified.
 - `selectin` on the `Structure` is the wire feeding the selector.
 - `selector` on each `CaseFrame` is the case label as typed in LabVIEW: `"No Error"`,
   `"Error"`, `"0"`, `"Default"`, an enum label, a string.
-- `selectout` optionally exposes the selector value inside the frame; `""` when unused.
+- `selectout` optionally exposes the selector value inside the frame; `""` when unused. The net is
+  named after the frame's **own** `uid` — `selectout="400.value"` on `uid="400"`, and a node inside
+  reads `400.value`. That is how the offending value reaches an error message in a `Default` frame.
 - Nesting works by pointing the inner `uid_parent` at the frame's `uid`.
+
+**A case tunnel is split across two levels, and it is not shaped like a loop tunnel.** The While
+Loop snippet above writes one `Tunnel` element carrying **both** `inputs` and `outputs`; copying
+that shape into a case structure is the obvious move and it is wrong. A case tunnel appears once at
+structure level for the wire outside, and again inside **every** frame for the wire inside — same
+`_id`, different `uid`, and each half carries only one direction:
+
+```xml
+<Structure _name="Case Structure" selectin="60.lowercase file extension" uid="100" uid_parent="root">
+  <Tunnel _id="In1"  inputs="value:60.dup file"       uid="110" uid_parent="100"/>   <!-- outside -->
+  <CaseFrame selector="&quot;png&quot;" selectout="" uid="200" uid_parent="100">
+    <Tunnel _id="In1"  outputs="value:210.value"      uid="210" uid_parent="200"/>   <!-- inside  -->
+    <Tunnel _id="Out1" inputs="value:220.image data"  uid="230" uid_parent="200"/>   <!-- inside  -->
+  </CaseFrame>
+  <CaseFrame selector="Default" selectout="400.value" uid="400" uid_parent="100">
+    <Tunnel _id="In1"  outputs="value:"               uid="410" uid_parent="400"/>   <!-- unused  -->
+    <Tunnel _id="Out1" inputs="value:460.value"       uid="470" uid_parent="400"/>
+  </CaseFrame>
+  <Tunnel _id="Out1" outputs="value:120.value"        uid="120" uid_parent="100"/>   <!-- outside -->
+</Structure>
+```
+
+So: `In` carries `inputs` at structure level and `outputs` in each frame; `Out` is the mirror image.
+Consumers outside the structure read an output tunnel's net as `<that tunnel's uid>.value`. A frame
+that does not use a tunnel still declares it with an empty net — the same per-frame rule the For
+Loop section states, and it applies to `Out` as well as `In`.
+
+Measured 2026-08-07 while building a PNG/BMP loader from `Get File Extension.vi`, `Read PNG
+File.vi`, `Read BMP File.vi` and `Draw Flattened Pixmap.vi`: a three-frame case in this shape
+validated on the first attempt and re-exported byte-identically to what was authored — frames,
+selectors and tunnels all intact. The shape came from exporting `Read BMP File.vi`, which is a
+compact model of the idiom and the reliable way to check it again.
+
+Two smaller confirmations from the same build. A **cluster `Constant`** works, nested cluster and
+all — `type="cluster{int32.image type,…,cluster{int16.left,int16.top,int16.right,int16.bottom}.Rectangle}"`
+with `value="[0,0,[],[],[],[0,0,0,0]]"` generated an empty Image Data constant for the `Default`
+frame. And a terminal whose **name embeds its default value** must be spelled out in full inside
+`inputs`: `Error Cluster From Error Code.vi` takes `error code (0)` and
+`error message (&quot;&quot;)`, quotes included.
 
 ### Event Structure
 
@@ -492,6 +533,9 @@ are surprising. Verified from exports:
 | `Build Array` | `array` / `element`, repeatable | `appended array` |
 | `Unbundle By Name` | `input cluster` | one per `fields`, e.g. `status`, `code`, `source` |
 | `String To Path` | `string` | `path` |
+| `Path To String` | `path` | `string` |
+| `Number To Decimal String` | `number` | **`decimal integer string`** — not `string` |
+| `Variant To Data` | `variant`, `type`, **`error in`** — not `error in (no error)` | `data`, `error out` |
 | `Read from Text File` | `file (use dialog)`, `count`, `error in`, `prompt (Open existing file)` | `refnum out`, `text`, `cancelled`, `error out` |
 | `Write to Text File` | `file (use dialog)`, `text`, `error in`, `prompt (Choose or enter file path)` | `refnum out`, `cancelled`, `error out` |
 | `Close File` | `refnum`, `error in` | `path`, `error out` |
@@ -502,6 +546,13 @@ are surprising. Verified from exports:
 wired to it — `array` for an array, `element` for a scalar — which is why the same node can carry
 `inputs="array:…,element:…"`. `Read from Text File` and `Write to Text File` need no refnum at all
 when handed a path: they open and close the file themselves.
+
+**`Array To Spreadsheet String` appends a platform line ending after the *last* element.**
+Measured on a five-element string array with `delimiter (Tab)` wired to `\0A`: the result ended
+`…\nbanana\r\n`, so the delimiter separates the elements and a `\r\n` is added on top. If you want
+the elements separated and nothing trailing, strip it — which is exactly what OpenG's
+`1D Array to String__ogtk.vi` does internally, with `Match Pattern` anchored on the platform line
+ending followed by `$`.
 
 Everything above was measured, most of it by exporting a VI that already used the node — a shipped
 example under `examples\File IO\`, and OpenG's own `Filter 1D Array (String)__ogtk.vi` for the
@@ -554,6 +605,39 @@ all, and needs a `Build Array` of scalar constants instead.
 `<Constant type="string" value="\0A"/>` produced a genuine line feed — verified by running the VI
 and reading the written file as bytes (31 bytes for five elements plus five LFs, no CR anywhere).
 That is the portable way to get a line-ending constant onto a generated diagram.
+
+### Calling a plain palette VI: the terminals are its front-panel labels
+
+For a primitive `Node` you look the terminal names up in the table above. For a `Call` there is no
+table and there never can be one — the terminals are the **target VI's own control and indicator
+names**, so every palette VI has its own set. Export the target and read them off:
+
+```
+ConvertVIToAIXML  "…\user.lib\_OpenG.lib\string\string.llb\1D Array to String__ogtk.vi"
+```
+
+comes back as `<VI _name="openg_string.lvlib:1D Array to String__ogtk.vi" …>` with
+`Control _name="Array of Strings"`, `Control _name="delimiter (Tab)"` and
+`Indicator _name="delimited string"`. Those three strings are the whole wiring contract, and the
+root element's `_name` is the `target` — colon escaped:
+
+```xml
+<Call target="openg_string.lvlib\3A1D Array to String__ogtk.vi"
+      inputs="Array of Strings:210.sorted array,delimiter (Tab):130.value"
+      outputs="delimited string:220.delimited string" uid="220" uid_parent="root"/>
+```
+
+Validated, generated and ran on LabVIEW 2026. No `instance` — this VI is not polymorphic — and no
+`adapt`, since its types are fixed.
+
+Two things the export gives you for free. The `_name` is already the library-qualified form, so
+there is nothing to assemble by hand. And the VI's `description` plus each terminal's
+`description` come with it, which is the Context Help — for a palette *VI* that is the
+documentation (§10), where a primitive gives you nothing but the terminal name.
+
+Finding the file at all is the fiddly part: OpenG installs under `user.lib\_OpenG.lib\`, not
+`vi.lib`, and the `.llb` in its path is a real directory here rather than a container. Search for
+the VI by name across both roots rather than assuming either.
 
 ### Polymorphic subVI calls
 
@@ -650,9 +734,26 @@ was wrong. Feeding a deliberately bogus terminal name therefore probes resolutio
 | an absolute path, `C\3A\5CTemp\5C…\5CX.vi` | `Unsupported SubVI: C:\Temp\…\X.vi` | **not resolved** |
 | `<Module>.lvlib:X.vi`, a **project** library loaded in the IDE | `Unsupported SubVI: <Module>.lvlib:X.vi` | **not resolved** |
 | `openg_array.lvlib:Filter 1D Array__ogtk.vi`, a **palette** library | validated, generated and ran | **resolved** |
+| `Draw Image from File__ogtk.vi`, the **bare name** of that same kind of VI | `Unsupported SubVI: Draw Image from File__ogtk.vi` | **not resolved** |
 
 There is therefore **no target syntax that reaches your own code** — not a bare name, not a full
 path, and not a library-qualified name even while that library is open in LabVIEW.
+
+**A library-owned palette VI needs the `lvlib:` prefix, and `lvai_palette_index` does not print
+it.** The index lists bare file names, so following it literally — "query the index, then `Call` the
+hit" — produces `Unsupported SubVI` for every VI a palette library owns, which reads exactly like
+"this VI is not callable" and sends you back to rebuilding from primitives. It is the last two rows
+of the table read together: the *same* VI fails bare and resolves qualified. Measured 2026-08-07 on
+LabVIEW 2026 — `target="Draw Image from File__ogtk.vi"` was refused,
+`target="openg_picture.lvlib\3ADraw Image from File__ogtk.vi"` validated, generated and ran.
+
+The qualifier is not derivable from the index either: the palette prints
+`Categories\OpenG\functions_oglib_picture.mnu` and the VI lives in `picture.llb`, neither of which
+names `openg_picture.lvlib`. Get it the way §9 already recommends for the target itself — export a
+VI that calls it, where the `_name` comes back in the library-qualified form. Cheaper still: put
+both spellings in one throwaway probe document, one `Call` each, and validate once. Unresolvable
+targets are reported by name, and a resolved one only complains about its unwired terminals, so a
+single `errorCode 1` message tells you which spelling to use.
 
 > **The boundary is palette reachability, not library membership.** An earlier version of this
 > section read the fourth row as "library-qualified targets do not resolve" and concluded that only
@@ -856,7 +957,7 @@ Consequences for authoring:
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
 | `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` alone is enough** — measured on a VI that was opened and never run, which corrects the claim that used to stand here that only *running* blocks the overwrite. `RunVIAsTopLevel` leaves it loaded too. |
-| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". |
+| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". **The commonest source is your own last validation.** A `ValidateAIXML` that *fails* appears to leave a VI named after the document's `_name` behind, and the next `ConvertAIXMLToVI` for that name is then refused. Observed 5 for 5 across one session: every 1051 followed a failed validation of the same `_name`, and every file that validated cleanly on the first attempt generated without complaint. The fix is free — bump `_name` (and the output file name) after any validation error, which you want anyway per the fresh-name rule. An earlier note here blamed a sibling probe VI that carried the same `_name`; that explanation fitted one case and this one fits all of them. |
 | `<Structure>: Is a member of a cycle` plus `Wire: Is a member of a cycle` | A redundant border crossing, most often an `Out` tunnel added for a shift register's `Right` terminal — see §7. The net already crosses the border implicitly, so the extra tunnel routes the loop's output back to its own input. Delete the tunnel and let consumers outside read the `Right` output net directly. |
 | `Error 1051` on the **first** generation of a path that does not exist yet | A *different* file carrying that VI's internal name is loaded — and the usual cause is self-inflicted: a scratch iteration generated from the deliverable's own XML keeps `_name="Final.vi"` while being saved as `Probe.vi`, so "Final.vi" is in memory under the wrong path. Change `_name` in every scratch variant, not just the file name. Measured: `viExisted: false`, `viExistsNow: false` — nothing was written, and a LabVIEW restart cleared it. |
 | `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |
@@ -1027,9 +1128,29 @@ Two details from running this, in case anyone repeats it:
 ## 15. Reach
 
 `ConvertVIToAIXML` works on VIs inside **packed libraries** (`.lvlibp`) as well — a compiled
-module still yields its complete block diagram (~200 KB of AIXML for a large one). Paths
+module can still yield its complete block diagram (~200 KB of AIXML for a large one). Paths
 inside a `.lvlibp` are not real directories, so directory listing fails where the RPC
 succeeds: address the VI by its path through the `.lvlibp` file.
+
+**"Can" and not "does": it depends on how that `.lvlibp` was built, and NI's own are built
+without diagrams.** Measured on the AI addon's two packed libraries: every VI answers `Error 47`,
+`Unknown heap`, from the exporter. That message names nothing useful; `GetDescribeVIPromptInfo` on
+the same path gives the real reason —
+
+```
+Error 1012 ... Cannot load block diagram.
+Property Name: Block Diagram
+The block diagram for ...\LV AI Core.lvlibp\...\XML generator.vi could not be loaded
+but is required by this property or method. (Traverse Failed)
+```
+
+So treat `Error 47` from the exporter as "diagrams were stripped at build time", and reach for
+`lvai_describe_vi` when you need to know why. **`describe_vi` is also the fallback that still
+works**: its `viXml` and `viImage` come back empty, but `controlsIndicators` is populated, so a
+diagram-less VI still yields its terminals. For the connector pane of many VIs at once there is a
+cheaper route that needs no diagram at all — `Connector Pane\3AReference` → `Controls[]` →
+`Label` → `Text`, which is what `scripts/lvai_inventory.xml` does; see
+[`vi-server-reference.md`](vi-server-reference.md).
 
 That makes read-only analysis possible on projects that link only compiled components, with
 no source checkout. Writing back is a different matter — see §9 and §11.

@@ -1,0 +1,38 @@
+<VI _name="lvai_inventory.vi" description="Writes one TAB-separated row per VI in memory\3A qualified name\2C then its connector-pane terminals in pane order\2C separated by ' | '. Reads Connector Pane\3AReference -&gt; Controls[] -&gt; Label -&gt; Text\2C which needs no block diagram - that is what makes it work on NI's packed libraries\2C whose diagrams are stripped. Regenerates docs/lvai-internal-vis.tsv. Drive it with RunVIAsTopLevel and one string input\3A the output path.">
+  <Control _name="Dateiname" conIdx="0" connection="required" description="Full path of the TSV to write." outputs="value:100.value" type="string" uid="100" uid_parent="root" value=""/>
+  <Constant _name="line feed" outputs="value:130.value" type="string" uid="130" uid_parent="root" value="\0A"/>
+  <Constant _name="tab" outputs="value:135.value" type="string" uid="135" uid_parent="root" value="\09"/>
+  <Constant _name="separator" outputs="value:136.value" type="string" uid="136" uid_parent="root" value=" | "/>
+  <Constant _name="empty" outputs="value:140.value" type="string" uid="140" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+Application\3AAll VIs In Memory" type="{LV.Application}" outputs="Application\3AAll VIs In Memory:200.vis,reference out:,error out:" uid="200" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:200.vis" mode="index" outputs="value:410.value" uid="410" uid_parent="400"/>
+    <Tunnel _id="In2" inputs="value:135.value" outputs="value:415.value" uid="415" uid_parent="400"/>
+    <Tunnel _id="In3" inputs="value:136.value" outputs="value:416.value" uid="416" uid_parent="400"/>
+    <Tunnel _id="In4" inputs="value:140.value" outputs="value:417.value" uid="417" uid_parent="400"/>
+    <Tunnel _id="In5" inputs="value:130.value" outputs="value:418.value" uid="418" uid_parent="400"/>
+    <Node _name="Open VI Reference" inputs="vi path:410.value" outputs="vi reference:420.vi reference,error out:420.error out" uid="420" uid_parent="400"/>
+    <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:420.vi reference,error in (no error):420.error out" outputs="Connector Pane\3AReference:425.cp,reference out:,error out:425.error out" uid="425" uid_parent="400"/>
+    <Node _name="Property Node" fields="read+Controls[]" type="{LV.ConnectorPane}" inputs="reference:425.cp,error in (no error):425.error out" outputs="Controls[]:430.ctrls,reference out:,error out:430.error out" uid="430" uid_parent="400"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="500" uid_parent="400">
+      <Tunnel _id="In1" inputs="value:430.ctrls" mode="index" outputs="value:510.value" uid="510" uid_parent="500"/>
+      <Tunnel _id="In2" inputs="value:416.value" outputs="value:512.value" uid="512" uid_parent="500"/>
+      <Node _name="Property Node" fields="read+Label" type="{LV.Control}" inputs="reference:510.value" outputs="Label:520.lbl,reference out:,error out:" uid="520" uid_parent="500"/>
+      <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:520.lbl" outputs="Text:530.txt,reference out:,error out:" uid="530" uid_parent="500"/>
+      <Node _name="Concatenate Strings" inputs="string:540.value,string:530.txt,string:512.value" outputs="concatenated string:550.concatenated string" uid="550" uid_parent="500"/>
+      <ShiftReg uid="545" uid_parent="500">
+        <Left inputs="value:417.value" outputs="value:540.value" uid="540" uid_parent="545"/>
+        <Right inputs="value:550.concatenated string" outputs="value:560.value" uid="560" uid_parent="545"/>
+      </ShiftReg>
+    </Structure>
+    <Node _name="Concatenate Strings" inputs="string:570.value,string:410.value,string:415.value,string:560.value,string:418.value" outputs="concatenated string:580.concatenated string" uid="580" uid_parent="400"/>
+    <ShiftReg uid="575" uid_parent="400">
+      <Left inputs="value:140.value" outputs="value:570.value" uid="570" uid_parent="575"/>
+      <Right inputs="value:580.concatenated string" outputs="value:590.value" uid="590" uid_parent="575"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="String To Path" inputs="string:100.value" outputs="path:600.path" uid="600" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):600.path,text:590.value,error in:,prompt (Choose or enter file path):" outputs="refnum out:,cancelled:,error out:610.error out" uid="610" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="source" inputs="input cluster:610.error out" outputs="source:620.source" uid="620" uid_parent="root"/>
+  <Indicator _name="error source" conIdx="4" connection="recommended" inputs="value:620.source" type="string" uid="300" uid_parent="root" value=""/>
+</VI>
