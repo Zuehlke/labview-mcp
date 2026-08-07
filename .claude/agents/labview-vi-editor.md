@@ -197,11 +197,11 @@ Both, before any write.
    `lvdoc_set_icon.xml` — same `Open VI Reference` → `Save VI Icon to File` → `Close Reference`
    chain with the two mutating nodes removed.
 
-   **This helper is derived, not yet measured.** Validate it before trusting it:
-   `lvai_validate_aixml` on the file, then `lvai_convert_aixml_to_vi` to a scratch path, then
-   `lvai_run_vi_as_top_level` with `{"VI Path": "<target .vi>", "Read Back Path": "<scratch>\\icon_before.png"}`.
-   If validation names a terminal, fix it from `lvai_vi_server_reference` and say so in the
-   report — that is a measurement worth keeping.
+   **Measured 2026-08-07 on LabVIEW 2026: it validates, generates and runs**, with no
+   terminal-name correction needed, and the icon it wrote back was byte-identical to the one
+   already in the VI. Use it directly: `lvai_convert_aixml_to_vi` to a scratch path, then
+   `lvai_run_vi_as_top_level` with
+   `{"VI Path": "<target .vi>", "Read Back Path": "<scratch>\\icon_before.png"}`.
 
    **Judge it by the file, not by `errorCode`**: 91 is the known `RunVIAsTopLevel` read-back
    artifact and appears on success. The icon was saved if `icon_before.png` exists and is 32x32.
@@ -340,6 +340,11 @@ re-apply it.
   and `RunVIAsTopLevel` leave it loaded — which is exactly the `Error 1357` distinction.
 - **`RunVIAsTopLevel` returns `errorCode 91` on a successful run** whenever an output cannot be
   read back; only `string` indicators survive that path.
+- **A generated diagram cannot build a cluster.** `Bundle By Name`'s cluster input never receives
+  a type; `Unbundle By Name` is fine. Relevant here because a rewrite has to re-express whatever
+  the original VI did — if it bundles a cluster, that part cannot be regenerated.
+- **A polymorphic VI needs `adapt="true"` and `instance="…"` beside `target`**, with the
+  instance's terminal names. A pristine export already carries all three; keep them.
 - **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error.
 
 ## When `ApplyAIXMLToVI` starts working

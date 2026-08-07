@@ -317,6 +317,15 @@ Everything here was verified before this agent was written. Treat it as fact.
 - **The IDE does not reload a `.lvproj` changed underneath it**, and a save from that stale
   window overwrites the edit. Related trap: calling `lvai_open_file` with a `viPath` while a
   stale project is loaded shows the VI at target root, which looks authoritative and is wrong.
+- **A generated diagram cannot build a cluster.** `Bundle By Name`'s cluster input never receives
+  a type — even a standard error cluster straight from a control arrives as "a cluster of 0
+  elements" — while `Unbundle By Name` is fine. So a palette VI whose input is a cluster is out
+  of reach: prefer a sibling that takes scalars, the way `Sine Wave.vi` does where
+  `Sine Waveform.vi` demands a `sampling info` cluster. Detail in
+  [`docs/aixml-reference.md`](../../docs/aixml-reference.md) §8.
+- **A polymorphic VI needs `adapt="true"` and `instance="…"` beside `target`**, and the terminal
+  names are the instance's. Export the polymorphic wrapper to get them — its AIXML is one `Call`
+  per instance.
 - **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure surfaces as an XML parse
   error.
 
