@@ -12,6 +12,7 @@ function for this":
 
 | What you want | Construct | Where to look |
 |---|---|---|
+| a **whole working diagram** — a state machine, a producer/consumer, "how do I stream to TDMS" | a shipping example to read and adapt | `lvai_example_index` |
 | a computation on **data** — read a file, sort, parse, compare | primitive `Node`, or a subVI `Call` | `lvai_palette_index`; terminal names from an export |
 | a **property or action of a LabVIEW object** — a VI, control, panel, project, the application | `Property Node` / `Invoke Node` | `lvai_vi_server_reference` |
 | a **VI's icon** | neither — AIXML cannot carry one | `lvai_set_vi_icon`, which drives VI Server for you |
@@ -20,6 +21,22 @@ The second row is the one that gets forgotten. "Get this VI's icon", "list a pro
 "is this VI broken", "read a control by name", "what does this VI call" are none of them functions
 and will never appear in a palette — they are properties and methods, and the catalogue is the only
 index for them.
+
+**Check whether NI already built it, before designing anything.** `lvai_example_index` lists the
+808 shipping examples of this installation with NI's own description and keywords, scanned from
+disk in about 400 ms and needing no running LabVIEW. It answers a different question from the
+palette index — that one says *which VI may I call*, this one says *is this whole diagram already
+written*. Feed a hit's path to `lvai_convert_vi_to_aixml` and read how NI wired it.
+
+Do this first for anything pattern-shaped: state machines, producer/consumer, queued message
+handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds
+of reading and it is the canonical shape.
+
+Two limits, both reported in the tool's own output rather than left to be discovered: examples
+registered through an external `.bin4` index are **not** listed — NI-DAQmx above all — and a VI
+absent from the index may still have a description, because
+`lvai_filter_example_search_candidates` reads any VI's description property, including `vi.lib`.
+Formats and measurements in `docs/example-corpus.md`.
 
 **Reuse a palette VI before you rebuild anything.** Query `lvai_palette_index` for the operation
 *before* designing a diagram; it lists exactly the VIs a generated `Call` may legally target on
@@ -134,11 +151,15 @@ literally it argued away 600 usable palette VIs.
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
+| Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 
-All seven documents are **embedded in the assembly** and byte-verified on every build, so a
-binary-only install answers the same questions. See "Installing on another machine" in the README.
+The seven documents served by an `lvai_*_reference` tool are **embedded in the assembly** and
+byte-verified on every build, so a binary-only install answers the same questions. See "Installing
+on another machine" in the README. `docs/example-corpus.md` is deliberately not among them: it
+records how the example data is stored on disk, which the index reads for itself, so nothing has
+to hand the file out at run time.
 
 ## Build and test
 

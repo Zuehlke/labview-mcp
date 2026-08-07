@@ -98,79 +98,17 @@ internal static class PaletteIndex
         }
     }
 
-    /// <summary>
-    /// %ProgramFiles%\NI\LVAddons, or null when absent. Never a hardcoded drive: the 64-bit root
-    /// is the right one even though LabVIEW itself is a 32-bit application under the "(x86)" tree.
-    /// </summary>
-    private static string? DefaultAddonsRoot()
-    {
-        foreach (var variable in new[] { "ProgramW6432", "ProgramFiles", "ProgramFiles(x86)" })
-        {
-            var programFiles = Environment.GetEnvironmentVariable(variable);
-            if (string.IsNullOrWhiteSpace(programFiles)) continue;
-
-            var candidate = Path.Combine(programFiles, "NI", "LVAddons");
-            if (Directory.Exists(candidate)) return candidate;
-        }
-        return null;
-    }
+    private static string? DefaultAddonsRoot() => AddonTree.DefaultRoot();
 
     /// <summary>
-    /// The palette trees to read: LabVIEW's own, then every add-on that supports this release.
-    /// An add-on directory looks like &lt;root&gt;\&lt;addon&gt;\&lt;api version&gt;\menus.
+    /// The palette trees to read: every add-on that supports this release. An add-on's palette
+    /// lives at &lt;root&gt;\&lt;addon&gt;\&lt;api version&gt;\menus. See <see cref="AddonTree"/>.
     /// </summary>
     private static (List<PaletteSource> Sources, List<string> Skipped) AddonSources(
         string? addonsRoot, int? release)
     {
-        var sources = new List<PaletteSource>();
-        var skipped = new List<string>();
-        if (addonsRoot is null || !Directory.Exists(addonsRoot)) return (sources, skipped);
-
-        foreach (var addonDirectory in Directory.EnumerateDirectories(addonsRoot).OrderBy(d => d))
-        {
-            var addon = Path.GetFileName(addonDirectory);
-            foreach (var apiDirectory in Directory.EnumerateDirectories(addonDirectory).OrderBy(d => d))
-            {
-                var menus = Path.Combine(apiDirectory, "menus");
-                if (!Directory.Exists(menus)) continue;      // plenty of add-ons ship no palette
-
-                var minimum = MinimumSupportedRelease(apiDirectory);
-                if (release is not null && minimum is not null && minimum > release)
-                {
-                    skipped.Add($"{addon} (needs LabVIEW {minimum}, this is {release})");
-                    continue;
-                }
-                sources.Add(new PaletteSource(addon, menus));
-            }
-        }
-        return (sources, skipped);
-    }
-
-    /// <summary>
-    /// lvaddoninfo.json's MinimumSupportedLVVersion as a LabVIEW release year: "22.0" -&gt; 2022.
-    /// Null when the file is missing or unreadable - in which case the add-on is scanned, because
-    /// omitting a driver is the more expensive mistake.
-    /// </summary>
-    private static int? MinimumSupportedRelease(string apiDirectory)
-    {
-        try
-        {
-            var info = Path.Combine(apiDirectory, "lvaddoninfo.json");
-            if (!File.Exists(info)) return null;
-
-            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(info));
-            if (!document.RootElement.TryGetProperty("MinimumSupportedLVVersion", out var value))
-                return null;
-
-            var text = value.GetString();
-            var dot = text?.IndexOf('.') ?? -1;
-            var major = dot > 0 ? text![..dot] : text;
-            return int.TryParse(major, out var version) ? 2000 + version : null;
-        }
-        catch
-        {
-            return null;
-        }
+        var (folders, skipped) = AddonTree.Enumerate(addonsRoot, "menus", release);
+        return (folders.Select(f => new PaletteSource(f.Addon, f.Folder)).ToList(), skipped);
     }
 
     private static Result Scan(string root, string? addonsRoot, int? release)
