@@ -402,7 +402,7 @@ what it says for a VI that VI Server alone ever loaded; for one the **IDE** has 
 gets it back out. Plan around it: fresh name per iteration, and do not open a VI you still intend to
 regenerate.
 
-## The addon's own VIs: mapped, and out of reach
+## The addon's own VIs: mapped, and reachable by `Call By Reference`
 
 The 23 RPCs are a thin shell over a much larger set of VIs inside the addon. Those VIs are
 **inventoried** in [`lvai-internal-vis.tsv`](lvai-internal-vis.tsv) — 419 rows, 404 of them
@@ -421,8 +421,8 @@ target application instance is selectable; `Apply code changes.vi` takes `vi ref
 `Run from PPL or loose VI.vi`, `Undo and erase transaction.vi`, and a `SearchInfoCache.vi` with
 `Filters`, `Offset`, `Limit` and `Case Sensitive`.
 
-**None of it is callable from generated code.** Measured both ways, and the two failures are one
-wall seen from two sides:
+**Neither a `Call` nor `Run VI` reaches it** — but `Call By Reference` does; see below. Measured
+both failing ways first, because the two look like one wall seen from two sides:
 
 | Route | Result |
 |---|---|
@@ -453,10 +453,71 @@ reference to the VI **by qualified name** while it is in memory and read `{LV.VI
 real form mirrors the source tree, e.g.
 `…\LV AI Core.lvlibp\1abvi3w\resource\AI\LV AI Core\XML generator.vi`.
 
-**The remaining route is a hand-built wrapper.** Dropping a PPL-exported VI on a diagram is
-ordinary work *in the IDE* — only the generator cannot do it. A wrapper VI saved loose, with
-string and path terminals, is then drivable by `RunVIAsTopLevel` like any other VI. One wrapper per
-capability; untested so far.
+### `Call By Reference` does reach them — 1390 is a `Run VI` problem
+
+**This corrects the section title.** `Run VI` is refused, but a **`Call By Reference` node with a
+strictly typed VI refnum** is not: it is a subVI-shaped call, which is exactly what 1390 asks for.
+Measured against `Apply code changes.vi` — the call executes, returns cleanly and reports no error.
+So the addon's exported VIs *are* callable; the shortcut that fails is `Run VI`, not the route.
+
+Three things it needs, all of which cost an attempt to find:
+
+- **The strict refnum.** `Open VI Reference` must be given a `type specifier VI Refnum` carrying
+  the target's whole connector pane. You cannot type that by hand; drop the node in the IDE once,
+  export the VI, and copy the `type=` string verbatim — for this one it begins
+  `ref{LV.VI}{function{78,d08,0,900,…`.
+- **The traversal path**, not the colon form. `…\LV AI Core.lvlibp:Apply code changes.vi` gives
+  `Error 7`; `…\LV AI Core.lvlibp\1abvi3w\resource\AI\LV AI Core\Apply code changes.vi` resolves.
+- **An `app ref`** from `Project\3AActive Project` → `Application`, so the reference is opened in
+  the IDE's instance.
+
+Note the generator quietly drops one terminal here: `Call By Reference` has two `error out`s — the
+called VI's and the node's own — and a re-export showed the second one unwired despite being
+authored. Check it if the error chain behaves oddly.
+
+### `Apply code changes.vi` is a no-op, under every condition we could arrange
+
+Reaching it changes nothing, which is the disappointing half of the finding above and worth
+recording so nobody spends another evening on it. The call returns **no error**, an **empty**
+`conversion messages`, and leaves the target byte-identical — while invalidating every reference to
+it, so it is plainly doing *something* internally. Eliminated one at a time:
+
+| Suspicion | Measured |
+|---|---|
+| Wrong payload shape | minimal delta and full state both no-ops |
+| Target reference invalid | reads back its `VI Path` in both instances |
+| `Save\3AInstrument` broken | **works**, `errorCode 0`, with no Apply in between |
+| Target not a project member | added to the active project — no change |
+| Target not open | **was true** — see below — opened, no change |
+| Missing *Discuss with Nigel* attachment | set by hand on the target — no change |
+
+The last row extends §14 of [`aixml-reference.md`](aixml-reference.md): the attachment gates more
+than the RPC, because calling the core VI directly does not unlock it either. `ConvertAIXMLToVI`
+remains the only write path.
+
+### `OpenFile` answering `errorCode 0` does not mean a window opened
+
+Measured through the IDE's own instance — the only reading that can be trusted, per the entry
+above — a VI that `lvai_open_file` had just reported success for came back
+`Front Panel Window\3AOpen` = **false** and `Block Diagram Window\3AOpen` = **false**. Three
+experiments ran on the false assumption that the file was open before anyone looked at the screen.
+
+To actually open it, write the properties through a reference taken from the IDE's application
+instance — the inverse of the unload recipe above — and **read them back in the same run**:
+
+```xml
+<Node _name="Property Node" fields="write+Front Panel Window\3AOpen" type="{LV.VI}"
+      inputs="reference:220.vi reference,error in (no error):220.error out,Front Panel Window\3AOpen:120.value"
+      outputs="reference out:230.reference out,error out:230.error out" uid="230" uid_parent="root"/>
+```
+
+Both then report `true`. Same lesson as the icon tool and the launcher: judge by a read-back, never
+by the return code.
+
+**A hand-built wrapper remains untried.** Dropping a PPL-exported VI on a diagram is ordinary work
+*in the IDE* — only the generator cannot do it. A wrapper saved loose, with string and path
+terminals, would be drivable by `RunVIAsTopLevel` like any other VI. Given `Call By Reference`
+works, this is now a convenience rather than the only way in.
 
 ### Four terminal and method names this cost
 

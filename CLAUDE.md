@@ -92,6 +92,27 @@ from an empty answer.
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
+## Which interface to reach for
+
+**The `lvai_*` RPCs are the normal way in. The VI Server route is the exception.** A generated
+helper VI driving property and invoke nodes can reach things no RPC exposes — that is how the icon
+tool works, and `docs/lvai-internal-vis.tsv` maps what else is down there. Use it only when a
+capability you actually need has no RPC, and say in your report which route you took and why the
+official one was not enough.
+
+The reason is shelf life, not purity. The RPCs are a contract; the back door is a measurement.
+In one session it broke twice on names that turned out to be display text rather than scripting
+identifiers (`Set Control Value [Variant]` is really `Ctrl Val.Set`), and an addon update can
+invalidate the whole map. Before building a helper, check the table in "Where the knowledge lives"
+and the tool list — several capabilities that look missing are already shipped.
+
+**Not every working measurement becomes a tool.** A repeatable operation on the user's own LabVIEW
+code gets productised — helper file under `scripts/`, an `lvai_*` tool, tests, docs, on its own
+branch. A one-shot investigation of NI's internals gets written down instead: `lvai_inventory.xml`
+produced its 419-row table in 16 seconds and still stayed a script plus a `docs/` table, because
+it only needs re-running after an addon update. When it is genuinely borderline, build the script,
+say plainly that it could become a tool, and let the caller decide.
+
 ## Writing things down
 
 **Empirically derived `lvai` behaviour belongs in `docs/`, not only in the conversation.** This
