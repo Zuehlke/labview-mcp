@@ -8,15 +8,34 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 // LabVIEW MCP - exposes LabVIEW's private lvai.LVAI gRPC interface as MCP tools.
 //
-//   LabVIEWMCP                        run as an MCP server over stdio (default)
-//   LabVIEWMCP --selftest             probe every read-only RPC and print a verdict table
-//   LabVIEWMCP --dump-schema [file]   print/write the schema the running LabVIEW serves
-//   LabVIEWMCP --watch <monitor>      wait for inbound LabVIEW events, minutes at a time
-//
-//   --port <n>        pin LabVIEW's gRPC port instead of discovering it
-//   --vi <path>       VI used by --selftest (defaults to a shipped LabVIEW example)
-//   --project <path>  .lvproj used by --selftest
-//   --timeout <s>     how long --watch waits (default 300)
+// The modes and flags are listed in CommandLine.Usage, which --help prints, so this file
+// and the help text cannot drift apart.
+
+if (CommandLine.HasFlag(args, "--help") ||
+    CommandLine.HasFlag(args, "-h") ||
+    CommandLine.HasFlag(args, "-?"))
+{
+    Console.WriteLine(CommandLine.Usage);
+    return 0;
+}
+
+// Reject a mistyped flag instead of falling through to the stdio server below. That server
+// waits on stdin forever, so "-selftest" with one hyphen looked exactly like a hang and was
+// reported as one (issue #7). Usage goes to stderr: stdout belongs to the MCP protocol.
+if (CommandLine.UnknownFlags(args) is { Count: > 0 } unknownFlags)
+{
+    foreach (var token in unknownFlags)
+    {
+        var suggestion = CommandLine.Suggest(token);
+        Console.Error.WriteLine(suggestion is null
+            ? $"Unknown option: {token}"
+            : $"Unknown option: {token} - did you mean {suggestion}?");
+    }
+
+    Console.Error.WriteLine();
+    Console.Error.WriteLine(CommandLine.Usage);
+    return 2;
+}
 
 var portOverride = CommandLine.IntArg(args, "--port");
 

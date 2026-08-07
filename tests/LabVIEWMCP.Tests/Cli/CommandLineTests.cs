@@ -93,3 +93,112 @@ public class CommandLineIntArgTests
     public void Returns_null_when_the_next_token_is_a_flag() =>
         Assert.Null(CommandLine.IntArg(["--port", "--selftest"], "--port"));
 }
+
+/// <summary>
+/// Issue #7: "-selftest" with one hyphen matched no mode, was silently ignored, and the run
+/// fell through to the stdio MCP server - which blocks on stdin and is indistinguishable from
+/// a hang. These tests are the guard against that whole class of typo coming back.
+/// </summary>
+public class CommandLineUnknownFlagTests
+{
+    [Fact]
+    public void No_args_is_valid() => Assert.Empty(CommandLine.UnknownFlags([]));
+
+    [Fact]
+    public void Accepts_a_fully_populated_command_line() =>
+        Assert.Empty(CommandLine.UnknownFlags(
+        [
+            "--selftest", "--port", "49379", "--vi", @"C:\p\My.vi", "--project", @"C:\p\A.lvproj",
+        ]));
+
+    [Fact]
+    public void Accepts_every_documented_mode() =>
+        Assert.Empty(CommandLine.UnknownFlags(
+            ["--selftest", "--dump-schema", "--watch", "--diagram", "--ensure-labview"]));
+
+    [Fact]
+    public void Catches_the_missing_hyphen() =>
+        Assert.Equal("-selftest", Assert.Single(CommandLine.UnknownFlags(["-selftest"])));
+
+    [Fact]
+    public void Catches_an_inserted_hyphen() =>
+        Assert.Equal("--self-test", Assert.Single(CommandLine.UnknownFlags(["--self-test"])));
+
+    [Fact]
+    public void Catches_a_partial_token() =>
+        Assert.Equal("--selftesting", Assert.Single(CommandLine.UnknownFlags(["--selftesting"])));
+
+    [Fact]
+    public void Is_case_insensitive() => Assert.Empty(CommandLine.UnknownFlags(["--SelfTest"]));
+
+    [Fact]
+    public void Reports_every_offender() =>
+        Assert.Equal(new[] { "-selftest", "--nope" },
+            CommandLine.UnknownFlags(["-selftest", "--nope"]));
+
+    [Fact]
+    public void A_negative_number_is_a_value_not_a_flag() =>
+        // Guarded by CommandLineStringArgTests too: --port really does accept "-1".
+        Assert.Empty(CommandLine.UnknownFlags(["--port", "-1"]));
+
+    [Fact]
+    public void A_path_value_is_never_judged_as_a_flag() =>
+        Assert.Empty(CommandLine.UnknownFlags(["--vi", @"C:\p\-odd-name.vi"]));
+
+    [Fact]
+    public void A_flag_after_a_valueless_mode_is_still_checked() =>
+        Assert.Equal("-x", Assert.Single(CommandLine.UnknownFlags(["--selftest", "-x"])));
+
+    [Fact]
+    public void A_flag_following_a_value_taking_option_is_not_swallowed() =>
+        // StringArg refuses "--bogus" as the VI path, so it is still a flag - and a bad one.
+        Assert.Equal("--bogus", Assert.Single(CommandLine.UnknownFlags(["--vi", "--bogus"])));
+
+    [Fact]
+    public void Dump_schema_without_a_file_is_valid() =>
+        Assert.Empty(CommandLine.UnknownFlags(["--dump-schema"]));
+
+    [Theory]
+    [InlineData("--help")]
+    [InlineData("-h")]
+    [InlineData("-?")]
+    public void Help_is_a_known_flag(string flag) =>
+        Assert.Empty(CommandLine.UnknownFlags([flag]));
+}
+
+public class CommandLineSuggestTests
+{
+    [Theory]
+    [InlineData("-selftest")]
+    [InlineData("--self-test")]
+    [InlineData("--Self_Test")]
+    [InlineData("-SELFTEST")]
+    public void Maps_a_hyphen_mistake_to_the_real_flag(string typo) =>
+        Assert.Equal("--selftest", CommandLine.Suggest(typo));
+
+    [Fact]
+    public void Maps_a_hyphen_mistake_in_a_two_word_flag() =>
+        Assert.Equal("--ensure-labview", CommandLine.Suggest("--ensurelabview"));
+
+    [Fact]
+    public void Has_no_suggestion_for_an_unrelated_token() =>
+        Assert.Null(CommandLine.Suggest("--nope"));
+
+    [Fact]
+    public void Has_no_suggestion_for_a_token_with_no_letters() =>
+        Assert.Null(CommandLine.Suggest("--"));
+}
+
+public class CommandLineUsageTests
+{
+    [Fact]
+    public void Names_every_mode_the_program_dispatches_on()
+    {
+        foreach (var mode in new[]
+                 {
+                     "--selftest", "--dump-schema", "--watch", "--diagram", "--ensure-labview",
+                     "--port", "--vi", "--project", "--timeout", "--out", "--help",
+                 })
+            Assert.Contains(mode, CommandLine.Usage);
+    }
+}

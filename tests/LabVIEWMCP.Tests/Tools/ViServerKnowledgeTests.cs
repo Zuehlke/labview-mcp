@@ -19,6 +19,8 @@ public class ViServerKnowledgeTests
     // Not documents but assets: a binary-only install must be able to hand out the agent and
     // the working rules, because neither is reachable through a tool.
     [InlineData("labview-doc-generator.md", ".claude/agents/labview-doc-generator.md")]
+    [InlineData("labview-vi-generator.md", ".claude/agents/labview-vi-generator.md")]
+    [InlineData("labview-vi-editor.md", ".claude/agents/labview-vi-editor.md")]
     [InlineData("CLAUDE.md", "CLAUDE.md")]
     public void EmbeddedResourceIsByteIdenticalToTheFileInDocs(string resource, string relative)
     {
@@ -181,6 +183,52 @@ public class ViServerKnowledgeTests
         Assert.Contains("name: labview-doc-generator", agent);
         Assert.Contains("lvai_convert_vi_to_aixml", agent);
         Assert.Contains("scriptsDirectory", agent);   // it must not hardcode a repository path
+    }
+
+    [Fact]
+    public void TheViGeneratorTravelsWithTheBinaryAndCarriesTheExpensiveRules()
+    {
+        var agent = KnowledgeTools.Load("labview-vi-generator.md");
+
+        Assert.Contains("name: labview-vi-generator", agent);
+        Assert.Contains("lvai_palette_index", agent);
+        Assert.Contains("lvai_set_vi_icon", agent);
+        // The three lessons that cost real work and that a rewrite must not drop: reuse before
+        // rebuilding, the lvlib: qualifier, and the icon surviving a regeneration.
+        Assert.Contains("palette reachability", agent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("lvlib", agent);
+        Assert.Contains("destroys the icon", agent);
+    }
+
+    [Fact]
+    public void TheViEditorCarriesTheTwoGatesThatMakeItSafe()
+    {
+        var agent = KnowledgeTools.Load("labview-vi-editor.md");
+
+        Assert.Contains("name: labview-vi-editor", agent);
+        // Editing is a full regeneration, so the agent is only safe while it keeps both gates:
+        // validate the PRISTINE export before touching anything, and save the icon before a
+        // regeneration destroys it. A rewrite that drops either turns a working VI into a broken
+        // one, or an iconless one.
+        Assert.Contains("Unsupported SubVI", agent);
+        Assert.Contains("lvdoc_get_icon.xml", agent);
+        Assert.Contains("Error 42", agent);
+    }
+
+    [Fact]
+    public void TheIconHelpersAreShippedAsScripts()
+    {
+        // Both are read by an agent at run time from lvai_status -> scriptsDirectory, so they
+        // have to exist in scripts/ and be AIXML, not prose.
+        foreach (var name in new[] { "lvdoc_set_icon.xml", "lvdoc_get_icon.xml" })
+        {
+            var path = Res.FindRepoFile($"scripts/{name}");
+            Assert.True(path is not null, $"scripts/{name} is missing");
+
+            var xml = File.ReadAllText(path!);
+            Assert.StartsWith("<VI ", xml);
+            Assert.Contains("VI Icon to File", xml);
+        }
     }
 
     [Fact]

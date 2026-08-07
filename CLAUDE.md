@@ -166,6 +166,8 @@ literally it argued away 600 usable palette VIs.
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
+| How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
+| How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 
 The seven documents served by an `lvai_*_reference` tool are **embedded in the assembly** and
