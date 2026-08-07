@@ -1,0 +1,13 @@
+<VI _name="lvdoc_get_icon.vi" description="Read one VI's CURRENT icon out to an image file, without changing the VI. The read-only half of lvdoc_set_icon.vi: same Open VI Reference / Save VI Icon to File / Close Reference chain, with the Set VI Icon from File and Save\3AInstrument nodes removed. Exists so an edit can back the icon up BEFORE ConvertAIXMLToVI regenerates the VI and destroys it. Driven by RunVIAsTopLevel, which can only set STRING controls, so both paths are built on the diagram. Opening and closing a VI REFERENCE releases the VI, so this does not burn the path for a later regeneration.">
+  <Control _name="VI Path" conIdx="1" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="Read Back Path" conIdx="3" connection="required" outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:15.path" uid="15" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save VI Icon to File" type="{LV.VI}" inputs="reference:20.vi reference,error in (no error):20.error out,Image File:15.path" outputs="reference out:38.reference out,error out:38.error out" uid="38" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:38.reference out,error in (no error):38.error out" outputs="error out:40.error out" uid="40" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:40.error out" outputs="status:60.status,code:60.code,source:60.source" uid="60" uid_parent="root"/>
+  <Indicator _name="status" conIdx="0" connection="recommended" inputs="value:60.status" type="bool" uid="50" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="4" connection="recommended" inputs="value:60.code" type="int32" uid="51" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="5" connection="recommended" inputs="value:60.source" type="string" uid="52" uid_parent="root" value=""/>
+</VI>

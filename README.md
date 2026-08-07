@@ -1,21 +1,31 @@
 # LabVIEW MCP
 
-An MCP server that exposes **all 23 RPCs** of LabVIEW's private `lvai.LVAI` gRPC interface
-as MCP tools — read a VI as text, generate LabVIEW code, run a VI, build a project.
+**LabVIEW MCP lets an AI assistant read, write and run LabVIEW code on your machine.**
 
-## Where the interface comes from
+A `.vi` is a binary file. An assistant cannot open one, cannot grep it, and cannot write one —
+which is why LabVIEW has mostly been out of reach for tools of this kind. LabVIEW MCP closes
+that gap: it drives a running LabVIEW 2026 and exposes it to any
+[MCP](https://modelcontextprotocol.io) client, Claude Code for example. VIs become something
+that can be read as text and generated from text.
 
-`labview_grpc_server.dll` (shipped in the `lvai` LVAddon) is NI's open-source
-[grpc-labview](https://github.com/ni/grpc-labview) — a *generic* gRPC server, which is why
-no `.proto` ships with it: the schema is registered from LabVIEW at runtime.
+Once it is connected, this is what you can ask for:
 
-That server has **gRPC server reflection** compiled in, so the schema was recovered from the
-running LabVIEW rather than reverse-engineered from the binary. The result is in
-[`Protos/lvai_grpc_interface.proto`](src/LabVIEWMCP/Protos/lvai_grpc_interface.proto) —
-it compiles with `protoc` and its generated stubs return live data.
+| | |
+|---|---|
+| **Read** | *"What does this VI do?"* — the block diagram comes back as text: nodes, wires, terminals, structures. A whole `.lvproj` or `.lvlib` too. |
+| **Write** | *"Give me a VI that reads this file and sorts it"* — generated, validated, and saved as a real `.vi`. |
+| **Edit** | *"Add error handling to this VI"* — the existing diagram is changed in place, not rebuilt from scratch. |
+| **Run** | *"Does it actually work?"* — executed as a top-level VI, with the outputs returned. |
+| **Build** | A build specification in a project is executed and its output written. |
+| **Reuse** | The installed palettes and NI's shipping examples are searchable, so the answer is an existing VI wherever there is one — including OpenG, MGI and JKI if they are installed. |
+| **Document** | A bundled agent turns a library, class or project into a Word document with a structure diagram and one section per public VI. |
 
-`lvai_dump_schema` re-reads the schema from whatever LabVIEW is running, so you can detect
-drift instead of trusting this checked-in copy.
+Nothing here does anything the IDE could not do itself, and every mutating tool is marked as
+one, so a client can ask before your code is touched.
+
+Under the hood: all 23 RPCs of LabVIEW's private `lvai.LVAI` gRPC interface, plus 11 tools of
+its own — 34 in total. That interface is undocumented, and
+[where it comes from](#where-the-interface-comes-from) is the last section, for the curious.
 
 ## Requirements
 
@@ -62,13 +72,21 @@ dotnet run --project src/LabVIEWMCP -- --dump-schema schema.txt
 | `--dump-schema [file]` | render the schema the running LabVIEW serves |
 | `--watch <monitor>` | wait for inbound LabVIEW events, minutes at a time |
 | `--diagram <vi>` | save the VI's rendered block diagram as a PNG |
+| `--ensure-labview` | start LabVIEW and wait for its gRPC service |
 | `--port <n>` | pin the gRPC port instead of discovering it |
 | `--vi <path>` | VI used by `--selftest` (default: a shipped LabVIEW example) |
 | `--project <path>` | `.lvproj` used by `--selftest` |
-| `--timeout <s>` | how long `--watch` waits (default 300) |
+| `--timeout <s>` | how long `--watch` and `--ensure-labview` wait (default 300) |
 | `--out <path>` | output file for `--diagram` |
+| `--help` | print the same list, from `CommandLine.Usage` |
 
 `LABVIEW_GRPC_PORT` works instead of `--port`.
+
+**Both hyphens matter.** An unrecognised flag is rejected with a usage message and exit
+code 2 — it is *not* ignored. It used to be, and the run then fell through to the default
+mode, the stdio MCP server, which waits on stdin forever: one missing hyphen was reported
+as a hang ([#7](https://github.com/Zuehlke/labview-mcp/issues/7)). `-selftest` now answers
+`Unknown option: -selftest - did you mean --selftest?`
 
 `--watch` and `--diagram` exist because of MCP transport limits. A monitor wait longer than
 about a minute is killed by the client (`MCP error -32001`), and a base64 PNG has no business
@@ -305,6 +323,7 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | `ok: false`, `InvalidOperationException`, "Could not find a port serving lvai.LVAI" | LabVIEW is not running, or its AI feature is off. The message lists every port that was probed. |
 | The same, but **LabVIEW is visibly running** and the probed list is full of `LabVIEW.exe listener` ports answering `Unavailable` | **The service starts with Nigel, not with the IDE.** Measured: LabVIEW up for twenty minutes, 30 listener ports open, `lvai.LVAI` served on none of them; opening Nigel in the IDE brought it up within seconds. `lvai_ensure_labview` cannot do this for you — it starts LabVIEW, and reports `starting` forever while the assistant stays closed. Open Nigel, then call `lvai_status` once. |
 | `lvai_ensure_labview` says it started LabVIEW and **LabVIEW closes again a moment later** | Fixed — and worth knowing what it was. LabVIEW created as a direct child of the server process was terminated by the **job object** the MCP host puts its children in. Measured at 0.5 s sampling: process visible at `22:03:41.509`, gone at `22:03:42.037`, no crash in the event log, server processes untouched. The identical launch from the CLI survived, and one that the shell handed to `explorer.exe` ran all session — so the launch code was never at fault, only the parentage. `LabViewLauncher` now tries `breakaway` (`CREATE_BREAKAWAY_FROM_JOB`), then a hand-off to `explorer.exe`, then the plain shell start, and **judges each by whether a LabVIEW process is still alive two seconds later** rather than by the launch call's return value. The winning strategy is reported as `launchMethod`; if none survives you get `launch-did-not-survive` with every attempt listed, instead of a cheerful `starting`. **Measured afterwards from inside the MCP server, the context that used to fail:** `launchMethod: "explorer"` with `runningProcesses: 1` — so breakaway is *denied* in the host's job and the hand-off is what carries it, which is worth knowing before anyone "simplifies" the chain down to breakaway alone. |
+| A CLI mode "hangs" — no output, no prompt back | Almost certainly a mistyped flag. Anything unrecognised used to fall through to the default mode, the stdio MCP server, which waits on stdin forever and looks exactly like a hang; `-selftest` with one hyphen was reported that way ([#7](https://github.com/Zuehlke/labview-mcp/issues/7)). Fixed: unknown flags now exit 2 with a usage message and a "did you mean" hint. If you are on an older build, check the hyphens. |
 | Worked, then stopped | LabVIEW restarted and took a new port. The next call re-discovers it — no restart needed. The **monitor** tools are the deliberate exception: they fail once with `Unavailable` rather than silently replay a wait that may already have consumed an event. Call them again. |
 | `Unimplemented` on a tool | That LabVIEW version does not have the RPC. Run `lvai_dump_schema` to see what it really serves. |
 | `DeadlineExceeded` | A cold VI or module load inside LabVIEW. Raise the tool's `timeoutSeconds`. |
@@ -646,6 +665,8 @@ scripts/                        copied next to the exe at build time; path in lv
 
 .claude/agents/
   labview-doc-generator.md      the documentation agent that drives the scripts above
+  labview-vi-generator.md       the VI-generation agent: contract, reuse, generate, run, icon
+  labview-vi-editor.md          the VI-editing agent: feasibility gate, icon backup, regenerate
 
 .githooks/
   pre-push                      sh stub git invokes
@@ -686,3 +707,17 @@ tests/LabVIEWMCP.Tests/
   Support/Res.cs                parse-and-assert helpers for tool JSON
   Infra/ Cli/ Grpc/ Tools/      the tests themselves
 ```
+
+## Where the interface comes from
+
+`labview_grpc_server.dll` (shipped in the `lvai` LVAddon) is NI's open-source
+[grpc-labview](https://github.com/ni/grpc-labview) — a *generic* gRPC server, which is why
+no `.proto` ships with it: the schema is registered from LabVIEW at runtime.
+
+That server has **gRPC server reflection** compiled in, so the schema was recovered from the
+running LabVIEW rather than reverse-engineered from the binary. The result is in
+[`Protos/lvai_grpc_interface.proto`](src/LabVIEWMCP/Protos/lvai_grpc_interface.proto) —
+it compiles with `protoc` and its generated stubs return live data.
+
+`lvai_dump_schema` re-reads the schema from whatever LabVIEW is running, so you can detect
+drift instead of trusting this checked-in copy.

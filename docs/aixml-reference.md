@@ -522,12 +522,15 @@ are surprising. Verified from exports:
 | `Add` | `x`, `y` | `x+y` |
 | `Subtract` | `x`, `y` | `x-y` |
 | `Multiply` | `x`, `y` | `x*y` |
+| `Divide` | `x`, `y` | `x/y` |
+| `Reciprocal` | `x` | `1/x` |
 | `Concatenate Strings` | `string`, repeatable | `concatenated string` |
 | `Quotient & Remainder` | `x`, `y` | `x-y*floor(x/y)`, `floor(x/y)` |
 | `Array Size` | `array` | `size(s)` |
 | `Index Array` | `array`, `index` | `element` |
 | `Wait (ms)` | `milliseconds to wait` | `millisecond timer value` |
 | `Get Waveform Components` | `waveform` | per `fields`, e.g. `Y` |
+| `Build Waveform` | `waveform`, then one per `fields`, e.g. `dt`, `Y` | `output waveform` |
 | `Sort 1D Array` | `array` | `sorted array` |
 | `Array To Spreadsheet String` | `format string`, `array`, **`delimiter (Tab)`** | `spreadsheet string` |
 | `Build Array` | `array` / `element`, repeatable | `appended array` |
@@ -573,6 +576,45 @@ section 6 apply inside terminal names too. In XML the `<` in `x < y?` additional
 
 The reliable way to get a name right: export a VI that already uses the node and copy the
 string verbatim.
+
+### `Bundle By Name` does not work — `Unbundle By Name` does
+
+**Measured 2026-08-07, LabVIEW 2026.** The node's cluster input never receives a type. The
+generator sees an empty cluster there and validation fails before anything is built:
+
+```xml
+<Control _name="error in (no error)" type="cluster{bool.status,int32.code,string.source}"
+         outputs="value:10.value" uid="10" value="[false,0,]"/>
+<Node _name="Bundle By Name" fields="code" inputs="input cluster:10.value,code:11.value"
+      outputs="output cluster:20.output cluster" uid="20"/>
+```
+
+```
+Bundle By Name: Cluster is invalid or empty
+Cluster , a cluster of 0 elements, conflicts with cluster error out, a cluster of 3 elements.
+The type of the sink is cluster of 0 elements.
+```
+
+That is the *simplest possible* case — the standard error cluster, straight from a control, one
+field replaced — so it is not a payload problem, and the terminal names are not the issue:
+`input cluster`, the field name and `output cluster` are all accepted and the complaint is about
+the **type**. A cluster `Constant` (`type="cluster{double.Fs,double.#s}"`) arrives as a cluster of
+0 elements in exactly the same way.
+
+`Unbundle By Name` is unaffected — it is in the table above and `scripts\lvdoc_set_icon.xml` has
+used it in production since the icon tool shipped.
+
+**Consequence: a generated diagram cannot build a cluster.** Design around it instead of fighting
+it:
+
+- Prefer a node or subVI whose terminals are **scalars**. `Build Waveform` with `fields="dt,Y"`
+  takes `dt` and `Y` separately and returns the finished waveform — no cluster needed.
+- Where a palette VI insists on a cluster input, look for a lower-level sibling that does not.
+  Measured while generating `SinusFFT.vi`: `NI_MABase.lvlib:Sine Waveform.vi` needs
+  `sampling info` (`cluster{double.Fs,double.#s}`) and is therefore out of reach, while
+  `NI_AALBase.lvlib:Sine Wave.vi` takes `samples`, `amplitude`, `frequency` and `phase in` as
+  plain doubles and works. The second wants frequency in **cycles per sample**, so the caller
+  divides by the sample rate — three primitives replaced the cluster construction.
 
 ### Constants
 
@@ -746,6 +788,29 @@ hit" — produces `Unsupported SubVI` for every VI a palette library owns, which
 of the table read together: the *same* VI fails bare and resolves qualified. Measured 2026-08-07 on
 LabVIEW 2026 — `target="Draw Image from File__ogtk.vi"` was refused,
 `target="openg_picture.lvlib\3ADraw Image from File__ogtk.vi"` validated, generated and ran.
+
+**A polymorphic VI needs `adapt` and `instance` as well as `target`.** Its own export is nothing
+but one `Call` per instance, so the terminal names to use are the *instance's*, not the
+polymorphic wrapper's. Measured 2026-08-07 generating `SinusFFT.vi` against
+`Extract Single Tone Information.vi`, which is `NI_MAPro.lvlib`-owned and has four instances:
+
+```xml
+<Call adapt="true"
+      target="NI_MAPro.lvlib\3AExtract Single Tone Information.vi"
+      instance="NI_MAPro.lvlib\3AExtract Single Tone Information 1 Chan.vi"
+      inputs="time signal in:40.output waveform,export mode:,error in (no error):12.value,advanced search:"
+      outputs="exported signals:,measurement info:,detected frequency:50.detected frequency,detected amplitude:,detected phase (deg):,error out:50.error out"
+      uid="50" uid_parent="root"/>
+```
+
+Two details that are easy to get wrong:
+
+- **List every terminal of the instance**, wired or not, and give the unused ones an empty net
+  (`export mode:`, `advanced search:`, `detected amplitude:`). Omitting them is what produces
+  `Contains unwired or bad terminal`.
+- Get the instance name by exporting the polymorphic VI itself: the export *is* the instance
+  list, one `Call` per line, with each instance's inputs and outputs spelled out. Two calls —
+  `lvai_convert_vi_to_aixml` on the wrapper, then copy — replace all guessing.
 
 The qualifier is not derivable from the index either: the palette prints
 `Categories\OpenG\functions_oglib_picture.mnu` and the VI lives in `picture.llb`, neither of which

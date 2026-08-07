@@ -51,6 +51,10 @@
          because Claude Code loads an agent from a file in .claude\agents, not from a resource. -->
     <EmbeddedResource Include="..\..\.claude\agents\labview-doc-generator.md"
                       LogicalName="labview-doc-generator.md" />
+    <EmbeddedResource Include="..\..\.claude\agents\labview-vi-generator.md"
+                      LogicalName="labview-vi-generator.md" />
+    <EmbeddedResource Include="..\..\.claude\agents\labview-vi-editor.md"
+                      LogicalName="labview-vi-editor.md" />
     <EmbeddedResource Include="..\..\CLAUDE.md" LogicalName="CLAUDE.md" />
   </ItemGroup>
 
