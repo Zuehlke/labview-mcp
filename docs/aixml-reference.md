@@ -503,6 +503,13 @@ wired to it — `array` for an array, `element` for a scalar — which is why th
 `inputs="array:…,element:…"`. `Read from Text File` and `Write to Text File` need no refnum at all
 when handed a path: they open and close the file themselves.
 
+**`Array To Spreadsheet String` appends a platform EOL after the *last* element.** Measured on a
+five-element string array with `delimiter (Tab)` wired to `\0A`: the result ended
+`…\nbanana\r\n`, so the delimiter separates the elements and a `\r\n` is added on top. If you want
+the elements separated and nothing trailing, strip it — which is exactly what OpenG's
+`1D Array to String__ogtk.vi` does internally, with `Match Pattern` and the pattern
+`<platform EOL>$`.
+
 Everything above was measured, most of it by exporting a VI that already used the node — a shipped
 example under `examples\File IO\`, and OpenG's own `Filter 1D Array (String)__ogtk.vi` for the
 accumulating loop. That remains the reliable way to add a row here.
@@ -554,6 +561,39 @@ all, and needs a `Build Array` of scalar constants instead.
 `<Constant type="string" value="\0A"/>` produced a genuine line feed — verified by running the VI
 and reading the written file as bytes (31 bytes for five elements plus five LFs, no CR anywhere).
 That is the portable way to get a line-ending constant onto a generated diagram.
+
+### Calling a plain palette VI: the terminals are its front-panel labels
+
+For a primitive `Node` you look the terminal names up in the table above. For a `Call` there is no
+table and there never can be one — the terminals are the **target VI's own control and indicator
+names**, so every palette VI has its own set. Export the target and read them off:
+
+```
+ConvertVIToAIXML  "…\user.lib\_OpenG.lib\string\string.llb\1D Array to String__ogtk.vi"
+```
+
+comes back as `<VI _name="openg_string.lvlib:1D Array to String__ogtk.vi" …>` with
+`Control _name="Array of Strings"`, `Control _name="delimiter (Tab)"` and
+`Indicator _name="delimited string"`. Those three strings are the whole wiring contract, and the
+root element's `_name` is the `target` — colon escaped:
+
+```xml
+<Call target="openg_string.lvlib\3A1D Array to String__ogtk.vi"
+      inputs="Array of Strings:210.sorted array,delimiter (Tab):130.value"
+      outputs="delimited string:220.delimited string" uid="220" uid_parent="root"/>
+```
+
+Validated, generated and ran on LabVIEW 2026. No `instance` — this VI is not polymorphic — and no
+`adapt`, since its types are fixed.
+
+Two things the export gives you for free. The `_name` is already the library-qualified form, so
+there is nothing to assemble by hand. And the VI's `description` plus each terminal's
+`description` come with it, which is the Context Help — for a palette *VI* that is the
+documentation (§10), where a primitive gives you nothing but the terminal name.
+
+Finding the file at all is the fiddly part: OpenG installs under `user.lib\_OpenG.lib\`, not
+`vi.lib`, and the `.llb` in its path is a real directory here rather than a container. Search for
+the VI by name across both roots rather than assuming either.
 
 ### Polymorphic subVI calls
 
