@@ -492,6 +492,9 @@ are surprising. Verified from exports:
 | `Build Array` | `array` / `element`, repeatable | `appended array` |
 | `Unbundle By Name` | `input cluster` | one per `fields`, e.g. `status`, `code`, `source` |
 | `String To Path` | `string` | `path` |
+| `Path To String` | `path` | `string` |
+| `Number To Decimal String` | `number` | **`decimal integer string`** — not `string` |
+| `Variant To Data` | `variant`, `type`, **`error in`** — not `error in (no error)` | `data`, `error out` |
 | `Read from Text File` | `file (use dialog)`, `count`, `error in`, `prompt (Open existing file)` | `refnum out`, `text`, `cancelled`, `error out` |
 | `Write to Text File` | `file (use dialog)`, `text`, `error in`, `prompt (Choose or enter file path)` | `refnum out`, `cancelled`, `error out` |
 | `Close File` | `refnum`, `error in` | `path`, `error out` |
@@ -896,7 +899,7 @@ Consequences for authoring:
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
 | `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` alone is enough** — measured on a VI that was opened and never run, which corrects the claim that used to stand here that only *running* blocks the overwrite. `RunVIAsTopLevel` leaves it loaded too. |
-| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". |
+| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". **The commonest source is your own last validation.** A `ValidateAIXML` that *fails* appears to leave a VI named after the document's `_name` behind, and the next `ConvertAIXMLToVI` for that name is then refused. Observed 5 for 5 across one session: every 1051 followed a failed validation of the same `_name`, and every file that validated cleanly on the first attempt generated without complaint. The fix is free — bump `_name` (and the output file name) after any validation error, which you want anyway per the fresh-name rule. An earlier note here blamed a sibling probe VI that carried the same `_name`; that explanation fitted one case and this one fits all of them. |
 | `<Structure>: Is a member of a cycle` plus `Wire: Is a member of a cycle` | A redundant border crossing, most often an `Out` tunnel added for a shift register's `Right` terminal — see §7. The net already crosses the border implicitly, so the extra tunnel routes the loop's output back to its own input. Delete the tunnel and let consumers outside read the `Right` output net directly. |
 | `Error 1051` on the **first** generation of a path that does not exist yet | A *different* file carrying that VI's internal name is loaded — and the usual cause is self-inflicted: a scratch iteration generated from the deliverable's own XML keeps `_name="Final.vi"` while being saved as `Probe.vi`, so "Final.vi" is in memory under the wrong path. Change `_name` in every scratch variant, not just the file name. Measured: `viExisted: false`, `viExistsNow: false` — nothing was written, and a LabVIEW restart cleared it. |
 | `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |
@@ -1067,9 +1070,29 @@ Two details from running this, in case anyone repeats it:
 ## 15. Reach
 
 `ConvertVIToAIXML` works on VIs inside **packed libraries** (`.lvlibp`) as well — a compiled
-module still yields its complete block diagram (~200 KB of AIXML for a large one). Paths
+module can still yield its complete block diagram (~200 KB of AIXML for a large one). Paths
 inside a `.lvlibp` are not real directories, so directory listing fails where the RPC
 succeeds: address the VI by its path through the `.lvlibp` file.
+
+**"Can" and not "does": it depends on how that `.lvlibp` was built, and NI's own are built
+without diagrams.** Measured on the AI addon's two packed libraries: every VI answers `Error 47`,
+`Unknown heap`, from the exporter. That message names nothing useful; `GetDescribeVIPromptInfo` on
+the same path gives the real reason —
+
+```
+Error 1012 ... Cannot load block diagram.
+Property Name: Block Diagram
+The block diagram for ...\LV AI Core.lvlibp\...\XML generator.vi could not be loaded
+but is required by this property or method. (Traverse Failed)
+```
+
+So treat `Error 47` from the exporter as "diagrams were stripped at build time", and reach for
+`lvai_describe_vi` when you need to know why. **`describe_vi` is also the fallback that still
+works**: its `viXml` and `viImage` come back empty, but `controlsIndicators` is populated, so a
+diagram-less VI still yields its terminals. For the connector pane of many VIs at once there is a
+cheaper route that needs no diagram at all — `Connector Pane\3AReference` → `Controls[]` →
+`Label` → `Text`, which is what `scripts/lvai_inventory.xml` does; see
+[`vi-server-reference.md`](vi-server-reference.md).
 
 That makes read-only analysis possible on projects that link only compiled components, with
 no source checkout. Writing back is a different matter — see §9 and §11.

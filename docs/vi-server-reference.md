@@ -402,6 +402,84 @@ what it says for a VI that VI Server alone ever loaded; for one the **IDE** has 
 gets it back out. Plan around it: fresh name per iteration, and do not open a VI you still intend to
 regenerate.
 
+## The addon's own VIs: mapped, and out of reach
+
+The 23 RPCs are a thin shell over a much larger set of VIs inside the addon. Those VIs are
+**inventoried** in [`lvai-internal-vis.tsv`](lvai-internal-vis.tsv) — 419 rows, 404 of them
+exported, 321 with a connector pane. Regenerate it with `scripts/lvai_inventory.xml`, generated and
+driven by `RunVIAsTopLevel` with one string input. It is station- and version-specific: this
+snapshot is `lvai 26.3`, `win32`, LabVIEW 2026, and three addon versions were installed side by
+side.
+
+**Read the inventory before assuming a capability is missing.** It names parameters the RPC layer
+drops — `XML generator.vi` takes a **`vi` reference** as well as a `vi path` and returns
+`conversion messages` and `terminal wire name`; `VI generator.vi` takes an **`app ref`**, so its
+target application instance is selectable; `Apply code changes.vi` takes `vi ref` plus
+`changes (UTF-8 encoded XML)` with none of the gRPC gate that makes `ApplyAIXMLToVI` answer
+`Error 42` (§14 of the AIXML reference). Also present: `Generate VI BD image.vi`,
+`Get front panel info.vi`, `Arrange front panel.vi`, `Open VI in best context.vi`,
+`Run from PPL or loose VI.vi`, `Undo and erase transaction.vi`, and a `SearchInfoCache.vi` with
+`Filters`, `Offset`, `Limit` and `Case Sensitive`.
+
+**None of it is callable from generated code.** Measured both ways, and the two failures are one
+wall seen from two sides:
+
+| Route | Result |
+|---|---|
+| AIXML `Call target="LV AI Core.lvlibp\3AXML generator.vi"` | `Error 53`, `Unsupported SubVI` — not palette-reachable |
+| VI Server `Open VI Reference` + `Run VI` | `Error 1390` |
+
+`General Error Handler.vi` spells 1390 out: *"You attempted to open a VI Server reference to an
+out-of-scope VI. A VI can open VI Server references only to other VIs that it **could call as
+subVIs**."* The generator refuses the subVI call, so the generated VI may not hold a server
+reference either. Consistent, and it closes the shortcut.
+
+What was ruled out along the way, so nobody repeats it:
+
+- **Not a packed-library export problem.** `Application:Exported VIs In Memory` lists 404 of the
+  422 VIs in memory, `XML generator.vi` among them.
+- **Not reentrancy.** `Open VI Reference` with `options = 8` fails *earlier*, at the open, with the
+  same 1390 — these VIs are not reentrant, so there is no clone to run.
+- **Not the application instance.** Reached through `Project\3AActive Project` → `Application`, the
+  IDE's instance opens the reference successfully — 899 ms, a real load, against 6 ms for the
+  by-name open in the addon's instance — and `Run VI` still answers 1390. Note the precondition
+  from the unload recipe applies here too: with no project active, the first property node fails
+  with `Error 1055`, and a name-only open in the IDE instance fails with `Error 1004` because the
+  VI is not in memory *there*. Give it the path through the `.lvlibp`.
+
+**The path through a `.lvlibp` is real and LabVIEW will tell you it.** Guessing it does not work —
+`…\LV AI Core.lvlibp\1abvi3w\gRPC Implementations\ConvertVIToAIXML.vi` gives `Error 7`. Open a
+reference to the VI **by qualified name** while it is in memory and read `{LV.VI}` `VI Path`; the
+real form mirrors the source tree, e.g.
+`…\LV AI Core.lvlibp\1abvi3w\resource\AI\LV AI Core\XML generator.vi`.
+
+**The remaining route is a hand-built wrapper.** Dropping a PPL-exported VI on a diagram is
+ordinary work *in the IDE* — only the generator cannot do it. A wrapper VI saved loose, with
+string and path terminals, is then drivable by `RunVIAsTopLevel` like any other VI. One wrapper per
+capability; untested so far.
+
+### Four terminal and method names this cost
+
+The methods table lists **display** names where AIXML wants the scripting name:
+
+| Wanted | `docs/vi-server-methods.tsv` says | `target=` that resolves |
+|---|---|---|
+| set a control by variant | `Set Control Value [Variant]` | **`Ctrl Val.Set`** |
+| read a control by variant | `Get Control Value [Variant]` | **`Ctrl Val.Get`** |
+
+`Run VI` is listed correctly. The discriminator is the same one that separates a resolvable `Call`
+from an unresolvable one: **`Invalid method` means unresolved, `Contains unwired or bad terminal`
+means resolved** — so a node with no parameters wired probes resolution on its own.
+
+Two primitives, while measuring the above: `Number To Decimal String` outputs
+**`decimal integer string`**, not `string`; and `Variant To Data` takes **`error in`**, not
+`error in (no error)`.
+
+**Ask LabVIEW what an error code means** rather than guessing — `General Error Handler.vi` is
+palette-reachable, and wiring `type of dialog (OK msg\3A1)` to `0` (`no dialog`, a
+`uint16{no dialog,OK message,…}`) suppresses the modal box and leaves the text in `message`. Its
+code input is `[error code] (0)`. That one call decided this whole section.
+
 ## What this opens up
 
 Gaps in the RPC surface that a generated helper VI could close, none of them attempted yet:
