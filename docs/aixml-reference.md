@@ -506,12 +506,12 @@ wired to it — `array` for an array, `element` for a scalar — which is why th
 `inputs="array:…,element:…"`. `Read from Text File` and `Write to Text File` need no refnum at all
 when handed a path: they open and close the file themselves.
 
-**`Array To Spreadsheet String` appends a platform EOL after the *last* element.** Measured on a
-five-element string array with `delimiter (Tab)` wired to `\0A`: the result ended
+**`Array To Spreadsheet String` appends a platform line ending after the *last* element.**
+Measured on a five-element string array with `delimiter (Tab)` wired to `\0A`: the result ended
 `…\nbanana\r\n`, so the delimiter separates the elements and a `\r\n` is added on top. If you want
 the elements separated and nothing trailing, strip it — which is exactly what OpenG's
-`1D Array to String__ogtk.vi` does internally, with `Match Pattern` and the pattern
-`<platform EOL>$`.
+`1D Array to String__ogtk.vi` does internally, with `Match Pattern` anchored on the platform line
+ending followed by `$`.
 
 Everything above was measured, most of it by exporting a VI that already used the node — a shipped
 example under `examples\File IO\`, and OpenG's own `Filter 1D Array (String)__ogtk.vi` for the
