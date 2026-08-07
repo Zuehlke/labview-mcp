@@ -5,8 +5,14 @@ using LabVIEWMcp.Grpc;
 namespace LabVIEWMcp.Infra;
 
 /// <summary>One shipping example, as the Example Finder knows it.</summary>
-/// <param name="Name">The bare file name, e.g. "Scale TDMS Data.vi".</param>
-/// <param name="Path">Absolute path - hand this to ConvertVIToAIXML to read the diagram.</param>
+/// <param name="Name">
+/// The bare file name, e.g. "Scale TDMS Data.vi". Usually a .vi, but an exbins index also
+/// registers whole example PROJECTS - 37 .lvproj against 528 .vi on this station.
+/// </param>
+/// <param name="Path">
+/// Absolute path. For a .vi hand it to ConvertVIToAIXML to read the diagram; for a .lvproj that
+/// call is the wrong one and DescribeProject is the follow-up.
+/// </param>
 /// <param name="Category">Folder path below the examples root, e.g. "File IO\TDMS".</param>
 /// <param name="Source">Empty for LabVIEW's own tree, otherwise the add-on that ships it.</param>
 /// <param name="Description">NI's own one-paragraph description, tags stripped.</param>
@@ -63,13 +69,15 @@ internal sealed record ExampleSource(string Label, string ExamplesFolder);
 /// further examples across 14 add-ons here. Missing those would hide entire toolkits, so both
 /// roots are scanned; see <see cref="AddonTree"/>.
 ///
-/// KNOWN GAP, REPORTED RATHER THAN HIDDEN: some drivers register their examples through an
-/// external binary index instead of the in-VI block - `exbins\*.bin4`, and older `*.bin3` under
-/// &lt;LabVIEW&gt;\examples\exbins. NI-DAQmx is the big one: 69 example VIs, none carrying a block,
-/// all described inside daq82mxw.bin4. That format is length-prefixed like a .mnu and its strings
-/// are readable, but which description belongs to which example is NOT yet decoded, and guessing
-/// the pairing would attach wrong text to real examples. Those files are therefore counted and
-/// named in <see cref="Result.ExternalIndexes"/> so a caller sees what is missing.
+/// SOME EXAMPLES CARRY NO BLOCK AT ALL and register through an external binary index instead -
+/// `exbins\*.bin4`, and older `*.bin3` under &lt;LabVIEW&gt;\examples\exbins. NI-DAQmx is the case
+/// that matters: 56 examples, not one of them findable by scanning VIs, so a query for "DAQmx"
+/// used to come back empty while they sat on disk. <see cref="ExternalExampleIndex"/> reads those
+/// files; the count that came from them is <see cref="Result.FromExternalIndexes"/>.
+///
+/// An index file that does not fit that format is skipped WHOLE and named in
+/// <see cref="Result.ExternalIndexes"/>, never half-read: a mis-paired description is worse than
+/// a missing one, and a silently absent driver is the bug this scan exists to avoid.
 /// </summary>
 internal static class ExampleIndex
 {
@@ -94,11 +102,19 @@ internal static class ExampleIndex
             "</FileType>", "</Navigation>", "</Keywords>", "</Description>", "</Title>",
         }.Select(Encoding.ASCII.GetBytes)];
 
+    /// <param name="FromExternalIndexes">
+    /// How many of <paramref name="Examples"/> came from an exbins index rather than from a VI.
+    /// </param>
+    /// <param name="ExternalIndexes">
+    /// Index files that did NOT fit the format and were therefore skipped whole - the remaining
+    /// gap, named so it stays visible.
+    /// </param>
     internal sealed record Result(
         string LabViewRoot, string ExamplesFolder, int ViFilesScanned,
         IReadOnlyList<ExampleVi> Examples,
         IReadOnlyList<string> AddonsScanned, IReadOnlyList<string> AddonsSkipped,
-        IReadOnlyList<string> ExternalIndexes, IReadOnlyList<string> Unreadable);
+        IReadOnlyList<string> ExternalIndexes, IReadOnlyList<string> Unreadable,
+        int FromExternalIndexes);
 
     /// <summary>
     /// The index for the newest installed LabVIEW, or for <paramref name="labviewRoot"/> when
@@ -153,6 +169,7 @@ internal static class ExampleIndex
         var externals = new List<string>();
         var unreadable = new List<string>();
         var scanned = 0;
+        var fromExternal = 0;
 
         foreach (var source in sources)
         {
@@ -175,14 +192,40 @@ internal static class ExampleIndex
                     parsed.Description, parsed.Keywords, parsed.RequiredSoftware));
             }
 
-            // Never drop a driver silently - that omission is the bug this scan exists to avoid.
+            // Examples that carry no in-VI block and register through an external index instead.
+            // Read AFTER the VIs of the same source, so where both describe an example the in-VI
+            // block wins - it is the authoritative one and the only one carrying RequiredSoftware.
             foreach (var external in EnumerateFilesSafely(source.ExamplesFolder, "*.bin3")
                          .Concat(EnumerateFilesSafely(source.ExamplesFolder, "*.bin4")))
             {
                 var label = source.Label.Length == 0
                     ? Path.GetFileName(external)
                     : source.Label + ": " + Path.GetFileName(external);
-                externals.Add(label);
+
+                byte[] bytes;
+                try { bytes = File.ReadAllBytes(external); }
+                catch { unreadable.Add(external); continue; }
+
+                var registered = ExternalExampleIndex.Read(bytes);
+                if (registered.Count == 0)
+                {
+                    // Never drop a driver silently - that omission is the bug this scan exists
+                    // to avoid, and an unreadable index is exactly how it would happen again.
+                    externals.Add(label);
+                    continue;
+                }
+
+                foreach (var entry in registered)
+                {
+                    var path = Path.Combine(source.ExamplesFolder, entry.RelativePath);
+                    if (!File.Exists(path)) continue;      // a registration for an absent example
+
+                    if (found.TryAdd(entry.RelativePath, new ExampleVi(
+                            Path.GetFileName(path), path,
+                            Path.GetDirectoryName(entry.RelativePath) ?? "", source.Label,
+                            entry.Description, entry.Keywords, null)))
+                        fromExternal++;
+                }
             }
         }
 
@@ -193,7 +236,7 @@ internal static class ExampleIndex
 
         return new Result(root, examples, scanned, list,
                           addonFolders.Select(f => f.Addon).Distinct().ToList(), skipped,
-                          externals, unreadable);
+                          externals, unreadable, fromExternal);
     }
 
     /// <summary>

@@ -23,7 +23,7 @@ and will never appear in a palette — they are properties and methods, and the 
 index for them.
 
 **Check whether NI already built it, before designing anything.** `lvai_example_index` lists the
-808 shipping examples of this installation with NI's own description and keywords, scanned from
+951 shipping examples of this installation with NI's own description and keywords, scanned from
 disk in about 400 ms and needing no running LabVIEW. It answers a different question from the
 palette index — that one says *which VI may I call*, this one says *is this whole diagram already
 written*. Feed a hit's path to `lvai_convert_vi_to_aixml` and read how NI wired it.
@@ -32,11 +32,15 @@ Do this first for anything pattern-shaped: state machines, producer/consumer, qu
 handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds
 of reading and it is the canonical shape.
 
-Two limits, both reported in the tool's own output rather than left to be discovered: examples
-registered through an external `.bin4` index are **not** listed — NI-DAQmx above all — and a VI
-absent from the index may still have a description, because
-`lvai_filter_example_search_candidates` reads any VI's description property, including `vi.lib`.
-Formats and measurements in `docs/example-corpus.md`.
+**A hit may be a `.lvproj`, not a VI** — 29 of them, whole example applications such as
+`Active Noise Control (cRIO).lvproj`. For those the follow-up is `lvai_describe_project`;
+`lvai_convert_vi_to_aixml` is the wrong call and no `.lvproj` carries in-VI metadata, so they reach
+the index only through the external registration path.
+
+One limit remains, and the tool reports it rather than leaving it to be discovered: a VI absent
+from the index may still have a description, because `lvai_filter_example_search_candidates` reads
+any VI's description property, including `vi.lib`. Formats and measurements in
+`docs/example-corpus.md`.
 
 **Reuse a palette VI before you rebuild anything.** Query `lvai_palette_index` for the operation
 *before* designing a diagram; it lists exactly the VIs a generated `Call` may legally target on

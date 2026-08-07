@@ -15,11 +15,17 @@ scanning, and the per-example data lives inside the example VIs themselves. That
 | which examples exist | `<LabVIEW>\examples` and `%ProgramFiles%\NI\LVAddons\<addon>\<api>\examples` | directory tree |
 | title, description, keywords, category id, requirements | **inside each example .vi** | plain-text XML |
 | the category tree those ids point into | `…\Shared\Example Finder\1.0\BIN\*dtree*.dat` | length-prefixed binary |
-| examples of some drivers | `…\examples\exbins\*.bin4`, older `*.bin3` | length-prefixed binary |
-| the user's "most recent" list | `%LOCALAPPDATA%\National Instruments\Example Finder\1.0\mostrecent.bin4` | length-prefixed binary |
+| examples of some drivers | `…\examples\exbins\*.bin4`, older `*.bin3` | parallel arrays, §3 |
+| the user's "most recent" list | `%LOCALAPPDATA%\National Instruments\Example Finder\1.0\mostrecent.bin4` | parallel arrays, §3 |
 
-Counts on this station: 2510 `.vi` files across both roots, of which **808 are listed examples**;
-1687 files and 14 add-on trees. A full scan takes about 400 ms.
+Counts on this station: 2510 `.vi` files across both roots and 14 add-on trees, yielding **951
+listed examples** — 808 from the in-VI block (§2) and a further 143 from the external indexes (§3).
+By type: 922 `.vi` and 29 `.lvproj`. A full scan takes about 400 ms.
+
+**An example can be a whole project.** 37 of the external registrations point at a `.lvproj` rather
+than a VI — `Active Noise Control (cRIO).lvproj` is an FPGA/RT application, not a diagram. Those
+need `lvai_describe_project`; `lvai_convert_vi_to_aixml` is the wrong follow-up for them. No
+`.lvproj` carries an in-VI block, so this is the only way they appear at all.
 
 ## 2. The in-VI metadata block
 
@@ -58,22 +64,58 @@ Other observations worth keeping:
 - **The block is also the filter.** The 1702 VIs without one are subVIs and support code living
   inside an example's folder. Listing them buries the examples that are meant to be opened.
 
-## 3. Not every example is covered
+## 3. The external indexes — `.bin3` and `.bin4`
 
-Some drivers register through an external binary index instead of the in-VI block. **NI-DAQmx is
-the important one**: 69 example VIs under `NI\LVAddons\nidaqmx\1\examples\DAQmx`, none carrying a
-block, all described inside `exbins\daq82mxw.bin4`.
+Some products register their examples in an external binary index and put **no block in the VI at
+all**. **NI-DAQmx is the important one**: 56 examples under `NI\LVAddons\nidaqmx\1\examples\DAQmx`,
+not one of them findable by scanning VIs, so a query for "DAQmx" came back empty while they sat on
+disk.
 
-There are 23 such files on this station (`.bin4` in add-on trees, older `.bin3` under
-`<LabVIEW>\examples\exbins` for VIPM-installed packages such as DQMH and MGI). They use the same
-length-prefixed-string convention as `.mnu` — `!Analog Input - Synchronization.vi` is a `0x21`
-length byte before 33 characters — and they contain names, category labels, `PTH0` path records and
-descriptions up to 521 characters.
+There are 23 such files on this station. Nineteen are distinct — `aspt32`/`aspt64` and
+`utf32`/`utf64` ship identical copies. Four are `.bin3` under `<LabVIEW>\examples\exbins` for
+VIPM-installed packages (DQMH, MGI, Asciidoc), and **one sits outside any `exbins` folder** —
+`examples\JKI\EasyXML\EasyXML.bin3` — so scan the examples tree recursively, not just `exbins`.
+`.bin3` and `.bin4` are the same format.
 
-**What is not decoded is which description belongs to which example.** Guessing the pairing would
-attach wrong text to real examples, which is worse than no text, so `lvai_example_index` counts and
-names these files instead and says their examples are absent. Decoding them is the obvious next
-step if DAQmx coverage matters.
+### Format
+
+A series of **parallel arrays**, each introduced by a big-endian `uint32` count followed by that
+many records. Index *i* of every array describes the same example:
+
+| # | Kind | Holds |
+|---|---|---|
+| 0 | text | bare file name, `Analog Input - Filtering.vi` |
+| 1 | `PTH0` | path **relative to the `examples` folder**, `DAQmx\Analog Input\Analog Input - Filtering.vi` |
+| 2 | text | empty in every file measured |
+| 3 | numbers | navigation node ids into the `dtree` tree of §4 |
+| 4 | text | the description |
+| 5 | text | this file's keyword vocabulary — optional |
+| 6 | numbers | per keyword, the indices of the examples carrying it — optional |
+
+A text record is a `uint32` length then that many bytes. A `PTH0` record is the tag, a `uint32`
+size, a `uint16` type, a `uint16` component count, then components each with a **one-byte** length
+prefix.
+
+> **Corrected.** This section previously said these files "use the same length-prefixed-string
+> convention as `.mnu` — `!Analog Input - Synchronization.vi` is a `0x21` length byte before 33
+> characters". That reading is wrong: `0x21` is the **low byte of a 4-byte big-endian length**, and
+> the printable character before each name is an artefact of that. The one-byte convention does
+> appear, but only inside `PTH0` components — two prefix widths in one file.
+
+### Why the pairing is safe
+
+Index alignment is a measurement, not an assumption. Across all 23 files: every name equals the
+last component of its path, all 565 registrations resolve to a file that exists on disk, and the
+descriptions match their example's subject. `ExternalExampleIndex` re-checks the name-against-path
+rule at run time and **returns nothing at all** for a file that fails it — a mis-paired description
+is worse than a missing one. Such a file is then named in the tool's output.
+
+Of the 565 registrations only 143 are new: the rest duplicate examples that already carry an in-VI
+block. Where both describe one example the block wins — it is authoritative and the only source
+carrying `RequiredSoftware`.
+
+Descriptions here carry markup too (`in the <b>RT CompactRIO Target</b> folder`), so they are
+tag-stripped exactly like the in-VI ones.
 
 ## 4. The category tree
 

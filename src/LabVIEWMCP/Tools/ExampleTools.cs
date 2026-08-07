@@ -21,19 +21,21 @@ internal sealed class ExampleTools
         The shipping examples of this LabVIEW installation, with NI's own description and search
         keywords, read from the example VIs themselves. Query this BEFORE designing a diagram from
         scratch: where lvai_palette_index answers "which VI may I Call", this answers "has NI
-        already wired this up" - a whole working diagram rather than a single node. Feed a hit's
-        path to lvai_convert_vi_to_aixml to read how it is built.
+        already wired this up" - a whole working diagram rather than a single node. Feed a .vi hit's
+        path to lvai_convert_vi_to_aixml to read how it is built; a hit may also be a .lvproj, a
+        whole example application, and for that the follow-up is lvai_describe_project instead.
         Matches on name, category, keywords and description. Without a query: the totals plus the
         scan location.
         Scanned from disk at call time because the set is station-specific, and cached for the
         process lifetime. Needs NO running LabVIEW - the metadata is plain text inside each .vi.
         Both roots are read: <LabVIEW>\examples AND every LVAddon under %ProgramFiles%\NI\LVAddons,
         which is where driver and toolkit examples now install.
-        NOT EVERY EXAMPLE IS LISTED. Some drivers - NI-DAQmx above all - register through an
-        external binary index (exbins\*.bin4) whose description-to-example pairing is not decoded;
-        those files are named in the output so the gap is visible rather than silent. A VI absent
-        here may still have a description: lvai_filter_example_search_candidates reads any VI's
-        own description property, including vi.lib.
+        Examples that carry no in-VI metadata are covered too: some drivers - NI-DAQmx above all -
+        register through an external binary index (exbins\*.bin3 and *.bin4), and those are read as
+        well. An index file that does not fit the known format is skipped whole and named in the
+        output, so any remaining gap stays visible rather than silent.
+        A VI absent here may still have a description: lvai_filter_example_search_candidates reads
+        any VI's own description property, including vi.lib.
         """)]
     public static string ExampleIndexTool(
         [Description("Substring of name, category, keyword or description, e.g. 'TDMS', 'state machine'")]
@@ -57,25 +59,29 @@ internal sealed class ExampleTools
 
         var header = $"{index.Examples.Count} examples among {index.ViFilesScanned} VI files " +
                      $"under {index.ExamplesFolder}";
+        if (index.FromExternalIndexes > 0)
+            header += $" ({index.FromExternalIndexes} of them registered through an exbins index " +
+                      "rather than carrying their own metadata)";
         if (index.AddonsScanned.Count > 0)
             header += $" plus {index.AddonsScanned.Count} add-on tree(s): " +
                       string.Join(", ", index.AddonsScanned);
         if (index.AddonsSkipped.Count > 0)
             header += Environment.NewLine + "Skipped, newer LabVIEW required: " +
                       string.Join("; ", index.AddonsSkipped);
-        // The DAQmx-shaped gap: say it out loud, every time, or it reads as "nothing to see".
+        // Whatever is still missing gets said out loud, or it reads as "nothing to see".
         if (index.ExternalIndexes.Count > 0)
             header += Environment.NewLine +
-                      $"NOT COVERED - {index.ExternalIndexes.Count} external example index(es), " +
-                      "their examples are absent from the list below: " +
-                      string.Join(", ", index.ExternalIndexes);
+                      $"NOT COVERED - {index.ExternalIndexes.Count} exbins index(es) did not fit " +
+                      "the known format and were skipped whole; their examples are absent from " +
+                      "the list below: " + string.Join(", ", index.ExternalIndexes);
         if (index.Unreadable.Count > 0)
             header += Environment.NewLine + $"{index.Unreadable.Count} file(s) could not be read.";
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
-                   "Pass a query to look one up, e.g. query='TDMS'. Feed a hit's path to " +
-                   "lvai_convert_vi_to_aixml to read the diagram.";
+                   "Pass a query to look one up, e.g. query='TDMS'. Feed a .vi hit's path to " +
+                   "lvai_convert_vi_to_aixml to read the diagram; a .lvproj hit is a whole example " +
+                   "application, for which lvai_describe_project is the follow-up.";
 
         var matches = index.Examples
             .Where(e => Matches(e, query))

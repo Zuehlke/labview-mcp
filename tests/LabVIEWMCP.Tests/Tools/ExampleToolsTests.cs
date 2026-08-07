@@ -41,6 +41,39 @@ public class ExampleToolsTests : IDisposable
         return buffer.ToArray();
     }
 
+    /// <summary>
+    /// A minimal exbins index registering one example: the five parallel arrays the reader needs,
+    /// in the order the real files use. See <see cref="LabVIEWMcp.Infra.ExternalExampleIndex"/>.
+    /// </summary>
+    private static byte[] ExbinsFile(string relativePath, string description)
+    {
+        var name = relativePath[(relativePath.LastIndexOf('\\') + 1)..];
+        var bytes = new List<byte>();
+
+        void U32(int value) => bytes.AddRange(
+            [(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value]);
+        void Text(string s) { U32(1); U32(s.Length); bytes.AddRange(Encoding.ASCII.GetBytes(s)); }
+
+        Text(name);                                                     // 0 names
+
+        var parts = relativePath.Split('\\');                           // 1 PTH0 paths
+        var body = new List<byte> { 0x00, 0x01, 0x00, (byte)parts.Length };
+        foreach (var part in parts)
+        {
+            body.Add((byte)part.Length);
+            body.AddRange(Encoding.ASCII.GetBytes(part));
+        }
+        U32(1);
+        bytes.AddRange("PTH0"u8.ToArray());
+        U32(body.Count);
+        bytes.AddRange(body);
+
+        Text("");                                                       // 2 empty
+        U32(1); U32(1); U32(1088);                                      // 3 navigation ids
+        Text(description);                                              // 4 descriptions
+        return [.. bytes];
+    }
+
     private string WriteExample(string relative, string? block = Block)
     {
         var path = Path.Combine(_root, "examples",
@@ -258,13 +291,61 @@ public class ExampleToolsTests : IDisposable
         Assert.Empty(index.AddonsScanned);
     }
 
+    // ---------- examples that carry no in-VI block ----------
+
+    /// <summary>
+    /// NI-DAQmx registers its 56 examples through exbins\daq82mxw.bin4 and not one of them carries
+    /// an in-VI block, so a VI-only scan answered "DAQmx" with nothing while they sat on disk.
+    /// </summary>
+    [Fact]
+    public void ExamplesRegisteredThroughAnExbinsIndexAreListedToo()
+    {
+        WriteExample("a/Has Its Own Block.vi");
+
+        // A real example VI the index points at - the entry is dropped if the file is absent.
+        var registered = Path.Combine(_root, "examples", "DAQmx", "Analog Input",
+                                      "Voltage - Finite Input.vi");
+        Directory.CreateDirectory(Path.GetDirectoryName(registered)!);
+        File.WriteAllBytes(registered, ViBytes(null));
+
+        var exbins = Path.Combine(_root, "examples", "exbins");
+        Directory.CreateDirectory(exbins);
+        File.WriteAllBytes(Path.Combine(exbins, "daq82mxw.bin4"), ExbinsFile(
+            @"DAQmx\Analog Input\Voltage - Finite Input.vi",
+            "Acquires a finite amount of voltage data from a DAQmx device."));
+
+        var index = ExampleIndex.Build(_root, refresh: true);
+        var text = ExampleTools.ExampleIndexTool(query: "voltage", installRoot: _root);
+
+        Assert.Equal(2, index.Examples.Count);
+        Assert.Equal(1, index.FromExternalIndexes);
+        Assert.Empty(index.ExternalIndexes);                  // nothing left uncovered
+        Assert.Contains("Acquires a finite amount of voltage data", text);
+        Assert.Contains(Path.Combine("DAQmx", "Analog Input"), text);
+    }
+
+    [Fact]
+    public void AnInVIBlockWinsOverTheSameExamplesExternalRegistration()
+    {
+        // Both can describe one example; the block is authoritative and carries RequiredSoftware.
+        WriteExample("File IO/Scale TDMS Data.vi");
+        var exbins = Path.Combine(_root, "examples", "exbins");
+        Directory.CreateDirectory(exbins);
+        File.WriteAllBytes(Path.Combine(exbins, "x.bin4"), ExbinsFile(
+            @"File IO\Scale TDMS Data.vi", "A different description from the external index."));
+
+        var example = ExampleIndex.Build(_root, refresh: true).Examples.Single();
+
+        Assert.StartsWith("Creates scaling information", example.Description);
+        Assert.Equal("LabVIEW >= 13.0", example.RequiredSoftware);
+    }
+
     // ---------- the gap that must stay visible ----------
 
     [Fact]
-    public void AnExternalBinaryIndexIsReportedRatherThanIgnored()
+    public void AnUnreadableExternalIndexIsReportedRatherThanIgnored()
     {
-        // NI-DAQmx registers its 69 examples through exbins\daq82mxw.bin4 and carries no in-VI
-        // block at all. Staying quiet about that reads as "DAQmx ships no examples".
+        // A format this reader does not know must never pass as "nothing to see".
         WriteExample("a/Something.vi");
         var exbins = Path.Combine(_root, "examples", "exbins");
         Directory.CreateDirectory(exbins);
@@ -359,10 +440,17 @@ public class ExampleToolsTests : IDisposable
         Assert.NotEmpty(tdms);
         Assert.Contains(tdms, e => e.Description.Length > 0);
 
+        // MEASURED across all 18 exbins indexes: 528 .vi and 37 .lvproj. A project-based example
+        // is a whole application, not a diagram - the caller needs lvai_describe_project for it,
+        // not lvai_convert_vi_to_aixml, so the two must stay distinguishable rather than filtered.
         Assert.All(index.Examples, e =>
         {
-            Assert.EndsWith(".vi", e.Name, StringComparison.OrdinalIgnoreCase);
+            Assert.True(e.Name.EndsWith(".vi", StringComparison.OrdinalIgnoreCase) ||
+                        e.Name.EndsWith(".lvproj", StringComparison.OrdinalIgnoreCase),
+                        $"unexpected example type: {e.Name}");
             Assert.True(File.Exists(e.Path), $"stale path: {e.Path}");
         });
+        Assert.Contains(index.Examples, e =>
+            e.Name.EndsWith(".lvproj", StringComparison.OrdinalIgnoreCase));
     }
 }
