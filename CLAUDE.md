@@ -52,6 +52,15 @@ library-owned VI was believed to be rejected. It is not.
 byte-identical output in three nodes. **The boundary is palette reachability, not library
 membership.**
 
+**But the index prints the bare name, and for a library-owned VI that name is not the target.**
+`Draw Image from File__ogtk.vi` is refused; `openg_picture.lvlib\3ADraw Image from
+File__ogtk.vi` validates and runs — the same VI. The qualifier is not derivable from what the
+index shows: the palette file is `functions_oglib_picture.mnu` and the VI lives in `picture.llb`,
+neither of which names `openg_picture.lvlib`. Get it by exporting a VI that already calls the
+target, or settle both spellings in one throwaway `ValidateAIXML`. Following the index literally
+is the third way this same trap has been sprung — it looks exactly like "this VI is not callable"
+and sends you back to primitives.
+
 **A third-party dependency is not a reason to rebuild.** OpenG, MGI and JKI are installed here and
 their entries are in the index like any other. Name the dependency in your report — the generated
 VI will not open where the package is missing — but name it as information, not as a question, and

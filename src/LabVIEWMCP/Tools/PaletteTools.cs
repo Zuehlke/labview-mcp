@@ -20,8 +20,16 @@ internal sealed class PaletteTools
     [Description("""
         The VIs reachable from this LabVIEW installation's palettes, read from its .mnu files.
         Use this before putting a `Call` in AIXML: generation accepts a Call ONLY to a
-        palette-reachable VI, by bare file name. Project-local, library-local and loose .vi files
-        are all rejected as "Unsupported SubVI", so this list is exactly the set of legal targets.
+        palette-reachable VI. Project-local, library-local and loose .vi files are all rejected as
+        "Unsupported SubVI", so this list is exactly the set of legal targets.
+        A HIT IS THE VI, NOT NECESSARILY THE TARGET STRING. A palette VI owned by a library needs
+        its `lvlib:` qualifier and is refused by bare name - MEASURED: `Draw Image from
+        File__ogtk.vi` gives "Unsupported SubVI" where `openg_picture.lvlib:Draw Image from
+        File__ogtk.vi` validates and runs. A .mnu stores only the bare name, so this tool cannot
+        print the qualifier and it is not derivable from the palette path either. Get it by
+        exporting a VI that already calls the target, or settle it in one throwaway ValidateAIXML
+        with both spellings as two Calls - an unresolvable target is named in the message, a
+        resolved one only complains about unwired terminals.
         Scanned from disk at call time because the palette is station-specific - installed
         toolkits and add-ons hook into it - and cached for the process lifetime. Both palette
         locations are read: LabVIEW's own menus folder AND every LVAddon under
@@ -65,8 +73,10 @@ internal sealed class PaletteTools
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
-                   "Pass a query to look one up, e.g. query='Error Handler'. These names are legal " +
-                   "`Call` targets verbatim - no path, no library qualifier." + Environment.NewLine +
+                   "Pass a query to look one up, e.g. query='Error Handler'. A vi.lib utility is a " +
+                   "legal `Call` target under the bare name printed here; one owned by a palette " +
+                   "library needs its `lvlib:` qualifier, which a .mnu does not record." +
+                   Environment.NewLine +
                    "Built-in functions are not listed; they are `Node` elements, not Calls.";
 
         var matches = index.Vis
@@ -87,6 +97,12 @@ internal sealed class PaletteTools
             sb.AppendLine($"  {vi.Name}\t{vi.PaletteFile}");
         if (matches.Count > limit)
             sb.AppendLine($"  ... {matches.Count - limit} more; narrow the query or raise limit");
+
+        // The names above are palette ITEM names. For a library-owned VI the Call target is the
+        // qualified form, and saying nothing here is what makes a callable VI look uncallable.
+        sb.AppendLine("These are palette item names. If the VI belongs to a palette library the " +
+                      "`Call` target is `<library>.lvlib:<name>` - the bare name is refused, and " +
+                      "the qualifier is not in the .mnu.");
 
         return sb.ToString().TrimEnd();
     }

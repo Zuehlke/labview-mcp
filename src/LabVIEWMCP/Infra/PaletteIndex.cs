@@ -17,12 +17,23 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// The set of VIs reachable from LabVIEW's palettes, read from the .mnu files of the installed
 /// LabVIEW.
 ///
-/// Why this matters: AIXML generation accepts a `Call` only to a PALETTE-REACHABLE VI, by bare
-/// file name. Anything else - project-local, library-local, even a loose .vi in a folder - is
-/// rejected as "Unsupported SubVI". So "what may a generated VI call" is exactly "what is on the
-/// palette", and until now there was no way to ask: the info cache came back empty on a station
-/// whose cache is not populated, and enumerating vi.lib gives 19 322 files of which the vast
-/// majority are internal implementation VIs that are NOT legal Call targets.
+/// Why this matters: AIXML generation accepts a `Call` only to a PALETTE-REACHABLE VI. Anything
+/// else - project-local, library-local, even a loose .vi in a folder - is rejected as "Unsupported
+/// SubVI". So "what may a generated VI call" is exactly "what is on the palette", and until now
+/// there was no way to ask: the info cache came back empty on a station whose cache is not
+/// populated, and enumerating vi.lib gives 19 322 files of which the vast majority are internal
+/// implementation VIs that are NOT legal Call targets.
+///
+/// THE NAMES REPORTED HERE ARE NOT ALWAYS THE CALL TARGET. A palette VI that a LIBRARY owns needs
+/// its `lvlib:` qualifier and is refused by bare name - measured on LabVIEW 2026:
+/// `Draw Image from File__ogtk.vi` gives "Unsupported SubVI", while
+/// `openg_picture.lvlib:Draw Image from File__ogtk.vi` validates, generates and runs. A .mnu
+/// records only the bare item name, so the qualifier CANNOT be recovered from this scan: the
+/// palette file is functions_oglib_picture.mnu and the VI lives in picture.llb, neither of which
+/// names openg_picture.lvlib. Callers have to get it elsewhere - see PaletteTools' tool text and
+/// §9 of docs/aixml-reference.md. Reporting a bare name as though it were the target is what makes
+/// a perfectly callable VI look uncallable, and sends the caller back to rebuilding from
+/// primitives.
 ///
 /// Why it is scanned at call time rather than shipped as a table: the palette is
 /// STATION-SPECIFIC. Installed toolkits and add-ons hook themselves into it - a stock
@@ -38,7 +49,7 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// PRIMITIVES ARE DELIBERATELY EXCLUDED. A palette entry for a built-in function carries only
 /// its display label, and that label is not the AIXML node name: the Flatten/Unflatten palette
 /// shows "To XML" for the node AIXML calls "Flatten To XML". Listing those would invite exactly
-/// the wrong string. Only .vi and .vim entries are reported, and those are usable verbatim.
+/// the wrong string. Only .vi and .vim entries are reported.
 ///
 /// ADD-ONS CARRY THEIR OWN PALETTE TREES, and scanning only &lt;LabVIEW&gt;\menus misses them
 /// entirely. Drivers now install under %ProgramFiles%\NI\LVAddons\&lt;addon&gt;\&lt;api&gt;\menus, and

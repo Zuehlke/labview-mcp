@@ -185,6 +185,27 @@ public class PaletteToolsTests : IDisposable
         Assert.Contains("8 more", text);
     }
 
+    /// <summary>
+    /// The index prints palette ITEM names, and for a library-owned VI that is not the Call
+    /// target: `Draw Image from File__ogtk.vi` is refused where
+    /// `openg_picture.lvlib:Draw Image from File__ogtk.vi` validates and runs. This tool used to
+    /// state the opposite - "legal Call targets verbatim - no path, no library qualifier" - which
+    /// makes a callable VI look uncallable and sends the caller back to rebuilding from
+    /// primitives. Both the header and the hit list must carry the warning.
+    /// </summary>
+    [Fact]
+    public void HitsSayThatALibraryOwnedViNeedsItsQualifier()
+    {
+        WritePalette("Categories/OpenG/functions_oglib_picture.mnu", "Draw Image from File__ogtk.vi");
+
+        var hits = PaletteTools.PaletteIndexTool(query: "Draw Image", installRoot: _root);
+        var totals = PaletteTools.PaletteIndexTool(installRoot: _root);
+
+        Assert.Contains(".lvlib:", hits);
+        Assert.Contains("lvlib", totals);
+        Assert.DoesNotContain("no library qualifier", totals);
+    }
+
     [Fact]
     public void AMissRecommendsTheNodeElementInsteadOfSilence()
     {

@@ -374,8 +374,49 @@ its AIXML shape is still unverified.
 - `selectin` on the `Structure` is the wire feeding the selector.
 - `selector` on each `CaseFrame` is the case label as typed in LabVIEW: `"No Error"`,
   `"Error"`, `"0"`, `"Default"`, an enum label, a string.
-- `selectout` optionally exposes the selector value inside the frame; `""` when unused.
+- `selectout` optionally exposes the selector value inside the frame; `""` when unused. The net is
+  named after the frame's **own** `uid` — `selectout="400.value"` on `uid="400"`, and a node inside
+  reads `400.value`. That is how the offending value reaches an error message in a `Default` frame.
 - Nesting works by pointing the inner `uid_parent` at the frame's `uid`.
+
+**A case tunnel is split across two levels, and it is not shaped like a loop tunnel.** The While
+Loop snippet above writes one `Tunnel` element carrying **both** `inputs` and `outputs`; copying
+that shape into a case structure is the obvious move and it is wrong. A case tunnel appears once at
+structure level for the wire outside, and again inside **every** frame for the wire inside — same
+`_id`, different `uid`, and each half carries only one direction:
+
+```xml
+<Structure _name="Case Structure" selectin="60.lowercase file extension" uid="100" uid_parent="root">
+  <Tunnel _id="In1"  inputs="value:60.dup file"       uid="110" uid_parent="100"/>   <!-- outside -->
+  <CaseFrame selector="&quot;png&quot;" selectout="" uid="200" uid_parent="100">
+    <Tunnel _id="In1"  outputs="value:210.value"      uid="210" uid_parent="200"/>   <!-- inside  -->
+    <Tunnel _id="Out1" inputs="value:220.image data"  uid="230" uid_parent="200"/>   <!-- inside  -->
+  </CaseFrame>
+  <CaseFrame selector="Default" selectout="400.value" uid="400" uid_parent="100">
+    <Tunnel _id="In1"  outputs="value:"               uid="410" uid_parent="400"/>   <!-- unused  -->
+    <Tunnel _id="Out1" inputs="value:460.value"       uid="470" uid_parent="400"/>
+  </CaseFrame>
+  <Tunnel _id="Out1" outputs="value:120.value"        uid="120" uid_parent="100"/>   <!-- outside -->
+</Structure>
+```
+
+So: `In` carries `inputs` at structure level and `outputs` in each frame; `Out` is the mirror image.
+Consumers outside the structure read an output tunnel's net as `<that tunnel's uid>.value`. A frame
+that does not use a tunnel still declares it with an empty net — the same per-frame rule the For
+Loop section states, and it applies to `Out` as well as `In`.
+
+Measured 2026-08-07 while building a PNG/BMP loader from `Get File Extension.vi`, `Read PNG
+File.vi`, `Read BMP File.vi` and `Draw Flattened Pixmap.vi`: a three-frame case in this shape
+validated on the first attempt and re-exported byte-identically to what was authored — frames,
+selectors and tunnels all intact. The shape came from exporting `Read BMP File.vi`, which is a
+compact model of the idiom and the reliable way to check it again.
+
+Two smaller confirmations from the same build. A **cluster `Constant`** works, nested cluster and
+all — `type="cluster{int32.image type,…,cluster{int16.left,int16.top,int16.right,int16.bottom}.Rectangle}"`
+with `value="[0,0,[],[],[],[0,0,0,0]]"` generated an empty Image Data constant for the `Default`
+frame. And a terminal whose **name embeds its default value** must be spelled out in full inside
+`inputs`: `Error Cluster From Error Code.vi` takes `error code (0)` and
+`error message (&quot;&quot;)`, quotes included.
 
 ### Event Structure
 
@@ -693,9 +734,26 @@ was wrong. Feeding a deliberately bogus terminal name therefore probes resolutio
 | an absolute path, `C\3A\5CTemp\5C…\5CX.vi` | `Unsupported SubVI: C:\Temp\…\X.vi` | **not resolved** |
 | `<Module>.lvlib:X.vi`, a **project** library loaded in the IDE | `Unsupported SubVI: <Module>.lvlib:X.vi` | **not resolved** |
 | `openg_array.lvlib:Filter 1D Array__ogtk.vi`, a **palette** library | validated, generated and ran | **resolved** |
+| `Draw Image from File__ogtk.vi`, the **bare name** of that same kind of VI | `Unsupported SubVI: Draw Image from File__ogtk.vi` | **not resolved** |
 
 There is therefore **no target syntax that reaches your own code** — not a bare name, not a full
 path, and not a library-qualified name even while that library is open in LabVIEW.
+
+**A library-owned palette VI needs the `lvlib:` prefix, and `lvai_palette_index` does not print
+it.** The index lists bare file names, so following it literally — "query the index, then `Call` the
+hit" — produces `Unsupported SubVI` for every VI a palette library owns, which reads exactly like
+"this VI is not callable" and sends you back to rebuilding from primitives. It is the last two rows
+of the table read together: the *same* VI fails bare and resolves qualified. Measured 2026-08-07 on
+LabVIEW 2026 — `target="Draw Image from File__ogtk.vi"` was refused,
+`target="openg_picture.lvlib\3ADraw Image from File__ogtk.vi"` validated, generated and ran.
+
+The qualifier is not derivable from the index either: the palette prints
+`Categories\OpenG\functions_oglib_picture.mnu` and the VI lives in `picture.llb`, neither of which
+names `openg_picture.lvlib`. Get it the way §9 already recommends for the target itself — export a
+VI that calls it, where the `_name` comes back in the library-qualified form. Cheaper still: put
+both spellings in one throwaway probe document, one `Call` each, and validate once. Unresolvable
+targets are reported by name, and a resolved one only complains about its unwired terminals, so a
+single `errorCode 1` message tells you which spelling to use.
 
 > **The boundary is palette reachability, not library membership.** An earlier version of this
 > section read the fourth row as "library-qualified targets do not resolve" and concluded that only
