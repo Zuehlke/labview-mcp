@@ -279,15 +279,40 @@ internal static class Corpus
             if (exportCode == GuardCode || validateCode == GuardCode)
             {
                 consecutiveUnreachable++;
-                Console.WriteLine($"       waiting for LabVIEW to finish that VI ...");
-                if (!await SettleAsync(status, settleSeconds))
+
+                // Three different things look identical from here - LabVIEW busy, LabVIEW waiting
+                // on a modal dialog, and LabVIEW GONE - and waiting is only right for the first
+                // two. MEASURED on `MGI\Panel Manager\Basic Panels\1. Basic Demo.vi`: the export
+                // killed the process outright, and the settle loop then spent its full ten minutes
+                // waiting for something that no longer existed before giving up. Ask whether there
+                // is a process at all before deciding to be patient.
+                if (!LabViewIsRunning())
                 {
-                    Console.Error.WriteLine();
-                    Console.Error.WriteLine(
-                        $"LabVIEW has not answered for {settleSeconds}s. Restart it and run " +
-                        "--corpus again: the sweep resumes, and the VI named in inflight.txt " +
-                        "is retired instead of retried.");
-                    return 3;
+                    Console.WriteLine("       LabVIEW is gone - it died on that VI. Starting a " +
+                                      "fresh one and carrying on ...");
+                    if (!await RecycleAsync(connection, settleSeconds))
+                    {
+                        Console.Error.WriteLine();
+                        Console.Error.WriteLine(
+                            "Could not start LabVIEW again. Start it by hand and rerun --corpus; " +
+                            "the sweep resumes where it stopped.");
+                        return 3;
+                    }
+                    openedProject = null;
+                    projectsOpen = 0;
+                }
+                else
+                {
+                    Console.WriteLine("       waiting for LabVIEW to finish that VI ...");
+                    if (!await SettleAsync(status, settleSeconds))
+                    {
+                        Console.Error.WriteLine();
+                        Console.Error.WriteLine(
+                            $"LabVIEW has not answered for {settleSeconds}s. Restart it and run " +
+                            "--corpus again: the sweep resumes, and the VI named in inflight.txt " +
+                            "is retired instead of retried.");
+                        return 3;
+                    }
                 }
             }
             else
@@ -364,6 +389,16 @@ internal static class Corpus
             return instances.Count == 0 ? null : instances.Max(p => p.HandleCount);
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// Is there a LabVIEW process at all? Distinguishes "busy" from "dead", which the gRPC layer
+    /// cannot: both answer DeadlineExceeded.
+    /// </summary>
+    private static bool LabViewIsRunning()
+    {
+        try { return LabViewLocator.RunningInstances().Count > 0; }
+        catch { return true; }   // unreadable is not proof of death; prefer waiting to killing
     }
 
     private static async Task<bool> RecycleAsync(LvaiConnection connection, int waitSeconds)
