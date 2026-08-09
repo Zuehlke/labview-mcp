@@ -74,7 +74,11 @@ So when the VI has one, validate the **untouched** export before promising anyth
 - **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
   A missing subVI opens a modal browser titled `Find the VI Named "…"` that blocks until somebody
   answers it. No RPC returns and nothing times out, so it looks exactly like a hang. Do not retry
-  in a loop — report it and ask for the dialog to be cancelled.
+  in a loop — report it and ask for the dialog to be cancelled. **A second, independent cause is
+  the VI itself**: a palette VI whose path input reads `… (dialog if empty)` opens a file dialog
+  on an empty path, so an unguarded file name hangs the session on ordinary input. If the VI you
+  are editing has one, guard it with `Equal?` + `Select` on a placeholder path, and run that test
+  case last.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.

@@ -409,7 +409,7 @@ public class ExampleToolsTests : IDisposable
     [InlineData("  TDMS  ", 1)]
     [InlineData("TDMS   scale", 2)]
     public void SurplusWhitespaceIsNotAWord(string query, int expected) =>
-        Assert.Equal(expected, ExampleTools.Words(query).Count);
+        Assert.Equal(expected, LabVIEWMcp.Infra.Search.Words(query).Count);
 
     // ---------- the gap that must stay visible ----------
 

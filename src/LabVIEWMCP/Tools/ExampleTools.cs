@@ -129,9 +129,8 @@ internal sealed class ExampleTools
                    Environment.NewLine +
                    // Every word has to hit, so the commonest cause of nothing is one word too
                    // many - say so before the caller concludes NI has no example and rebuilds.
-                   (Words(query).Count > 1
-                       ? $"All {Words(query).Count} words must appear. Drop the narrowest one and " +
-                         "retry - e.g. just \"" + Words(query)[0] + "\"." + Environment.NewLine
+                   (Search.DropAWordHint(Search.Words(query)) is { Length: > 0 } hint
+                       ? hint + Environment.NewLine
                        : "") +
                    (heldBack > 0
                        ? "Retry with includeSpecialised=true before concluding there is nothing - " +
@@ -180,20 +179,6 @@ internal sealed class ExampleTools
     /// "waveform graph" should match a Waveform-category example whose description says graph.
     /// </summary>
     private static bool Matches(ExampleVi e, string query) =>
-        Words(query).All(word => ContainsWord(e, word));
-
-    private static bool ContainsWord(ExampleVi e, string word) =>
-        e.Name.Contains(word, StringComparison.OrdinalIgnoreCase) ||
-        e.Category.Contains(word, StringComparison.OrdinalIgnoreCase) ||
-        e.Description.Contains(word, StringComparison.OrdinalIgnoreCase) ||
-        e.Keywords.Any(k => k.Contains(word, StringComparison.OrdinalIgnoreCase));
-
-    /// <summary>
-    /// The query split on whitespace. A query that is entirely whitespace never reaches here -
-    /// it is handled as "no query" - but a single word still yields one word, so the old
-    /// single-term behaviour is unchanged.
-    /// </summary>
-    internal static IReadOnlyList<string> Words(string query) =>
-        query.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries |
-                                   StringSplitOptions.TrimEntries);
+        Search.MatchesAll(Search.Words(query),
+                          e.Name, e.Category, e.Description, string.Join(" ", e.Keywords));
 }

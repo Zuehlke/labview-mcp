@@ -90,12 +90,16 @@ public class KnowledgeToolsTests
     public void AllReturnsTheWholeDocument() =>
         Assert.Equal(KnowledgeTools.Load(), KnowledgeTools.AixmlReference("all"));
 
+    /// <summary>
+    /// A term that is in neither a heading nor the text still has to explain itself and point
+    /// somewhere. It now arrives via the lookup fallback, so the wording is the lookup's.
+    /// </summary>
     [Fact]
     public void UnknownSectionExplainsItselfInsteadOfFailing()
     {
         var result = KnowledgeTools.AixmlReference("does-not-exist");
 
-        Assert.Contains("No section matched", result);
+        Assert.Contains("Nothing in the AIXML reference mentions", result);
         Assert.Contains("Sections (pass one as `section`)", result);
     }
 
@@ -199,6 +203,58 @@ public class KnowledgeToolsTests
         var result = KnowledgeTools.AixmlReference(section: "8");
 
         Assert.Contains("node='<name>'", result);
+    }
+
+    /// <summary>
+    /// `Split` cuts on `##` only, so a `###` subsection was invisible to section= even though the
+    /// tool promises "part of a title" - measured on 'Polymorphic subVI calls'.
+    /// </summary>
+    [Fact]
+    public void ASubsectionTitleResolvesToThatSubsection()
+    {
+        var body = KnowledgeTools.FindSubsection(KnowledgeTools.Load(), "Polymorphic subVI calls");
+
+        Assert.NotNull(body);
+        Assert.StartsWith("### ", body);
+        Assert.Contains("instance", body!, StringComparison.OrdinalIgnoreCase);
+        // stops at the next heading rather than running to the end of the document
+        Assert.DoesNotContain("\n## ", body);
+    }
+
+    [Fact]
+    public void SectionAcceptsASubsectionTitle()
+    {
+        var result = KnowledgeTools.AixmlReference(section: "Polymorphic subVI calls");
+
+        Assert.DoesNotContain("No section matched", result);
+        Assert.StartsWith("### ", result);
+    }
+
+    /// <summary>
+    /// A term that exists but is not a heading used to answer "No section matched" plus a list of
+    /// numbers, which reads as "not documented". Show the passages instead.
+    /// </summary>
+    [Fact]
+    public void AnUnknownSectionFallsBackToLookingTheTermUp()
+    {
+        var result = KnowledgeTools.AixmlReference(section: "graph21703");
+
+        Assert.DoesNotContain("No section matched", result);
+        Assert.Contains("graph21703", result);
+    }
+
+    /// <summary>
+    /// 'error in (no error)' hit 100 passages and filled a caller's context without answering it.
+    /// A flooded lookup names the headings so the next call can be aimed.
+    /// </summary>
+    [Fact]
+    public void AFloodedLookupOffersHeadingsInsteadOfEveryPassage()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "error in (no error)");
+
+        Assert.Contains("That term is everywhere", result);
+        Assert.Contains("ask for one of them with section=", result);
+        Assert.True(result.Length < 12_000, $"flooded answer is still {result.Length} chars");
     }
 
     [Fact]

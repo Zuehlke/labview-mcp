@@ -1214,6 +1214,24 @@ discoverable from either. Nothing warns you — a wrong name is the ordinary
 `Object terminal not found` error, but *guessing* `index (col)` when you meant to disable it
 silently indexes an element instead of a column.
 
+### Reading a CSV: three things about `Read Delimited Spreadsheet` worth not re-deriving
+
+The polymorphic file reader is the standard answer to "load a CSV", and three of its behaviours
+are the kind that get tested by hand every time because nobody wrote them down. All measured on
+LabVIEW 2026 through the DBL instance:
+
+- **The default `format` does not truncate on scan.** `format (%.3f)` left unwired reads six
+  decimals back intact — `1.234567`, `-2.718281`, `3.141592` and `-0.000123` all survived
+  exactly. The `%.3f` governs *writing*, not the precision of a read, so leave it unwired.
+- **A trailing newline does not produce a ghost row.** An eight-data-line file yields
+  `Dimsize 8`, a four-line file `Dimsize 4`. No trailing empty element to trim.
+- **There is no header-skip option.** The header line scans to `0.0` like any unparseable text,
+  so drop it by index. With `transpose? = TRUE` row 0 is the whole first column and row 1 the
+  whole second, and one `Array Subset` from index 1 on each removes the header from both.
+
+The dangerous one is not here but in §11: its `file path (dialog if empty)` input opens a modal
+dialog on an empty path and stops the whole gRPC session.
+
 ### Ring and enum controls
 
 A `Ring` carries its items and their numeric values as two parallel attributes:
@@ -1665,6 +1683,7 @@ Consequences for authoring:
 | **You asked for a graph and got a cluster** | Third member of the silent family, and the same rule applies one level down: an unknown **`style` token on a control or indicator** is discarded without a word. `ValidateAIXML` returns `errorCode 0` for `WaveformGraph`, `Waveform Graph` and `Graph` alike; only `style="graph21703"` produces a Waveform Graph (§8). Attribute values are not validated at all, so the check is the same one as for a hollow VI — re-export and compare. |
 | **A VI in memory CAN be evicted — via the active project** | **Read this row's ending first: there is a working recipe**, in `vi-server-reference.md` under "Unloading a VI so its path can be regenerated". Reach the IDE's application through `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference *there*, and write `Front Panel Window\3AState` = `Closed`. Measured A/B: `1357` before, `errorCode 0` after. The rest of this row is the long road that found it, kept because every step of it is a thing that does **not** work. The fallback rule remains sound when no project is active: **generate each iteration under a fresh name, and do not `lvai_open_file` a VI you still intend to regenerate.** Measured, in one helper run that itself reported no error: writing `Front Panel Window\3AOpen` **and** `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` — and the regeneration still failed with 1357. The catalogue carries no unload or remove-from-memory method at all across its 3 078 entries. Earlier advice here said "or make LabVIEW release the VI"; that is not achievable through this interface. Closing the VI in the IDE by hand, or restarting LabVIEW, is the reset. **Re-measured on a freshly restarted machine, with the one remaining explanation tested and killed:** the idea that closing the window *modifies* the VI and that a modified VI cannot be unloaded. Reading `Modifications\3AUser Changes` before the close, after it, and after a `Save\3AInstrument` gave **clean, clean, clean** — unsaved changes were never what held it. Same run, no error anywhere in it, regeneration still 1357. What every one of these attempts shared, and what took an evening to see: they all ran in the **addon's** application instance, where the VI's windows do not exist. That is why closing them changed nothing — see the recipe named at the top of this row. **The escape hatch is real, and measured:** a person closing the VI in the IDE by hand frees the path immediately — the very next `ConvertAIXMLToVI` on it returned `errorCode 0`. So when you are stuck on a path, the fix is a human closing that window, not another property write. **Opening the VI inside a project changes nothing** — tested, because "we never opened it in a project, which would be the normal case" is the obvious objection. A hand-written `.lvproj` (§2 of the lvproj reference), the VI generated beside it and opened with both the VI *and* project pairs, `describe_project` confirming it loaded as a real member with `missingFiles: []`: regeneration still `1357`. Project membership is not what holds the file. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
+| **Every `lvai_*` call stops answering after you ran a generated VI** | The VI you generated is showing a MODAL DIALOG, and LabVIEW answers nothing until a human dismisses it. The known cause is the missing-subVI prompt, but there is a second, entirely independent one that fires on ordinary input: **a palette VI whose path input is named `… (dialog if empty)` opens a file dialog when handed an empty path.** `Read Delimited Spreadsheet.vi` has exactly that — `file path (dialog if empty)` — so a generated VI that passes an unvalidated file name through it wedges the session on the emptiest possible input. The terminal *name* is the only warning. Guard it on the diagram: compare the string against `""` and `Select` a placeholder path, which turns the hang into an ordinary file error. Measured: with the guard, an empty name returns error 7 in 39 ms and no dialog appears. |
 
 ## 12. This document has been tested
 

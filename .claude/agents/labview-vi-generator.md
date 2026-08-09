@@ -61,6 +61,13 @@ it an icon.
   retrying: say so in the report and ask for the dialog to be cancelled. It is triggered by
   opening a VI or project whose dependencies are missing, so the example you picked to copy from
   is a likelier cause than anything you generated.
+- **A VI you generate can wedge the session the same way, and the only warning is a terminal
+  name.** A palette VI whose path input reads `… (dialog if empty)` opens a file dialog when
+  handed an empty path — `Read Delimited Spreadsheet.vi` has exactly that. So a VI that passes an
+  unchecked file name through hangs on the emptiest input a caller can give it. **Guard it on the
+  diagram**: `Equal?` against an empty string, `Select` a placeholder path, and the hang becomes
+  an ordinary file error. And when you test that case, **run it last** — if the guard is wrong you
+  lose one test rather than the session.
 - **The documentation goes INTO the AIXML, not on afterwards.** `<VI description="…">` and the
   `description` of every `Control`/`Indicator` are part of the file you generate from. Anything
   applied after generation is lost the moment the VI is regenerated.

@@ -70,6 +70,10 @@ internal sealed class KnowledgeTools
     /// </summary>
     private const int BigSectionChars = 8_000;
 
+    /// <summary>Past this many hits a lookup is answered with headings, not with passages.</summary>
+    private const int FloodThreshold = 25;
+    private const int FloodSample = 8;
+
     [McpServerTool(Name = "lvai_aixml_reference", ReadOnly = true,
                    Title = "AIXML format reference")]
     [Description("""
@@ -114,10 +118,13 @@ internal sealed class KnowledgeTools
         if (section.Trim().Equals("all", StringComparison.OrdinalIgnoreCase))
             return document;
 
-        var match = Find(sections, section.Trim());
+        var match = Find(sections, section.Trim()) ?? FindSubsection(document, section.Trim());
         if (match is null)
-            return "No section matched \"" + section + "\"." + Environment.NewLine +
-                   Environment.NewLine + Toc(sections);
+            // Falling through to the node lookup rather than just listing the sections: the old
+            // "No section matched" plus a list of 15 numbers reads as "that content is not here",
+            // which was measured sending a caller off to re-derive a documented fact. If the term
+            // appears anywhere, show it.
+            return Lookup(document, section.Trim(), DefaultLimit);
 
         return match.Length > BigSectionChars
             ? match + Environment.NewLine + Environment.NewLine +
@@ -489,6 +496,29 @@ internal sealed class KnowledgeTools
     }
 
     /// <summary>
+    /// A `###` subsection by title. <see cref="Split"/> only cuts on `##`, so a subsection was
+    /// invisible to `section=` even though the tool description promises "part of a title" -
+    /// measured: `section='Polymorphic subVI calls'` answered "No section matched" for a
+    /// subsection of exactly that name.
+    /// </summary>
+    internal static string? FindSubsection(string document, string query)
+    {
+        var lines = document.Replace("\r\n", "\n").Split('\n');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].StartsWith("### ", StringComparison.Ordinal)) continue;
+            if (!lines[i][4..].Contains(query, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var end = i + 1;
+            while (end < lines.Length &&
+                   !lines[end].StartsWith("## ", StringComparison.Ordinal) &&
+                   !lines[end].StartsWith("### ", StringComparison.Ordinal)) end++;
+            return string.Join(Environment.NewLine, lines[i..end]).TrimEnd();
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Every passage mentioning <paramref name="needle"/>, each carrying enough around it to be
     /// usable on its own. What "enough" means differs by what was hit, and getting this wrong
     /// makes the result worthless rather than merely terse:
@@ -542,6 +572,7 @@ internal sealed class KnowledgeTools
         }
 
         var passages = new List<string>();
+        var headings = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var total = 0;
 
@@ -562,7 +593,8 @@ internal sealed class KnowledgeTools
             var passage = (heading[i].Length > 0 ? $"[{heading[i]}]" + Environment.NewLine : "") + body;
             if (!seen.Add(passage)) continue;          // a fence hit on several lines is one block
             total++;
-            if (passages.Count < limit) passages.Add(passage);
+            passages.Add(passage);
+            if (heading[i].Length > 0 && !headings.Contains(heading[i])) headings.Add(heading[i]);
         }
 
         if (total == 0)
@@ -573,17 +605,32 @@ internal sealed class KnowledgeTools
                    "covered) and copy the terminal strings from there." + Environment.NewLine +
                    Environment.NewLine + Toc(Split(document));
 
-        var sb = new StringBuilder(
-            $"{total} passage(s) in the AIXML reference mention \"{needle}\":");
-        sb.AppendLine();
-        foreach (var passage in passages)
+        // A term that is everywhere - 'error in (no error)' hit 100 passages - is not answered by
+        // dumping the first 40 of them. Measured: that filled a caller's context and it still had
+        // to fetch a section afterwards. Show a few, and name the headings so the next call can
+        // be aimed.
+        var flooded = total > FloodThreshold;
+        var shown = Math.Min(passages.Count, flooded ? FloodSample : limit);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"{total} passage(s) in the AIXML reference mention \"{needle}\":");
+        if (flooded)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"That term is everywhere - showing {shown}. It appears under these " +
+                          "headings; ask for one of them with section= instead:");
+            foreach (var h in headings.Take(12)) sb.AppendLine($"  {h}");
+            if (headings.Count > 12) sb.AppendLine($"  ... and {headings.Count - 12} more");
+        }
+
+        foreach (var passage in passages.Take(shown))
         {
             sb.AppendLine();
             sb.AppendLine(passage);
         }
-        if (total > passages.Count)
-            sb.AppendLine($"{Environment.NewLine}  ... {total - passages.Count} more; " +
-                          "narrow the term or raise limit");
+        if (total > shown)
+            sb.AppendLine($"{Environment.NewLine}  ... {total - shown} more; " +
+                          "narrow the term, name a section, or raise limit");
         return sb.ToString().TrimEnd();
     }
 
