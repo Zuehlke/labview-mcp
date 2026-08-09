@@ -269,6 +269,21 @@ The chain, and why each link is what it is:
 exactly like a real one. Anything that reads values must also have run them, through the same
 reference.
 
+**Reading a Time Stamp back: the four I32s are not in the order you expect.** A flattened LabVIEW
+timestamp arrives as a four-element cluster of I32, and the order is **fraction-low,
+fraction-high, seconds-low, seconds-high** — seconds *last*, not first. So
+
+```xml
+<Timestamp><Name>t0</Name><Cluster>
+  <I32><Val>0</Val></I32> <I32><Val>-2147483648</Val></I32>
+  <I32><Val>10</Val></I32> <I32><Val>0</Val></I32>
+</Cluster></Timestamp>
+```
+
+is **10.5 s**, not 0. The `-2147483648` is `0x80000000` in the fraction's high word — exactly one
+half. Verified against a CSV whose first timestamp was 10.500. Read it the obvious way round and
+every t0 in a waveform looks like garbage or zero.
+
 Two details that cost a round trip each:
 
 - **`Flatten To XML` renders an empty array as one template element.** A `Dimsize` of `0` is still
