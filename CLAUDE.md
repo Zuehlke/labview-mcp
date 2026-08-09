@@ -126,10 +126,20 @@ generated helper runs inside the AI addon's instance. It cannot see the IDE's op
 0` from a window operation is not evidence that a window moved.
 
 **Validate, then verify by running.** `ValidateAIXML` is cheap and its messages name the node and
-terminal. But validation passing says nothing about behaviour, and `RunVIAsTopLevel` reports
-`errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*. When the
-output type is not readable, write the result to a file and inspect that. Never report success
-from an empty answer.
+terminal. But validation passing says nothing about behaviour, and `lvai_run_vi_as_top_level`
+reports `errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*.
+Never report success from an empty answer.
+
+**When any output is not a string, run it with `lvai_run_vi_and_read_values` instead.** That is
+almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
+plain call. The tool sets the inputs, runs the target and reads every control and indicator back
+through VI Server, so the values arrive intact — measured on a VI whose waveform, boolean and
+error cluster were all empty under the plain call and complete under this one. Inputs are
+unchanged: still strings only, so keep taking numbers and paths in as strings.
+
+This clause used to say "write the result to a file and inspect that". That worked, and it cost
+about eight minutes of hand-built VI Server harness per VI — measured, twice, before the harness
+was productised. Use the tool; write to a file only for something it cannot reach.
 
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
@@ -178,6 +188,7 @@ literally it argued away 600 usable palette VIs.
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
+| How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |

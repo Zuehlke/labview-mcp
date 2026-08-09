@@ -1,0 +1,38 @@
+<VI _name="lvai_run_and_read.vi" description="Run a VI and read back EVERY control and indicator value it holds afterwards\2C rendered as XML text.\0A\0AExists because RunVIAsTopLevel marshals only STRINGS. A boolean\2C cluster\2C array or waveform indicator comes back empty with errorCode 91 - after the VI has already run correctly - so the result of a generated VI is normally unreadable. This helper sidesteps that completely\3A it reads the values through VI Server and flattens them to XML\2C so everything leaves through a single STRING indicator that RunVIAsTopLevel can carry.\0A\0ASetting\2C running and reading MUST happen in one call\2C through one VI reference. Measured\3A a separate RunVIAsTopLevel followed by a separate read returns the target's DEFAULTS\2C not the values of the run - the two calls do not share the VI's data space.\0A\0AInput Names and Input Values are two newline-separated lists\2C paired by position. Two lists rather than one name=value list because AIXML cannot declare a 2D array. Values cross as strings\2C so the same limit as RunVIAsTopLevel applies on the way IN\3A only string controls can be set. The way OUT is unrestricted - that is the point of this helper.\0A\0ADriven by RunVIAsTopLevel. Opening and closing a VI REFERENCE releases the target\2C so this does not burn the target's path for a later regeneration.">
+  <Control _name="VI Path" conIdx="1" connection="required" description="Absolute path of the VI to run\2C as a string. Converted to a path inside." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="Input Names" conIdx="2" connection="optional" description="Names of the target's controls to set before running\2C one per line. Empty to run with whatever the VI already holds." outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
+  <Control _name="Input Values" conIdx="3" connection="optional" description="Values for Input Names\2C one per line\2C paired by position. Strings only - a numeric or path control cannot be set this way." outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+
+  <Constant _name="newline" outputs="value:30.value" type="string" uid="30" uid_parent="root" value="\0A"/>
+  <Constant _name="1D string array type" outputs="value:31.value" type="array{string}" uid="31" uid_parent="root" value="[]"/>
+  <Constant _name="string format" outputs="value:37.value" type="string" uid="37" uid_parent="root" value="%s"/>
+  <Constant _name="wait until done" outputs="value:150.value" type="bool" uid="150" uid_parent="root" value="true"/>
+
+  <Node _name="Spreadsheet String To Array" inputs="format string:37.value,spreadsheet string:11.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:32.array" uid="32" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:37.value,spreadsheet string:12.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:34.array" uid="34" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
+
+  <FreeLabel comment="One Ctrl Val.Set per name/value pair. The error wire through the shift register is what orders them before Run VI." uid="90" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:34.array" mode="index" outputs="value:102.value" uid="102" uid_parent="100"/>
+    <Tunnel _id="In3" inputs="value:20.vi reference" outputs="value:103.value" uid="103" uid_parent="100"/>
+    <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:103.value,error in (no error):120.value,Control Name:101.value,Value:102.value" outputs="reference out:,error out:121.error out" uid="121" uid_parent="100"/>
+    <ShiftReg uid="130" uid_parent="100">
+      <Left inputs="value:20.error out" outputs="value:120.value" uid="120" uid_parent="130"/>
+      <Right inputs="value:121.error out" outputs="value:140.value" uid="140" uid_parent="130"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:20.vi reference,error in (no error):140.value,Wait until done:150.value" outputs="reference out:151.reference out,error out:151.error out" uid="151" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:151.reference out,error in (no error):151.error out" outputs="reference out:160.reference out,error out:160.error out,Controls:160.Controls" uid="160" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:160.Controls" outputs="xml string:170.xml string" uid="170" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:160.reference out,error in (no error):160.error out" outputs="error out:180.error out" uid="180" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:180.error out" outputs="xml string:181.xml string" uid="181" uid_parent="root"/>
+
+  <Indicator _name="values xml" conIdx="0" connection="recommended" description="Every control and indicator of the target after the run\2C name and value\2C as flattened XML. A STRING deliberately - that is what survives RunVIAsTopLevel." inputs="value:170.xml string" type="string" uid="50" uid_parent="root" value=""/>
+  <Indicator _name="error xml" conIdx="4" connection="recommended" description="This helper's own error cluster\2C flattened to XML. Flattened rather than passed as a cluster so that it too can be marshalled back." inputs="value:181.xml string" type="string" uid="51" uid_parent="root" value=""/>
+</VI>
