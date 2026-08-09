@@ -841,11 +841,24 @@ The validate failures group into four causes, and only the last is a surprise:
 | `Error 1 … An input parameter is invalid` from `VI generator.vi`, with no further detail | 73 | the generator refuses the document and does not say why |
 
 The event-structure row is worth spelling out, because §7 lists event structures as working and
-that is only half true. The selector comes back with its spaces intact —
-`selector=" &quot;Exported VI&quot;\3A Value Change "` — and the generator still reports the frame
-as having no event defined. So an event structure can be *read*, and a static, single-event one can
-be built, but a round trip of NI's own event code is not reliable. Check by validating the
-untouched export before planning any edit to such a VI.
+that is only half true. Of 102 exports containing an `Event Structure`, 50 fail for reasons that
+have nothing to do with events (`Unsupported SubVI`, mostly), and of the 52 that do return a
+verdict on the event structure itself:
+
+| Frame kind | passes | fails |
+|---|---|---|
+| **static** — a control's event, `selector=" &quot;Exported VI&quot;\3A Value Change "` | 7 | **32** |
+| **dynamic** — a user event through a registration terminal | 9 | 4 |
+
+**The static frames are the fragile ones**, which is the reverse of the obvious guess. The selector
+comes back intact, spaces and all, and the generator still reports `Event Structure: One or more
+event cases have no events defined` with an `Event Data Node: Cluster is invalid or empty` behind
+it. The plausible reading is that a static frame names its control as *text* and the generator
+never rebinds it, while a dynamic frame's event arrives structurally through the wire from
+`Register For Events` — but that is inference, and only the counts above are measured.
+
+Practical consequence: before planning any edit to a VI with a front-panel event structure,
+validate the **untouched** export. Roughly four in five of NI's own do not come back.
 
 Structure kinds in the corpus, by frequency: `Case Structure` (311), `While Loop` (265),
 `For Loop` (145), `Event Structure` (54), `In Place Element Structure` (38), `Flat Sequence Frame`
