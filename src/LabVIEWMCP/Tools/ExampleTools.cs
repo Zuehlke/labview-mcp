@@ -36,12 +36,19 @@ internal sealed class ExampleTools
         output, so any remaining gap stays visible rather than silent.
         A VI absent here may still have a description: lvai_filter_example_search_candidates reads
         any VI's own description property, including vi.lib.
+        BY DEFAULT ONLY PLAIN-LabVIEW EXAMPLES ARE LISTED. An example needing LabVIEW FPGA,
+        LabVIEW Real-Time or a licensed toolkit is worse than no hit - it reads as the answer, and
+        the VI built from it will not open where that module is missing. NI-DAQmx is treated as
+        always installed and stays in. The count held back is always reported; pass
+        includeSpecialised to see them, each labelled with what it needs.
         """)]
     public static string ExampleIndexTool(
         [Description("Substring of name, category, keyword or description, e.g. 'TDMS', 'state machine'")]
         string? query = null,
         [Description("Max rows to return (default 10, max 60)")] int limit = DefaultLimit,
         [Description("Rescan instead of using the cached index")] bool refresh = false,
+        [Description("Also list examples needing FPGA, Real-Time or a licensed toolkit")]
+        bool includeSpecialised = false,
         [Description("Override the LabVIEW installation folder; omit to use the newest installed")]
         string? installRoot = null,
         [Description("Override the LVAddons folder; omit to discover it under Program Files")]
@@ -57,7 +64,13 @@ internal sealed class ExampleTools
             return Json.Error(e.GetType().Name, e.Message);
         }
 
-        var header = $"{index.Examples.Count} examples among {index.ViFilesScanned} VI files " +
+        // Narrow first, so every count below describes the set actually being searched.
+        var listed = includeSpecialised
+            ? index.Examples
+            : index.Examples.Where(ExampleScope.IsPlainLabView).ToList();
+        var heldBack = index.Examples.Count - listed.Count;
+
+        var header = $"{listed.Count} examples among {index.ViFilesScanned} VI files " +
                      $"under {index.ExamplesFolder}";
         if (index.FromExternalIndexes > 0)
             header += $" ({index.FromExternalIndexes} of them registered through an exbins index " +
@@ -76,6 +89,11 @@ internal sealed class ExampleTools
                       "the list below: " + string.Join(", ", index.ExternalIndexes);
         if (index.Unreadable.Count > 0)
             header += Environment.NewLine + $"{index.Unreadable.Count} file(s) could not be read.";
+        // Never a silent cap: a hidden two thirds would read as "this station has few examples".
+        if (heldBack > 0)
+            header += Environment.NewLine +
+                      $"{heldBack} example(s) NOT listed - they need LabVIEW FPGA, LabVIEW " +
+                      "Real-Time or a licensed toolkit. Pass includeSpecialised=true for those.";
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
@@ -83,19 +101,24 @@ internal sealed class ExampleTools
                    "lvai_convert_vi_to_aixml to read the diagram; a .lvproj hit is a whole example " +
                    "application, for which lvai_describe_project is the follow-up.";
 
-        var matches = index.Examples
+        var matches = listed
             .Where(e => Matches(e, query))
             .ToList();
 
         if (matches.Count == 0)
             return $"No example matches \"{query}\"." + Environment.NewLine + header +
                    Environment.NewLine +
+                   (heldBack > 0
+                       ? "Retry with includeSpecialised=true before concluding there is nothing - " +
+                         "the match may be an FPGA, Real-Time or toolkit example." +
+                         Environment.NewLine
+                       : "") +
                    "Rebuilding from primitives is then the fallback - check lvai_palette_index " +
                    "for the individual VIs first.";
 
         limit = Math.Clamp(limit <= 0 ? DefaultLimit : limit, 1, MaxLimit);
 
-        var sb = new StringBuilder($"{matches.Count} of {index.Examples.Count} match \"{query}\":");
+        var sb = new StringBuilder($"{matches.Count} of {listed.Count} match \"{query}\":");
         sb.AppendLine();
         foreach (var e in matches.Take(limit))
         {
@@ -106,6 +129,9 @@ internal sealed class ExampleTools
             if (e.Description.Length > 0) sb.AppendLine($"    {e.Description}");
             if (e.Keywords.Count > 0) sb.AppendLine($"    keywords: {string.Join(", ", e.Keywords)}");
             if (e.RequiredSoftware is not null) sb.AppendLine($"    requires: {e.RequiredSoftware}");
+            // Only reachable with includeSpecialised: say what the hit costs before it is opened.
+            if (ExampleScope.ExtraSoftware(e) is { } extra)
+                sb.AppendLine($"    NEEDS: {extra} - will not open on a plain LabVIEW");
         }
         if (matches.Count > limit)
             sb.AppendLine($"{Environment.NewLine}  ... {matches.Count - limit} more; " +

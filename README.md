@@ -72,12 +72,15 @@ dotnet run --project src/LabVIEWMCP -- --dump-schema schema.txt
 | `--dump-schema [file]` | render the schema the running LabVIEW serves |
 | `--watch <monitor>` | wait for inbound LabVIEW events, minutes at a time |
 | `--diagram <vi>` | save the VI's rendered block diagram as a PNG |
+| `--corpus [dir]` | round-trip every VI in a tree through AIXML (default: the examples tree) |
 | `--ensure-labview` | start LabVIEW and wait for its gRPC service |
 | `--port <n>` | pin the gRPC port instead of discovering it |
 | `--vi <path>` | VI used by `--selftest` (default: a shipped LabVIEW example) |
 | `--project <path>` | `.lvproj` used by `--selftest` |
-| `--timeout <s>` | how long `--watch` and `--ensure-labview` wait (default 300) |
-| `--out <path>` | output file for `--diagram` |
+| `--timeout <s>` | how long `--watch` and `--ensure-labview` wait (default 300); the per-VI budget for `--corpus` (default 90) |
+| `--limit <n>` | stop `--corpus` after n VIs |
+| `--skip <a,b>` | path substrings `--corpus` must not touch — still listed in the results |
+| `--out <path>` | output file for `--diagram`, output directory for `--corpus` |
 | `--help` | print the same list, from `CommandLine.Usage` |
 
 `LABVIEW_GRPC_PORT` works instead of `--port`.
@@ -98,6 +101,42 @@ dotnet run --project src/LabVIEWMCP -- --diagram "C:\path\My.vi" --out diagram.p
 
 `--diagram` is the only way to see what generated code actually looks like: AIXML carries no
 coordinates, so LabVIEW decides the whole layout. Generate, export the PNG, look, adjust.
+
+### `--corpus` — measuring the AIXML dialect instead of guessing at it
+
+```bash
+dotnet run --project src/LabVIEWMCP -- --corpus --skip "VI Scripting"
+python scripts/aixml_corpus_report.py
+```
+
+Exports every VI under the tree and hands each export straight back to `ValidateAIXML`, one row
+per VI in `roundtrip.tsv` and every export kept. The exports are the point: they are LabVIEW's
+own spelling of every node it uses, which is the only reliable source for terminal names, for
+the **order** those terminals are listed in, and for attributes the reference has never seen.
+`scripts/aixml_corpus_report.py` turns the pile into four tables, the useful one being
+`undocumented.tsv` — nodes NI uses that `docs/aixml-reference.md` does not mention, most frequent
+first.
+
+**It opens each VI's owning project first**, and that is not a nicety. A VI exported on its own
+has unresolved subVIs and static VI references — which shows up mildly as `SubVI is missing` in the
+round trip, and expensively as LabVIEW spending *minutes* per VI searching the disk for
+dependencies it will never find. The same subtree that wedged the machine three times in a row
+round-tripped in milliseconds once the `.lvproj` was opened.
+
+FPGA and Real-Time examples are out of scope by default — they cannot run on a plain LabVIEW —
+and are listed in the results as excluded rather than dropped.
+
+Three more things the run has to survive, all measured rather than anticipated:
+
+- **A deadline does not stop LabVIEW.** Some examples keep a core busy for minutes inside
+  `ConvertVIToAIXML`, and every later RPC queues behind the one that timed out — so a naive sweep
+  loses not one VI but all of them, each to its own timeout. After a deadline the sweep therefore
+  waits for LabVIEW to answer again instead of asking. It does come back.
+- **A long output path fails as `Error 1 occurred at Write to Text File`**, which says nothing
+  about paths. The output directory is length-checked up front.
+- **It is resumable**, because an hour-long run will be interrupted. Rerunning skips what already
+  has a row, and a VI that was in flight when LabVIEW had to be killed is retired rather than
+  retried.
 
 ## Register with Claude Code
 

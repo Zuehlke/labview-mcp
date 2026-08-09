@@ -577,44 +577,77 @@ section 6 apply inside terminal names too. In XML the `<` in `x < y?` additional
 The reliable way to get a name right: export a VI that already uses the node and copy the
 string verbatim.
 
-### `Bundle By Name` does not work — `Unbundle By Name` does
+### Terminal ORDER inside `inputs` is significant — `Bundle By Name` proves it
 
-**Measured 2026-08-07, LabVIEW 2026.** The node's cluster input never receives a type. The
-generator sees an empty cluster there and validation fails before anything is built:
+**Corrected 2026-08-09. This section previously claimed "`Bundle By Name` does not work" and
+concluded that "a generated diagram cannot build a cluster". Both are wrong.** The node works.
+What fails is one particular spelling of it, and the difference is the *order* the terminals are
+listed in.
+
+`input cluster` must come **after** the field terminals:
 
 ```xml
-<Control _name="error in (no error)" type="cluster{bool.status,int32.code,string.source}"
-         outputs="value:10.value" uid="10" value="[false,0,]"/>
+<!-- validates, generates, and re-exports unchanged -->
+<Node _name="Bundle By Name" fields="code" inputs="code:11.value,input cluster:10.value"
+      outputs="output cluster:20.output cluster" uid="20" uid_parent="root"/>
+
+<!-- same nets, same names, cluster listed first: rejected -->
 <Node _name="Bundle By Name" fields="code" inputs="input cluster:10.value,code:11.value"
-      outputs="output cluster:20.output cluster" uid="20"/>
+      outputs="output cluster:20.output cluster" uid="20" uid_parent="root"/>
 ```
+
+The rejection is the misleading part, because it complains about a **type** and never mentions
+order:
 
 ```
 Bundle By Name: Cluster is invalid or empty
+Bundle By Name: Contains unwired or bad terminal
 Cluster , a cluster of 0 elements, conflicts with cluster error out, a cluster of 3 elements.
 The type of the sink is cluster of 0 elements.
 ```
 
-That is the *simplest possible* case — the standard error cluster, straight from a control, one
-field replaced — so it is not a payload problem, and the terminal names are not the issue:
-`input cluster`, the field name and `output cluster` are all accepted and the complaint is about
-the **type**. A cluster `Constant` (`type="cluster{double.Fs,double.#s}"`) arrives as a cluster of
-0 elements in exactly the same way.
+Read literally that says the cluster arrived untyped, which is why the earlier reading concluded
+the node was unusable. It is not a type problem: the *same* document with the two `inputs`
+entries swapped answers `errorCode 0`.
 
-`Unbundle By Name` is unaffected — it is in the table above and `scripts\lvdoc_set_icon.xml` has
-used it in production since the icon tool shipped.
+Measured 2026-08-09 on LabVIEW 2026, four documents differing only in that order:
 
-**Consequence: a generated diagram cannot build a cluster.** Design around it instead of fighting
-it:
+| Cluster source | `inputs` order | Result |
+|---|---|---|
+| `Control`, `cluster{bool.status,int32.code,string.source}` | `code`, then `input cluster` | **validates** |
+| `Control`, same type | `input cluster`, then `code` | `Cluster is invalid or empty` |
+| `Constant`, `cluster{int32.Module ID,bool.Power State,bool.Self Test Result}` | fields, then `input cluster` | **validates** |
+| `Constant`, same type | `input cluster`, then fields | `Cluster is invalid or empty` |
 
-- Prefer a node or subVI whose terminals are **scalars**. `Build Waveform` with `fields="dt,Y"`
-  takes `dt` and `Y` separately and returns the finished waveform — no cluster needed.
-- Where a palette VI insists on a cluster input, look for a lower-level sibling that does not.
-  Measured while generating `SinusFFT.vi`: `NI_MABase.lvlib:Sine Waveform.vi` needs
-  `sampling info` (`cluster{double.Fs,double.#s}`) and is therefore out of reach, while
-  `NI_AALBase.lvlib:Sine Wave.vi` takes `samples`, `amplitude`, `frequency` and `phase in` as
-  plain doubles and works. The second wants frequency in **cycles per sample**, so the caller
-  divides by the sample rate — three primitives replaced the cluster construction.
+So the cluster `Constant` is fine too — the old text blamed it for the same reason it blamed the
+node. The working document was then generated with `ConvertAIXMLToVI` and re-exported: LabVIEW
+writes back `inputs="code:99.value,input cluster:43.value"`, fields first, byte-identical in shape
+to what was authored.
+
+**The canonical order is whatever LabVIEW's own export writes**, and NI's shipping code shows it
+directly. From `Device Under Test_Cloneable_DQMH.lvlib:DUT Status Updated.vi`, three fields and
+the cluster last:
+
+```xml
+<Node _name="Bundle By Name" fields="Module ID,Power State,Self Test Result"
+      inputs="Module ID:308.value,Power State:384.value,Self Test Result:356.value,input cluster:250.value"
+      outputs="output cluster:494.output cluster" uid="494" uid_parent="root"/>
+```
+
+**Do not generalise §3's "document order carries no meaning" to this.** That rule is about the
+order of *elements* in the file, which LabVIEW regroups on export. The order of terminals *inside*
+an `inputs` attribute is a different thing and it is load-bearing for at least this node. Since
+the failure disguises itself as a type error, the cheap habit is the same one §8 already
+recommends for names: take the whole `inputs` string from an export of a VI that uses the node,
+order included, rather than assembling it from a terminal list.
+
+`Unbundle By Name` was never affected — it has one input, so there is no order to get wrong.
+
+**Consequence for design: a generated diagram CAN build a cluster.** The old advice to route
+around clusters — prefer scalar-terminal siblings, e.g. `NI_AALBase.lvlib:Sine Wave.vi` over
+`NI_MABase.lvlib:Sine Waveform.vi` with its `sampling info` cluster — is still a reasonable
+simplification when a scalar sibling exists, but it is no longer a *necessity*, and a palette VI
+must not be rejected merely for taking a cluster.
 
 ### Constants
 
