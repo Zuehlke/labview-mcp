@@ -190,6 +190,22 @@ Four things this measured that the catalogue does not say:
   check; use arbitrary colours and you must compare geometry instead, or accept the nearest
   cube entry. Note the failure is silent and pretty — the quantised icon looks right, so a
   difference count is the only way to see it.
+
+  **The target is an indexed palette, and it is wider than the cube — measured on a second
+  icon.** The read-back PNG comes back as `Format8bppIndexed` where the source was
+  `Format32bppArgb`: 256 entries, not 216. On a "CSV over a sine wave" icon, **298 of 1 024
+  pixels** differed in exactly two substitutions:
+
+  | Source | Read back | Pixels | in the cube? |
+  |---|---|---|---|
+  | `005A9C` | `006699` | 270 | yes — the cube explains this one |
+  | `DCDCDC` | `DDDDDD` | 28 | **no** — `DD` is not in `{00,33,66,99,CC,FF}` |
+
+  So "quantises to the web-safe cube" is the right advice but the wrong model: the cube is a
+  *subset* of what LabVIEW keeps, and a colour can land outside it. Picking from the cube is
+  still the way to get a clean equality check — every cube colour survives — but do not use the
+  cube to predict where an arbitrary colour will land, and do not read a non-cube read-back value
+  as evidence that something went wrong.
 - **`Save\3AInstrument` needs no `Path to saved file`.** Unwired, it saves in place.
 
 The run reports **`errorCode 91` with all three indicators empty** — the known read-back artifact

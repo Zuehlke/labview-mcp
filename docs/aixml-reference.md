@@ -1526,6 +1526,27 @@ a VI whose three outputs — waveform, bool, error cluster — were all blank un
 `errorCode 0`. The advice below still governs what you can **send in**, and still applies to any
 helper you drive directly; it no longer forces you to design outputs around the marshaller.
 
+**Which operations burn a path for regeneration — measured in one isolated A/B run.** Same
+trivial VI, same path, one LabVIEW session, regenerating after each step in turn:
+
+| done before regenerating | `ConvertAIXMLToVI` |
+|---|---|
+| nothing (control) | `0` |
+| `ConvertAIXMLToVI` itself | `0` |
+| `ConvertVIToAIXML` — exporting it | `0` |
+| `RunVIAsTopLevel` — actually running it | **`0`** |
+| `lvai_run_vi_and_read_values` | `0` |
+| **`OpenFile`** | **`1357`** |
+
+**This corrects the row in §11, which claimed `RunVIAsTopLevel` leaves a VI loaded too.** It does
+not — running a VI as top level costs you nothing, and the fresh-name-per-iteration rule is
+therefore more conservative than it needs to be. What holds a VI in memory is an open **window**,
+not the fact that it executed; that also explains why the escape is a person closing the window.
+Caveat worth stating: measured on a two-element VI with no subVIs, so a VI that pulls a hierarchy
+in may behave differently — but the *cheap* operations are now known to be safe, and
+`lvai_run_vi_and_read_values` reaches its target through a reference it closes again, which is
+why it too leaves the path free.
+
 **Set, run and read must be ONE call.** Measured, and it is the trap that makes the obvious
 composition wrong: a `RunVIAsTopLevel` followed by a *separate* read of the same VI returns that
 VI's **defaults** — `Y` empty, `dt = 1.0`, `loaded? = FALSE` — not the values of the run that
@@ -1561,7 +1582,7 @@ Consequences for authoring:
 |---|---|
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
-| `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` alone is enough** — measured on a VI that was opened and never run, which corrects the claim that used to stand here that only *running* blocks the overwrite. `RunVIAsTopLevel` leaves it loaded too. |
+| `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` is the only operation measured to cause it** — see the table below, which narrows this considerably. |
 | `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". **The commonest source is your own last validation.** A `ValidateAIXML` that *fails* appears to leave a VI named after the document's `_name` behind, and the next `ConvertAIXMLToVI` for that name is then refused. Observed 5 for 5 across one session: every 1051 followed a failed validation of the same `_name`, and every file that validated cleanly on the first attempt generated without complaint. The fix is free — bump `_name` (and the output file name) after any validation error, which you want anyway per the fresh-name rule. An earlier note here blamed a sibling probe VI that carried the same `_name`; that explanation fitted one case and this one fits all of them. |
 | `<Structure>: Is a member of a cycle` plus `Wire: Is a member of a cycle` | A redundant border crossing, most often an `Out` tunnel added for a shift register's `Right` terminal — see §7. The net already crosses the border implicitly, so the extra tunnel routes the loop's output back to its own input. Delete the tunnel and let consumers outside read the `Right` output net directly. |
 | `Error 1051` on the **first** generation of a path that does not exist yet | A *different* file carrying that VI's internal name is loaded — and the usual cause is self-inflicted: a scratch iteration generated from the deliverable's own XML keeps `_name="Final.vi"` while being saved as `Probe.vi`, so "Final.vi" is in memory under the wrong path. Change `_name` in every scratch variant, not just the file name. Measured: `viExisted: false`, `viExistsNow: false` — nothing was written, and a LabVIEW restart cleared it. |
