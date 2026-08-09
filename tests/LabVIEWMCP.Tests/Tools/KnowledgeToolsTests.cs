@@ -257,6 +257,35 @@ public class KnowledgeToolsTests
         Assert.True(result.Length < 12_000, $"flooded answer is still {result.Length} chars");
     }
 
+    // ---------- ranking ----------
+
+    /// <summary>
+    /// The measured failure: node='Select' returned 29 passages about `selector`, `selectin` and
+    /// "selects", and the Select node's own terminal `s? t\3Af` was in none of the shown ones.
+    /// The reference writes node names in backticks, so that beats a bare substring.
+    /// </summary>
+    [Theory]
+    [InlineData("| `Select` | `s? t\\3Af` |", 3)]        // the row actually wanted
+    [InlineData("a `Select node` in prose", 2)]
+    [InlineData("the Select node picks one", 1)]         // whole word, no backticks
+    [InlineData("CaseFrame carries `selector`", 0)]      // substring only - rank last
+    [InlineData("`selectin` and `selectout`", 0)]
+    public void BacktickedNamesOutrankSubstrings(string passage, int expected) =>
+        Assert.Equal(expected, KnowledgeTools.Rank(passage, "Select"));
+
+    [Fact]
+    public void AFloodedLookupShowsTheExactMatchFirst()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "Select");
+
+        // `Select` in backticks must appear before the `selector` attribute rows it used to bury
+        var exact = result.IndexOf("`Select`", StringComparison.Ordinal);
+        var selector = result.IndexOf("`selector`", StringComparison.Ordinal);
+        Assert.True(exact >= 0, "the Select node's own row is missing entirely");
+        Assert.True(selector < 0 || exact < selector,
+            "`selector` passages still come before the `Select` node itself");
+    }
+
     [Fact]
     public void NodeTakesPrecedenceOverSection()
     {

@@ -496,6 +496,29 @@ internal sealed class KnowledgeTools
     }
 
     /// <summary>
+    /// How well a passage answers a lookup for <paramref name="needle"/>. The reference writes
+    /// every node name in backticks, so that is the signal worth ranking on; a whole-word hit
+    /// comes next; a bare substring last, because that is what makes "Select" match "selector".
+    /// </summary>
+    internal static int Rank(string passage, string needle)
+    {
+        if (passage.Contains($"`{needle}`", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (passage.Contains($"`{needle} ", StringComparison.OrdinalIgnoreCase) ||
+            passage.Contains($"\"{needle}\"", StringComparison.OrdinalIgnoreCase)) return 2;
+
+        var at = passage.IndexOf(needle, StringComparison.OrdinalIgnoreCase);
+        while (at >= 0)
+        {
+            var before = at == 0 || !char.IsLetterOrDigit(passage[at - 1]);
+            var afterAt = at + needle.Length;
+            var after = afterAt >= passage.Length || !char.IsLetterOrDigit(passage[afterAt]);
+            if (before && after) return 1;
+            at = passage.IndexOf(needle, at + 1, StringComparison.OrdinalIgnoreCase);
+        }
+        return 0;
+    }
+
+    /// <summary>
     /// A `###` subsection by title. <see cref="Split"/> only cuts on `##`, so a subsection was
     /// invisible to `section=` even though the tool description promises "part of a title" -
     /// measured: `section='Polymorphic subVI calls'` answered "No section matched" for a
@@ -596,6 +619,12 @@ internal sealed class KnowledgeTools
             passages.Add(passage);
             if (heading[i].Length > 0 && !headings.Contains(heading[i])) headings.Add(heading[i]);
         }
+
+        // Rank before capping, or a common word buries the node it names. Measured:
+        // node='Select' returned 29 passages about `selector`, `selectin` and "selects" while the
+        // Select node's own terminal `s? t\3Af` did not appear at all. This document writes every
+        // node name in backticks, so `Select` is a precise signal that a plain substring is not.
+        passages = [.. passages.OrderByDescending(p => Rank(p, needle))];
 
         if (total == 0)
             return $"Nothing in the AIXML reference mentions \"{needle}\"." + Environment.NewLine +

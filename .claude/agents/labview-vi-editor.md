@@ -1,7 +1,7 @@
 ---
 name: labview-vi-editor
 description: Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Editor
@@ -64,11 +64,15 @@ So when the VI has one, validate the **untouched** export before promising anyth
   terminals, and `node=` returns just the passages naming yours, each with its table header or
   whole code block. Do **not** ask for `section='8'`: 54 kB comes back, your client spills it to
   a one-line JSON file, and `Grep` cannot find anything in it. For Property and Invoke nodes use
-  `lvai_vi_server_reference`. Exporting some other VI to find a name is the fallback, not the
-  first move.
+  `lvai_vi_server_reference`. For a **`Call` to a palette VI** neither of those applies — the
+  terminals are the target's own front-panel labels, so use **`lvai_vi_terminals`**, which reads
+  them out of it and prints a ready-to-paste `Call` (including the `instance` a polymorphic
+  target needs). Exporting some other VI to find a name is the fallback, not the first move.
 - **Copy the whole `inputs` string, order included.** Terminal order is load-bearing on at least
   `Bundle By Name`: listing `input cluster` before the field terminals is rejected as
   `Cluster is invalid or empty`, a message that points at the type and never mentions order.
+  **A `Call` is the exception** — measured, its terminals resolve by name and a fully scrambled
+  order validates. Only the spelling matters there.
 - **Write AIXML to a file with `Write`.** A shell eats the `\3A` and `\5C` escapes and the
   failure arrives disguised as an XML parse error.
 - **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**

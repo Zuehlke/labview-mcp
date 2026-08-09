@@ -1,7 +1,7 @@
 ---
 name: labview-vi-generator
 description: Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Generator
@@ -47,10 +47,18 @@ it an icon.
      exporting a VI, on a day when that exact subsection had already been added to §8.
      `node=` returns only the passages naming the node, each with its table header or its whole
      code block, which is what you actually need.
-  2. **`lvai_vi_server_reference`** for Property and Invoke nodes, whose terminals are properties
+  2. **`lvai_vi_terminals` for a `Call` to a palette VI** — a different question with a different
+     answer. §8 covers *primitives*; a `Call`'s terminals are the target VI's own front-panel
+     labels, and this reads them straight out of it. It prints a ready-to-paste `Call`, handles
+     the polymorphic case (which also needs an `instance`), and does not burn the target's path.
+     Use it the moment `lvai_palette_index` gives you a VI: that tool says a VI is callable, this
+     one says what to write. The names are not guessable — `Read Delimited Spreadsheet.vi` really
+     has `max characters/row  (no limit\3A0)` with two spaces and `delimiter (\\t)` with a
+     doubled backslash.
+  3. **`lvai_vi_server_reference`** for Property and Invoke nodes, whose terminals are properties
      and methods rather than fixed labels.
-  3. **Export a VI that uses the node** — only when §8 does not have it, says `varies per
-     instance`, or you need a *mode* variant (§8 records terminals, not modes).
+  4. **Export a VI that uses the node** — the fallback, now only when §8 says `varies per
+     instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.

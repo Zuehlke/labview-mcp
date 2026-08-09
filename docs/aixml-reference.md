@@ -1026,6 +1026,16 @@ node. The working document was then generated with `ConvertAIXMLToVI` and re-exp
 writes back `inputs="code:99.value,input cluster:43.value"`, fields first, byte-identical in shape
 to what was authored.
 
+**It does NOT apply to a `Call`.** Measured on the same day: a `Call` to
+`Read Delimited Spreadsheet.vi` with all eight inputs and all six outputs deliberately scrambled
+— `delimiter` first, `file path` last, outputs reversed — validates with `errorCode 0`. A Call's
+terminals are resolved by name, so only the spelling matters. That is worth knowing because the
+export's own order is neither the connector-pane order nor anything derivable: for that VI the
+Call lists conIdx 0, 5, 7, 9, 11, 1, 12, 13. Do not try to reconstruct it — and do not fear
+getting it wrong. `lvai_vi_terminals` prints a ready-to-paste Call for any VI.
+
+The order rule below is for **positional** nodes, `Bundle By Name` above all.
+
 **The canonical order is whatever LabVIEW's own export writes**, and NI's shipping code shows it
 directly. From `Device Under Test_Cloneable_DQMH.lvlib:DUT Status Updated.vi`, three fields and
 the cluster last:

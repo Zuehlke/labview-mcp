@@ -189,6 +189,7 @@ literally it argued away 600 usable palette VIs.
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
+| What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
