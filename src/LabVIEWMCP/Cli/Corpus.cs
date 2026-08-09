@@ -434,6 +434,12 @@ internal static class Corpus
         var giveUpAt = DateTime.UtcNow.AddSeconds(maxSeconds);
         while (DateTime.UtcNow < giveUpAt)
         {
+            // A LabVIEW that is not answering may not be working at all - it may be sitting in
+            // the modal "Find the VI Named ..." browser waiting for a human. Say Cancel for it,
+            // every round: a library with several missing members asks once per member.
+            foreach (var dialog in SearchDialog.CancelAll())
+                Console.WriteLine($"       cancelled LabVIEW's search dialog: {dialog}");
+
             if (ErrorCode(await status.GetApplicationConfigurationAsync()) == 0) return true;
             await Task.Delay(TimeSpan.FromSeconds(5));
         }
