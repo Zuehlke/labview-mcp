@@ -49,6 +49,31 @@ def terminals(attr: str) -> list[str]:
     return names
 
 
+def cell(counter: collections.Counter[str]) -> str:
+    """One markdown cell of terminal names, in LabVIEW's own order.
+
+    Two things this has to be honest about. A pipe inside a name would end the cell early, so it
+    is escaped. And some nodes have no fixed terminal names at all - a `Local Variable`'s terminal
+    is the variable it points at, a `Property Node`'s is the property - so the commonest shape
+    there is one VI's spelling and printing it as *the* signature would be a fabrication. Anything
+    whose commonest shape covers less than half its sightings is reported as varying instead.
+    """
+    if not counter:
+        return "—"
+
+    shape, count = counter.most_common(1)[0]
+    total = sum(counter.values())
+    names = [n for n in shape.split(" | ") if n]
+    if not names:
+        return "—"
+    if count / total < 0.5:
+        return f"varies per instance ({len(counter)} shapes)"
+
+    escaped = [n.replace("|", "\\|") for n in names]
+    text = ", ".join("`" + n + "`" for n in escaped)
+    return text if count == total else f"{text} ({count}/{total})"
+
+
 def documented_nodes(reference: pathlib.Path) -> set[str]:
     """Node names the reference already spells out, from its markdown tables and prose.
 
@@ -146,6 +171,20 @@ def main() -> int:
         for tag, counter in sorted(attributes.items()):
             for attribute, count in counter.most_common():
                 handle.write(f"{tag}\t{attribute}\t{count}\n")
+
+    # A markdown table ready to paste into docs/aixml-reference.md section 8. Only nodes seen in
+    # more than one VI: a single sighting is as likely to be that VI's quirk as a general shape,
+    # and the table is only worth having if every row can be trusted without re-checking.
+    with (out / "terminal-table.md").open("w", encoding="utf-8") as handle:
+        handle.write("| Node | inputs (in order) | outputs (in order) |\n|---|---|---|\n")
+        for name, _ in node_count.most_common():
+            if name in known or name.startswith(("Structure:", "CaseFrame:")):
+                continue
+            if len(node_files[name]) < 2:
+                continue
+            ins = signatures[(name, "inputs")].most_common(1)
+            outs = signatures[(name, "outputs")].most_common(1)
+            handle.write(f"| `{name}` | {cell(ins)} | {cell(outs)} |\n")
 
     undocumented = sum(1 for n in node_count
                        if n not in known and not n.startswith(("Structure:", "CaseFrame:")))

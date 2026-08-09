@@ -38,7 +38,8 @@ internal static class Corpus
     private const int SkippedCode = -5;    // excluded by --skip, never attempted
 
     public static async Task<int> RunAsync(
-        int? port, string? root, string? outDir, int? limit, int timeoutSeconds, string? skip)
+        int? port, string? root, string? outDir, int? limit, int timeoutSeconds, string? skip,
+        int restartEvery)
     {
         root ??= DefaultExamplesRoot();
         if (root is null || !Directory.Exists(root))
@@ -125,6 +126,10 @@ internal static class Corpus
         Console.WriteLine($"output      : {outDir}");
         Console.WriteLine($"already done: {done.Count}");
         Console.WriteLine($"to process  : {candidates.Count}");
+        Console.WriteLine(restartEvery > 0
+            ? $"WILL RESTART LabVIEW every {restartEvery} VIs - unsaved work in it is lost."
+            : "LabVIEW is never restarted. It cannot close the projects this opens either, so " +
+              "watch its handle count on a long run, or pass --restart-every <n>.");
         Console.WriteLine();
 
         var connection = new LvaiConnection(NullLogger<LvaiConnection>.Instance, port);
@@ -235,6 +240,20 @@ internal static class Corpus
             {
                 consecutiveUnreachable = 0;
             }
+
+            // Give the accumulated projects back. See RecycleAsync: nothing else can.
+            if (restartEvery > 0 && index % restartEvery == 0 && index < candidates.Count)
+            {
+                Console.WriteLine($"       restarting LabVIEW after {index} VIs " +
+                                  "(no RPC closes a project) ...");
+                if (!await RecycleAsync(connection, settleSeconds))
+                {
+                    Console.Error.WriteLine("LabVIEW did not come back. Start it and rerun " +
+                                            "--corpus; the sweep resumes where it stopped.");
+                    return 3;
+                }
+                openedProject = null; // a fresh IDE has nothing open
+            }
         }
 
         Console.WriteLine();
@@ -242,6 +261,42 @@ internal static class Corpus
         Console.WriteLine($"results: {resultsPath}");
         Console.WriteLine($"exports: {xmlDir}");
         return 0;
+    }
+
+    /// <summary>
+    /// Stop LabVIEW and start a fresh one, then wait for the service.
+    ///
+    /// Why the sweep needs this at all: it has to open each VI's owning project, and the lvai
+    /// interface has NO way to close one. There is no CloseFile RPC - the whole surface is
+    /// ConvertVIToAIXML, ValidateAIXML, OpenFile and the rest, none of which release anything -
+    /// and the VI Server catalogue carries no Project class either, so the back door cannot be
+    /// aimed at it without someone placing the node in the IDE by hand. Measured over 300
+    /// examples: 60 000 handles and 815 MB, climbing steadily. Recycling the process is the only
+    /// release available.
+    ///
+    /// DESTRUCTIVE, hence opt-in: it kills every LabVIEW on the machine, unsaved work included.
+    /// </summary>
+    private static async Task<bool> RecycleAsync(LvaiConnection connection, int waitSeconds)
+    {
+        foreach (var process in LabViewLocator.RunningInstances())
+        {
+            try { process.Kill(entireProcessTree: true); process.WaitForExit(20_000); }
+            catch { /* already gone, or not ours to kill - the launch below is the real test */ }
+        }
+
+        var install = LabViewLocator.Select(LabViewLocator.Discover());
+        if (install is null) return false;
+        if (!(await LabViewLauncher.StartAndConfirmAsync(install)).Ok) return false;
+
+        var giveUpAt = DateTime.UtcNow.AddSeconds(waitSeconds);
+        while (DateTime.UtcNow < giveUpAt)
+        {
+            connection.Invalidate();  // the port is new on every LabVIEW start
+            if (ErrorCode(await new StatusTools(connection).GetApplicationConfigurationAsync()) == 0)
+                return true;
+            await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+        return false;
     }
 
     /// <summary>

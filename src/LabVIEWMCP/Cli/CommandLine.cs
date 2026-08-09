@@ -29,6 +29,7 @@ internal static class CommandLine
         ["--timeout"] = true,
         ["--limit"] = true,
         ["--skip"] = true,
+        ["--restart-every"] = true,
         ["--out"] = true,
     };
 
@@ -57,6 +58,10 @@ internal static class CommandLine
           --limit <n>       stop --corpus after n VIs
           --skip <a,b>      substrings of a path --corpus must not touch; they are still
                             listed in the results, so the gap stays visible
+          --restart-every <n>  --corpus restarts LabVIEW every n VIs. DESTRUCTIVE: it kills
+                            every LabVIEW on the machine. Off by default. Nothing in the lvai
+                            interface closes a project, so this is the only way to give back
+                            what the sweep opens.
           --out <path>      output file for --diagram, output directory for --corpus
           --help            print this text
 
