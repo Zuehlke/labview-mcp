@@ -164,14 +164,26 @@ callable — that mistake has been made three times.
 
 ### Phase 3 — Take the template
 
-For the palette VI or example you chose, call **`lvai_convert_vi_to_aixml`** with
-`returnContent: false` and an `aiXmlFilePath` in your temp folder, then `Read` the file.
+**Open the template's owning project first.** If a `.lvproj` sits in the template VI's folder or
+above it, call `lvai_open_file` with that `projectPath` before exporting anything. A VI read on
+its own has unresolved subVIs and static VI references, and the cost is not cosmetic: LabVIEW
+searches the disk for the missing dependencies, a core at 100% for **minutes** per VI, and every
+later RPC queues behind it until the whole session looks dead. Measured 2026-08-09 on
+`examples\Application Control\`: that subtree wedged LabVIEW three times and needed a hard restart
+each time; with the project opened first the same VIs exported in milliseconds. If an example
+still misbehaves afterwards, leave it and take the next candidate — do not fight it.
+
+Then call **`lvai_convert_vi_to_aixml`** with `returnContent: false` and an `aiXmlFilePath` in
+your temp folder, and `Read` the file.
 
 Prefer this over `lvai_describe_vi`: both return the same AIXML, but `describe_vi` also carries
 `viImage`, a base64 PNG of the block diagram, whether you want it or not.
 
 Copy from it: the exact node names, the exact terminal labels, the attribute spellings, and the
-shape of any structure you need. **A mode attribute can change a node's output type, and setting
+shape of any structure you need. **Copy the whole `inputs` string, order included** — terminal
+order inside `inputs` is load-bearing on at least `Bundle By Name`, where listing `input cluster`
+before the field terminals is rejected as `Cluster is invalid or empty`, a message that points at
+the type and never mentions order. **A mode attribute can change a node's output type, and setting
 the mode is not enough** — `Read from Text File` with `readLines="true"` still returns a scalar
 string until `count` is wired. Copy a variant that is already in the state you want rather than
 setting the attribute and hoping.

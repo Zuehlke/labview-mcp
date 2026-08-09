@@ -111,6 +111,12 @@ Settled so far:
 Do this **before** backups, palette searches or any edit. It is two calls and it decides whether
 the whole workflow is possible.
 
+0. **Open the VI's owning project.** `lvai_describe_vi` reports `owningProjectPath`; failing that,
+   take the nearest `.lvproj` at or above the VI's folder. Call `lvai_open_file` with that
+   `projectPath` first. A VI read on its own has unresolved subVIs and static VI references, which
+   makes the export **wrong** — and makes LabVIEW spend minutes searching the disk for the missing
+   dependencies while every other RPC queues behind it. Measured 2026-08-09: that is what a wedged
+   LabVIEW actually is, three hard restarts before the cause was found.
 1. `lvai_convert_vi_to_aixml` on the target, `returnContent: false`, into your scratch folder.
    **Check `xmlBytes`.** Anything in the 100–200 byte range is a bare `<VI …/>`: the diagram was
    **not** readable and the RPC still answered `errorCode 0`. That is a silent failure, not an
