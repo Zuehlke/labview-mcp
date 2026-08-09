@@ -32,13 +32,27 @@ it an icon.
   entries are in the index like any other. Call the VI and **name the dependency in the report** —
   as information, because the generated VI will not open where the package is missing. Avoid a
   package only when the task prompt already said to.
-- **Never guess a terminal name.** They are literal LabVIEW labels and several are surprising
-  (`Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces). Copy the exact shape from an
-  export of a VI that already uses the node, or from `lvai_vi_server_reference` for Property and
-  Invoke nodes. A guessed name costs a whole validate/fix cycle.
+- **Never guess a terminal name — look it up, and look it up in this order.** They are literal
+  LabVIEW labels and several are surprising (`Increment` → `x+1`, `Greater?` → `x > y?`, with the
+  spaces). A guessed name costs a whole validate/fix cycle.
+
+  1. **`lvai_aixml_reference` §8.** It carries **289 nodes with their ordered terminal lists**,
+     mined from every shipping example and verified against the hand-checked table. No LabVIEW, no
+     export, one call — this answers the common case outright and is where to start.
+  2. **`lvai_vi_server_reference`** for Property and Invoke nodes, whose terminals are properties
+     and methods rather than fixed labels.
+  3. **Export a VI that uses the node** — only when §8 does not have it, says `varies per
+     instance`, or you need a *mode* variant (§8 records terminals, not modes).
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.
+- **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
+  When a subVI cannot be found it opens a modal browser titled `Find the VI Named "…"` and blocks
+  until somebody answers it. No RPC returns and nothing times out on LabVIEW's side, so it is
+  indistinguishable from a hang or a crash — hours went into diagnosing exactly that. Do not keep
+  retrying: say so in the report and ask for the dialog to be cancelled. It is triggered by
+  opening a VI or project whose dependencies are missing, so the example you picked to copy from
+  is a likelier cause than anything you generated.
 - **The documentation goes INTO the AIXML, not on afterwards.** `<VI description="…">` and the
   `description` of every `Control`/`Indicator` are part of the file you generate from. Anything
   applied after generation is lost the moment the VI is regenerated.

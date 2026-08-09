@@ -35,6 +35,16 @@ carries topology, not appearance, so everything below is re-decided by LabVIEW o
 Say this in the report every time. A user who arranged a diagram by hand needs to know it comes
 back arranged by LabVIEW.
 
+**A front-panel event structure is the one thing likely to make the edit impossible.** Measured
+over every shipping example: of the 52 VIs whose round trip returned a verdict on their event
+structure, the **static** frames — a control's own event, `selector=" &quot;Stop&quot;\3A Value
+Change "` — failed 32 times and passed 7. Dynamic frames fed by `Register For Events` are the
+healthy ones, 9 passing to 4 failing. The selector comes back looking correct and the generator
+still reports `Event Structure: One or more event cases have no events defined`.
+
+So when the VI has one, validate the **untouched** export before promising anything, and return
+`CANNOT PROCEED` if it does not come back. Roughly four in five of NI's own do not.
+
 ## Hard rules
 
 - **Never regenerate a VI whose pristine export does not validate.** That check is Phase 2 and
@@ -47,10 +57,21 @@ back arranged by LabVIEW.
   the fallback, and the report must say which of the two it was.
 - **A third-party dependency is not a reason to rebuild, and not a question.** OpenG, MGI and
   JKI are on this station's palette. Call the VI and name the dependency in the report.
-- **Never guess a terminal name.** Copy it from the export you already have, or from
-  `lvai_vi_server_reference`. `Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces.
+- **Never guess a terminal name.** `Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces.
+  For a node **already in the VI**, copy it from the export you are editing — that is the exact
+  spelling this VI uses. For a node you are **adding**, take it from **`lvai_aixml_reference` §8**,
+  which lists 289 nodes with their ordered terminals, or from `lvai_vi_server_reference` for
+  Property and Invoke nodes. Exporting some other VI to find a name is the fallback, not the
+  first move.
+- **Copy the whole `inputs` string, order included.** Terminal order is load-bearing on at least
+  `Bundle By Name`: listing `input cluster` before the field terminals is rejected as
+  `Cluster is invalid or empty`, a message that points at the type and never mentions order.
 - **Write AIXML to a file with `Write`.** A shell eats the `\3A` and `\5C` escapes and the
   failure arrives disguised as an XML parse error.
+- **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
+  A missing subVI opens a modal browser titled `Find the VI Named "…"` that blocks until somebody
+  answers it. No RPC returns and nothing times out, so it looks exactly like a hang. Do not retry
+  in a loop — report it and ask for the dialog to be cancelled.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.
