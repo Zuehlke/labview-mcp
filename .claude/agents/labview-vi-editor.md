@@ -59,9 +59,12 @@ So when the VI has one, validate the **untouched** export before promising anyth
   JKI are on this station's palette. Call the VI and name the dependency in the report.
 - **Never guess a terminal name.** `Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces.
   For a node **already in the VI**, copy it from the export you are editing — that is the exact
-  spelling this VI uses. For a node you are **adding**, take it from **`lvai_aixml_reference` §8**,
-  which lists 289 nodes with their ordered terminals, or from `lvai_vi_server_reference` for
-  Property and Invoke nodes. Exporting some other VI to find a name is the fallback, not the
+  spelling this VI uses. For a node you are **adding**, call
+  **`lvai_aixml_reference` with `node='<name>'`** — §8 lists 289 nodes with their ordered
+  terminals, and `node=` returns just the passages naming yours, each with its table header or
+  whole code block. Do **not** ask for `section='8'`: 54 kB comes back, your client spills it to
+  a one-line JSON file, and `Grep` cannot find anything in it. For Property and Invoke nodes use
+  `lvai_vi_server_reference`. Exporting some other VI to find a name is the fallback, not the
   first move.
 - **Copy the whole `inputs` string, order included.** Terminal order is load-bearing on at least
   `Bundle By Name`: listing `input cluster` before the field terminals is rejected as

@@ -103,6 +103,113 @@ public class KnowledgeToolsTests
     public void ResourceAccessorReturnsTheSameDocument() =>
         Assert.Equal(KnowledgeTools.Load(), KnowledgeTools.AixmlReferenceResource());
 
+    // ---------- node lookup ----------
+
+    private const string Doc = """
+        # Title
+
+        ## 8. Multi-terminal nodes
+
+        Some prose about Build Waveform in a paragraph.
+
+        | Node | Inputs | Outputs |
+        |---|---|---|
+        | `Build Waveform` | `waveform`, `t0`, `dt`, `Y` | `output waveform` |
+        | `Index Array` | `array`, `index` | `element` |
+
+        ### Indexing a 2D array
+
+        ```xml
+        <Node _name="Index Array" dimensions="2"
+              inputs="array:1.a,index (row):2.b,disabled index (col):" />
+        ```
+
+        ## 9. Something else
+        """;
+
+    /// <summary>
+    /// A table row without its header is unusable - `| `Build Waveform` | `waveform`, `t0` |`
+    /// does not say which column is inputs and which is outputs.
+    /// </summary>
+    [Fact]
+    public void ATableRowComesBackWithItsHeader()
+    {
+        var result = KnowledgeTools.Lookup(Doc, "Build Waveform", 40);
+
+        Assert.Contains("| Node | Inputs | Outputs |", result);
+        Assert.Contains("`output waveform`", result);
+        // and NOT the unrelated row
+        Assert.DoesNotContain("`Index Array` | `array`", result);
+    }
+
+    /// <summary>Half an XML snippet cannot be copied, so a fence comes back whole.</summary>
+    [Fact]
+    public void AHitInsideACodeBlockReturnsTheWholeBlock()
+    {
+        var result = KnowledgeTools.Lookup(Doc, "disabled index", 40);
+
+        Assert.Contains("<Node _name=\"Index Array\" dimensions=\"2\"", result);
+        Assert.Contains("disabled index (col)", result);
+    }
+
+    [Fact]
+    public void EachPassageIsLabelledWithItsHeading()
+    {
+        Assert.Contains("[Indexing a 2D array]", KnowledgeTools.Lookup(Doc, "disabled index", 40));
+        Assert.Contains("[8. Multi-terminal nodes]", KnowledgeTools.Lookup(Doc, "Build Waveform", 40));
+    }
+
+    [Fact]
+    public void AMultiLineFenceHitCountsOnce()
+    {
+        // "Index Array" appears on one fence line and one table row: two passages, not four.
+        var result = KnowledgeTools.Lookup(Doc, "Index Array", 40);
+
+        Assert.StartsWith("2 passage(s)", result);
+    }
+
+    [Fact]
+    public void AnUnknownTermSaysWhatToDoNext()
+    {
+        var result = KnowledgeTools.Lookup(Doc, "Nonexistent Node", 40);
+
+        Assert.Contains("Nothing in the AIXML reference mentions", result);
+        Assert.Contains("export a VI that already uses it", result);
+    }
+
+    /// <summary>
+    /// The regression this whole feature exists for: a VI generator could not find a subsection
+    /// added to section 8 the same day, because section 8 comes back as 54 kB that the client
+    /// spills into a one-line JSON file. It re-derived the fact by exporting a VI instead.
+    /// </summary>
+    [Fact]
+    public void TheRealDocumentAnswersANodeQueryWithoutReturningSectionEight()
+    {
+        var whole = KnowledgeTools.AixmlReference(section: "8");
+        var focused = KnowledgeTools.AixmlReference(node: "disabled index");
+
+        Assert.Contains("disabled index (col)", focused);
+        Assert.True(focused.Length < whole.Length / 10,
+            $"node lookup returned {focused.Length} chars against {whole.Length} for the section");
+    }
+
+    [Fact]
+    public void ABigSectionSaysThatNodeLookupExists()
+    {
+        var result = KnowledgeTools.AixmlReference(section: "8");
+
+        Assert.Contains("node='<name>'", result);
+    }
+
+    [Fact]
+    public void NodeTakesPrecedenceOverSection()
+    {
+        var result = KnowledgeTools.AixmlReference(section: "5", node: "Build Waveform");
+
+        Assert.StartsWith("", result);
+        Assert.Contains("passage(s) in the AIXML reference mention", result);
+    }
+
     /// <summary>
     /// Locate a repo-relative file. Anchored on this source file's compile-time path rather
     /// than the output directory, because the build output is not always inside the repo -

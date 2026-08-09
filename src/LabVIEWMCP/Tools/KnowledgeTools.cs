@@ -62,6 +62,14 @@ internal sealed class KnowledgeTools
            specific.
         """;
 
+    /// <summary>
+    /// Past this, a section is big enough that a client spills it to a file - and a file holding
+    /// one JSON string is not greppable, so the caller cannot find the paragraph they came for.
+    /// Measured: section 8 is 54 kB, and a VI-generator run failed to find a subsection that had
+    /// been added to it that same day, then re-derived the fact by exporting a VI.
+    /// </summary>
+    private const int BigSectionChars = 8_000;
+
     [McpServerTool(Name = "lvai_aixml_reference", ReadOnly = true,
                    Title = "AIXML format reference")]
     [Description("""
@@ -69,12 +77,20 @@ internal sealed class KnowledgeTools
         any AIXML - the format has no published schema and its wiring model is
         counter-intuitive, so generating without it produces plausible but wrong XML.
         Without arguments: the essential rules plus a section list (cheap, start here).
+        With node: ONLY the passages mentioning that node or term - the right call when you
+        want one node's terminal names, e.g. node='Build Waveform', node='Index Array',
+        node='graph21703'. Section 8 alone is 54 kB, far past what is worth reading whole.
         With section: that section's full text ('types', 'structures', 'escaping', 'wiring',
         a heading number, or part of a title). With section='all': the whole document.
         """)]
     public static string AixmlReference(
         [Description("Section number, keyword or title fragment; 'all' for everything; omit for the essentials")]
-        string? section = null)
+        string? section = null,
+        [Description("Node or term to look up, e.g. 'Build Waveform'. Returns only the table " +
+                     "rows, code blocks and paragraphs that mention it, each under its heading. " +
+                     "Takes precedence over section")]
+        string? node = null,
+        [Description("Max passages to return (default 40, max 400)")] int limit = DefaultLimit)
     {
         string document;
         try
@@ -89,6 +105,9 @@ internal sealed class KnowledgeTools
 
         var sections = Split(document);
 
+        if (!string.IsNullOrWhiteSpace(node))
+            return Lookup(document, node.Trim(), Math.Clamp(limit <= 0 ? DefaultLimit : limit, 1, MaxLimit));
+
         if (string.IsNullOrWhiteSpace(section))
             return Essentials + Environment.NewLine + Environment.NewLine + Toc(sections);
 
@@ -96,8 +115,16 @@ internal sealed class KnowledgeTools
             return document;
 
         var match = Find(sections, section.Trim());
-        return match ?? "No section matched \"" + section + "\"." + Environment.NewLine +
-               Environment.NewLine + Toc(sections);
+        if (match is null)
+            return "No section matched \"" + section + "\"." + Environment.NewLine +
+                   Environment.NewLine + Toc(sections);
+
+        return match.Length > BigSectionChars
+            ? match + Environment.NewLine + Environment.NewLine +
+              $"[{match.Length / 1024} kB. If you came for one node, call this again with " +
+              "node='<name>' instead - it returns only the passages that mention it, which is " +
+              "searchable where this is not.]"
+            : match;
     }
 
     [McpServerResource(Name = "aixml-reference", UriTemplate = "labview://aixml-reference",
@@ -459,6 +486,105 @@ internal sealed class KnowledgeTools
                 return body;
 
         return null;
+    }
+
+    /// <summary>
+    /// Every passage mentioning <paramref name="needle"/>, each carrying enough around it to be
+    /// usable on its own. What "enough" means differs by what was hit, and getting this wrong
+    /// makes the result worthless rather than merely terse:
+    ///
+    /// - a TABLE ROW comes back with its header row, because `| `Build Waveform` | `waveform`,
+    ///   `t0` | ... |` says nothing about which column is which;
+    /// - a line inside a FENCED BLOCK returns the whole block, since half an XML snippet cannot
+    ///   be copied;
+    /// - everything else returns the line.
+    ///
+    /// Each passage is labelled with the heading it sits under, so the caller can follow up with
+    /// section= if they want the surroundings.
+    /// </summary>
+    internal static string Lookup(string document, string needle, int limit)
+    {
+        var lines = document.Replace("\r\n", "\n").Split('\n');
+
+        // Pass 1: fence extents, so a hit inside one can return the block whole.
+        var fenceStart = new int[lines.Length];
+        var fenceEnd = new int[lines.Length];
+        Array.Fill(fenceStart, -1);
+        var open = -1;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].TrimStart().StartsWith("```", StringComparison.Ordinal)) continue;
+            if (open < 0) { open = i; continue; }
+            for (var k = open; k <= i; k++) { fenceStart[k] = open; fenceEnd[k] = i; }
+            open = -1;
+        }
+
+        // Pass 2: the heading each line sits under, and the header row of the table it is in.
+        var heading = new string[lines.Length];
+        var header = new int[lines.Length];
+        Array.Fill(header, -1);
+        var section = "";
+        var current = -1;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            if (fenceStart[i] < 0)
+            {
+                if (line.StartsWith("## ", StringComparison.Ordinal)) { section = line[3..].Trim(); current = -1; }
+                else if (line.StartsWith("### ", StringComparison.Ordinal)) { section = line[4..].Trim(); current = -1; }
+                // A header row is a table line whose successor is the |---|---| rule.
+                else if (line.StartsWith('|') && i + 1 < lines.Length &&
+                         lines[i + 1].StartsWith('|') && lines[i + 1].Contains("---")) current = i;
+                else if (!line.StartsWith('|')) current = -1;
+            }
+            heading[i] = section;
+            header[i] = current;
+        }
+
+        var passages = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var total = 0;
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].Contains(needle, StringComparison.OrdinalIgnoreCase)) continue;
+
+            string body;
+            if (fenceStart[i] >= 0)
+                body = string.Join(Environment.NewLine,
+                    lines[fenceStart[i]..(fenceEnd[i] + 1)]);
+            else if (lines[i].StartsWith('|') && header[i] >= 0 && header[i] != i)
+                body = string.Join(Environment.NewLine,
+                    [lines[header[i]], lines[header[i] + 1], lines[i]]);
+            else
+                body = lines[i];
+
+            var passage = (heading[i].Length > 0 ? $"[{heading[i]}]" + Environment.NewLine : "") + body;
+            if (!seen.Add(passage)) continue;          // a fence hit on several lines is one block
+            total++;
+            if (passages.Count < limit) passages.Add(passage);
+        }
+
+        if (total == 0)
+            return $"Nothing in the AIXML reference mentions \"{needle}\"." + Environment.NewLine +
+                   "Terminal names are literal LabVIEW labels, so try a shorter fragment - " +
+                   "'Waveform' rather than 'Build Waveform (t0)'. If the node genuinely is not " +
+                   "documented, export a VI that already uses it (section 8 says which are not " +
+                   "covered) and copy the terminal strings from there." + Environment.NewLine +
+                   Environment.NewLine + Toc(Split(document));
+
+        var sb = new StringBuilder(
+            $"{total} passage(s) in the AIXML reference mention \"{needle}\":");
+        sb.AppendLine();
+        foreach (var passage in passages)
+        {
+            sb.AppendLine();
+            sb.AppendLine(passage);
+        }
+        if (total > passages.Count)
+            sb.AppendLine($"{Environment.NewLine}  ... {total - passages.Count} more; " +
+                          "narrow the term or raise limit");
+        return sb.ToString().TrimEnd();
     }
 
     private static string Toc(List<(string Heading, string Body)> sections)

@@ -36,9 +36,17 @@ it an icon.
   LabVIEW labels and several are surprising (`Increment` → `x+1`, `Greater?` → `x > y?`, with the
   spaces). A guessed name costs a whole validate/fix cycle.
 
-  1. **`lvai_aixml_reference` §8.** It carries **289 nodes with their ordered terminal lists**,
-     mined from every shipping example and verified against the hand-checked table. No LabVIEW, no
-     export, one call — this answers the common case outright and is where to start.
+  1. **`lvai_aixml_reference` with `node='<name>'`.** §8 carries **289 nodes with their ordered
+     terminal lists**, mined from every shipping example and verified against the hand-checked
+     table. No LabVIEW, no export, one call — this answers the common case outright and is where
+     to start.
+
+     **Pass `node=`, not `section='8'`.** The section is 54 kB: your client will spill it into a
+     file holding one JSON string, which `Grep` cannot search, so you end up unable to find a
+     paragraph that is right there. Measured — a run re-derived `disabled index (col)` by
+     exporting a VI, on a day when that exact subsection had already been added to §8.
+     `node=` returns only the passages naming the node, each with its table header or its whole
+     code block, which is what you actually need.
   2. **`lvai_vi_server_reference`** for Property and Invoke nodes, whose terminals are properties
      and methods rather than fixed labels.
   3. **Export a VI that uses the node** — only when §8 does not have it, says `varies per
