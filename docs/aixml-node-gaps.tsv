@@ -1,5 +1,4 @@
 node	occurrences	viFiles	commonestInputs	commonestOutputs
-Local Variable	280	89	Status	Stop
 Random Number (0-1)	152	89		number\3A 0 to 1
 VI Server Reference	113	47		This VI
 Compound Arithmetic	107	66	value | value | value	result
@@ -20,7 +19,6 @@ Unregister For Events	40	40	event registration refnum | error in	error out
 And	39	32	x | y	x .and. y?
 Replace Array Subset	39	18	array | index | new element/subarray	output array
 Call Parent Class Method	39	39	Panel Actor in | error in	Actor out | error out
-Array Index / Replace Elements	38	18	element	element
 Not A Number/Path/Refnum?	38	38	number/path/refnum	NaN/Path/Refnum?
 Equal To 0?	37	32	x	x = 0?
 Tick Count (ms)	37	15		millisecond timer value
@@ -56,7 +54,6 @@ Insert Into Array	19	6	array | index | new element/subarray	output array
 Empty Array?	19	14	array	empty?
 Sine & Cosine	19	18	x	sin(x) | cos(x)
 Greater Than 0?	18	10	x	x > 0?
-Global Variable	18	6	Loop Stop	latest value
 Formula Node	18	9	p0x | p0y | p0z | p1x | p1y | p1z | p2x | p2y | p2z	cx | cy | cz | a
 TDMS Set Channel Information	18	7	tdms file | group name (Untitled) | channel name(s) | error in (no error) | data layout (0\3Anon-interleaved) | data type | samples per channel	tdms file out | error out
 TCP Close Connection	17	12	connection ID | abort (F) | error in (no error)	connection ID out | error out
@@ -130,7 +127,6 @@ Split Number	7	2	x	hi(x) | lo(x)
 Open Python Session	7	7	python version | python path | error in (no error)	session out | error out
 Decimal String To Number	7	6	string | offset | default (0L)	offset past number | number
 Quit LabVIEW	6	6	quit? (T)	
-Constructor Node	6	5	error in (no error)	new reference | error out
 Get Variant Attribute	6	3	Variant | name | default value (empty Variant) | error in	duplicate Variant | names | values | error out
 Get Date/Time String	6	6	date format (0) | seconds (now) | want seconds? (F)	date string | time string
 UDP Close	6	6	connection ID | error in (no error)	connection ID out | error out

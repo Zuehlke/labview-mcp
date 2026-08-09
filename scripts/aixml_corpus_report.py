@@ -74,6 +74,25 @@ def cell(counter: collections.Counter[str]) -> str:
     return text if count == total else f"{text} ({count}/{total})"
 
 
+BEGIN_MARK = "<!-- BEGIN generated: node terminals -->"
+END_MARK = "<!-- END generated: node terminals -->"
+
+
+def curated_text(reference: pathlib.Path) -> str:
+    """The reference with its own generated block removed.
+
+    Without this the tool eats its own tail: once the generated table is spliced into the
+    document, every node in it counts as "documented", the next run finds nothing to report, and
+    the gap list silently empties out. What counts as already-known has to be the text a person
+    wrote.
+    """
+    text = reference.read_text(encoding="utf-8", errors="replace")
+    start, end = text.find(BEGIN_MARK), text.find(END_MARK)
+    if start == -1 or end == -1 or end < start:
+        return text
+    return text[:start] + text[end + len(END_MARK):]
+
+
 def documented_nodes(reference: pathlib.Path) -> set[str]:
     """Node names the reference already spells out, from its markdown tables and prose.
 
@@ -83,8 +102,19 @@ def documented_nodes(reference: pathlib.Path) -> set[str]:
     """
     if not reference.exists():
         return set()
+    return {m.strip() for m in re.findall(r"`([^`\n]{2,60})`", curated_text(reference))}
+
+
+def splice(reference: pathlib.Path, table: str) -> bool:
+    """Replace the generated block in the reference. False when the markers are absent."""
     text = reference.read_text(encoding="utf-8", errors="replace")
-    return {m.strip() for m in re.findall(r"`([^`\n]{2,60})`", text)}
+    start, end = text.find(BEGIN_MARK), text.find(END_MARK)
+    if start == -1 or end == -1 or end < start:
+        return False
+
+    reference.write_text(
+        text[:start] + BEGIN_MARK + "\n" + table + text[end:], encoding="utf-8")
+    return True
 
 
 def main() -> int:
@@ -92,6 +122,8 @@ def main() -> int:
     parser.add_argument("corpus", nargs="?", default=str(DEFAULT_CORPUS))
     parser.add_argument("--docs", default="docs/aixml-reference.md")
     parser.add_argument("--out", default=None)
+    parser.add_argument("--update-docs", action="store_true",
+                        help="splice the terminal table into --docs between its markers")
     args = parser.parse_args()
 
     corpus = pathlib.Path(args.corpus)
@@ -172,18 +204,32 @@ def main() -> int:
             for attribute, count in counter.most_common():
                 handle.write(f"{tag}\t{attribute}\t{count}\n")
 
-    # A markdown table ready to paste into docs/aixml-reference.md section 8. Only nodes seen in
-    # more than one VI: a single sighting is as likely to be that VI's quirk as a general shape,
-    # and the table is only worth having if every row can be trusted without re-checking.
-    with (out / "terminal-table.md").open("w", encoding="utf-8") as handle:
-        handle.write("| Node | inputs (in order) | outputs (in order) |\n|---|---|---|\n")
-        for name, _ in node_count.most_common():
-            if name in known or name.startswith(("Structure:", "CaseFrame:")):
-                continue
-            if len(node_files[name]) < 2:
-                continue
-            handle.write(f"| `{name}` | {cell(signatures[(name, 'inputs')])} | "
-                         f"{cell(signatures[(name, 'outputs')])} |\n")
+    # The markdown table for docs/aixml-reference.md section 8.
+    #
+    # Note what this does NOT filter on: whether the prose already mentions the node. An earlier
+    # version skipped those, which coupled two unrelated jobs - the curated table exists to carry
+    # caveats, this one to be complete - and had the absurd consequence that writing a sentence
+    # about a node deleted its terminals from the reference. `known` belongs to the gap list only.
+    #
+    # It does filter on sightings: a node seen in a single VI is as likely to be that VI's quirk
+    # as a general shape, and the table is only worth having if every row can be trusted without
+    # re-checking.
+    rows = ["| Node | inputs (in order) | outputs (in order) |", "|---|---|---|"]
+    for name, _ in node_count.most_common():
+        if name.startswith(("Structure:", "CaseFrame:")):
+            continue
+        if len(node_files[name]) < 2:
+            continue
+        rows.append(f"| `{name}` | {cell(signatures[(name, 'inputs')])} | "
+                    f"{cell(signatures[(name, 'outputs')])} |")
+
+    table = "\n".join(rows) + "\n"
+    (out / "terminal-table.md").write_text(table, encoding="utf-8")
+
+    reference = pathlib.Path(args.docs)
+    if args.update_docs:
+        print("spliced into " + args.docs if splice(reference, table)
+              else f"NOT spliced: {BEGIN_MARK} / {END_MARK} not found in {args.docs}")
 
     undocumented = sum(1 for n in node_count
                        if n not in known and not n.startswith(("Structure:", "CaseFrame:")))

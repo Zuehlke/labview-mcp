@@ -592,6 +592,336 @@ section 6 apply inside terminal names too. In XML the `<` in `x < y?` additional
 The reliable way to get a name right: export a VI that already uses the node and copy the
 string verbatim.
 
+### Every other node NI uses — generated, not written
+
+The table above is curated: each row was measured by hand and several carry a warning that only a
+person can give. It is also small. The corpus sweep found **377 distinct node kinds** across the
+shipping examples, so the table below is all of them — every node seen in **more than one**
+example VI, with the ordered terminal lists LabVIEW itself writes.
+
+The two overlap on purpose. The curated table is where the caveats live; this one is where
+completeness lives, and it deliberately does not skip a node just because the prose mentions it.
+An earlier version did, which meant writing a sentence about a node deleted its terminals from
+this reference.
+
+It is **generated**. Do not edit it; regenerate it, and put anything worth saying about a node in
+the prose above where a regeneration cannot overwrite it:
+
+```bash
+python scripts/aixml_corpus_report.py --update-docs
+```
+
+Three things to read correctly:
+
+- **The order is the measurement.** Terminal order inside `inputs` is load-bearing on at least
+  `Bundle` and `Bundle By Name` (below), so a row is the whole string to copy, not a set of names.
+- **`varies per instance`** means the node has no fixed terminal names at all — a `Local Variable`'s
+  terminal is the variable it points at, a `Property Node`'s is the property. Printing one VI's
+  spelling as *the* signature would be a fabrication, so the count of distinct shapes is given
+  instead. For those, export the VI you are working from.
+- **`(n/m)`** after a row means that shape was the commonest but not the only one: `n` sightings of
+  `m`. Expandable nodes and nodes whose terminal names follow the wired data do this.
+
+A node absent from both tables is not necessarily absent from LabVIEW — it may simply appear in
+only one example. The complete list, single sightings included, is
+[`docs/aixml-node-gaps.tsv`](aixml-node-gaps.tsv), which lives in the repository and is **not**
+embedded in the assembly: on a binary-only install the two tables above are all there is, which is
+the other reason this one is spliced into the document rather than left beside it.
+
+<!-- BEGIN generated: node terminals -->
+| Node | inputs (in order) | outputs (in order) |
+|---|---|---|
+| `Property Node` | varies per instance (165 shapes) | varies per instance (101 shapes) |
+| `Event Data Node` | — | varies per instance (80 shapes) |
+| `Multiply` | `x`, `y` | `x*y` |
+| `Bundle` | varies per instance (217 shapes) | `output cluster` |
+| `Build Array` | varies per instance (22 shapes) | `appended array` |
+| `Unbundle By Name` | `input cluster` | varies per instance (281 shapes) |
+| `Merge Errors` | `error in`, `error in` (252/324) | `error out` |
+| `Wait (ms)` | `milliseconds to wait` | `millisecond timer value` |
+| `Index Array` | varies per instance (18 shapes) | varies per instance (11 shapes) |
+| `Add` | `x`, `y` | `x+y` |
+| `Bundle By Name` | varies per instance (189 shapes) | `output cluster` |
+| `Subtract` | `x`, `y` | `x-y` |
+| `Local Variable` | varies per instance (116 shapes) | varies per instance (65 shapes) |
+| `Divide` | `x`, `y` | `x/y` |
+| `Invoke Node` | varies per instance (73 shapes) | `reference out`, `error out` (126/233) |
+| `Or` | `x`, `y` | `x .or. y?` |
+| `Select` | `t`, `s`, `f` | `s? t\3Af` |
+| `Close Reference` | `reference`, `error in (no error)` | `error out` |
+| `Build Path` | `base path`, `name or relative path` | `appended path` |
+| `Random Number (0-1)` | — | `number\3A 0 to 1` |
+| `Format Into String` | `initial string`, `error in`, `input 1`, `format string` (93/150) | `resulting string`, `error out` |
+| `Increment` | `x` | `x+1` |
+| `Unbundle / Bundle Elements` | `input cluster` (72/144) | `output cluster` (72/144) |
+| `Unbundle` | `cluster` | varies per instance (58 shapes) |
+| `Array Size` | `array` | `size(s)` |
+| `Equal?` | `x`, `y` | `x = y?` |
+| `VI Server Reference` | — | varies per instance (68 shapes) |
+| `Concatenate Strings` | `string`, `string` (74/108) | `concatenated string` |
+| `Compound Arithmetic` | `value`, `value`, `value` (78/107) | `result` |
+| `Generate User Event` | `user event`, `event data cluster`, `error in`, `priority (normal)` | `user event out`, `error out` |
+| `Feedback Node` | `initializer`, `next value` | `previous value` |
+| `Decrement` | `x` | `x-1` |
+| `Create User Event` | `user event datatype`, `error in` | `user event`, `error out` |
+| `To More Specific Class` | `reference`, `error in`, `target class` | `specific class reference`, `error out` |
+| `Square` | `x` | `x^2` |
+| `Quotient & Remainder` | `x`, `y` | `x-y*floor(x/y)`, `floor(x/y)` |
+| `Static VI Reference` | — | `value` |
+| `Event Filter Node` | `Discard?` (61/70) | — |
+| `Destroy User Event` | `user event`, `error in` | `error out` |
+| `Variant To Data` | `Variant`, `error in`, `type` | `data`, `error out` |
+| `Initialize Array` | `element`, `dimension size` (62/68) | `initialized array` |
+| `Negate` | `x` | `-x` |
+| `Greater?` | `x`, `y` | `x > y?` |
+| `Call Library Function Node` | `error in (no error)`, `input`, `output` (46/59) | `error out`, `input`, `output` (46/59) |
+| `Not` | `x` | `.not. x?` |
+| `Sine` | `x` | `sin(x)` |
+| `Current VI's Path` | — | `path` |
+| `Transpose 2D Array` | `2D array` | `transposed array` |
+| `Expression Node` | `input` | `output` |
+| `In Range and Coerce` | `upper limit`, `x`, `lower limit` | `coerced(x)`, `In Range?` |
+| `Reciprocal` | `x` | `1/x` |
+| `Absolute Value` | `x` | `abs(x)` |
+| `Unregister For Events` | `event registration refnum`, `error in` | `error out` |
+| `And` | `x`, `y` | `x .and. y?` |
+| `Replace Array Subset` | `array`, `index`, `new element/subarray` (26/39) | `output array` |
+| `Call Parent Class Method` | varies per instance (15 shapes) | `Actor out`, `error out` (26/37) |
+| `Array Index / Replace Elements` | varies per instance (7 shapes) | varies per instance (7 shapes) |
+| `Not A Number/Path/Refnum?` | `number/path/refnum` | `NaN/Path/Refnum?` |
+| `Equal To 0?` | `x` | `x = 0?` |
+| `Tick Count (ms)` | — | `millisecond timer value` |
+| `Open VI Reference` | `application reference (local)`, `vi path`, `options`, `error in (no error)`, `type specifier VI Refnum (for type only)`, `password ("")` | `vi reference`, `error out` |
+| `One Button Dialog` | `message`, `button name ("OK")` | `true` |
+| `Build Waveform` | varies per instance (9 shapes) | `output waveform` |
+| `Not Equal?` | `x`, `y` | `x != y?` |
+| `Register For Events` | `event registration refnum`, `error in (no error)`, `event source` (25/33) | `event registration refnum`, `error out` |
+| `TDMS Read` | `tdms file`, `group name in`, `channel name(s) in`, `error in (no error)`, `offset (0)`, `count (-1\3A all)`, `data type`, `return channels in file order? (F)` | `end of file?`, `tdms file out`, `group name out`, `channel name(s) out`, `data`, `error out` |
+| `Less?` | `x`, `y` | `x < y?` |
+| `Array Subset` | `array`, `index`, `length` (23/31) | `subarray` |
+| `String Length` | `string` | `length` |
+| `Number To Fractional String` | `number`, `width (-)`, `precision (6)`, `use system decimal point (T)` | `F-format string` |
+| `Conditional Disable Structure` | — | — |
+| `Wait Until Next ms Multiple` | `millisecond multiple` | `millisecond timer value` |
+| `Square Root` | `x` | `sqrt(x)` |
+| `Enqueue Element` | `queue`, `element`, `timeout in ms (-1)`, `error in (no error)` | `queue out`, `timed out?`, `error out` |
+| `Max & Min` | `x`, `y` | `max(x\2Cy)`, `min(x\2Cy)` |
+| `Obtain Queue` | `name (unnamed)`, `element data type`, `create if not found? (T)`, `error in (no error)`, `max queue size (-1\2C unlimited)` | `queue out`, `created new?`, `error out` |
+| `To Double Precision Float` | `number` | `double precision float` |
+| `Type Cast` | `x`, `type` | `*(type *) &x` |
+| `Delete From Array` | `array`, `length`, `index` (21/24) | `array w/ subset deleted`, `deleted portion` |
+| `Dequeue Element` | `queue`, `timeout in ms (-1)`, `error in (no error)` | `queue out`, `element`, `timed out?`, `error out` |
+| `Release Queue` | `queue`, `force destroy? (F)`, `error in (no error)` | `queue name`, `remaining elements`, `error out` |
+| `Reshape Array` | `array`, `dimension size` (17/24) | `output array` |
+| `Less Than 0?` | `x` | `x < 0?` |
+| `Greater Or Equal?` | `x`, `y` | `x >= y?` |
+| `Match Pattern` | `string`, `regular expression`, `offset (0)` | `before substring`, `match substring`, `after substring`, `offset past match` |
+| `Add Array Elements` | `numeric array` | `sum` |
+| `To Variant` | `anything` | `Variant` |
+| `Array Max & Min` | `array` | `max value`, `max index (indices)`, `min value`, `min index (indices)` |
+| `Exponential` | `x` | `exp(x)` |
+| `And Array Elements` | `Boolean array` | `logical AND` |
+| `Number To Decimal String` | `number`, `width (-)` | `decimal integer string` |
+| `Get Date/Time In Seconds` | — | `seconds since 1Jan1904` |
+| `First Call?` | — | `First Call?\3A T/F` |
+| `To Unsigned Long Integer` | `number` | `unsigned 32bit integer` |
+| `Insert Into Array` | `array`, `index`, `new element/subarray` (18/19) | `output array` |
+| `New VI Object` | `owner refnum`, `style`, `position/next to`, `error in (no error)`, `vi object class`, `auto wire? (F)`, `path`, `bounds` | `object refnum`, `error out` |
+| `Diagram Disable Structure` | — | — |
+| `Empty Array?` | `array` | `empty?` |
+| `Sine & Cosine` | `x` | `sin(x)`, `cos(x)` |
+| `Greater Than 0?` | `x` | `x > 0?` |
+| `Global Variable` | varies per instance (4 shapes) | varies per instance (10 shapes) |
+| `Formula Node` | varies per instance (11 shapes) | varies per instance (12 shapes) |
+| `TDMS Set Channel Information` | `tdms file`, `group name (Untitled)`, `channel name(s)`, `error in (no error)`, `data layout (0\3Anon-interleaved)`, `data type`, `samples per channel` | `tdms file out`, `error out` |
+| `TCP Close Connection` | `connection ID`, `abort (F)`, `error in (no error)` | `connection ID out`, `error out` |
+| `Delete` | `path (use dialog)`, `entire hierarchy (F)`, `confirm (F)`, `error in`, `prompt (Delete)` | `deleted path`, `cancelled`, `error out` |
+| `TDMS Open` | `file path`, `operation (0\3Aopen)`, `byte order (2\3Alittle-endian)`, `error in (no error)`, `file format version (2.0)`, `create index file? (T)`, `disable buffering (T)` | `tdms file out`, `error out` |
+| `TDMS Close` | `tdms file`, `error in (no error)` | `file path out`, `error out` |
+| `Wait For Front Panel Activity` | `do not wait! (False)`, `front panel (this VI's panel)`, `timeout ms (-1 never timeout)` | `millisecond timer value` |
+| `VISA Close` | `VISA resource name`, `error in (no error)` | `error out` |
+| `Strip Path` | `path` | `stripped path`, `name` |
+| `Get Waveform Components` | `waveform` | varies per instance (6 shapes) |
+| `Rotate 1D Array` | `n`, `array` | `array (last n elements first)` |
+| `Index & Bundle Cluster Array` | `component array`, `component array` (14/16) | `array of clusters` |
+| `Search 1D Array` | `1D array`, `element`, `start index (0)` | `index of element` |
+| `Fract/Exp String To Number` | `string`, `offset`, `default (0 dbl)`, `use system decimal point (T)` | `offset past number`, `number` |
+| `Sort 1D Array` | `array` | `sorted array` |
+| `TDMS Advanced Open` | `file path`, `operation (0\3Aopen)`, `error in (no error)`, `disable buffering? (T)`, `enable asynchronous? (T)` | `tdms file out`, `sector size`, `error out` |
+| `TDMS Write` | `tdms file`, `group name in (Untitled)`, `channel name(s) in (Untitled)`, `data`, `error in (no error)`, `data layout (0\3Adecimated)` | `tdms file out`, `group name out`, `channel name(s) out`, `error out` |
+| `TDMS Advanced Close` | `tdms file`, `truncate file? (F)`, `error in (no error)`, `timeout (10 s)` | `file path out`, `error out` |
+| `Start Asynchronous Call` | varies per instance (7 shapes) | `reference out`, `error out` |
+| `TCP Read` | `connection ID`, `bytes to read`, `timeout ms (25000)`, `error in (no error)`, `mode (standard)` | `connection ID out`, `data out`, `error out` |
+| `Byte Array To String` | `unsigned byte array` | `string` |
+| `Not Equal To 0?` | `x` | `x != 0?` |
+| `Close File` | `refnum`, `error in` | `path`, `error out` |
+| `Enqueue Element At Opposite End` | `queue`, `element`, `timeout in ms (-1)`, `error in (no error)` | `queue out`, `timed out?`, `error out` |
+| `Cosine` | `x` | `cos(x)` |
+| `TDMS Get Properties` | `tdms file`, `group name`, `channel name`, `error in (no error)`, `property name`, `data type` | `found`, `property value`, `tdms file out`, `group name out`, `channel name out`, `error out` (13/14) |
+| `TDMS Advanced Synchronous Write` | `tdms file`, `data`, `error in (no error)` | `tdms file out`, `error out` |
+| `TDMS Advanced Synchronous Read` | `tdms file`, `error in (no error)`, `count (-1)`, `data type` | `read process finished?`, `tdms file out`, `data`, `error out` |
+| `Open/Create/Replace File` | `file path (use dialog)`, `operation (0\3Aopen)`, `access (0\3Aread/write)`, `error in`, `prompt`, `disable buffering (F)` | `refnum out`, `cancelled`, `error out` |
+| `To Lower Case` | `string` | `all lower case string` |
+| `Two Button Dialog` | `message`, `T button name ("OK")`, `F button name ("Cancel")` | `T button?` |
+| `Empty String/Path?` | `string/path` | `empty?` |
+| `Round Toward -Infinity` | `x` | `floor(x)\3A largest int <= x` |
+| `Join Numbers` | `hi`, `lo` | `(hi.lo)` |
+| `Read from Text File` | `file (use dialog)`, `count`, `error in`, `prompt (Open existing file)` | `refnum out`, `text`, `cancelled`, `error out` |
+| `Reverse 1D Array` | `array` | `reversed array` |
+| `Greater Or Equal To 0?` | `x` | `x >= 0?` |
+| `Less Or Equal?` | `x`, `y` | `x <= y?` |
+| `Release Notifier` | `notifier`, `force destroy? (F)`, `error in (no error)` | `notifier name`, `last notification`, `error out` |
+| `Open VI Object Reference` | `owner refnum`, `name/order`, `error in (no error)`, `vi object class` | `object refnum`, `error out` |
+| `Python Node` | `session in`, `module path`, `function name`, `error in (no error)`, `return type`, `input parameter`, `input parameter` (9/11) | `session out`, `error out`, `return value`, `value`, `value` (9/11) |
+| `Close Python Session` | `session in`, `error in` | `error out` |
+| `String Subset` | `string`, `offset (0)`, `length (rest)` | `substring` |
+| `Obtain Notifier` | `name (unnamed)`, `notification data type`, `create if not found? (T)`, `error in (no error)` | `notifier out`, `created new?`, `error out` |
+| `Send Notification` | `notifier`, `notification`, `error in (no error)` | `notifier out`, `error out` |
+| `Wait on Notification` | `notifier`, `ignore previous (F)`, `timeout in ms (-1)`, `error in (no error)` | `notifier out`, `notification`, `timed out?`, `error out` |
+| `Merge Signals` | `input signal`, `input signal` (10/11) | `combined signal` |
+| `Add with Error Terminals` | `x`, `y`, `error in (no error)` | `x+y`, `error out` |
+| `TCP Write` | `connection ID`, `data in`, `timeout ms (25000)`, `error in (no error)` | `connection ID out`, `bytes written`, `error out` |
+| `To Long Integer` | `number` | `32bit integer` |
+| `Seconds To Date/Time` | `time stamp (now)`, `to UTC (F)` | `date time rec` |
+| `Write to Text File` | `file (use dialog)`, `text`, `error in`, `prompt (Choose or enter file path)` | `refnum out`, `cancelled`, `error out` |
+| `Boolean To (0\2C1)` | `Boolean` | `0\2C 1` |
+| `Get Queue Status` | `queue`, `return elements? (F)`, `error in (no error)` | `max queue size`, `queue name`, `elements`, `# elements in queue`, `queue out`, `# pending remove`, `# pending insert`, `error out` |
+| `VISA Write` | `VISA resource name`, `write buffer`, `error in (no error)` | `VISA resource name out`, `return count`, `error out` |
+| `To Time Stamp` | `number` | `Time Stamp` |
+| `Call By Reference` | varies per instance (7 shapes) | varies per instance (7 shapes) |
+| `To Unsigned Byte Integer` | `number` | `unsigned 8bit integer` |
+| `String To Byte Array` | `string` | `unsigned byte array` |
+| `Unflatten From JSON` | `JSON string`, `type and defaults`, `error in (no error)`, `path`, `enable LabVIEW extensions? (T)`, `default null elements? (F)`, `strict validation? (F)` | `value`, `error out` |
+| `Insert Menu Items` | `menu reference`, `item names`, `item tags`, `error in (no error)`, `menu tag`, `after item` | `menu reference out`, `item tags out`, `error out` |
+| `To Word Integer` | `number` | `16bit integer` |
+| `Complex To Re/Im` | `x + iy` | `x`, `y` |
+| `VISA Open` | `VISA resource name`, `duplicate session (F)`, `access mode`, `error in (no error)`, `timeout (0)` | `VISA resource name`, `error out` |
+| `VISA Read` | `VISA resource name`, `byte count`, `error in (no error)` | `VISA resource name out`, `read buffer`, `return count`, `error out` |
+| `Interpolate 1D Array` | `array of numbers or points`, `fractional index or x` | `y value` |
+| `Build Matrix` | varies per instance (4 shapes) | `appended array` |
+| `String To IP` | `name` | `net address` |
+| `Path To String` | `path` | `string` |
+| `Shared Variable` | `error in (no error)` (5/8) | varies per instance (6 shapes) |
+| `TDMS List Contents` | `tdms file`, `group name`, `error in (no error)` | `tdms file out`, `group names`, `group/channel names`, `error out` (6/8) |
+| `Re/Im To Complex` | `x`, `y` | `x + iy` |
+| `Preserve Run-Time Class` | `object in`, `error in`, `target object` | `object out`, `error out` |
+| `New VI` | `application refnum`, `template`, `vi type (standard vi)`, `error in (no error)`, `not connected`, `type specifier VI Refnum (for type only)`, `password` | `vi refnum`, `error out` |
+| `TCP Open Connection` | `address`, `remote port or service name`, `timeout ms (60000)`, `error in (no error)`, `local port` | `connection ID`, `error out` |
+| `Matrix Size` | `number of rows` | `number of columns`, `matrix` |
+| `Split Number` | `x` | `hi(x)`, `lo(x)` |
+| `Open Python Session` | `python version`, `python path`, `error in (no error)` | `session out`, `error out` |
+| `Decimal String To Number` | `string`, `offset`, `default (0L)` | `offset past number`, `number` |
+| `String To Path` | `string` | `path` |
+| `Quit LabVIEW` | `quit? (T)` | — |
+| `Constructor Node` | `error in (no error)` (4/6) | `new reference`, `error out` (4/6) |
+| `Get Variant Attribute` | `Variant`, `name`, `default value (empty Variant)`, `error in` | `duplicate Variant`, `names`, `values`, `error out` (3/6) |
+| `Flatten To XML` | `anything` | `xml string` |
+| `Get Date/Time String` | `date format (0)`, `seconds (now)`, `want seconds? (F)` | `date string`, `time string` |
+| `UDP Close` | `connection ID`, `error in (no error)` | `connection ID out`, `error out` |
+| `Array Split / Replace Subarrays` | varies per instance (4 shapes) | varies per instance (4 shapes) |
+| `Natural Logarithm` | `x` | `ln(x)` |
+| `Complex To Polar` | `r * e^(i*theta)` | `r`, `theta` |
+| `Call MATLAB Function` | varies per instance (4 shapes) | varies per instance (4 shapes) |
+| `Array To Cluster` | `array` | `cluster` |
+| `Swap Values` | `y`, `?(T)`, `x` | `y'`, `x'` |
+| `Cluster To Array` | `cluster` | `array` |
+| `Split 1D Array` | `array`, `index` | `first subarray`, `second subarray` |
+| `Scan From String` | `input string`, `initial scan location`, `error in`, `default value 1`, `format string` (4/5) | `remaining string`, `offset past scan`, `error out`, `output 1` (4/5) |
+| `Flatten To JSON` | `anything`, `error in (no error)`, `enable LabVIEW extensions? (T)` | `JSON string`, `error out` |
+| `DataSocket Open` | `URL`, `mode`, `ms timeout (10000)`, `error in (no error)` | `connection id`, `error out` |
+| `DataSocket Read` | `connection in`, `type (Variant)`, `ms timeout (10000)`, `error in (no error)`, `wait for updated value (T)` | `status`, `quality`, `timestamp`, `connection out`, `data`, `timed out`, `error out` |
+| `DataSocket Close` | `connection id`, `ms timeout (0)`, `error in (no error)` | `timed out`, `error out` |
+| `Delete Menu Items` | `menu reference`, `menu tag`, `items`, `error in (no error)` | `menu reference out`, `error out` |
+| `Get File Size` | `file`, `error in` | `refnum out`, `size (in bytes)`, `error out` |
+| `Read from Binary File` | `file (use dialog)`, `count`, `byte order (0\3Abig-endian\2C network order)`, `error in`, `prompt (Open existing file)`, `data type` | `refnum out`, `data`, `cancelled`, `error out` |
+| `TDMS Configure Asynchronous Writes` | `tdms file`, `max asynchronous writes (4)`, `error in (no error)`, `pre-allocate? (F)`, `max write size`, `data type`, `timeout (5 s)` | `tdms file out`, `error out` |
+| `TDMS Advanced Asynchronous Write` | `tdms file`, `data`, `error in (no error)` | `tdms file out`, `error out` |
+| `Unflatten From XML` | `xml string`, `type`, `error in (no error)` | `value`, `error out` |
+| `Power Of X` | `y`, `x` | `x^y` |
+| `Power Of 2` | `x` | `2^x` |
+| `IP To String` | `net address`, `dot notation? (F)` | `name` |
+| `Array To Spreadsheet String` | `format string`, `array`, `delimiter (Tab)` | `spreadsheet string` |
+| `Scan String For Tokens` | `input string`, `offset`, `operators (none)`, `delimiters (\\s\2C\\t\2C\\r\2C\\n)`, `allow empty tokens? (F)`, `use cached delim/oper data? (F)` | `string out`, `offset past token`, `token string`, `token index` |
+| `Flush Queue` | `queue`, `error in (no error)` | `queue out`, `remaining elements`, `error out` |
+| `Set Variant Attribute` | `Variant`, `name`, `value`, `error in` | `Variant out`, `replaced`, `error out` |
+| `TCP Wait On Listener` | `listener ID in`, `resolve remote address (T)`, `timeout ms (wait forever\3A -1)`, `error in (no error)` | `connection ID`, `listener ID out`, `remote address`, `remote port`, `error out` |
+| `TCP Create Listener` | `service name`, `port`, `timeout ms (25000)`, `error in (no error)`, `net address` | `listener ID`, `port`, `error out` |
+| `Less Or Equal To 0?` | `x` | `x <= 0?` |
+| `Write Single Element to Stream` | `endpoint in`, `data in`, `timeout ms (-1)`, `error in (no error)` | `endpoint out`, `timed out?`, `error out` |
+| `Destroy Stream Endpoint` | `endpoint in`, `error in (no error)` | `error out` |
+| `Flush Stream` | `endpoint in`, `wait condition`, `timeout in ms (-1)`, `error in (no error)` | `endpoint out`, `timed out?`, `error out` |
+| `UDP Open` | `port`, `service name`, `timeout ms (25000)`, `error in (no error)`, `net address` | `connection ID`, `port`, `error out` |
+| `UDP Read` | `connection ID`, `max size (548)`, `timeout ms (25000)`, `error in (no error)` | `address`, `port`, `connection ID out`, `data out`, `error out` |
+| `UDP Write` | `connection ID`, `data in`, `timeout ms (25000)`, `error in (no error)`, `address`, `port or service name` | `connection ID out`, `error out` |
+| `Round Toward +Infinity` | `x` | `ceil(x)\3A smallest int >= x` |
+| `TDMS Reserve File Size` | `tdms file`, `reserve size`, `error in (no error)`, `append? (T)`, `data type` | `tdms file out`, `error out` |
+| `TDMS Configure Asynchronous Reads` | `tdms file`, `number of buffers (4)`, `buffer size`, `error in (no error)`, `data type`, `timeout (5 s)` | `tdms file out`, `error out` |
+| `TDMS Start Asynchronous Reads` | `tdms file`, `total count (-1)`, `error in (no error)`, `data type` | `tdms file out`, `error out` |
+| `TDMS Advanced Asynchronous Read` | `tdms file`, `error in (no error)`, `data type` | `read process finished?`, `tdms file out`, `data`, `error out` |
+| `TDMS In Memory Open` | `byte array or file path`, `error in (no error)` | `tdms file out`, `error out` |
+| `TDMS In Memory Close` | `tdms file`, `error in (no error)`, `file path`, `overwrite (F)` | `error out` |
+| `Polar To Complex` | `r`, `theta` | `r * e^(i*theta)` |
+| `Open MATLAB Session` | `release name`, `error in (no error)` | `session out`, `error out` |
+| `Set Waveform Attribute` | `waveform`, `name`, `value`, `error in` | `waveform out`, `replaced`, `error out` |
+| `Variant Attribute Get / Replace` | `variant`, `attribute name` (2/4) | `attribute`, `found?` (2/4) |
+| `Variant To / From Element` | `Variant`, `type` (2/4) | `data`, `error out` (2/4) |
+| `Waveform Unbundle / Bundle Elements` | `waveform` (2/4) | `output waveform` (2/4) |
+| `VI Library` | — | `path` |
+| `Wait On Asynchronous Call` | `reference`, `error in (no error)` | `reference out`, `error out`, `X + Y` (2/3) |
+| `Temporary Directory` | — | `path` |
+| `Create Folder` | `path (use dialog)`, `error in`, `prompt (Create Folder)` | `created path`, `cancelled`, `error out` |
+| `Look In Map` | `map`, `key`, `default value` | `key not found?`, `value` |
+| `Insert Into Set` | `set in`, `element` | `set out`, `already included?` |
+| `Register Event Callback` | `event callback refnum`, `error in (no error)`, `event source`, `VI Ref`, `Meter` (2/3) | `event callback refnum`, `error out` |
+| `Automation Open` | `Automation Refnum`, `machine name`, `open new instance`, `error in (no error)` | `Automation Refnum`, `error out` |
+| `Spreadsheet String To Array` | `format string`, `spreadsheet string`, `array type (2D Dbl)`, `delimiter (Tab)` | `array` |
+| `Search/Split String` | `string`, `search string/char (-)`, `offset (0)` | `substring before match`, `match + rest of string`, `offset of match` |
+| `Inverse Tangent (2 Input)` | `y`, `x` | `atan2(y\2Cx)` |
+| `Bluetooth Read` | `connection ID`, `bytes to read`, `timeout ms (25000)`, `error in (no error)`, `mode (standard)` | `connection ID out`, `data out`, `error out` |
+| `Bluetooth Write` | `connection ID`, `data in`, `timeout ms (25000)`, `error in (no error)` | `connection ID out`, `bytes written`, `error out` |
+| `Write to Binary File` | `file (use dialog)`, `data`, `byte order (0\3Abig-endian\2C network order)`, `error in`, `prompt (Choose or enter file path)`, `prepend array or string size? (T)` | `refnum out`, `cancelled`, `error out` |
+| `IrDA Read` | `connection ID`, `bytes to read`, `timeout ms (25000)`, `error in (no error)`, `mode (standard)` | `connection ID out`, `data out`, `error out` |
+| `IrDA Write` | `connection ID`, `data in`, `timeout ms (25000)`, `error in (no error)` | `connection ID out`, `bytes written`, `error out` |
+| `New TLS Configuration` | `load OS trusted CAs?`, `error in (no error)` | `TLS configuration out`, `error out` |
+| `Make TLS Configuration Immutable` | `TLS configuration`, `error in (no error)` | `immutable TLS configuration`, `error out` |
+| `Close TLS Configuration` | `TLS configuration`, `error in (no error)` | `error out` |
+| `Sign` | `number` | `-1\2C 0\2C 1` |
+| `TDMS Set Properties` | `tdms file`, `group name`, `channel name`, `error in (no error)`, `property names`, `property values` | `tdms file out`, `group name out`, `channel name out`, `error out` |
+| `TDMS Set Next Read Position` | `tdms file`, `offset (0)`, `from (0\3A start)`, `error in (no error)`, `group name in`, `channel name in` | `tdms file out`, `error out` |
+| `Build Cluster Array` | `component element`, `component element` (2/3) | `array of clusters` |
+| `VISA Enable Event` | `VISA resource name`, `event type`, `mechanism (1\3A  VI_QUEUE)`, `error in (no error)` | `VISA resource name out`, `error out` |
+| `Threshold 1D Array` | `array of numbers or points`, `threshold y`, `start index (0)` | `fractional index or x` |
+| `Interleave 1D Arrays` | `array`, `array` | `interleaved array` |
+| `Get Drag Drop Data` | `data name`, `type`, `error in (no error)` | `data`, `error out` |
+| `To More Generic Class` | `reference`, `target class` | `generic class reference` |
+| `Logarithm Base 10` | `x` | `log(x)` |
+| `Insert Into Map` | `map in`, `key`, `value` | `map out`, `key already included?`, `value unchanged?` |
+| `Remove From Map` | `map in`, `key` | `map out`, `key not found?`, `value` |
+| `To Unsigned Word Integer` | `number` | `unsigned 16bit integer` |
+| `Or Array Elements` | `Boolean array` | `logical OR` |
+| `Not And` | `x`, `y` | `.not. (x .and. y)?` |
+| `Create Network Stream Reader Endpoint` | `reader name`, `writer url`, `data type`, `error in (no error)`, `reader buffer size`, `timeout in ms (-1)`, `element allocation mode` | `reader endpoint`, `error out` |
+| `Create Network Stream Writer Endpoint` | `writer name`, `reader url`, `data type`, `error in (no error)`, `writer buffer size`, `timeout in ms (-1)`, `element allocation mode` | `writer endpoint`, `error out` |
+| `Read Single Element from Stream` | `endpoint in`, `timeout ms (-1)`, `error in (no error)` | `endpoint out`, `data out`, `timed out?`, `error out` |
+| `Bluetooth Close Connection` | `connection ID`, `abort (F)`, `error in (no error)` | `connection ID out`, `error out` |
+| `IrDA Close Connection` | `connection ID`, `abort (F)`, `error in (no error)` | `connection ID out`, `error out` |
+| `Start TLS` | `TCP connection`, `immutable TLS configuration`, `server hostname`, `error in (no error)`, `timeout ms`, `server certificate validation` | `TLS connection`, `server certificate chain`, `error out` |
+| `Search and Replace String` | `input string`, `search string`, `replace string`, `offset`, `error in`, `replace all?`, `case sensitive?` | `result string`, `number of replacements`, `offset past replacement`, `error out` |
+| `Round To Nearest` | `number` | `nearest integer value` |
+| `Current VI's Menubar` | — | `menu reference` |
+| `Open/Create/Replace Datalog` | `datalog path (use dialog)`, `operation (0\3Aopen)`, `access (0\3Aread/write)`, `error in`, `prompt`, `record type` | `refnum out`, `cancelled`, `error out` |
+| `TDMS Get Asynchronous Read Status` | `tdms file`, `error in (no error)` | `tdms file out`, `number of buffers available`, `all buffers full?`, `error out` |
+| `TDMS Set Next Write Position` | `tdms file`, `offset (0)`, `from (0\3Astart)`, `error in (no error)`, `group name in`, `channel name in` | `tdms file out`, `error out` |
+| `TDMS In Memory Read Bytes` | `tdms file`, `error in (no error)`, `offset (0)`, `byte count (-1\3A all)` | `tdms file out`, `data`, `error out` |
+| `Sinc` | `x` | `sin(x)/x` |
+| `VISA Disable Event` | `VISA resource name`, `event type (all enabled)`, `mechanism (1\3A  VI_QUEUE)`, `error in (no error)` | `VISA resource name out`, `error out` |
+| `VISA Wait on Event` | `VISA resource name`, `event type (all enabled)`, `event  resource name (for class)`, `error in (no error)`, `timeout (0)` | `VISA resource name out`, `event type`, `event  resource name`, `error out` |
+| `File Dialog` | `start path`, `default name`, `error in`, `prompt`, `button label`, `pattern (all files)`, `pattern label` | `selected path`, `exists`, `cancelled`, `error out` |
+| `Decimate 1D Array` | `array` | `decimated array`, `decimated array` (1/2) |
+| `Multiply Array Elements` | `numeric array` | `product` |
+| `Script Node` | `error in` (1/2) | `2-D Array of Real`, `error out` (1/2) |
+<!-- END generated: node terminals -->
+
 ### Terminal ORDER inside `inputs` is significant — `Bundle By Name` proves it
 
 **Corrected 2026-08-09. This section previously claimed "`Bundle By Name` does not work" and
