@@ -54,10 +54,15 @@ CodeCoverage/
 # Project-specific
 # ---------------------------------------------------------------------------
 
-# Note: the binary the MCP clients launch lives in bin/Release/net8.0/ and is
-# therefore ignored like any other build output - a fresh clone must run
-# build.ps1 once before the registered server can start. That is deliberate:
-# there is exactly ONE compiled artifact, so nothing can drift out of sync.
+# Note: the binary the MCP clients launch lives in bin/Debug/net8.0/ - Debug is
+# the ONLY configuration this repo builds (see build.ps1) - and is ignored like
+# any other build output, so a fresh clone must run build.ps1 once before the
+# registered server can start. That is deliberate: there is exactly ONE compiled
+# artifact, so nothing can drift out of sync.
+#
+# This note said bin/Release/net8.0/ until 2026-08-09. It was wrong, and it was
+# the only place in the repo still pointing at Release - which is exactly how a
+# second, stale artifact gets built by someone following the comment.
 
 # Scratch output from AIXML round-trips
 *.aixml
