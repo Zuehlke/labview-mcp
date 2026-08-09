@@ -20,7 +20,17 @@ scanning, and the per-example data lives inside the example VIs themselves. That
 
 Counts on this station: 2510 `.vi` files across both roots and 14 add-on trees, yielding **951
 listed examples** — 808 from the in-VI block (§2) and a further 143 from the external indexes (§3).
-By type: 922 `.vi` and 29 `.lvproj`. A full scan takes about 400 ms.
+By type: 922 `.vi` and 29 `.lvproj`. Of the 951, **609 are listed by default** — the rest need
+LabVIEW FPGA, LabVIEW Real-Time or a licensed toolkit; see `ExampleScope`.
+
+**A cold scan takes about 55 seconds, not 400 ms.** Measured three times in a row from a fresh
+process: 55 s, then 0.8 s, then 0.8 s. Nothing is cached between processes — the index lives for
+the lifetime of the server that built it — so the difference is first-touch file I/O: 2510 files
+are opened and read, and on a Windows machine with on-access scanning the first pass through them
+is slow. An earlier revision of this document and of `CLAUDE.md` claimed "about 400 ms" flatly,
+which is the warm figure and sets the wrong expectation: the first `lvai_example_index` call after
+a reboot looks like a hang for the better part of a minute. Budget for the cold case, and note
+that `refresh=true` pays it again.
 
 **An example can be a whole project.** 37 of the external registrations point at a `.lvproj` rather
 than a VI — `Active Noise Control (cRIO).lvproj` is an FPGA/RT application, not a diagram. Those

@@ -23,10 +23,17 @@ and will never appear in a palette — they are properties and methods, and the 
 index for them.
 
 **Check whether NI already built it, before designing anything.** `lvai_example_index` lists the
-951 shipping examples of this installation with NI's own description and keywords, scanned from
-disk in about 400 ms and needing no running LabVIEW. It answers a different question from the
-palette index — that one says *which VI may I call*, this one says *is this whole diagram already
-written*. Feed a hit's path to `lvai_convert_vi_to_aixml` and read how NI wired it.
+shipping examples of this installation with NI's own description and keywords, and needs no
+running LabVIEW. It answers a different question from the palette index — that one says *which VI
+may I call*, this one says *is this whole diagram already written*. Feed a hit's path to
+`lvai_convert_vi_to_aixml` and read how NI wired it.
+
+Two numbers worth knowing before you call it. **609 of the 951 examples are listed by default**:
+the rest need LabVIEW FPGA, LabVIEW Real-Time or a licensed toolkit, and a hit you cannot open is
+worse than no hit. The count held back is always reported; `includeSpecialised` shows them.
+And **the first call costs about 55 seconds**, not the 400 ms this file used to claim — that was
+the warm figure. The index is a scan of 2510 files, held only for the lifetime of the server
+process, so the first call after a restart re-reads them all and looks like a hang.
 
 Do this first for anything pattern-shaped: state machines, producer/consumer, queued message
 handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds
