@@ -1,0 +1,314 @@
+node	occurrences	viFiles	commonestInputs	commonestOutputs
+Local Variable	280	89	Status	Stop
+Random Number (0-1)	152	89		number\3A 0 to 1
+VI Server Reference	113	47		This VI
+Compound Arithmetic	107	66	value | value | value	result
+Generate User Event	86	77	user event | event data cluster | error in | priority (normal)	user event out | error out
+Create User Event	79	27	user event datatype | error in	user event | error out
+Square	75	25	x	x^2
+Destroy User Event	69	21	user event | error in	error out
+Initialize Array	68	43	element | dimension size	initialized array
+Negate	62	34	x	-x
+Call Library Function Node	59	57	error in (no error) | input | output	error out | input | output
+Not	57	46	x	.not. x?
+Sine	57	38	x	sin(x)
+Current VI's Path	52	44		path
+Transpose 2D Array	51	31	2D array	transposed array
+Expression Node	49	29	input	output
+Absolute Value	45	24	x	abs(x)
+Unregister For Events	40	40	event registration refnum | error in	error out
+And	39	32	x | y	x .and. y?
+Replace Array Subset	39	18	array | index | new element/subarray	output array
+Call Parent Class Method	39	39	Panel Actor in | error in	Actor out | error out
+Array Index / Replace Elements	38	18	element	element
+Not A Number/Path/Refnum?	38	38	number/path/refnum	NaN/Path/Refnum?
+Equal To 0?	37	32	x	x = 0?
+Tick Count (ms)	37	15		millisecond timer value
+One Button Dialog	34	29	message | button name ("OK")	true
+Not Equal?	34	30	x | y	x != y?
+TDMS Read	33	9	tdms file | group name in | channel name(s) in | error in (no error) | offset (0) | count (-1\3A all) | data type | return channels in file order? (F)	end of file? | tdms file out | group name out | channel name(s) out | data | error out
+Array Subset	31	17	array | index | length	subarray
+String Length	31	23	string	length
+Number To Fractional String	31	17	number | width (-) | precision (6) | use system decimal point (T)	F-format string
+Conditional Disable Structure	30	29		
+Wait Until Next ms Multiple	30	27	millisecond multiple	millisecond timer value
+Square Root	28	20	x	sqrt(x)
+Enqueue Element	27	20	queue | element | timeout in ms (-1) | error in (no error)	queue out | timed out? | error out
+Max & Min	27	10	x | y	max(x\2Cy) | min(x\2Cy)
+Obtain Queue	25	22	name (unnamed) | element data type | create if not found? (T) | error in (no error) | max queue size (-1\2C unlimited)	queue out | created new? | error out
+To Double Precision Float	25	16	number	double precision float
+Type Cast	25	17	x | type	*(type *) &x
+Delete From Array	24	18	array | length | index	array w/ subset deleted | deleted portion
+Dequeue Element	24	20	queue | timeout in ms (-1) | error in (no error)	queue out | element | timed out? | error out
+Release Queue	24	20	queue | force destroy? (F) | error in (no error)	queue name | remaining elements | error out
+Reshape Array	24	12	array | dimension size	output array
+Less Than 0?	24	20	x	x < 0?
+Greater Or Equal?	23	22	x | y	x >= y?
+Add Array Elements	23	16	numeric array	sum
+To Variant	23	13	anything	Variant
+Array Max & Min	22	20	array	max value | max index (indices) | min value | min index (indices)
+Exponential	22	16	x	exp(x)
+And Array Elements	21	7	Boolean array	logical AND
+Get Date/Time In Seconds	20	20		seconds since 1Jan1904
+First Call?	20	20		First Call?\3A T/F
+To Unsigned Long Integer	20	11	number	unsigned 32bit integer
+Insert Into Array	19	6	array | index | new element/subarray	output array
+Empty Array?	19	14	array	empty?
+Sine & Cosine	19	18	x	sin(x) | cos(x)
+Greater Than 0?	18	10	x	x > 0?
+Global Variable	18	6	Loop Stop	latest value
+Formula Node	18	9	p0x | p0y | p0z | p1x | p1y | p1z | p2x | p2y | p2z	cx | cy | cz | a
+TDMS Set Channel Information	18	7	tdms file | group name (Untitled) | channel name(s) | error in (no error) | data layout (0\3Anon-interleaved) | data type | samples per channel	tdms file out | error out
+TCP Close Connection	17	12	connection ID | abort (F) | error in (no error)	connection ID out | error out
+Delete	17	17	path (use dialog) | entire hierarchy (F) | confirm (F) | error in | prompt (Delete)	deleted path | cancelled | error out
+TDMS Open	17	14	file path | operation (0\3Aopen) | byte order (2\3Alittle-endian) | error in (no error) | file format version (2.0) | create index file? (T) | disable buffering (T)	tdms file out | error out
+TDMS Close	17	14	tdms file | error in (no error)	file path out | error out
+Wait For Front Panel Activity	17	17	do not wait! (False) | front panel (this VI's panel) | timeout ms (-1 never timeout)	millisecond timer value
+VISA Close	17	14	VISA resource name | error in (no error)	error out
+Strip Path	16	16	path	stripped path | name
+Rotate 1D Array	16	10	n | array	array (last n elements first)
+Index & Bundle Cluster Array	16	8	component array | component array	array of clusters
+Search 1D Array	15	13	1D array | element | start index (0)	index of element
+Fract/Exp String To Number	15	11	string | offset | default (0 dbl) | use system decimal point (T)	offset past number | number
+TDMS Advanced Open	15	15	file path | operation (0\3Aopen) | error in (no error) | disable buffering? (T) | enable asynchronous? (T)	tdms file out | sector size | error out
+TDMS Write	15	12	tdms file | group name in (Untitled) | channel name(s) in (Untitled) | data | error in (no error) | data layout (0\3Adecimated)	tdms file out | group name out | channel name(s) out | error out
+TDMS Advanced Close	15	15	tdms file | truncate file? (F) | error in (no error) | timeout (10 s)	file path out | error out
+Start Asynchronous Call	14	12	reference | error in (no error) | Stop Event | Panel | Label | Show Event	reference out | error out
+TCP Read	14	9	connection ID | bytes to read | timeout ms (25000) | error in (no error) | mode (standard)	connection ID out | data out | error out
+Byte Array To String	14	8	unsigned byte array	string
+Not Equal To 0?	14	13	x	x != 0?
+Enqueue Element At Opposite End	14	5	queue | element | timeout in ms (-1) | error in (no error)	queue out | timed out? | error out
+Cosine	14	11	x	cos(x)
+TDMS Get Properties	14	8	tdms file | group name | channel name | error in (no error) | property name | data type	found | property value | tdms file out | group name out | channel name out | error out
+TDMS Advanced Synchronous Write	14	3	tdms file | data | error in (no error)	tdms file out | error out
+TDMS Advanced Synchronous Read	14	3	tdms file | error in (no error) | count (-1) | data type	read process finished? | tdms file out | data | error out
+Open/Create/Replace File	13	11	file path (use dialog) | operation (0\3Aopen) | access (0\3Aread/write) | error in | prompt | disable buffering (F)	refnum out | cancelled | error out
+To Lower Case	13	9	string	all lower case string
+Two Button Dialog	13	13	message | T button name ("OK") | F button name ("Cancel")	T button?
+Empty String/Path?	13	8	string/path	empty?
+Round Toward -Infinity	12	8	x	floor(x)\3A largest int <= x
+Join Numbers	12	4	hi | lo	(hi.lo)
+Reverse 1D Array	12	11	array	reversed array
+Greater Or Equal To 0?	12	11	x	x >= 0?
+Less Or Equal?	12	10	x | y	x <= y?
+Release Notifier	12	10	notifier | force destroy? (F) | error in (no error)	notifier name | last notification | error out
+Python Node	11	9	session in | module path | function name | error in (no error) | return type | input parameter | input parameter	session out | error out | return value | value | value
+Close Python Session	11	9	session in | error in	error out
+String Subset	11	9	string | offset (0) | length (rest)	substring
+Obtain Notifier	11	9	name (unnamed) | notification data type | create if not found? (T) | error in (no error)	notifier out | created new? | error out
+Send Notification	11	9	notifier | notification | error in (no error)	notifier out | error out
+Wait on Notification	11	8	notifier | ignore previous (F) | timeout in ms (-1) | error in (no error)	notifier out | notification | timed out? | error out
+Merge Signals	11	8	input signal | input signal	combined signal
+Add with Error Terminals	11	9	x | y | error in (no error)	x+y | error out
+TCP Write	10	9	connection ID | data in | timeout ms (25000) | error in (no error)	connection ID out | bytes written | error out
+To Long Integer	10	10	number	32bit integer
+Seconds To Date/Time	10	6	time stamp (now) | to UTC (F)	date time rec
+Boolean To (0\2C1)	10	9	Boolean	0\2C 1
+Get Queue Status	10	8	queue | return elements? (F) | error in (no error)	max queue size | queue name | elements | # elements in queue | queue out | # pending remove | # pending insert | error out
+VISA Write	10	8	VISA resource name | write buffer | error in (no error)	VISA resource name out | return count | error out
+To Time Stamp	10	8	number	Time Stamp
+Call By Reference	9	8	reference | error in (no error) | Address | Remote Port	reference out | error out | Results
+To Unsigned Byte Integer	9	7	number	unsigned 8bit integer
+String To Byte Array	9	3	string	unsigned byte array
+Unflatten From JSON	9	4	JSON string | type and defaults | error in (no error) | path | enable LabVIEW extensions? (T) | default null elements? (F) | strict validation? (F)	value | error out
+Insert Menu Items	9	5	menu reference | item names | item tags | error in (no error) | menu tag | after item	menu reference out | item tags out | error out
+To Word Integer	9	4	number	16bit integer
+Complex To Re/Im	9	7	x + iy	x | y
+VISA Open	9	8	VISA resource name | duplicate session (F) | access mode | error in (no error) | timeout (0)	VISA resource name | error out
+VISA Read	9	8	VISA resource name | byte count | error in (no error)	VISA resource name out | read buffer | return count | error out
+Interpolate 1D Array	9	5	array of numbers or points | fractional index or x	y value
+Build Matrix	9	4	element | element	appended array
+String To IP	8	8	name	net address
+Shared Variable	8	5	error in (no error)	error out
+TDMS List Contents	8	6	tdms file | group name | error in (no error)	tdms file out | group names | group/channel names | error out
+Re/Im To Complex	8	6	x | y	x + iy
+Preserve Run-Time Class	8	2	object in | error in | target object	object out | error out
+New VI	7	7	application refnum | template | vi type (standard vi) | error in (no error) | not connected | type specifier VI Refnum (for type only) | password	vi refnum | error out
+TCP Open Connection	7	7	address | remote port or service name | timeout ms (60000) | error in (no error) | local port	connection ID | error out
+Matrix Size	7	6	number of rows	number of columns | matrix
+Split Number	7	2	x	hi(x) | lo(x)
+Open Python Session	7	7	python version | python path | error in (no error)	session out | error out
+Decimal String To Number	7	6	string | offset | default (0L)	offset past number | number
+Quit LabVIEW	6	6	quit? (T)	
+Constructor Node	6	5	error in (no error)	new reference | error out
+Get Variant Attribute	6	3	Variant | name | default value (empty Variant) | error in	duplicate Variant | names | values | error out
+Get Date/Time String	6	6	date format (0) | seconds (now) | want seconds? (F)	date string | time string
+UDP Close	6	6	connection ID | error in (no error)	connection ID out | error out
+Array Split / Replace Subarrays	6	2	array | split length	element | element
+Natural Logarithm	6	6	x	ln(x)
+Complex To Polar	6	5	r * e^(i*theta)	r | theta
+Call MATLAB Function	6	4	session in | source file path | error in (no error) | return type | input parameter | input parameter	session out | error out | return value | value | value
+Swap Values	5	5	y | ?(T) | x	y' | x'
+Cluster To Array	5	4	cluster	array
+Split 1D Array	5	5	array | index	first subarray | second subarray
+Scan From String	5	4	input string | initial scan location | error in | default value 1 | format string	remaining string | offset past scan | error out | output 1
+Flatten To JSON	5	5	anything | error in (no error) | enable LabVIEW extensions? (T)	JSON string | error out
+DataSocket Open	5	4	URL | mode | ms timeout (10000) | error in (no error)	connection id | error out
+DataSocket Read	5	4	connection in | type (Variant) | ms timeout (10000) | error in (no error) | wait for updated value (T)	status | quality | timestamp | connection out | data | timed out | error out
+DataSocket Close	5	4	connection id | ms timeout (0) | error in (no error)	timed out | error out
+Delete Menu Items	5	3	menu reference | menu tag | items | error in (no error)	menu reference out | error out
+Get File Size	5	2	file | error in	refnum out | size (in bytes) | error out
+Read from Binary File	5	2	file (use dialog) | count | byte order (0\3Abig-endian\2C network order) | error in | prompt (Open existing file) | data type	refnum out | data | cancelled | error out
+TDMS Configure Asynchronous Writes	5	5	tdms file | max asynchronous writes (4) | error in (no error) | pre-allocate? (F) | max write size | data type | timeout (5 s)	tdms file out | error out
+TDMS Advanced Asynchronous Write	5	5	tdms file | data | error in (no error)	tdms file out | error out
+Unflatten From XML	5	2	xml string | type | error in (no error)	value | error out
+Power Of X	5	4	y | x	x^y
+Power Of 2	5	5	x	2^x
+IP To String	4	4	net address | dot notation? (F)	name
+Scan String For Tokens	4	3	input string | offset | operators (none) | delimiters (\\s\2C\\t\2C\\r\2C\\n) | allow empty tokens? (F) | use cached delim/oper data? (F)	string out | offset past token | token string | token index
+Flush Queue	4	4	queue | error in (no error)	queue out | remaining elements | error out
+Set Variant Attribute	4	4	Variant | name | value | error in	Variant out | replaced | error out
+TCP Wait On Listener	4	4	listener ID in | resolve remote address (T) | timeout ms (wait forever\3A -1) | error in (no error)	connection ID | listener ID out | remote address | remote port | error out
+TCP Create Listener	4	4	service name | port | timeout ms (25000) | error in (no error) | net address	listener ID | port | error out
+Less Or Equal To 0?	4	4	x	x <= 0?
+Write Single Element to Stream	4	2	endpoint in | data in | timeout ms (-1) | error in (no error)	endpoint out | timed out? | error out
+Destroy Stream Endpoint	4	2	endpoint in | error in (no error)	error out
+Flush Stream	4	2	endpoint in | wait condition | timeout in ms (-1) | error in (no error)	endpoint out | timed out? | error out
+UDP Open	4	4	port | service name | timeout ms (25000) | error in (no error) | net address	connection ID | port | error out
+UDP Read	4	4	connection ID | max size (548) | timeout ms (25000) | error in (no error)	address | port | connection ID out | data out | error out
+UDP Write	4	4	connection ID | data in | timeout ms (25000) | error in (no error) | address | port or service name	connection ID out | error out
+Round Toward +Infinity	4	4	x	ceil(x)\3A smallest int >= x
+TDMS Reserve File Size	4	4	tdms file | reserve size | error in (no error) | append? (T) | data type	tdms file out | error out
+TDMS Configure Asynchronous Reads	4	4	tdms file | number of buffers (4) | buffer size | error in (no error) | data type | timeout (5 s)	tdms file out | error out
+TDMS Start Asynchronous Reads	4	4	tdms file | total count (-1) | error in (no error) | data type	tdms file out | error out
+TDMS Advanced Asynchronous Read	4	4	tdms file | error in (no error) | data type	read process finished? | tdms file out | data | error out
+TDMS In Memory Open	4	3	byte array or file path | error in (no error)	tdms file out | error out
+TDMS In Memory Close	4	3	tdms file | error in (no error) | file path | overwrite (F)	error out
+Polar To Complex	4	3	r | theta	r * e^(i*theta)
+Open MATLAB Session	4	4	release name | error in (no error)	session out | error out
+Set Waveform Attribute	4	3	waveform | name | value | error in	waveform out | replaced | error out
+Variant Attribute Get / Replace	4	2	variant | attribute name	attribute | found?
+Variant To / From Element	4	2	Variant | type	data | error out
+Waveform Unbundle / Bundle Elements	4	2	waveform	output waveform
+VI Library	3	2		path
+Wait On Asynchronous Call	3	3	reference | error in (no error)	reference out | error out | X + Y
+Temporary Directory	3	3		path
+Create Folder	3	3	path (use dialog) | error in | prompt (Create Folder)	created path | cancelled | error out
+Look In Map	3	3	map | key | default value	key not found? | value
+Insert Into Set	3	2	set in | element	set out | already included?
+Register Event Callback	3	3	event callback refnum | error in (no error) | event source | VI Ref | Meter	event callback refnum | error out
+Automation Open	3	3	Automation Refnum | machine name | open new instance | error in (no error)	Automation Refnum | error out
+Spreadsheet String To Array	3	3	format string | spreadsheet string | array type (2D Dbl) | delimiter (Tab)	array
+Search/Split String	3	3	string | search string/char (-) | offset (0)	substring before match | match + rest of string | offset of match
+Inverse Tangent (2 Input)	3	3	y | x	atan2(y\2Cx)
+Logarithm Base X	3	1	y | x	logx(y)
+Bluetooth Read	3	2	connection ID | bytes to read | timeout ms (25000) | error in (no error) | mode (standard)	connection ID out | data out | error out
+Bluetooth Write	3	2	connection ID | data in | timeout ms (25000) | error in (no error)	connection ID out | bytes written | error out
+Write to Binary File	3	3	file (use dialog) | data | byte order (0\3Abig-endian\2C network order) | error in | prompt (Choose or enter file path) | prepend array or string size? (T)	refnum out | cancelled | error out
+IrDA Read	3	2	connection ID | bytes to read | timeout ms (25000) | error in (no error) | mode (standard)	connection ID out | data out | error out
+IrDA Write	3	2	connection ID | data in | timeout ms (25000) | error in (no error)	connection ID out | bytes written | error out
+New TLS Configuration	3	2	load OS trusted CAs? | error in (no error)	TLS configuration out | error out
+Make TLS Configuration Immutable	3	2	TLS configuration | error in (no error)	immutable TLS configuration | error out
+Close TLS Configuration	3	2	TLS configuration | error in (no error)	error out
+Sign	3	3	number	-1\2C 0\2C 1
+Replace Substring	3	1	string | substring | offset | length	result string | replaced substring
+TDMS Set Properties	3	3	tdms file | group name | channel name | error in (no error) | property names | property values	tdms file out | group name out | channel name out | error out
+TDMS Set Next Read Position	3	3	tdms file | offset (0) | from (0\3A start) | error in (no error) | group name in | channel name in	tdms file out | error out
+TDMS Delete Data	3	1	file path | group name in | channel name(s) in | error in (no error) | from (0\3A start) | count (-1\3A all) | keep empty group/channel? (T)	file path out | error out
+Format Into File	3	1	input file | error in | input 1 | input 2 | input 3 | input 4 | input 5 | format string	output file refnum | error out
+Scan From File	3	1	input file | error in | default value 1 | default value 2 | default value 3 | default value 4 | default value 5 | format string	output file refnum | error out | output 1 | output 2 | output 3 | output 4 | output 5
+Build Cluster Array	3	2	component element | component element	array of clusters
+VISA Enable Event	3	3	VISA resource name | event type | mechanism (1\3A  VI_QUEUE) | error in (no error)	VISA resource name out | error out
+Threshold 1D Array	3	2	array of numbers or points | threshold y | start index (0)	fractional index or x
+Interleave 1D Arrays	3	2	array | array	interleaved array
+Get Drag Drop Data	3	3	data name | type | error in (no error)	data | error out
+Integer to Fixed-Point Cast	3	1	integer | fixed-point type	fixed-point
+To More Generic Class	3	3	reference | target class	generic class reference
+Logarithm Base 10	3	3	x	log(x)
+Insert Into Map	2	2	map in | key | value	map out | key already included? | value unchanged?
+Remove From Map	2	2	map in | key	map out | key not found? | value
+Map Get / Replace Value	2	1	map | key | default value	key not found? | value
+To Unsigned Word Integer	2	2	number	unsigned 16bit integer
+Or Array Elements	2	2	Boolean array	logical OR
+Not And	2	2	x | y	.not. (x .and. y)?
+Create Network Stream Reader Endpoint	2	2	reader name | writer url | data type | error in (no error) | reader buffer size | timeout in ms (-1) | element allocation mode	reader endpoint | error out
+Create Network Stream Writer Endpoint	2	2	writer name | reader url | data type | error in (no error) | writer buffer size | timeout in ms (-1) | element allocation mode	writer endpoint | error out
+Read Single Element from Stream	2	2	endpoint in | timeout ms (-1) | error in (no error)	endpoint out | data out | timed out? | error out
+Bluetooth Close Connection	2	2	connection ID | abort (F) | error in (no error)	connection ID out | error out
+IrDA Close Connection	2	2	connection ID | abort (F) | error in (no error)	connection ID out | error out
+Start TLS	2	2	TCP connection | immutable TLS configuration | server hostname | error in (no error) | timeout ms | server certificate validation	TLS connection | server certificate chain | error out
+Open Variable Connection	2	1	shared variable refnum in | data type | error in (no error) | access	shared variable refnum out | error out
+Read Variable	2	1	shared variable refnum in | error in (no error)	timestamp | shared variable refnum out | data out | error out
+Close Variable Connection	2	1	shared variable refnum in | error in (no error)	error out
+Search and Replace String	2	2	input string | search string | replace string | offset | error in | replace all? | case sensitive?	result string | number of replacements | offset past replacement | error out
+Round To Nearest	2	2	number	nearest integer value
+Current VI's Menubar	2	2		menu reference
+Open/Create/Replace Datalog	2	2	datalog path (use dialog) | operation (0\3Aopen) | access (0\3Aread/write) | error in | prompt | record type	refnum out | cancelled | error out
+TDMS Get Asynchronous Read Status	2	2	tdms file | error in (no error)	tdms file out | number of buffers available | all buffers full? | error out
+TDMS Set Next Write Position	2	2	tdms file | offset (0) | from (0\3Astart) | error in (no error) | group name in | channel name in	tdms file out | error out
+TDMS In Memory Read Bytes	2	2	tdms file | error in (no error) | offset (0) | byte count (-1\3A all)	tdms file out | data | error out
+Sinc	2	2	x	sin(x)/x
+VISA Disable Event	2	2	VISA resource name | event type (all enabled) | mechanism (1\3A  VI_QUEUE) | error in (no error)	VISA resource name out | error out
+VISA Wait on Event	2	2	VISA resource name | event type (all enabled) | event  resource name (for class) | error in (no error) | timeout (0)	VISA resource name out | event type | event  resource name | error out
+VISA Unlock	2	1	VISA resource name | error in (no error)	VISA resource name out | error out
+VISA Assert Trigger	2	1	VISA resource name | protocol (default\3A  0) | error in (no error)	VISA resource name out | error out
+Data Value Reference Read / Write Element	2	1	value	value | value
+File Dialog	2	2	start path | default name | error in | prompt | button label | pattern (all files) | pattern label	selected path | exists | cancelled | error out
+Decimate 1D Array	2	2	array	decimated array | decimated array
+Multiply Array Elements	2	2	numeric array	product
+Script Node	2	2	error in	2-D Array of Real | error out
+Fixed-Point to Integer Cast	2	1	fixed-point	integer
+Set Occurrence	2	1	occurrence	
+Open Application Reference	1	1	machine name (""\3A  open local reference) | port number or service name (3363) | timeout ms | error in (no error)	application reference | error out
+Rotate Right With Carry	1	1	carry | value	lsb carry out | value
+Date/Time To Seconds	1	1	date time rec | is UTC (F)	time stamp
+Build Map	1	1	key | value | key | value | key | value	map
+Decimal Digit?	1	1	char	digit?
+Hex Digit?	1	1	char	hex?
+Octal Digit?	1	1	char	octal?
+Printable?	1	1	char	printable ASCII?
+White Space?	1	1	char	space\2C h/v tab\2C cr\2C lf\2C ff?
+Lexical Class	1	1	char	class number
+Format Value	1	1	string ("") | format string | value (0)	output string
+Default Directory	1	1		path
+Lossy Enqueue Element	1	1	queue | element | error in (no error)	queue out | overflow element | overflow? | error out
+Request Deallocation	1	1	flag	
+Exclusive Or	1	1	x | y	x .xor. y?
+DataSocket Write	1	1	connection in | data | ms timeout (0) | error in (no error)	connection out | timed out | error out
+Bluetooth Open Connection	1	1	address | channel (0) | timeout ms (60000) | error in (no error) | uuid	connection ID | error out
+Bluetooth Discover	1	1	time limit ms (10000) | error in (no error)	number of devices | device list | error out
+Bluetooth Create Listener	1	1	uuid | error in (no error) | address | service description	listener ID | channel | error out
+Bluetooth Wait On Listener	1	1	listener ID in | timeout ms (wait forever\3A -1) | error in (no error)	connection ID | listener ID out | remote address | remote channel | error out
+IrDA Discover	1	1	error in (no error)	number of devices | device list | error out
+IrDA Open Connection	1	1	service name | remote device id | timeout ms (60000) | error in (no error)	connection ID | error out
+IrDA Create Listener	1	1	service name | error in (no error)	listener ID | error out
+IrDA Wait On Listener	1	1	listener ID in | timeout ms (wait forever\3A -1) | error in (no error)	connection ID | listener ID out | remote LSAP-SEL | remote device ID | error out
+Load Certificates Into Memory	1	1	path to certificates | format | error in (no error)	certificates | error out
+Load Private Key Into Memory	1	1	path to private key | format | password | error in (no error)	private key | error out
+Add Trusted Certificate To TLS Configuration	1	1	TLS configuration | certificate | error in (no error)	TLS configuration out | error out
+Add Private Key To TLS Configuration	1	1	TLS configuration | private key | certificate chain | error in (no error)	TLS configuration out | error out
+Accept TLS	1	1	TCP connection | immutable TLS configuration | error in (no error) | timeout ms (300000)	TLS connection | client certificate chain | error out
+Delete Variant Attribute	1	1	Variant | name (all attributes) | error in	Variant out | found | error out
+Remove From Set	1	1	set in | element	set out | not included?
+Element of Set?	1	1	set | element	found?
+Set Menu Item Info	1	1	menu reference | item name | enabled | error in (no error) | item tag | checked | short cut	menu reference out | error out
+Set Datalog Position	1	1	refnum | offset (in records) (0) | from (0\3Astart) | error in	refnum out | error out
+Read Datalog	1	1	refnum | count (1) | error in	refnum out | record(s) | error out
+Write Datalog	1	1	refnum | record(s) | error in	refnum out | error out
+Move	1	1	source path | target path (use dialog) | overwrite (F) | error in | prompt (Choose or enter target path for move)	new path | cancelled | error out
+TDMS Stop Asynchronous Reads	1	1	tdms file | error in (no error)	tdms file out | error out
+TDMS Get Asynchronous Write Status	1	1	tdms file | error in (no error)	tdms file out | number of pending writes | error out
+TDMS Flush	1	1	tdms file | error in (no error)	tdms file out | error out
+Format Date/Time String	1	1	time format string (%c) | seconds (now) | UTC format	date/time string
+TDMS Defragment	1	1	file path | error in (no error)	error out
+GPIB Write	1	1	address string | data | mode (0) | error in | timeout ms (488.2 global)	status | error out
+GPIB Read	1	1	address string | byte count | mode (0) | error in | timeout ms (488.2 global)	data | status | error out
+VISA Discard Events	1	1	VISA resource name | event type (all enabled) | mechanism  (1\3A  VI_QUEUE) | error in (no error)	VISA resource name out | error out
+VISA Map Trigger	1	1	VISA resource name | trigger source | trigger destination | error in (no error) | mode	VISA resource name out | error out
+VISA Unmap Trigger	1	1	VISA resource name | trigger source | trigger destination (all) | error in (no error)	VISA resource name out | error out
+VISA USB Control In	1	1	VISA resource name | request type | request | length (0) | error in (no error) | value (0) | index (0)	VISA resource name out | read buffer | error out
+VISA USB Control Out	1	1	VISA resource name | request type | request | length (0) | error in (no error) | value (0) | index (0)	VISA resource name out | error out
+New Data Value Reference	1	1	data value | error in	data value reference | error out
+Delete Data Value Reference	1	1	data value reference | error in	data value | error out
+Number To Exponential String	1	1	number | width (-) | precision (6) | use system decimal point (T)	E-format string
+To Single Precision Float	1	1	number	single precision float
+Close MATLAB Session	1	1	session in | error in	error out
+Type Specialization Structure	1	1		
+Cast Unit Bases	1	1	x | unit (none)	x
+Complex Conjugate	1	1	x + iy	x - iy
+Re/Im To Polar	1	1	x | y	r | theta
+To Unsigned Quad Integer	1	1	number	unsigned 64bit integer
+Unflatten From String	1	1	binary string | data includes array or string size? (T) | byte order (0\3Abig-endian\2C network order) | error in (no error) | type	rest of the binary string | value | error out
+Wait on Notification from Multiple	1	1	notifiers | ignore previous (F) | timeout in ms (-1) | error in (no error)	notifier out | notifiers out | timed out? | error out
+Generate Occurrence	1	1		occurrence
+Wait on Occurrence	1	1	ms timeout (-1) | occurrence | ignore previous (T)	timed out

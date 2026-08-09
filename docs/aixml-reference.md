@@ -820,34 +820,49 @@ because its values need not be consecutive.
 standing way to re-derive this section after a LabVIEW or addon update, and it replaces the
 13-VI corpus the rest of this document was built on. Run it before trusting anything below.
 
-Two numbers frame everything else, from the first 507 examples of LabVIEW 2026:
+The full run over LabVIEW 2026: **1687 VIs, 1679 exported, 627 round-tripped — 37 %.**
 
-- **4 export failures, 263 validate failures.** Reading a VI out is close to always possible;
-  reading it *back in* is where the gaps are. So a construct being visible in an export is no
-  evidence at all that it can be generated.
-- **219 distinct node kinds, 169 of them not named anywhere in this document.** The terminal table
+Two numbers frame everything else:
+
+- **8 VIs could not be exported; 1052 exported and then failed to validate.** Reading a VI out is
+  close to always possible; reading it *back in* is where the gaps are. So a construct being
+  visible in an export is no evidence at all that it can be generated.
+- **377 distinct node kinds, 313 of them not named anywhere in this document.** The terminal table
   in §8 is a small fraction of the vocabulary NI actually uses. `undocumented.tsv` from the report
   is the working gap list, most frequent first — `Static VI Reference`, `Build Path`,
   `New VI Object`, `To More Specific Class`, `Open VI Object Reference`, `Format Into String`,
-  `Feedback Node`, `In Range and Coerce` were the first eight.
+  `Feedback Node`, `In Range and Coerce` were the first eight. That list is checked in as
+  [`docs/aixml-node-gaps.tsv`](aixml-node-gaps.tsv), with each node's commonest ordered `inputs`
+  and `outputs` beside it, so a node absent from §8 still has a spelling to copy. Regenerate it
+  rather than editing it.
 
-The validate failures group into four causes, and only the last is a surprise:
+Every failure, classified once each:
 
-| Cause | Share | Reading |
+| Cause | Count | Reading |
 |---|---|---|
-| `Unsupported SubVI` — a `Call` to a project- or library-local VI | ~2/3 | the documented boundary below; expected, not a defect |
-| `Static VI Reference 'X': SubVI is missing` | 23 | a static VI reference does not survive the trip |
-| `Event Data Node: Cluster is invalid or empty` together with `Event Structure: One or more event cases have no events defined` | 7 | the event *registration* is lost even though the frame's `selector` round-trips as text |
-| `Error 1 … An input parameter is invalid` from `VI generator.vi`, with no further detail | 73 | the generator refuses the document and does not say why |
+| **`Error 53`** — a `Call` to a project- or library-local subVI | **737** | the documented boundary below. Expected, and it dominates everything else: two thirds of NI's examples call their own subVIs |
+| `Error 1 … An input parameter is invalid`, no further detail | 146 | the generator refuses the document and does not say why. Unexplained |
+| `Event Data Node` / `no events defined` | 54 | the event registration is lost — see below |
+| other validation errors (type mismatches, unwired terminals on `Array Index / Replace Elements`, `Feedback Node`, `Global Variable`, …) | 51 | one-offs, each worth reading on its own |
+| `Static VI Reference 'X': SubVI is missing` | 31 | a static VI reference does not survive the trip |
+| `Property Node` / `Invoke Node` / `Constructor Node`: invalid property or method | 23 | the VI Server name is not rebound |
+| excluded: the project targets `RT Generic` | 8 | not attempted; out of scope for a plain LabVIEW |
+| LabVIEW unavailable or too slow | 6 | see §"What the sweep has to survive" in the README |
+| `Error -2628` — missing required attribute | 4 | a malformed document |
+
+**The headline is that `Error 53` is not a defect and everything else is small.** Excluding it,
+1687 VIs produce 315 real round-trip failures — so the format handles NI's own code far better
+than the 37 % headline suggests, and the single biggest constraint on generating LabVIEW code
+remains the one already known: a generated VI cannot call your own subVIs.
 
 The event-structure row is worth spelling out, because §7 lists event structures as working and
-that is only half true. Of 102 exports containing an `Event Structure`, 50 fail for reasons that
-have nothing to do with events (`Unsupported SubVI`, mostly), and of the 52 that do return a
-verdict on the event structure itself:
+that is only half true. Of 160 exports containing an `Event Structure`, 87 fail for reasons that
+have nothing to do with events (`Error 53`, mostly), and of the 73 that do return a verdict on the
+event structure itself:
 
 | Frame kind | passes | fails |
 |---|---|---|
-| **static** — a control's event, `selector=" &quot;Exported VI&quot;\3A Value Change "` | 7 | **32** |
+| **static** — a control's event, `selector=" &quot;Exported VI&quot;\3A Value Change "` | 12 | **48** |
 | **dynamic** — a user event through a registration terminal | 9 | 4 |
 
 **The static frames are the fragile ones**, which is the reverse of the obvious guess. The selector
@@ -858,12 +873,12 @@ never rebinds it, while a dynamic frame's event arrives structurally through the
 `Register For Events` — but that is inference, and only the counts above are measured.
 
 Practical consequence: before planning any edit to a VI with a front-panel event structure,
-validate the **untouched** export. Roughly four in five of NI's own do not come back.
+validate the **untouched** export. Four in five of NI's own do not come back.
 
-Structure kinds in the corpus, by frequency: `Case Structure` (311), `While Loop` (265),
-`For Loop` (145), `Event Structure` (54), `In Place Element Structure` (38), `Flat Sequence Frame`
-(27), `Stacked Sequence Structure` (2). The In Place Element Structure is the one to know about
-here — it is how NI modifies a cluster or array element without a copy, and its border node is
+Structure kinds over the whole corpus: `Case Structure`, `While Loop`, `For Loop`,
+`Event Structure`, `In Place Element Structure`, `Flat Sequence Frame`, `Stacked Sequence
+Structure`. The In Place Element Structure is the one to know about beyond §7 — it is how NI
+modifies a cluster or array element without a copy, and its border node is
 `Unbundle / Bundle Elements` (§8).
 
 ### The original 13-VI corpus
