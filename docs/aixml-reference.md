@@ -242,11 +242,28 @@ tag{14}                                        IO name control (a DAQmx physical
 so two unrelated class references are indistinguishable by type alone. Frameworks that thread
 an object through a VI hierarchy (DQMH's module admin, for instance) show up as this.
 
-Composition nests freely. The standard error cluster is:
+Composition nests freely, **with one measured exception: an array of arrays is rejected.** The
+standard error cluster is:
 
 ```
 cluster{bool.status,int32.code,string.source}
 ```
+
+`array{string}` is accepted as a `Constant` and as an `Indicator`. `array{array{string}}` is
+refused in both positions, with
+
+```
+Error 53 ... Unrecognized or unsupported attribute set in Constant with UID 62
+Unrecognized or unsupported attribute set in Indicator with UID 72
+```
+
+— a message that names the element but not the attribute, so it reads like a typo in the `value`
+rather than a limit on the type. Both were in one probe VI, so the pass/fail is a direct
+comparison. Note the asymmetry: 2D data still **flows** perfectly well — `Read Delimited
+Spreadsheet` returns a 2D array and `Index Array dimensions="2"` indexes it — what you cannot do
+is *declare* one. When a design needs a table crossing a VI boundary, carry two parallel 1D
+arrays instead; that is why `scripts\lvai_run_and_read.xml` takes its input names and values as
+two separate lists rather than one `name=value` list.
 
 A trailing `.Name` after a closing brace names the *instance*, not the type — a cluster
 field holding a queue reference reads
@@ -1141,6 +1158,44 @@ Note the difference from an enum, which encodes its labels inside the *type*
 (`uint8{Label A,Label B}`, §5): a Ring keeps `type` plain and lists the labels separately,
 because its values need not be consecutive.
 
+### A waveform indicator is not a graph, and a wrong `style` is dropped in silence
+
+`type="doublewaveform"` alone produces the **cluster** display — t0, dt and the Y array as
+three fields. To get a Waveform Graph the indicator needs `style="graph21703"`:
+
+```xml
+<Indicator _name="waveform" style="graph21703" type="doublewaveform"
+           inputs="value:61.output waveform" uid="80" uid_parent="root" value="[0,0,[]]"/>
+```
+
+**The token is an internal identifier, not a name, and nothing tells you when you get it
+wrong.** `WaveformGraph`, `Waveform Graph` and `Graph` are all plausible, all wrong, and all
+fail without a word: `ValidateAIXML` returns `errorCode 0` for every one of them, generation
+succeeds, and the VI comes back with a cluster on the panel. Measured in one round trip — five
+indicators of the same type, four spellings plus a control:
+
+| written | survives the round trip? |
+|---|---|
+| `style="WaveformGraph"` | no — attribute absent on export |
+| `style="Waveform Graph"` | no — attribute absent on export |
+| `style="Graph"` | no — attribute absent on export |
+| `style="graph21703"` | **yes** |
+| no `style` at all | (baseline: cluster display) |
+
+The symptom to recognise: you asked for a graph, validation was clean, the VI generated, and
+the panel shows a cluster. There is no error to search for — the only evidence is the missing
+attribute in a re-export, so **export the VI you just generated and grep for `style=`**.
+
+`graph21703` is not invented here: it is what LabVIEW itself writes when exporting a VI that
+has a Waveform Graph on it — NI's own `Feedback Node with Graph` example exports it twice. That
+is also how to re-derive it after a LabVIEW upgrade, and how to find the token for any other
+front-panel style: **drop the control by hand, export the VI, read the attribute.** Whether the
+`21703` suffix is stable across LabVIEW versions has not been measured; it was taken on
+LabVIEW 2026.
+
+Charts and XY graphs are untested — do not assume the token generalises. The style vocabulary
+confirmed so far is small: `latched` (boolean), `Ring` (§ above), `graph21703`.
+
 ## 9. What the generator accepts
 
 ### Measured over the shipping examples, not over a hand-picked few
@@ -1462,6 +1517,22 @@ pane of any VI you intend to drive this way. Measured, all three on LabVIEW 2026
 | `bool`, `int32` or `cluster` **out** | `Error 91 ... Variant To Data`, and **that one indicator** comes back empty. Marshalling is **per indicator, not all-or-nothing**: one response carried a `string` indicator's full value while `status` (bool), `code` (int32) and `error out` (cluster) were all blank. So `errorCode 91` means "at least one output could not be read" — never "the VI failed". |
 | `double` **in** | `Error 91 ... Control Value\3ASet` — the same wall as `path`, and it also fails *before* the VI runs. Measured twice on the same control, as the JSON string `"100"` and as the JSON number `100`: neither coerces to a DBL. **This contradicts `lvai_run_vi_as_top_level`'s own description**, which says to pass numbers as their text form; that does not work. Numeric controls cannot be driven at all — take the number in as `string` and convert on the diagram. |
 
+**There is now a way out of the read-back half of this, and it is a shipped tool.**
+`lvai_run_vi_and_read_values` sets the inputs, runs the target and reads **every** control and
+indicator back through VI Server, flattening them to XML so the whole result crosses as one
+`string`. A boolean, cluster, array or waveform output is fully readable through it; measured on
+a VI whose three outputs — waveform, bool, error cluster — were all blank under plain
+`RunVIAsTopLevel`, and came back complete (`dt = 0.1`, eight Y samples, `loaded? = 1`) with
+`errorCode 0`. The advice below still governs what you can **send in**, and still applies to any
+helper you drive directly; it no longer forces you to design outputs around the marshaller.
+
+**Set, run and read must be ONE call.** Measured, and it is the trap that makes the obvious
+composition wrong: a `RunVIAsTopLevel` followed by a *separate* read of the same VI returns that
+VI's **defaults** — `Y` empty, `dt = 1.0`, `loaded? = FALSE` — not the values of the run that
+just happened. The two calls do not share the VI's data space, and nothing about the answer
+looks stale. Hence one helper holding one VI reference across all three steps
+(`scripts\lvai_run_and_read.xml`), not two tidy calls.
+
 Consequences for authoring:
 
 - Take paths **and numbers** in as `string` and convert on the diagram — `String To Path`
@@ -1499,6 +1570,7 @@ Consequences for authoring:
 | `Object terminal not found for input: ...` | Misspelled terminal name, or fallout from an unresolved `Call`. |
 | An export of 100–200 bytes containing only `<VI _name=… description=…/>` | **Silent failure, not an empty VI.** The diagram was not readable — inaccessible, password-protected or otherwise withheld — and `ConvertVIToAIXML` still returns `errorCode 0 / "No Error"`. Cross-check with the rendered diagram: if `GetDescribeVIPromptInfo` also carries no `viImage`, the diagram is unavailable. Never conclude "this VI is empty" from a childless `<VI>` element. |
 | **Everything reports success and the VI is hollow** | The generator has two ways of refusing. A `Call` it cannot resolve is a *hard* error (`Unsupported SubVI`). An unsupported **node family** is silent: the container is created, its configuration is discarded, `errorCode` stays 0. Measured on `Event Structure` — frames dropped, one `[0] Timeout` frame left (§7). Never take `errorCode 0` as proof that what you asked for was built: re-export the result and compare, or render it with `--diagram`. |
+| **You asked for a graph and got a cluster** | Third member of the silent family, and the same rule applies one level down: an unknown **`style` token on a control or indicator** is discarded without a word. `ValidateAIXML` returns `errorCode 0` for `WaveformGraph`, `Waveform Graph` and `Graph` alike; only `style="graph21703"` produces a Waveform Graph (§8). Attribute values are not validated at all, so the check is the same one as for a hollow VI — re-export and compare. |
 | **A VI in memory CAN be evicted — via the active project** | **Read this row's ending first: there is a working recipe**, in `vi-server-reference.md` under "Unloading a VI so its path can be regenerated". Reach the IDE's application through `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference *there*, and write `Front Panel Window\3AState` = `Closed`. Measured A/B: `1357` before, `errorCode 0` after. The rest of this row is the long road that found it, kept because every step of it is a thing that does **not** work. The fallback rule remains sound when no project is active: **generate each iteration under a fresh name, and do not `lvai_open_file` a VI you still intend to regenerate.** Measured, in one helper run that itself reported no error: writing `Front Panel Window\3AOpen` **and** `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` — and the regeneration still failed with 1357. The catalogue carries no unload or remove-from-memory method at all across its 3 078 entries. Earlier advice here said "or make LabVIEW release the VI"; that is not achievable through this interface. Closing the VI in the IDE by hand, or restarting LabVIEW, is the reset. **Re-measured on a freshly restarted machine, with the one remaining explanation tested and killed:** the idea that closing the window *modifies* the VI and that a modified VI cannot be unloaded. Reading `Modifications\3AUser Changes` before the close, after it, and after a `Save\3AInstrument` gave **clean, clean, clean** — unsaved changes were never what held it. Same run, no error anywhere in it, regeneration still 1357. What every one of these attempts shared, and what took an evening to see: they all ran in the **addon's** application instance, where the VI's windows do not exist. That is why closing them changed nothing — see the recipe named at the top of this row. **The escape hatch is real, and measured:** a person closing the VI in the IDE by hand frees the path immediately — the very next `ConvertAIXMLToVI` on it returned `errorCode 0`. So when you are stuck on a path, the fix is a human closing that window, not another property write. **Opening the VI inside a project changes nothing** — tested, because "we never opened it in a project, which would be the normal case" is the obvious objection. A hand-written `.lvproj` (§2 of the lvproj reference), the VI generated beside it and opened with both the VI *and* project pairs, `describe_project` confirming it loaded as a real member with `missingFiles: []`: regeneration still `1357`. Project membership is not what holds the file. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
 
