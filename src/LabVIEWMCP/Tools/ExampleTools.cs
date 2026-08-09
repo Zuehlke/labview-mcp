@@ -64,10 +64,14 @@ internal sealed class ExampleTools
             return Json.Error(e.GetType().Name, e.Message);
         }
 
+        // Which projects target something other than the desktop. Read from the same tree the
+        // index just scanned; a VI's own metadata never says this, only its project does.
+        var targets = ProjectTargets.Scan(index.ExamplesFolder);
+
         // Narrow first, so every count below describes the set actually being searched.
         var listed = includeSpecialised
             ? index.Examples
-            : index.Examples.Where(ExampleScope.IsPlainLabView).ToList();
+            : index.Examples.Where(e => ExampleScope.IsPlainLabView(e, targets)).ToList();
         var heldBack = index.Examples.Count - listed.Count;
 
         var header = $"{listed.Count} examples among {index.ViFilesScanned} VI files " +
@@ -130,7 +134,7 @@ internal sealed class ExampleTools
             if (e.Keywords.Count > 0) sb.AppendLine($"    keywords: {string.Join(", ", e.Keywords)}");
             if (e.RequiredSoftware is not null) sb.AppendLine($"    requires: {e.RequiredSoftware}");
             // Only reachable with includeSpecialised: say what the hit costs before it is opened.
-            if (ExampleScope.ExtraSoftware(e) is { } extra)
+            if (ExampleScope.ExtraSoftware(e, targets) is { } extra)
                 sb.AppendLine($"    NEEDS: {extra} - will not open on a plain LabVIEW");
         }
         if (matches.Count > limit)

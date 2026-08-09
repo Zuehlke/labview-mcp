@@ -36,25 +36,32 @@ public class ExampleScopeTests
         Assert.Equal("add-on 'aspt64'", extra);
     }
 
-    [Theory]
-    [InlineData(@"FPGA Fundamentals\Timing", "LabVIEW FPGA")]
-    [InlineData(@"Real-Time\Deterministic Loops", "LabVIEW Real-Time")]
-    [InlineData(@"Mathematics\RT Utilities", "LabVIEW Real-Time")]
-    [InlineData(@"Embedded\myRIO", "LabVIEW Real-Time")]
-    [InlineData(@"Embedded\cRIO Scan Mode", "LabVIEW Real-Time")]
-    public void Target_specific_examples_are_recognised_inside_LabVIEWs_own_tree(
-        string category, string needs) =>
-        Assert.Equal(needs, ExampleScope.ExtraSoftware(Example(category)));
+    [Fact]
+    public void An_example_under_a_project_with_a_non_desktop_target_is_out_of_scope()
+    {
+        var targets = new Dictionary<string, string> { [@"C:\LV\examples\Scan Engine"] = "RT Generic" };
+        var example = Example(@"Scan Engine\Programmatic Forcing");
+
+        Assert.Equal("a 'RT Generic' target", ExampleScope.ExtraSoftware(example, targets));
+    }
+
+    /// <summary>
+    /// The case the old path-substring rule got wrong: an ordinary object-oriented example whose
+    /// class is called FPGAChip. Its project targets the desktop, so it stays in scope.
+    /// </summary>
+    [Fact]
+    public void A_class_named_after_hardware_is_not_a_hardware_example()
+    {
+        var targets = new Dictionary<string, string> { [@"C:\LV\examples\Scan Engine"] = "RT Generic" };
+        var example = Example(@"Object-Oriented Programming\Board Testing\Object Design\FPGAChip",
+                              name: "Self Test.vi");
+
+        Assert.Null(ExampleScope.ExtraSoftware(example, targets));
+    }
 
     [Fact]
-    public void A_target_marker_in_the_VI_name_counts_too() =>
-        Assert.Equal("LabVIEW FPGA",
-            ExampleScope.ExtraSoftware(Example("Getting Started", name: "FPGA Basics.vi")));
-
-    [Fact]
-    public void The_target_check_wins_over_an_assumed_addon() =>
-        Assert.Equal("LabVIEW FPGA",
-            ExampleScope.ExtraSoftware(Example(@"FPGA\Counters", "nidaqmx")));
+    public void Without_project_knowledge_the_target_signal_is_simply_skipped() =>
+        Assert.Null(ExampleScope.ExtraSoftware(Example(@"Scan Engine\Programmatic Forcing")));
 
     [Fact]
     public void IsPlainLabView_agrees_with_ExtraSoftware()

@@ -153,6 +153,49 @@ public class CorpusSkipTests
 /// <summary>
 /// A LabVIEW error message is multi-line and tab-free only by luck; a TSV row is neither.
 /// </summary>
+/// <summary>
+/// The guard that keeps LabVIEW out of its modal "Find the VI Named ..." browser. That dialog is
+/// the worst failure mode this sweep has: it waits for a human, so nothing times out, the gRPC
+/// service stops answering entirely, and the run is indistinguishable from a hang.
+/// </summary>
+public class CorpusMissingFilesTests
+{
+    [Fact]
+    public void An_empty_list_means_the_project_is_complete() =>
+        Assert.False(Corpus.ReportsMissingFiles("""{"vis":["a.vi"],"missingFiles":[]}"""));
+
+    [Fact]
+    public void A_populated_list_means_it_is_not() =>
+        Assert.True(Corpus.ReportsMissingFiles(
+            """{"vis":["a.vi"],"missingFiles":["Find Global Min on Surface_Func.vi"]}"""));
+
+    [Fact]
+    public void The_list_is_found_inside_an_escaped_infoJson_string() =>
+        Assert.True(Corpus.ReportsMissingFiles(
+            "{\"infoJson\":\"{\\\"missingFiles\\\":[\\\"Helper.vi\\\"]}\"}"));
+
+    [Fact]
+    public void An_escaped_empty_list_still_means_complete() =>
+        Assert.False(Corpus.ReportsMissingFiles(
+            "{\"infoJson\":\"{\\\"missingFiles\\\":[]}\"}"));
+
+    [Fact]
+    public void Whitespace_inside_the_brackets_is_not_a_missing_file() =>
+        Assert.False(Corpus.ReportsMissingFiles("""{"missingFiles":[   ]}"""));
+
+    [Fact]
+    public void A_payload_without_the_field_claims_nothing() =>
+        Assert.False(Corpus.ReportsMissingFiles("""{"vis":["a.vi"]}"""));
+
+    [Fact]
+    public void A_multi_line_list_is_still_seen() =>
+        Assert.True(Corpus.ReportsMissingFiles("{\"missingFiles\":[\n  \"A.vi\",\n  \"B.vi\"\n]}"));
+
+    [Fact]
+    public void An_error_payload_is_not_read_as_missing_files() =>
+        Assert.False(Corpus.ReportsMissingFiles("""{"ok":false,"error":"DeadlineExceeded"}"""));
+}
+
 public class CorpusFlattenTests
 {
     [Fact]

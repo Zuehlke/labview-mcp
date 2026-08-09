@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,6 +37,26 @@ internal static class Corpus
     private const int GuardCode = -3;      // the RPC never reached LabVIEW (deadline, no port)
     private const int HangCode = -4;       // LabVIEW never came back; retired on the next run
     private const int SkippedCode = -5;    // excluded by --skip, never attempted
+    private const int IncompleteCode = -6; // its project is missing files; opening it would block
+
+    /// <summary>
+    /// Does a DescribeProject payload report files the project cannot find?
+    ///
+    /// This is the guard against the worst failure this sweep has: LabVIEW answers a missing subVI
+    /// with the MODAL "Find the VI Named ..." browser and waits for a human. Nothing times out,
+    /// the gRPC service stops answering entirely, and the run looks like a hang until somebody
+    /// walks to the machine. A project that already knows it is incomplete is therefore never
+    /// opened.
+    ///
+    /// The field arrives either as real JSON or nested inside an escaped `infoJson` string, so the
+    /// escaping is undone before matching rather than assumed one way.
+    /// </summary>
+    internal static bool ReportsMissingFiles(string payload)
+    {
+        var text = payload.Replace("\\\"", "\"");
+        var match = Regex.Match(text, "\"missingFiles\"\\s*:\\s*\\[(.*?)\\]", RegexOptions.Singleline);
+        return match.Success && match.Groups[1].Value.Trim().Length > 0;
+    }
 
     public static async Task<int> RunAsync(
         int? port, string? root, string? outDir, int? limit, int timeoutSeconds, string? skip,
@@ -103,8 +124,9 @@ internal static class Corpus
         // would read as full coverage in the report, which is exactly the kind of silent cap
         // that makes a measurement worthless.
         var excluded = SkipPatterns(skip);
+        var targets = ProjectTargets.Scan(root);
         var dropped = candidates
-            .Select(p => (Vi: p, Why: ExclusionReason(p, excluded, skip)))
+            .Select(p => (Vi: p, Why: ExclusionReason(p, excluded, skip, targets)))
             .Where(x => x.Why is not null)
             .ToList();
 
@@ -117,7 +139,7 @@ internal static class Corpus
                 await File.AppendAllTextAsync(resultsPath, string.Join('\t',
                     vi, "", SkippedCode, 0, SkippedCode, 0, why) + Environment.NewLine);
 
-            Console.WriteLine($"excluded    : {dropped.Count} (FPGA/Real-Time targets and --skip)");
+            Console.WriteLine($"excluded    : {dropped.Count} (non-desktop targets and --skip)");
         }
 
         if (limit is > 0) candidates = candidates.Take(limit.Value).ToList();
@@ -139,9 +161,11 @@ internal static class Corpus
         var aixml = new AixmlTools(connection);
         var status = new StatusTools(connection);
         var action = new ActionTools(connection);
+        var inspect = new InspectTools(connection);
         var settleSeconds = Math.Max(600, timeoutSeconds * 10);
         string? openedProject = null;
         var projectsOpen = 0;
+        var incomplete = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
 
         var index = 0;
         var failures = 0;
@@ -167,15 +191,41 @@ internal static class Corpus
                 if (project is not null && !string.Equals(
                         project, openedProject, StringComparison.OrdinalIgnoreCase))
                 {
+                    // Asked once per project, not once per VI.
+                    if (!incomplete.TryGetValue(project, out var missing))
+                    {
+                        missing = ReportsMissingFiles(await inspect.DescribeProjectAsync(
+                            project, timeoutSeconds: timeoutSeconds));
+                        incomplete[project] = missing;
+                        if (missing)
+                            Console.WriteLine(
+                                $"       skipping {Path.GetFileName(project)} - it reports " +
+                                "missing files, and opening it would block on the search dialog");
+                    }
+
+                    if (missing)
+                    {
+                        File.Delete(inflightPath);
+                        await File.AppendAllTextAsync(resultsPath, string.Join('\t',
+                            vi, project, IncompleteCode, 0, IncompleteCode, sw.ElapsedMilliseconds,
+                            "not attempted: its project reports missing files")
+                            + Environment.NewLine);
+                        continue;
+                    }
+
                     await action.OpenFileAsync(projectPath: project, timeoutSeconds: timeoutSeconds);
                     openedProject = project;
                     projectsOpen++;
                 }
+                // No else-branch is needed for the rest of an incomplete project's VIs: openedProject
+                // is deliberately left unchanged above, so every one of them takes the branch again
+                // and hits the cached answer.
             }
             catch
             {
-                // A project that will not open is not a reason to skip the VI - the export may
-                // still work. The round-trip row records what actually happened either way.
+                // A project that will not open, or a DescribeProject that fails, is not a reason
+                // to skip the VI - the export may still work. The round-trip row records what
+                // actually happened either way.
             }
 
             try
@@ -446,10 +496,11 @@ internal static class Corpus
     /// exclusion for coverage.
     /// </summary>
     internal static string? ExclusionReason(
-        string viPath, IReadOnlyList<string> skipPatterns, string? skip)
+        string viPath, IReadOnlyList<string> skipPatterns, string? skip,
+        IReadOnlyDictionary<string, string> projectTargets)
     {
-        if (ExampleScope.TargetSpecificInPath(viPath) is { } needs)
-            return $"out of scope: needs {needs}";
+        if (ProjectTargets.For(viPath, projectTargets) is { } target)
+            return $"out of scope: its project targets '{target}'";
 
         return IsExcluded(viPath, skipPatterns) ? $"excluded by --skip {skip}" : null;
     }

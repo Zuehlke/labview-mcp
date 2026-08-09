@@ -15,7 +15,7 @@ namespace LabVIEWMcp.Infra;
 /// 1. The DECLARED requirement, when it names something other than LabVIEW.
 /// 2. NI's own DESCRIPTION text, when it names a product - "Demonstrates how to design an IIR
 ///    filter using VIs in the LabVIEW Digital Filter Design Toolkit."
-/// 3. A target marker in the path, for FPGA and Real-Time examples inside LabVIEW's own tree.
+/// 3. The TARGET the owning `.lvproj` declares - `RT Generic`, an FPGA target, a cRIO chassis.
 /// 4. The add-on directory that ships the example.
 ///
 /// Signal 1 sounds like it should be enough and is not: measured over 10 535 VIs across both
@@ -35,6 +35,12 @@ namespace LabVIEWMcp.Infra;
 /// over-matches in one known place - an example whose description says it is *not* written for
 /// the Real-Time Module - which is why the reason is always reported rather than swallowed.
 ///
+/// Signal 3 replaced an earlier attempt to spot FPGA and Real-Time examples by looking for those
+/// words in the path. That was wrong in BOTH directions and is worth remembering as the shape of
+/// mistake to avoid: it excluded `Object Design\FPGAChip\Self Test.vi`, an ordinary
+/// object-oriented example whose class is named FPGAChip, and it missed `Scan Engine.lvproj`,
+/// which really does declare an `RT Generic` target and says so nowhere in its path.
+///
 /// DAQmx is deliberately treated as always present. That is the user's call for this environment,
 /// not something derived - it is the one driver assumed installed everywhere here.
 /// </summary>
@@ -48,26 +54,15 @@ internal static class ExampleScope
     private static readonly string[] AssumedInstalled = ["nidaqmx"];
 
     /// <summary>
-    /// Path fragments that mark a target-specific example inside LabVIEW's OWN tree, where there
-    /// is no add-on directory to go by. Deliberately short: each entry has to be specific enough
-    /// that it cannot appear in the name of an ordinary desktop example.
-    /// </summary>
-    private static readonly (string Marker, string Needs)[] TargetSpecific =
-    [
-        ("FPGA", "LabVIEW FPGA"),
-        ("Real-Time", "LabVIEW Real-Time"),
-        ("RT Utilities", "LabVIEW Real-Time"),
-        ("myRIO", "LabVIEW Real-Time"),
-        ("cRIO", "LabVIEW Real-Time"),
-        ("sbRIO", "LabVIEW Real-Time"),
-        ("roboRIO", "LabVIEW Real-Time"),
-    ];
-
-    /// <summary>
     /// Null when the example runs on a plain LabVIEW installation; otherwise what else it needs,
     /// phrased for a person reading the tool output.
+    ///
+    /// <paramref name="projectTargets"/> comes from <see cref="ProjectTargets.Scan"/>. Pass it
+    /// wherever the examples are on disk; without it the project signal is simply skipped, which
+    /// is a gap, not a wrong answer.
     /// </summary>
-    public static string? ExtraSoftware(ExampleVi example)
+    public static string? ExtraSoftware(
+        ExampleVi example, IReadOnlyDictionary<string, string>? projectTargets = null)
     {
         if (DeclaredNonLabView(example.RequiredSoftware) is { } declared)
             return declared;
@@ -75,9 +70,9 @@ internal static class ExampleScope
         if (NamedProduct(example.Description) is { } named)
             return named;
 
-        foreach (var (marker, needs) in TargetSpecific)
-            if (Contains(example.Category, marker) || Contains(example.Name, marker))
-                return needs;
+        if (projectTargets is not null &&
+            ProjectTargets.For(example.Path, projectTargets) is { } target)
+            return $"a '{target}' target";
 
         if (example.Source.Length == 0) return null; // LabVIEW's own examples tree
 
@@ -86,16 +81,9 @@ internal static class ExampleScope
             : $"add-on '{example.Source}'";
     }
 
-    public static bool IsPlainLabView(ExampleVi example) => ExtraSoftware(example) is null;
-
-    /// <summary>
-    /// The same target check against a raw file path, for callers that walk the examples tree
-    /// themselves instead of reading the index - the corpus sweep does. Null means nothing in the
-    /// path marks it as FPGA or Real-Time; add-on trees are not reachable this way, so this is
-    /// the target half of the rule only.
-    /// </summary>
-    public static string? TargetSpecificInPath(string path) =>
-        TargetSpecific.FirstOrDefault(t => Contains(path, t.Marker)).Needs;
+    public static bool IsPlainLabView(
+        ExampleVi example, IReadOnlyDictionary<string, string>? projectTargets = null) =>
+        ExtraSoftware(example, projectTargets) is null;
 
     /// <summary>
     /// A capitalised product name in free text: one to five capitalised words ending in `Toolkit`
