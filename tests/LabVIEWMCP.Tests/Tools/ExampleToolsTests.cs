@@ -340,6 +340,77 @@ public class ExampleToolsTests : IDisposable
         Assert.Equal("LabVIEW >= 13.0", example.RequiredSoftware);
     }
 
+    // ---------- query words ----------
+
+    /// <summary>
+    /// The regression this guards. The query used to be passed to Contains as ONE literal
+    /// string, so a multi-word query only matched when that exact phrase occurred. Measured on
+    /// the real installation: "waveform" gave 74 hits, "build waveform array" gave none. An
+    /// empty result does not read as "clumsy query", it reads as "NI has no example for this" -
+    /// and sends the caller off to rebuild from primitives.
+    /// </summary>
+    [Fact]
+    public void AMultiWordQueryNeedNotBeALiteralPhrase()
+    {
+        WriteExample("File IO/TDMS/Scale TDMS Data.vi");
+
+        // Both words are in the description, in the opposite order; the phrase never occurs.
+        Assert.Contains("Scale TDMS Data.vi",
+            ExampleTools.ExampleIndexTool(query: "reads creates", installRoot: _root));
+    }
+
+    [Fact]
+    public void WordsMayBeSatisfiedByDifferentFields()
+    {
+        WriteExample("File IO/TDMS/Scale TDMS Data.vi");
+
+        // "scale" is a keyword, "reads" is only in the description, "File" only in the category.
+        Assert.Contains("Scale TDMS Data.vi",
+            ExampleTools.ExampleIndexTool(query: "scale reads File", installRoot: _root));
+    }
+
+    [Fact]
+    public void OneAbsentWordExcludesTheExample()
+    {
+        WriteExample("File IO/TDMS/Scale TDMS Data.vi");
+
+        var text = ExampleTools.ExampleIndexTool(query: "TDMS unicorn", installRoot: _root);
+
+        Assert.Contains("No example matches", text);
+        // AND, not OR: "TDMS" alone would have hit, so the second word has to do the excluding.
+        Assert.DoesNotContain("Scale TDMS Data.vi", text);
+    }
+
+    /// <summary>
+    /// With every word required, the commonest cause of nothing is one word too many. Saying so
+    /// is what stops an empty answer being read as "this does not exist".
+    /// </summary>
+    [Fact]
+    public void AnEmptyMultiWordResultSuggestsDroppingAWord()
+    {
+        WriteExample("File IO/TDMS/Scale TDMS Data.vi");
+
+        var text = ExampleTools.ExampleIndexTool(query: "TDMS unicorn", installRoot: _root);
+
+        Assert.Contains("All 2 words must appear", text);
+        Assert.Contains("\"TDMS\"", text);
+    }
+
+    [Fact]
+    public void ASingleWordQueryBehavesAsBefore()
+    {
+        WriteExample("File IO/TDMS/Scale TDMS Data.vi");
+
+        Assert.Contains("Scale TDMS Data.vi",
+            ExampleTools.ExampleIndexTool(query: "TDMS", installRoot: _root));
+    }
+
+    [Theory]
+    [InlineData("  TDMS  ", 1)]
+    [InlineData("TDMS   scale", 2)]
+    public void SurplusWhitespaceIsNotAWord(string query, int expected) =>
+        Assert.Equal(expected, ExampleTools.Words(query).Count);
+
     // ---------- the gap that must stay visible ----------
 
     [Fact]

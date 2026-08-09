@@ -24,7 +24,8 @@ internal sealed class ExampleTools
         already wired this up" - a whole working diagram rather than a single node. Feed a .vi hit's
         path to lvai_convert_vi_to_aixml to read how it is built; a hit may also be a .lvproj, a
         whole example application, and for that the follow-up is lvai_describe_project instead.
-        Matches on name, category, keywords and description. Without a query: the totals plus the
+        Matches on name, category, keywords and description; EVERY word of the query must appear,
+        though each may come from a different field. Without a query: the totals plus the
         scan location.
         Needs NO running LabVIEW - the metadata is plain text inside each .vi.
         CACHED ON DISK and reused by every later session. Scanning is a read of 2510 files and
@@ -47,7 +48,9 @@ internal sealed class ExampleTools
         includeSpecialised to see them, each labelled with what it needs.
         """)]
     public static string ExampleIndexTool(
-        [Description("Substring of name, category, keyword or description, e.g. 'TDMS', 'state machine'")]
+        [Description("Words to look for, e.g. 'TDMS', 'state machine', 'read binary file'. " +
+                     "EVERY word must appear in the entry, but each may come from a different " +
+                     "field - name, category, keyword or description. Fewer words match more")]
         string? query = null,
         [Description("Max rows to return (default 10, max 60)")] int limit = DefaultLimit,
         [Description("Rebuild the index from disk. Costs about a minute - only after installing " +
@@ -124,6 +127,12 @@ internal sealed class ExampleTools
         if (matches.Count == 0)
             return $"No example matches \"{query}\"." + Environment.NewLine + header +
                    Environment.NewLine +
+                   // Every word has to hit, so the commonest cause of nothing is one word too
+                   // many - say so before the caller concludes NI has no example and rebuilds.
+                   (Words(query).Count > 1
+                       ? $"All {Words(query).Count} words must appear. Drop the narrowest one and " +
+                         "retry - e.g. just \"" + Words(query)[0] + "\"." + Environment.NewLine
+                       : "") +
                    (heldBack > 0
                        ? "Retry with includeSpecialised=true before concluding there is nothing - " +
                          "the match may be an FPGA, Real-Time or toolkit example." +
@@ -156,9 +165,35 @@ internal sealed class ExampleTools
         return sb.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// EVERY word of the query must appear somewhere in the entry - not the query as one literal
+    /// phrase, which is what this used to do.
+    ///
+    /// The bug that forced the change, because its failure mode is the expensive one: the whole
+    /// string was passed to Contains, so "waveform" returned 74 hits while "build waveform array"
+    /// returned NONE, though all three words occur. An empty result here does not read as "bad
+    /// query" - it reads as "NI has no example for this", which is precisely the conclusion this
+    /// index exists to prevent, and it sends the caller off to rebuild from primitives.
+    ///
+    /// AND across words, OR across fields: a word may be satisfied by the name, the category, a
+    /// keyword or the description, and different words may be satisfied by different fields -
+    /// "waveform graph" should match a Waveform-category example whose description says graph.
+    /// </summary>
     private static bool Matches(ExampleVi e, string query) =>
-        e.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-        e.Category.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-        e.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-        e.Keywords.Any(k => k.Contains(query, StringComparison.OrdinalIgnoreCase));
+        Words(query).All(word => ContainsWord(e, word));
+
+    private static bool ContainsWord(ExampleVi e, string word) =>
+        e.Name.Contains(word, StringComparison.OrdinalIgnoreCase) ||
+        e.Category.Contains(word, StringComparison.OrdinalIgnoreCase) ||
+        e.Description.Contains(word, StringComparison.OrdinalIgnoreCase) ||
+        e.Keywords.Any(k => k.Contains(word, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The query split on whitespace. A query that is entirely whitespace never reaches here -
+    /// it is handled as "no query" - but a single word still yields one word, so the old
+    /// single-term behaviour is unchanged.
+    /// </summary>
+    internal static IReadOnlyList<string> Words(string query) =>
+        query.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries |
+                                   StringSplitOptions.TrimEntries);
 }

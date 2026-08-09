@@ -114,6 +114,14 @@ layout: `conIdx=` contains the characters `x=`.
   diagram is decided entirely by LabVIEW.
 - `connection` without a `conIdx` is dropped on export: a terminal only counts as
   connector-pane-assigned when it has an index.
+- **`conIdx` is a slot number, not a position — and there is no fixed map to memorise.** It is
+  an index into whatever connector-pane *pattern* LabVIEW picks, and the same role lands on
+  different numbers in different VIs. Measured, all of them valid and working: NI's own exports
+  put `error in (no error)` on **8** and `error out` on **0**; one generated VI used **3** and
+  **7** for that pair, another **0** and **3**. So the pane pattern is not something `conIdx`
+  reveals, and a number copied from one VI means something else in another. **Copy the whole set
+  from an export of a VI whose pane you actually want**, and do not try to derive geometry from
+  the numbers — this is the same rule as for terminal names (§8), for the same reason.
 - `_name` on `VI` should match the target file name. LabVIEW overwrites it with the real
   file name on export, so a mismatch is at best ignored.
 
@@ -242,28 +250,37 @@ tag{14}                                        IO name control (a DAQmx physical
 so two unrelated class references are indistinguishable by type alone. Frameworks that thread
 an object through a VI hierarchy (DQMH's module admin, for instance) show up as this.
 
-Composition nests freely, **with one measured exception: an array of arrays is rejected.** The
-standard error cluster is:
+Composition nests freely. The standard error cluster is:
 
 ```
 cluster{bool.status,int32.code,string.source}
 ```
 
-`array{string}` is accepted as a `Constant` and as an `Indicator`. `array{array{string}}` is
-refused in both positions, with
+**A multi-dimensional array is `array.N{ELEM}`, not a nested `array{array{ELEM}}`.** The
+dimension count is an infix on `array`, and the value literal nests with brackets:
+
+```xml
+<Indicator _name="Case 2 - Replace One Element in 2D Array"
+           type="array.2{double.Numeric}" value="[[0,1,2,3],[4,5,6,7]]" .../>
+```
+
+Attested throughout NI's own exports — `array.2{double.Numeric}`, `array.2{int32.Numeric}`,
+`array.2{string}` — while `array{array{` appears **nowhere** in 57 corpus files. Write the nested
+form and it is refused in both `Constant` and `Indicator` position with
 
 ```
 Error 53 ... Unrecognized or unsupported attribute set in Constant with UID 62
-Unrecognized or unsupported attribute set in Indicator with UID 72
 ```
 
-— a message that names the element but not the attribute, so it reads like a typo in the `value`
-rather than a limit on the type. Both were in one probe VI, so the pass/fail is a direct
-comparison. Note the asymmetry: 2D data still **flows** perfectly well — `Read Delimited
-Spreadsheet` returns a 2D array and `Index Array dimensions="2"` indexes it — what you cannot do
-is *declare* one. When a design needs a table crossing a VI boundary, carry two parallel 1D
-arrays instead; that is why `scripts\lvai_run_and_read.xml` takes its input names and values as
-two separate lists rather than one `name=value` list.
+— a message that names the element but not the attribute, so it reads like a typo in `value`
+rather than a wrong type spelling.
+
+**An earlier revision of this section, written the same day, drew the wrong conclusion from that
+error.** It reported the rejection correctly and then declared that a 2D array "cannot be
+declared at all", advising two parallel 1D arrays as the workaround. That advice was unnecessary:
+only the *nested spelling* is refused. `scripts\lvai_run_and_read.xml` still takes its input names
+and values as two 1D lists — built under the wrong belief, harmless, and left alone because it
+works.
 
 A trailing `.Name` after a closing brace names the *instance*, not the type — a cluster
 field holding a queue reference reads
@@ -294,6 +311,29 @@ yourself if you want authored and exported files to match.
 input and came back as a plain `;`. So the decoder handles the general `\XX` form, while the
 encoder escapes only the characters it must. Do not infer the escape set from an export
 alone — but for round-trip stability, emit only what an export emits.
+
+### `value` is the exception: there, a comma is usually structure
+
+The rule above is about commas that are **content**. Inside a `value` attribute a comma is
+normally **structure** — the separator inside an array or cluster literal — and structure is
+never escaped. Counted across the 57-file corpus:
+
+| attribute | raw `,` | `\2C` |
+|---|---|---|
+| `description=` | **0** | 17 |
+| `value=` | **51** | 1 |
+
+Every one of the 51 is a literal separator — `value="[false,0,]"`,
+`value="[[0,1,2,3],[4,5,6,7]]"`. The single escaped case is the tell: it sits inside a `picture`
+constant's binary payload, where the byte `0x2C` is *data*. So the rule is one rule after all:
+
+> **Escape a comma that is content. Leave a comma that is structure.**
+
+For a plain string constant both spellings happen to work — a scalar has no structure to
+confuse, and `value=","` and `value="\2C"` were each measured producing a working comma
+delimiter. Prefer `\2C` there anyway: it is what an export emits for content, and it stays
+correct if the constant later becomes part of something with structure. Getting this wrong on a
+delimiter is **silent** — the file parses into one column of zeros with no error.
 
 So a library-qualified call target is written `MyLib.lvlib\3AHelper.vi`, and a nested
 property is `Front Panel Window\3ACloseable`.
@@ -1142,6 +1182,37 @@ The lesson generalises: when a node has modes, copy a **variant that is in the s
 from an export. A single specimen of the node does not reveal the type consequences of its modes.
 `Read from Text File` in read-lines mode also needs no refnum handling at all — hand it a path
 and it opens and closes the file itself.
+
+### Indexing a 2D array: the terminal you DISABLE is what selects a row or a column
+
+`Index Array` and `Replace Array Subset` take `dimensions="2"`, and their terminal names change
+with which dimension you leave unwired: the unwired one is prefixed **`disabled `**. This is the
+whole mechanism — disabling a dimension is not a formality, it is what turns "one element" into
+"one whole row" or "one whole column".
+
+NI's `Replace Array Elements.vi` puts all three side by side and labels each with an indicator,
+which makes it the specimen to copy:
+
+```xml
+<!-- one element: both indices wired -->
+<Node _name="Replace Array Subset" dimensions="2"
+      inputs="array:705.value,index (row):1367.value,index (col):1413.value,new element/subarray:1259.value" .../>
+<!-- one ROW: the column is disabled -->
+<Node _name="Replace Array Subset" dimensions="2"
+      inputs="array:705.value,index (row):1367.value,disabled index (col):,new element/subarray:543.value" .../>
+<!-- one COLUMN: the row is disabled -->
+<Node _name="Replace Array Subset" dimensions="2"
+      inputs="array:705.value,disabled index (row):,index (col):1413.value,new element/subarray:543.value" .../>
+```
+
+`Index Array` follows the same shape and returns `subarray` rather than `element` once a
+dimension is disabled. **Terminal order still matters** (§8): row before column, always.
+
+The reason this is worth a section rather than a table row: §8 lists `Index Array` as "varies per
+instance (18 shapes)" and `aixml-node-gaps.tsv` has no row for it at all, so the names are not
+discoverable from either. Nothing warns you — a wrong name is the ordinary
+`Object terminal not found` error, but *guessing* `index (col)` when you meant to disable it
+silently indexes an element instead of a column.
 
 ### Ring and enum controls
 
