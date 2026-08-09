@@ -127,9 +127,10 @@ internal static class Corpus
         Console.WriteLine($"already done: {done.Count}");
         Console.WriteLine($"to process  : {candidates.Count}");
         Console.WriteLine(restartEvery > 0
-            ? $"WILL RESTART LabVIEW every {restartEvery} VIs - unsaved work in it is lost."
-            : "LabVIEW is never restarted. It cannot close the projects this opens either, so " +
-              "watch its handle count on a long run, or pass --restart-every <n>.");
+            ? $"WILL RESTART LabVIEW every {restartEvery} projects opened, because nothing can " +
+              "close one. Unsaved work in LabVIEW is lost - pass --restart-every 0 to disable."
+            : "LabVIEW is NEVER restarted, and nothing closes the projects this opens. On a large " +
+              "tree its handle count and memory grow without bound.");
         Console.WriteLine();
 
         var connection = new LvaiConnection(NullLogger<LvaiConnection>.Instance, port);
@@ -139,6 +140,7 @@ internal static class Corpus
         var action = new ActionTools(connection);
         var settleSeconds = Math.Max(600, timeoutSeconds * 10);
         string? openedProject = null;
+        var projectsOpen = 0;
 
         var index = 0;
         var failures = 0;
@@ -166,6 +168,7 @@ internal static class Corpus
                 {
                     await action.OpenFileAsync(projectPath: project, timeoutSeconds: timeoutSeconds);
                     openedProject = project;
+                    projectsOpen++;
                 }
             }
             catch
@@ -241,11 +244,13 @@ internal static class Corpus
                 consecutiveUnreachable = 0;
             }
 
-            // Give the accumulated projects back. See RecycleAsync: nothing else can.
-            if (restartEvery > 0 && index % restartEvery == 0 && index < candidates.Count)
+            // Give the accumulated projects back. See RecycleAsync: nothing else can. Counted in
+            // PROJECTS rather than VIs, because projects are what is leaking - one example
+            // project with fifty VIs costs LabVIEW no more than one with a single VI.
+            if (restartEvery > 0 && projectsOpen >= restartEvery && index < candidates.Count)
             {
-                Console.WriteLine($"       restarting LabVIEW after {index} VIs " +
-                                  "(no RPC closes a project) ...");
+                Console.WriteLine($"       {projectsOpen} projects open and no RPC closes one - " +
+                                  "restarting LabVIEW ...");
                 if (!await RecycleAsync(connection, settleSeconds))
                 {
                     Console.Error.WriteLine("LabVIEW did not come back. Start it and rerun " +
@@ -253,6 +258,7 @@ internal static class Corpus
                     return 3;
                 }
                 openedProject = null; // a fresh IDE has nothing open
+                projectsOpen = 0;
             }
         }
 

@@ -535,6 +535,10 @@ are surprising. Verified from exports:
 | `Array To Spreadsheet String` | `format string`, `array`, **`delimiter (Tab)`** | `spreadsheet string` |
 | `Build Array` | `array` / `element`, repeatable | `appended array` |
 | `Unbundle By Name` | `input cluster` | one per `fields`, e.g. `status`, `code`, `source` |
+| `Bundle By Name` | one per `fields`, **then** `input cluster` — the order matters | `output cluster` |
+| `Bundle` | `element`, repeatable, **then** `cluster` | `output cluster` |
+| `Unbundle` | `cluster` | `element`, repeatable |
+| `Unbundle / Bundle Elements` | `input cluster` | `output cluster` — the In Place Element border node |
 | `String To Path` | `string` | `path` |
 | `Path To String` | `path` | `string` |
 | `Number To Decimal String` | `number` | **`decimal integer string`** — not `string` |
@@ -641,7 +645,28 @@ the failure disguises itself as a type error, the cheap habit is the same one §
 recommends for names: take the whole `inputs` string from an export of a VI that uses the node,
 order included, rather than assembling it from a terminal list.
 
+**The rule is not special to `Bundle By Name` — plain `Bundle` obeys it too**, and the corpus says
+so without a single counter-example. Across 507 example exports, every `Bundle` lists its element
+terminals first and `cluster` last, and every `Bundle By Name` lists its fields first and
+`input cluster` last:
+
+```
+Bundle          inputs   element, element, cluster              28x   (the commonest shape)
+Bundle          inputs   Plant Output, SP\3A, cluster            5x
+Bundle By Name  inputs   Message, Message Data, input cluster    3x
+Unbundle        inputs   cluster                                29x  (nothing to order)
+Unbundle        outputs  element, element                       15x
+```
+
+Two details the table above also settles. `Bundle`'s cluster terminal is called **`cluster`**, not
+`input cluster` — that is `Bundle By Name`'s spelling — and its output is `output cluster` in both.
+And a plain `Bundle`'s element terminal is named `element` only when what is wired to it has no
+label; where the wire carries a labelled signal the terminal takes that label (`Plant Output`,
+`SP\3A`). So the shape is per instance, and it is one more reason to copy the whole `inputs`
+string from an export rather than assemble it.
+
 `Unbundle By Name` was never affected — it has one input, so there is no order to get wrong.
+Neither is `Unbundle`, for the same reason; its *outputs* repeat `element` once per field.
 
 **Consequence for design: a generated diagram CAN build a cluster.** The old advice to route
 around clusters — prefer scalar-terminal siblings, e.g. `NI_AALBase.lvlib:Sine Wave.vi` over
@@ -776,6 +801,48 @@ Note the difference from an enum, which encodes its labels inside the *type*
 because its values need not be consecutive.
 
 ## 9. What the generator accepts
+
+### Measured over the shipping examples, not over a hand-picked few
+
+`LabVIEWMCP --corpus` exports every VI in a tree and hands each export straight back to
+`ValidateAIXML`; `scripts/aixml_corpus_report.py` mines the exports afterwards. That is the
+standing way to re-derive this section after a LabVIEW or addon update, and it replaces the
+13-VI corpus the rest of this document was built on. Run it before trusting anything below.
+
+Two numbers frame everything else, from the first 507 examples of LabVIEW 2026:
+
+- **4 export failures, 263 validate failures.** Reading a VI out is close to always possible;
+  reading it *back in* is where the gaps are. So a construct being visible in an export is no
+  evidence at all that it can be generated.
+- **219 distinct node kinds, 169 of them not named anywhere in this document.** The terminal table
+  in §8 is a small fraction of the vocabulary NI actually uses. `undocumented.tsv` from the report
+  is the working gap list, most frequent first — `Static VI Reference`, `Build Path`,
+  `New VI Object`, `To More Specific Class`, `Open VI Object Reference`, `Format Into String`,
+  `Feedback Node`, `In Range and Coerce` were the first eight.
+
+The validate failures group into four causes, and only the last is a surprise:
+
+| Cause | Share | Reading |
+|---|---|---|
+| `Unsupported SubVI` — a `Call` to a project- or library-local VI | ~2/3 | the documented boundary below; expected, not a defect |
+| `Static VI Reference 'X': SubVI is missing` | 23 | a static VI reference does not survive the trip |
+| `Event Data Node: Cluster is invalid or empty` together with `Event Structure: One or more event cases have no events defined` | 7 | the event *registration* is lost even though the frame's `selector` round-trips as text |
+| `Error 1 … An input parameter is invalid` from `VI generator.vi`, with no further detail | 73 | the generator refuses the document and does not say why |
+
+The event-structure row is worth spelling out, because §7 lists event structures as working and
+that is only half true. The selector comes back with its spaces intact —
+`selector=" &quot;Exported VI&quot;\3A Value Change "` — and the generator still reports the frame
+as having no event defined. So an event structure can be *read*, and a static, single-event one can
+be built, but a round trip of NI's own event code is not reliable. Check by validating the
+untouched export before planning any edit to such a VI.
+
+Structure kinds in the corpus, by frequency: `Case Structure` (311), `While Loop` (265),
+`For Loop` (145), `Event Structure` (54), `In Place Element Structure` (38), `Flat Sequence Frame`
+(27), `Stacked Sequence Structure` (2). The In Place Element Structure is the one to know about
+here — it is how NI modifies a cluster or array element without a copy, and its border node is
+`Unbundle / Bundle Elements` (§8).
+
+### The original 13-VI corpus
 
 Round-trip validation (`ValidateAIXML`) of the 13-VI corpus: **11 passed, 2 failed.** All
 failures share one cause.

@@ -58,7 +58,7 @@ if (CommandLine.HasFlag(args, "--corpus"))
     return await Corpus.RunAsync(portOverride, CommandLine.StringArg(args, "--corpus"),
         CommandLine.StringArg(args, "--out"), CommandLine.IntArg(args, "--limit"),
         CommandLine.IntArg(args, "--timeout") ?? 90, CommandLine.StringArg(args, "--skip"),
-        CommandLine.IntArg(args, "--restart-every") ?? 0);
+        CommandLine.IntArg(args, "--restart-every") ?? 40);
 
 if (CommandLine.HasFlag(args, "--ensure-labview"))
     return await EnsureLabView.RunAsync(portOverride, CommandLine.IntArg(args, "--timeout") ?? 300);

@@ -182,9 +182,8 @@ def main() -> int:
                 continue
             if len(node_files[name]) < 2:
                 continue
-            ins = signatures[(name, "inputs")].most_common(1)
-            outs = signatures[(name, "outputs")].most_common(1)
-            handle.write(f"| `{name}` | {cell(ins)} | {cell(outs)} |\n")
+            handle.write(f"| `{name}` | {cell(signatures[(name, 'inputs')])} | "
+                         f"{cell(signatures[(name, 'outputs')])} |\n")
 
     undocumented = sum(1 for n in node_count
                        if n not in known and not n.startswith(("Structure:", "CaseFrame:")))
