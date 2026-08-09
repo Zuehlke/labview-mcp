@@ -57,13 +57,24 @@ VI with three labels of 12–20 characters, and moving the prose into the `VI de
 So: keep diagram comments to a few words, and put explanations in `description`.
 Verify by exporting the rendered diagram — see `--diagram` in the README.
 
-The complete attribute vocabulary over the whole corpus is:
+The attribute vocabulary, measured over every shipping example rather than over the original
+13 (`LabVIEWMCP --corpus`, then `attributes.tsv` from the report):
 
 ```
-_id  _name  comment  cond  conIdx  connection  count  description  element  fields
-inputs  label  maxin  maxout  mode  outputs  scope  selectin  selectout  selector
-style  target  type  uid  uid_parent  value
+_id  _name  adapt  aggregate  comment  concat  cond  conIdx  connection  convertEol
+count  description  dimensions  element  elements  fields  ignoreAttributes  includeHigh
+includeLow  inputs  instance  inversions  items  label  link  maxin  maxout  mode
+operation  outputs  readLines  selectin  selectout  selector  strict  style  target
+text  type  uid  uid_parent  value  values
 ```
+
+**Eighteen of those were missing** from the list this document carried before the sweep, among
+them `elements` (how `Array To Cluster` fixes its output size), `dimensions`, `operation`,
+`aggregate`, `link`, `strict` and `text`. Several — `adapt`, `instance`, `concat`, `convertEol`,
+`readLines`, `items`, `values` — are described elsewhere in this file yet were absent here, so the
+list was never a reliable place to check whether an attribute exists. It is now generated rather
+than remembered; regenerate it after a LabVIEW upgrade. Conversely `scope` appears in the old list
+and in no export, so treat it as unconfirmed.
 
 No `x`, `y`, `left`, `top`, `bounds`. A comment can be *added* but never *placed*, and a
 diagram cannot be tidied through this format. Beware a false positive when grepping for
