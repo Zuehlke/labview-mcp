@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
@@ -129,20 +130,28 @@ internal sealed class RunTools(LvaiConnection connection)
             // to prevent.
             var keepRaw = includeRawXml || values.Count == 0;
 
-            return Json.Message(response,
-                ("values", LvValuesXml.ToJson(values)),
-                ("valueCount", JsonValue.Create(values.Count)),
-                ("valuesXml", keepRaw ? JsonValue.Create(valuesXml) : null),
-                ("helperErrorXml", JsonValue.Create(errorXml)),
-                ("helperViPath", JsonValue.Create(helperVi)),
-                ("helperAixmlPath", JsonValue.Create(Path.GetFullPath(aixml))),
-                ("helperGenerated", JsonValue.Create(helperGenerated)),
-                ("inputsSent", JsonValue.Create(inputs.Count)),
-                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)),
-                ("note", JsonValue.Create(
-                    "errorCode here is the HELPER's. A target VI that itself reported an error " +
-                    "shows that in its own error out under values - read it there, not from " +
-                    "errorCode.")));
+            var payload = Json.Node(response).AsObject();
+            // The helper's two indicators are re-exposed below as `values`/`valuesXml` and
+            // `helperErrorXml`, so leaving the protobuf map in place would ship the whole
+            // flattened XML a second time - doubling the payload on exactly the big waveforms
+            // this tool exists to return, and quietly breaking includeRawXml's promise.
+            payload.Remove("outputs");
+
+            payload["values"] = LvValuesXml.ToJson(values);
+            payload["valueCount"] = JsonValue.Create(values.Count);
+            payload["valuesXml"] = keepRaw ? JsonValue.Create(valuesXml) : null;
+            payload["helperErrorXml"] = JsonValue.Create(errorXml);
+            payload["helperViPath"] = JsonValue.Create(helperVi);
+            payload["helperAixmlPath"] = JsonValue.Create(Path.GetFullPath(aixml));
+            payload["helperGenerated"] = JsonValue.Create(helperGenerated);
+            payload["inputsSent"] = JsonValue.Create(inputs.Count);
+            payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
+            payload["note"] = JsonValue.Create(
+                "errorCode here is the HELPER's. A target VI that itself reported an error " +
+                "shows that in its own error out under values - read it there, not from " +
+                "errorCode.");
+
+            return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
 
     /// <summary>The first name or value carrying a line break, or null when all are clean.</summary>

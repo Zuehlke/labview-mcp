@@ -1,7 +1,7 @@
 ---
 name: labview-vi-generator
 description: Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Generator
@@ -258,13 +258,25 @@ That is expected, and it is the check that your `URL` is right.
    [`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). `Error 1051` is its
    sibling and means something else: same *filename*, different path.
 3. `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
-4. `lvai_run_vi_as_top_level` with `inputsJson` covering the inputs from Phase 1, including at
-   least one edge case you promised to handle.
+4. Run it, with `inputsJson` covering the inputs from Phase 1, including at least one edge case
+   you promised to handle. **Which tool depends on the output types, and for most VIs it is the
+   second one:**
 
-   **`errorCode: 91` is expected whenever an output cannot be read back — it appears *after* the
-   VI has run correctly.** It is `RunVIAsTopLevel` reading the value back through a variant, not
-   your VI failing. When the output type is not readable this way, have the VI write its result
-   to a file and inspect the file. Never call an empty answer a success.
+   - **Every output a `string`** → `lvai_run_vi_as_top_level`.
+   - **Anything else — a boolean, numeric, cluster, array or waveform** → **`lvai_run_vi_and_read_values`**.
+     It sets the inputs, runs the target and reads *every* control and indicator back through VI
+     Server, so the values arrive intact. That is the normal case: a VI whose outputs are all
+     strings is the exception.
+
+   **`errorCode: 91` from `lvai_run_vi_as_top_level` is expected whenever an output cannot be
+   read back — it appears *after* the VI has run correctly.** It is `RunVIAsTopLevel` reading the
+   value back through a variant, not your VI failing. Never call an empty answer a success —
+   switch to `lvai_run_vi_and_read_values` and get the real values instead.
+
+   **Do not build your own VI Server harness for this.** That was the old workaround and it cost
+   about eight minutes per VI; the harness is shipped. Note also that `lvai_run_vi_and_read_values`
+   reports the *helper's* error code: a target VI that itself failed shows that in its own
+   `error out` under `values`, not in `errorCode`.
 
 ### Phase 7 — The icon, last
 

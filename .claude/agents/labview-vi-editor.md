@@ -1,7 +1,7 @@
 ---
 name: labview-vi-editor
 description: Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Editor
@@ -290,16 +290,22 @@ The documentation is part of this file, not a later step:
 
 ### Phase 7 — Prove it still works
 
-`lvai_run_vi_as_top_level`, and test **both** halves:
+Run it, and test **both** halves:
 
 - the new behaviour from Phase 1,
 - at least one thing from the **Unchanged** column — a regression check, because a rewrite
   touched every node.
 
-`errorCode: 91` appears *after* a correct run whenever an output cannot be read back through a
-variant; only `string` indicators survive that path. When the output type is not readable, have
-the VI write its result to a file and inspect the file. **Never report success from an empty
-answer.**
+**Pick the tool by the output types.** Every output a `string` → `lvai_run_vi_as_top_level`.
+Anything else — boolean, numeric, cluster, array, waveform → **`lvai_run_vi_and_read_values`**,
+which sets the inputs, runs the target and reads every control and indicator back through VI
+Server. For an edit that is usually the one you want: a regression check you cannot read is not
+a regression check.
+
+`errorCode: 91` from `lvai_run_vi_as_top_level` appears *after* a correct run whenever an output
+cannot be read back through a variant; only `string` indicators survive that path. **Never report
+success from an empty answer** — switch tools rather than making the VI write to a file, which
+was the old workaround and cost about eight minutes of hand-built harness per VI.
 
 ### Phase 8 — Put the icon back
 

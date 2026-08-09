@@ -138,6 +138,25 @@ public sealed class RunToolsTests : IDisposable
     }
 
     /// <summary>
+    /// The raw helper indicators must not ride along in the protobuf `outputs` map as well -
+    /// that would ship the whole flattened XML twice, doubling the payload on exactly the big
+    /// waveforms this tool exists to return, and making includeRawXml's promise a lie.
+    /// </summary>
+    [Fact]
+    public async Task Does_not_also_return_the_helpers_raw_output_map()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            WriteVi(), helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+
+        Assert.False(Res.Has(result, "outputs"));
+        // and the payload carries the values exactly once
+        Assert.Equal(1, Res.Int(result, "valueCount"));
+        Assert.True(Res.IsNull(result, "valuesXml"));
+    }
+
+    /// <summary>
     /// The repository rule this tool exists to serve: never report success from an empty answer.
     /// If the XML cannot be parsed, the raw text is all there is - so it must come back even
     /// though includeRawXml was not asked for.
