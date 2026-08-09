@@ -26,8 +26,12 @@ internal sealed class ExampleTools
         whole example application, and for that the follow-up is lvai_describe_project instead.
         Matches on name, category, keywords and description. Without a query: the totals plus the
         scan location.
-        Scanned from disk at call time because the set is station-specific, and cached for the
-        process lifetime. Needs NO running LabVIEW - the metadata is plain text inside each .vi.
+        Needs NO running LabVIEW - the metadata is plain text inside each .vi.
+        CACHED ON DISK and reused by every later session. Scanning is a read of 2510 files and
+        costs about a minute the first time on a machine; after that it is read back in under a
+        second, and the server warms it at start-up so the first call does not pay even that. The
+        cache never expires on its own - pass refresh after installing or upgrading LabVIEW or an
+        add-on, and only then.
         Both roots are read: <LabVIEW>\examples AND every LVAddon under %ProgramFiles%\NI\LVAddons,
         which is where driver and toolkit examples now install.
         Examples that carry no in-VI metadata are covered too: some drivers - NI-DAQmx above all -
@@ -46,7 +50,9 @@ internal sealed class ExampleTools
         [Description("Substring of name, category, keyword or description, e.g. 'TDMS', 'state machine'")]
         string? query = null,
         [Description("Max rows to return (default 10, max 60)")] int limit = DefaultLimit,
-        [Description("Rescan instead of using the cached index")] bool refresh = false,
+        [Description("Rebuild the index from disk. Costs about a minute - only after installing " +
+                     "or upgrading LabVIEW or an add-on")]
+        bool refresh = false,
         [Description("Also list examples needing FPGA, Real-Time or a licensed toolkit")]
         bool includeSpecialised = false,
         [Description("Override the LabVIEW installation folder; omit to use the newest installed")]
@@ -93,6 +99,12 @@ internal sealed class ExampleTools
                       "the list below: " + string.Join(", ", index.ExternalIndexes);
         if (index.Unreadable.Count > 0)
             header += Environment.NewLine + $"{index.Unreadable.Count} file(s) could not be read.";
+        // Say how old the answer is. A cache that never expires has to be visible, or a stale
+        // index after a LabVIEW upgrade looks like the installation lost its examples.
+        if (ExampleIndexStore.BuiltUtc(ExampleIndex.KeyFor(installRoot, addonsRoot)) is { } built)
+            header += Environment.NewLine +
+                      $"Index cached {built:yyyy-MM-dd HH:mm} UTC; pass refresh=true to rebuild " +
+                      "it (about a minute) after installing or upgrading LabVIEW or an add-on.";
         // Never a silent cap: a hidden two thirds would read as "this station has few examples".
         if (heldBack > 0)
             header += Environment.NewLine +

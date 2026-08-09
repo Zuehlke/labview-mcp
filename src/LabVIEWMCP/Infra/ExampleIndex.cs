@@ -138,15 +138,51 @@ internal static class ExampleIndex
 
         lock (Gate)
         {
-            if (!refresh && _cache.TryGetValue(key, out var cached)) return cached;
+            if (!refresh)
+            {
+                // Memory first, then the machine-wide cache on disk. Without the second the
+                // 55-second scan came back on every server restart; see ExampleIndexStore.
+                if (_cache.TryGetValue(key, out var cached)) return cached;
+
+                if (ExampleIndexStore.TryLoad(key) is { } stored)
+                {
+                    _cache = Remember(key, stored);
+                    return stored;
+                }
+            }
 
             var result = Scan(root, addons, install?.Release);
-            _cache = new Dictionary<string, Result>(_cache, StringComparer.OrdinalIgnoreCase)
-            {
-                [key] = result,
-            };
+            _cache = Remember(key, result);
+            ExampleIndexStore.Save(key, result);
             return result;
         }
+    }
+
+    private static Dictionary<string, Result> Remember(string key, Result result) =>
+        new(_cache, StringComparer.OrdinalIgnoreCase) { [key] = result };
+
+    /// <summary>
+    /// Build the index off the hot path, swallowing every failure.
+    ///
+    /// Called once as the server starts. The point is not speed but WHEN the cost is paid: a
+    /// scan that runs at start-up delays nobody, where the same scan on the first tool call is a
+    /// 55-second silence in the middle of a conversation. A caller arriving mid-scan blocks on
+    /// the same lock and then gets the finished index, so warming never causes a second scan.
+    /// </summary>
+    public static Task WarmAsync(string? labviewRoot = null, string? addonsRoot = null) =>
+        Task.Run(() =>
+        {
+            try { Build(labviewRoot, refresh: false, addonsRoot); }
+            catch { /* no LabVIEW, no examples folder, no permissions - all fine, just no warm */ }
+        });
+
+    /// <summary>The cache key for a pair of roots, as <see cref="Build"/> computes it.</summary>
+    public static string KeyFor(string? labviewRoot, string? addonsRoot)
+    {
+        var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
+        var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath));
+        var addons = addonsRoot ?? (labviewRoot is null ? AddonTree.DefaultRoot() : null);
+        return (root ?? "") + "|" + (addons ?? "");
     }
 
     private static Result Scan(string root, string? addonsRoot, int? release)

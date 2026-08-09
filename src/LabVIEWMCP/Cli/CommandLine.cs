@@ -25,6 +25,7 @@ internal static class CommandLine
         ["--corpus"] = true, // the root is optional; the value test below handles that
         ["--examples"] = true,
         ["--include-specialised"] = false,
+        ["--refresh"] = false,
         ["--port"] = true,
         ["--vi"] = true,
         ["--project"] = true,
@@ -60,6 +61,7 @@ internal static class CommandLine
                             and the per-VI budget for --corpus (default 90)
           --limit <n>       stop --corpus after n VIs; rows returned by --examples
           --include-specialised  let --examples list FPGA, Real-Time and toolkit examples too
+          --refresh         rebuild the example index cache (about a minute)
           --skip <a,b>      substrings of a path --corpus must not touch; they are still
                             listed in the results, so the gap stays visible
           --restart-every <n>  --corpus restarts LabVIEW once n projects are open (default 40,

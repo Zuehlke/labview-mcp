@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 
 namespace LabVIEWMcp.Cli;
@@ -12,13 +14,20 @@ namespace LabVIEWMcp.Cli;
 /// </summary>
 internal static class Examples
 {
-    public static int Run(string? query, int? limit, bool includeSpecialised)
+    public static int Run(string? query, int? limit, bool includeSpecialised, bool refresh)
     {
-        Console.WriteLine(ExampleTools.ExampleIndexTool(
-            query,
-            limit ?? 10,
-            refresh: false,
-            includeSpecialised: includeSpecialised));
+        if (refresh)
+            Console.Error.WriteLine(
+                "Rebuilding the example index - this reads every example VI and takes about a " +
+                $"minute. Cache: {ExampleIndexStore.Directory}");
+
+        var started = Stopwatch.StartNew();
+        var answer = ExampleTools.ExampleIndexTool(
+            query, limit ?? 10, refresh, includeSpecialised);
+        started.Stop();
+
+        Console.WriteLine(answer);
+        Console.Error.WriteLine($"({started.ElapsedMilliseconds} ms)");
         return 0;
     }
 }

@@ -31,9 +31,14 @@ may I call*, this one says *is this whole diagram already written*. Feed a hit's
 Two numbers worth knowing before you call it. **609 of the 951 examples are listed by default**:
 the rest need LabVIEW FPGA, LabVIEW Real-Time or a licensed toolkit, and a hit you cannot open is
 worse than no hit. The count held back is always reported; `includeSpecialised` shows them.
-And **the first call costs about 55 seconds**, not the 400 ms this file used to claim — that was
-the warm figure. The index is a scan of 2510 files, held only for the lifetime of the server
-process, so the first call after a restart re-reads them all and looks like a hang.
+And the index is **cached on disk and warmed at start-up**, so calls cost about 176 ms — but the
+first ever build on a machine reads 2510 files and takes **about 50 seconds**. This file used to
+claim 400 ms flatly; that was the warm figure, and before the cache existed every server restart
+brought the full minute back.
+
+The cache never expires on its own. After installing or upgrading LabVIEW or an add-on, rebuild it
+once — `refresh=true`, or `LabVIEWMCP --examples --refresh` — because nothing else will notice.
+Every answer carries the cache's build date, so a stale index is visible rather than mysterious.
 
 Do this first for anything pattern-shaped: state machines, producer/consumer, queued message
 handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds

@@ -1,5 +1,6 @@
 using LabVIEWMcp.Cli;
 using LabVIEWMcp.Grpc;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -57,7 +58,8 @@ if (CommandLine.HasFlag(args, "--diagram"))
 if (CommandLine.HasFlag(args, "--examples"))
     return Examples.Run(CommandLine.StringArg(args, "--examples"),
         CommandLine.IntArg(args, "--limit"),
-        CommandLine.HasFlag(args, "--include-specialised"));
+        CommandLine.HasFlag(args, "--include-specialised"),
+        CommandLine.HasFlag(args, "--refresh"));
 
 if (CommandLine.HasFlag(args, "--corpus"))
     return await Corpus.RunAsync(portOverride, CommandLine.StringArg(args, "--corpus"),
@@ -88,6 +90,14 @@ builder.Services
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly();
+
+// Build the example index before anyone asks for it. MEASURED: a cold scan costs 55 seconds and
+// the in-memory index does not outlive the process, so without this the first lvai_example_index
+// call after every restart is a 55-second silence - long enough to read as a hang. The result is
+// also written to disk, so this only actually scans on a machine that has never done it, or after
+// an explicit refresh. Fire-and-forget on purpose: a machine with no LabVIEW must still serve
+// every other tool.
+_ = ExampleIndex.WarmAsync();
 
 await builder.Build().RunAsync();
 return 0;
