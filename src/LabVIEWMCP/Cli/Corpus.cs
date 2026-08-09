@@ -127,8 +127,9 @@ internal static class Corpus
         Console.WriteLine($"already done: {done.Count}");
         Console.WriteLine($"to process  : {candidates.Count}");
         Console.WriteLine(restartEvery > 0
-            ? $"WILL RESTART LabVIEW every {restartEvery} projects opened, because nothing can " +
-              "close one. Unsaved work in LabVIEW is lost - pass --restart-every 0 to disable."
+            ? $"WILL RESTART LabVIEW every {restartEvery} projects opened, and whenever it passes " +
+              $"{HandleCeiling:N0} handles - nothing can close a project. Unsaved work in LabVIEW " +
+              "is lost; --restart-every 0 disables both."
             : "LabVIEW is NEVER restarted, and nothing closes the projects this opens. On a large " +
               "tree its handle count and memory grow without bound.");
         Console.WriteLine();
@@ -244,12 +245,24 @@ internal static class Corpus
                 consecutiveUnreachable = 0;
             }
 
-            // Give the accumulated projects back. See RecycleAsync: nothing else can. Counted in
-            // PROJECTS rather than VIs, because projects are what is leaking - one example
-            // project with fifty VIs costs LabVIEW no more than one with a single VI.
-            if (restartEvery > 0 && projectsOpen >= restartEvery && index < candidates.Count)
+            // Give the accumulated projects back. See RecycleAsync: nothing else can.
+            //
+            // Two triggers, because counting projects alone was measured to be too coarse. Only
+            // 95 distinct projects cover the whole examples tree, so a project threshold fires
+            // twice in an hour - while LabVIEW went to 116 000 handles and 1.3 GB over 900 VIs,
+            // roughly 130 handles per VI whether or not a new project was involved. The handle
+            // count is the leak itself rather than a proxy for it, so it decides; the project
+            // count stays as the coarse, explainable knob.
+            var reason =
+                restartEvery <= 0 ? null                                    // --restart-every 0
+                : projectsOpen >= restartEvery ? $"{projectsOpen} projects open"
+                : index % HandleCheckEvery == 0 && LabViewHandles() is { } handles &&
+                  handles > HandleCeiling ? $"LabVIEW at {handles:N0} handles"
+                : null;
+
+            if (reason is not null && index < candidates.Count)
             {
-                Console.WriteLine($"       {projectsOpen} projects open and no RPC closes one - " +
+                Console.WriteLine($"       {reason} and no RPC closes a project - " +
                                   "restarting LabVIEW ...");
                 if (!await RecycleAsync(connection, settleSeconds))
                 {
@@ -282,6 +295,27 @@ internal static class Corpus
     ///
     /// DESTRUCTIVE, hence opt-in: it kills every LabVIEW on the machine, unsaved work included.
     /// </summary>
+    /// <summary>
+    /// Handle count above which LabVIEW is recycled, and how often that is looked at. Measured on
+    /// LabVIEW 2026 sweeping its own examples: about 130 handles per VI, 116 000 after 900 of
+    /// them, none of it released. 50 000 is comfortably below anything that misbehaved and still
+    /// keeps the restarts to a handful over a full tree. Enumerating processes is not free, hence
+    /// the interval.
+    /// </summary>
+    private const int HandleCeiling = 50_000;
+    private const int HandleCheckEvery = 25;
+
+    /// <summary>Handles held by the running LabVIEW, or null if it cannot be read.</summary>
+    private static int? LabViewHandles()
+    {
+        try
+        {
+            var instances = LabViewLocator.RunningInstances();
+            return instances.Count == 0 ? null : instances.Max(p => p.HandleCount);
+        }
+        catch { return null; }
+    }
+
     private static async Task<bool> RecycleAsync(LvaiConnection connection, int waitSeconds)
     {
         foreach (var process in LabViewLocator.RunningInstances())
