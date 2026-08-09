@@ -54,6 +54,11 @@ if (CommandLine.HasFlag(args, "--diagram"))
     return await Diagram.RunAsync(portOverride, CommandLine.StringArg(args, "--diagram"),
         CommandLine.StringArg(args, "--out"));
 
+if (CommandLine.HasFlag(args, "--examples"))
+    return Examples.Run(CommandLine.StringArg(args, "--examples"),
+        CommandLine.IntArg(args, "--limit"),
+        CommandLine.HasFlag(args, "--include-specialised"));
+
 if (CommandLine.HasFlag(args, "--corpus"))
     return await Corpus.RunAsync(portOverride, CommandLine.StringArg(args, "--corpus"),
         CommandLine.StringArg(args, "--out"), CommandLine.IntArg(args, "--limit"),
