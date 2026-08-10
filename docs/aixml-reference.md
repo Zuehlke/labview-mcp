@@ -124,10 +124,15 @@ layout: `conIdx=` contains the characters `x=`.
   the numbers — this is the same rule as for terminal names (§8), for the same reason.
 - `_name` on `VI` should match the target file name. LabVIEW overwrites it with the real
   file name on export, so a mismatch is at best ignored.
-- **`value` is required on every `Control` and `Indicator`**, including an error cluster —
-  `[false,0,""]` there. Omitting it fails validation, which is cheap; the expensive part is the
-  *case* of what you put in it. A boolean literal must be exactly lowercase `true`/`false`:
-  `TRUE` generates without complaint and runs as **false** (§11).
+- **`value` is required on every `Control` and `Indicator`**, including an error cluster, where
+  the literal is **`[false,0,]`** — the trailing empty string is written as nothing at all, not
+  as `""`. Counted: 5 occurrences in the corpus and 2 in a freshly generated VI's re-export, and
+  no instance of `[false,0,""]` anywhere. (An earlier revision of this line claimed the `""`
+  form; it was written from memory rather than from an export, and `""` would give a `source`
+  containing two literal quote characters — §6 takes a string element in a `value` literally.)
+  Omitting `value` fails validation, which is cheap; the expensive part is the *case* of what you
+  put in it. A boolean literal must be exactly lowercase `true`/`false`: `TRUE` generates without
+  complaint and runs as **false** (§11).
 - **`inputs` is required on an `Indicator` too**, even an unwired one, where it reads
   `inputs="value:"` — the empty-net form used for any unwired terminal (§8).
 
@@ -1229,6 +1234,29 @@ instance (18 shapes)" and `aixml-node-gaps.tsv` has no row for it at all, so the
 discoverable from either. Nothing warns you — a wrong name is the ordinary
 `Object terminal not found` error, but *guessing* `index (col)` when you meant to disable it
 silently indexes an element instead of a column.
+
+### Build Waveform: the field names, measured rather than assumed
+
+§8's node table lists `Build Waveform` as "varies per instance (9 shapes)", which is honest and
+useless — and a VI generator was measured guessing `t0` from LabVIEW convention because nothing
+here said it. It happens to be right, so here it is as a measurement instead. Generated, then
+re-exported by LabVIEW unchanged:
+
+```xml
+<Node _name="Build Waveform" fields="t0,dt,Y"
+      inputs="waveform:,t0:54.Time Stamp,dt:53.s? t\3Af,Y:47.subarray"
+      outputs="output waveform:55.output waveform" uid="55" uid_parent="root"/>
+```
+
+Three things the shape does not show:
+
+- `fields` selects which terminals exist, and `inputs` then lists `waveform` **first** followed
+  by one entry per field in the same order. Leave `waveform:` empty to build a new one.
+- **`t0` is a Time Stamp, not a DBL, and there is no coercion.** Wire a double and validation
+  says `the source is double, sink is Time Stamp`. Convert with `To Time Stamp` (`number` →
+  `Time Stamp`).
+- Reading the result back, a Time Stamp's four I32 words are ordered fraction-low, fraction-high,
+  seconds-low, seconds-high — see `vi-server-reference.md`, or every `t0` looks like zero.
 
 ### Reading a CSV: three things about `Read Delimited Spreadsheet` worth not re-deriving
 

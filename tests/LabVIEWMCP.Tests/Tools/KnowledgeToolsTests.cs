@@ -221,6 +221,31 @@ public class KnowledgeToolsTests
         Assert.DoesNotContain("\n## ", body);
     }
 
+    /// <summary>
+    /// The label a lookup prints must be a label the tool accepts. Measured: a node lookup showed
+    /// `[Reading a CSV: three things about `Read Delimited Spreadsheet` worth not re-deriving]`,
+    /// and feeding exactly that back as section= answered "nothing mentions it".
+    /// </summary>
+    [Fact]
+    public void AHeadingWithBackticksCanBeFedBackVerbatim()
+    {
+        const string doc = """
+            ## 8. Nodes
+
+            ### Reading a CSV: three things about `Read Delimited Spreadsheet` worth knowing
+
+            body text here
+
+            ## 9. Next
+            """;
+
+        Assert.NotNull(KnowledgeTools.FindSubsection(
+            doc, "Reading a CSV: three things about `Read Delimited Spreadsheet` worth knowing"));
+        // and without them, since a caller may well strip them
+        Assert.NotNull(KnowledgeTools.FindSubsection(
+            doc, "Reading a CSV: three things about Read Delimited Spreadsheet worth knowing"));
+    }
+
     [Fact]
     public void SectionAcceptsASubsectionTitle()
     {

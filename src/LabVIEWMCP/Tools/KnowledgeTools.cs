@@ -496,6 +496,15 @@ internal sealed class KnowledgeTools
     }
 
     /// <summary>
+    /// A heading with its markdown stripped, for matching only. Headings in this document carry
+    /// backticks around node names, and a lookup prints the heading as a `[label]` - so a caller
+    /// naturally feeds that label straight back as `section=`, and it did not match. The label
+    /// the tool shows must be a label the tool accepts.
+    /// </summary>
+    private static string Plain(string heading) =>
+        heading.Replace("`", "").Replace("*", "").Trim();
+
+    /// <summary>
     /// How well a passage answers a lookup for <paramref name="needle"/>. The reference writes
     /// every node name in backticks, so that is the signal worth ranking on; a whole-word hit
     /// comes next; a bare substring last, because that is what makes "Select" match "selector".
@@ -527,10 +536,11 @@ internal sealed class KnowledgeTools
     internal static string? FindSubsection(string document, string query)
     {
         var lines = document.Replace("\r\n", "\n").Split('\n');
+        var wanted = Plain(query);
         for (var i = 0; i < lines.Length; i++)
         {
             if (!lines[i].StartsWith("### ", StringComparison.Ordinal)) continue;
-            if (!lines[i][4..].Contains(query, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!Plain(lines[i][4..]).Contains(wanted, StringComparison.OrdinalIgnoreCase)) continue;
 
             var end = i + 1;
             while (end < lines.Length &&
