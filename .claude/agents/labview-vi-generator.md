@@ -59,6 +59,22 @@ it an icon.
      and methods rather than fixed labels.
   4. **Export a VI that uses the node** — the fallback, now only when §8 says `varies per
      instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
+- **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
+  reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
+  `error out` **bottom right**, nothing arranged so wires must cross. On the standard 4-2-2-4 pane
+  (which is what you get by using `conIdx` 11 anywhere) the map is:
+
+  | | `conIdx`, top → bottom |
+  |---|---|
+  | **left edge — inputs** | **11, 10, 9, 8** — put `error in` on **8** |
+  | middle columns | 7/6, then 5/4 (upper/lower) — secondary terminals only |
+  | **right edge — outputs** | **3, 2, 1, 0** — put `error out` on **0** |
+
+  So a typical VI is: main input `11`, `error in` `8`, main output `3`, second output `2`,
+  `error out` `0`. **Do not invent an assignment by analogy** — a generated VI shipped with both
+  inputs on the right-hand edge and all three outputs in the middle columns, validated, ran, and
+  was rejected on sight. Full detail and a second pattern in `lvai_aixml_reference` §2, "The
+  connector pane".
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.

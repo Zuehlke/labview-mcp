@@ -83,6 +83,14 @@ So when the VI has one, validate the **untouched** export before promising anyth
   on an empty path, so an unguarded file name hangs the session on ordinary input. If the VI you
   are editing has one, guard it with `Equal?` + `Select` on a placeholder path, and run that test
   case last.
+- **Keep the connector pane placed by NI's style guide, and fix it if it is not.** Inputs on the
+  **left**, outputs on the **right**, `error in` **bottom left**, `error out` **bottom right**, no
+  crossings. On the standard 4-2-2-4 pane the `conIdx` map is left edge **11, 10, 9, 8** top to
+  bottom and right edge **3, 2, 1, 0** top to bottom, so the usual set is input `11`, `error in`
+  `8`, output `3`, `error out` `0`. Preserving an existing pane is the default — but a pane that
+  breaks the guide is a defect worth naming in the report and correcting, since `conIdx` is one
+  attribute per terminal and costs nothing to change. Detail in `lvai_aixml_reference` §2, "The
+  connector pane".
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.

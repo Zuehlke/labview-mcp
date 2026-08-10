@@ -114,14 +114,11 @@ layout: `conIdx=` contains the characters `x=`.
   diagram is decided entirely by LabVIEW.
 - `connection` without a `conIdx` is dropped on export: a terminal only counts as
   connector-pane-assigned when it has an index.
-- **`conIdx` is a slot number, not a position — and there is no fixed map to memorise.** It is
-  an index into whatever connector-pane *pattern* LabVIEW picks, and the same role lands on
-  different numbers in different VIs. Measured, all of them valid and working: NI's own exports
-  put `error in (no error)` on **8** and `error out` on **0**; one generated VI used **3** and
-  **7** for that pair, another **0** and **3**. So the pane pattern is not something `conIdx`
-  reveals, and a number copied from one VI means something else in another. **Copy the whole set
-  from an export of a VI whose pane you actually want**, and do not try to derive geometry from
-  the numbers — this is the same rule as for terminal names (§8), for the same reason.
+- **`conIdx` IS a position, and the map is knowable — see "The connector pane" below.** An
+  earlier revision of this line claimed there was "no fixed map to memorise" and told the reader
+  to copy a set of numbers from some other VI. That was wrong, and it produced badly styled VIs:
+  numbering depends on the *pattern*, but within a pattern each index is a fixed rectangle, and
+  the geometry is readable through VI Server.
 - `_name` on `VI` should match the target file name. LabVIEW overwrites it with the real
   file name on export, so a mismatch is at best ignored.
 - **`value` is required on every `Control` and `Indicator`**, including an error cluster, where
@@ -135,6 +132,45 @@ layout: `conIdx=` contains the characters `x=`.
   complaint and runs as **false** (§11).
 - **`inputs` is required on an `Indicator` too**, even an unwired one, where it reads
   `inputs="value:"` — the empty-net form used for any unwired terminal (§8).
+
+### The connector pane: which `conIdx` is where, and where things belong
+
+A generated VI can be functionally perfect and still be wrong, because `conIdx` decides *where on
+the connector pane* a terminal sits — and a reviewer sees that before anything else. This section
+exists because several generated VIs put their inputs on the right-hand edge and their error
+terminals at the top, which is exactly what
+[NI's style guide](https://www.ni.com/docs/en-US/bundle/labview/page/building-the-connector-pane.html)
+tells you not to do.
+
+**The rules, from NI:** inputs on the **left**, outputs on the **right**, `error in` at the
+**bottom left** and `error out` at the **bottom right**, and terminals arranged so that wires do
+not have to cross to reach them.
+
+**The pattern is chosen by the highest `conIdx` you use**, and the numbering differs per pattern —
+which is why a set of numbers copied from another VI means something else in yours. Two patterns
+measured through `{LV.VI}` → `read+Connector Pane\3AReference` → `{LV.ConnectorPane}` →
+`read+Terminal Bounds[]`, which returns one rectangle per index on a 32×32 pane:
+
+| pattern | terminals | left edge, top → bottom | middle columns | right edge, top → bottom |
+|---|---|---|---|---|
+| **4815** (the 4-2-2-4 default) | 12 | **11, 10, 9, 8** | 7/6 then 5/4, upper/lower | **3, 2, 1, 0** |
+| **4812** | 8 | **4, 0** | 5/1 then 6/2, upper/lower | **7, 3** |
+
+So on the common 4-2-2-4 pane: **first input `11`, error in `8`, first output `3`, error out `0`.**
+`Close File+.vi` is the same convention one pattern down — refnum in `4`, error in `0`, refnum out
+`7`, error out `3` — which is why NI's numbers look inconsistent across VIs and are not.
+
+**`Terminal Bounds[]` is indexed by exactly the AIXML `conIdx`** — proven rather than assumed. A
+probe VI with indicators on `conIdx` 0–5 and controls on 6–11 was read back through
+`{LV.ConnectorPane}` → `read+Controls[]` and `{LV.Control}` → `read+Indicator`, one per index, and
+returned `TTTTTTFFFFFF`. Reading an unassigned slot gives `Error 1055` (invalid reference), so a
+reader has to tolerate holes.
+
+To check a finished VI, print it: `Print.VI To HTML` (see `scripts/lvdoc_print.xml`) renders the
+pane with each terminal labelled `name [conIdx]`. **Beware the one thing that render does not
+show:** it always draws inputs on the left and outputs on the right regardless of where they
+actually sit, so a badly placed terminal looks fine there — the wire routing into the icon is the
+only visible tell. The bounds are the reliable check.
 
 ## 3. The core model: uid and wiring
 
