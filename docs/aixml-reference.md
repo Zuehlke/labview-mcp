@@ -1674,6 +1674,111 @@ The reliable loop when authoring something new: export a VI that already contain
 construct, copy its exact shape, edit, validate, generate. Validation is cheap and its
 messages are specific enough to work from.
 
+### Reading the same VI twice — the export cache
+
+**An export is not cheap, and the cost is not where it looks.** Measured over the whole examples
+tree of LabVIEW 2026 — 1677 VIs, one export-and-validate pair each (`--corpus`, results in
+`roundtrip.tsv`):
+
+| | export + validate | export size |
+|---|---|---|
+| median | **331 ms** | 4.1 kB |
+| p75 | 1.0 s | 7.4 kB |
+| p90 | 3.3 s | 14.6 kB |
+| p95 | 6.6 s | 25 kB |
+| p99 | **24 s** | 161 kB |
+| max | **93 s** | 5.8 MB |
+| total | 52 min | 28.8 MB |
+
+**Size and duration are uncorrelated: r = 0.002 over those 1677 rows.** The 5.8 MB export
+(`MATLAB Node\Cell Phone Towers\SubVIs\Set Up Objects.vi`) finished in 1.9 s; the slowest VI took
+93 s and produced 20 kB. So the time is not spent writing XML — it is spent **loading the VI and
+its dependencies**, which is why the slow ones are the DQMH libraries, the malleable VIs and the
+3D graph controls. Two consequences, and both are counter-intuitive enough to be worth stating:
+a big export is not a slow one, and no amount of memory inside the MCP server can avoid the cost,
+because the work happens in LabVIEW.
+
+`lvai_convert_vi_to_aixml` therefore **caches exports on disk**:
+
+```
+%LOCALAPPDATA%\LabVIEWMCP\cache\aixml\<hash>.xml     the export
+%LOCALAPPDATA%\LabVIEWMCP\cache\aixml\<hash>.json    its sidecar: full key, source VI, time, size
+```
+
+The key is the VI's normalised path, its last-write time and its size; `<hash>` is an MD5 of that.
+The sidecar is written **last** and is the commit record, so a crash between the two writes leaves
+an orphan payload that reads as a miss rather than as an entry that lies. A hit is two file reads
+and a copy, and **needs no running LabVIEW** — an example stays readable while the IDE is closed
+or still starting.
+
+**Only VIs belonging to the LabVIEW installation are cached** — the examples tree, `vi.lib`,
+`user.lib` and every LVAddon, which is exactly the example and palette VIs you read to learn from.
+**Your own code never is.** The reason is the one thing the key cannot see: an export depends on
+the VI's subVIs as well, and user code changes one subVI at a time behind a caller whose own
+timestamp never moves — a stale entry there would be silent and wrong. Installation trees do not
+have that problem: they change when something is installed or upgraded, which rewrites the files,
+and an upgrade lands in a new versioned directory anyway.
+
+Every answer carries `fromCache` and a one-line `cacheNote`, so which of the two happened is
+visible rather than guessed. Pass `refresh` to re-export a cached VI. A failed export is never
+stored — it can leave a partial file behind, and caching that would serve the failure back for as
+long as the VI sits untouched.
+
+**Pre-exporting the whole corpus is deliberately not done.** It is 52 minutes of LabVIEW time, and
+the sweep that measured it had to recycle LabVIEW along the way: about 130 handles leaked per VI,
+116 000 handles and 1.3 GB after 900 of them, and one VI killed the process outright. Entries are
+written as they are asked for.
+
+### The service is single-file: concurrent RPCs buy nothing
+
+**Measured, and worth knowing before designing around it.** Six `ConvertAIXMLToVI` calls for the
+same small VI, issued together against one channel, versus the same six one after another — two
+rounds each, alternating:
+
+| | 6 VIs | per VI |
+|---|---|---|
+| sequential | 543 ms | 90 ms |
+| **concurrent** | **559 ms** | 93 ms |
+| sequential | 507 ms | 84 ms |
+| **concurrent** | **539 ms** | 90 ms |
+
+Concurrent is a hair *slower*. With any real overlap six calls would finish in roughly the time of
+one or two; instead they finish in the time of six. **LabVIEW serialises the work**, and this is
+not our client getting in the way: the semaphore in `LvaiConnection` guards only the connection
+setup, and once the channel is up the calls go out unimpeded. It matches the other measurement
+from the corpus sweep, where a single slow export left every later RPC queued behind it.
+
+Consequences: never fan out `lvai_*` calls hoping for throughput — you get the same total, plus the
+risk that one slow VI blocks the rest. Real RPC parallelism would need several LabVIEW instances,
+each with its own port, which is expensive (the handle leak above, ~1 GB apiece) and fragile (the
+service starts with Nigel, not with the IDE).
+
+What *does* parallelise is anything that never reaches LabVIEW — reading files. That is exactly
+what the export cache turns candidate triage into.
+
+### Reading several candidates at once
+
+`lvai_convert_vis_to_aixml` takes a list of VIs, one path per line, and writes them all into one
+directory. It exists for the question "which of these examples is the right starting point", where
+the alternative is one tool call per candidate.
+
+It splits the work along the line the measurements above draw:
+
+- **cached exports are served concurrently** — a hit is a file copy in the MCP server's own
+  process, no LabVIEW involved, and concurrent reads are worth about 21x cold;
+- **everything else is exported sequentially**, because LabVIEW would serialise it anyway.
+
+So the first pass over a candidate set costs what it costs, and every later pass is nearly free.
+Content is **not** returned inline by default — a batch of full exports is large, and the point is
+to get the files onto disk cheaply so you can read the few worth reading; each row carries its
+`xmlPath`.
+
+Two details that are easy to get wrong and are handled here: output files are named
+`<VI name>.<hash>.xml`, because `Read Data.vi` exists in several example folders and the leaf name
+alone would have one silently overwrite another; and the path list is split on **newlines only**,
+not on commas, because a comma is legal in a Windows path (`C:\Data\Rev 2, final\`) while a line
+break is not.
+
 ### Where a node's documentation comes from
 
 The shipped `.chm` files are **stubs** — `help\glang.chm`, the LabVIEW Function and VI

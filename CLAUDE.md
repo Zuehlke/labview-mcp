@@ -44,6 +44,26 @@ Do this first for anything pattern-shaped: state machines, producer/consumer, qu
 handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds
 of reading and it is the canonical shape.
 
+**Reading an example is cheap the second time; reading your own VI never is.** An export costs a
+median of 331 ms, a p99 of 24 s and a worst case of 93 s, measured over 1677 VIs — and the time
+goes on LabVIEW loading the VI, not on writing XML, so a big export is not a slow one (size and
+duration correlate at r = 0.002). `lvai_convert_vi_to_aixml` caches exports of **installation**
+VIs on disk under `%LOCALAPPDATA%\LabVIEWMCP\cache\aixml`, which is the examples tree, `vi.lib`,
+`user.lib` and every LVAddon. Your own code is deliberately never cached: an export depends on the
+VI's subVIs too, and those change behind a caller whose own timestamp never moves. Every answer
+says which happened in `fromCache` and `cacheNote`; `refresh` re-exports. §10 of
+`lvai_aixml_reference` has the rest. The practical consequence for a session: browsing several
+examples to find the right shape is not expensive, so browse.
+
+**Triaging several candidates is one call, not one per candidate.** `lvai_convert_vis_to_aixml`
+takes a list of VIs, one path per line, and writes them into one directory: cached exports come
+back concurrently, uncached ones go through LabVIEW one at a time. That split is not a compromise,
+it is the measurement — **six generate calls issued together took 559 ms against 543 ms one after
+another**, so LabVIEW serialises the work and fanning out `lvai_*` calls for throughput gains
+nothing while risking one slow VI blocking the rest. Anything that never reaches LabVIEW does
+parallelise: file reading is about 21x concurrent on a cold tree, which is why both indexes and
+the batch export are built that way.
+
 **A hit may be a `.lvproj`, not a VI** — 29 of them, whole example applications such as
 `Active Noise Control (cRIO).lvproj`. For those the follow-up is `lvai_describe_project`;
 `lvai_convert_vi_to_aixml` is the wrong call and no `.lvproj` carries in-VI metadata, so they reach

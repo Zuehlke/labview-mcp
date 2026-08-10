@@ -54,6 +54,12 @@ internal static class Json
     public static string Object(object value) => JsonSerializer.Serialize(value, PlainOptions);
 
     /// <summary>
+    /// A hand-built document, indented like every other answer. For results whose shape is not a
+    /// protobuf message and whose keys have to stay camelCase regardless of C# naming.
+    /// </summary>
+    public static string Document(JsonNode node) => Indent(node);
+
+    /// <summary>
     /// A failure rendered as data rather than thrown. The MCP client sees a result it
     /// can reason about instead of an opaque transport error.
     /// </summary>

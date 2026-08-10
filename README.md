@@ -102,6 +102,65 @@ dotnet run --project src/LabVIEWMCP -- --diagram "C:\path\My.vi" --out diagram.p
 `--diagram` is the only way to see what generated code actually looks like: AIXML carries no
 coordinates, so LabVIEW decides the whole layout. Generate, export the PNG, look, adjust.
 
+### Where the caches live
+
+Three caches, all under **`%USERPROFILE%\.labviewmcp\cache`**, all disposable, none time-expired —
+rebuild with `refresh` after installing or upgrading LabVIEW or an add-on:
+
+| File | What | Rebuild costs |
+|---|---|---|
+| `example-index-<hash>.json` | the shipping examples, name, category, keywords, description | **55 s** cold, 804 ms warm |
+| `palette-index-<hash>.json` | the palette-reachable VIs of 582 palette files | 150 ms scan, 90 ms cached |
+| `aixml\<hash>.xml` + `.json` | one AIXML export per **installation** VI, with a sidecar naming the source VI | 331 ms median per VI |
+| `lvai-version.json` | fingerprint of NI's AI add-on; a change drops the export cache at start-up | — |
+| `scratch\` | exports written only to be parsed, e.g. by `lvai_vi_terminals` | throwaway |
+
+**Not** in the cache: the generated helper VIs, which stay in `%TEMP%\LabVIEWMCP\helpers`. That is
+measured, not habit — LabVIEW's `Save\3AInstrument` fails with `Error 7` when saving a VI under
+`%LOCALAPPDATA%`, twice, with the directory present and writable, while `%TEMP%` accepts it. The
+limit is specific to saving a VI: `ConvertVIToAIXML` writes a 24 kB export into the cache directory
+happily, which is why `scratch\` can live there.
+
+The two index numbers are measured and worth knowing apart: the example index earns its cache by a
+factor of 68, the palette one by 1.6. Both are cached anyway, but only one of them would be a
+problem to lose.
+
+`LABVIEWMCP_CACHE_DIR` moves all of it — that is what the test suite sets, so a `dotnet test` run
+does not write into your real cache.
+
+Your own VIs are **never** cached: an export depends on a VI's subVIs too, and those change behind
+a caller whose own timestamp never moves.
+
+#### Why not `%LOCALAPPDATA%`
+
+Because the cache has to be the same folder no matter who starts the server, and under
+`%LOCALAPPDATA%` it was not.
+
+A **packaged host redirects it.** Launched by the Claude desktop app, the server inherits that app's
+packaged-app filesystem redirection, and every directory it creates under `%LOCALAPPDATA%` becomes a
+reparse point into the package's private store. Probed side by side on this station — a directory
+made under `%LOCALAPPDATA%`, one under `%USERPROFILE%`:
+
+| created under | reparse target |
+|---|---|
+| `%LOCALAPPDATA%` | `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Local\…` |
+| `%USERPROFILE%` | none |
+
+So the same binary got **two different caches** depending on the host: the package store under the
+desktop app, the plain path from a terminal or another MCP client. Warming one did nothing for the
+other, and neither was obvious. On top of that File Explorer, running outside the container, refuses
+the redirected directory with *"Location is not available … it might have been moved or deleted"* for
+a folder that demonstrably holds files — an hour went into believing the cache was broken when it was
+working correctly.
+
+`%USERPROFILE%` is not redirected, so there is now one location for every host, and it opens in
+Explorer. It is still not roaming: only `AppData\Roaming` follows a user between machines, which the
+cache must not do — it describes one machine's LabVIEW.
+
+**A cache left in the old place is moved on the next start-up**, rather than abandoned: starting cold
+would cost a silent 55-second example rescan. The move only happens into an empty destination, and
+never when `LABVIEWMCP_CACHE_DIR` is set — an explicit location is the operator's decision.
+
 ### `--corpus` — measuring the AIXML dialect instead of guessing at it
 
 ```bash
@@ -281,6 +340,28 @@ setup answers with the discovered port and the service list:
 ```
 
 Inside Claude Code the tools are namespaced `mcp__labview__lvai_*`.
+
+### Which model, and how much reasoning effort
+
+**Recommended: Opus 5 at effort `low`. Raise it to `medium` for genuinely complex work** — a large
+refactor, a DQMH module, anything where the design is not settled before you start. Generating or
+editing a single VI does not need more.
+
+The reason low is enough is that the expensive knowledge is not being reasoned out, it is being
+looked up: the terminal names, the `graph21703` token, the `conIdx` map and the silent-failure list
+all live in `docs/` and are served by the `lvai_*_reference` tools. Effort buys you inference, and
+this task mostly needs retrieval.
+
+Two things worth separating, because only one of them is measured here:
+
+- **The model choice is measured.** Building the same VI from the same prompt, Opus took 35–40 tool
+  calls; Sonnet took 63 and spent two of them re-deriving format basics (`Call` has no `_name`
+  attribute, constants are `<Constant>` not `<Node>`) that Opus did not get wrong. Same repository
+  state, same task.
+- **The effort setting is not.** `low` versus `medium` was never A/B'd here — the recommendation is
+  experience, not a measurement. If you do compare them, the honest metric is **tool calls**, not
+  wall-clock: repeat runs at an identical repository state varied by about a minute, so anything
+  under that is noise.
 
 ### 6. Let the read-only tools run without asking
 

@@ -40,6 +40,17 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// flattenstring.mnu here carries a sub-menu reference to the JSONtext add-on - so a checked-in
 /// list would be wrong on the next machine.
 ///
+/// IT IS CACHED ON DISK by <see cref="PaletteIndexStore"/>, and the payoff is MEASURED rather than
+/// assumed - `LabVIEWMCP --palette` over 582 palette files, three runs each: 146, 150, 148 ms to
+/// scan against 93, 94, 90 ms served from the cache. About 55 ms, most of the remainder being
+/// process start-up. That is a far smaller win than the example index's, which is 55 SECONDS cold
+/// against 804 ms, so do not read the two caches as resting on the same argument.
+///
+/// The price is staleness, and it bites harder here: a stale palette either hides a VI that exists,
+/// which sends a generator off to rebuild from primitives, or offers one that has been uninstalled,
+/// which fails as `Unsupported SubVI` at validation. Hence `refresh` after anything is installed,
+/// and hence the store's key and format-version guards.
+///
 /// Format, verified by hex-dump against LabVIEW 2026: a .mnu is an "RSRC"/"LMNU" resource file.
 /// Item file names are stored as LENGTH-PREFIXED strings (one leading byte, then that many
 /// characters). A PTH0 record - 4-byte tag, big-endian uint32 size, big-endian uint32 component
@@ -98,15 +109,55 @@ internal static class PaletteIndex
 
         lock (Gate)
         {
-            if (!refresh && _cache.TryGetValue(key, out var cached)) return cached;
+            if (!refresh)
+            {
+                // Memory first, then the machine-wide cache on disk; see PaletteIndexStore for what
+                // the second one is actually worth, which is less than the example index's.
+                if (_cache.TryGetValue(key, out var cached)) return cached;
+
+                if (PaletteIndexStore.TryLoad(key) is { } stored)
+                {
+                    _cache = Remember(key, stored);
+                    return stored;
+                }
+            }
 
             var result = Scan(root, addons, install?.Release);
-            _cache = new Dictionary<string, Result>(_cache, StringComparer.OrdinalIgnoreCase)
-            {
-                [key] = result,
-            };
+            _cache = Remember(key, result);
+            PaletteIndexStore.Save(key, result);
             return result;
         }
+    }
+
+    private static Dictionary<string, Result> Remember(string key, Result result) =>
+        new(_cache, StringComparer.OrdinalIgnoreCase) { [key] = result };
+
+    /// <summary>
+    /// Build the index off the hot path, swallowing every failure, so the first caller after a
+    /// restart does not pay the scan. A caller arriving mid-scan blocks on the same lock and then
+    /// gets the finished index, so warming never causes a second scan. A machine with no LabVIEW
+    /// must still serve every other tool, hence the empty catch.
+    /// </summary>
+    public static Task WarmAsync(string? labviewRoot = null, string? addonsRoot = null) =>
+        Task.Run(() =>
+        {
+            try { Build(labviewRoot, addonsRoot: addonsRoot); }
+            catch { /* no LabVIEW, no palettes, no problem - the tool reports it when asked */ }
+        });
+
+    /// <summary>When this index was last written to disk, or null when it has not been.</summary>
+    public static DateTime? BuiltUtc(string? labviewRoot = null, string? addonsRoot = null)
+    {
+        try
+        {
+            var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
+            var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath));
+            if (root is null) return null;
+
+            var addons = addonsRoot ?? (labviewRoot is null ? DefaultAddonsRoot() : null);
+            return PaletteIndexStore.BuiltUtc(root + "|" + (addons ?? ""));
+        }
+        catch { return null; }
     }
 
     private static string? DefaultAddonsRoot() => AddonTree.DefaultRoot();
@@ -134,23 +185,35 @@ internal static class PaletteIndex
         sources.AddRange(addonSources);
 
         // First palette wins for the reported location; a VI on several palettes is one entry.
+        //
+        // WHICH one is first is now decided by sorting rather than by the filesystem. That matters
+        // here in a way it does not for the example index: the key is the BARE VI NAME, so the same
+        // VI really does turn up in several .mnu files, and the reported palette path used to be
+        // whichever the enumeration happened to hand over first. Alphabetical order is arbitrary
+        // too, but it is the same arbitrary answer on every run and on every machine.
         var found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var scanned = 0;
 
         foreach (var source in sources)
         {
-            foreach (var file in Directory.EnumerateFiles(
-                         source.MenusFolder, "*.mnu", SearchOption.AllDirectories))
+            var files = Directory
+                .EnumerateFiles(source.MenusFolder, "*.mnu", SearchOption.AllDirectories)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // Concurrent read and byte-scan, sequential merge - see ParallelScan.
+            var read = ParallelScan.Map(files, (_, bytes) => PascalStrings(bytes).ToList());
+
+            for (var i = 0; i < files.Count; i++)
             {
-                byte[] bytes;
-                try { bytes = File.ReadAllBytes(file); }
-                catch { continue; }              // a locked or unreadable palette is not fatal
+                if (!read[i].Read) continue;     // a locked or unreadable palette is not fatal
 
                 scanned++;
-                var relative = Path.GetRelativePath(source.MenusFolder, file);
+                if (read[i].Value is not { } names) continue;
+
+                var relative = Path.GetRelativePath(source.MenusFolder, files[i]);
                 var label = source.Label.Length == 0 ? relative : source.Label + ": " + relative;
-                foreach (var name in PascalStrings(bytes))
-                    found.TryAdd(name, label);
+                foreach (var name in names) found.TryAdd(name, label);
             }
         }
 

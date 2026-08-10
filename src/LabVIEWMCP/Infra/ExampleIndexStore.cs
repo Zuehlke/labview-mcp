@@ -38,14 +38,8 @@ internal static class ExampleIndexStore
 
     private sealed record Envelope(int Version, string Key, string BuiltUtc, ExampleIndex.Result Index);
 
-    /// <summary>
-    /// Where the cache lives. Under LOCALAPPDATA because it is machine-specific, disposable, and
-    /// must not follow a roaming profile to a machine with a different LabVIEW.
-    /// </summary>
-    public static string Directory =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "LabVIEWMCP", "cache");
+    /// <summary>Where the cache lives; see <see cref="CacheDirectory"/>.</summary>
+    public static string Directory => CacheDirectory.Root;
 
     public static string PathFor(string key) =>
         Path.Combine(Directory, $"example-index-{Fingerprint(key)}.json");

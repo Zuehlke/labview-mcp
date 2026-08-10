@@ -45,6 +45,23 @@ across separate processes:
 
 The server also warms the index at start-up, so the first tool call does not pay even the 176 ms.
 
+**The scan reads its files concurrently**, which is where most of that minute went. Measured cold
+on two untouched trees, with the order of the halves reversed between runs so neither warmed the
+other: **9.2 ms per file sequential against 0.4 ms concurrent**, about 21x, the same figure twice.
+The degree matters less than having one at all — 15.80 ms/file at 1, 2.44 at 4, 1.01 at 8, 0.87 at
+16 — so the knee is at 8 and `ParallelScan` never goes below it.
+
+On a *warm* rescan the win is much smaller and the honest number is that one: a controlled A/B of a
+full rebuild, same binary with the degree forced to 1, is **585 ms sequential against 428 ms**.
+A warm scan spends its time in `XDocument` parsing and directory walking, neither of which is
+concurrent. The prize is the cold build, which is ~98% first-touch wait.
+
+The results are unchanged by it: 609 listed of 2510 VI files, 143 from the external indexes, 39
+hits for `TDMS` — identical before and after. That is not luck. Reading and parsing run
+concurrently, but the merge stays sequential and in sorted file order, because both indexes
+deduplicate first-one-wins and a merge in completion order would let thread timing decide which
+entry survives.
+
 **The cache never expires on its own, by design.** A scan that re-runs on its own schedule brings
 the minute back at an unpredictable moment, which is the whole problem. It is rebuilt when asked
 and not otherwise:
@@ -62,6 +79,16 @@ keyed by the roots it was built from, with the key stored in full and compared (
 only a hash, so collisions are possible), and it carries a format version bumped whenever the
 records change shape. A cache failing either test is rebuilt — a wrong index is worse than a slow
 one.
+
+### Reading an example costs more than finding it
+
+Finding an example is the cheap half. **Exporting one to AIXML is a median of 331 ms, a p99 of
+24 s and a worst case of 93 s** — measured over 1677 VIs by the same `--corpus` sweep whose
+`roundtrip.tsv` this section's counts come from. Size and duration are uncorrelated (r = 0.002):
+the cost is LabVIEW loading the VI and its dependencies, not writing the XML. Exports of
+installation VIs are therefore cached on disk under
+`%LOCALAPPDATA%\LabVIEWMCP\cache\aixml`, separately from the index cache above. The full
+account — key, invalidation, why user code is excluded — is in §10 of `docs/aixml-reference.md`.
 
 **An example can be a whole project.** 37 of the external registrations point at a `.lvproj` rather
 than a VI — `Active Noise Control (cRIO).lvproj` is an FPGA/RT application, not a diagram. Those

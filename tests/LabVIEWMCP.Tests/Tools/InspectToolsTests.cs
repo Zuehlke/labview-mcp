@@ -1,5 +1,4 @@
-using Grpc.Core;
-using LabVIEWMcp.Lvai;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tests.Fakes;
 using LabVIEWMcp.Tests.Support;
 using LabVIEWMcp.Tools;
@@ -7,293 +6,168 @@ using Xunit;
 
 namespace LabVIEWMcp.Tests.Tools;
 
-public class InspectDescribeViTests
+/// <summary>
+/// lvai_vi_terminals, at the tool level. The parser has its own tests; what is pinned here is the
+/// PROVENANCE line - whether the export came from the cache or from LabVIEW.
+///
+/// It exists because the omission was reported three times independently: the tool used the export
+/// cache and said nothing about it, so a hit and a fresh export produced identical answers and the
+/// only way to tell them apart was to watch the cache directory from outside the tool. Every other
+/// cache in this server reports its own state; this one now does too.
+///
+/// A cache HIT is not reachable from here: <see cref="AixmlExportStore"/> only caches VIs under a
+/// real LabVIEW installation, and a synthetic VI under the temp tree is by design never cacheable.
+/// The hit path is verified live instead - measured on
+/// `vi.lib\measure\masignal.llb\Basic Function Generator.vi`, which answered
+/// "Export served from the cache, taken …" with no LabVIEW round trip.
+///
+/// No collection attribute: the whole suite runs one class at a time via xunit.runner.json, because
+/// per-class attributes were measured NOT to be enough - see the note in the csproj.
+/// </summary>
+public sealed class InspectToolsTests : IDisposable
 {
-    [Fact]
-    public async Task Maps_every_request_field_onto_the_rpc()
+    private readonly string _dir = Directory.CreateTempSubdirectory("lvai-terminals").FullName;
+
+    public void Dispose()
     {
-        await using var server = await LvaiTestServer.StartAsync();
+        try { Directory.Delete(_dir, recursive: true); } catch (IOException) { }
+    }
 
-        await new InspectTools(server.Connection)
-            .DescribeViAsync(@"C:\p\My.vi", "My.vi", getNodesInfo: true);
+    /// <summary>A plain VI: two controls and one indicator, which is all the parser needs.</summary>
+    private const string Aixml = """
+        <VI _name="Widget.vi" description="x">
+          <Control _name="in one" conIdx="11" connection="required" type="string" uid="10" uid_parent="root" value=""/>
+          <Control _name="error in (no error)" conIdx="8" connection="optional" type="cluster{bool.status,int32.code,string.source}" uid="11" uid_parent="root" value="[false,0,]"/>
+          <Indicator _name="out one" conIdx="3" connection="recommended" type="double" uid="20" uid_parent="root" value="0"/>
+        </VI>
+        """;
 
-        var request = server.Service.Last<GetDescribeVIPromptInfoRequest>("GetDescribeVIPromptInfo");
-        Assert.Equal(@"C:\p\My.vi", request.ViPath);
-        Assert.Equal("My.vi", request.ViName);
-        Assert.True(request.GetNodesInfo);
+    private string WriteVi(string name = "Widget.vi")
+    {
+        var path = Path.Combine(_dir, name);
+        File.WriteAllText(path, "not really a VI, but a real file");
+        return path;
+    }
+
+    private static async Task<LvaiTestServer> ServerWith(string? xml = Aixml)
+    {
+        var server = await LvaiTestServer.StartAsync();
+        server.Service.XmlFileContent = xml;
+        return server;
     }
 
     [Fact]
-    public async Task An_omitted_vi_name_is_sent_as_empty_not_null()
+    public async Task ItReportsWhereTheExportCameFrom()
     {
-        await using var server = await LvaiTestServer.StartAsync();
+        await using var server = await ServerWith();
 
-        await new InspectTools(server.Connection).DescribeViAsync(@"C:\p\My.vi");
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        Assert.Equal("", server.Service
-            .Last<GetDescribeVIPromptInfoRequest>("GetDescribeVIPromptInfo").ViName);
+        Assert.Contains("Exported from LabVIEW", result);
+    }
+
+    /// <summary>
+    /// Own code is never cached - an export depends on subVIs the per-VI key cannot see - and the
+    /// difference between "next read is free" and "next read costs this again" is worth saying.
+    /// </summary>
+    [Fact]
+    public async Task CodeOutsideTheInstallationIsReportedAsNotCached()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
+
+        Assert.Contains("NOT cached", result);
+        Assert.Contains("only VIs inside the LabVIEW installation", result);
     }
 
     [Fact]
-    public async Task getNodesInfo_false_is_forwarded()
+    public async Task TheTerminalsThemselvesStillComeBack()
     {
-        await using var server = await LvaiTestServer.StartAsync();
+        await using var server = await ServerWith();
 
-        await new InspectTools(server.Connection)
-            .DescribeViAsync(@"C:\p\My.vi", getNodesInfo: false);
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        Assert.False(server.Service
-            .Last<GetDescribeVIPromptInfoRequest>("GetDescribeVIPromptInfo").GetNodesInfo);
+        Assert.Contains("in one", result);
+        Assert.Contains("out one", result);
+        Assert.Contains("conIdx 11", result);
+        // the ready-to-paste Call, which is the point of the tool
+        Assert.Contains(@"inputs=""in one:,error in (no error):""", result);
+    }
+
+    /// <summary>The provenance goes last, so it never pushes the Call out of a truncated view.</summary>
+    [Fact]
+    public async Task TheProvenanceIsTheLastThingInTheAnswer()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
+
+        Assert.EndsWith("cannot see.", result.TrimEnd());
     }
 
     [Fact]
-    public async Task Collects_the_streamed_messages()
+    public async Task RefreshStillExportsAndStillReports()
     {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 3;
-        server.Service.InfoJson = "{\"viName\":\"X\"}";
-
-        var result = await new InspectTools(server.Connection).DescribeViAsync(@"C:\p\My.vi");
-
-        Assert.Equal(3, Res.Int(result, "messageCount"));
-        Assert.Equal("stream completed", Res.Str(result, "stopReason"));
-        Assert.Contains("viName", Res.Arr(result, "messages")[0]!["infoJson"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public async Task Honours_maxMessages_and_reports_the_limit()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 10;
+        await using var server = await ServerWith();
 
         var result = await new InspectTools(server.Connection)
-            .DescribeViAsync(@"C:\p\My.vi", maxMessages: 2);
+            .ViTerminalsAsync(WriteVi(), refresh: true);
 
-        Assert.Equal(2, Res.Int(result, "messageCount"));
-        Assert.Equal(2, Res.Int(result, "limit"));
-        Assert.Equal("limit reached", Res.Str(result, "stopReason"));
+        Assert.Contains("Exported from LabVIEW", result);
+        Assert.Single(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
     }
 
     [Fact]
-    public async Task An_open_ended_stream_times_out_with_partial_results()
+    public async Task AMissingViIsReportedRatherThanExported()
     {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 1;
-        server.Service.StreamForever = true;
+        await using var server = await ServerWith();
 
         var result = await new InspectTools(server.Connection)
-            .DescribeViAsync(@"C:\p\My.vi", maxMessages: 50, timeoutSeconds: 1);
-
-        Assert.Equal(1, Res.Int(result, "messageCount"));
-        Assert.Equal("timeout", Res.Str(result, "stopReason"));
-    }
-
-    [Fact]
-    public async Task An_rpc_failure_is_reported_as_data()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-        await server.Connection.GetClientAsync();
-        server.Service.FailWith = StatusCode.NotFound;
-        server.Service.FailOnMethod = "GetDescribeVIPromptInfo";
-        server.Service.FailDetail = "VI not found";
-
-        var result = await new InspectTools(server.Connection).DescribeViAsync(@"C:\nope.vi");
+            .ViTerminalsAsync(Path.Combine(_dir, "absent.vi"));
 
         Assert.False(Res.Bool(result, "ok"));
-        Assert.Contains("VI not found", Res.Str(result, "error"));
-    }
-}
-
-public class InspectDescribeProjectTests
-{
-    [Fact]
-    public async Task Maps_project_path_and_name()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        await new InspectTools(server.Connection)
-            .DescribeProjectAsync(@"C:\p\App.lvproj", "App.lvproj");
-
-        var request = server.Service
-            .Last<GetDescribeProjectPromptInfoRequest>("GetDescribeProjectPromptInfo");
-        Assert.Equal(@"C:\p\App.lvproj", request.ProjectPath);
-        Assert.Equal("App.lvproj", request.ProjectName);
+        Assert.DoesNotContain(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
     }
 
+    /// <summary>
+    /// A childless VI element is the documented silent export failure - the diagram was withheld,
+    /// not absent. "0 terminals" would be the empty answer this tool exists to prevent.
+    /// </summary>
     [Fact]
-    public async Task An_omitted_name_is_sent_as_empty()
+    public async Task AWithheldDiagramIsAnErrorNotZeroTerminals()
     {
-        await using var server = await LvaiTestServer.StartAsync();
+        await using var server = await ServerWith("""<VI _name="Locked.vi" description="x"/>""");
 
-        await new InspectTools(server.Connection).DescribeProjectAsync(@"C:\p\App.lvproj");
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        Assert.Equal("", server.Service
-            .Last<GetDescribeProjectPromptInfoRequest>("GetDescribeProjectPromptInfo").ProjectName);
+        Assert.Equal("noTerminalsFound", Res.Str(result, "errorKind"));
     }
 
+    /// <summary>
+    /// The global ErrorCode, not ErrorCodeByMethod: the fake honours the per-RPC override for
+    /// ValidateAIXML, ConvertAIXMLToVI and RunVIAsTopLevel only, which its own remarks say.
+    /// </summary>
     [Fact]
-    public async Task Collects_the_stream()
+    public async Task AFailedExportSaysSo()
     {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 2;
+        await using var server = await ServerWith(xml: null);
+        server.Service.ErrorCode = 7;
 
-        var result = await new InspectTools(server.Connection)
-            .DescribeProjectAsync(@"C:\p\App.lvproj");
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        Assert.Equal(2, Res.Int(result, "messageCount"));
-    }
-}
-
-public class InspectSearchInfoCacheTests
-{
-    [Fact]
-    public async Task Splits_the_search_terms_and_tag_filters()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        await new InspectTools(server.Connection)
-            .SearchInfoCacheAsync("file, write\nTDMS", "io;stream");
-
-        var request = server.Service.Last<SearchInfoCacheRequest>("SearchInfoCache");
-        Assert.Equal(["file", "write", "TDMS"], request.SearchTerms);
-        Assert.Equal(["io", "stream"], request.TagFilters);
+        Assert.Equal("exportFailed", Res.Str(result, "errorKind"));
     }
 
+    /// <summary>The scratch export lands in the cache directory, not in %TEMP%.</summary>
     [Fact]
-    public async Task Forwards_paging_and_case_sensitivity()
+    public async Task TheScratchExportLivesUnderTheCacheRoot()
     {
-        await using var server = await LvaiTestServer.StartAsync();
+        await using var server = await ServerWith();
 
-        await new InspectTools(server.Connection)
-            .SearchInfoCacheAsync("x", caseSensitive: true, limit: 5, offset: 10);
+        await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        var request = server.Service.Last<SearchInfoCacheRequest>("SearchInfoCache");
-        Assert.True(request.CaseSensitive);
-        Assert.Equal(5, request.Limit);
-        Assert.Equal(10, request.Offset);
-    }
-
-    [Fact]
-    public async Task Omitted_tag_filters_send_an_empty_list()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        await new InspectTools(server.Connection).SearchInfoCacheAsync("x");
-
-        Assert.Empty(server.Service.Last<SearchInfoCacheRequest>("SearchInfoCache").TagFilters);
-    }
-
-    [Fact]
-    public async Task An_empty_result_set_is_a_normal_outcome_not_an_error()
-    {
-        // Measured against real LabVIEW: an unpopulated cache legitimately returns nothing.
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 0;
-
-        var result = await new InspectTools(server.Connection).SearchInfoCacheAsync("nothing");
-
-        Assert.Equal(0, Res.Int(result, "messageCount"));
-        Assert.Equal("stream completed", Res.Str(result, "stopReason"));
-        Assert.False(Res.Has(result, "ok"));      // not an error envelope
-    }
-
-    [Fact]
-    public async Task Returns_the_cache_payloads()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.StreamCount = 1;
-
-        var result = await new InspectTools(server.Connection).SearchInfoCacheAsync("x");
-
-        Assert.Contains("hit", Res.Arr(result, "messages")[0]!["infoJson"]!.GetValue<string>());
-    }
-}
-
-public class InspectLookupInfoCacheItemsTests
-{
-    [Fact]
-    public async Task Splits_guids_and_forwards_the_detail_flags()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        await new InspectTools(server.Connection).LookupInfoCacheItemsAsync(
-            "g1,g2\ng3", getStandardInfo: false, getNodesInfo: true, getPrototype: true);
-
-        var request = server.Service.Last<LookupInfoCacheItemsRequest>("LookupInfoCacheItems");
-        Assert.Equal(["g1", "g2", "g3"], request.Guids);
-        Assert.False(request.GetStandardInfo);
-        Assert.True(request.GetNodesInfo);
-        Assert.True(request.GetPrototype);
-    }
-
-    [Fact]
-    public async Task Defaults_ask_for_standard_info_and_the_connector_pane()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        await new InspectTools(server.Connection).LookupInfoCacheItemsAsync("g1");
-
-        var request = server.Service.Last<LookupInfoCacheItemsRequest>("LookupInfoCacheItems");
-        Assert.True(request.GetStandardInfo);
-        Assert.True(request.GetPrototype);
-        Assert.False(request.GetNodesInfo);
-    }
-
-    [Fact]
-    public async Task An_empty_guid_list_still_issues_the_call()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        var result = await new InspectTools(server.Connection).LookupInfoCacheItemsAsync("");
-
-        Assert.Empty(server.Service.Last<LookupInfoCacheItemsRequest>("LookupInfoCacheItems").Guids);
-        Assert.True(Res.Has(result, "messageCount"));
-    }
-}
-
-public class InspectFilterTests
-{
-    [Fact]
-    public async Task Palette_filter_splits_guids_and_returns_the_resolved_items()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        var result = await new InspectTools(server.Connection)
-            .FilterPaletteSearchCandidatesAsync("guid-a, guid-b");
-
-        Assert.Equal(["guid-a", "guid-b"], server.Service
-            .Last<FilterPaletteSearchCandidatesRequest>("FilterPaletteSearchCandidates").ItemGuids);
-
-        var items = Res.Arr(result, "items");
-        Assert.Equal(2, items.Count);
-        Assert.Equal("guid-a", items[0]!["id"]!.GetValue<string>());
-        Assert.Equal("Programming>>File IO", items[0]!["paletteHierarchy"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public async Task Example_filter_splits_paths_and_returns_descriptions()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        var result = await new InspectTools(server.Connection)
-            .FilterExampleSearchCandidatesAsync(@"C:\a.vi" + "\n" + @"C:\b.vi");
-
-        Assert.Equal([@"C:\a.vi", @"C:\b.vi"], server.Service
-            .Last<FilterExampleSearchCandidatesRequest>("FilterExampleSearchCandidates").ExamplePaths);
-
-        var examples = Res.Arr(result, "examples");
-        Assert.Equal(2, examples.Count);
-        Assert.Equal(@"C:\a.vi", examples[0]!["path"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public async Task An_empty_input_yields_an_empty_result_rather_than_an_error()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-
-        var result = await new InspectTools(server.Connection)
-            .FilterPaletteSearchCandidatesAsync("");
-
-        Assert.Empty(Res.Arr(result, "items"));
+        var scratch = Path.Combine(CacheDirectory.Scratch, "terminals-Widget.xml");
+        Assert.True(File.Exists(scratch), $"no scratch export at {scratch}");
     }
 }
