@@ -61,8 +61,9 @@ it an icon.
      instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
 - **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
   reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
-  `error out` **bottom right**, nothing arranged so wires must cross. On the standard 4-2-2-4 pane
-  (which is what you get by using `conIdx` 11 anywhere) the map is:
+  `error out` **bottom right**, nothing arranged so wires must cross. **A generated VI always gets
+  pattern 4815** — measured with the highest index at 3, 7 and 11, all three came out the same, and
+  there is no attribute to ask for another — so this map is a constant, not something to derive:
 
   | | `conIdx`, top → bottom |
   |---|---|
@@ -73,8 +74,9 @@ it an icon.
   So a typical VI is: main input `11`, `error in` `8`, main output `3`, second output `2`,
   `error out` `0`. **Do not invent an assignment by analogy** — a generated VI shipped with both
   inputs on the right-hand edge and all three outputs in the middle columns, validated, ran, and
-  was rejected on sight. Full detail and a second pattern in `lvai_aixml_reference` §2, "The
-  connector pane".
+  was rejected on sight. And do not copy a set of indices out of an NI VI: those use other
+  patterns, where the same numbers are different slots. Above 12 terminals the pattern changes and
+  this map no longer holds; detail in `lvai_aixml_reference` §2, "The connector pane".
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.

@@ -146,19 +146,41 @@ tells you not to do.
 **bottom left** and `error out` at the **bottom right**, and terminals arranged so that wires do
 not have to cross to reach them.
 
-**The pattern is chosen by the highest `conIdx` you use**, and the numbering differs per pattern —
-which is why a set of numbers copied from another VI means something else in yours. Two patterns
-measured through `{LV.VI}` → `read+Connector Pane\3AReference` → `{LV.ConnectorPane}` →
-`read+Terminal Bounds[]`, which returns one rectangle per index on a 32×32 pane:
+**You do not choose the pattern, and a generated VI essentially always gets 4815.** Measured on
+four VIs, varying the highest index used:
 
-| pattern | terminals | left edge, top → bottom | middle columns | right edge, top → bottom |
-|---|---|---|---|---|
-| **4815** (the 4-2-2-4 default) | 12 | **11, 10, 9, 8** | 7/6 then 5/4, upper/lower | **3, 2, 1, 0** |
-| **4812** | 8 | **4, 0** | 5/1 then 6/2, upper/lower | **7, 3** |
+| highest `conIdx` in the document | terminals | pattern |
+|---|---|---|
+| 3 | 12 | **4815** |
+| 7 | 12 | **4815** |
+| 11 | 12 | **4815** |
+| 15 | 16 | 4833 |
 
-So on the common 4-2-2-4 pane: **first input `11`, error in `8`, first output `3`, error out `0`.**
-`Close File+.vi` is the same convention one pattern down — refnum in `4`, error in `0`, refnum out
-`7`, error out `3` — which is why NI's numbers look inconsistent across VIs and are not.
+There is no attribute for the pattern, and low indices do not buy a smaller pane: a probe that used
+only `4, 0, 1, 7, 3` — the corner slots of the 8-terminal pattern — still came out as 4815. The
+pattern grows only when it has to, above index 11. **An earlier revision of this section said the
+pattern was "chosen by the highest `conIdx` you use"; that was inferred from a single VI and is
+wrong** in the way that matters, because it implies a steering you do not have.
+
+The practical consequence is good news: for anything you generate, **the map is a constant.**
+Measured through `{LV.VI}` → `read+Connector Pane\3AReference` → `{LV.ConnectorPane}` →
+`read+Terminal Bounds[]`, one rectangle per index on a 32×32 pane:
+
+| pattern 4815 | `conIdx`, top → bottom |
+|---|---|
+| **left edge** | **11, 10, 9, 8** |
+| second column | 7 (upper), 6 (lower) |
+| third column | 5 (upper), 4 (lower) |
+| **right edge** | **3, 2, 1, 0** |
+
+So: **first input `11`, error in `8`, first output `3`, error out `0`.**
+
+Two caveats. Above 12 terminals you get **4833**, whose geometry has NOT been measured — read
+`Terminal Bounds[]` before placing anything there rather than assuming the 4815 numbering extends.
+And **hand-written NI VIs use other patterns**, so a set of indices copied from one of them means
+something else in yours: `Close File+.vi` is pattern **4812** (8 terminals, left edge `4, 0`, right
+edge `7, 3`), where its `error in` = 0 and `error out` = 3 are the same bottom-left/bottom-right
+convention, not a different one. That is why NI's numbers look inconsistent across VIs and are not.
 
 **`Terminal Bounds[]` is indexed by exactly the AIXML `conIdx`** — proven rather than assumed. A
 probe VI with indicators on `conIdx` 0–5 and controls on 6–11 was read back through
