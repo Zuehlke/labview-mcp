@@ -61,9 +61,13 @@ internal sealed class InspectTools(LvaiConnection connection)
         shuffle: the wrapper name is `target`, the instance name goes in `instance`.
         Read-only, and it does NOT burn the path for a later lvai_convert_aixml_to_vi - measured:
         exporting a VI leaves it regenerable, only lvai_open_file does not.
+        The last line of the answer says whether the export came from the disk cache or from
+        LabVIEW, the same way lvai_convert_vi_to_aixml reports it; pass refresh to force a
+        re-export when you suspect a stale entry.
         """)]
     public async Task<string> ViTerminalsAsync(
         [Description(@"Absolute path to the .vi whose terminals you need")] string viPath,
+        [Description("Re-export even when a cached export exists")] bool refresh = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -71,21 +75,59 @@ internal sealed class InspectTools(LvaiConnection connection)
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
-            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+            // Under the cache root, not %TEMP%: this file exists only to be parsed, and keeping
+            // everything the server writes in one always-present place is worth more than the
+            // habit of using TEMP for scratch. Measured safe - see CacheDirectory.Scratch.
+            var scratch = Path.Combine(CacheDirectory.Scratch,
                 $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
-            Directory.CreateDirectory(Path.GetDirectoryName(scratch)!);
+            Directory.CreateDirectory(CacheDirectory.Scratch);
 
-            var response = await connection.InvokeAsync((c, t) =>
-                c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-                {
-                    ViPath = viPath,
-                    AiXMLFilePath = scratch,
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            // Through the export cache, both ways. This tool used to call the RPC directly and so
+            // never touched the cache at all - measured by watching the cache directory during a
+            // VI-generator run: the run produced no entries, because a terminal lookup was the only
+            // export it did. That is backwards. A palette VI's terminals are the single most
+            // repeated read in the whole workflow - every generator run looks up the same handful -
+            // and it was the one read paying a full LabVIEW export every time.
+            var fromCache = !refresh && AixmlExportStore.TryCopyTo(viPath, scratch);
 
-            if (response.ErrorCode != 0)
-                return Json.Error("exportFailed",
-                    $"Could not export '{viPath}': {response.ErrorMessage}",
-                    new { viPath, errorCode = response.ErrorCode });
+            // Where the export came from, in the caller's words rather than only in the file
+            // timestamps. Three VI-generator runs reported this omission independently - the tool
+            // used the cache but said nothing about it, so a hit and a fresh export looked
+            // identical and the only way to tell them apart was to watch the cache directory from
+            // outside. That is exactly the invisible-invalidation complaint this repository makes
+            // about everything else, so it does not get to stand here.
+            string provenance;
+
+            if (fromCache)
+            {
+                provenance = AixmlExportStore.CachedUtc(viPath) is { } taken
+                    ? $"Export served from the cache, taken {taken:yyyy-MM-dd HH:mm}Z - no LabVIEW " +
+                      "round trip. Pass refresh to re-export."
+                    : "Export served from the cache - no LabVIEW round trip. Pass refresh to re-export.";
+            }
+            else
+            {
+                var response = await connection.InvokeAsync((c, t) =>
+                    c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
+                    {
+                        ViPath = viPath,
+                        AiXMLFilePath = scratch,
+                    }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+
+                if (response.ErrorCode != 0)
+                    return Json.Error("exportFailed",
+                        $"Could not export '{viPath}': {response.ErrorMessage}",
+                        new { viPath, errorCode = response.ErrorCode });
+
+                // Only installation VIs are cacheable; Save decides that and reports false for the
+                // rest, which is not a failure - but it IS the difference between "next read is
+                // free" and "next read costs this again", so the caller is told which.
+                provenance = AixmlExportStore.Save(viPath, scratch)
+                    ? "Exported from LabVIEW and written to the cache; the next read of this VI is " +
+                      "a file copy."
+                    : "Exported from LabVIEW, NOT cached - only VIs inside the LabVIEW installation " +
+                      "are, because an export depends on subVIs a per-VI key cannot see.";
+            }
 
             // The RPC writes the file; the content is not on the response.
             var xml = File.Exists(scratch) ? await File.ReadAllTextAsync(scratch, ct) : null;
@@ -106,7 +148,8 @@ internal sealed class InspectTools(LvaiConnection connection)
                     "or otherwise withheld - not that the VI has no terminals.",
                     new { viPath, viName = parsed.ViName, xmlBytes = xml?.Length ?? 0 });
 
-            return ViTerminals.Render(parsed);
+            return ViTerminals.Render(parsed) + Environment.NewLine + Environment.NewLine +
+                   provenance;
         });
 
     [McpServerTool(Name = "lvai_describe_project", ReadOnly = true, Title = "Describe a LabVIEW project")]

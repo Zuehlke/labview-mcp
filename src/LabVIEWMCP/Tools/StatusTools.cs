@@ -58,6 +58,11 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["applicationLanguage"] = config.Language,
                 ["scriptsDirectory"] = ScriptsDirectory(),
                 ["claudeAssetsDirectory"] = ClaudeAssetsDirectory(),
+                // The add-on build the export cache is keyed to. Reported because a dropped cache
+                // is otherwise invisible: the first read after an upgrade just takes longer, which
+                // looks like a slow VI rather than an invalidation that was supposed to happen.
+                ["aiAddonFingerprint"] = LvaiVersion.Compute(),
+                ["aiAddonRecorded"] = LvaiVersion.Recorded(),
                 ["services"] = services,
                 ["reflectionError"] = reflectionError,
             }.ToJsonString(Indented);

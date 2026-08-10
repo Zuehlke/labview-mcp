@@ -61,6 +61,11 @@ if (CommandLine.HasFlag(args, "--examples"))
         CommandLine.HasFlag(args, "--include-specialised"),
         CommandLine.HasFlag(args, "--refresh"));
 
+if (CommandLine.HasFlag(args, "--palette"))
+    return Palette.Run(CommandLine.StringArg(args, "--palette"),
+        CommandLine.IntArg(args, "--limit"),
+        CommandLine.HasFlag(args, "--refresh"));
+
 if (CommandLine.HasFlag(args, "--corpus"))
     return await Corpus.RunAsync(portOverride, CommandLine.StringArg(args, "--corpus"),
         CommandLine.StringArg(args, "--out"), CommandLine.IntArg(args, "--limit"),
@@ -91,6 +96,35 @@ builder.Services
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly();
 
+// Has NI's AI add-on been upgraded since last time? The AIXML export cache is keyed on the source
+// VI, which cannot see that the GENERATOR changed - so an add-on upgrade would leave entries built
+// by the previous one, and a stale export is wrong rather than slow. Checked from disk, before the
+// index warms and before any tool can serve a hit, and it needs no running LabVIEW.
+{
+    var log = LoggerFactory.Create(b =>
+    {
+        b.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+        b.SetMinimumLevel(LogLevel.Information);
+    }).CreateLogger("lvai-version");
+
+    // Before anything reads the cache: bring one left in the old %LOCALAPPDATA% location across.
+    // Starting cold instead would cost a silent 55-second example scan on the next first call.
+    if (CacheDirectory.MigrateLegacy() is > 0 and var movedFiles)
+        log.LogInformation("Moved {Count} cache file(s) from {From} to {To}.",
+            movedFiles, CacheDirectory.LegacyRoot, CacheDirectory.Root);
+
+    var verdict = LvaiVersion.Check();
+
+    if (verdict.Changed) log.LogWarning("{Message}", verdict.Describe());
+    else log.LogInformation("{Message}", verdict.Describe());
+
+    // Sweep debris a killed or racing writer left in the export cache. Not needed for correctness -
+    // half an entry already reads as a miss - but a cache directory full of .tmp files makes a
+    // working cache look broken to whoever opens it.
+    if (AixmlExportStore.Reap() is > 0 and var reaped)
+        log.LogInformation("Reaped {Count} stray file(s) from the AIXML export cache.", reaped);
+}
+
 // Build the example index before anyone asks for it. MEASURED: a cold scan costs 55 seconds and
 // the in-memory index does not outlive the process, so without this the first lvai_example_index
 // call after every restart is a 55-second silence - long enough to read as a hang. The result is
@@ -98,6 +132,11 @@ builder.Services
 // an explicit refresh. Fire-and-forget on purpose: a machine with no LabVIEW must still serve
 // every other tool.
 _ = ExampleIndex.WarmAsync();
+
+// Same treatment for the palette index. It reads a comparably large tree - 582 palette files on
+// this station - and until it got a disk cache it was rescanned on every single start-up, which
+// nothing ever argued for; the example index had a measurement behind it and this one did not.
+_ = PaletteIndex.WarmAsync();
 
 await builder.Build().RunAsync();
 return 0;

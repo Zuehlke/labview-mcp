@@ -117,6 +117,23 @@ public class PaletteToolsTests : IDisposable
         Assert.Single(index.Vis);
     }
 
+    /// <summary>
+    /// Which palette gets reported for a VI on several of them used to be whichever the filesystem
+    /// enumerated first - stable in practice, promised nowhere, and not stable at all once the
+    /// files are read concurrently. It is now the alphabetically first, on every run and every
+    /// machine. The write order here is deliberately the reverse of the expected answer.
+    /// </summary>
+    [Fact]
+    public void TheReportedPaletteOfASharedViIsTheAlphabeticallyFirst()
+    {
+        WritePalette("z.mnu", "Close Config Data.vi");
+        WritePalette("a.mnu", "Close Config Data.vi");
+
+        var vi = Assert.Single(PaletteIndex.Build(_root).Vis);
+
+        Assert.Contains("a.mnu", vi.PaletteFile);
+    }
+
     [Fact]
     public void ResultsAreSortedSoOutputIsStable()
     {

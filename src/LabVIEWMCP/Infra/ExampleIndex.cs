@@ -185,6 +185,9 @@ internal static class ExampleIndex
         return (root ?? "") + "|" + (addons ?? "");
     }
 
+    /// <summary>One example read off disk: its key in <c>found</c>, and the entry itself.</summary>
+    private sealed record ScannedExample(string Relative, ExampleVi Vi);
+
     private static Result Scan(string root, string? addonsRoot, int? release)
     {
         var examples = Path.Combine(root, "examples");
@@ -209,23 +212,35 @@ internal static class ExampleIndex
 
         foreach (var source in sources)
         {
-            foreach (var file in EnumerateFilesSafely(source.ExamplesFolder, "*.vi"))
-            {
-                byte[] bytes;
-                try { bytes = File.ReadAllBytes(file); }
-                catch { unreadable.Add(file); continue; }   // a locked example is not fatal
+            // Materialised and sorted before reading. Sorting is not cosmetic: the merge below is
+            // first-one-wins, and the order EnumerateFilesSafely produces is the filesystem's,
+            // which is stable in practice and promised nowhere. Fixing it here means the scan
+            // answers the same way twice whatever the readers do.
+            var files = EnumerateFilesSafely(source.ExamplesFolder, "*.vi")
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-                scanned++;
+            // Reading and parsing run concurrently - see ParallelScan for why that is worth about
+            // 21x on a cold tree - but the merge that follows stays sequential and in file order.
+            var read = ParallelScan.Map(files, (file, bytes) =>
+            {
                 var block = ExtractBlock(bytes);
-                if (block is null) continue;               // a subVI, not a listed example
+                if (block is null) return null;            // a subVI, not a listed example
 
                 var relative = Path.GetRelativePath(source.ExamplesFolder, file);
-                var category = Path.GetDirectoryName(relative) ?? "";
                 var parsed = Parse(block);
 
-                found.TryAdd(relative, new ExampleVi(
-                    Path.GetFileName(file), file, category, source.Label,
-                    parsed.Description, parsed.Keywords, parsed.RequiredSoftware));
+                return new ScannedExample(relative, new ExampleVi(
+                    Path.GetFileName(file), file, Path.GetDirectoryName(relative) ?? "",
+                    source.Label, parsed.Description, parsed.Keywords, parsed.RequiredSoftware));
+            });
+
+            for (var i = 0; i < files.Count; i++)
+            {
+                if (!read[i].Read) { unreadable.Add(files[i]); continue; }  // a locked one is not fatal
+
+                scanned++;
+                if (read[i].Value is { } example) found.TryAdd(example.Relative, example.Vi);
             }
 
             // Examples that carry no in-VI block and register through an external index instead.

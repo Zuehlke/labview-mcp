@@ -74,6 +74,13 @@ internal sealed class PaletteTools
             header += Environment.NewLine + "Skipped, newer LabVIEW required: " +
                       string.Join("; ", index.AddonsSkipped);
 
+        // The cache's age, so a stale palette is visible rather than mysterious - the same promise
+        // the example index makes, and the main reason the disk cache is worth its 55 ms.
+        if (PaletteIndex.BuiltUtc(installRoot, addonsRoot) is { } built)
+            header += Environment.NewLine +
+                      $"Index cached {built:yyyy-MM-dd HH:mm} UTC; pass refresh=true to rebuild it " +
+                      "(about 150 ms) after installing or upgrading LabVIEW or an add-on.";
+
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
                    "Pass a query to look one up, e.g. query='Error Handler'. A vi.lib utility is a " +
