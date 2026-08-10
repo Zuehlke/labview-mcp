@@ -1,7 +1,7 @@
 ---
 name: labview-vi-generator
 description: Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Generator
@@ -32,13 +32,68 @@ it an icon.
   entries are in the index like any other. Call the VI and **name the dependency in the report** —
   as information, because the generated VI will not open where the package is missing. Avoid a
   package only when the task prompt already said to.
-- **Never guess a terminal name.** They are literal LabVIEW labels and several are surprising
-  (`Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces). Copy the exact shape from an
-  export of a VI that already uses the node, or from `lvai_vi_server_reference` for Property and
-  Invoke nodes. A guessed name costs a whole validate/fix cycle.
+- **Never guess a terminal name — look it up, and look it up in this order.** They are literal
+  LabVIEW labels and several are surprising (`Increment` → `x+1`, `Greater?` → `x > y?`, with the
+  spaces). A guessed name costs a whole validate/fix cycle.
+
+  1. **`lvai_aixml_reference` with `node='<name>'`.** §8 carries **289 nodes with their ordered
+     terminal lists**, mined from every shipping example and verified against the hand-checked
+     table. No LabVIEW, no export, one call — this answers the common case outright and is where
+     to start.
+
+     **Pass `node=`, not `section='8'`.** The section is 54 kB: your client will spill it into a
+     file holding one JSON string, which `Grep` cannot search, so you end up unable to find a
+     paragraph that is right there. Measured — a run re-derived `disabled index (col)` by
+     exporting a VI, on a day when that exact subsection had already been added to §8.
+     `node=` returns only the passages naming the node, each with its table header or its whole
+     code block, which is what you actually need.
+  2. **`lvai_vi_terminals` for a `Call` to a palette VI** — a different question with a different
+     answer. §8 covers *primitives*; a `Call`'s terminals are the target VI's own front-panel
+     labels, and this reads them straight out of it. It prints a ready-to-paste `Call`, handles
+     the polymorphic case (which also needs an `instance`), and does not burn the target's path.
+     Use it the moment `lvai_palette_index` gives you a VI: that tool says a VI is callable, this
+     one says what to write. The names are not guessable — `Read Delimited Spreadsheet.vi` really
+     has `max characters/row  (no limit\3A0)` with two spaces and `delimiter (\\t)` with a
+     doubled backslash.
+  3. **`lvai_vi_server_reference`** for Property and Invoke nodes, whose terminals are properties
+     and methods rather than fixed labels.
+  4. **Export a VI that uses the node** — the fallback, now only when §8 says `varies per
+     instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
+- **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
+  reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
+  `error out` **bottom right**, nothing arranged so wires must cross. **A generated VI always gets
+  pattern 4815** — measured with the highest index at 3, 7 and 11, all three came out the same, and
+  there is no attribute to ask for another — so this map is a constant, not something to derive:
+
+  | | `conIdx`, top → bottom |
+  |---|---|
+  | **left edge — inputs** | **11, 10, 9, 8** — put `error in` on **8** |
+  | middle columns | 7/6, then 5/4 (upper/lower) — secondary terminals only |
+  | **right edge — outputs** | **3, 2, 1, 0** — put `error out` on **0** |
+
+  So a typical VI is: main input `11`, `error in` `8`, main output `3`, second output `2`,
+  `error out` `0`. **Do not invent an assignment by analogy** — a generated VI shipped with both
+  inputs on the right-hand edge and all three outputs in the middle columns, validated, ran, and
+  was rejected on sight. And do not copy a set of indices out of an NI VI: those use other
+  patterns, where the same numbers are different slots. Above 12 terminals the pattern changes and
+  this map no longer holds; detail in `lvai_aixml_reference` §2, "The connector pane".
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.
+- **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
+  When a subVI cannot be found it opens a modal browser titled `Find the VI Named "…"` and blocks
+  until somebody answers it. No RPC returns and nothing times out on LabVIEW's side, so it is
+  indistinguishable from a hang or a crash — hours went into diagnosing exactly that. Do not keep
+  retrying: say so in the report and ask for the dialog to be cancelled. It is triggered by
+  opening a VI or project whose dependencies are missing, so the example you picked to copy from
+  is a likelier cause than anything you generated.
+- **A VI you generate can wedge the session the same way, and the only warning is a terminal
+  name.** A palette VI whose path input reads `… (dialog if empty)` opens a file dialog when
+  handed an empty path — `Read Delimited Spreadsheet.vi` has exactly that. So a VI that passes an
+  unchecked file name through hangs on the emptiest input a caller can give it. **Guard it on the
+  diagram**: `Equal?` against an empty string, `Select` a placeholder path, and the hang becomes
+  an ordinary file error. And when you test that case, **run it last** — if the guard is wrong you
+  lose one test rather than the session.
 - **The documentation goes INTO the AIXML, not on afterwards.** `<VI description="…">` and the
   `description` of every `Control`/`Indicator` are part of the file you generate from. Anything
   applied after generation is lost the moment the VI is regenerated.
@@ -164,14 +219,26 @@ callable — that mistake has been made three times.
 
 ### Phase 3 — Take the template
 
-For the palette VI or example you chose, call **`lvai_convert_vi_to_aixml`** with
-`returnContent: false` and an `aiXmlFilePath` in your temp folder, then `Read` the file.
+**Open the template's owning project first.** If a `.lvproj` sits in the template VI's folder or
+above it, call `lvai_open_file` with that `projectPath` before exporting anything. A VI read on
+its own has unresolved subVIs and static VI references, and the cost is not cosmetic: LabVIEW
+searches the disk for the missing dependencies, a core at 100% for **minutes** per VI, and every
+later RPC queues behind it until the whole session looks dead. Measured 2026-08-09 on
+`examples\Application Control\`: that subtree wedged LabVIEW three times and needed a hard restart
+each time; with the project opened first the same VIs exported in milliseconds. If an example
+still misbehaves afterwards, leave it and take the next candidate — do not fight it.
+
+Then call **`lvai_convert_vi_to_aixml`** with `returnContent: false` and an `aiXmlFilePath` in
+your temp folder, and `Read` the file.
 
 Prefer this over `lvai_describe_vi`: both return the same AIXML, but `describe_vi` also carries
 `viImage`, a base64 PNG of the block diagram, whether you want it or not.
 
 Copy from it: the exact node names, the exact terminal labels, the attribute spellings, and the
-shape of any structure you need. **A mode attribute can change a node's output type, and setting
+shape of any structure you need. **Copy the whole `inputs` string, order included** — terminal
+order inside `inputs` is load-bearing on at least `Bundle By Name`, where listing `input cluster`
+before the field terminals is rejected as `Cluster is invalid or empty`, a message that points at
+the type and never mentions order. **A mode attribute can change a node's output type, and setting
 the mode is not enough** — `Read from Text File` with `readLines="true"` still returns a scalar
 string until `count` is wired. Copy a variant that is already in the state you want rather than
 setting the attribute and hoping.
@@ -232,13 +299,25 @@ That is expected, and it is the check that your `URL` is right.
    [`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). `Error 1051` is its
    sibling and means something else: same *filename*, different path.
 3. `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
-4. `lvai_run_vi_as_top_level` with `inputsJson` covering the inputs from Phase 1, including at
-   least one edge case you promised to handle.
+4. Run it, with `inputsJson` covering the inputs from Phase 1, including at least one edge case
+   you promised to handle. **Which tool depends on the output types, and for most VIs it is the
+   second one:**
 
-   **`errorCode: 91` is expected whenever an output cannot be read back — it appears *after* the
-   VI has run correctly.** It is `RunVIAsTopLevel` reading the value back through a variant, not
-   your VI failing. When the output type is not readable this way, have the VI write its result
-   to a file and inspect the file. Never call an empty answer a success.
+   - **Every output a `string`** → `lvai_run_vi_as_top_level`.
+   - **Anything else — a boolean, numeric, cluster, array or waveform** → **`lvai_run_vi_and_read_values`**.
+     It sets the inputs, runs the target and reads *every* control and indicator back through VI
+     Server, so the values arrive intact. That is the normal case: a VI whose outputs are all
+     strings is the exception.
+
+   **`errorCode: 91` from `lvai_run_vi_as_top_level` is expected whenever an output cannot be
+   read back — it appears *after* the VI has run correctly.** It is `RunVIAsTopLevel` reading the
+   value back through a variant, not your VI failing. Never call an empty answer a success —
+   switch to `lvai_run_vi_and_read_values` and get the real values instead.
+
+   **Do not build your own VI Server harness for this.** That was the old workaround and it cost
+   about eight minutes per VI; the harness is shipped. Note also that `lvai_run_vi_and_read_values`
+   reports the *helper's* error code: a target VI that itself failed shows that in its own
+   `error out` under `values`, not in `errorCode`.
 
 ### Phase 7 — The icon, last
 

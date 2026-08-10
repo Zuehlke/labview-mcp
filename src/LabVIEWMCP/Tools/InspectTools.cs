@@ -47,6 +47,68 @@ internal sealed class InspectTools(LvaiConnection connection)
             }, ct);
         });
 
+    [McpServerTool(Name = "lvai_vi_terminals", ReadOnly = true,
+                   Title = "Terminal names a Call to this VI needs")]
+    [Description("""
+        The exact terminal names for putting a `Call` to some VI in AIXML - read out of that VI's
+        own export, so no guessing and no hunting for another VI that already calls it.
+        USE THIS after lvai_palette_index gives you a VI: that tool says a VI may be Called, this
+        one says what its terminals are called, and they are not derivable. Measured on
+        `Read Delimited Spreadsheet.vi`: `max characters/row  (no limit\3A0)` has TWO spaces,
+        `delimiter (\\t)` has a doubled backslash, and the wrapper is polymorphic so a Call also
+        needs an `instance`. Returns a ready-to-paste `Call` element.
+        For a POLYMORPHIC VI it lists every instance with its own Call - note the attribute
+        shuffle: the wrapper name is `target`, the instance name goes in `instance`.
+        Read-only, and it does NOT burn the path for a later lvai_convert_aixml_to_vi - measured:
+        exporting a VI leaves it regenerable, only lvai_open_file does not.
+        """)]
+    public async Task<string> ViTerminalsAsync(
+        [Description(@"Absolute path to the .vi whose terminals you need")] string viPath,
+        [Description("Local budget in seconds")] int timeoutSeconds = 180,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(viPath))
+                throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
+
+            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
+            Directory.CreateDirectory(Path.GetDirectoryName(scratch)!);
+
+            var response = await connection.InvokeAsync((c, t) =>
+                c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
+                {
+                    ViPath = viPath,
+                    AiXMLFilePath = scratch,
+                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+
+            if (response.ErrorCode != 0)
+                return Json.Error("exportFailed",
+                    $"Could not export '{viPath}': {response.ErrorMessage}",
+                    new { viPath, errorCode = response.ErrorCode });
+
+            // The RPC writes the file; the content is not on the response.
+            var xml = File.Exists(scratch) ? await File.ReadAllTextAsync(scratch, ct) : null;
+
+            var parsed = ViTerminals.Parse(xml);
+            if (parsed is null)
+                return Json.Error("exportUnreadable",
+                    "The export reported success but no readable AIXML was written.",
+                    new { viPath, exportPath = scratch, xmlBytes = xml?.Length ?? 0 });
+
+            // A childless <VI> is the documented silent failure: the diagram was withheld, not
+            // absent. Saying "0 terminals" here would be the empty answer this tool exists to
+            // prevent.
+            if (parsed.Inputs.Count == 0 && parsed.Outputs.Count == 0 && parsed.Instances.Count == 0)
+                return Json.Error("noTerminalsFound",
+                    $"'{parsed.ViName}' exported with no controls, indicators or instances. For a " +
+                    "200-byte export that means the diagram was not readable - password-protected " +
+                    "or otherwise withheld - not that the VI has no terminals.",
+                    new { viPath, viName = parsed.ViName, xmlBytes = xml?.Length ?? 0 });
+
+            return ViTerminals.Render(parsed);
+        });
+
     [McpServerTool(Name = "lvai_describe_project", ReadOnly = true, Title = "Describe a LabVIEW project")]
     [Description("""
         RPC GetDescribeProjectPromptInfo (server streaming). Returns a JSON description of a

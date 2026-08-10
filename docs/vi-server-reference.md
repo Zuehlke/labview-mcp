@@ -190,6 +190,22 @@ Four things this measured that the catalogue does not say:
   check; use arbitrary colours and you must compare geometry instead, or accept the nearest
   cube entry. Note the failure is silent and pretty — the quantised icon looks right, so a
   difference count is the only way to see it.
+
+  **The target is an indexed palette, and it is wider than the cube — measured on a second
+  icon.** The read-back PNG comes back as `Format8bppIndexed` where the source was
+  `Format32bppArgb`: 256 entries, not 216. On a "CSV over a sine wave" icon, **298 of 1 024
+  pixels** differed in exactly two substitutions:
+
+  | Source | Read back | Pixels | in the cube? |
+  |---|---|---|---|
+  | `005A9C` | `006699` | 270 | yes — the cube explains this one |
+  | `DCDCDC` | `DDDDDD` | 28 | **no** — `DD` is not in `{00,33,66,99,CC,FF}` |
+
+  So "quantises to the web-safe cube" is the right advice but the wrong model: the cube is a
+  *subset* of what LabVIEW keeps, and a colour can land outside it. Picking from the cube is
+  still the way to get a clean equality check — every cube colour survives — but do not use the
+  cube to predict where an arbitrary colour will land, and do not read a non-cube read-back value
+  as evidence that something went wrong.
 - **`Save\3AInstrument` needs no `Path to saved file`.** Unwired, it saves in place.
 
 The run reports **`errorCode 91` with all three indicators empty** — the known read-back artifact
@@ -227,6 +243,59 @@ came back with `Error 1018 … Unspecified error occurred` and `Method Name: Get
 the two files then validated cleanly on its own, byte-for-byte unchanged. So a concurrent second
 call spoils both, and the symptom is an error thrown from *inside* the service — not a complaint
 about your XML. Do not read `Error 1018` as "my AIXML is broken".
+
+## Reading a VI's results: `Ctrl Val.Get All` plus `Flatten To XML`
+
+The second capability that had to be composed rather than called. `RunVIAsTopLevel` marshals only
+strings, so a generated VI with a `bool`, `cluster`, `array` or waveform output verifies to an
+empty answer with `errorCode 91` — *after* running correctly. Shipped as
+`lvai_run_vi_and_read_values`, helper source `scripts\lvai_run_and_read.xml`.
+
+The chain, and why each link is what it is:
+
+| step | node | why |
+|---|---|---|
+| open | `Open VI Reference` ← `String To Path` | `RunVIAsTopLevel` cannot set a path control |
+| set | `Invoke Node` `{LV.VI}` `Ctrl Val.Set`, one per input, inside a For Loop | `Control Name` and `Value`; the error wire through a shift register is what *orders* them before the run |
+| run | `Invoke Node` `{LV.VI}` `Run VI`, `Wait until done` = TRUE | — |
+| read | `Invoke Node` `{LV.VI}` `Ctrl Val.Get All` | returns **every** front-panel object at once as a variant — no name list to supply, nothing to miss |
+| render | `Flatten To XML` | takes `anything`, so one node handles waveform, cluster and array alike |
+| return | a single `string` indicator | the only thing that survives the trip back |
+
+**The measurement that dictates the shape: set, run and read must be one call.** A
+`RunVIAsTopLevel` on the target followed by a *separate* helper reading it returns the target's
+**defaults** — measured on a VI that had just produced eight samples: `Y` empty, `dt = 1.0`,
+`loaded? = FALSE`. The two calls do not share the VI's data space, and a defaults answer looks
+exactly like a real one. Anything that reads values must also have run them, through the same
+reference.
+
+**Reading a Time Stamp back: the four I32s are not in the order you expect.** A flattened LabVIEW
+timestamp arrives as a four-element cluster of I32, and the order is **fraction-low,
+fraction-high, seconds-low, seconds-high** — seconds *last*, not first. So
+
+```xml
+<Timestamp><Name>t0</Name><Cluster>
+  <I32><Val>0</Val></I32> <I32><Val>-2147483648</Val></I32>
+  <I32><Val>10</Val></I32> <I32><Val>0</Val></I32>
+</Cluster></Timestamp>
+```
+
+is **10.5 s**, not 0. The `-2147483648` is `0x80000000` in the fraction's high word — exactly one
+half. Verified against a CSV whose first timestamp was 10.500. Read it the obvious way round and
+every t0 in a waveform looks like garbage or zero.
+
+Two details that cost a round trip each:
+
+- **`Flatten To XML` renders an empty array as one template element.** A `Dimsize` of `0` is still
+  followed by a child element carrying the element *type*. Count the children and a VI with no
+  controls reports one phantom control; read `Dimsize` instead.
+- **The helper's own error must also leave as a string.** Wiring its `error out` cluster to an
+  indicator would put it right back in the unmarshallable class, so it goes through a second
+  `Flatten To XML`. This also keeps the two apart cleanly: a target VI that *reports* an error is
+  a successful harness run, and only `error xml` says whether the harness itself worked.
+
+Inputs are unchanged by any of this — they still cross as strings, so only string controls can be
+set. The asymmetry is the point: the way **out** is now unrestricted.
 
 ## Closing a VI's window
 

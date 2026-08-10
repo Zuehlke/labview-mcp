@@ -23,10 +23,22 @@ and will never appear in a palette — they are properties and methods, and the 
 index for them.
 
 **Check whether NI already built it, before designing anything.** `lvai_example_index` lists the
-951 shipping examples of this installation with NI's own description and keywords, scanned from
-disk in about 400 ms and needing no running LabVIEW. It answers a different question from the
-palette index — that one says *which VI may I call*, this one says *is this whole diagram already
-written*. Feed a hit's path to `lvai_convert_vi_to_aixml` and read how NI wired it.
+shipping examples of this installation with NI's own description and keywords, and needs no
+running LabVIEW. It answers a different question from the palette index — that one says *which VI
+may I call*, this one says *is this whole diagram already written*. Feed a hit's path to
+`lvai_convert_vi_to_aixml` and read how NI wired it.
+
+Two numbers worth knowing before you call it. **609 of the 951 examples are listed by default**:
+the rest need LabVIEW FPGA, LabVIEW Real-Time or a licensed toolkit, and a hit you cannot open is
+worse than no hit. The count held back is always reported; `includeSpecialised` shows them.
+And the index is **cached on disk and warmed at start-up**, so calls cost about 176 ms — but the
+first ever build on a machine reads 2510 files and takes **about 50 seconds**. This file used to
+claim 400 ms flatly; that was the warm figure, and before the cache existed every server restart
+brought the full minute back.
+
+The cache never expires on its own. After installing or upgrading LabVIEW or an add-on, rebuild it
+once — `refresh=true`, or `LabVIEWMCP --examples --refresh` — because nothing else will notice.
+Every answer carries the cache's build date, so a stale index is visible rather than mysterious.
 
 Do this first for anything pattern-shaped: state machines, producer/consumer, queued message
 handlers, continuous acquisition, file streaming. `State Machine Fundamentals.vi` is thirty seconds
@@ -114,10 +126,20 @@ generated helper runs inside the AI addon's instance. It cannot see the IDE's op
 0` from a window operation is not evidence that a window moved.
 
 **Validate, then verify by running.** `ValidateAIXML` is cheap and its messages name the node and
-terminal. But validation passing says nothing about behaviour, and `RunVIAsTopLevel` reports
-`errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*. When the
-output type is not readable, write the result to a file and inspect that. Never report success
-from an empty answer.
+terminal. But validation passing says nothing about behaviour, and `lvai_run_vi_as_top_level`
+reports `errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*.
+Never report success from an empty answer.
+
+**When any output is not a string, run it with `lvai_run_vi_and_read_values` instead.** That is
+almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
+plain call. The tool sets the inputs, runs the target and reads every control and indicator back
+through VI Server, so the values arrive intact — measured on a VI whose waveform, boolean and
+error cluster were all empty under the plain call and complete under this one. Inputs are
+unchanged: still strings only, so keep taking numbers and paths in as strings.
+
+This clause used to say "write the result to a file and inspect that". That worked, and it cost
+about eight minutes of hand-built VI Server harness per VI — measured, twice, before the harness
+was productised. Use the tool; write to a file only for something it cannot reach.
 
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
@@ -166,6 +188,8 @@ literally it argued away 600 usable palette VIs.
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
+| How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
+| What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |

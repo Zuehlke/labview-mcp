@@ -36,13 +36,16 @@ internal sealed class PaletteTools
         %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install. An
         add-on entry is labelled with the add-on it came from.
         Without a query: the totals plus the scan location. With query: matching VI names and the
-        palette each was found in. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a
+        palette each was found in; EVERY word of the query must appear, in the name or in the
+        palette path. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a
         primitive carries only its display label, which is not the AIXML node name (the palette
         says "To XML" where AIXML wants "Flatten To XML"), and a Call is the wrong construct for
         one anyway - primitives are `Node` elements.
         """)]
     public static string PaletteIndexTool(
-        [Description("Substring of the VI file name, e.g. 'PNG', 'Error Handler'")]
+        [Description("Words to look for, e.g. 'PNG', 'Error Handler', 'read spreadsheet'. EVERY " +
+                     "word must appear, but each may come from either the VI name or its palette " +
+                     "path - so 'file read' reaches file.mnu. Fewer words match more")]
         string? query = null,
         [Description("Max rows to return (default 40, max 400)")] int limit = DefaultLimit,
         [Description("Rescan instead of using the cached index")] bool refresh = false,
@@ -79,13 +82,23 @@ internal sealed class PaletteTools
                    Environment.NewLine +
                    "Built-in functions are not listed; they are `Node` elements, not Calls.";
 
+        // AND across words, OR across the name and the palette path - see Search. The whole query
+        // used to go to Contains as one phrase, and the failure was not an empty list you would
+        // question: "read spreadsheet" returned ONLY the third-party `MGI Read Spreadsheet
+        // File.vi` and hid the stock `Read Delimited Spreadsheet.vi`, because the words are not
+        // adjacent in the stock name. Searching the palette path too is what lets a category word
+        // narrow a query - 'file read' now reaches file.mnu.
+        var words = Search.Words(query);
         var matches = index.Vis
-            .Where(v => v.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Where(v => Search.MatchesAll(words, v.Name, v.PaletteFile))
             .ToList();
 
         if (matches.Count == 0)
             return $"No palette VI matches \"{query}\"." + Environment.NewLine + header +
                    Environment.NewLine +
+                   (Search.DropAWordHint(words) is { Length: > 0 } hint
+                       ? hint + Environment.NewLine
+                       : "") +
                    "If you expected a built-in function, it will not be here - use a `Node` " +
                    "element with the name AIXML uses, not the palette label.";
 

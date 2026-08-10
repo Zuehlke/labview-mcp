@@ -22,10 +22,17 @@ internal static class CommandLine
         ["--dump-schema"] = true, // the file is optional; the value test below handles that
         ["--watch"] = true,
         ["--diagram"] = true,
+        ["--corpus"] = true, // the root is optional; the value test below handles that
+        ["--examples"] = true,
+        ["--include-specialised"] = false,
+        ["--refresh"] = false,
         ["--port"] = true,
         ["--vi"] = true,
         ["--project"] = true,
         ["--timeout"] = true,
+        ["--limit"] = true,
+        ["--skip"] = true,
+        ["--restart-every"] = true,
         ["--out"] = true,
     };
 
@@ -43,13 +50,25 @@ internal static class CommandLine
           LabVIEWMCP --dump-schema [file]   print/write the schema the running LabVIEW serves
           LabVIEWMCP --watch <monitor>      wait for inbound LabVIEW events, minutes at a time
           LabVIEWMCP --diagram <vi>         save a VI's rendered block diagram as a PNG
+          LabVIEWMCP --examples [query]     search the shipping examples (no LabVIEW needed)
+          LabVIEWMCP --corpus [dir]         round-trip every VI in a tree through AIXML
           LabVIEWMCP --ensure-labview       start LabVIEW and wait for its gRPC service
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
           --vi <path>       VI used by --selftest (defaults to a shipped LabVIEW example)
           --project <path>  .lvproj used by --selftest
-          --timeout <s>     how long --watch and --ensure-labview wait (default 300)
-          --out <path>      output file for --diagram
+          --timeout <s>     how long --watch and --ensure-labview wait (default 300),
+                            and the per-VI budget for --corpus (default 90)
+          --limit <n>       stop --corpus after n VIs; rows returned by --examples
+          --include-specialised  let --examples list FPGA, Real-Time and toolkit examples too
+          --refresh         rebuild the example index cache (about a minute)
+          --skip <a,b>      substrings of a path --corpus must not touch; they are still
+                            listed in the results, so the gap stays visible
+          --restart-every <n>  --corpus restarts LabVIEW once n projects are open (default 40,
+                            0 disables). Nothing in the lvai interface closes a project, so
+                            this is the only way to give back what the sweep opens.
+                            DESTRUCTIVE: it kills every LabVIEW on the machine.
+          --out <path>      output file for --diagram, output directory for --corpus
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port. The self-test needs LabVIEW 2026 running

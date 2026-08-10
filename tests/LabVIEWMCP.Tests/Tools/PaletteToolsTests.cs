@@ -162,6 +162,60 @@ public class PaletteToolsTests : IDisposable
         Assert.DoesNotContain("General Error Handler.vi", text);
     }
 
+    // ---------- query words ----------
+
+    /// <summary>
+    /// The measured failure, and the reason this matters more here than in the example index:
+    /// phrase matching did not return nothing, it returned ONE CONFIDENT WRONG HIT. On the real
+    /// installation "read spreadsheet" surfaced only the third-party `MGI Read Spreadsheet
+    /// File.vi` and hid the stock `Read Delimited Spreadsheet.vi`, because the two words are not
+    /// adjacent in the stock name - steering the caller into a needless dependency.
+    /// </summary>
+    [Fact]
+    public void WordsNeedNotBeAdjacentInTheName()
+    {
+        WritePalette("file.mnu", "Read Delimited Spreadsheet.vi", "MGI Read Spreadsheet File.vi");
+
+        var text = PaletteTools.PaletteIndexTool(query: "read spreadsheet", installRoot: _root);
+
+        Assert.Contains("Read Delimited Spreadsheet.vi", text);
+        Assert.Contains("MGI Read Spreadsheet File.vi", text);
+    }
+
+    [Fact]
+    public void AWordMayComeFromThePalettePathInsteadOfTheName()
+    {
+        WritePalette("file.mnu", "Read Delimited Spreadsheet.vi");
+        WritePalette("string.mnu", "Read From Text.vi");
+
+        var text = PaletteTools.PaletteIndexTool(query: "file read", installRoot: _root);
+
+        Assert.Contains("Read Delimited Spreadsheet.vi", text);
+        Assert.DoesNotContain("Read From Text.vi", text);
+    }
+
+    [Fact]
+    public void AnAbsentWordExcludesTheVi()
+    {
+        WritePalette("file.mnu", "Read Delimited Spreadsheet.vi");
+
+        var text = PaletteTools.PaletteIndexTool(query: "read unicorn", installRoot: _root);
+
+        Assert.Contains("No palette VI matches", text);
+        Assert.Contains("All 2 words must appear", text);
+    }
+
+    [Fact]
+    public void ASingleWordQueryBehavesAsBefore()
+    {
+        WritePalette("file.mnu", "Read Delimited Spreadsheet.vi", "Write PNG File.vi");
+
+        var text = PaletteTools.PaletteIndexTool(query: "Spreadsheet", installRoot: _root);
+
+        Assert.Contains("Read Delimited Spreadsheet.vi", text);
+        Assert.DoesNotContain("Write PNG File.vi", text);
+    }
+
     [Fact]
     public void QueryReturnsTheNameWithItsPaletteFile()
     {

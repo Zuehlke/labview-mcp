@@ -1,7 +1,7 @@
 ---
 name: labview-vi-editor
 description: Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 # LabVIEW VI Editor
@@ -35,6 +35,16 @@ carries topology, not appearance, so everything below is re-decided by LabVIEW o
 Say this in the report every time. A user who arranged a diagram by hand needs to know it comes
 back arranged by LabVIEW.
 
+**A front-panel event structure is the one thing likely to make the edit impossible.** Measured
+over every shipping example: of the 52 VIs whose round trip returned a verdict on their event
+structure, the **static** frames — a control's own event, `selector=" &quot;Stop&quot;\3A Value
+Change "` — failed 32 times and passed 7. Dynamic frames fed by `Register For Events` are the
+healthy ones, 9 passing to 4 failing. The selector comes back looking correct and the generator
+still reports `Event Structure: One or more event cases have no events defined`.
+
+So when the VI has one, validate the **untouched** export before promising anything, and return
+`CANNOT PROCEED` if it does not come back. Roughly four in five of NI's own do not.
+
 ## Hard rules
 
 - **Never regenerate a VI whose pristine export does not validate.** That check is Phase 2 and
@@ -47,10 +57,40 @@ back arranged by LabVIEW.
   the fallback, and the report must say which of the two it was.
 - **A third-party dependency is not a reason to rebuild, and not a question.** OpenG, MGI and
   JKI are on this station's palette. Call the VI and name the dependency in the report.
-- **Never guess a terminal name.** Copy it from the export you already have, or from
-  `lvai_vi_server_reference`. `Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces.
+- **Never guess a terminal name.** `Increment` → `x+1`, `Greater?` → `x > y?`, with the spaces.
+  For a node **already in the VI**, copy it from the export you are editing — that is the exact
+  spelling this VI uses. For a node you are **adding**, call
+  **`lvai_aixml_reference` with `node='<name>'`** — §8 lists 289 nodes with their ordered
+  terminals, and `node=` returns just the passages naming yours, each with its table header or
+  whole code block. Do **not** ask for `section='8'`: 54 kB comes back, your client spills it to
+  a one-line JSON file, and `Grep` cannot find anything in it. For Property and Invoke nodes use
+  `lvai_vi_server_reference`. For a **`Call` to a palette VI** neither of those applies — the
+  terminals are the target's own front-panel labels, so use **`lvai_vi_terminals`**, which reads
+  them out of it and prints a ready-to-paste `Call` (including the `instance` a polymorphic
+  target needs). Exporting some other VI to find a name is the fallback, not the first move.
+- **Copy the whole `inputs` string, order included.** Terminal order is load-bearing on at least
+  `Bundle By Name`: listing `input cluster` before the field terminals is rejected as
+  `Cluster is invalid or empty`, a message that points at the type and never mentions order.
+  **A `Call` is the exception** — measured, its terminals resolve by name and a fully scrambled
+  order validates. Only the spelling matters there.
 - **Write AIXML to a file with `Write`.** A shell eats the `\3A` and `\5C` escapes and the
   failure arrives disguised as an XML parse error.
+- **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
+  A missing subVI opens a modal browser titled `Find the VI Named "…"` that blocks until somebody
+  answers it. No RPC returns and nothing times out, so it looks exactly like a hang. Do not retry
+  in a loop — report it and ask for the dialog to be cancelled. **A second, independent cause is
+  the VI itself**: a palette VI whose path input reads `… (dialog if empty)` opens a file dialog
+  on an empty path, so an unguarded file name hangs the session on ordinary input. If the VI you
+  are editing has one, guard it with `Equal?` + `Select` on a placeholder path, and run that test
+  case last.
+- **Keep the connector pane placed by NI's style guide, and fix it if it is not.** Inputs on the
+  **left**, outputs on the **right**, `error in` **bottom left**, `error out` **bottom right**, no
+  crossings. On the standard 4-2-2-4 pane the `conIdx` map is left edge **11, 10, 9, 8** top to
+  bottom and right edge **3, 2, 1, 0** top to bottom, so the usual set is input `11`, `error in`
+  `8`, output `3`, `error out` `0`. Preserving an existing pane is the default — but a pane that
+  breaks the guide is a defect worth naming in the report and correcting, since `conIdx` is one
+  attribute per terminal and costs nothing to change. Detail in `lvai_aixml_reference` §2, "The
+  connector pane".
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.
@@ -111,6 +151,12 @@ Settled so far:
 Do this **before** backups, palette searches or any edit. It is two calls and it decides whether
 the whole workflow is possible.
 
+0. **Open the VI's owning project.** `lvai_describe_vi` reports `owningProjectPath`; failing that,
+   take the nearest `.lvproj` at or above the VI's folder. Call `lvai_open_file` with that
+   `projectPath` first. A VI read on its own has unresolved subVIs and static VI references, which
+   makes the export **wrong** — and makes LabVIEW spend minutes searching the disk for the missing
+   dependencies while every other RPC queues behind it. Measured 2026-08-09: that is what a wedged
+   LabVIEW actually is, three hard restarts before the cause was found.
 1. `lvai_convert_vi_to_aixml` on the target, `returnContent: false`, into your scratch folder.
    **Check `xmlBytes`.** Anything in the 100–200 byte range is a bare `<VI …/>`: the diagram was
    **not** readable and the RPC still answered `errorCode 0`. That is a silent failure, not an
@@ -263,16 +309,22 @@ The documentation is part of this file, not a later step:
 
 ### Phase 7 — Prove it still works
 
-`lvai_run_vi_as_top_level`, and test **both** halves:
+Run it, and test **both** halves:
 
 - the new behaviour from Phase 1,
 - at least one thing from the **Unchanged** column — a regression check, because a rewrite
   touched every node.
 
-`errorCode: 91` appears *after* a correct run whenever an output cannot be read back through a
-variant; only `string` indicators survive that path. When the output type is not readable, have
-the VI write its result to a file and inspect the file. **Never report success from an empty
-answer.**
+**Pick the tool by the output types.** Every output a `string` → `lvai_run_vi_as_top_level`.
+Anything else — boolean, numeric, cluster, array, waveform → **`lvai_run_vi_and_read_values`**,
+which sets the inputs, runs the target and reads every control and indicator back through VI
+Server. For an edit that is usually the one you want: a regression check you cannot read is not
+a regression check.
+
+`errorCode: 91` from `lvai_run_vi_as_top_level` appears *after* a correct run whenever an output
+cannot be read back through a variant; only `string` indicators survive that path. **Never report
+success from an empty answer** — switch tools rather than making the VI write to a file, which
+was the old workaround and cost about eight minutes of hand-built harness per VI.
 
 ### Phase 8 — Put the icon back
 

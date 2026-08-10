@@ -20,7 +20,48 @@ scanning, and the per-example data lives inside the example VIs themselves. That
 
 Counts on this station: 2510 `.vi` files across both roots and 14 add-on trees, yielding **951
 listed examples** — 808 from the in-VI block (§2) and a further 143 from the external indexes (§3).
-By type: 922 `.vi` and 29 `.lvproj`. A full scan takes about 400 ms.
+By type: 922 `.vi` and 29 `.lvproj`. Of the 951, **609 are listed by default** — the rest need
+LabVIEW FPGA, LabVIEW Real-Time or a licensed toolkit; see `ExampleScope`.
+
+### The scan costs a minute, so it is paid once per machine
+
+**A cold scan takes about 55 seconds, not 400 ms.** Measured three times in a row from a fresh
+process: 55 s, then 0.8 s, then 0.8 s. The index used to live only for the lifetime of the server
+that built it, so the difference was first-touch file I/O — 2510 files opened and read, and on a
+Windows machine with on-access scanning the first pass is slow. An earlier revision of this
+document and of `CLAUDE.md` claimed "about 400 ms" flatly, which is the warm figure and set exactly
+the wrong expectation: the first call after a restart looked like a hang for the better part of a
+minute, which is when somebody starts debugging a connection that is fine.
+
+**The index is now cached on disk** (`ExampleIndexStore`), under
+`%LOCALAPPDATA%\LabVIEWMCP\cache\example-index-<hash>.json`, about 700 kB. Measured end to end
+across separate processes:
+
+| | |
+|---|---|
+| first ever build on a machine | **50 681 ms** |
+| any later process, cache present | **176 ms** |
+| identical results? | yes — 39 of 609 for `TDMS`, 16 of 609 for `FFT`, before and after |
+
+The server also warms the index at start-up, so the first tool call does not pay even the 176 ms.
+
+**The cache never expires on its own, by design.** A scan that re-runs on its own schedule brings
+the minute back at an unpredictable moment, which is the whole problem. It is rebuilt when asked
+and not otherwise:
+
+```bash
+LabVIEWMCP --examples --refresh
+```
+
+or `refresh=true` on `lvai_example_index`. Do that after installing or upgrading LabVIEW or an
+add-on — nothing else will notice. Every answer carries the cache's build time in its header so a
+stale index is visible rather than mysterious.
+
+Two things make a cache that cannot mean what it says get ignored rather than trusted: the file is
+keyed by the roots it was built from, with the key stored in full and compared (the file name is
+only a hash, so collisions are possible), and it carries a format version bumped whenever the
+records change shape. A cache failing either test is rebuilt — a wrong index is worse than a slow
+one.
 
 **An example can be a whole project.** 37 of the external registrations point at a `.lvproj` rather
 than a VI — `Active Noise Control (cRIO).lvproj` is an FPGA/RT application, not a diagram. Those
