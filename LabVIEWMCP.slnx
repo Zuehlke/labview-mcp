@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/LabVIEWMCP/LabVIEWMCP.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/LabVIEWMCP.Tests/LabVIEWMCP.Tests.csproj" />
-  </Folder>
-</Solution>
