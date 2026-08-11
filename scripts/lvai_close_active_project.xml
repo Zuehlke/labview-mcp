@@ -1,0 +1,9 @@
+<VI _name="lvai_close_active_project.vi" description="Save and then close the project that is ACTIVE in the IDE, releasing it and its members from memory. Reached through Application:Project:Active Project, whose {LV.Project} class the VI Server catalogue does not list at all - both Save and Close were found by probing with ValidateAIXML against a negative control. Save runs first because Close carries NO save parameter, so an unsaved project would risk a modal prompt, and a modal dialog stops the whole gRPC service until a human dismisses it.">
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.Project}" inputs="reference:20.proj,error in (no error):20.error out" outputs="reference out:30.reference out,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Close" type="{LV.Project}" inputs="reference:30.reference out,error in (no error):30.error out" outputs="reference out:40.reference out,error out:40.error out" uid="40" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:40.error out" outputs="status:60.status,code:60.code,source:60.source" uid="60" uid_parent="root"/>
+  <Indicator _name="status" conIdx="0" connection="recommended" inputs="value:60.status" type="bool" uid="50" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="4" connection="recommended" inputs="value:60.code" type="int32" uid="51" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="5" connection="recommended" inputs="value:60.source" type="string" uid="52" uid_parent="root" value=""/>
+</VI>

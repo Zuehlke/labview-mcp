@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LabVIEWMcp</RootNamespace>
+    <AssemblyName>LabVIEWMCP</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- stdio MCP server: a stray Console.Write would corrupt the protocol stream -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.31.1" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- lvai is generated as Both: the SERVER base class is what the test suite implements
+         to stand up a fake LabVIEW, so the tools can be exercised over a real channel. -->
+    <Protobuf Include="Protos\lvai_grpc_interface.proto" GrpcServices="Both" />
+    <Protobuf Include="Protos\reflection_v1alpha.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LabVIEWMCP.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The AIXML reference is served BY the server but authored as a normal reviewable
+         markdown file. Embedding the same file keeps one source of truth: the bytes the
+         server hands out are the bytes in docs/, so the two cannot drift. -->
+    <EmbeddedResource Include="..\..\docs\aixml-reference.md" LogicalName="aixml-reference.md" />
+    <EmbeddedResource Include="..\..\docs\lvproj-structure.md" LogicalName="lvproj-structure.md" />
+    <EmbeddedResource Include="..\..\docs\dqmh-patterns.md" LogicalName="dqmh-patterns.md" />
+    <EmbeddedResource Include="..\..\docs\lvlib-lvclass-structure.md" LogicalName="lvlib-lvclass-structure.md" />
+    <EmbeddedResource Include="..\..\docs\vi-server-reference.md" LogicalName="vi-server-reference.md" />
+    <!-- The two catalogues are DATA, not prose: 3078 methods and 6410 properties. They are
+         embedded so a binary-only install can still answer "what do I wire to this node",
+         and served row-wise by lvai_vi_server_reference - never as whole files, which is
+         also why they are TSV rather than markdown tables. -->
+    <EmbeddedResource Include="..\..\docs\vi-server-methods.tsv" LogicalName="vi-server-methods.tsv" />
+    <EmbeddedResource Include="..\..\docs\vi-server-properties.tsv" LogicalName="vi-server-properties.tsv" />
+    <!-- The agent definition is embedded for the same reason as the documents: a binary-only
+         install must be able to hand it out. It is ALSO copied to the output directory below,
+         because Claude Code loads an agent from a file in .claude\agents, not from a resource. -->
+    <EmbeddedResource Include="..\..\.claude\agents\labview-doc-generator.md"
+                      LogicalName="labview-doc-generator.md" />
+    <EmbeddedResource Include="..\..\.claude\agents\labview-vi-generator.md"
+                      LogicalName="labview-vi-generator.md" />
+    <EmbeddedResource Include="..\..\.claude\agents\labview-vi-editor.md"
+                      LogicalName="labview-vi-editor.md" />
+    <EmbeddedResource Include="..\..\CLAUDE.md" LogicalName="CLAUDE.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The documentation generator is invoked as a FILE by an agent, so it cannot be an
+         embedded resource. Copying scripts/ next to the exe gives it one absolute location
+         that works from any working directory - the path is reported by lvai_status as
+         scriptsDirectory. Same arrangement as the TestStand MCP server. -->
+    <None Include="..\..\scripts\**\*"
+          Link="scripts\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <!-- The agent, the allow-list and the working rules, so that everything a fresh machine needs
+         sits next to the exe. Install-ClaudeAssets.ps1 copies them where Claude Code looks. -->
+    <None Include="..\..\.claude\agents\*.md"
+          Link="claude\agents\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\.claude\settings.json"
+          Link="claude\settings.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\CLAUDE.md" Link="claude\CLAUDE.md"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

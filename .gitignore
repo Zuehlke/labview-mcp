@@ -1,0 +1,78 @@
+## Based on the standard .NET ignore set
+## (https://github.com/github/gitignore/blob/main/Dotnet.gitignore),
+## trimmed to what this repo can actually produce, plus the project-specific
+## entries at the bottom.
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# MSBuild binary / structured log
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+
+# Code coverage
+CodeCoverage/
+
+# dotenv
+.env
+
+# Editors and OS
+.vs/
+.idea/
+*.user
+*.suo
+~$*
+*~
+
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
+
+# Note: the binary the MCP clients launch lives in bin/Debug/net8.0/ - Debug is
+# the ONLY configuration this repo builds (see build.ps1) - and is ignored like
+# any other build output, so a fresh clone must run build.ps1 once before the
+# registered server can start. That is deliberate: there is exactly ONE compiled
+# artifact, so nothing can drift out of sync.
+#
+# This note said bin/Release/net8.0/ until 2026-08-09. It was wrong, and it was
+# the only place in the repo still pointing at Release - which is exactly how a
+# second, stale artifact gets built by someone following the comment.
+
+# Scratch output from AIXML round-trips
+*.aixml
+schema.txt
+
+# Claude Code settings: the SHARED file is part of the repo on purpose - it
+# allow-lists the read-only lvai_* tools so they run without a prompt
+# (README section 6). Only the per-machine overrides are ignored.
+.claude/settings.local.json
+
+# Python build artifacts (scripts/)
+__pycache__/
+*.pyc

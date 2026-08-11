@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LabVIEWMcp.Tests</RootNamespace>
+    <AssemblyName>LabVIEWMCP.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LabVIEWMCP\LabVIEWMCP.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test classes run ONE AT A TIME. Most of this suite shares one piece of global state - the
+         on-disk cache, whose location is a process-wide environment variable that some tests move -
+         and in parallel the classes corrupted each other's fixtures: a store test counting entries a
+         tool test was still adding, a reap sweeping debris out from under a writer.
+
+         MEASURED, after two narrower attempts that both looked fixed and were not. Parallel:
+         5 failing runs out of 15, a different test each time, always green on the retry. Serial:
+         0 out of 15. Per-class [Collection] attributes did not do it (a class can reach the cache
+         without naming a cache type - lvai_status alone reads the add-on fingerprint), and an
+         [assembly: CollectionBehavior] attribute was silently ignored by this runner.
+
+         It costs 10 s -> 24 s, and that number is the proof the setting is live: an earlier
+         "serial" measurement that still ran in 10 s was simply not serial. Worth it. A flake at one
+         run in three reads as noise, and noise is where a real regression hides.
+
+         The file must sit beside the test assembly to be read at all. -->
+    <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
+    <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.83.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
