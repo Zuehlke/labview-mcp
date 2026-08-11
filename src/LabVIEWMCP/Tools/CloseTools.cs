@@ -125,6 +125,130 @@ internal sealed class CloseTools(LvaiConnection connection)
             return Describe(answer, viPath, helperVi, aixml, helperGenerated);
         });
 
+    /// <summary>Name of the project helper's AIXML source inside the scripts folder.</summary>
+    internal const string ProjectHelperAixmlFileName = "lvai_close_active_project.xml";
+
+    [McpServerTool(Name = "lvai_close_active_project", Destructive = true, OpenWorld = true,
+                   Title = "Save and close the project active in the IDE")]
+    [Description("""
+        MUTATING: SAVES the project that is active in the LabVIEW IDE and then CLOSES it, releasing
+        it and its members from memory. There is no RPC for this either; it composes the VI Server
+        route, reached through Application:Project:Active Project.
+        IT SAVES FIRST, and that is not a convenience. The Close method carries NO save parameter -
+        verified by generating the node and exporting it back, its only inputs are `reference` and
+        `error in`. An unsaved project would therefore risk LabVIEW's modal save prompt, and a modal
+        dialog stops the entire gRPC service until a human dismisses it. If you do not want the
+        project saved, close it by hand in the IDE instead.
+        Error 1055 means no project was active, so there was nothing to close. That is also what a
+        second call returns, which is how the close can be verified.
+        Both Save and Close were found by PROBING: the VI Server catalogue does not list the
+        {LV.Project} class at all, and an earlier revision of docs/vi-server-reference.md concluded
+        from that there was no way to close a project. ValidateAIXML accepts a real method name and
+        rejects an invented one, which is what turned the guess into a measurement.
+        """)]
+    public async Task<string> CloseActiveProjectAsync(
+        [Description("""
+            Where to keep the generated helper VI. Defaults to a per-user temp directory. Generated
+            once and reused; pass regenerateHelper to force a rebuild.
+            """)]
+        string? helperViPath = null,
+        [Description("""
+            The helper's AIXML source. Defaults to lvai_close_active_project.xml inside the folder
+            lvai_status reports as scriptsDirectory.
+            """)]
+        string? helperAixmlPath = null,
+        [Description("Regenerate the helper VI even when it already exists")]
+        bool regenerateHelper = false,
+        [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            var aixml = helperAixmlPath ?? DefaultProjectHelperAixmlPath()
+                ?? throw new FileNotFoundException(
+                    "The helper's AIXML source could not be located: no scripts folder next to " +
+                    "the exe (lvai_status reports it as scriptsDirectory). Pass helperAixmlPath " +
+                    $"explicitly, pointing at {ProjectHelperAixmlFileName}.");
+            if (!File.Exists(aixml))
+                throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
+
+            var helperVi = Path.GetFullPath(helperViPath ?? DefaultProjectHelperViPath());
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
+                Directory.CreateDirectory(directory);
+
+            var helperGenerated = false;
+            if (regenerateHelper || !File.Exists(helperVi))
+            {
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                    is { } failure) return failure;
+                helperGenerated = true;
+            }
+
+            var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
+                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+
+            return DescribeProjectClose(answer, helperVi, aixml, helperGenerated);
+        });
+
+    /// <summary>
+    /// The project helper's verdict. Kept apart from <see cref="Describe"/> because the same code
+    /// means something different here: <c>1055</c> on a VI close is a broken precondition, while on
+    /// a project close it means there was nothing to close - which is also how a successful close
+    /// is verified, by calling again.
+    /// </summary>
+    internal static string DescribeProjectClose(
+        string runnerAnswer, string helperVi, string aixml, bool helperGenerated)
+    {
+        if (Verdict(runnerAnswer) is not { } verdict) return runnerAnswer;
+        var (status, code, source) = verdict;
+
+        var raised = status is not null && status != "0";
+        var closed = status is not null && !raised;
+        var nothingToClose = code == "1055";
+
+        var result = new JsonObject
+        {
+            ["closed"] = closed,
+            ["nothingToClose"] = nothingToClose,
+            ["helperViPath"] = helperVi,
+            ["helperAixmlPath"] = Path.GetFullPath(aixml),
+            ["helperGenerated"] = helperGenerated,
+            ["errorCode"] = int.TryParse(code, out var parsed) ? parsed : 0,
+            ["errorSource"] = source,
+            ["note"] = closed
+                ? "The active project was SAVED and closed. Calling again now answers Error 1055, " +
+                  "which is how you can confirm it."
+                : nothingToClose
+                    ? "No project was active, so nothing was closed. This is not a failure - it is " +
+                      "also what a second call returns after a successful close."
+                    : status is null
+                        ? "The helper returned no status, so nothing can be concluded. Check that " +
+                          "the helper VI generated correctly."
+                        : "The chain raised an error, so the project was probably not closed.",
+        };
+
+        return Json.Document(result);
+    }
+
+    /// <summary>
+    /// The helper's own error cluster, out of the runner's payload. Null when the payload is not a
+    /// runner answer at all - a guard failure, or something unparsable - which the callers pass
+    /// through untouched rather than dressing up as a close that did not happen.
+    /// </summary>
+    private static (string? Status, string? Code, string Source)? Verdict(string runnerAnswer)
+    {
+        JsonNode? root;
+        try { root = JsonNode.Parse(runnerAnswer); }
+        catch (JsonException) { return null; }
+
+        if (root is not JsonObject payload ||
+            (payload.TryGetPropertyValue("ok", out var ok) && ok?.GetValue<bool>() == false))
+            return null;
+
+        var values = payload["values"] as JsonObject;
+        return (Value(values, "status"), Value(values, "code"), Value(values, "source") ?? "");
+    }
+
     /// <summary>
     /// Turn the runner's payload into this tool's answer: did the chain raise an error, and if so
     /// what does it most likely mean. Separated from the RPC work so the two failures that have
@@ -133,20 +257,8 @@ internal sealed class CloseTools(LvaiConnection connection)
     internal static string Describe(
         string runnerAnswer, string viPath, string helperVi, string aixml, bool helperGenerated)
     {
-        JsonNode? root;
-        try { root = JsonNode.Parse(runnerAnswer); }
-        catch (JsonException) { root = null; }
-
-        // A guard failure never reached LabVIEW; pass it through rather than dressing it up as a
-        // close that did not happen.
-        if (root is not JsonObject payload ||
-            (payload.TryGetPropertyValue("ok", out var ok) && ok?.GetValue<bool>() == false))
-            return runnerAnswer;
-
-        var values = payload["values"] as JsonObject;
-        var status = Value(values, "status");
-        var code = Value(values, "code");
-        var source = Value(values, "source") ?? "";
+        if (Verdict(runnerAnswer) is not { } verdict) return runnerAnswer;
+        var (status, code, source) = verdict;
 
         // The helper's own error cluster decides, not the runner's errorCode - that one belongs to
         // the runner and is 0 whenever the target merely ran.
@@ -262,4 +374,12 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// </summary>
     private static string DefaultHelperViPath() =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_close_vi.vi");
+
+    private static string? DefaultProjectHelperAixmlPath() =>
+        StatusTools.ScriptsDirectory() is { } scripts
+            ? Path.Combine(scripts, ProjectHelperAixmlFileName)
+            : null;
+
+    private static string DefaultProjectHelperViPath() =>
+        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_close_active_project.vi");
 }

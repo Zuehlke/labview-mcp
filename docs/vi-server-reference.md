@@ -131,6 +131,43 @@ a LabVIEW object" has a hole in it exactly where projects are. When a name is mi
 not follow that it does not exist — **build the node by hand in the IDE and export that VI**, which
 is how these two were recovered. That is also the standing recipe for extending this catalogue.
 
+### Probing for a name instead of building the node by hand
+
+The recipe above needs a person at the IDE, which is why the project surface stayed a blank for so
+long. It does not have to: **`ValidateAIXML` rejects an invented method name and accepts a real
+one**, so a candidate can be tested from here, in one call, without LabVIEW ever running the node.
+
+The control is what makes it a measurement rather than a hopeful guess. Measured on
+`{LV.Project}`:
+
+| `target` on the Invoke Node | `ValidateAIXML` |
+|---|---|
+| `ZZZNotAMethodZZZ` | `errorCode 1` — *"Invoke Node: Invalid method"* |
+| `Close` | **`errorCode 0`** |
+| `Save` | **`errorCode 0`** |
+
+Without the first row the other two prove nothing, because a validator that checked no targets at
+all would answer 0 to everything.
+
+**So `{LV.Project}` carries at least `Save` and `Close`, and a project CAN be closed** — which
+retires the older conclusion, drawn from the catalogue's silence, that nothing could release one.
+Both are shipped as `lvai_close_active_project`.
+
+Terminals come from the same trick one step further: generate the probe VI and export it back.
+`Close` reads
+
+```xml
+<Node _name="Invoke Node" inputs="reference:43.Project.ActiveProject,error in (no error):43.error out"
+      outputs="reference out:,error out:" target="Close" type="{LV.Project}" .../>
+```
+
+— `reference` and `error in`, and **no save parameter**, which is why the shipped helper calls
+`Save` first: an unsaved project would risk LabVIEW's modal save prompt, and a modal dialog stops
+the gRPC service until a human dismisses it.
+
+Verified by A/B, since validation says nothing about behaviour: run the helper → `status 0`; run it
+again → `Error 1055`, no active project. The project really is gone.
+
 ## Writing back: setting a VI's icon
 
 **Set the icon LAST. Regenerating the VI destroys it.** `ConvertAIXMLToVI` over an existing path

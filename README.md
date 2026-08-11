@@ -23,8 +23,8 @@ Once it is connected, this is what you can ask for:
 Nothing here does anything the IDE could not do itself, and every mutating tool is marked as
 one, so a client can ask before your code is touched.
 
-Under the hood: all 23 RPCs of LabVIEW's private `lvai.LVAI` gRPC interface, plus 12 tools of
-its own — 35 in total. That interface is undocumented, and
+Under the hood: all 23 RPCs of LabVIEW's private `lvai.LVAI` gRPC interface, plus 13 tools of
+its own — 36 in total. That interface is undocumented, and
 [where it comes from](#where-the-interface-comes-from) is the last section, for the curious.
 
 ## Requirements
@@ -493,6 +493,7 @@ resources rather than call tools.
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
 | `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
 | `lvai_close_vi` | — (same composition) | closes a VI in the IDE, **releasing it from memory** |
+| `lvai_close_active_project` | — (same composition) | **saves** the active project and closes it |
 | `lvai_build_from_build_specification` | `BuildFromBuildSpecification` | writes build output |
 | `lvai_open_file` | `OpenFile` | IDE state |
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |

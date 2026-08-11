@@ -360,13 +360,23 @@ internal static class Corpus
     /// <summary>
     /// Stop LabVIEW and start a fresh one, then wait for the service.
     ///
-    /// Why the sweep needs this at all: it has to open each VI's owning project, and the lvai
-    /// interface has NO way to close one. There is no CloseFile RPC - the whole surface is
-    /// ConvertVIToAIXML, ValidateAIXML, OpenFile and the rest, none of which release anything -
-    /// and the VI Server catalogue carries no Project class either, so the back door cannot be
-    /// aimed at it without someone placing the node in the IDE by hand. Measured over 300
-    /// examples: 60 000 handles and 815 MB, climbing steadily. Recycling the process is the only
-    /// release available.
+    /// Why the sweep needs this at all: it has to open each VI's owning project, and there is no
+    /// CloseFile RPC - the whole surface is ConvertVIToAIXML, ValidateAIXML, OpenFile and the rest,
+    /// none of which release anything. Measured over 300 examples: 60 000 handles and 815 MB,
+    /// climbing steadily.
+    ///
+    /// THIS COMMENT USED TO ADD "and the VI Server catalogue carries no Project class either, so
+    /// the back door cannot be aimed at it without someone placing the node in the IDE by hand",
+    /// and concluded that recycling was the ONLY release available. The first half is still true -
+    /// the catalogue does not list the class - but the conclusion was wrong: probing candidate
+    /// names through ValidateAIXML found `{LV.Project}` carries both `Save` and `Close`, and
+    /// `lvai_close_active_project` now uses them. See docs/vi-server-reference.md, "Probing for a
+    /// name instead of building the node by hand".
+    ///
+    /// The sweep has NOT been rewired to close projects instead of recycling, and that is a
+    /// deliberate gap rather than an oversight: whether closing each project actually holds the
+    /// handle count down is unmeasured, and the restart logic here is the part that survived a
+    /// 1677-VI run. Worth measuring before trusting.
     ///
     /// DESTRUCTIVE, hence opt-in: it kills every LabVIEW on the machine, unsaved work included.
     /// </summary>

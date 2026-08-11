@@ -102,6 +102,78 @@ public class CloseToolsDescribeTests
 }
 
 /// <summary>
+/// The project close reads the SAME error cluster to a different conclusion: 1055 on a VI close is
+/// a broken precondition, but on a project close it means there was nothing to close - and that is
+/// how a successful close is confirmed, by calling a second time.
+/// </summary>
+public class CloseToolsProjectTests
+{
+    private const string Helper = @"C:\Temp\helpers\lvai_close_active_project.vi";
+    private const string Aixml = @"C:\repo\scripts\lvai_close_active_project.xml";
+
+    private static string Runner(string status, string code = "0", string source = "") =>
+        new JsonObject
+        {
+            ["errorCode"] = 0,
+            ["values"] = new JsonObject
+            {
+                ["status"] = new JsonObject { ["value"] = status },
+                ["code"] = new JsonObject { ["value"] = code },
+                ["source"] = new JsonObject { ["value"] = source },
+            },
+        }.ToJsonString();
+
+    private static JsonObject Describe(string runner) =>
+        (JsonObject)JsonNode.Parse(
+            CloseTools.DescribeProjectClose(runner, Helper, Aixml, helperGenerated: false))!;
+
+    [Fact]
+    public void A_clean_run_closed_the_project()
+    {
+        var result = Describe(Runner("0"));
+
+        Assert.True(result["closed"]!.GetValue<bool>());
+        Assert.False(result["nothingToClose"]!.GetValue<bool>());
+    }
+
+    /// <summary>
+    /// MEASURED as the second half of the A/B that verified the whole thing: run once, status 0;
+    /// run again, code 1055. Reporting that as a plain failure would make the confirmation step
+    /// look like a broken tool.
+    /// </summary>
+    [Fact]
+    public void Error_1055_means_there_was_nothing_to_close()
+    {
+        var result = Describe(Runner("1", "1055", "Invoke Node in lvai_close_active_project.vi"));
+
+        Assert.False(result["closed"]!.GetValue<bool>());
+        Assert.True(result["nothingToClose"]!.GetValue<bool>());
+        Assert.Contains("not a failure", result["note"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Any_other_error_is_reported_as_a_failure()
+    {
+        var result = Describe(Runner("1", "1357", "Invoke Node"));
+
+        Assert.False(result["closed"]!.GetValue<bool>());
+        Assert.False(result["nothingToClose"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void A_guard_failure_is_passed_through_unchanged()
+    {
+        var guard = """{"ok":false,"error":"DeadlineExceeded"}""";
+
+        Assert.Equal(guard, CloseTools.DescribeProjectClose(guard, Helper, Aixml, false));
+    }
+
+    [Fact]
+    public void The_answer_carries_no_viPath_because_there_is_no_VI() =>
+        Assert.Null(Describe(Runner("0"))["viPath"]);
+}
+
+/// <summary>
 /// The two failures that are preconditions rather than faults. Both were measured, and both are
 /// invisible from the error text alone - 1055 names a property node, and the member-of-project
 /// failure names a terminal - so the hint is the whole value.
