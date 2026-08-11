@@ -411,6 +411,10 @@ casualty, not its first.**
 **This works.** A VI in memory blocks `ConvertAIXMLToVI` from overwriting that path (`Error 1357`),
 and the recipe below releases it. Everything further down that says otherwise predates the finding.
 
+**It is shipped as `lvai_close_vi`** — the AIXML below is `scripts/lvai_close_vi.xml`, generated
+into a helper once and reused, and the tool reports both preconditions as hints when they are what
+failed. Read the recipe to understand it; call the tool rather than rebuilding it.
+
 ```xml
 <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}"
       outputs="Project\3AActive Project:20.proj,reference out:,error out:20.error out"

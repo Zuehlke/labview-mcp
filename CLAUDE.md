@@ -129,6 +129,11 @@ cause it. The only thing that releases it is reaching the **IDE's** application 
 reference *there*, and writing `Front Panel Window\3AState` = `Closed`. Recipe in
 `docs/vi-server-reference.md`.
 
+**`lvai_close_vi` does that for you** — do not hand-build the helper again. This clause used to
+end at the recipe, and the helper was then rebuilt from scratch in at least two sessions; one of
+them left `lvai_unload_vi.vi` behind in the helpers directory, which is how the duplication was
+noticed. The tool reports both preconditions below as hints when they are what failed.
+
 That route needs the project **twice over**, and both halves were measured separately: a project
 must be *active* in the IDE, or `Project\3AActive Project` returns `Error 1055`; and the VI must
 be a *member* of it, opened through it. A VI opened loose while some other project is active
