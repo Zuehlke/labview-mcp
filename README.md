@@ -1,3 +1,41 @@
+> ## 🧪 Read this before you let a robot touch your VIs
+>
+> **Not affiliated with, endorsed by, or supported by NI or Emerson.** Nobody at NI asked for
+> this, nobody at NI owes you anything for it, and nobody at NI is on the hook when it misbehaves.
+>
+> **The plumbing is theirs, and it is public.** The server inside LabVIEW is
+> [ni/grpc-labview](https://github.com/ni/grpc-labview), NI's own open source, MIT licensed gRPC
+> stack. Nothing was cracked open to get here. It is a *generic* server, which is rather the
+> point: it serves whatever schema LabVIEW registers into it at runtime, and it ships with gRPC
+> reflection switched on so that a client can ask what that is. We asked. It answered.
+>
+> **What it happens to be serving is another matter.** `lvai.LVAI` is not a published NI API.
+> No `.proto` in the install, no documentation, no version policy, and no promise that any of
+> these RPCs will still be there next quarter. NI's own repo already warns that generated names
+> are subject to change and that none of it is covered by NI Technical Support. Believe them.
+> They are being polite about it.
+>
+> ### Therefore
+>
+> * **It will break, and probably on a Tuesday.** A LabVIEW update, a tweak to the AI feature, a
+>   shifted comma in the AIXML dialect, a new .NET runtime, your MCP client developing opinions.
+>   Any one of those is enough. After every LabVIEW upgrade, run `lvai_dump_schema` and find out
+>   what moved while you were asleep.
+> * **When it breaks, it is not a LabVIEW bug.** Please do not open a ticket with NI about a tool
+>   NI did not write and cannot see. That burns an engineer's afternoon and gets you nowhere.
+>   Open an issue here instead, where somebody knows what actually happened.
+> * **Nobody is liable for the outcome.** Not NI, not Emerson, not Zühlke, not whoever last
+>   touched `main`. Lost work, mangled projects, a generated VI that confidently drives real
+>   hardware into a wall: all yours. See [`LICENSE`](LICENSE), specifically the part in shouty
+>   capitals about no warranty of any kind.
+> * **This writes and runs code on your machine.** Work on copies. Commit first. Keep the
+>   mutating tools behind a confirmation prompt, and do not allow-list the whole server just
+>   because the prompts are irritating. They are irritating on purpose.
+>
+> LabVIEW, NI and ni.com are trademarks of National Instruments Corporation, used here only to
+> say which software this thing talks to.
+
+
 # LabVIEW MCP
 
 **LabVIEW MCP lets an AI assistant read, write and run LabVIEW code on your machine.**
