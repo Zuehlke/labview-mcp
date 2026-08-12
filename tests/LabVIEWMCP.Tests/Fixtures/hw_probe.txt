@@ -1,0 +1,84 @@
+#ALL diagramId/objectId/class
+-1027604240/-1025506610/ControlTerminal/
+-1027604240/-1024458434/StringConstant/greeting
+N/-1026555234/-1023409573/-1024458434/greeting/SRC
+N/-1026555234/-1025506610/-1027604240/message/snk
+
+#FPCONTROLS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>0</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val></Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+</LvVariant>
+</Cluster>
+</Array>
+
+#FPINDICATORS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>1</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>message</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<String>
+<Name>message</Name>
+<Val></Val>
+</String>
+</LvVariant>
+</Cluster>
+</Array>
+
+#CONSTVALUES
+#CONST -1025506610
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1024458434
+<LvVariant>
+<Name>Value</Name>
+<String>
+<Name>greeting</Name>
+<Val>Hello World</Val>
+</String>
+</LvVariant>
+
+
+#CONPANE conIdx by line order, then name
+
+
+
+
+message
+
+
+
+
+
+
+
+
+#VIDESC
+Hello World. A string constant wired to a string indicator - the smallest VI that still has a control, a constant and a net, which makes it a useful read-back target for the VI Server exporter.
+#OBJDESC
+#DESC -1025506610
+The greeting.
+#DESC -1024458434
+

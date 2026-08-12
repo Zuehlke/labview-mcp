@@ -1,0 +1,6 @@
+<VI _name="lvdiag_rt_target.vi" description="Differential-test target for the VI Server exporter. Deliberately flat and small\3A two string controls joined by Concatenate Strings into one indicator. Every terminal name in it is verified\2C so a topology mismatch after the round trip is the exporter's fault and nothing else's.">
+  <Control _name="left" conIdx="0" connection="required" description="First string." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="right" conIdx="1" connection="required" description="Second string." outputs="value:20.value" type="string" uid="20" uid_parent="root" value=""/>
+  <Node _name="Concatenate Strings" inputs="string:10.value,string:20.value" outputs="concatenated string:30.cat" uid="30" uid_parent="root"/>
+  <Indicator _name="joined" conIdx="4" connection="recommended" description="The two inputs joined." inputs="value:30.cat" type="string" uid="40" uid_parent="root" value=""/>
+</VI>

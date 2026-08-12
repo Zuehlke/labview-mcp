@@ -31,6 +31,10 @@
 
          The file must sit beside the test assembly to be read at all. -->
     <None Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The exporter's differential fixtures: a probe run and NI's export of the SAME VI.
+         A matched pair - regenerate both together, or the test passes while proving nothing. -->
+    <None Include="Fixtures\**\*" Link="Fixtures\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

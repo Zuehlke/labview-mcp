@@ -1,0 +1,97 @@
+﻿<VI _name="lvdiag_probe_v5.vi" description="Phase 0 step 5 probe\2C descent into nested diagrams. All Objects[] hands out statically generic GObject references\2C so a structure's Diagrams[] is unreachable without a downcast. To More Specific Class does it\2C and its target class input takes a Constant typed ref{LV.Structure} - the ref{} wrapper is the part that is easy to get wrong\2C and the abstract base class works so one cast covers every structure kind. Three nested loops\3A top-level objects\2C then each object's inner diagrams\2C then that diagram's own objects. Emits the top-level objects and then diagramId/objectId/class per inner object. Drive it with RunVIAsTopLevel and two string inputs\2C both full paths.">
+  <Control _name="vi path" conIdx="0" connection="required" description="Full path of the VI whose block diagram is to be walked." outputs="value:100.value" type="string" uid="100" uid_parent="root" value=""/>
+  <Control _name="out path" conIdx="1" connection="required" description="Full path of the text file to write." outputs="value:110.value" type="string" uid="110" uid_parent="root" value=""/>
+
+  <Constant _name="line feed" outputs="value:130.value" type="string" uid="130" uid_parent="root" value="\0A"/>
+  <Constant _name="empty" outputs="value:140.value" type="string" uid="140" uid_parent="root" value=""/>
+  <Constant _name="field" outputs="value:150.value" type="string" uid="150" uid_parent="root" value="/"/>
+  <Constant _name="cast type" outputs="value:170.value" type="int32" uid="170" uid_parent="root" value="0"/>
+  <Constant _name="objects header" outputs="value:175.value" type="string" uid="175" uid_parent="root" value="#OBJECTS objectId/class\0A"/>
+  <Constant _name="inner header" outputs="value:177.value" type="string" uid="177" uid_parent="root" value="#INNER diagramId/objectId/class\0A"/>
+  <Constant outputs="value:180.value" type="ref{LV.Structure}" uid="180" uid_parent="root" value=""/>
+
+  <Node _name="String To Path" inputs="string:100.value" outputs="path:200.path" uid="200" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:200.path" outputs="vi reference:210.viref,error out:210.err" uid="210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:210.viref,error in (no error):210.err" outputs="Block Diagram:220.bd,reference out:,error out:220.err" uid="220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:220.bd,error in (no error):220.err" outputs="All Objects[]:230.objs,reference out:,error out:230.err" uid="230" uid_parent="root"/>
+
+  <Node _name="Array Size" inputs="array:230.objs" outputs="size(s):240.size" uid="240" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:240.size" outputs="decimal integer string:250.str" uid="250" uid_parent="root"/>
+  <Indicator _name="object count" conIdx="4" connection="recommended" description="Objects on the top-level block diagram." inputs="value:250.str" type="string" uid="310" uid_parent="root" value=""/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:230.objs" mode="index" outputs="value:410.value" uid="410" uid_parent="400"/>
+    <Tunnel _id="In2" inputs="value:130.value" outputs="value:415.value" uid="415" uid_parent="400"/>
+    <Tunnel _id="In3" inputs="value:150.value" outputs="value:421.value" uid="421" uid_parent="400"/>
+    <Tunnel _id="In4" inputs="value:170.value" outputs="value:422.value" uid="422" uid_parent="400"/>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:410.value" outputs="Class Name:425.cn,reference out:,error out:" uid="425" uid_parent="400"/>
+    <Node _name="Type Cast" inputs="x:410.value,type:422.value" outputs="*(type *) &amp;x:426.num" uid="426" uid_parent="400"/>
+    <Node _name="Number To Decimal String" inputs="number:426.num" outputs="decimal integer string:427.str" uid="427" uid_parent="400"/>
+    <Node _name="Concatenate Strings" inputs="string:430.value,string:427.str,string:421.value,string:425.cn,string:415.value" outputs="concatenated string:440.cat" uid="440" uid_parent="400"/>
+    <ShiftReg uid="435" uid_parent="400">
+      <Left inputs="value:140.value" outputs="value:430.value" uid="430" uid_parent="435"/>
+      <Right inputs="value:440.cat" outputs="value:450.value" uid="450" uid_parent="435"/>
+    </ShiftReg>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="500" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:230.objs" mode="index" outputs="value:510.value" uid="510" uid_parent="500"/>
+    <Tunnel _id="In2" inputs="value:130.value" outputs="value:511.value" uid="511" uid_parent="500"/>
+    <Tunnel _id="In3" inputs="value:140.value" outputs="value:512.value" uid="512" uid_parent="500"/>
+    <Tunnel _id="In4" inputs="value:150.value" outputs="value:513.value" uid="513" uid_parent="500"/>
+    <Tunnel _id="In5" inputs="value:170.value" outputs="value:514.value" uid="514" uid_parent="500"/>
+    <Tunnel _id="In6" inputs="value:180.value" outputs="value:515.value" uid="515" uid_parent="500"/>
+
+    <Node _name="To More Specific Class" inputs="reference:510.value,target class:515.value" outputs="specific class reference:518.ref,error out:518.err" uid="518" uid_parent="500"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:518.ref" outputs="Diagrams[]:520.diags,reference out:,error out:" uid="520" uid_parent="500"/>
+
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="600" uid_parent="500">
+      <Tunnel _id="In1" inputs="value:520.diags" mode="index" outputs="value:610.value" uid="610" uid_parent="600"/>
+      <Tunnel _id="In2" inputs="value:511.value" outputs="value:611.value" uid="611" uid_parent="600"/>
+      <Tunnel _id="In3" inputs="value:512.value" outputs="value:612.value" uid="612" uid_parent="600"/>
+      <Tunnel _id="In4" inputs="value:513.value" outputs="value:613.value" uid="613" uid_parent="600"/>
+      <Tunnel _id="In5" inputs="value:514.value" outputs="value:614.value" uid="614" uid_parent="600"/>
+
+      <Node _name="Type Cast" inputs="x:610.value,type:614.value" outputs="*(type *) &amp;x:625.num" uid="625" uid_parent="600"/>
+      <Node _name="Number To Decimal String" inputs="number:625.num" outputs="decimal integer string:626.str" uid="626" uid_parent="600"/>
+      <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:610.value" outputs="All Objects[]:630.iobjs,reference out:,error out:" uid="630" uid_parent="600"/>
+
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="700" uid_parent="600">
+        <Tunnel _id="In1" inputs="value:630.iobjs" mode="index" outputs="value:710.value" uid="710" uid_parent="700"/>
+        <Tunnel _id="In2" inputs="value:611.value" outputs="value:711.value" uid="711" uid_parent="700"/>
+        <Tunnel _id="In3" inputs="value:613.value" outputs="value:713.value" uid="713" uid_parent="700"/>
+        <Tunnel _id="In4" inputs="value:614.value" outputs="value:714.value" uid="714" uid_parent="700"/>
+        <Tunnel _id="In5" inputs="value:626.str" outputs="value:718.value" uid="718" uid_parent="700"/>
+
+        <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:710.value" outputs="Class Name:720.cn,reference out:,error out:" uid="720" uid_parent="700"/>
+        <Node _name="Type Cast" inputs="x:710.value,type:714.value" outputs="*(type *) &amp;x:721.num" uid="721" uid_parent="700"/>
+        <Node _name="Number To Decimal String" inputs="number:721.num" outputs="decimal integer string:722.str" uid="722" uid_parent="700"/>
+
+        <Node _name="Concatenate Strings" inputs="string:730.value,string:718.value,string:713.value,string:722.str,string:713.value,string:720.cn,string:711.value" outputs="concatenated string:740.cat" uid="740" uid_parent="700"/>
+        <ShiftReg uid="735" uid_parent="700">
+          <Left inputs="value:612.value" outputs="value:730.value" uid="730" uid_parent="735"/>
+          <Right inputs="value:740.cat" outputs="value:750.value" uid="750" uid_parent="735"/>
+        </ShiftReg>
+      </Structure>
+
+      <Node _name="Concatenate Strings" inputs="string:770.value,string:750.value" outputs="concatenated string:780.cat" uid="780" uid_parent="600"/>
+      <ShiftReg uid="775" uid_parent="600">
+        <Left inputs="value:512.value" outputs="value:770.value" uid="770" uid_parent="775"/>
+        <Right inputs="value:780.cat" outputs="value:790.value" uid="790" uid_parent="775"/>
+      </ShiftReg>
+    </Structure>
+
+    <Node _name="Concatenate Strings" inputs="string:794.value,string:790.value" outputs="concatenated string:795.cat" uid="795" uid_parent="500"/>
+    <ShiftReg uid="793" uid_parent="500">
+      <Left inputs="value:140.value" outputs="value:794.value" uid="794" uid_parent="793"/>
+      <Right inputs="value:795.cat" outputs="value:796.value" uid="796" uid_parent="793"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Concatenate Strings" inputs="string:175.value,string:450.value,string:177.value,string:796.value" outputs="concatenated string:800.cat" uid="800" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:110.value" outputs="path:810.path" uid="810" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):810.path,text:800.cat,error in:230.err,prompt (Choose or enter file path):" outputs="refnum out:,cancelled:,error out:820.err" uid="820" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:210.viref,error in (no error):820.err" outputs="error out:830.err" uid="830" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="source" inputs="input cluster:830.err" outputs="source:840.source" uid="840" uid_parent="root"/>
+  <Indicator _name="error source" conIdx="5" connection="recommended" description="Empty when the walk succeeded." inputs="value:840.source" type="string" uid="300" uid_parent="root" value=""/>
+</VI>

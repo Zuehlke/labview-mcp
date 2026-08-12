@@ -1,0 +1,128 @@
+#ALL diagramId/objectId/class
+-1047527184/-1043332792/ControlTerminal/
+-1047527184/-1042284222/Bundler/Concatenate Strings
+-1047527184/-1041235161/ControlTerminal/
+-1047527184/-1040186789/ControlTerminal/
+N/-1046478295/-1039138002/-1042284222/concatenated string/SRC
+N/-1046478295/-1043332792/-1047527184/joined/snk
+N/-1045429533/-1041235161/-1047527184/right/SRC
+N/-1045429533/-1030749631/-1042284222/string/snk
+N/-1044381692/-1040186789/-1047527184/left/SRC
+N/-1044381692/-1029700713/-1042284222/string/snk
+
+#FPCONTROLS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>2</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>left</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<String>
+<Name>left</Name>
+<Val></Val>
+</String>
+</LvVariant>
+</Cluster>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>right</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<String>
+<Name>right</Name>
+<Val></Val>
+</String>
+</LvVariant>
+</Cluster>
+</Array>
+
+#FPINDICATORS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>1</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>joined</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<String>
+<Name>joined</Name>
+<Val></Val>
+</String>
+</LvVariant>
+</Cluster>
+</Array>
+
+#CONSTVALUES
+#CONST -1043332792
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1042284222
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1041235161
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1040186789
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+
+#CONPANE conIdx by line order, then name
+left
+right
+
+
+joined
+
+
+
+
+
+
+
+
+#VIDESC
+Differential-test target for the VI Server exporter. Deliberately flat and small: two string controls joined by Concatenate Strings into one indicator. Every terminal name in it is verified, so a topology mismatch after the round trip is the exporter's fault and nothing else's.
+#OBJDESC
+#DESC -1043332792
+The two inputs joined.
+#DESC -1042284222
+
+#DESC -1041235161
+Second string.
+#DESC -1040186789
+First string.

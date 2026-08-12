@@ -1,0 +1,4 @@
+<VI _name="HelloWorldNew.vi" description="Hello World. A string constant wired to a string indicator - the smallest VI that still has a control\2C a constant and a net\2C which makes it a useful read-back target for the VI Server exporter.">
+  <Constant _name="greeting" outputs="value:10.value" type="string" uid="10" uid_parent="root" value="Hello World"/>
+  <Indicator _name="message" conIdx="4" connection="recommended" description="The greeting." inputs="value:10.value" type="string" uid="20" uid_parent="root" value=""/>
+</VI>

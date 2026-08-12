@@ -1,0 +1,1090 @@
+﻿style	code
+.NET Container	2125
+.NET Refnum	3441
+2D Picture	3508
+3D Picture	23776
+Absolute Value	1054
+Access Rights	1412
+ActiveX Container	2072
+Add	1050
+Add (with error terminals)	3915
+Add Array Elements	1903
+Agitator	3831
+AllSpoll	1960
+Always Copy	2400
+And	1061
+And Array Elements	1911
+Append True/False String	1511
+Application Refnum	3412
+Array (block diagram constant)	2070
+Array (classic)	3300
+Array (modern)	21608
+Array Interface Control	23777
+Array Max &amp; Min	1907
+Array of Strings to Path	1422
+Array Size	1809
+Array Subset	2044
+Array To Cluster	1168
+Array To Spreadsheet String	1540
+Atmospheric Tank (classic)	3070
+Atmospheric Tank (modern)	21751
+Automation Close	8001
+Automation Open	8000
+Automation Refnum	3410
+Avogadro Constant (1/mol)	23520
+Base 10 Logarithm Of e	23512
+Bin #1	3073
+Bin #2	21755
+Bitpack to Array	3135
+Bluetooth Close Connection	9148
+Bluetooth Create Listener	9151
+Bluetooth Discover	9152
+Bluetooth Network Connection Refnum	3468
+Bluetooth Open Connection	9153
+Bluetooth Read	9149
+Bluetooth Wait On Listener	9147
+Bluetooth Write	9150
+Boolean Array To Number	1815
+Boolean To (0,1)	1167
+Build Array	2041
+Build Cluster Array	2047
+Build Matrix	8500
+Build Path	1419
+Build Waveform	2066
+Bundle	2049
+Bundle By Name	2057
+Byte Array To String	1609
+Byte Stream File Refnum	3408
+Call By Reference Node	3901
+Call Chain	1999
+Call Library Function Node	2062
+Call Parent Method	2354
+CAN Channel (block diagram constant)	2124
+CAN Channel (classic)	3340
+CAN Channel (modern)	21817
+CAN Channel (system)	21966
+CAN Interface (block diagram constant)	2123
+CAN Interface (classic)	3339
+CAN Interface (modern)	21815
+CAN Interface (system)	21964
+CAN Task (block diagram constant)	3471
+CAN Task (classic)	3470
+CAN Task (modern)	21789
+CAN Task (system)	21963
+Cancel Button (modern)	21739
+Cancel Button (system)	3131
+Cancel Notification	9107
+Carriage Return Constant	23500
+Case Structure	2001
+Cast Unit Bases	1079
+Check Valve	3833
+Checkbox (classic)	3117
+CheckBox (modern)	21924
+Checkbox (system)	3132
+Class Specifier Constant	2094
+Clear Fixed-Point Overflow Status	5562
+Close File	8052
+Close File (deprecated)	1405
+Close Reference	8011
+Close Variable Connection	23783
+Cluster (classic)	3400
+Cluster (modern)	21607
+Cluster Constant	2071
+Cluster To Array	1169
+Code Interface Node	2050
+Coerce To Type	2402
+Color Box	3013
+Color Box Constant	2120
+Color Box Thin Border	2905
+Color Ramp	3022
+Colored Rectangle (broken?)	3625
+Combo Box (classic)	3304
+Combo Box (modern)	21604
+Combo Box (system)	21917
+Combo Box Constant	2088
+Complex Conjugate	1048
+Complex To Polar	1045
+Complex To Re/Im	1044
+Compound Arithmetic	2200
+Compressor	3832
+Concatenate Strings	2040
+Conditional Disable Structure	2064
+Constructor Node	3904
+Control &amp; Simulation Loop	2099
+Control Help Window	1353
+Control Online Help	1355
+Control Refnum	3419
+Convert Unit	2059
+Conveyer	3827
+Copy	8053
+Copy (deprecated)	1416
+Cosecant	1204
+Cosine	1201
+Cotangent	1205
+CPU Information	24130
+Create Folder	8055
+Create Network Stream Reader Endpoint	23811
+Create Network Stream Writer Endpoint	23810
+Create Stream	23796
+Create User Event	2073
+Current Processor ID	24131
+Current VI's Menubar	9000
+Current VI's Path	1426
+DAQmx Analog Trigger Source (block diagram constant)	2119
+DAQmx Analog Trigger Source (classic)	3336
+DAQmx Analog Trigger Source (modern)	21774
+DAQmx Analog Trigger Source (system)	21951
+DAQmx Device Name (block diagram constant)	2093
+DAQmx Device Name (classic)	3318
+DAQmx Device Name (modern)	21773
+DAQmx Device Name (system)	21950
+DAQmx Global Channel (block diagram constant)	3430
+DAQmx Global Channel (classic)	3443
+DAQmx Global Channel (modern)	21770
+DAQmx Global Channel (system)	21957
+DAQmx Physical Channel (block diagram constant)	2118
+DAQmx Physical Channel (classic)	3335
+DAQmx Physical Channel (modern)	21777
+DAQmx Physical Channel (system)	21954
+DAQmx Scale Name (block diagram constant)	2116
+DAQmx Scale Name (classic)	3317
+DAQmx Scale Name (modern)	21775
+DAQmx Scale Name (system)	21952
+DAQmx Switch (block diagram constant)	2121
+DAQmx Switch (classic)	3337
+DAQmx Switch (modern)	21776
+DAQmx Switch (system)	21953
+DAQmx Task Name (block diagram constant)	3434
+DAQmx Task Name (classic)	3442
+DAQmx Task Name (modern)	21778
+DAQmx Task Name (system)	21959
+DAQmx Terminal (block diagram constant)	2117
+DAQmx Terminal (classic)	3319
+DAQmx Terminal (modern)	21781
+DAQmx Terminal (system)	21955
+Data Cache Size	24132
+Data Log File Refnum	3402
+DataSocket Close	1085
+DataSocket Open	1084
+DataSocket Read	1086
+DataSocket Refnum	3417
+DataSocket Write	1087
+Date/Time To Seconds	1308
+Decimal Digit?	1119
+Decimal String To Number	1184
+Decimate 1D Array	2046
+DecomposeArray	2412
+DecomposeLockDataValRef	2406
+DecomposeVariant	2404
+Decrement	1058
+Default Directory	1427
+Delete	8056
+Delete (deprecated)	1417
+Delete Data Value Reference	2409
+Delete From Array	3912
+Delete Menu Items	9004
+Delete Variant Attribute	8206
+Delete Waveform Attribute	8209
+Deny Access	8057
+Dequeue Element	9113
+Destroy Stream Endpoint	23794
+Destroy User Event	2075
+DevClear	1961
+DevClearList	1962
+Device Control/Status	1433
+Device Refnum	3405
+Diagram Disable Structure	2054
+Dial (classic)	3050
+Dial (modern)	21732
+Digital Data (classic)	3210
+Digital Data (modern)	21216
+Digital Waveform Graph (classic)	3511
+Digital Waveform Graph (modern)	21718
+Direct Variable Read	23785
+Direct Variable Write	23788
+Divide	1053
+Divide (with error terminals)	3918
+Dlg Horiz Scrollbar	21905
+Dlg Numeric #1	2100
+Dlg Numeric #2	3006
+Dlg String	2110
+Dlg Vert Scrollbar	21906
+Down Arrow	3824
+Down Bow Valve (flat)	3707
+Down Bow Valve (outline)	3807
+Down Bow Valve (shaded)	21767
+Down Rect Valve (flat)	3706
+Down Rect Valve (outline)	3806
+Down Rect Valve (shaded)	21766
+Down Tee (flat)	3818
+Down Tee (shaded)	3718
+Dynamic FPGA Interface Cast	5690
+Elementary Charge (C)	23517
+Empty Array?	23063
+Empty Path Constant	23523
+Empty String Constant	23503
+Empty String/Path?	1112
+Enable Menu Tracking	9002
+EnableLocal	1963
+EnableRemote	1964
+End of Line Constant	23525
+Enqueue Element	9111
+Enqueue Element At Opposite End	9129
+Enum (classic)	3023
+Enum (modern)	21605
+Enum (system)	3062
+Enum Constant	2090
+EOF	1410
+Equal To 0?	1113
+Equal?	1102
+Error Ring Constant	2039
+Event Callback Refnum	3435
+Event Data Node	2102
+Event Structure	2052
+Exchanger	3828
+Exclusive Or	1063
+Exponential	1211
+Exponential (Arg) -1	1222
+Expression Node	2201
+False Constant	2006
+Feedback Node	2353
+FieldPoint IO Point (block diagram constant)	3440
+FieldPoint IO Point (classic)	3439
+FieldPoint IO Point (modern)	21784
+FIFO Refnum	3474
+File Dialog	8058
+File Dialog (deprecated)	8081
+File Path Control (classic)	3203
+File Path Control (modern)	21730
+File Path Control (system)	21922
+File Path Indicator (classic)	3204
+File Path Indicator (modern)	21731
+File/Directory Info	8082
+File/Directory Info (deprecated)	1413
+FindLstn	1965
+FindRQS	1966
+First Call?	1083
+Fixed-Point Overflow?	5565
+Fixed-Point to Integer Cast	5566
+Flat Box	3602
+Flat Circle	3605
+Flat Down Triangle	3623
+Flat Frame	3608
+Flat Left Triangle	3620
+Flat Right Triangle	3621
+Flat Round Button	3102
+Flat Rounded Box	3611
+Flat Sequence Structure	2069
+Flat Square Button	3103
+Flat Up Triangle	3622
+Flatten To String	1164
+Flatten To XML	8400
+Flattened String To Variant	8202
+Floating Point Equal?	23064
+Flush File	8059
+Flush File (deprecated)	1406
+Flush Queue	9114
+Flush Stream	23808
+For Loop	2002
+Fork	2194
+Format Date/Time String	8100
+Format Into File	2083
+Format Into String	2081
+Format Value	1512
+Formula Node	2004
+FPGA Refnum to Session	2322
+Fract/Exp String To Number	1187
+Framed Color Box (classic)	3008
+Framed Color Box (modern)	21019
+Free Label	2321
+Furnace	3829
+Gauge (classic)	3040
+Gauge (modern)	21009
+Generate Front Panel Activity	1329
+Generate Occurrence	1700
+Generate User Event	2074
+Generate User-Defined Trace Event	2250
+Get Datalog Position	8061
+Get Date/Time In Seconds	1303
+Get Date/Time String	1600
+Get Drag Drop Data	9154
+Get File Position	8062
+Get File Size	8063
+Get Fixed-Point Components	11163
+Get Help Window Status	1354
+Get Matrix Diagonal	8501
+Get Matrix Elements	8502
+Get Menu Item Info	9005
+Get Menu Selection	9001
+Get Menu Short Cut Info	9007
+Get Notifier Status	9103
+Get Number of Records	8064
+Get Permissions	8065
+Get Queue Status	9110
+Get Submatrix	8503
+Get Type and Creator	8066
+Get Variant Attribute	8205
+Get Volume Info	8067
+Get Waveform Attribute	8208
+Get Waveform Components	2067
+Global Variable	2060
+GPIB Clear	1954
+GPIB Initialization	1957
+GPIB Misc	1956
+GPIB Read	1951
+GPIB Serial Poll	1955
+GPIB Status	1959
+GPIB Trigger	1953
+GPIB Wait	1958
+GPIB Write	1950
+Gravitational Constant (N m2/kg2)	23519
+Greater Or Equal To 0?	1114
+Greater Or Equal?	1103
+Greater Than 0?	1117
+Greater?	1110
+Handle Peek	1604
+Handle Poke	1605
+Hex Digit?	1123
+Hexadecimal String To Number	1185
+Hopper #1	21754
+Hopper #2	3072
+Horiz Line	3821
+Horiz Pipe (flat)	3810
+Horiz Pipe (shaded)	3710
+Horizontal Button Box	3636
+Horizontal Fill Slide (classic)	3012
+Horizontal Fill Slide (modern)	21100
+Horizontal Graduated Bar	21106
+Horizontal Pointer Slide (classic)	3011
+Horizontal Pointer Slide (modern)	21101
+Horizontal Pointer Slide (system)	21902
+Horizontal Progress Bar (modern)	21102
+Horizontal Progress Bar (system)	21910
+Horizontal Scrollbar	21110
+Horizontal Slide (classic)	3010
+Horizontal Slide (system)	21904
+Horizontal Slide Switch	3114
+Horizontal Smooth Box	3633
+Horizontal Splitter Bar	21861
+Horizontal Splitter Bar (Classic)	21863
+Horizontal Splitter Bar (System)	21865
+Horizontal Switch	3108
+Horizontal Tank	3071
+Horizontal Toggle Switch (classic)	3110
+Horizontal Toggle Switch (modern)	21700
+Hyperbolic Cosecant	23053
+Hyperbolic Cosine	1215
+Hyperbolic Cotangent	23055
+Hyperbolic Secant	23054
+Hyperbolic Sine	1214
+Hyperbolic Tangent	1216
+IMAQ Session	3415
+Implies	1080
+In Place Element Structure	2360
+In Range and Coerce	1127
+Include Fixed-Point Overflow Status	5564
+Increment	1057
+Index &amp; Bundle Cluster Array	2056
+Index Array	2042
+Index String Array	1531
+Initialize Array	2053
+Inline C Node	2104
+Insert Into Array	3911
+Insert Menu Items	9003
+Integer to Fixed-Point Cast	5567
+Intensity Chart (classic)	3509
+Intensity Chart (modern)	21719
+Intensity Graph (classic)	3510
+Intensity Graph (modern)	21720
+Interleave 1D Arrays	2045
+Interpolate 1D Array	1905
+Inverse Cosecant	23050
+Inverse Cosine	1207
+Inverse Cotangent	23052
+Inverse Hyperbolic Cosecant	23056
+Inverse Hyperbolic Cosine	1218
+Inverse Hyperbolic Cotangent	23058
+Inverse Hyperbolic Secant	23057
+Inverse Hyperbolic Sine	1217
+Inverse Hyperbolic Tangent	1219
+Inverse Secant	23051
+Inverse Sine	1206
+Inverse Tangent	1208
+Inverse Tangent (2 Input)	1228
+Invoke Node	3900
+IP To String	1710
+IrDA Close Connection	9144
+IrDA Create Listener	9140
+IrDA Discover	9141
+IrDA Network Connection Refnum	3450
+IrDA Open Connection	9142
+IrDA Read	9145
+IrDA Wait On Listener	9143
+IrDA Write	9146
+IVI Delete Session	8103
+IVI Logical Name (block diagram constant)	3420
+IVI Logical Name (classic)	3414
+IVI Logical Name (modern)	21736
+IVI New Session	8102
+Join	2195
+Join Numbers	1171
+Junction	2197
+Knob (classic)	3005
+Knob (modern)	21000
+Label (modern)	21960
+Label (system)	21961
+Labeled Oblong Button	3125
+Labeled Rectangular Button	3124
+Labeled Round Button	3122
+Labeled Square Button	3123
+LabVIEW Object	3457
+Leak Variant Value Reference	2410
+LED Button	3116
+Left Arrow	3826
+Left Bow Valve (flat)	3701
+Left Bow Valve (outline)	3801
+Left Bow Valve (shaded)	21761
+Left Down Elbow (flat)	3811
+Left Down Elbow (shaded)	3711
+Left Pump (flat)	3813
+Left Pump (shaded)	3713
+Left Rect Valve (flat)	3700
+Left Rect Valve (outline)	3800
+Left Rect Valve (shaded)	21760
+Left Tee (flat)	3809
+Left Tee (shaded)	3709
+Left Up Elbow (flat)	3808
+Left Up Elbow (shaded)	3708
+Less Or Equal To 0?	1115
+Less Or Equal?	1104
+Less Than 0?	1118
+Less?	1111
+Lexical Class	1126
+Line (chiseled, system)	3632
+Line (chiseled, thick)	3630
+Line (chiseled, thin)	3627
+Line (thick)	3629
+Line (thin)	3626
+Line Feed Constant	23501
+Line with Arrow (thick)	3631
+Line with Arrow (thin)	3628
+Link Stream	23793
+List Directory	1418
+List Folder	8083
+Listbox (classic)	21806
+Listbox (modern)	21792
+Listbox (system)	21805
+Listbox Symbol Ring Constant	2038
+Local Variable	2061
+Lock Range	1411
+Logarithm Base 10	1210
+Logarithm Base 2	1225
+Logarithm Base X	1224
+Logical Shift	1081
+Lossy Enqueue Element	9130
+Lowered Box (thick)	3635
+Lowered Rounded Box	3638
+Machine Epsilon	23528
+MakeAddr	1967
+Mantissa &amp; Exponent	1150
+Match First String	1532
+Match Pattern	1535
+Match True/False String	1533
+MathScript Call By Reference Node	3906
+MathScript Node	2357
+MATLAB script	9020
+Matrix Size	8507
+Max &amp; Min	1108
+Menu Refnum	3413
+Menu Ring (classic)	3018
+Menu Ring (modern)	21600
+Menu-Popup Ring	3017
+Merge Errors	2147
+Merge Signals	2350
+Meter (classic)	3030
+Meter (modern)	21008
+Mixed Checkbox (system)	21333
+Mixed Signal Graph	21721
+Molar Gas Constant (J/(mol K))	23522
+Motion Resource (block diagram constant)	3449
+Motion Resource (classic)	3448
+Motion Resource (modern)	21787
+Motor (flat)	3820
+Motor (shaded)	3720
+Move	8068
+Move (deprecated)	1415
+Multi-Segment Pipe	23780
+Multicolumn Listbox (classic)	21799
+Multicolumn Listbox (modern)	21791
+Multicolumn Listbox (system)	21798
+Multiply	1052
+Multiply (with error terminals)	3917
+Multiply Array Elements	1904
+Multirate Structure	2199
+Natural Logarithm	1209
+Natural Logarithm (Arg +1)	1221
+Natural Logarithm Base	23510
+Natural Logarithm Of 10	23513
+Natural Logarithm Of 2	23514
+Natural Logarithm Of Pi	23508
+Negate	1069
+Negative Infinity	23509
+New Data Value Reference	2408
+New Directory	1402
+New File	1404
+New VI	8014
+New VI Object	8015
+Not	1064
+Not A Number/Path/Refnum?	1128
+Not A Path Constant	23524
+Not a Refnum Constant	23526
+Not a Shared Variable	23527
+Not And	1071
+Not Equal To 0?	1116
+Not Equal?	1105
+Not Exclusive Or	1073
+Not Or	1072
+Notifier Refnum	3423
+Number of Cache Levels	24133
+Number To Boolean Array	1814
+Number To Decimal String	1180
+Number To Engineering String	1183
+Number To Exponential String	1505
+Number To Fractional String	1506
+Number To Hexadecimal String	1181
+Number To Octal String	1182
+Numeric Constant	2005
+Numeric Control (classic)	3000
+Numeric Control (modern)	21003
+Numeric Control (system)	21919
+Numeric Indicator (classic)	3001
+Numeric Indicator (modern)	21004
+Obtain Notifier	9101
+Obtain Queue	9108
+Occurrence Refnum	3406
+Octal Digit?	1129
+Octal String To Number	1186
+OK Button (modern)	21738
+OK Button (system)	3130
+Old VISA Open	1921
+OLE Variant	3150
+One Button Dialog	1340
+Open and Verify Variable Connection	23790
+Open Application Reference	8012
+Open Device	1430
+Open File	1403
+Open Tank (flat classic)	21752
+Open Tank (shaded classic)	3074
+Open Variable Connection	23779
+Open Variable Connection in Background	23791
+Open VI Object Reference	8013
+Open VI Reference	8010
+Open/Create/Replace Datalog	8054
+Open/Create/Replace File	8050
+Or	1062
+Or Array Elements	1910
+Package Matrix	23001
+PassControl	1968
+Path Constant	2009
+Path to Array of Strings	1423
+Path To String	1077
+Path Type	1421
+Pi	23504
+Pi Divided By 2	23506
+Pi Multiplied By 2	23505
+Pick Line	1510
+Pict Ring (classic)	3015
+Pict Ring (modern)	21602
+Pict Ring (system)	21925
+PixMap	3505
+PixMap (warning\3A dangerous)	3507
+Planck's Constant (J/Hz)	23516
+Platform Flat Square Button	3134
+Plug-In Control	21820
+Polar To Complex	1047
+Polar To Re/Im	23061
+Positive Infinity	23515
+Power Of 10	1212
+Power Of 2	1223
+Power Of X	1213
+PPoll	1969
+PPollConfig	1970
+PPollUnconfig	1971
+Preserve Run-Time Class	8018
+Pressure Tank (flat)	3075
+Pressure Tank (shaded)	21753
+Preview Queue Element	9112
+Printable?	1124
+Property Node	1920
+Pulldown Menu Ring	3061
+Push Button	21001
+Queue Refnum	3424
+Quit LabVIEW	1352
+Quotient &amp; Remainder	1056
+Radio Button (system)	3133
+Radio Buttons (classic)	22003
+Radio Buttons (modern)	22001
+Radio Buttons (system)	22002
+Raised Box (classic)	3600
+Raised Box (modern)	3637
+Raised Circle	3603
+Raised Down Triangle	3615
+Raised Frame	3606
+Raised Left Triangle	3612
+Raised Right Triangle	3613
+Raised Rounded Box	3609
+Raised Up Triangle	3614
+Random Number (0-1)	1070
+RcvRespMsg	1972
+Re/Im To Complex	1046
+Re/Im To Polar	23060
+Read Datalog	8069
+Read Device	1432
+Read File	1407
+Read from Binary File	8051
+Read from Text File	8070
+Read Multiple Elements from Stream	23803
+Read Single Element from Stream	23797
+Read Variable	23781
+Read Variable with Timeout	23786
+ReadStatus	1973
+Receive	1974
+ReceiveSetup	1975
+Recessed Box	3601
+Recessed Circle	3604
+Recessed Down Triangle	3619
+Recessed Frame (modern)	3607
+Recessed Frame (system)	3624
+Recessed Left Triangle	3616
+Recessed Menu Ring	3019
+Recessed Right Triangle	3617
+Recessed Rounded Box	3610
+Recessed Up Triangle	3618
+Reciprocal	1059
+Reciprocal Of e	23511
+Reciprocal Of Pi	23507
+RecomposeArray	2403
+RecomposeUnlockDataValRef (warning\3A dangerous)	2407
+RecomposeVariant (warning\3A dangerous)	2405
+Rectangular Stop Button	3128
+Refnum to Path	1424
+Refnum to Session	2306
+Region	2196
+Register Event Callback	2078
+Register For Events	2065
+Register Session	2319
+Release Notifier	9102
+Release Queue	9109
+Remove Fixed-Point Overflow Status	5563
+Replace Array Subset	3910
+Replace Substring	3913
+Request Deallocation	1610
+ResetSys	1976
+Reshape Array	2055
+Resize Matrix	8508
+Resource Index	1088
+Reverse 1D Array	1900
+Reverse String	1537
+Right Arrow	3825
+Right Bow Valve (flat)	3705
+Right Bow Valve (outline)	3805
+Right Bow Valve (shaded)	21765
+Right Down Elbow (flat)	3817
+Right Down Elbow (shaded)	3717
+Right Pump (flat)	3819
+Right Pump (shaded)	3719
+Right Rect Valve (flat)	3704
+Right Rect Valve (outline)	3804
+Right Rect Valve (shaded)	21764
+Right Tee (flat)	3815
+Right Tee (shaded)	3715
+Right Up Elbow (flat)	3814
+Right Up Elbow (shaded)	3714
+Rocker	21002
+Rotary Feeder	3830
+Rotate	1082
+Rotate 1D Array	1906
+Rotate Left With Carry	1606
+Rotate Right With Carry	1607
+Rotate String	1536
+Round Button	3100
+Round LED (classic)	3120
+Round LED (modern)	21012
+Round Light	3104
+Round Push Button	3118
+Round Push Button (profile)	3112
+Round Radio Button	3106
+Round Stop Button	3127
+Round To Nearest	1055
+Round Toward +Infinity	1076
+Round Toward -Infinity	1075
+RT FIFO Create	24000
+RT FIFO Delete	24003
+RT FIFO Read	24001
+RT FIFO Write	24002
+Rydberg Constant (1/m)	23521
+Scale By Power Of 2	1074
+Scan From File	2082
+Scan From String	2080
+Scan String For Tokens	8101
+Scan Value	1534
+Scanned Variable Read	23784
+Scanned Variable Write	23787
+Search 1D Array	1901
+Search and Replace String	3914
+Search Variable Container	23802
+Search/Split String	1538
+Secant	1203
+Seconds To Date/Time	1309
+Seek	1409
+Select	1516
+Send	1977
+Send Notification	9104
+SendCmds	1978
+SendDataBytes	1979
+SendIFC	1980
+SendList	1981
+SendLLO	1982
+SendSetup	1983
+Session to Refnum	2307
+Set Datalog Position	8072
+Set File Position	8073
+Set File Size	8074
+Set Matrix Diagonal	8504
+Set Matrix Elements	8505
+Set Menu Item Info	9006
+Set Number of Records	8075
+Set Occurrence	1702
+Set Permissions	8076
+Set Submatrix	8506
+Set Type and Creator	8077
+Set Variant Attribute	8204
+Set Waveform Attribute	8207
+SetRWLS	1984
+SetTimeOut	1985
+Shared Variable	23778
+Shared Variable Constant	3473
+Shared Variable Control (classic)	3472
+Shared Variable Control (modern)	21814
+Shared Variable to String	1831
+Sign	1049
+Simple Horizontal Slide	3003
+Simple Numeric	2900
+Simple String	2115
+Simple Vertical Slide	3002
+Sinc	1227
+Sine	1200
+Sine &amp; Cosine	1220
+Size Handle	1603
+Slide Switch	21011
+Sort 1D Array	1120
+Sort Array of String	23065
+Speed Of Light In Vacuum (m/sec)	23518
+Spin Control (system)	21900
+Split 1D Array	1908
+Split Button	21020
+Split Number	1170
+Split Signals	2351
+Spreadsheet String To Array	1539
+Square	23059
+Square Button	3101
+Square LED (classic)	3121
+Square LED (modern)	21013
+Square Light	3105
+Square Push Button	3119
+Square Push Button (profile)	3113
+Square Radio Button	3107
+Square Root	1060
+Stacked Sequence Structure	2000
+Start Stream	23806
+State	2198
+State Diagram	2051
+Static VI Reference	2084
+Stop	1350
+Stop Button	21230
+Stop Stream	23807
+String Constant	2007
+String Control (classic)	3200
+String Control (modern)	21701
+String Control (system)	21920
+String Indicator (classic)	3201
+String Indicator (modern)	21702
+String Length	1502
+String Subset	1503
+String To Byte Array	1608
+String To IP	1711
+String To Path	1078
+String to Shared Variable	1830
+Strip Path	1420
+SubPanel	21810
+SubPanel (Classic)	21811
+SubPanel (System)	21823
+Subtract	1051
+Subtract (with error terminals)	3916
+Swap Bytes	1162
+Swap Values	2401
+Swap Vector Element	1912
+Swap Words	1163
+Tab Constant	23502
+Tab Control (classic)	3330
+Tab Control (modern)	3332
+Tab Control (system)	3331
+Table (classic)	21796
+Table (modern)	21790
+Table (system)	21797
+Tag Attribute Ring	2063
+Tangent	1202
+Tank (classic)	3020
+Tank (modern)	21006
+TCP Close Connection	1713
+TCP Create Listener	1717
+TCP Flattened Read	1718
+TCP Flattened Write	1719
+TCP Flex Read	1720
+TCP Flex Write	1721
+TCP Network Connection Refnum	3407
+TCP Open Connection	1715
+TCP Read	1716
+TCP Wait On Listener	1712
+TCP Write	1714
+TDMS Close	24113
+TDMS Defragment	24119
+TDMS File	3477
+TDMS Flush	24117
+TDMS Get Properties	24115
+TDMS List Contents	24116
+TDMS Open	24112
+TDMS Read	24111
+TDMS Refnum To File ID	24120
+TDMS Set Properties	24114
+TDMS Write	24110
+TDMS Write IP	24118
+Temporary Directory	1435
+TestSRQ	1986
+TestSys	1987
+Text &amp; Pict Ring (classic)	3016
+Text &amp; Pict Ring (modern)	21603
+Text Button	21015
+Text Ring (block diagram constant)	2008
+Text Ring (classic)	3014
+Text Ring (modern)	21601
+Text Ring (system)	3060
+Text to UTF-8	23066
+Thermometer (classic)	3021
+Thermometer (modern)	21007
+Threshold 1D Array	1909
+Tick Count (ms)	1300
+Time Stamp (block diagram constant)	2068
+Time Stamp Control (classic)	5555
+Time Stamp Control (modern)	21913
+Time Stamp Control (system)	21967
+Time Stamp Indicator (classic)	5556
+Time Stamp Indicator (modern)	21914
+Timed Loop	5570
+Timed Sequence	5573
+To Byte Integer	1140
+To Double Precision Complex	1152
+To Double Precision Float	1147
+To Extended Precision Complex	1154
+To Extended Precision Float	1149
+To Fixed-Point	5561
+To Long Integer	1142
+To Lower Case	1189
+To More Generic Class	8017
+To More Specific Class	8016
+To OLE Variant	8002
+To Probe String	2413
+To Quad Integer	1155
+To Single Precision Complex	1151
+To Single Precision Float	1146
+To Time Stamp	5560
+To Unsigned Byte Integer	1143
+To Unsigned Long Integer	1145
+To Unsigned Quad Integer	1156
+To Unsigned Word Integer	1144
+To Upper Case	1188
+To Variant	8201
+To Word Integer	1141
+Traditional DAQ Channel (block diagram constant)	2085
+Traditional DAQ Channel (classic)	3320
+Traditional DAQ Channel (modern)	21733
+Transpose 1D Array	23068
+Transpose 2D Array	1902
+Transpose Matrix	8509
+Tree (classic)	21819
+Tree (modern)	21793
+Tree (system)	21794
+Trigger	1988
+TriggerList	1989
+Two Button Dialog	1341
+Type and Creator	1434
+Type Cast	1166
+UDP Close	1726
+UDP Multicast Open	1727
+UDP Network Connection Refnum	3418
+UDP Open	1723
+UDP Read	1724
+UDP Write	1725
+Unbitpack from Array	3136
+Unbundle	2048
+Unbundle By Name	2058
+Unflatten From String	1165
+Unflatten From XML	8401
+Unleak Variant Value Reference	2411
+Unlink Stream	23795
+Unpackage Matrix	23000
+Unregister For Events	2076
+Unregister Session	2320
+Up Arrow	3823
+Up Bow Valve (flat)	3703
+Up Bow Valve (outline)	3803
+Up Bow Valve (shaded)	21763
+Up Rect Valve (flat)	3702
+Up Rect Valve (outline)	21762
+Up Rect Valve (shaded)	3802
+Up Tee (flat)	3812
+Up Tee (shaded)	3712
+User Defined Refnum	3428
+User Defined Refnum Tag (block diagram constant)	3426
+User Defined Refnum Tag (classic)	3429
+User Defined Refnum Tag (modern)	21745
+User Defined Refnum Tag Flatten (classic)	3454
+User Defined Refnum Tag Flatten (modern)	21747
+User Defined Tag (block diagram constant)	2114
+User Defined Tag (classic)	3329
+User Defined Tag (modern)	21749
+User Item	3506
+UTF-8 to Text	23067
+Variable Class Specifier Constant	2106
+Variable Configuration	3475
+Variable Name Constant	3478
+Variant	3310
+Variant To Data	8003
+Variant To Flattened String	8203
+Verify and Link Stream	23805
+Vert Line	3822
+Vert Pipe (flat)	3816
+Vert Pipe (shaded)	3716
+Vert Rocker	21740
+Vertical Fill Slide (classic)	3009
+Vertical Fill Slide (modern)	21014
+Vertical Graduated Bar	21107
+Vertical Pointer Slide (classic)	3007
+Vertical Pointer Slide (modern)	21017
+Vertical Pointer Slide (system)	21901
+Vertical Progress Bar (modern)	21104
+Vertical Progress Bar (system)	21909
+Vertical Scrollbar	21111
+Vertical Slide	3004
+Vertical Slide (system)	21903
+Vertical Slide Switch (classic)	3115
+Vertical Slide Switch (modern)	21741
+Vertical Smooth Box	3634
+Vertical Splitter Bar	21860
+Vertical Splitter Bar (Classic)	21862
+Vertical Splitter Bar (System)	21864
+Vertical Switch	3109
+Vertical Toggle Switch (classic)	3111
+Vertical Toggle Switch (modern)	21005
+VI Library	1425
+VI Refnum	3422
+VI Server Reference	2091
+VISA Assert Interrupt Signal	2309
+VISA Assert Trigger	1929
+VISA Assert Utility Signal	2310
+VISA Clear	1927
+VISA Close	1922
+VISA Disable Event	1940
+VISA Discard Events	1941
+VISA Enable Event	1942
+VISA Find Resource	1923
+VISA Flush I/O Buffer	2302
+VISA GPIB Command	2315
+VISA GPIB Control ATN	2316
+VISA GPIB Control REN	2304
+VISA GPIB Pass Control	2317
+VISA GPIB Send IFC	2318
+VISA In 16	1930
+VISA In 32	1944
+VISA In 64	2140
+VISA In 8	1936
+VISA Lock	1993
+VISA Map Address	1932
+VISA Map Trigger	2311
+VISA Memory Allocation	1997
+VISA Memory Allocation Ex	2146
+VISA Memory Free	1998
+VISA Move	2303
+VISA Move In 16	1948
+VISA Move In 32	1991
+VISA Move In 64	2144
+VISA Move In 8	1946
+VISA Move Out 16	1949
+VISA Move Out 32	1992
+VISA Move Out 64	2145
+VISA Move Out 8	1947
+VISA Open	2308
+VISA Out 16	1931
+VISA Out 32	1945
+VISA Out 64	2141
+VISA Out 8	1937
+VISA Peek 16	1934
+VISA Peek 32	1995
+VISA Peek 64	2142
+VISA Peek 8	1938
+VISA Poke 16	1935
+VISA Poke 32	1996
+VISA Poke 64	2143
+VISA Poke 8	1939
+VISA Read	1925
+VISA Read STB	1928
+VISA Read To File	2313
+VISA Refnum to Session	2300
+VISA Resource Name	3421
+VISA resource name (classic)	3409
+VISA resource name (modern)	21737
+VISA Set I/O Buffer Size	2301
+VISA Status Description	1924
+VISA Unlock	1994
+VISA Unmap Address	1933
+VISA Unmap Trigger	2312
+VISA USB Control In	2086
+VISA USB Control Out	2087
+VISA VXI Cmd or Query	2305
+VISA Wait on Event	1943
+VISA Write	1926
+VISA Write From File	2314
+Volume Info	1414
+Wait (ms)	1302
+Wait For Activity	1722
+Wait For Front Panel Activity	1328
+Wait for GPIB RQS	1952
+Wait for Stream State	23809
+Wait on Notification	9105
+Wait on Notification from Multiple	9106
+Wait on Notification from Multiple with Notifier History	9132
+Wait on Notification with Notifier History	9131
+Wait on Occurrence	1701
+Wait until Linked Stream	23799
+Wait Until Next ms Multiple	1327
+WaitSRQ	1990
+Waveform Chart	21010
+Waveform Chart (classic)	3501
+Waveform Chart (modern)	21717
+Waveform Graph (classic)	3504
+Waveform Graph (modern)	21703
+While Loop #1	2003
+While Loop #2	2352
+White Space?	1125
+Write Datalog	8079
+Write Device	1431
+Write File	1408
+Write Multiple Elements to Stream	23804
+Write Single Element to Stream	23798
+Write to Binary File	8078
+Write to Text File	8080
+Write Variable	23782
+Write Variable with Timeout	23789
+XY Graph (classic)	3500
+XY Graph (modern)	21716
+Y-th Root of X	23062

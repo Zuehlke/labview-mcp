@@ -1,0 +1,26 @@
+<VI _name="lvdiag_readrule.vi" description="Reads the connector pane wiring rule for three terminal indices\2C so the numeric code behind AIXML's connection attribute comes from LabVIEW rather than from guessing. SetWireRule with 0 ran without error and changed nothing\2C which is exactly the case where an oracle beats another attempt. Drive it with one string input\3A the VI to inspect. Indices are fixed at 11\2C 10\2C 3 - Demo_add's pane.">
+  <Control _name="vi path" conIdx="0" connection="required" description="Full path of the VI to inspect." outputs="value:100.value" type="string" uid="100" uid_parent="root" value=""/>
+
+  <Constant _name="ix11" outputs="value:110.value" type="int32" uid="110" uid_parent="root" value="11"/>
+  <Constant _name="ix10" outputs="value:112.value" type="int32" uid="112" uid_parent="root" value="10"/>
+  <Constant _name="ix3" outputs="value:114.value" type="int32" uid="114" uid_parent="root" value="3"/>
+  <Constant _name="sep" outputs="value:120.value" type="string" uid="120" uid_parent="root" value=" | "/>
+
+  <Node _name="String To Path" inputs="string:100.value" outputs="path:200.path" uid="200" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:200.path" outputs="vi reference:210.viref,error out:210.err" uid="210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:210.viref,error in (no error):210.err" outputs="Connector Pane\3AReference:220.cp,reference out:,error out:220.err" uid="220" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="GetWiringRule" type="{LV.ConnectorPane}" inputs="reference:220.cp,error in (no error):220.err,TermIdx:110.value" outputs="Get Wire Rule:230.r,reference out:,error out:230.err" uid="230" uid_parent="root"/>
+  <Node _name="Invoke Node" target="GetWiringRule" type="{LV.ConnectorPane}" inputs="reference:220.cp,error in (no error):230.err,TermIdx:112.value" outputs="Get Wire Rule:232.r,reference out:,error out:232.err" uid="232" uid_parent="root"/>
+  <Node _name="Invoke Node" target="GetWiringRule" type="{LV.ConnectorPane}" inputs="reference:220.cp,error in (no error):232.err,TermIdx:114.value" outputs="Get Wire Rule:234.r,reference out:,error out:234.err" uid="234" uid_parent="root"/>
+
+  <Node _name="Number To Decimal String" inputs="number:230.r" outputs="decimal integer string:240.s" uid="240" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:232.r" outputs="decimal integer string:242.s" uid="242" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:234.r" outputs="decimal integer string:244.s" uid="244" uid_parent="root"/>
+  <Node _name="Concatenate Strings" inputs="string:240.s,string:120.value,string:242.s,string:120.value,string:244.s" outputs="concatenated string:250.cat" uid="250" uid_parent="root"/>
+  <Indicator _name="rules" conIdx="4" connection="recommended" description="Wiring rule codes for terminals 11\2C 10\2C 3." inputs="value:250.cat" type="string" uid="300" uid_parent="root" value=""/>
+
+  <Node _name="Close Reference" inputs="reference:210.viref,error in (no error):234.err" outputs="error out:260.err" uid="260" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="source" inputs="input cluster:260.err" outputs="source:270.source" uid="270" uid_parent="root"/>
+  <Indicator _name="error source" conIdx="5" connection="recommended" description="Empty when it worked." inputs="value:270.source" type="string" uid="310" uid_parent="root" value=""/>
+</VI>

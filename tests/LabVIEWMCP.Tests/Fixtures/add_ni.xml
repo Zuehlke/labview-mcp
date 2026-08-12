@@ -1,0 +1,6 @@
+<VI _name="Demo_add.vi" description="Adds two numbers\3A C = A + B. A test VI for the close tools. The control defaults are 3 and 4\2C so running it with no inputs must give C = 7 - which makes the default run a real check of the wiring rather than 0 + 0.">
+  <Control _name="A" conIdx="11" connection="required" outputs="value:43.value" type="double" uid="43" uid_parent="root" value="3"/>
+  <Control _name="B" conIdx="10" connection="required" outputs="value:57.value" type="double" uid="57" uid_parent="root" value="4"/>
+  <Node _name="Add" inputs="x:43.value,y:57.value" outputs="x+y:71.x+y" uid="71" uid_parent="root"/>
+  <Indicator _name="C" conIdx="3" connection="recommended" inputs="value:71.x+y" type="double" uid="88" uid_parent="root" value="0"/>
+</VI>

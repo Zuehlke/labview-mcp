@@ -1,0 +1,80 @@
+﻿<VI _name="lvdiag_gen_step3.vi" description="Write direction\2C step 3\3A adds front-panel defaults and the connector pane. Values go in with Ctrl Val.Set and are frozen by Default Vals.Make Curr Default - AIXML value= on a Control IS its default\2C so setting the current value alone would not survive. The pane is assigned with {LV.ConnectorPane} AssignCtrlToTerm at the SAME indices the reader found\3A 11\2C 10\2C 3. Step 2\3A a complete\2C runnable VI built by VI Scripting alone. Two numeric controls\2C an Add\2C one indicator\2C wired\2C saved - the Demo_add shape\2C so the proof is that it computes 3 + 4 = 7. Style codes come from docs/vi-object-styles.tsv as plain numbers\2C which works because the style input is a Ring and a Ring is numeric on the wire. A created Numeric is a CONTROL\3A writing {LV.Control} Indicator flips it. Labels are written through {LV.Control} Label -&gt; {LV.Text} Text\2C the same pair the reader uses. Wiring is Connect Wire on {LV.Terminal}. MEASURED\3A {LV.Node} Terminals[] comes back REVERSED against the order AIXML lists them - for Add it is [0]=x+y\2C [1]=y\2C [2]=x. The first attempt indexed 0\2C1\2C2 and produced a VI whose Add output sat on the A control's wire. A production generator must match terminals by Name\2C never by index. Drive it with one string input\3A the full path of the VI to create.">
+  <Control _name="out vi path" conIdx="0" connection="required" description="Full path of the VI to create." outputs="value:100.value" type="string" uid="100" uid_parent="root" value=""/>
+
+  <Constant outputs="value:110.value" type="ref{LV.Numeric}" uid="110" uid_parent="root" value=""/>
+  <Constant outputs="value:112.value" type="ref{LV.Node}" uid="112" uid_parent="root" value=""/>
+  <Constant _name="Numeric Control (modern)" outputs="value:114.value" type="int32" uid="114" uid_parent="root" value="21003"/>
+  <Constant _name="Add" outputs="value:116.value" type="int32" uid="116" uid_parent="root" value="1050"/>
+  <Constant _name="make indicator" outputs="value:118.value" type="bool" uid="118" uid_parent="root" value="true"/>
+
+  <Constant _name="pos A" outputs="value:120.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="120" uid_parent="root" value="[60,60]"/>
+  <Constant _name="pos B" outputs="value:122.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="122" uid_parent="root" value="[60,160]"/>
+  <Constant _name="pos C" outputs="value:124.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="124" uid_parent="root" value="[420,60]"/>
+  <Constant _name="pos Add" outputs="value:126.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="126" uid_parent="root" value="[250,100]"/>
+
+  <Constant _name="A" outputs="value:130.value" type="string" uid="130" uid_parent="root" value="A"/>
+  <Constant _name="B" outputs="value:132.value" type="string" uid="132" uid_parent="root" value="B"/>
+  <Constant _name="C" outputs="value:134.value" type="string" uid="134" uid_parent="root" value="C"/>
+
+  <Constant _name="ix0" outputs="value:140.value" type="int32" uid="140" uid_parent="root" value="0"/>
+  <Constant _name="ix1" outputs="value:142.value" type="int32" uid="142" uid_parent="root" value="1"/>
+  <Constant _name="ix2" outputs="value:144.value" type="int32" uid="144" uid_parent="root" value="2"/>
+
+  <Constant _name="ok" outputs="value:150.value" type="string" uid="150" uid_parent="root" value="created"/>
+  <Constant _name="bad" outputs="value:152.value" type="string" uid="152" uid_parent="root" value="FAILED"/>
+
+  <Constant _name="A default" outputs="value:160.value" type="double" uid="160" uid_parent="root" value="3"/>
+  <Constant _name="B default" outputs="value:162.value" type="double" uid="162" uid_parent="root" value="4"/>
+  <Constant _name="term A" outputs="value:164.value" type="int32" uid="164" uid_parent="root" value="11"/>
+  <Constant _name="term B" outputs="value:166.value" type="int32" uid="166" uid_parent="root" value="10"/>
+  <Constant _name="term C" outputs="value:168.value" type="int32" uid="168" uid_parent="root" value="3"/>
+
+  <Node _name="New VI" inputs="application refnum:,template:,vi type (standard vi):,error in (no error):,not connected:,type specifier VI Refnum (for type only):,password:" outputs="vi refnum:200.vi,error out:200.err" uid="200" uid_parent="root"/>
+
+  <Node _name="New VI Object" inputs="owner refnum:200.vi,style:114.value,position/next to:120.value,error in (no error):200.err,vi object class:110.value,auto wire? (F):,path:,bounds:" outputs="object refnum:210.obj,error out:210.err" uid="210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label" type="{LV.Control}" inputs="reference:210.obj,error in (no error):210.err" outputs="Label:212.lbl,reference out:,error out:212.err" uid="212" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Text" type="{LV.Text}" inputs="reference:212.lbl,error in (no error):212.err,Text:130.value" outputs="reference out:,error out:214.err" uid="214" uid_parent="root"/>
+
+  <Node _name="New VI Object" inputs="owner refnum:200.vi,style:114.value,position/next to:122.value,error in (no error):214.err,vi object class:110.value,auto wire? (F):,path:,bounds:" outputs="object refnum:220.obj,error out:220.err" uid="220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label" type="{LV.Control}" inputs="reference:220.obj,error in (no error):220.err" outputs="Label:222.lbl,reference out:,error out:222.err" uid="222" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Text" type="{LV.Text}" inputs="reference:222.lbl,error in (no error):222.err,Text:132.value" outputs="reference out:,error out:224.err" uid="224" uid_parent="root"/>
+
+  <Node _name="New VI Object" inputs="owner refnum:200.vi,style:114.value,position/next to:124.value,error in (no error):224.err,vi object class:110.value,auto wire? (F):,path:,bounds:" outputs="object refnum:230.obj,error out:230.err" uid="230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label" type="{LV.Control}" inputs="reference:230.obj,error in (no error):230.err" outputs="Label:232.lbl,reference out:,error out:232.err" uid="232" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Text" type="{LV.Text}" inputs="reference:232.lbl,error in (no error):232.err,Text:134.value" outputs="reference out:,error out:234.err" uid="234" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Indicator" type="{LV.Control}" inputs="reference:230.obj,error in (no error):234.err,Indicator:118.value" outputs="reference out:,error out:236.err" uid="236" uid_parent="root"/>
+
+  <Node _name="New VI Object" inputs="owner refnum:200.vi,style:116.value,position/next to:126.value,error in (no error):236.err,vi object class:112.value,auto wire? (F):,path:,bounds:" outputs="object refnum:240.obj,error out:240.err" uid="240" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:210.obj,error in (no error):240.err" outputs="Terminal:250.t,reference out:,error out:250.err" uid="250" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:220.obj,error in (no error):250.err" outputs="Terminal:252.t,reference out:,error out:252.err" uid="252" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:230.obj,error in (no error):252.err" outputs="Terminal:254.t,reference out:,error out:254.err" uid="254" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Node}" inputs="reference:240.obj,error in (no error):254.err" outputs="Terminals[]:256.terms,reference out:,error out:256.err" uid="256" uid_parent="root"/>
+
+  <Node _name="Index Array" inputs="array:256.terms,index:144.value" outputs="element:258.x" uid="258" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:256.terms,index:142.value" outputs="element:260.y" uid="260" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:256.terms,index:140.value" outputs="element:262.sum" uid="262" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:258.x,error in (no error):256.err,Wire Source:250.t,Auto Wire? (T):,Wiring Specs:,Auto Route? (F):" outputs="reference out:,error out:270.err" uid="270" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:260.y,error in (no error):270.err,Wire Source:252.t,Auto Wire? (T):,Wiring Specs:,Auto Route? (F):" outputs="reference out:,error out:272.err" uid="272" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:254.t,error in (no error):272.err,Wire Source:262.sum,Auto Wire? (T):,Wiring Specs:,Auto Route? (F):" outputs="reference out:,error out:274.err" uid="274" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:200.vi,error in (no error):274.err,Control Name:130.value,Value:160.value" outputs="reference out:,error out:320.err" uid="320" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:200.vi,error in (no error):320.err,Control Name:132.value,Value:162.value" outputs="reference out:,error out:322.err" uid="322" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Default Vals.Make Curr Default" type="{LV.VI}" inputs="reference:200.vi,error in (no error):322.err" outputs="reference out:,error out:324.err" uid="324" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:200.vi,error in (no error):324.err" outputs="Connector Pane\3AReference:326.cp,reference out:,error out:326.err" uid="326" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AssignCtrlToTerm" type="{LV.ConnectorPane}" inputs="reference:326.cp,error in (no error):326.err,Control:210.obj,TermIdx:164.value" outputs="reference out:,error out:328.err" uid="328" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AssignCtrlToTerm" type="{LV.ConnectorPane}" inputs="reference:326.cp,error in (no error):328.err,Control:220.obj,TermIdx:166.value" outputs="reference out:,error out:330.err" uid="330" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AssignCtrlToTerm" type="{LV.ConnectorPane}" inputs="reference:326.cp,error in (no error):330.err,Control:230.obj,TermIdx:168.value" outputs="reference out:,error out:332.err" uid="332" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:100.value" outputs="path:280.path" uid="280" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save\3AInstrument" type="{LV.VI}" inputs="reference:200.vi,error in (no error):332.err,Path to saved file:280.path" outputs="reference out:,error out:282.err" uid="282" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:200.vi,error in (no error):282.err" outputs="error out:290.err" uid="290" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:290.err" outputs="status:292.status" uid="292" uid_parent="root"/>
+  <Node _name="Select" inputs="t:152.value,s:292.status,f:150.value" outputs="s? t\3Af:294.sel" uid="294" uid_parent="root"/>
+  <Indicator _name="state" conIdx="4" connection="recommended" description="created\2C or FAILED." inputs="value:294.sel" type="string" uid="300" uid_parent="root" value=""/>
+  <Node _name="Unbundle By Name" fields="source" inputs="input cluster:290.err" outputs="source:296.source" uid="296" uid_parent="root"/>
+  <Indicator _name="error source" conIdx="5" connection="recommended" description="Empty when it worked." inputs="value:296.source" type="string" uid="310" uid_parent="root" value=""/>
+</VI>

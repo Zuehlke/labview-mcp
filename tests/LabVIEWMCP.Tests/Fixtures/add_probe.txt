@@ -1,0 +1,128 @@
+#ALL diagramId/objectId/class
+-1018167056/-1013972389/ControlTerminal/
+-1018167056/-1012923511/Function/Add
+-1018167056/-1011875033/ControlTerminal/
+-1018167056/-1010826546/ControlTerminal/
+N/-1017117954/-1009778018/-1012923511/x+y/SRC
+N/-1017117954/-1013972389/-1018167056/C/snk
+N/-1016069826/-1011875033/-1018167056/B/SRC
+N/-1016069826/-1001389752/-1012923511/y/snk
+N/-1015021246/-1010826546/-1018167056/A/SRC
+N/-1015021246/-1000340951/-1012923511/x/snk
+
+#FPCONTROLS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>2</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>A</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<DBL>
+<Name>A</Name>
+<Val>3.00000000000000</Val>
+</DBL>
+</LvVariant>
+</Cluster>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>B</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<DBL>
+<Name>B</Name>
+<Val>4.00000000000000</Val>
+</DBL>
+</LvVariant>
+</Cluster>
+</Array>
+
+#FPINDICATORS
+<Array>
+<Name>Get All Control Values Variant</Name>
+<Dimsize>1</Dimsize>
+<Cluster>
+<Name></Name>
+<NumElts>2</NumElts>
+<String>
+<Name>Name</Name>
+<Val>C</Val>
+</String>
+<LvVariant>
+<Name>Variant Data</Name>
+<DBL>
+<Name>C</Name>
+<Val>0.00000000000000</Val>
+</DBL>
+</LvVariant>
+</Cluster>
+</Array>
+
+#CONSTVALUES
+#CONST -1013972389
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1012923511
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1011875033
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+#CONST -1010826546
+<LvVariant>
+<Name>Value</Name>
+<Default>
+<Name></Name>
+</Default>
+</LvVariant>
+
+
+#CONPANE conIdx by line order, then name
+
+
+
+C
+
+
+
+
+
+
+B
+A
+
+#VIDESC
+Adds two numbers: C = A + B. A test VI for the close tools. The control defaults are 3 and 4, so running it with no inputs must give C = 7 - which makes the default run a real check of the wiring rather than 0 + 0.
+#OBJDESC
+#DESC -1013972389
+
+#DESC -1012923511
+
+#DESC -1011875033
+
+#DESC -1010826546
+

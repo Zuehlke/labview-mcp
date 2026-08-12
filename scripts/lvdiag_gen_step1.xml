@@ -1,0 +1,26 @@
+<VI _name="lvdiag_gen_step1.vi" description="Write direction\2C step 1. Builds a VI with VI Scripting alone - no ConvertAIXMLToVI anywhere - and saves it. New VI creates the target\2C New VI Object drops one Add node on its diagram\2C Save.Instrument writes it to the given path. The style input is the interesting part\3A NI's own example feeds it a 2177-item Ring constant of palette names\2C but a Ring is numeric on the wire\2C so this feeds the code directly. items[7]=Add pairs with values[7]=1050. If a plain number is accepted\2C a data-driven generator needs no giant constant at all. Drive it with one string input\3A the full path of the VI to create.">
+  <Control _name="out vi path" conIdx="0" connection="required" description="Full path of the VI to create." outputs="value:100.value" type="string" uid="100" uid_parent="root" value=""/>
+
+  <Constant outputs="value:120.value" type="ref{LV.Node}" uid="120" uid_parent="root" value=""/>
+  <Constant _name="Add" outputs="value:130.value" type="int32" uid="130" uid_parent="root" value="1050"/>
+  <Constant _name="location" outputs="value:140.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="140" uid_parent="root" value="[200,100]"/>
+  <Constant _name="ok" outputs="value:150.value" type="string" uid="150" uid_parent="root" value="created"/>
+  <Constant _name="bad" outputs="value:160.value" type="string" uid="160" uid_parent="root" value="FAILED"/>
+
+  <Node _name="New VI" inputs="application refnum:,template:,vi type (standard vi):,error in (no error):,not connected:,type specifier VI Refnum (for type only):,password:" outputs="vi refnum:200.vi refnum,error out:200.error out" uid="200" uid_parent="root"/>
+
+  <Node _name="New VI Object" inputs="owner refnum:200.vi refnum,style:130.value,position/next to:140.value,error in (no error):200.error out,vi object class:120.value,auto wire? (F):,path:,bounds:" outputs="object refnum:210.object refnum,error out:210.error out" uid="210" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:100.value" outputs="path:220.path" uid="220" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save\3AInstrument" type="{LV.VI}" inputs="reference:200.vi refnum,error in (no error):210.error out,Path to saved file:220.path" outputs="reference out:,error out:230.error out" uid="230" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:210.object refnum,error in (no error):230.error out" outputs="error out:240.error out" uid="240" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:200.vi refnum,error in (no error):240.error out" outputs="error out:250.error out" uid="250" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:250.error out" outputs="status:260.status" uid="260" uid_parent="root"/>
+  <Node _name="Select" inputs="t:160.value,s:260.status,f:150.value" outputs="s? t\3Af:270.sel" uid="270" uid_parent="root"/>
+  <Indicator _name="state" conIdx="4" connection="recommended" description="created\2C or FAILED." inputs="value:270.sel" type="string" uid="300" uid_parent="root" value=""/>
+
+  <Node _name="Unbundle By Name" fields="source" inputs="input cluster:250.error out" outputs="source:280.source" uid="280" uid_parent="root"/>
+  <Indicator _name="error source" conIdx="5" connection="recommended" description="Empty when it worked." inputs="value:280.source" type="string" uid="310" uid_parent="root" value=""/>
+</VI>
