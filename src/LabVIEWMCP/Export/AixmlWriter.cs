@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace LabVIEWMcp.Export;
 
-/// Turns lvdiag_probe_v12's records into AIXML.
+/// Turns `scripts/lvdiag_probe_v16.xml`'s records into AIXML.
 ///
 /// The probe deliberately does no interpretation: it reports LabVIEW's own class names,
 /// labels and terminal names, identifies everything by a Type Cast integer, and hands the

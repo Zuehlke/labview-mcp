@@ -6,9 +6,13 @@ namespace LabVIEWMcp.Tests.Export;
 /// The differential test for the VI-Server-based exporter, run against checked-in fixtures
 /// so it needs no LabVIEW.
 ///
-/// Each `*_probe.txt` is what `scripts/lvdiag_probe_v15.xml` reported for a VI; the matching
-/// `*_ni.xml` is NI's own `ConvertVIToAIXML` output for that same VI. Regenerate a pair
-/// together after a LabVIEW upgrade - a stale half would pass while proving nothing.
+/// Each `*_probe.txt` is what the probe reported for a VI; the matching `*_ni.xml` is NI's own
+/// `ConvertVIToAIXML` output for that same VI. Regenerate a pair together after a LabVIEW
+/// upgrade - a stale half would pass while proving nothing.
+///
+/// The fixtures were cut with `lvdiag_probe_v15.xml`, which is no longer checked in; regenerate
+/// with `scripts/lvdiag_probe_v16.xml`, which differs from it only by also writing the icon and
+/// emits these records unchanged.
 ///
 /// Three targets, because each covers what the others cannot:
 ///   rt  - two string controls into Concatenate Strings

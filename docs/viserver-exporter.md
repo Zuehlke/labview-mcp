@@ -6,12 +6,22 @@ documented alternative.
 
 Everything below was measured on LabVIEW 2026 (x86), `lvai 26.3`, on 2026-08-12.
 
+**Only the final probes are checked in.** Every step below was cut as its own probe VI and each
+is a superset of the one before it, so the intermediates were scaffolding — and they were not
+free scaffolding, because `LabVIEWMCP.csproj` copies all of `scripts/` next to the exe, so all
+26 shipped with every binary install. Four remain: `lvdiag_probe_v16.xml` (read direction,
+complete), `lvdiag_gen_step6.xml` (write direction, as far as it goes), and
+`lvdiag_roundtrip_target.xml` and `lvdiag_helloworld.xml`, which are the sources of the
+checked-in test fixtures. A step file named below in plain text rather than linked is one of the
+deleted ones — its *measurement* is what mattered, and that is on this page. Re-cutting one
+means cutting it back out of the final probe.
+
 ## Phase 0 — settled
 
 **A generated VI can reach LabVIEW's scripting object model at run time.** That was the one
 question that could have killed the approach, and the answer is yes.
 
-[`scripts/lvdiag_probe_v1.xml`](../scripts/lvdiag_probe_v1.xml) → `ConvertAIXMLToVI` → run
+`lvdiag_probe_v1.xml` → `ConvertAIXMLToVI` → run
 against `examples\Arrays\Array to Cluster.vi`:
 
 ```
@@ -79,7 +89,7 @@ not by class.
 
 ## Step 2 — the net table reads out cleanly
 
-[`scripts/lvdiag_probe_v2.xml`](../scripts/lvdiag_probe_v2.xml) walks by **wire** instead of
+`lvdiag_probe_v2.xml` walks by **wire** instead of
 by node: `{LV.Diagram}` `Wires[]` → `{LV.Wire}` `Terminals[]` → per terminal `Name`,
 `Is Source?` and the owner's `Class Name`. Run against `lvdiag_probe_v1.vi` (our own
 generated VI, not a shipped one): 18 wires, `errorCode 0`.
@@ -124,7 +134,7 @@ constant → `Number To Decimal String` gives a stable per-session integer, so a
 *is* the net id. That collapses the two-walk join problem: one pass over the nodes now
 yields node identity **and** net membership.
 
-[`scripts/lvdiag_probe_v3.xml`](../scripts/lvdiag_probe_v3.xml) against
+`lvdiag_probe_v3.xml` against
 `lvdiag_probe_v1.vi`, 7 functions, `errorCode 0`:
 
 ```
@@ -172,7 +182,7 @@ The catalogue makes the dispatch problem explicit:
 | `{LV.Constant}` | `Terminal` — singular — plus `Value` |
 | `{LV.ControlTerminal}` | `Connected Wire` / `Is Source?` / `Name` **directly**; the object *is* the terminal |
 
-Rather than branch on that in G, [`scripts/lvdiag_probe_v4.xml`](../scripts/lvdiag_probe_v4.xml)
+Rather than branch on that in G, `lvdiag_probe_v4.xml`
 emits **both traversals and joins them by integer id** — `Type Cast` works on any refnum, not
 just a wire's. Objects, wires, terminals and owners all become comparable numbers, and the
 dispatch moves to C# where it is testable.
@@ -226,7 +236,7 @@ which carries two `To More Specific Class` nodes with `ref{LV.Function}` and
 `ref{LV.StringConstant}` constants. **When an AIXML spelling is unknown, export a shipping VI
 that already uses the node** — that is the oracle, and it beats guessing every time.
 
-[`scripts/lvdiag_probe_v5.xml`](../scripts/lvdiag_probe_v5.xml) against `lvdiag_probe_v1.vi`:
+`lvdiag_probe_v5.xml` against `lvdiag_probe_v1.vi`:
 
 ```
 #INNER diagramId/objectId/class
@@ -255,7 +265,7 @@ Two things measured on the way:
 
 ## Steps 6–8 — unbounded depth, boundary objects, and names
 
-[`scripts/lvdiag_probe_v8.xml`](../scripts/lvdiag_probe_v8.xml) is the complete probe; it
+`lvdiag_probe_v8.xml` is the complete probe; it
 supersedes the step 6 and 7 intermediates.
 
 **Recursion is a While Loop worklist.** Seed it with `Build Array` in *element* mode on the
@@ -303,7 +313,7 @@ class name gives directly.
 
 ## The C# side — end to end, and it agrees with NI
 
-[`scripts/lvdiag_probe_v9.xml`](../scripts/lvdiag_probe_v9.xml) is the complete extractor: one
+`lvdiag_probe_v9.xml` is the complete extractor: one
 recursive pass emitting three record kinds, and no interpretation whatsoever.
 
 ```
@@ -476,7 +486,7 @@ on the VIs we tried" into a number.
 
 ## `type` and `value` — done for scalars
 
-[`scripts/lvdiag_probe_v13.xml`](../scripts/lvdiag_probe_v13.xml) reads them, and both
+`lvdiag_probe_v13.xml` reads them, and both
 fixtures now compare **IDENTICAL including `type` and `value`**:
 
 ```xml
@@ -513,7 +523,7 @@ text.
 
 ## `conIdx` and `description` — and a round trip that runs
 
-[`scripts/lvdiag_probe_v15.xml`](../scripts/lvdiag_probe_v15.xml) adds both. Three fixtures
+`lvdiag_probe_v15.xml` adds both. Three fixtures
 now compare **IDENTICAL on topology, `type`, `value`, `conIdx` and `description`**.
 
 **`conIdx` is a pane position, not a running count.** `Connector Pane\3AReference` →
@@ -551,7 +561,7 @@ this shape of VI.
 
 `Execution:Allow Debugging` is a VI **property**, so `ConvertAIXMLToVI` resets it every time —
 the same trap as the icon and as automatic error handling.
-[`scripts/lvdiag_finalize.xml`](../scripts/lvdiag_finalize.xml) turns it off and reads the
+`lvdiag_finalize.xml` turns it off and reads the
 flag back after saving, which makes it a repeatable step rather than a manual one.
 
 Measured A/B on the same probe, one variable:
@@ -576,7 +586,7 @@ different thing.
 ## Iteration parallelism buys nothing
 
 Tried, because the whole cost is per-read and dividing it by the core count would be the
-single largest win available. [`scripts/lvdiag_parbench.xml`](../scripts/lvdiag_parbench.xml)
+single largest win available. `lvdiag_parbench.xml`
 carries the exporter's per-object read profile in one flat For Loop, accumulating through an
 auto-indexing output tunnel rather than a shift register — a shift register serialises the
 loop and LabVIEW will not parallelise it.
@@ -621,7 +631,7 @@ VI. The earlier number was not just wrong, it was flattering — it timed a loop
 
 ## The write direction — a VI built by scripting alone
 
-**Proved.** [`scripts/lvdiag_gen_step1.xml`](../scripts/lvdiag_gen_step1.xml) creates a VI with
+**Proved.** `lvdiag_gen_step1.xml` creates a VI with
 no `ConvertAIXMLToVI` anywhere in the chain, and both readers confirm it:
 
 ```
@@ -660,7 +670,7 @@ once from NI's export and checked in as
 
 ### Step 2 — a complete VI, built and runnable
 
-[`scripts/lvdiag_gen_step2.xml`](../scripts/lvdiag_gen_step2.xml) builds the whole `Demo_add`
+`lvdiag_gen_step2.xml` builds the whole `Demo_add`
 shape by scripting: two numeric controls, an `Add`, an indicator, wired and saved.
 
 ```xml
@@ -703,7 +713,7 @@ recorded here as a measurement, not as something to rely on.
 
 ### Steps 3 and 4 — defaults, connector pane, wiring rule
 
-[`scripts/lvdiag_gen_step4.xml`](../scripts/lvdiag_gen_step4.xml) reproduces `Demo_add.vi`
+`lvdiag_gen_step4.xml` reproduces `Demo_add.vi`
 attribute for attribute:
 
 ```xml
@@ -739,7 +749,7 @@ Note the asymmetric spelling: the getter is `GetWiringRule`, the setter `SetWire
 
 ### Step 5 — the description, and the icon AIXML cannot carry
 
-[`scripts/lvdiag_gen_step5.xml`](../scripts/lvdiag_gen_step5.xml) writes `{LV.VI}`
+`lvdiag_gen_step5.xml` writes `{LV.VI}`
 `Description` and applies the icon. `Demo_add.vi` is now reproduced completely:
 
 ```
@@ -841,8 +851,6 @@ enough to do it — no `ConvertAIXMLToVI` required. Three failed validations of 
 reference has the rule, and it costs a confusing minute every time it is met fresh.
 - **Invocation over ActiveX** instead of `RunVIAsTopLevel`, which removes the last
   `lvai.LVAI` dependency from the runtime path.
-
-## Operational notes paid for during Phase 0
 
 ## Operational notes paid for during Phase 0
 
