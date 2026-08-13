@@ -76,3 +76,17 @@ schema.txt
 # Python build artifacts (scripts/)
 __pycache__/
 *.pyc
+
+# Plugin staging directories: the release workflow fills plugin/bin/ (the published
+# exe) and plugin/scripts/ (a copy of the repo's scripts/) at pack time. They are build
+# output and must never be committed. plugin/bin/ is already covered by [Bb]in/ above;
+# the entries here are anchored with a leading slash so they only match under plugin/ and
+# leave the repository's own top-level scripts/ tracked.
+/plugin/bin/
+/plugin/scripts/
+
+# Release-workflow working directories and the packed asset, in case the pack steps are run
+# locally. In CI these live only in the ephemeral runner workspace.
+/staging/
+/publish/
+/labview-mcp.zip

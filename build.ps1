@@ -25,20 +25,49 @@
 .PARAMETER NoKill
     Fail instead of stopping a running server.
 
+.PARAMETER VerifyOnly
+    Skip the server-stop and the build, and only run the embedded-documentation check
+    (step 3) against an already-built assembly. This is the gate the release workflow runs
+    against the Release output before publishing: a plugin install is a binary-only install,
+    so proving the knowledge tools still answer from the assembly is the only evidence that
+    a binary-only install is not silently broken. Pair with -DllPath (or -Configuration).
+
+.PARAMETER DllPath
+    The assembly to verify in -VerifyOnly mode. Defaults to the built DLL for -Configuration.
+
+.PARAMETER Configuration
+    Which build configuration to build (normal mode) or locate (-VerifyOnly, when -DllPath is
+    not given). Debug is the only configuration used for local development; the release
+    workflow passes Release.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File build.ps1
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File build.ps1 -VerifyOnly -DllPath src\LabVIEWMCP\bin\Release\net8.0\LabVIEWMCP.dll
 #>
 [CmdletBinding()]
-param([switch]$NoKill)
+param(
+    [switch]$NoKill,
+    [switch]$VerifyOnly,
+    [string]$DllPath,
+    [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug'
+)
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 $project = Join-Path $repo 'src\LabVIEWMCP\LabVIEWMCP.csproj'
-$exe = Join-Path $repo 'src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe'
-$dll = Join-Path $repo 'src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.dll'
+$exe = Join-Path $repo "src\LabVIEWMCP\bin\$Configuration\net8.0\LabVIEWMCP.exe"
+$dll = if ($DllPath) { $DllPath } else { Join-Path $repo "src\LabVIEWMCP\bin\$Configuration\net8.0\LabVIEWMCP.dll" }
 
-Write-Host 'LabVIEW MCP build (Debug — the only configuration)' -ForegroundColor Cyan
+if ($VerifyOnly) {
+    Write-Host "LabVIEW MCP embedded-documentation verification ($Configuration)" -ForegroundColor Cyan
+} else {
+    Write-Host "LabVIEW MCP build ($Configuration)" -ForegroundColor Cyan
+}
 Write-Host '================================================='
+
+if (-not $VerifyOnly) {
 
 # --- 1. free the file -------------------------------------------------------
 $running = @(Get-Process -Name 'LabVIEWMCP' -ErrorAction SilentlyContinue)
@@ -60,11 +89,13 @@ if ($running.Count -gt 0) {
 # --- 2. build ---------------------------------------------------------------
 Write-Host ''
 Write-Host "building -> $exe"
-& dotnet build $project -c Debug --nologo -v quiet
+& dotnet build $project -c $Configuration --nologo -v quiet
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'build FAILED' -ForegroundColor Red
     exit $LASTEXITCODE
 }
+
+}  # end: if (-not $VerifyOnly)
 
 # --- 3. prove the embedded docs are the ones in docs/ ----------------------
 # "Build succeeded" says nothing about whether the markdown made it in. Checking for the
@@ -123,4 +154,8 @@ if ($missing -gt 0) {
 }
 
 Write-Host ''
-Write-Host 'Done. Restart the Claude client to pick the server back up.' -ForegroundColor Green
+if ($VerifyOnly) {
+    Write-Host 'Embedded documentation verified. The binary-only install answers correctly.' -ForegroundColor Green
+} else {
+    Write-Host 'Done. Restart the Claude client to pick the server back up.' -ForegroundColor Green
+}

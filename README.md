@@ -235,7 +235,48 @@ Three more things the run has to survive, all measured rather than anticipated:
   has a row, and a VI that was in flight when LabVIEW had to be killed is retired rather than
   retried.
 
-## Register with Claude Code
+## Install as a Claude Code plugin
+
+The quickest way in. Two commands, no clone and no build — Claude Code downloads a prebuilt
+Windows binary from this repository's latest GitHub Release:
+
+```bash
+claude plugin marketplace add Zuehlke/labview-mcp
+claude plugin install labview-mcp@zuehlke-labview
+```
+
+That gives you the MCP server, the three LabVIEW agents (`labview-vi-generator`,
+`labview-vi-editor`, `labview-doc-generator`), and the read-only tool allow-list, all wired up.
+The plugin is **Windows x64 only** and needs **LabVIEW 2026** — the same requirement as every
+other install route; on macOS or Linux the plugin installs but a session-start hook tells you
+the server cannot run there.
+
+**You need Claude Code v2.1.224 or newer.** The plugin is distributed as an `archive` source
+(a zip fetched over HTTPS), which that version introduced. On v2.1.120 – v2.1.223 the install
+fails with *“This plugin uses a source type your Claude Code version does not support. Update
+Claude Code and try again.”*; on anything older the marketplace refuses to load at all. Run
+`claude --version` and upgrade if you are below the floor.
+
+Inside Claude Code the plugin's tools are namespaced
+`mcp__plugin_labview-mcp_labview__lvai_*` — note this differs from the bare `mcp__labview__lvai_*`
+you get from the manual registration below, because Claude Code scopes a plugin's bundled MCP
+server by plugin and server name.
+
+**The read-only allow-list travels with the plugin, as a hook.** A plugin's `settings.json`
+cannot carry a `permissions` block — Claude Code honours only the `agent` and
+`subagentStatusLine` keys there — so the 18-tool allow-list is reimplemented as a `PreToolUse`
+hook that returns an *allow* decision for exactly the passive tools and stays silent for
+everything else. The reasoning is unchanged from the manual route
+([section 6](#6-let-the-read-only-tools-run-without-asking)): the six `lvai_monitor_*` tools
+are deliberately left out because they block and can write to LabVIEW's UI, and the server is
+never allow-listed wholesale, which would wave through `lvai_run_vi_as_top_level` and
+`lvai_apply_aixml_to_vi`. Updates are automatic: no version is pinned, so a new Release with
+different bytes is seen as an update.
+
+The manual routes below stay valid, and are what you want if you are copying a binary around
+without the plugin, or working inside this repository during development.
+
+## Register with Claude Code (manual)
 
 ### 0. Prerequisites
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "labview-mcp",
+  "displayName": "LabVIEW MCP",
+  "description": "Read, write and run LabVIEW 2026 code from an AI assistant — VIs as text via AIXML, palette and shipping-example search, and three bundled LabVIEW agents. Windows x64 only.",
+  "author": {
+    "name": "Zühlke Engineering AG"
+  },
+  "homepage": "https://github.com/Zuehlke/labview-mcp",
+  "repository": "https://github.com/Zuehlke/labview-mcp",
+  "license": "MIT",
+  "keywords": [
+    "labview",
+    "ni",
+    "mcp",
+    "vi",
+    "aixml",
+    "grpc",
+    "test-automation",
+    "windows"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/Users/nina/.vscode/extensions/keysight.opentap-python-0.1.0/out/pythonStubs"
+    ]
+}

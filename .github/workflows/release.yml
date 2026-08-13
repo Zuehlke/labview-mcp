@@ -1,0 +1,157 @@
+name: release
+
+# Tag a commit v1.2.3 and push the tag to cut a release. The job runs on Windows because
+# the server is win-x64 only, publishes the self-contained single-file exe, packs it into
+# the plugin staging tree, and attaches the zip to the GitHub Release under a FIXED asset
+# name. The marketplace manifest points at
+#   https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip
+# so the manifest never needs editing after a release: GitHub redirects /releases/latest/
+# to the newest published release, and the archive's own digest is the plugin version, so
+# every release with different bytes is seen as an update.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    env:
+      ASSET_NAME: labview-mcp.zip
+      PROJECT: src/LabVIEWMCP/LabVIEWMCP.csproj
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 1. Run the test suite. The repo's own hook script stops a running server first and
+      #    then tests; on the runner there is no server, but using the same entry point keeps
+      #    CI and local behaviour identical.
+      - name: Test
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
+
+      # 2. Prove the embedded documentation is intact in the RELEASE assembly BEFORE we bother
+      #    publishing. A plugin install is exactly a binary-only install, and this check is the
+      #    only evidence the knowledge tools (lvai_aixml_reference, lvai_vi_server_reference, …)
+      #    still answer correctly from the assembly alone. It gates the release.
+      - name: Build Release and verify embedded documentation
+        shell: pwsh
+        run: |
+          dotnet build $env:PROJECT -c Release --nologo -v quiet
+          if ($LASTEXITCODE -ne 0) { throw "Release build failed" }
+          powershell -ExecutionPolicy Bypass -File build.ps1 -VerifyOnly -Configuration Release
+          if ($LASTEXITCODE -ne 0) { throw "Embedded-documentation verification failed" }
+
+      # 3. Publish the shippable binary: self-contained single file, native libraries included
+      #    for self-extract, and PublishTrimmed=false. Trimming strips the protobuf/gRPC
+      #    reflection metadata the schema-recovery path depends on, and the failure only shows
+      #    up at runtime as an empty schema dump — so trimming must stay off.
+      - name: Publish (win-x64, self-contained, single file, NOT trimmed)
+        shell: pwsh
+        run: |
+          dotnet publish $env:PROJECT `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishTrimmed=false `
+            -o publish
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+          if (-not (Test-Path publish/LabVIEWMCP.exe)) { throw "publish/LabVIEWMCP.exe missing after publish" }
+
+      # 4. Assemble the staging tree: the source-controlled plugin/ contents, plus the
+      #    published exe at bin/LabVIEWMCP.exe (the path plugin/.mcp.json launches), plus the
+      #    repository's scripts/ contents at bin/scripts/ — NEXT TO the exe, because that is where
+      #    the server and the doc agent look for them (see the note on the copy step below).
+      - name: Assemble staging tree
+        shell: pwsh
+        run: |
+          $staging = 'staging'
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Path $staging | Out-Null
+
+          # plugin/ contents, copied by explicit entry so the dot-prefixed .claude-plugin and
+          # .mcp.json are never dropped by wildcard hidden-file semantics.
+          Copy-Item -Path 'plugin/.claude-plugin' -Destination $staging -Recurse -Force
+          Copy-Item -Path 'plugin/.mcp.json'      -Destination $staging -Force
+          Copy-Item -Path 'plugin/agents'         -Destination $staging -Recurse -Force
+          Copy-Item -Path 'plugin/hooks'          -Destination $staging -Recurse -Force
+
+          # the published exe at the path plugin/.mcp.json launches
+          New-Item -ItemType Directory -Path (Join-Path $staging 'bin') | Out-Null
+          Copy-Item -Path 'publish/LabVIEWMCP.exe' -Destination (Join-Path $staging 'bin/LabVIEWMCP.exe') -Force
+
+          # the repository's scripts/, placed NEXT TO the exe as bin/scripts/. The server locates
+          # its helper scripts as AppContext.BaseDirectory\scripts (StatusTools.ScriptsDirectory,
+          # reported by lvai_status as scriptsDirectory) — i.e. <exe dir>\scripts. The doc agent
+          # reads that same path to find generate_labview_doc.py. If scripts sat at the staging
+          # root instead, scriptsDirectory would be null on a plugin install (no repository for the
+          # documented fallback), breaking lvai_set_vi_icon, lvai_close_vi, lvai_run_vi_and_read_values
+          # and the documentation agent.
+          New-Item -ItemType Directory -Path (Join-Path $staging 'bin/scripts') | Out-Null
+          Copy-Item -Path 'scripts/*' -Destination (Join-Path $staging 'bin/scripts') -Recurse -Force
+
+          Write-Host "Staging tree:"
+          $root = (Resolve-Path $staging).Path
+          Get-ChildItem $staging -Recurse -Force | ForEach-Object { Write-Host "  $($_.FullName.Substring($root.Length))" }
+
+      # 5. The manifest is what makes the zip installable. Fail loudly if it is not at the root.
+      - name: Assert plugin manifest is at the staging root
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'staging/.claude-plugin/plugin.json')) {
+            throw "staging/.claude-plugin/plugin.json is missing — the zip would not be installable"
+          }
+          Write-Host "OK: staging/.claude-plugin/plugin.json present"
+
+      # 6. Smoke-test the packaged binary. LabVIEW is not on the runner, so --help is the limit
+      #    of what is testable — but it exercises the self-extract, which is the failure mode
+      #    single-file publishing actually produces, and asserts a clean exit.
+      - name: Smoke-test the packaged exe (--help, exit 0)
+        shell: pwsh
+        run: |
+          & staging/bin/LabVIEWMCP.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "LabVIEWMCP.exe --help exited $LASTEXITCODE (expected 0)" }
+          Write-Host "OK: --help exited 0"
+
+      # 7. Zip the staging CONTENTS so .claude-plugin/plugin.json sits at the zip root, then
+      #    attach it to the Release under the fixed asset name the marketplace manifest expects.
+      - name: Zip the staging tree
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $src = (Resolve-Path 'staging').Path
+          $dst = Join-Path (Get-Location).Path $env:ASSET_NAME
+          if (Test-Path $dst) { Remove-Item $dst -Force }
+          # CreateFromDirectory with includeBaseDirectory = $false puts the CONTENTS of staging
+          # at the zip root (so .claude-plugin/plugin.json is at the top level) and, unlike
+          # Compress-Archive, includes dot-prefixed entries.
+          [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $src, $dst, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+
+          Write-Host "Zip contents:"
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($dst)
+          $names = $zip.Entries | ForEach-Object { $_.FullName -replace '\\','/' }
+          $names | ForEach-Object { Write-Host "  $_" }
+          $zip.Dispose()
+          if ($names -notcontains '.claude-plugin/plugin.json') {
+            throw ".claude-plugin/plugin.json is not at the zip root"
+          }
+          Write-Host "OK: .claude-plugin/plugin.json is at the zip root"
+
+      - name: Attach the zip to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET_NAME }}
+          fail_on_unmatched_files: true
