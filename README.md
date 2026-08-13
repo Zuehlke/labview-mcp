@@ -38,8 +38,8 @@
 
 ## 🚀 Quickstart with Claude
 
-**You need:** Windows x64, **LabVIEW 2026** running, and
-**[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**.
+**You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
+**LabVIEW 2026** (running before you *use* the tools — it is not needed just to install).
 
 Open a terminal in your LabVIEW project folder and paste these two commands:
 
@@ -301,6 +301,20 @@ are deliberately left out because they block and can write to LabVIEW's UI, and 
 never allow-listed wholesale, which would wave through `lvai_run_vi_as_top_level` and
 `lvai_apply_aixml_to_vi`. Updates are automatic: no version is pinned, so a new Release with
 different bytes is seen as an update.
+
+### Updating the plugin
+
+Because no version is pinned, the archive's own digest is the version, so any release with
+different bytes counts as a new version. Claude Code refreshes marketplaces in the background and
+usually offers the update on its own, but to pull it explicitly:
+
+```bash
+claude plugin marketplace update zuehlke-labview   # refresh the catalogue
+claude plugin update labview-mcp                   # update to the latest release
+```
+
+Check what you have with `claude plugin list`. If an update ever gets stuck, reinstall cleanly with
+`claude plugin uninstall labview-mcp` followed by the two install commands above.
 
 The manual routes below stay valid, and are what you want if you are copying a binary around
 without the plugin, or working inside this repository during development.
@@ -637,9 +651,11 @@ the full tool schema is advertised at runtime over the protocol.
 
 Restart the client, then ask it to call **`lvai_status`**. A healthy setup returns the discovered
 port and a `services` list containing `lvai.LVAI`. Where a client lets you pre-approve tools, the
-18 read-only `lvai_*` tools are the safe set to allow-list; keep the nine mutating tools behind a
-prompt (never allow-list the whole server). Client MCP support and the exact config-file paths
-change often — if a key name here has moved, check your tool's own MCP documentation.
+safe set to allow-list is the **same 18** the plugin's hook allows — the read-only tools minus the
+six `lvai_monitor_*` tools (they block and can write back to LabVIEW's UI). Keep everything else
+behind a prompt, and never allow-list the whole server. That exact list is in
+[section 6](#6-let-the-read-only-tools-run-without-asking). Client MCP support and config-file
+paths change often — if a key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
@@ -747,6 +763,43 @@ Two production bugs were found by writing these and are fixed:
 - `MonitorTools` hung up immediately after writing a reply. Disposing an unfinished call sends
   `RST_STREAM`, so the peer could cancel out **before reading the answer** — the reply was
   silently lost. It now drains the response stream (5 s bound) so the call ends normally.
+
+## Releasing a new version
+
+Releases are cut by pushing a tag; the GitHub Actions workflow
+([`.github/workflows/release.yml`](.github/workflows/release.yml)) does the rest. From an
+up-to-date `main`:
+
+```bash
+git tag v0.9.0        # lowercase v + semver — this is the convention
+git push origin v0.9.0
+```
+
+The tag must be a **lowercase `v`** followed by the version (`v0.9.0`, `v1.2.3`). The workflow
+triggers only on tags matching `v*`, and GitHub matches that **case-sensitively**, so an uppercase
+`V0.9.0` would be silently ignored and no release would be built. (The older `V0.7.0` and `V0.7.8`
+tags predate this workflow.)
+
+On the tag push, the workflow runs on `windows-latest` and:
+
+1. runs the test suite;
+2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
+   install is a binary-only install, so this is the only proof the knowledge tools still answer;
+3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
+4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`);
+5. asserts the plugin manifest sits at the tree root;
+6. smoke-tests the exe with `--help`;
+7. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
+
+Nothing in the marketplace manifest needs editing between releases: it points at
+`releases/latest/download/labview-mcp.zip`, which GitHub redirects to the newest release, and no
+version is pinned, so the archive's digest becomes the plugin version and every release reads as an
+update. Watch a run with `gh run watch --repo Zuehlke/labview-mcp`; once it is green, confirm the
+asset resolves (expect a 302 then 200):
+
+```bash
+curl -IL https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip
+```
 
 ## The AIXML loop
 
