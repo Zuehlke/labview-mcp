@@ -36,6 +36,34 @@
 > say which software this thing talks to.
 
 
+## 🚀 Quickstart with Claude
+
+**You need:** Windows x64, **LabVIEW 2026** running, and
+**[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**.
+
+Open a terminal in your LabVIEW project folder and paste these two commands:
+
+```bash
+claude plugin marketplace add Zuehlke/labview-mcp
+claude plugin install labview-mcp@zuehlke-labview
+```
+
+That's the whole setup — no clone, no build, no config file to edit. Claude Code downloads a
+prebuilt Windows binary from the [latest release](https://github.com/Zuehlke/labview-mcp/releases/latest),
+and you get the MCP server, three LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
+`labview-doc-generator`), and a read-only allow-list so reads run without a prompt while every
+mutating tool still asks first.
+
+Now start LabVIEW 2026, open Claude Code in your project, and try:
+
+> *"Call `lvai_status` to check the LabVIEW connection, then tell me what `C:\path\to\My.vi` does."*
+
+Prefer not to use the plugin, or driving this from a different AI tool (Codex, GitHub Copilot, a
+local LLM)? See **[Connect any MCP client](#connect-any-mcp-client-codex-copilot-local-llms)**
+below. On an older Claude Code (before 2.1.224) the install reports an unsupported source type —
+update, or use the manual route.
+
+
 # LabVIEW MCP
 
 **LabVIEW MCP lets an AI assistant read, write and run LabVIEW code on your machine.**
@@ -528,6 +556,90 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | `Unimplemented` on a tool | That LabVIEW version does not have the RPC. Run `lvai_dump_schema` to see what it really serves. |
 | `DeadlineExceeded` | A cold VI or module load inside LabVIEW. Raise the tool's `timeoutSeconds`. |
 | Protocol/parse errors in the client | Something wrote to stdout. All logging goes to stderr by design; a stray `Console.Write` in the server would corrupt the stream. |
+
+## Connect any MCP client (Codex, Copilot, local LLMs)
+
+LabVIEW MCP is a standard **stdio MCP server** — one Windows executable that speaks the
+[Model Context Protocol](https://modelcontextprotocol.io) over stdin/stdout. Any MCP-capable
+client can drive it: Claude Code and Claude Desktop, Cursor, Windsurf, VS Code / GitHub Copilot,
+the OpenAI Codex CLI, or your own agent wrapped around a local LLM. The plugin route at the top of
+this file is just the Claude-specific convenience wrapper around exactly what follows.
+
+### 1. Get the server binary
+
+You do not need the source. Download **`labview-mcp.zip`** from the
+[latest release](https://github.com/Zuehlke/labview-mcp/releases/latest) and extract it anywhere.
+The server is:
+
+```
+<extracted>\bin\LabVIEWMCP.exe
+```
+
+Keep the `bin\scripts\` folder that ships beside it — the icon, close-VI, run-and-read and
+documentation tools look for their helpers there. (Building from source instead? The exe is at
+`src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe`.)
+
+### 2. Point your client at it
+
+The server takes **no arguments and no environment**. Every snippet below registers the same
+thing — the command `…\bin\LabVIEWMCP.exe` as a stdio server named `labview`. Use the absolute
+path to where you extracted it, and double the backslashes inside JSON.
+
+**Claude Code, without the plugin** — one command, run in your project:
+
+```bash
+claude mcp add labview -s user -- "C:\Tools\labview-mcp\bin\LabVIEWMCP.exe"
+```
+
+**Claude Desktop / Cursor / Windsurf** — and anything else that uses the standard `mcpServers`
+JSON (`claude_desktop_config.json`, `.cursor/mcp.json`, …):
+
+```json
+{
+  "mcpServers": {
+    "labview": {
+      "command": "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+**VS Code / GitHub Copilot** (agent mode, VS Code 1.102+) — create `.vscode/mcp.json` in your
+project:
+
+```json
+{
+  "servers": {
+    "labview": {
+      "type": "stdio",
+      "command": "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe",
+      "args": []
+    }
+  }
+}
+```
+
+**OpenAI Codex CLI** — add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.labview]
+command = "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe"
+args = []
+```
+
+**A local LLM or your own agent** — any host that can spawn an MCP stdio subprocess works: launch
+`bin\LabVIEWMCP.exe` and speak MCP over its stdin/stdout. Nothing in the server is Claude-specific;
+the full tool schema is advertised at runtime over the protocol.
+
+### 3. Verify
+
+Restart the client, then ask it to call **`lvai_status`**. A healthy setup returns the discovered
+port and a `services` list containing `lvai.LVAI`. Where a client lets you pre-approve tools, the
+18 read-only `lvai_*` tools are the safe set to allow-list; keep the nine mutating tools behind a
+prompt (never allow-list the whole server). Client MCP support and the exact config-file paths
+change often — if a key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
