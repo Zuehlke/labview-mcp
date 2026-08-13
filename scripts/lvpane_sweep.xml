@@ -1,0 +1,34 @@
+<VI _name="lvpane_sweep.vi" description="Measure the connector pane of EVERY VI in a list file, in one run, and write the results to a text file. The read-only bulk form of lvpane_probe.vi, and the only way to learn what a pattern's slot geometry is\3A the pattern cannot be set through VI Server, so a pattern can only be measured on a VI that already uses it.&#10;&#10;Input is a text file with one absolute .vi path per line. Output is one record per VI, `pattern|path|Terminal Bounds[] as XML`, records separated by `@@@`. A VI that fails to load contributes a record with pattern 0 rather than stopping the sweep - the error wire is deliberately NOT chained between iterations.&#10;&#10;Driven by RunVIAsTopLevel, which can only set STRING controls, so both paths are built on the diagram.&#10;&#10;MEASURED\3A about 200 ms per VI over vi.lib, and 500 VIs of the examples tree took some 18 minutes - the cost is loading each VI, so a heavy tree is slower per VI rather than bigger. While it runs the AI gRPC service does not answer at all\3A other calls fail port discovery with DeadlineExceeded on the port that just worked. That is LabVIEW being busy, not the service being down, and the sweep itself finishes and writes its file regardless of the client-side timeout on the call that started it.&#10;&#10;KEEP THE BATCHES SMALL - 250 VIs, and harvest after each. Opening a VI reference LOADS that VI and closing the reference does not unload it, so a sweep accumulates VIs for as long as LabVIEW lives. Measured\3A 40 VIs took 8 s, 254 took 90 s, 500 took 18 minutes, and a second 500 killed LabVIEW outright about 12 minutes in, with roughly 1100 VIs loaded and nothing written - a batch that dies takes its whole result with it, because the file is written once at the end.">
+  <Control _name="List Path" conIdx="0" connection="required" description="Absolute path of a text file holding one .vi path per line." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="Out Path" conIdx="5" connection="required" description="Absolute path of the text file the records are written to. An existing file is replaced." outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+  <Constant _name="All Lines" outputs="value:14.value" type="int32" uid="14" uid_parent="root" value="-1"/>
+  <Constant _name="Separator" outputs="value:16.value" type="string" uid="16" uid_parent="root" value="|"/>
+  <Constant _name="Record End" outputs="value:18.value" type="string" uid="18" uid_parent="root" value="@@@"/>
+  <Constant _name="Empty" outputs="value:20.value" type="string" uid="20" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:22.path" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:24.path" uid="24" uid_parent="root"/>
+  <Node _name="Read from Text File" readLines="true" inputs="file (use dialog):22.path,count:14.value" outputs="refnum out:,text:30.text,cancelled:,error out:30.error out" uid="30" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:30.text" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:16.value" outputs="value:102.value" uid="102" uid_parent="100"/>
+    <Tunnel _id="In3" inputs="value:18.value" outputs="value:103.value" uid="103" uid_parent="100"/>
+    <ShiftReg uid="110" uid_parent="100">
+      <Left inputs="value:20.value" outputs="value:160.string" uid="111" uid_parent="110"/>
+      <Right inputs="value:160.concatenated string" outputs="value:" uid="112" uid_parent="110"/>
+    </ShiftReg>
+    <Node _name="String To Path" inputs="string:101.value" outputs="path:120.path" uid="120" uid_parent="100"/>
+    <Node _name="Open VI Reference" inputs="vi path:120.path" outputs="vi reference:130.vi reference,error out:130.error out" uid="130" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:130.vi reference,error in (no error):130.error out" outputs="Connector Pane\3AReference:132.cp,reference out:,error out:132.error out" uid="132" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+Pattern,read+Terminal Bounds[]" type="{LV.ConnectorPane}" inputs="reference:132.cp,error in (no error):132.error out" outputs="Pattern:134.Pattern,Terminal Bounds[]:134.Bounds,reference out:,error out:134.error out" uid="134" uid_parent="100"/>
+    <Node _name="Close Reference" inputs="reference:130.vi reference,error in (no error):134.error out" outputs="error out:" uid="136" uid_parent="100"/>
+    <Node _name="Number To Decimal String" inputs="number:134.Pattern" outputs="decimal integer string:140.decimal integer string" uid="140" uid_parent="100"/>
+    <Node _name="Flatten To XML" inputs="anything:134.Bounds" outputs="xml string:142.xml string" uid="142" uid_parent="100"/>
+    <Node _name="Concatenate Strings" inputs="string:160.string,string:140.decimal integer string,string:102.value,string:101.value,string:102.value,string:142.xml string,string:103.value" outputs="concatenated string:160.concatenated string" uid="160" uid_parent="100"/>
+    <Tunnel _id="Out1" inputs="value:160.concatenated string" outputs="value:170.value" uid="170" uid_parent="100"/>
+  </Structure>
+  <Node _name="Write to Text File" inputs="file (use dialog):24.path,text:170.value,error in:30.error out" outputs="refnum out:,cancelled:,error out:180.error out" uid="180" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:180.error out" outputs="status:190.status,code:190.code,source:190.source" uid="190" uid_parent="root"/>
+  <Indicator _name="status" conIdx="4" connection="recommended" inputs="value:190.status" type="bool" uid="200" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="6" connection="recommended" inputs="value:190.code" type="int32" uid="201" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:190.source" type="string" uid="202" uid_parent="root" value=""/>
+</VI>

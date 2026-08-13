@@ -111,6 +111,7 @@ dotnet run --project src/LabVIEWMCP -- --dump-schema schema.txt
 | `--watch <monitor>` | wait for inbound LabVIEW events, minutes at a time |
 | `--diagram <vi>` | save the VI's rendered block diagram as a PNG |
 | `--corpus [dir]` | round-trip every VI in a tree through AIXML (default: the examples tree) |
+| `--panes <files>` | build the connector pane pattern table from one or more `scripts/lvpane_sweep.xml` outputs (no LabVIEW needed) |
 | `--ensure-labview` | start LabVIEW and wait for its gRPC service |
 | `--port <n>` | pin the gRPC port instead of discovering it |
 | `--vi <path>` | VI used by `--selftest` (default: a shipped LabVIEW example) |
@@ -118,7 +119,7 @@ dotnet run --project src/LabVIEWMCP -- --dump-schema schema.txt
 | `--timeout <s>` | how long `--watch` and `--ensure-labview` wait (default 300); the per-VI budget for `--corpus` (default 90) |
 | `--limit <n>` | stop `--corpus` after n VIs |
 | `--skip <a,b>` | path substrings `--corpus` must not touch — still listed in the results |
-| `--out <path>` | output file for `--diagram`, output directory for `--corpus` |
+| `--out <path>` | output file for `--diagram` and `--panes`, output directory for `--corpus` |
 | `--help` | print the same list, from `CommandLine.Usage` |
 
 `LABVIEW_GRPC_PORT` works instead of `--port`.
@@ -553,6 +554,7 @@ resources rather than call tools.
 | `lvai_lvlib_reference` | — (embedded [.lvlib/.lvclass reference](docs/lvlib-lvclass-structure.md)) |
 | `lvai_vi_server_reference` | — (embedded [VI Server catalogue](docs/vi-server-reference.md), queried row-wise) |
 | `lvai_palette_index` | — (scans the installed LabVIEW's `menus\*.mnu`) |
+| `lvai_connector_pane` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel` + `ConvertVIToAIXML`, plus the embedded [pattern table](docs/connector-pane-patterns.tsv)) |
 | `lvai_get_application_configuration` | `GetApplicationConfiguration` |
 | `lvai_describe_vi` | `GetDescribeVIPromptInfo` |
 | `lvai_describe_project` | `GetDescribeProjectPromptInfo` |

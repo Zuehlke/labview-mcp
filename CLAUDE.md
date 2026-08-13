@@ -48,11 +48,19 @@ of reading and it is the canonical shape.
 median of 331 ms, a p99 of 24 s and a worst case of 93 s, measured over 1677 VIs — and the time
 goes on LabVIEW loading the VI, not on writing XML, so a big export is not a slow one (size and
 duration correlate at r = 0.002). `lvai_convert_vi_to_aixml` caches exports of **installation**
-VIs on disk under `%LOCALAPPDATA%\LabVIEWMCP\cache\aixml`, which is the examples tree, `vi.lib`,
+VIs on disk under **`%USERPROFILE%\.labviewmcp\cache\aixml`** — the examples tree, `vi.lib`,
 `user.lib` and every LVAddon. Your own code is deliberately never cached: an export depends on the
 VI's subVIs too, and those change behind a caller whose own timestamp never moves. Every answer
 says which happened in `fromCache` and `cacheNote`; `refresh` re-exports. §10 of
-`lvai_aixml_reference` has the rest. The practical consequence for a session: browsing several
+`lvai_aixml_reference` has the rest.
+
+**The cache is NOT under `%LOCALAPPDATA%`** — this line said so until 2026-08-13 and it sent that
+session to an empty folder, from which it concluded "no AIXML cache on this machine" and stopped
+using it while 2 382 exports sat in the real location. It moved because a server launched by the
+Claude desktop app inherits that app's filesystem redirection, which turns anything under
+`%LOCALAPPDATA%` into the package's private store; `%USERPROFILE%` is not redirected, so every host
+now sees one cache. `LABVIEWMCP_CACHE_DIR` relocates it, and `CacheDirectory.Root` is the authority —
+ask the code, not a document, if the two ever disagree again. The practical consequence for a session: browsing several
 examples to find the right shape is not expensive, so browse.
 
 **Triaging several candidates is one call, not one per candidate.** `lvai_convert_vis_to_aixml`
@@ -192,6 +200,43 @@ This clause used to say "write the result to a file and inspect that". That work
 about eight minutes of hand-built VI Server harness per VI — measured, twice, before the harness
 was productised. Use the tool; write to a file only for something it cannot reach.
 
+**Ask `lvai_connector_pane` where the terminals go. Never assume, and do not carry a map in your
+head.** `conIdx` is a *position*, and which position depends on the pane pattern. Generated VIs have
+come out both 4815 (12 terminals, bottom-left is `8`) and 4833 (16 terminals, bottom-left is `11`),
+and the same number means opposite edges in the two.
+
+**Which pattern a NEW VI gets is a station setting** — `DefaultConPane` in the `LabVIEW.ini` beside
+`LabVIEW.exe`, `"4833"` here against LabVIEW's factory `4815`. **That file is read-only to us: read
+it, quote it, never write it**, and if something in it would have to change, say so and let the user
+do it. So it is knowable in advance, and the
+call with **no argument** reads it and prints the four `conIdx` values to write. Do that first, author
+the AIXML with those numbers, generate — then call with `viPath` to confirm what you actually got.
+For an **existing** VI only `viPath` is honest: it carries whatever pane it was given, on whatever
+machine, possibly rotated.
+
+It answers three ways: no argument for the station default plus all 36 patterns, `viPath` to measure
+and review one VI, `pattern` for one pattern's map without LabVIEW. **32 of the 36 have measured
+geometry** — the pattern property is read-only in VI Server, so the rest need a VI that already uses
+them; the answer says which are missing instead of guessing. Re-harvest with
+`scripts/lvpane_sweep.xml` plus `LabVIEWMCP --panes <sweep files>` after a LabVIEW upgrade.
+
+Four revisions of this rule have now been wrong — "always 4815", "the highest index decides", "it
+cannot be predicted", each written from a real measurement that did not generalise. The setting was
+in a text file the whole time. When a behaviour looks unpredictable, check whether it is configured
+before concluding that it is arbitrary.
+
+**Prefer `viPath` over `pattern`.** A pane can be rotated or flipped, so a pattern id does not pin
+the orientation: 8 of the 32 turned up in two orientations across 1 449 VIs. The `pattern` answer is
+the majority one and marks the ambiguity; only a measurement of the VI in hand is certain.
+
+The failure this prevents is not subtle and it has now shipped twice: `DaqReadAndTDMS.vi` was
+generated on 2026-08-13 with the set both `docs/aixml-reference.md` and the generator agent
+prescribed as a constant — and landed two of its three inputs on the *output* edge with `error out`
+in the *top-left* corner. Neither validation nor a run can see this; the user saw it immediately.
+Beware both renders: `Print.VI To HTML` and LabVIEW's Context Help draw inputs left and outputs
+right whatever the pane really says. Context Help does print the pattern id after the path, which is
+the quickest tell that a pane is not the one you assumed.
+
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
@@ -241,6 +286,7 @@ literally it argued away 600 usable palette VIs.
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
+| Where do a VI's own terminals sit on the pane? | `docs/aixml-reference.md` §2, `docs/connector-pane-patterns.tsv` | `lvai_connector_pane` |
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |

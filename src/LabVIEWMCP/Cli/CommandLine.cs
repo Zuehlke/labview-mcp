@@ -25,6 +25,8 @@ internal static class CommandLine
         ["--corpus"] = true, // the root is optional; the value test below handles that
         ["--examples"] = true,
         ["--palette"] = true,
+        ["--panes"] = true,
+        ["--pane"] = true,
         ["--include-specialised"] = false,
         ["--refresh"] = false,
         ["--port"] = true,
@@ -54,6 +56,11 @@ internal static class CommandLine
           LabVIEWMCP --examples [query]     search the shipping examples (no LabVIEW needed)
           LabVIEWMCP --palette [query]      search the palette-reachable VIs (no LabVIEW needed)
           LabVIEWMCP --corpus [dir]         round-trip every VI in a tree through AIXML
+          LabVIEWMCP --pane [vi]            measure one VI's connector pane and check it against
+                                            NI's style guide; with no VI, print the pattern a new
+                                            VI gets here (LabVIEW.ini DefaultConPane) and the table
+          LabVIEWMCP --panes <files>        build the connector pane pattern table from one or
+                                            more scripts/lvpane_sweep.xml outputs (no LabVIEW)
           LabVIEWMCP --ensure-labview       start LabVIEW and wait for its gRPC service
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
@@ -71,7 +78,7 @@ internal static class CommandLine
                             0 disables). Nothing in the lvai interface closes a project, so
                             this is the only way to give back what the sweep opens.
                             DESTRUCTIVE: it kills every LabVIEW on the machine.
-          --out <path>      output file for --diagram, output directory for --corpus
+          --out <path>      output file for --diagram and --panes, output directory for --corpus
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port. The self-test needs LabVIEW 2026 running

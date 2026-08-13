@@ -1,0 +1,18 @@
+<VI _name="lvpane_probe.vi" description="Read one VI's connector pane pattern, its terminal count and its Terminal Bounds[] out as text, without changing the VI. Measurement helper\3A a terminal's AIXML conIdx is an index into Terminal Bounds[], so this is the only thing that says where a terminal actually SITS on the pane. Driven by RunVIAsTopLevel, which can only set STRING controls, so the path is built on the diagram.">
+  <Control _name="VI Path" conIdx="1" connection="required" description="Absolute path of the .vi whose connector pane is measured." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:12.path" uid="12" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:12.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:20.vi reference,error in (no error):20.error out" outputs="Connector Pane\3AReference:22.cp,reference out:,error out:22.error out" uid="22" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Pattern,read+Number of Connection Terminals,read+Terminal Bounds[]" type="{LV.ConnectorPane}" inputs="reference:22.cp,error in (no error):22.error out" outputs="Pattern:24.Pattern,Number of Connection Terminals:24.NumTerms,Terminal Bounds[]:24.Bounds,reference out:,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:24.Bounds" outputs="xml string:26.xml string" uid="26" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:24.Pattern" outputs="decimal integer string:27.decimal integer string" uid="27" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:24.NumTerms" outputs="decimal integer string:28.decimal integer string" uid="28" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.vi reference,error in (no error):24.error out" outputs="error out:34.error out" uid="34" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:34.error out" outputs="status:60.status,code:60.code,source:60.source" uid="60" uid_parent="root"/>
+  <Indicator _name="pattern" conIdx="0" connection="recommended" description="The connector pane pattern id." inputs="value:27.decimal integer string" type="string" uid="50" uid_parent="root" value=""/>
+  <Indicator _name="terminals" conIdx="1" connection="recommended" description="Number of connection terminals in that pattern." inputs="value:28.decimal integer string" type="string" uid="51" uid_parent="root" value=""/>
+  <Indicator _name="bounds" conIdx="2" connection="recommended" description="Terminal Bounds[] flattened to XML - one rectangle per conIdx, in conIdx order." inputs="value:26.xml string" type="string" uid="52" uid_parent="root" value=""/>
+  <Indicator _name="status" conIdx="4" connection="recommended" inputs="value:60.status" type="bool" uid="53" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="5" connection="recommended" inputs="value:60.code" type="int32" uid="54" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="6" connection="recommended" inputs="value:60.source" type="string" uid="55" uid_parent="root" value=""/>
+</VI>
