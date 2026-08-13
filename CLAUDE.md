@@ -113,6 +113,32 @@ surprising (`Increment` → `x+1`, but `Greater?` → `x > y?` with spaces). The
 export a VI that already uses the node and copy its exact shape. `lvai_vi_server_reference` covers
 Invoke and Property nodes; for primitives, export an example.
 
+**And look them up in one call, not one per node.** `lvai_aixml_reference` takes `node=` as a
+comma-separated list; so does `query=` on `lvai_vi_server_reference`. This is not a micro-optimisation
+— terms match by substring, so single lookups return the same passage over and over. Generating
+`SignalLoader_13.vi` cost 18 separate lookups where 12 of the terms were known the moment the
+diagram was sketched, and the 2D-indexing block came back four times. Batched: **21 973 characters
+over 18 calls became 13 427 over one, 38.9 % less, with every terminal name still present.** Sketch
+the diagram, list its nodes, one call — then a second small batch for what only the validator
+reveals, such as `To Time Stamp` for `Build Waveform`'s `t0`.
+
+A cache was the wrong instinct here and is worth remembering as such: no two of those 18 calls had
+the same argument, so nothing keyed on the input would have saved a single one. The waste was
+duplicated *output*.
+
+**The two fixes save different things, and it is worth not confusing them.** A cache was added as
+well — the embedded documents and each document's line index are now built once per process instead
+of once per call — and that is where the *server-side* time went: the 18-term workload dropped from
+**23.3 ms to 0.8 ms**, a single lookup from 0.841 ms to 0.039 ms. But 23 ms was never the problem.
+Batching's saving is **round trips**, and a round trip is a model turn: measured in one session,
+three `lvai_*` calls took 30.4 s of wall clock while LabVIEW's own share was 74 ms for the run and
+under a second for validate plus convert — about **7 s per turn**, all of it latency. So the 17
+turns a batch removes are worth roughly two minutes, where the server-side gain is worth
+milliseconds. Optimise the number of calls, not the cost of one.
+
+For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
+and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
+
 **A mode attribute can change a node's output type, and setting the mode is not enough.**
 `Read from Text File` with `readLines="true"` still returns a scalar string until `count` is
 wired. Copy a variant that is already in the state you want.
@@ -224,6 +250,31 @@ byte-verified on every build, so a binary-only install answers the same question
 on another machine" in the README. `docs/example-corpus.md` is deliberately not among them: it
 records how the example data is stored on disk, which the index reads for itself, so nothing has
 to hand the file out at run time.
+
+## The agent definitions
+
+The three `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+of them needs a client restart before it can be spawned.
+
+**A definition whose YAML frontmatter does not parse is skipped in silence, and the error names the
+wrong cause.** What you get is `Agent type 'labview-vi-generator' not found`, which reads as "the
+file is missing" and sends you looking at paths — while all three files sat in the right directory
+with valid content. The fault was one character sequence in the `description:` value: an unquoted
+YAML plain scalar **cannot contain `: `**, colon followed by space, and all three descriptions had
+one (`IMPORTANT for the orchestrator: pass in …`). Nothing warns, and the agent simply does not
+appear in the roster.
+
+So **keep `description:` a folded block scalar** — `description: >-`, with the text indented two
+spaces on the next line. Inside a block scalar, colons, quotes and `#` are all literal, which
+matters here because these descriptions carry both `"` and apostrophes and would need escaping in
+either quoting style. Measured 2026-08-13: with the block scalar all three agents registered on the
+next restart; before it none of them did.
+
+The fallback while they were invisible was `general-purpose` with the definition handed over as a
+task prompt. That works, and it is worth knowing it works — but it is not free: the same VI took
+5 min 07 s and 5 min 43 s that way against **4 min 06 s** as a registered agent, because a
+registered definition is the subagent's system prompt instead of a 31 kB file it has to read for
+itself first.
 
 ## Build and test
 

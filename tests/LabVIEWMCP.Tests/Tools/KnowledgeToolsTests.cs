@@ -8,7 +8,7 @@ namespace LabVIEWMCP.Tests.Tools;
 /// and the reviewable markdown cannot drift apart. The first test here is the one that
 /// actually guards that promise.
 /// </summary>
-public class KnowledgeToolsTests
+public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public void EmbeddedReferenceIsByteIdenticalToTheFileInDocs()
@@ -318,6 +318,179 @@ public class KnowledgeToolsTests
 
         Assert.StartsWith("", result);
         Assert.Contains("passage(s) in the AIXML reference mention", result);
+    }
+
+    // ---------- batched lookup ----------
+
+    /// <summary>
+    /// The reason batching exists. Generating one VI took 18 single-term lookups, and because a
+    /// term is matched by substring the same text came back repeatedly - the 2D-indexing code
+    /// block answered `Index Array`, `disabled index` and `Array Subset` alike. A batch prints
+    /// each passage once.
+    /// </summary>
+    [Fact]
+    public void APassageSharedByTwoTermsIsPrintedOnce()
+    {
+        var result = KnowledgeTools.LookupMany(Doc, ["Index Array", "disabled index"], 40);
+
+        Assert.Equal(1, Occurrences(result, "disabled index (col)"));
+    }
+
+    [Fact]
+    public void EveryTermGetsItsOwnBlock()
+    {
+        var result = KnowledgeTools.LookupMany(Doc, ["Build Waveform", "Index Array"], 40);
+
+        Assert.Contains("── Build Waveform ──", result);
+        Assert.Contains("── Index Array ──", result);
+        Assert.Contains("2 terms looked up", result);
+    }
+
+    /// <summary>
+    /// Silence would read as "not documented", which is the exact failure the whole tool exists
+    /// to prevent. A term whose passages all appeared earlier has to say so.
+    /// </summary>
+    [Fact]
+    public void ATermWhoseHitsWereAllShownSaysSoInsteadOfLookingLikeAMiss()
+    {
+        var result = KnowledgeTools.LookupMany(Doc, ["disabled index", "index (row)"], 40);
+
+        Assert.Contains("already shown above", result);
+        Assert.DoesNotContain("Nothing in the AIXML reference mentions \"index (row)\"", result);
+    }
+
+    [Fact]
+    public void AMissInsideABatchIsStillReportedAsAMiss()
+    {
+        var result = KnowledgeTools.LookupMany(Doc, ["Build Waveform", "Nonexistent Node"], 40);
+
+        Assert.Contains("`output waveform`", result);
+        Assert.Contains("Nothing in the AIXML reference mentions \"Nonexistent Node\"", result);
+    }
+
+    /// <summary>
+    /// One term must behave exactly as it did before batching existed - no batch header, no
+    /// term rule - or every existing caller's output changes for nothing.
+    /// </summary>
+    [Fact]
+    public void ASingleTermAnswerIsUnchangedByBatching()
+    {
+        var direct = KnowledgeTools.Lookup(Doc, "Build Waveform", 40);
+        var viaMany = KnowledgeTools.LookupMany(Doc, ["Build Waveform"], 40);
+
+        Assert.Equal(direct, viaMany);
+        Assert.DoesNotContain("terms looked up", direct);
+        Assert.DoesNotContain("──", direct);
+    }
+
+    [Fact]
+    public void DuplicateAndBlankTermsCollapse()
+    {
+        var result = KnowledgeTools.LookupMany(Doc, ["Build Waveform", "build waveform", "  "], 40);
+
+        // one distinct term left, so the single-term format applies
+        Assert.DoesNotContain("terms looked up", result);
+    }
+
+    [Theory]
+    [InlineData("Select,Index Array,Not", 3)]
+    [InlineData("Select, Index Array , Not ", 3)]
+    [InlineData("Select\nIndex Array\nNot", 3)]
+    [InlineData("Build Waveform", 1)]
+    [InlineData(",,Select,,", 1)]
+    public void ParseTermsSplitsOnCommasAndNewlines(string raw, int expected) =>
+        Assert.Equal(expected, KnowledgeTools.ParseTerms(raw).Count);
+
+    /// <summary>
+    /// A comma is unambiguously a separator here: node and terminal names in these documents
+    /// carry none - AIXML's `\2C` escape exists precisely because a raw comma separates entries.
+    /// </summary>
+    [Fact]
+    public void NodeAcceptsACommaSeparatedListAgainstTheRealDocument()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "Build Waveform,String To Path,Subtract");
+
+        Assert.Contains("3 terms looked up", result);
+        Assert.Contains("── String To Path ──", result);
+        Assert.Contains("`x-y`", result);
+    }
+
+    /// <summary>
+    /// The real payoff, on the real document and on the real workload: these are the exact 18
+    /// terms one VI generation looked up one at a time. One batched call must cost materially
+    /// less text, because the shared passages and the repeated table headers are printed once.
+    /// The measurement is printed so the number in the docs can be re-checked rather than
+    /// trusted.
+    /// </summary>
+    [Fact]
+    public void ABatchIsSmallerThanTheSameTermsAskedSeparately()
+    {
+        string[] terms = [
+            "Build Waveform", "Index Array", "Array Size", "disabled index", "Unbundle By Name",
+            "Select", "String To Path", "waveform", "Empty String", "Greater?", "Subtract",
+            ".and.", ".not. x", "Match Pattern", "Array Subset", "Read Delimited Spreadsheet",
+            "Time Stamp", "Not An Error"];
+
+        var separately = terms.Sum(t => KnowledgeTools.AixmlReference(node: t).Length);
+        var batched = KnowledgeTools.AixmlReference(node: string.Join(',', terms)).Length;
+
+        output.WriteLine($"{terms.Length} terms");
+        output.WriteLine($"  one at a time : {separately,7} chars over {terms.Length} round trips");
+        output.WriteLine($"  one batch     : {batched,7} chars over 1 round trip");
+        output.WriteLine($"  saved         : {separately - batched,7} chars " +
+                         $"({100.0 - 100.0 * batched / separately:F1}%)");
+
+        Assert.True(batched < separately,
+            $"batched {batched} chars is not smaller than {separately} asked one at a time");
+    }
+
+    /// <summary>
+    /// Cheaper is worthless if it stops answering. The per-term budget in a batch is small, so
+    /// this pins the actual facts that run needed: the terminal names it would otherwise have
+    /// guessed. Every string here is one a guess got wrong or nearly wrong.
+    /// </summary>
+    [Fact]
+    public void ALargeBatchStillCarriesEveryTerminalNameItWasAskedFor()
+    {
+        var result = KnowledgeTools.AixmlReference(node:
+            "Build Waveform,Index Array,Array Size,Unbundle By Name,Select,String To Path," +
+            "Empty String,Greater?,Subtract,.and.,.not. x,Array Subset,Time Stamp");
+
+        Assert.Contains("output waveform", result);      // Build Waveform
+        Assert.Contains("size(s)", result);              // Array Size, not 'size'
+        Assert.Contains("s? t\\3Af", result);            // Select, with the escaped colon
+        Assert.Contains("x > y?", result);               // Greater?, with the spaces
+        Assert.Contains("x-y", result);                  // Subtract, without them
+        Assert.Contains("x .and. y?", result);           // And
+        Assert.Contains(".not. x?", result);             // Not
+        Assert.Contains("empty?", result);               // Empty String/Path?
+        Assert.Contains("subarray", result);             // Array Subset
+        Assert.Contains("To Time Stamp", result);        // the coercion Build Waveform's t0 needs
+    }
+
+    // ---------- caching ----------
+
+    /// <summary>
+    /// Every document is an embedded resource, so it cannot change while the process lives -
+    /// which makes reference equality the right assertion, and no invalidation the right design.
+    /// Before this, every reference call re-read its resource out of the assembly and re-split it.
+    /// </summary>
+    [Fact]
+    public void TheEmbeddedDocumentIsReadOncePerProcess() =>
+        Assert.Same(KnowledgeTools.Load(), KnowledgeTools.Load());
+
+    [Fact]
+    public void SectionsAreSplitOncePerProcess() =>
+        Assert.Same(KnowledgeTools.Sections("aixml-reference.md"),
+                    KnowledgeTools.Sections("aixml-reference.md"));
+
+    private static int Occurrences(string haystack, string needle)
+    {
+        var count = 0;
+        for (var i = haystack.IndexOf(needle, StringComparison.Ordinal); i >= 0;
+             i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal))
+            count++;
+        return count;
     }
 
     /// <summary>

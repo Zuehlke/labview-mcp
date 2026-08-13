@@ -301,10 +301,17 @@ internal sealed class AixmlTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            // Timed for the same reason the batch export is: without it the only way to find out
+            // what a step costs is to bracket the call from outside, which in an agent loop
+            // measures model latency - about 7 s per turn - rather than LabVIEW. Measured that
+            // way, three calls read 30.4 s while the work was well under a second.
+            var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
                 c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aiXmlFilePath },
                     deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            return Json.Message(response);
+            stopwatch.Stop();
+            return Json.Message(response,
+                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
         });
 
     [McpServerTool(Name = "lvai_convert_aixml_to_vi", Destructive = true, OpenWorld = true,
@@ -331,6 +338,11 @@ internal sealed class AixmlTools(LvaiConnection connection)
         await Rpc.GuardAsync(async () =>
         {
             var existedBefore = File.Exists(viPath);
+
+            // This is the number people actually ask for - "how long does generating a VI take" -
+            // and it is not obtainable from outside the server: bracketing the call in an agent
+            // loop measures the turn, not the generation.
+            var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
                 c.ConvertAIXMLToVIAsync(new ConvertAIXMLToVIRequest
                 {
@@ -338,12 +350,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
                     ViPath = viPath,
                     OpenVI = openVI,
                 }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            stopwatch.Stop();
 
             return Json.Message(response,
                 ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
                 ("viExisted", JsonValue.Create(existedBefore)),
                 ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
-                ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)));
+                ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
         });
 
     [McpServerTool(Name = "lvai_apply_aixml_to_vi", Destructive = true, OpenWorld = true,
