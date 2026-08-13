@@ -36,6 +36,53 @@
 > say which software this thing talks to.
 
 
+**Contents**
+
+- [Quickstart with Claude](#-quickstart-with-claude)
+- [LabVIEW MCP](#labview-mcp)
+  - [Requirements](#requirements)
+  - [Build and try it](#build-and-try-it)
+  - [Install as a Claude Code plugin](#install-as-a-claude-code-plugin)
+  - [Register with Claude Code (manual)](#register-with-claude-code-manual)
+  - [Connect any MCP client (Codex, Copilot, local LLMs)](#connect-any-mcp-client-codex-copilot-local-llms)
+  - [Tools](#tools)
+  - [Tests](#tests)
+  - [Releasing a new version](#releasing-a-new-version)
+  - [The AIXML loop](#the-aixml-loop)
+  - [Creating a project](#creating-a-project)
+  - [Caveats](#caveats)
+  - [Layout](#layout)
+  - [Where the interface comes from](#where-the-interface-comes-from)
+
+
+## Quickstart with Claude
+
+**You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
+**LabVIEW 2026** (running before you *use* the tools — it is not needed just to install).
+
+Open a terminal in your LabVIEW project folder and paste these two commands:
+
+```bash
+claude plugin marketplace add Zuehlke/labview-mcp
+claude plugin install labview-mcp@zuehlke-labview
+```
+
+That's the whole setup — no clone, no build, no config file to edit. Claude Code downloads a
+prebuilt Windows binary from the [latest release](https://github.com/Zuehlke/labview-mcp/releases/latest),
+and you get the MCP server, three LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
+`labview-doc-generator`), and a read-only allow-list so reads run without a prompt while every
+mutating tool still asks first.
+
+Now start LabVIEW 2026, open Claude Code in your project, and try:
+
+> *"Call `lvai_status` to check the LabVIEW connection, then tell me what `C:\path\to\My.vi` does."*
+
+Prefer not to use the plugin, or driving this from a different AI tool (Codex, GitHub Copilot, a
+local LLM)? See **[Connect any MCP client](#connect-any-mcp-client-codex-copilot-local-llms)**
+below. On an older Claude Code (before 2.1.224) the install reports an unsupported source type —
+update, or use the manual route.
+
+
 # LabVIEW MCP
 
 **LabVIEW MCP lets an AI assistant read, write and run LabVIEW code on your machine.**
@@ -273,6 +320,20 @@ are deliberately left out because they block and can write to LabVIEW's UI, and 
 never allow-listed wholesale, which would wave through `lvai_run_vi_as_top_level` and
 `lvai_apply_aixml_to_vi`. Updates are automatic: no version is pinned, so a new Release with
 different bytes is seen as an update.
+
+### Updating the plugin
+
+Because no version is pinned, the archive's own digest is the version, so any release with
+different bytes counts as a new version. Claude Code refreshes marketplaces in the background and
+usually offers the update on its own, but to pull it explicitly:
+
+```bash
+claude plugin marketplace update zuehlke-labview   # refresh the catalogue
+claude plugin update labview-mcp                   # update to the latest release
+```
+
+Check what you have with `claude plugin list`. If an update ever gets stuck, reinstall cleanly with
+`claude plugin uninstall labview-mcp` followed by the two install commands above.
 
 The manual routes below stay valid, and are what you want if you are copying a binary around
 without the plugin, or working inside this repository during development.
@@ -529,6 +590,92 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | `DeadlineExceeded` | A cold VI or module load inside LabVIEW. Raise the tool's `timeoutSeconds`. |
 | Protocol/parse errors in the client | Something wrote to stdout. All logging goes to stderr by design; a stray `Console.Write` in the server would corrupt the stream. |
 
+## Connect any MCP client (Codex, Copilot, local LLMs)
+
+LabVIEW MCP is a standard **stdio MCP server** — one Windows executable that speaks the
+[Model Context Protocol](https://modelcontextprotocol.io) over stdin/stdout. Any MCP-capable
+client can drive it: Claude Code and Claude Desktop, Cursor, Windsurf, VS Code / GitHub Copilot,
+the OpenAI Codex CLI, or your own agent wrapped around a local LLM. The plugin route at the top of
+this file is just the Claude-specific convenience wrapper around exactly what follows.
+
+### 1. Get the server binary
+
+You do not need the source. Download **`labview-mcp.zip`** from the
+[latest release](https://github.com/Zuehlke/labview-mcp/releases/latest) and extract it anywhere.
+The server is:
+
+```
+<extracted>\bin\LabVIEWMCP.exe
+```
+
+Keep the `bin\scripts\` folder that ships beside it — the icon, close-VI, run-and-read and
+documentation tools look for their helpers there. (Building from source instead? The exe is at
+`src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe`.)
+
+### 2. Point your client at it
+
+The server takes **no arguments and no environment**. Every snippet below registers the same
+thing — the command `…\bin\LabVIEWMCP.exe` as a stdio server named `labview`. Use the absolute
+path to where you extracted it, and double the backslashes: both JSON and TOML basic strings (the
+`config.toml` below included) treat `\` as an escape.
+
+**Claude Code, without the plugin** — one command, run in your project:
+
+```bash
+claude mcp add labview -s user -- "C:\Tools\labview-mcp\bin\LabVIEWMCP.exe"
+```
+
+**Claude Desktop / Cursor / Windsurf** — and anything else that uses the standard `mcpServers`
+JSON (`claude_desktop_config.json`, `.cursor/mcp.json`, …):
+
+```json
+{
+  "mcpServers": {
+    "labview": {
+      "command": "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+**VS Code / GitHub Copilot** (agent mode, VS Code 1.102+) — create `.vscode/mcp.json` in your
+project:
+
+```json
+{
+  "servers": {
+    "labview": {
+      "type": "stdio",
+      "command": "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe",
+      "args": []
+    }
+  }
+}
+```
+
+**OpenAI Codex CLI** — add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.labview]
+command = "C:\\Tools\\labview-mcp\\bin\\LabVIEWMCP.exe"
+args = []
+```
+
+**A local LLM or your own agent** — any host that can spawn an MCP stdio subprocess works: launch
+`bin\LabVIEWMCP.exe` and speak MCP over its stdin/stdout. Nothing in the server is Claude-specific;
+the full tool schema is advertised at runtime over the protocol.
+
+### 3. Verify
+
+Restart the client, then ask it to call **`lvai_status`**. A healthy setup returns the discovered
+port and a `services` list containing `lvai.LVAI`. Where a client lets you pre-approve tools,
+allow-list the **same 18 passive tools** the plugin's hook allows — the exact list is in
+[section 6](#6-let-the-read-only-tools-run-without-asking). Keep everything else behind a prompt,
+and never allow-list the whole server. Client MCP support and config-file paths change often — if a
+key name here has moved, check your tool's own MCP documentation.
+
 ## Tools
 
 **34 tools over 23 RPCs.** Eleven are additions that map to no RPC: `lvai_status`,
@@ -635,6 +782,43 @@ Two production bugs were found by writing these and are fixed:
 - `MonitorTools` hung up immediately after writing a reply. Disposing an unfinished call sends
   `RST_STREAM`, so the peer could cancel out **before reading the answer** — the reply was
   silently lost. It now drains the response stream (5 s bound) so the call ends normally.
+
+## Releasing a new version
+
+Releases are cut by pushing a tag; the GitHub Actions workflow
+([`.github/workflows/release.yml`](.github/workflows/release.yml)) does the rest. From an
+up-to-date `main`:
+
+```bash
+git tag v0.9.0        # lowercase v + semver — this is the convention
+git push origin v0.9.0
+```
+
+The tag must be a **lowercase `v`** followed by the version (`v0.9.0`, `v1.2.3`). The workflow
+triggers only on tags matching `v*`, and GitHub matches that **case-sensitively**, so an uppercase
+`V0.9.0` would be silently ignored and no release would be built. (The older `V0.7.0` and `V0.7.8`
+tags predate this workflow.)
+
+On the tag push, the workflow runs on `windows-latest` and:
+
+1. runs the test suite;
+2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
+   install is a binary-only install, so this is the only proof the knowledge tools still answer;
+3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
+4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`);
+5. asserts the plugin manifest sits at the tree root;
+6. smoke-tests the exe with `--help`;
+7. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
+
+Nothing in the marketplace manifest needs editing between releases: it points at
+`releases/latest/download/labview-mcp.zip`, which GitHub redirects to the newest release, and no
+version is pinned, so the archive's digest becomes the plugin version and every release reads as an
+update. Watch a run with `gh run watch --repo Zuehlke/labview-mcp`; once it is green, confirm the
+asset resolves (expect a 302 then 200):
+
+```bash
+curl -IL https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip
+```
 
 ## The AIXML loop
 
