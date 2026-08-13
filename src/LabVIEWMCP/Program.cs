@@ -66,6 +66,12 @@ if (CommandLine.HasFlag(args, "--palette"))
         CommandLine.IntArg(args, "--limit"),
         CommandLine.HasFlag(args, "--refresh"));
 
+if (CommandLine.HasFlag(args, "--pane"))
+    return await Panes.RunOneAsync(portOverride, CommandLine.StringArg(args, "--pane"));
+
+if (CommandLine.HasFlag(args, "--panes"))
+    return Panes.Run(CommandLine.StringArg(args, "--panes"), CommandLine.StringArg(args, "--out"));
+
 if (CommandLine.HasFlag(args, "--corpus"))
     return await Corpus.RunAsync(portOverride, CommandLine.StringArg(args, "--corpus"),
         CommandLine.StringArg(args, "--out"), CommandLine.IntArg(args, "--limit"),

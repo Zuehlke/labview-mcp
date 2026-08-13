@@ -116,6 +116,20 @@ public class CommandLineUnknownFlagTests
         Assert.Empty(CommandLine.UnknownFlags(
             ["--selftest", "--dump-schema", "--watch", "--diagram", "--ensure-labview"]));
 
+    /// <summary>
+    /// `--pane` and `--panes` differ by one letter and mean different things - measure one VI, or
+    /// build the pattern table from a sweep. Both must survive the unknown-flag guard, and neither
+    /// may swallow the other's value.
+    /// </summary>
+    [Fact]
+    public void Tells_the_two_pane_modes_apart()
+    {
+        Assert.Empty(CommandLine.UnknownFlags(["--pane", @"C:\p\My.vi"]));
+        Assert.Empty(CommandLine.UnknownFlags(["--panes", @"C:\p\sweep.txt", "--out", @"C:\p\t.tsv"]));
+        Assert.Equal(@"C:\p\My.vi", CommandLine.StringArg(["--pane", @"C:\p\My.vi"], "--pane"));
+        Assert.Null(CommandLine.StringArg(["--pane", @"C:\p\My.vi"], "--panes"));
+    }
+
     [Fact]
     public void Catches_the_missing_hyphen() =>
         Assert.Equal("-selftest", Assert.Single(CommandLine.UnknownFlags(["-selftest"])));
@@ -197,7 +211,8 @@ public class CommandLineUsageTests
         foreach (var mode in new[]
                  {
                      "--selftest", "--dump-schema", "--watch", "--diagram", "--ensure-labview",
-                     "--port", "--vi", "--project", "--timeout", "--out", "--help",
+                     "--pane", "--panes", "--port", "--vi", "--project", "--timeout", "--out",
+                     "--help",
                  })
             Assert.Contains(mode, CommandLine.Usage);
     }

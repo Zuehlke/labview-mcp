@@ -334,6 +334,76 @@ Two details that cost a round trip each:
 Inputs are unchanged by any of this — they still cross as strings, so only string controls can be
 set. The asymmetry is the point: the way **out** is now unrestricted.
 
+## Reading where a VI's terminals actually sit: `Connector Pane:Reference`
+
+The third capability with no RPC behind it, and the one that catches a whole class of silent defect:
+nothing in the `lvai` surface reports a VI's connector pane, so a generated pane can only be
+*assumed* correct — and on 2026-08-13 that assumption put two inputs of `DaqReadAndTDMS.vi` on the
+output edge. Shipped as **`lvai_connector_pane`**; helper source `scripts\lvpane_probe.xml`, and
+`scripts\lvpane_sweep.xml` for the bulk form that walks a list of VIs in one run (measured at about
+200 ms per VI over vi.lib, and it is what harvested the pattern table).
+
+The chain is three links and reads only:
+
+| step | node | why |
+|---|---|---|
+| open | `Open VI Reference` ← `String To Path` | local instance is fine; this is read-only, and opening and closing a VI *reference* does not burn the path for a later `ConvertAIXMLToVI` |
+| pane | `Property Node` `{LV.VI}` `read+Connector Pane\3AReference` | the only way from a VI to its pane |
+| read | `Property Node` `{LV.ConnectorPane}` `read+Pattern`, `read+Number of Connection Terminals`, `read+Terminal Bounds[]` | three properties in one node, one round trip |
+| render | `Flatten To XML` on the bounds, `Number To Decimal String` on the two scalars | strings are all `RunVIAsTopLevel` marshals |
+
+What it answers, and why it is worth a helper: **`Terminal Bounds[]` is indexed by exactly the AIXML
+`conIdx`**, one `Rectangle` of `Left`/`Top`/`Right`/`Bottom` per slot on a 32×32 pane. `Left = 0` is
+the left edge, `Left = 25` the right edge, and `Top` orders them down the edge — so the array *is*
+the map from the number you wrote to the place a reviewer sees. Measured cost 360–600 ms.
+
+The reason this matters more than it sounds: the pane pattern is neither chosen nor predictable from
+the indices, and the patterns generation actually produces number their slots incompatibly — 4815
+bottom-left is `8`, 4833 bottom-left is `11`. Detail in `aixml-reference.md` §2.
+
+**The pattern of a NEW VI is not in this API at all — it is `DefaultConPane` in `LabVIEW.ini`.**
+Worth knowing before hunting for a scripting route: LabVIEW hands every new VI the station's default
+pane, and that default is a text setting beside `LabVIEW.exe` (`"4833"` on this station, `4815` from
+the factory). `lvai_connector_pane` reads it, so a generator can know its pattern before it writes a
+single `conIdx`. Nothing in VI Server exposes or sets it.
+
+**`Pattern` really is read-only, and that is what forces the sweep.** It is listed `read` in
+`vi-server-properties.tsv`, and the class carries no setter for it: `{LV.ConnectorPane}` has
+`AssignCtrlToTerm`, `DiscTerm`, `DiscAllTerms`, `FlipHoriz`, `FlipVert`, `Rot90` and the generic
+`SetProperty (Index; Value)`, but nothing that names a pattern. So the 36 patterns cannot be dialled
+up one after another and photographed; each one has to be found on a VI that already uses it, which
+is why `docs/connector-pane-patterns.tsv` covers 30 of 36 and says which 6 are missing.
+
+`AssignCtrlToTerm` would let a helper move a terminal in place, and it is deliberately unused:
+regenerating the VI from corrected AIXML costs about a second, needs no scripting, and keeps one
+source of truth for the pane. The tool therefore reports and advises but never edits.
+
+**A long helper blocks the whole service, and it looks like LabVIEW is gone.** Measured while
+`lvpane_sweep.vi` walked 500 VIs: every other call - a different tool, a different process - failed
+port discovery with `DeadlineExceeded` on the very port that had just worked, and the error text
+suggests the AI service was never started. It was; it was busy. So run a bulk sweep when nothing
+else needs LabVIEW, and read a sudden `DeadlineExceeded` on a known-good port as "something is still
+running in there" rather than as a dead service. The sweep itself is unaffected - it keeps going and
+writes its file - and the client-side timeout on the call that started it means nothing.
+
+**And a big enough sweep kills LabVIEW.** Same session, the next 500-VI batch: LabVIEW.exe was gone
+about 12 minutes in, with nothing written, after roughly 1 100 VIs had been loaded across four runs.
+Working set was only ~610 MB at the time, so this is not a plain out-of-memory story - LabVIEW 2026
+is 32-bit here, and the sweep never gives anything back: opening a VI reference **loads** that VI and
+closing the reference does not unload it, which is the same fact that makes `Error 1357` so hard to
+escape. Consequences worth having in advance: keep batches to about 250 VIs, harvest after each one,
+and remember that a batch that dies takes its entire result with it because the file is written once
+at the end. Sizes measured: 40 VIs 8 s, 254 VIs 90 s, 500 VIs 18 min, the next 500 fatal.
+
+**`lvai_close_vi` does not rescue this, and the reason is instances again.** It is the obvious idea -
+there is a tool for releasing a VI, so call it per swept VI - and it cannot work: that tool reaches
+the **IDE's** application instance through the active project, while a generated sweep helper's
+`Open VI Reference` resolves in the **addon's** instance, which is where the loaded copies pile up.
+Measured on a swept vi.lib VI: `Error 1055`, no active project, and even with one open a `vi.lib` VI
+is not a member of it, so the second precondition fails too. Worse, succeeding would be no help -
+opening a reference in the IDE instance *loads* the VI there as well. Small batches remain the only
+mitigation.
+
 ## Closing a VI's window
 
 No RPC closes a VI — `OpenFile` has no counterpart — so this is the same generated-helper route.

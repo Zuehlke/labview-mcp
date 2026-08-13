@@ -165,38 +165,138 @@ tells you not to do.
 **bottom left** and `error out` at the **bottom right**, and terminals arranged so that wires do
 not have to cross to reach them.
 
-**You do not choose the pattern, and a generated VI essentially always gets 4815.** Measured on
-four VIs, varying the highest index used:
+**The pattern is a STATION SETTING. It is not yours to choose per VI, and it is not the generator's
+choice either — LabVIEW gives every new VI the default pane from `LabVIEW.ini`:**
 
-| highest `conIdx` in the document | terminals | pattern |
-|---|---|---|
-| 3 | 12 | **4815** |
-| 7 | 12 | **4815** |
-| 11 | 12 | **4815** |
-| 15 | 16 | 4833 |
+```
+[LabVIEW]
+DefaultConPane="4833"
+```
 
-There is no attribute for the pattern, and low indices do not buy a smaller pane: a probe that used
-only `4, 0, 1, 7, 3` — the corner slots of the 8-terminal pattern — still came out as 4815. The
-pattern grows only when it has to, above index 11. **An earlier revision of this section said the
-pattern was "chosen by the highest `conIdx` you use"; that was inferred from a single VI and is
-wrong** in the way that matters, because it implies a steering you do not have.
+That key, read from the `LabVIEW.ini` next to `LabVIEW.exe`, is why everything generated on this
+station comes out 16-terminal. LabVIEW's own default is **4815**, the 12-terminal `4x2x2x4`. So the
+pattern of a *new* VI **is** knowable before you generate — just not from anything inside AIXML or
+the VI Server API. `lvai_connector_pane` with no argument reads it for you and prints the four
+`conIdx` values to write.
 
-The practical consequence is good news: for anything you generate, **the map is a constant.**
+**Three revisions of this section were wrong before that was known, and the shape of the error is
+worth keeping.** The first said a generated VI "essentially always gets 4815" and called that map "a
+constant"; the second said the pattern was "chosen by the highest `conIdx` you use"; the third said
+it could not be predicted at all and had to be measured every time. All three were attempts to find
+a rule inside LabVIEW for something that was sitting in a text file:
+
+| VI | highest `conIdx` | terminals assigned | pattern |
+|---|---|---|---|
+| three early probes | 3 / 7 / 11 | up to 12 | 4815 — the factory default, before the key was set |
+| a fourth probe | 15 | 12 | 4833 |
+| `DaqReadAndTDMS.vi`, 2026-08-13 | 11 | **5** | **4833** |
+| the same VI, re-indexed | 15 | 5 | **4833** |
+
+The index set never mattered. What it cost: `DaqReadAndTDMS.vi` was generated with the set the first
+revision prescribed — first input `11`, `error in` `8`, first output `3`, `error out` `0` — and landed
+on 4833, where those four indices mean *right edge*, *right edge*, *middle column* and *top-left
+corner*. Two of its inputs sat on the output edge and `error out` sat top left. Validation was clean,
+the VI ran, and the person who asked for it rejected it on sight.
+
+**Read the setting for a new VI; measure the pane for an existing one.** The two questions are not
+the same. A VI you are about to create gets the station default. A VI that already exists carries
+whatever pane it was given — on another machine, under another setting, possibly rotated or flipped —
+so there `viPath` is the only honest answer.
+
 Measured through `{LV.VI}` → `read+Connector Pane\3AReference` → `{LV.ConnectorPane}` →
 `read+Terminal Bounds[]`, one rectangle per index on a 32×32 pane:
 
-| pattern 4815 | `conIdx`, top → bottom |
+| pattern 4815 — 12 terminals, `4x2x2x4` | `conIdx`, top → bottom |
 |---|---|
 | **left edge** | **11, 10, 9, 8** |
 | second column | 7 (upper), 6 (lower) |
 | third column | 5 (upper), 4 (lower) |
 | **right edge** | **3, 2, 1, 0** |
 
-So: **first input `11`, error in `8`, first output `3`, error out `0`.**
+| pattern 4833 — 16 terminals, `5x2x2x2x5` | `conIdx`, top → bottom |
+|---|---|
+| **left edge** | **0, 5, 7, 9, 11** |
+| middle columns | 1, 2, 3 (upper row), 12, 13, 14 (lower row) |
+| **right edge** | **4, 6, 8, 10, 15** |
 
-Two caveats. Above 12 terminals you get **4833**, whose geometry has NOT been measured — read
-`Terminal Bounds[]` before placing anything there rather than assuming the 4815 numbering extends.
-And **hand-written NI VIs use other patterns**, so a set of indices copied from one of them means
+So the same number means opposite things in the two patterns: `0` is bottom-**right** in 4815 and
+top-**left** in 4833; `8` is bottom-left in 4815 and third down the **right** edge in 4833. 4815
+numbers right-to-left and bottom-to-top, which is the rule the LabVIEW Wiki gives for the default
+pane. 4833 does not follow it: it takes the four corners first — `0` top left, `4` top right, `11`
+bottom left, `15` bottom right — and then zig-zags down the edges, left, right, left, right.
+
+**There are two families, and they are interleaved across the id range** — which is the measurement
+that kills the idea of deriving a third pattern from a rule. Of the 31 measured, 19 number
+right-to-left/bottom-to-top like 4815 (its first input is the *highest* index), 10 take the corners
+first like 4833 (first input `0`), and 2 have no edges at all. The families do not split by id or by
+size: 4820–4824 are corner-first while 4825–4829 are not, and 4809 with six terminals is
+corner-first while 4812 with eight is not. Neither the id nor the terminal count predicts which
+scheme a pattern uses.
+
+Per pattern, then, NI's style guide comes out as:
+
+| | 4815 | 4833 |
+|---|---|---|
+| first input | `11` | `0` |
+| second input | `10` | `5` |
+| `error in` (bottom left) | `8` | `11` |
+| first output | `3` | `4` |
+| `error out` (bottom right) | `0` | `15` |
+
+**So do not carry these numbers in your head, and do not read them out of this document either —
+ask `lvai_connector_pane`.** That is what it exists for, and it is the reason the two tables above
+are examples rather than instructions:
+
+- with **no argument** it reads this station's `DefaultConPane` and prints the four `conIdx` values a
+  newly generated VI needs. This is the call to make *before* authoring any `conIdx`.
+- with `viPath` it measures that VI's pane, joins it with the VI's own export,
+  and answers with the slot map, every breach of the style guide, and **the `conIdx` each terminal
+  should have** — ready to paste. Read-only, about 1 s.
+- with `pattern` it serves one pattern's measured map without touching LabVIEW.
+- with neither it lists all 36 patterns and which of them have been measured.
+
+The procedure for a new VI is therefore: **call the tool with no argument, write the `conIdx` values
+it gives you, generate — then call it with `viPath` to confirm.** The confirmation is not ceremony:
+the station setting tells you the pattern, not that you transcribed it correctly, and it says nothing
+about a VI that already existed.
+
+**Where the tool's table comes from, and why it has holes.** 32 of the 36 patterns have measured
+geometry, harvested by sweeping 1 449 VIs of this installation with `scripts/lvpane_sweep.xml` and
+building the table with `LabVIEWMCP --panes`. It cannot be completed by brute force, because
+`{LV.ConnectorPane}` → `Pattern` is **read-only** — there is no setter anywhere in the 3 078-entry
+VI Server catalogue — so a pattern is only observable on a VI that already uses one. 4816, 4818, 4819
+and 4830 had no such VI in the sweep; the tool says so rather than guessing, and sweeping more VIs is
+what closes the gap — 1 683 VIs across vi.lib, LVAddons, examples, user.lib, instr.lib, project,
+resource and this machine's own code did not, so those four are simply unused here.
+
+**Do not reach for `DefaultConPane` to close the gap.** Changing it would make new VIs use a chosen
+pattern, so it looks like the missing measurement — and `LabVIEW.ini` is **read-only** for this
+server and everything built on it, by the station owner's rule. Read the key, quote it, never write
+it. A pattern nothing in 1 683 VIs uses does not need a map badly enough to touch a machine's
+configuration.
+
+**A pattern id does not pin the orientation, and that is measured too.** A pane can be rotated or
+flipped (`Rot90`, `FlipHoriz`, `FlipVert` on `{LV.ConnectorPane}`), and then the same id numbers its
+slots along other edges. Over 1 449 VIs, **8 of the 32 measured patterns turned up in two
+orientations** — 4815 appears 1 022 times upright and 4 times on its side, in VIs such as
+`XML Script - CompoundArithmetic.vi`. The table therefore stores the *majority* orientation and
+carries the variant count, and the tool says "CAUTION: n distinct ORIENTATIONS" on those rows.
+
+This is also why the harvest counts instead of keeping the first VI it sees, which is what it used to
+do: harvesting the same six sweeps in a different file order flipped 4829 to its minority orientation
+and quietly changed four published `conIdx` values. A measurement of the VI in hand — `viPath` —
+never has this problem, because it reads that VI's own bounds, rotation and all.
+
+Two smaller measurements worth keeping, both from that sweep. **A slot can span two columns** —
+4817 and 4820 each have one — and it still belongs to the edge it touches, which is why the
+classification tests `Left == 0` and `Right == width` rather than counting columns. And the
+LabVIEW Wiki's shape strings are **not** column profiles: measured, 4817 is `2x3x2` where the wiki
+writes `3x2x2`, and 4820 is `3x2x3x2` against `3x2x2x3`. Same sums, different order, so its
+notation counts something else; 4833's row does not even sum to its own terminal count. The tool
+reports the measured profile and keeps the wiki's string beside it as a name only.
+
+One further caveat, and it is the same trap from the other side: **hand-written NI VIs use other
+patterns still** (4800–4835 exist), so a set of indices copied from one of them means
 something else in yours: `Close File+.vi` is pattern **4812** (8 terminals, left edge `4, 0`, right
 edge `7, 3`), where its `error in` = 0 and `error out` = 3 are the same bottom-left/bottom-right
 convention, not a different one. That is why NI's numbers look inconsistent across VIs and are not.
@@ -212,6 +312,13 @@ pane with each terminal labelled `name [conIdx]`. **Beware the one thing that re
 show:** it always draws inputs on the left and outputs on the right regardless of where they
 actually sit, so a badly placed terminal looks fine there — the wire routing into the icon is the
 only visible tell. The bounds are the reliable check.
+
+**LabVIEW's own Context Help window has the same blind spot**, which is worth knowing because it is
+where a user looks first. On `DaqReadAndTDMS.vi` it drew `TDMS File Path [10]` and `error in [8]`
+down the left with `error out [0]` on the right — the roles, not the slots, all five of which were
+somewhere else entirely. What it *does* print is the pattern id, in parentheses after the VI path
+(`C:\Temp\DaqReadAndTDMS.vi (4833)`), and that number is the fastest way to spot that a generated
+pane is not the 12-terminal one you assumed.
 
 ## 3. The core model: uid and wiring
 
@@ -468,11 +575,31 @@ that left your source is the string that reached disk.
 
 ### For Loop
 
-Same shape; `count` carries the iteration count wire, and `maxin` / `maxout` appear alongside it.
+Same shape, with `maxin` / `maxout` alongside `count`.
+
+**`count` does NOT wire `N`. Nothing does — auto-indexing is the only way to give a For Loop its
+iteration count.** An earlier revision of this line said "`count` carries the iteration count wire",
+which is wrong in both spellings and cost a generation two validate cycles to discover. Measured:
+
+| what was written | answer |
+|---|---|
+| `count="5"`, nothing indexed | `For Loop: N is not wired, and there are no indexing inputs.` |
+| `count="137.value"`, a net from an int32 constant | same, plus two misleading follow-ons: `Wire: Wire connected to an undirected tunnel` twice, and `You have connected two terminals of different types … source 1D array of long, sink long` |
+| `<Tunnel _id="N" …>`, reaching for the terminal itself | **schema violation**: `value 'N' does not match regular expression facet '(In\|Out)[1-9][0-9]*'` |
+| `count=""` plus one `mode="index"` input tunnel | `errorCode 0` |
+
+So the `N` terminal is not addressable in this format at all, and the two extra errors in the second
+row are worth recognising: they name wires and types, they appear *because* `count` holds a net, and
+they vanish when it does not. Anyone chasing them is looking in the wrong place.
+
+**For a fixed iteration count with no array to index**, index over a literal array of the right
+length — `<Constant type="array{int32}" value="[0,0,0,0,0]"/>` into a `mode="index"` tunnel gives
+`N = 5` — or use a `While Loop` with an int32 shift register, `Increment` and `Greater?` against
+`n-1`, which is what one generated VI settled on and which validates and runs.
 
 **Auto-indexing is `mode="index"` on the tunnel** — the attribute the rest of this section was
 missing. A tunnel *without* `mode` passes its whole value through unchanged; with it, the loop
-indexes one element per iteration and needs no `count`. Measured from OpenG's
+indexes one element per iteration and supplies `N`. Measured from OpenG's
 `Filter 1D Array (String)__ogtk.vi`, which is also a compact model of the accumulate-in-a-loop
 idiom:
 
@@ -1447,6 +1574,13 @@ three fields. To get a Waveform Graph the indicator needs `style="graph21703"`:
            inputs="value:61.output waveform" uid="80" uid_parent="root" value="[0,0,[]]"/>
 ```
 
+**An empty waveform-array CONSTANT is legal, and it is how you type an accumulator.**
+`<Constant type="array{doublewaveform.Waveform}" value="[]"/>` validates and generates, so a shift
+register collecting waveforms can be initialised from it rather than left uninitialised — measured
+while regenerating `DaqReadAndTDMS.vi`, where the accumulator carries the read blocks out of the
+loop. Note the element name inside the braces: `doublewaveform.Waveform`, not bare
+`doublewaveform`.
+
 **The token is an internal identifier, not a name, and nothing tells you when you get it
 wrong.** `WaveformGraph`, `Waveform Graph` and `Graph` are all plausible, all wrong, and all
 fail without a word: `ValidateAIXML` returns `errorCode 0` for every one of them, generation
@@ -1789,9 +1923,17 @@ because the work happens in LabVIEW.
 `lvai_convert_vi_to_aixml` therefore **caches exports on disk**:
 
 ```
-%LOCALAPPDATA%\LabVIEWMCP\cache\aixml\<hash>.xml     the export
-%LOCALAPPDATA%\LabVIEWMCP\cache\aixml\<hash>.json    its sidecar: full key, source VI, time, size
+%USERPROFILE%\.labviewmcp\cache\aixml\<hash>.xml     the export
+%USERPROFILE%\.labviewmcp\cache\aixml\<hash>.json    its sidecar: full key, source VI, time, size
 ```
+
+**Not under `%LOCALAPPDATA%`, and this document said otherwise for a while.** The cache moved out of
+AppData because a server started by the Claude desktop app inherits that packaged app's filesystem
+redirection: every level created under `%LOCALAPPDATA%` becomes a reparse point into the package's
+private store, so the same machine ended up with two caches depending on who launched the server.
+`CacheDirectory.Root` carries the measurement; `LABVIEWMCP_CACHE_DIR` overrides it. The stale path
+cost real work on 2026-08-13 — a session looked there, found nothing, reported "no AIXML cache on
+this machine" and stopped using it, while 2 382 exports sat in the real location.
 
 The key is the VI's normalised path, its last-write time and its size; `<hash>` is an MD5 of that.
 The sidecar is written **last** and is the commit record, so a crash between the two writes leaves

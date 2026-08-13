@@ -34,7 +34,7 @@ the wrong expectation: the first call after a restart looked like a hang for the
 minute, which is when somebody starts debugging a connection that is fine.
 
 **The index is now cached on disk** (`ExampleIndexStore`), under
-`%LOCALAPPDATA%\LabVIEWMCP\cache\example-index-<hash>.json`, about 700 kB. Measured end to end
+`%USERPROFILE%\.labviewmcp\cache\example-index-<hash>.json`, about 700 kB. Measured end to end
 across separate processes:
 
 | | |
@@ -87,7 +87,7 @@ Finding an example is the cheap half. **Exporting one to AIXML is a median of 33
 `roundtrip.tsv` this section's counts come from. Size and duration are uncorrelated (r = 0.002):
 the cost is LabVIEW loading the VI and its dependencies, not writing the XML. Exports of
 installation VIs are therefore cached on disk under
-`%LOCALAPPDATA%\LabVIEWMCP\cache\aixml`, separately from the index cache above. The full
+`%USERPROFILE%\.labviewmcp\cache\aixml`, separately from the index cache above. The full
 account — key, invalidation, why user code is excluded — is in §10 of `docs/aixml-reference.md`.
 
 **An example can be a whole project.** 37 of the external registrations point at a `.lvproj` rather

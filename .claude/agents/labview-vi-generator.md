@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -81,22 +81,27 @@ it an icon.
      instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
 - **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
   reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
-  `error out` **bottom right**, nothing arranged so wires must cross. **A generated VI always gets
-  pattern 4815** — measured with the highest index at 3, 7 and 11, all three came out the same, and
-  there is no attribute to ask for another — so this map is a constant, not something to derive:
+  `error out` **bottom right**, nothing arranged so wires must cross. **Which `conIdx` sits where
+  depends on the pane pattern, so ask `lvai_connector_pane` and do not reason about it:**
 
-  | | `conIdx`, top → bottom |
-  |---|---|
-  | **left edge — inputs** | **11, 10, 9, 8** — put `error in` on **8** |
-  | middle columns | 7/6, then 5/4 (upper/lower) — secondary terminals only |
-  | **right edge — outputs** | **3, 2, 1, 0** — put `error out` on **0** |
+  1. **Before** you write any `conIdx`, call `lvai_connector_pane` with **no argument**. LabVIEW gives
+     every new VI the station's default pane (`DefaultConPane` in `LabVIEW.ini`), so the tool knows
+     which pattern you are about to get and prints the four numbers to write: first input, `error in`,
+     first output, `error out`.
+  2. Author the AIXML with exactly those numbers.
+  3. After generating, call it again with `viPath`. That confirms the pane you actually got and checks
+     every terminal against the style guide.
 
-  So a typical VI is: main input `11`, `error in` `8`, main output `3`, second output `2`,
-  `error out` `0`. **Do not invent an assignment by analogy** — a generated VI shipped with both
-  inputs on the right-hand edge and all three outputs in the middle columns, validated, ran, and
-  was rejected on sight. And do not copy a set of indices out of an NI VI: those use other
-  patterns, where the same numbers are different slots. Above 12 terminals the pattern changes and
-  this map no longer holds; detail in `lvai_aixml_reference` §2, "The connector pane".
+  How different two patterns really are, so neither step is skipped: `error in` belongs on `conIdx 8`
+  on pattern 4815 and on `11` on 4833, and `conIdx 0` is bottom-**right** on 4815 but top-**left** on
+  4833. Read-only, about 1 s per call.
+
+  **This is not hypothetical.** `DaqReadAndTDMS.vi` was generated on 2026-08-13 with `11`/`8`/`3`/`0`
+  because an earlier revision of this file promised "a generated VI always gets pattern 4815". It
+  came out **4833**, which put both of its remaining inputs on the *output* edge and `error out` in
+  the *top-left* corner. It validated, it ran, and the user rejected it on sight — the second time
+  this same class of mistake has shipped. Do not copy indices out of an NI VI either: those use
+  patterns of their own. Both full maps in `lvai_aixml_reference` §2, "The connector pane".
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.
