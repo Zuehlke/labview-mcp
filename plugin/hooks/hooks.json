@@ -1,0 +1,27 @@
+{
+  "description": "Auto-allow the read-only LabVIEW tools (PreToolUse) and warn on unsupported hosts / missing doc-agent dependencies (SessionStart).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_labview-mcp_labview__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/hooks/allow-readonly.ps1\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/platform-guard.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
