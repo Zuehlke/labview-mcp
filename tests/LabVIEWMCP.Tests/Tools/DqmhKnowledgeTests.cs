@@ -125,13 +125,30 @@ public class DqmhKnowledgeTests
         Assert.True(caught, "the underscore-splitting tokeniser missed an embedded identifier");
     }
 
+    /// <summary>
+    /// This used to assert "No section matched". That answer plus a heading list reads as "the
+    /// content is not here", which was measured sending a caller off to re-derive a documented
+    /// fact - so the AIXML tool started falling through to a term lookup instead, and every
+    /// document tool now does the same. A term genuinely absent still says so, and still gets
+    /// the heading list.
+    /// </summary>
     [Fact]
     public void UnknownSectionExplainsItself()
     {
         var result = KnowledgeTools.DqmhReference("nope");
 
-        Assert.Contains("No section matched", result);
+        Assert.Contains("Nothing in the DQMH reference mentions \"nope\"", result);
         Assert.Contains("Sections (pass one as `section`)", result);
+    }
+
+    /// <summary>A term that IS in the document is now shown rather than denied.</summary>
+    [Fact]
+    public void ASectionThatIsNotAHeadingFallsBackToATermLookup()
+    {
+        var result = KnowledgeTools.DqmhReference("Broadcast");
+
+        Assert.DoesNotContain("Nothing in the DQMH reference mentions", result);
+        Assert.Contains("Broadcast", result);
     }
 
     private static string? FindRepoFile(

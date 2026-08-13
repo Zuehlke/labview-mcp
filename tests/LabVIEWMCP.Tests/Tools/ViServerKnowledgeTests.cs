@@ -86,6 +86,31 @@ public class ViServerKnowledgeTests
         }
     }
 
+    /// <summary>
+    /// Several names in one call, for the same reason the AIXML reference takes a list: a VI that
+    /// drives VI Server needs four or five properties, and asking for them one at a time is four
+    /// or five round trips whose answers overlap.
+    /// </summary>
+    [Fact]
+    public void QueryTakesSeveralNamesAtOnce()
+    {
+        var text = KnowledgeTools.ViServerReference(query: "Print VI To HTML,Callees", cls: "LV.VI");
+
+        Assert.Contains("Print VI To HTML", text);
+        Assert.Contains("Callees", text);
+    }
+
+    /// <summary>Overlapping names must not print the same row twice.</summary>
+    [Fact]
+    public void OverlappingNamesAreDeDuplicated()
+    {
+        var text = KnowledgeTools.ViServerReference(query: "Print VI To HTML,Print VI To",
+                                                   cls: "LV.VI", kind: "methods");
+
+        var rows = text.Split('\n').Count(l => l.Contains("Print VI To HTML", StringComparison.Ordinal));
+        Assert.Equal(1, rows);
+    }
+
     [Fact]
     public void QueryMatchesTheNameColumnRatherThanParameters()
     {

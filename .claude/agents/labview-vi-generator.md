@@ -1,8 +1,11 @@
 ---
 name: labview-vi-generator
-description: Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
+description: >-
+  Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
 ---
+
+<!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
 
 # LabVIEW VI Generator
 
@@ -47,6 +50,23 @@ it an icon.
      exporting a VI, on a day when that exact subsection had already been added to §8.
      `node=` returns only the passages naming the node, each with its table header or its whole
      code block, which is what you actually need.
+
+     **And pass EVERY node your sketched diagram needs in that ONE call, comma-separated** —
+     `node='Select,Index Array,Build Waveform,Greater?,Not,And'`. Do not walk the list one term
+     per call. Terms are matched by substring, so single lookups hand you the same text over and
+     over: the 2D-indexing code block answers `Index Array`, `disabled index` and `Array Subset`
+     alike, and the `| Node | inputs | outputs |` header comes back once per term. A batch prints
+     each passage once and each header once. Measured on the 18 terms one VI generation actually
+     looked up: **21 973 characters over 18 calls became 13 427 over one — 38.9 % less text and
+     17 round trips gone**, with every terminal name still present.
+
+     Sequence it as: sketch the diagram, list every node in it, one call. The terms you cannot
+     know yet — a mode variant, a type coercion the validator rejects — are a second small batch
+     later, and that is normal; the first call is where the twelve knowable ones belong.
+
+     A batch divides the passage budget across its terms (three each at the default `limit`),
+     which is right for "what are these nodes' terminals" and wrong for "tell me everything about
+     this one term". For depth, ask that term on its own.
   2. **`lvai_vi_terminals` for a `Call` to a palette VI** — a different question with a different
      answer. §8 covers *primitives*; a `Call`'s terminals are the target VI's own front-panel
      labels, and this reads them straight out of it. It prints a ready-to-paste `Call`, handles
@@ -80,6 +100,13 @@ it an icon.
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.
+- **No XML comments in AIXML, and lowercase `true`/`false` on booleans.** Both fail in ways that
+  waste a whole cycle. A `<!-- … -->` anywhere makes `ValidateAIXML` answer `Error 42 ... Generic
+  error` with no line and no element — while its *real* messages are precise to the column, so the
+  generic one reads as a structural fault. Put notes in a `FreeLabel`, `comment`, or a
+  `description`. And `value="TRUE"` on a boolean constant is silently read as **false**: it
+  validates, generates, runs, and computes the wrong answer. Measured twice, both times on a CSV
+  reader's `transpose?` input, both times diagnosed as "the terminal has no effect". Emit `true`.
 - **If every `lvai_*` call suddenly stops answering, LabVIEW is probably waiting for a human.**
   When a subVI cannot be found it opens a modal browser titled `Find the VI Named "…"` and blocks
   until somebody answers it. No RPC returns and nothing times out on LabVIEW's side, so it is

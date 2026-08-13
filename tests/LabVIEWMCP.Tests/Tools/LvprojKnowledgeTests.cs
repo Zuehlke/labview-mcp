@@ -57,13 +57,26 @@ public class LvprojKnowledgeTests
         Assert.StartsWith($"## {number}.", body);
     }
 
+    /// <summary>
+    /// Was "No section matched" - see the same test in DqmhKnowledgeTests for why every document
+    /// tool now falls through to a term lookup. An absent term still says so.
+    /// </summary>
     [Fact]
     public void UnknownSectionExplainsItselfInsteadOfFailing()
     {
         var result = KnowledgeTools.LvprojReference("does-not-exist");
 
-        Assert.Contains("No section matched", result);
+        Assert.Contains("Nothing in the .lvproj reference mentions \"does-not-exist\"", result);
         Assert.Contains("Sections (pass one as `section`)", result);
+    }
+
+    [Fact]
+    public void ASectionThatIsNotAHeadingFallsBackToATermLookup()
+    {
+        var result = KnowledgeTools.LvprojReference("LVVersion");
+
+        Assert.DoesNotContain("Nothing in the .lvproj reference mentions", result);
+        Assert.Contains("LVVersion", result);
     }
 
     [Fact]

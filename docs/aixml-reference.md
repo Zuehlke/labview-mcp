@@ -57,6 +57,25 @@ VI with three labels of 12–20 characters, and moving the prose into the `VI de
 So: keep diagram comments to a few words, and put explanations in `description`.
 Verify by exporting the rendered diagram — see `--diagram` in the README.
 
+**An XML comment is not a place to put anything — it breaks validation.** `<!-- … -->` anywhere
+inside the document makes `ValidateAIXML` answer
+
+```
+Error 42 occurred at LV AI Core.lvlibp:VI generator.vi
+LabVIEW: (Hex 0x2A) Generic error.
+```
+
+and that is the whole message: no line, no column, no element, nothing pointing at a comment.
+Measured 2026-08-13 by removing the comment and nothing else — the same file then validated at
+`errorCode 0`. This is the harshest failure in the format so far, because the well-formedness
+errors it *does* diagnose are precise to the column (`Line 5, Column 308, missing required
+attribute 'outputs'`), so a bare generic error reads as a deep structural fault and sends you
+rewriting the diagram. It cost one such detour in the run that found it.
+
+The three places a note can legitimately go: a `FreeLabel` on the diagram, the `comment`
+attribute, or the `description` of the `VI` or a terminal. Nowhere else. §11 carries the same
+finding under the error message, since that is where somebody holding an `Error 42` will look.
+
 The attribute vocabulary, measured over every shipping example rather than over the original
 13 (`LabVIEWMCP --corpus`, then `attributes.tsv` from the report):
 
@@ -718,6 +737,51 @@ section 6 apply inside terminal names too. In XML the `<` in `x < y?` additional
 The reliable way to get a name right: export a VI that already uses the node and copy the
 string verbatim.
 
+**Ask for every node at once, not one per call.** `lvai_aixml_reference` takes `node=` as a
+comma-separated list — `node='Select,Index Array,Build Waveform,Greater?'` — and that is the
+intended way to use it, because a term is matched by *substring* and single lookups therefore
+hand back the same text repeatedly. Three concrete overlaps, all from one VI generation: the
+2D-indexing code block below answers `Index Array`, `disabled index` **and** `Array Subset`; the
+Build Waveform subsection answers `Build Waveform`, `waveform` **and** `Time Stamp`; and the
+`| Node | inputs | outputs |` header trio is re-emitted with every single term.
+
+Measured on exactly the 18 terms that generation looked up one at a time:
+
+| | characters | round trips |
+|---|---|---|
+| one term per call | 21 973 | 18 |
+| one batched call | 13 427 | 1 |
+
+**38.9 % less text, and 17 round trips gone**, with every terminal name still present — there is
+a test pinning that (`ALargeBatchStillCarriesEveryTerminalNameItWasAskedFor`). A batch prints each
+passage once and says so when a term's hits all appeared under an earlier term, which is the
+difference that matters: silence would read as "not documented", and that is what sends a reader
+off to re-derive a fact the document already carried.
+
+A batch also divides the passage budget across its terms — three each at the default `limit` —
+because "the terminals of these eighteen nodes" is a different question from "everything about
+this one term". Ask a term on its own when you want the depth.
+
+Note what this is *not*: a cache. Caching keyed on the argument would have saved nothing here,
+because no two of those 18 calls had the same argument. The duplication was in the output.
+
+The documents *are* cached as well — each one and its line index is built once per process rather
+than once per call — but that is a separate and much smaller win, and the numbers say so plainly:
+
+| | before | after |
+|---|---|---|
+| one lookup | 0.841 ms | 0.039 ms |
+| the 18-term workload, server side | 23.3 ms | 0.8 ms |
+
+23 ms was never what made a generation session slow. **A round trip is a model turn**, and that is
+the term that dominates: measured over three `lvai_*` calls, 30.4 s of wall clock against 74 ms of
+LabVIEW time for the run and under a second for validate plus convert — roughly 7 s per turn, all
+latency. The 17 turns a batch removes are therefore worth about two minutes, against milliseconds
+for the cache. Optimise the number of calls, not the cost of one.
+
+For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
+and 0.76 s warm, whole process included.
+
 ### Every other node NI uses — generated, not written
 
 The table above is curated: each row was measured by hand and several carry a warning that only a
@@ -1328,8 +1392,32 @@ LabVIEW 2026 through the DBL instance:
 - **A trailing newline does not produce a ghost row.** An eight-data-line file yields
   `Dimsize 8`, a four-line file `Dimsize 4`. No trailing empty element to trim.
 - **There is no header-skip option.** The header line scans to `0.0` like any unparseable text,
-  so drop it by index. With `transpose? = TRUE` row 0 is the whole first column and row 1 the
-  whole second, and one `Array Subset` from index 1 on each removes the header from both.
+  so drop it by index — one `Array Subset` from index 1 per column.
+- **Prefer DISABLING the row index over transposing.** This paragraph used to advise
+  `transpose? = TRUE`, after which "row 0 is the whole first column and row 1 the whole second".
+  That works, but only if the boolean constant feeding it is spelled `value="true"` —
+  **lowercase** — and getting it wrong is silent. See §11, "The VI runs, reports no error, and
+  computes the WRONG ANSWER": `value="TRUE"` reads as `false`, the file is then read untransposed,
+  and "row 0" is the two-element header row rather than a column.
+
+  Indexing the column directly avoids the boolean entirely, and is therefore the shape to copy:
+
+  ```xml
+  <Node _name="Index Array" dimensions="2"
+        inputs="array:40.all rows,disabled index (row):,index (col):23.value"
+        outputs="element:41.element" uid="41" uid_parent="root"/>
+  ```
+
+  Verified end to end on a nine-row two-column CSV with `transpose? (F)` left unwired: column 0
+  gave the time series, column 1 the amplitudes, and after `Array Subset` from index 1 the
+  waveform carried all eight samples with `dt = 0.1`.
+
+  **This trap has now been sprung twice**, which is why the advice is inverted rather than merely
+  annotated. The second run, 2026-08-13, saw `Y` with one element and `dt = 0`, concluded
+  "transpose has no effect", and switched approach without recognising the boolean-literal cause
+  that §11 already had in writing — a documented fact re-derived at the cost of a debugging round.
+  The cross-reference above is the fix for that: the symptom is named here, where a CSV reader
+  gets built, instead of only under the failure mode.
 
 The dangerous one is not here but in §11: its `file path (dialog if empty)` input opens a modal
 dialog on an empty path and stops the whole gRPC session.
@@ -1891,6 +1979,7 @@ Consequences for authoring:
 | **The VI runs, reports no error, and computes the WRONG ANSWER** | **`value="TRUE"` on a boolean is silently read as `false`.** The worst member of the family, because the other two leave something visibly missing and this one leaves a working VI that is simply wrong. Measured, four spellings in one probe VI, all validating with `errorCode 0` and all generating cleanly: <br>`value="true"` → **TRUE** — the only one that works<br>`value="TRUE"` → false `value="True"` → false `value="1"` → false<br>It cost a generated CSV loader a whole debugging round: its `transpose?` constant read `TRUE`, so the file was read untransposed, and the VI returned 1 sample with `dt = 1.0` instead of 8 with `dt = 0.1` — no error anywhere. It was caught only by comparing the numbers against the source file. **Emit exactly lowercase `true`/`false`, which is what an export writes**, and check a boolean constant's effect against real data rather than against `errorCode`. |
 | **A VI in memory CAN be evicted — via the active project** | **Read this row's ending first: there is a working recipe**, in `vi-server-reference.md` under "Unloading a VI so its path can be regenerated". Reach the IDE's application through `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference *there*, and write `Front Panel Window\3AState` = `Closed`. Measured A/B: `1357` before, `errorCode 0` after. The rest of this row is the long road that found it, kept because every step of it is a thing that does **not** work. The fallback rule remains sound when no project is active: **generate each iteration under a fresh name, and do not `lvai_open_file` a VI you still intend to regenerate.** Measured, in one helper run that itself reported no error: writing `Front Panel Window\3AOpen` **and** `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` — and the regeneration still failed with 1357. The catalogue carries no unload or remove-from-memory method at all across its 3 078 entries. Earlier advice here said "or make LabVIEW release the VI"; that is not achievable through this interface. Closing the VI in the IDE by hand, or restarting LabVIEW, is the reset. **Re-measured on a freshly restarted machine, with the one remaining explanation tested and killed:** the idea that closing the window *modifies* the VI and that a modified VI cannot be unloaded. Reading `Modifications\3AUser Changes` before the close, after it, and after a `Save\3AInstrument` gave **clean, clean, clean** — unsaved changes were never what held it. Same run, no error anywhere in it, regeneration still 1357. What every one of these attempts shared, and what took an evening to see: they all ran in the **addon's** application instance, where the VI's windows do not exist. That is why closing them changed nothing — see the recipe named at the top of this row. **The escape hatch is real, and measured:** a person closing the VI in the IDE by hand frees the path immediately — the very next `ConvertAIXMLToVI` on it returned `errorCode 0`. So when you are stuck on a path, the fix is a human closing that window, not another property write. **Opening the VI inside a project changes nothing** — tested, because "we never opened it in a project, which would be the normal case" is the obvious objection. A hand-written `.lvproj` (§2 of the lvproj reference), the VI generated beside it and opened with both the VI *and* project pairs, `describe_project` confirming it loaded as a real member with `missingFiles: []`: regeneration still `1357`. Project membership is not what holds the file. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
+| `Error 42 ... Generic error` from **`ValidateAIXML`** | A different cause with the same useless message: **an XML comment in the document.** `<!-- … -->` anywhere inside makes validation fail with `Error 42 occurred at LV AI Core.lvlibp:VI generator.vi`, `(Hex 0x2A) Generic error` — no line, no column, no element. Measured 2026-08-13 by deleting the comment and changing nothing else: the same file then validated `errorCode 0`. It misleads badly because the well-formedness errors this RPC *does* report are precise to the column (`Line 5, Column 308, missing required attribute 'outputs'`), so a bare generic error reads as a deep structural fault and invites rewriting the diagram. Put notes in a `FreeLabel`, the `comment` attribute, or a `description` — see "Practical consequence for comments". |
 | **Every `lvai_*` call stops answering after you ran a generated VI** | The VI you generated is showing a MODAL DIALOG, and LabVIEW answers nothing until a human dismisses it. The known cause is the missing-subVI prompt, but there is a second, entirely independent one that fires on ordinary input: **a palette VI whose path input is named `… (dialog if empty)` opens a file dialog when handed an empty path.** `Read Delimited Spreadsheet.vi` has exactly that — `file path (dialog if empty)` — so a generated VI that passes an unvalidated file name through it wedges the session on the emptiest possible input. The terminal *name* is the only warning. Guard it on the diagram: compare the string against `""` and `Select` a placeholder path, which turns the hang into an ordinary file error. Measured: with the guard, an empty name returns in under 40 ms and no dialog appears. **Which error code you get depends on the placeholder you chose** — an absolute one that does not exist gives `7` (file not found), a bare relative name gives `1430` (path is empty or relative). Both are fine; just do not copy a code out of this table into a VI description without measuring your own. |
 
 ## 12. This document has been tested
