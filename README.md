@@ -36,7 +36,26 @@
 > say which software this thing talks to.
 
 
-## 🚀 Quickstart with Claude
+**Contents**
+
+- [Quickstart with Claude](#-quickstart-with-claude)
+- [LabVIEW MCP](#labview-mcp)
+  - [Requirements](#requirements)
+  - [Build and try it](#build-and-try-it)
+  - [Install as a Claude Code plugin](#install-as-a-claude-code-plugin)
+  - [Register with Claude Code (manual)](#register-with-claude-code-manual)
+  - [Connect any MCP client (Codex, Copilot, local LLMs)](#connect-any-mcp-client-codex-copilot-local-llms)
+  - [Tools](#tools)
+  - [Tests](#tests)
+  - [Releasing a new version](#releasing-a-new-version)
+  - [The AIXML loop](#the-aixml-loop)
+  - [Creating a project](#creating-a-project)
+  - [Caveats](#caveats)
+  - [Layout](#layout)
+  - [Where the interface comes from](#where-the-interface-comes-from)
+
+
+## Quickstart with Claude
 
 **You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
 **LabVIEW 2026** (running before you *use* the tools — it is not needed just to install).
