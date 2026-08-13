@@ -597,7 +597,8 @@ documentation tools look for their helpers there. (Building from source instead?
 
 The server takes **no arguments and no environment**. Every snippet below registers the same
 thing — the command `…\bin\LabVIEWMCP.exe` as a stdio server named `labview`. Use the absolute
-path to where you extracted it, and double the backslashes inside JSON.
+path to where you extracted it, and double the backslashes: both JSON and TOML basic strings (the
+`config.toml` below included) treat `\` as an escape.
 
 **Claude Code, without the plugin** — one command, run in your project:
 
@@ -650,12 +651,11 @@ the full tool schema is advertised at runtime over the protocol.
 ### 3. Verify
 
 Restart the client, then ask it to call **`lvai_status`**. A healthy setup returns the discovered
-port and a `services` list containing `lvai.LVAI`. Where a client lets you pre-approve tools, the
-safe set to allow-list is the **same 18** the plugin's hook allows — the read-only tools minus the
-six `lvai_monitor_*` tools (they block and can write back to LabVIEW's UI). Keep everything else
-behind a prompt, and never allow-list the whole server. That exact list is in
-[section 6](#6-let-the-read-only-tools-run-without-asking). Client MCP support and config-file
-paths change often — if a key name here has moved, check your tool's own MCP documentation.
+port and a `services` list containing `lvai.LVAI`. Where a client lets you pre-approve tools,
+allow-list the **same 18 passive tools** the plugin's hook allows — the exact list is in
+[section 6](#6-let-the-read-only-tools-run-without-asking). Keep everything else behind a prompt,
+and never allow-list the whole server. Client MCP support and config-file paths change often — if a
+key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
