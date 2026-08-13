@@ -14,15 +14,20 @@ and it no longer holds. Only the premise changed; nothing that was measured did.
 
 Everything below was measured on LabVIEW 2026 (x86), `lvai 26.3`, on 2026-08-12.
 
-**Only the final probes are checked in.** Every step below was cut as its own probe VI and each
-is a superset of the one before it, so the intermediates were scaffolding — and they were not
-free scaffolding, because `LabVIEWMCP.csproj` copies all of `scripts/` next to the exe, so all
-26 shipped with every binary install. Four remain: `lvdiag_probe_v16.xml` (read direction,
-complete), `lvdiag_gen_step6.xml` (write direction, as far as it goes), and
-`lvdiag_roundtrip_target.xml` and `lvdiag_helloworld.xml`, which are the sources of the
-checked-in test fixtures. A step file named below in plain text rather than linked is one of the
-deleted ones — its *measurement* is what mattered, and that is on this page. Re-cutting one
-means cutting it back out of the final probe.
+**Only the read direction is checked in.** Every step below was cut as its own probe VI and each
+is a superset of the one before it, so the intermediates were scaffolding — and not free
+scaffolding, because `LabVIEWMCP.csproj` copies all of `scripts/` next to the exe, so all 26
+shipped with every binary install. Three remain: `lvdiag_probe_v16.xml`, the complete extractor,
+and `lvdiag_roundtrip_target.xml` and `lvdiag_helloworld.xml`, which are the sources of two of
+the three checked-in test fixtures. A step file named below in plain text rather than linked is
+one of the deleted ones — its *measurement* is what mattered, and that is on this page.
+
+**The write direction is written down but not checked in.** `lvdiag_gen_step6.xml` built the
+whole `Demo_add` shape by scripting alone, and it is gone with the rest: it regenerates no
+fixture, no C# reads it, and it was hand-wired for that one VI shape with every value a literal
+— so it is a demonstration, not a starting point. What it proved is in the write-direction
+sections below, and `vi-object-styles.tsv` holds the name-to-code table it needed, which is the
+part that was genuinely expensive to obtain.
 
 ## Phase 0 — settled
 
