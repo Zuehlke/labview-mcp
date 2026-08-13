@@ -3,8 +3,12 @@ using System.Runtime.Versioning;
 
 namespace LabVIEWMcp.Export;
 
-/// Drives the exporter VI over LabVIEW's ActiveX VI Server - the public, documented
-/// interface - so nothing in the runtime path touches lvai.LVAI.
+/// Drives the exporter VI over LabVIEW's ActiveX VI Server, so nothing in the runtime path
+/// touches lvai.LVAI.
+///
+/// PARKED, and reachable from no tool. NI has cleared the gRPC interface for our use, so the
+/// lvai_* RPCs are the intended route; this is a Plan B kept working rather than a migration
+/// in progress. docs/viserver-exporter.md carries the measurements and where it stopped.
 ///
 /// Uses Call rather than Run. Run needs the VI idle, and a VI that lvai's RunVIAsTopLevel
 /// has touched stays in ExecState 2 (reserved as top level) for the rest of the session,

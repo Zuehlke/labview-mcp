@@ -1,8 +1,16 @@
-# A VI-Server-based AIXML exporter — replacing `ConvertVIToAIXML`
+# A VI-Server-based AIXML exporter — Plan B, kept but not pursued
 
-Goal: read a VI's block diagram without `lvai.LVAI`. The private interface is unversioned,
-tied to the AI addon, and NI has asked that it not be relied on. VI Server is the public,
-documented alternative.
+**Status: parked.** NI has cleared the gRPC interface for our use, which removes the reason this
+work started. The `lvai_*` RPCs are the intended route and remain it. Nothing on this page is
+wired into a tool, and no further work is planned.
+
+It stays checked in because a second, independent way to read a block diagram is cheap to keep
+and expensive to rebuild, and because everything below is a *measurement* of LabVIEW's scripting
+model — true no matter which transport we ship over.
+
+This page used to open by saying the private interface was unversioned, tied to the AI addon,
+and that NI had asked that it not be relied on. That was the premise of the whole investigation
+and it no longer holds. Only the premise changed; nothing that was measured did.
 
 Everything below was measured on LabVIEW 2026 (x86), `lvai 26.3`, on 2026-08-12.
 
@@ -818,7 +826,10 @@ from the extract means a loop over the object rows with the style code arriving 
 which is exactly what the Ring-is-numeric finding buys, and terminal matching by `Name` rather
 than by the reversed index.
 
-## Still open
+## Where it stopped
+
+Not a backlog — the work is parked, and this is the list a resumption would start from rather
+than a list of things anyone owes.
 
 - **Constant values.** `{LV.StringConstant}` `Value` returns a **Variant**, not a string —
   `The type of the source is Variant. The type of the sink is string`. So a value read needs
@@ -849,8 +860,6 @@ enough to do it — no `ConvertAIXMLToVI` required. Three failed validations of 
 `lvdiag_probe_v5.vi` made the next *successful* generation fail with
 `Error 1051 … already exists in memory`. Rename the target and move on; §11 of the AIXML
 reference has the rule, and it costs a confusing minute every time it is met fresh.
-- **Invocation over ActiveX** instead of `RunVIAsTopLevel`, which removes the last
-  `lvai.LVAI` dependency from the runtime path.
 
 ## Operational notes paid for during Phase 0
 

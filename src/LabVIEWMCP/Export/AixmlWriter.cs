@@ -6,6 +6,8 @@ namespace LabVIEWMcp.Export;
 
 /// Turns `scripts/lvdiag_probe_v16.xml`'s records into AIXML.
 ///
+/// PARKED - see ViServerDriver for why. Exercised only by AixmlWriterTests.
+///
 /// The probe deliberately does no interpretation: it reports LabVIEW's own class names,
 /// labels and terminal names, identifies everything by a Type Cast integer, and hands the
 /// front panel over as LabVIEW's own flattened XML. All the mapping lives here, where it is
