@@ -2246,6 +2246,63 @@ Consequences for authoring:
   read at all, verify out of band — write the result to a file and inspect that, rather than
   trusting an empty answer either way.
 
+### Naming elements instead of numbering them
+
+`uid` may be a **symbol** rather than a number — `uid="read"`, `outputs="value:read.data"` — and the
+MCP server assigns the numbers immediately before the file goes to LabVIEW, which never sees a
+symbol. `lvai_validate_aixml`, `lvai_convert_aixml_to_vi` and `lvai_apply_aixml_to_vi` all accept
+it.
+
+The reason is measured, not aesthetic: profiling one whole generation put a single turn of **47 s**
+on "planning out the unique uids", pure notation overhead with no bearing on what the diagram does.
+The format needs numbers; the author does not need to keep a numbering scheme in their head while
+deciding what to wire to what.
+
+A symbol starts with a letter or underscore and contains letters, digits, underscore or hyphen.
+Dots and colons are reserved — they separate a uid from a terminal name. `root` keeps its meaning
+and is never treated as a symbol. Numbers and symbols may be mixed in one file.
+
+What the response tells you when symbols were used: `symbolicUids` maps each symbol to the number
+it was given, and `aiXmlSentToLabview` is the numbered file LabVIEW actually read. Messages naming
+a `uid` are translated back; a bare number is deliberately **not**, because turning `-200220` or
+`Error 1357` into a symbol name would be a worse failure than leaving one number untranslated.
+
+Three properties this was built to keep, because a mistake here yields a VI that validates, runs and
+is wired wrongly rather than an error:
+
+- **A file with no symbol is not rewritten at all** — the original path goes to LabVIEW. The same
+  applies to anything unreadable: a missing file, a locked one, malformed XML. That inertness is
+  not a nicety; adding the feature without it broke 13 existing tests at once, which pass paths that
+  were never created and relied on LabVIEW to say so.
+- **The mapping is injective**, one number per distinct symbol.
+- **Numbering starts above the highest number already in the file**, so a symbol can never take a
+  number the author used.
+
+### Starting from a skeleton
+
+`scripts/aixml-skeletons/` holds complete, validated AIXML whose purpose is to be read and copied
+from. It answers a different question from `lvai_example_index`: that one says *has NI already built
+this diagram*, this one says *how is this shape spelled in AIXML*. Skeletons use symbolic uids, so
+elements can be lifted out of one and dropped into your own file without renumbering.
+
+`accumulate-across-a-loop.xml` carries the shape that has been got wrong most often here: a For Loop
+given its `N` by `maxin`, an accumulator on a shift register seeded from an empty-array constant,
+and the seed / append / keep case pair without which the inner indexing loop runs zero times on
+iteration 0 and the accumulator stays empty for the whole run.
+
+**A skeleton is a frozen measurement, and this repository has already shipped one that stopped being
+true.** "A generated VI always gets pattern 4815, so this map is a constant" was correct when
+measured and produced a wrongly-populated connector pane on a station configured differently. So:
+
+- skeletons carry **no `conIdx`** — that is a station setting, and `lvai_connector_pane` with no
+  argument is the only honest source;
+- a polymorphic `instance=` in a skeleton is what was measured on the station named in its header,
+  and still wants confirming with `lvai_vi_terminals`;
+- each file states the date, the LabVIEW version and the station it was validated on, so a reader
+  can see how old the claim is.
+
+Copying a skeleton must not replace the lookups that produced it. It replaces the *typing*.
+
 ## 11. Known failure modes
 
 | Symptom | Cause |
@@ -2265,8 +2322,9 @@ Consequences for authoring:
 | **The VI runs, reports no error, and computes the WRONG ANSWER** | **`value="TRUE"` on a boolean is silently read as `false`.** The worst member of the family, because the other two leave something visibly missing and this one leaves a working VI that is simply wrong. Measured, four spellings in one probe VI, all validating with `errorCode 0` and all generating cleanly: <br>`value="true"` → **TRUE** — the only one that works<br>`value="TRUE"` → false `value="True"` → false `value="1"` → false<br>It cost a generated CSV loader a whole debugging round: its `transpose?` constant read `TRUE`, so the file was read untransposed, and the VI returned 1 sample with `dt = 1.0` instead of 8 with `dt = 0.1` — no error anywhere. It was caught only by comparing the numbers against the source file. **Emit exactly lowercase `true`/`false`, which is what an export writes**, and check a boolean constant's effect against real data rather than against `errorCode`. |
 | **A VI in memory CAN be evicted — via the active project** | **Read this row's ending first: there is a working recipe**, in `vi-server-reference.md` under "Unloading a VI so its path can be regenerated". Reach the IDE's application through `{LV.Application}` → `Project\3AActive Project` → `{LV.Project}` → `Application`, open the VI reference *there*, and write `Front Panel Window\3AState` = `Closed`. Measured A/B: `1357` before, `errorCode 0` after. The rest of this row is the long road that found it, kept because every step of it is a thing that does **not** work. The fallback rule remains sound when no project is active: **generate each iteration under a fresh name, and do not `lvai_open_file` a VI you still intend to regenerate.** Measured, in one helper run that itself reported no error: writing `Front Panel Window\3AOpen` **and** `Block Diagram Window\3AOpen` to `False`, then `FP.Set Close If Lonely`, then `Close Reference` — and the regeneration still failed with 1357. The catalogue carries no unload or remove-from-memory method at all across its 3 078 entries. Earlier advice here said "or make LabVIEW release the VI"; that is not achievable through this interface. Closing the VI in the IDE by hand, or restarting LabVIEW, is the reset. **Re-measured on a freshly restarted machine, with the one remaining explanation tested and killed:** the idea that closing the window *modifies* the VI and that a modified VI cannot be unloaded. Reading `Modifications\3AUser Changes` before the close, after it, and after a `Save\3AInstrument` gave **clean, clean, clean** — unsaved changes were never what held it. Same run, no error anywhere in it, regeneration still 1357. What every one of these attempts shared, and what took an evening to see: they all ran in the **addon's** application instance, where the VI's windows do not exist. That is why closing them changed nothing — see the recipe named at the top of this row. **The escape hatch is real, and measured:** a person closing the VI in the IDE by hand frees the path immediately — the very next `ConvertAIXMLToVI` on it returned `errorCode 0`. So when you are stuck on a path, the fix is a human closing that window, not another property write. **Opening the VI inside a project changes nothing** — tested, because "we never opened it in a project, which would be the normal case" is the obvious objection. A hand-written `.lvproj` (§2 of the lvproj reference), the VI generated beside it and opened with both the VI *and* project pairs, `describe_project` confirming it loaded as a real member with `missingFiles: []`: regeneration still `1357`. Project membership is not what holds the file. |
 | `Error 42 ... Generic error` from `ApplyAIXMLToVI` | **Not a payload problem — see §14.** The RPC itself works; it is gated on a per-VI attachment a third-party client cannot obtain. |
-| `Error 42 ... Generic error` from **`ValidateAIXML`** | A different cause with the same useless message: **an XML comment in the document.** `<!-- … -->` anywhere inside makes validation fail with `Error 42 occurred at LV AI Core.lvlibp:VI generator.vi`, `(Hex 0x2A) Generic error` — no line, no column, no element. Measured 2026-08-13 by deleting the comment and changing nothing else: the same file then validated `errorCode 0`. It misleads badly because the well-formedness errors this RPC *does* report are precise to the column (`Line 5, Column 308, missing required attribute 'outputs'`), so a bare generic error reads as a deep structural fault and invites rewriting the diagram. Put notes in a `FreeLabel`, the `comment` attribute, or a `description` — see "Practical consequence for comments". |
-| **Every `lvai_*` call stops answering after you ran a generated VI** | The VI you generated is showing a MODAL DIALOG, and LabVIEW answers nothing until a human dismisses it. The known cause is the missing-subVI prompt, but there is a second, entirely independent one that fires on ordinary input: **a palette VI whose path input is named `… (dialog if empty)` opens a file dialog when handed an empty path.** `Read Delimited Spreadsheet.vi` has exactly that — `file path (dialog if empty)` — so a generated VI that passes an unvalidated file name through it wedges the session on the emptiest possible input. The terminal *name* is the only warning. Guard it on the diagram: compare the string against `""` and `Select` a placeholder path, which turns the hang into an ordinary file error. Measured: with the guard, an empty name returns in under 40 ms and no dialog appears. **Which error code you get depends on the placeholder you chose** — an absolute one that does not exist gives `7` (file not found), a bare relative name gives `1430` (path is empty or relative). Both are fine; just do not copy a code out of this table into a VI description without measuring your own. |
+| `Error 42 ... Generic error` from **`ValidateAIXML`** | Cause unsettled, and the XML-comment explanation this row used to give is **contradicted by a later measurement — do not act on it.** It said `<!-- … -->` anywhere in the document fails validation with `Error 42`, measured 2026-08-13 by deleting the comment and changing nothing else. On **2026-08-14** `scripts/aixml-skeletons/accumulate-across-a-loop.xml` validated `errorCode 0` and generated a real VI while carrying **two** comments — a long header before the root element and one *inside* the `<VI>` element — verified by reading the exact file handed to LabVIEW, not the source. Something else caused the 2026-08-13 failure, or the behaviour changed with a LabVIEW or addon update; the two measurements do not distinguish those. What survives is the useful half: this message carries no line, no column and no element, while the well-formedness errors the RPC *does* report are precise to the column (`Line 5, Column 308, missing required attribute 'outputs'`), so a bare generic error reads as a deep structural fault and invites rewriting a diagram that is fine. Bisect the file rather than trusting any single suspect. |
+| **Every `lvai_*` call stops answering after you ran a generated VI** | The VI you generated is showing a MODAL DIALOG, and LabVIEW answers nothing until a human dismisses it. The known cause is the missing-subVI prompt, but there is a second, entirely independent one that fires on ordinary input: **a palette VI whose path input is named `… (dialog if empty)` opens a file dialog when handed an empty path.** `Read Delimited Spreadsheet.vi` has exactly that — `file path (dialog if empty)` — so a generated VI that passes an unvalidated file name through it wedges the session on the emptiest possible input. The terminal *name* is the only warning. Guard it on the diagram: compare the string against `""` and `Select` a placeholder path, which turns the hang into an ordinary file error. Measured: with the guard, an empty name returns in under 40 ms and no dialog appears. **Which error code you get depends on the placeholder you chose** — an absolute one that does not exist gives `7` (file not found), a bare relative name gives `1430` (path is empty or relative). Both are fine; just do not copy a code out of this table into a VI description without measuring your own. **Those two codes were measured on a READ, and they do not transfer to a CREATE — see the row below.** |
+| **A relative placeholder path silently writes into the LabVIEW installation directory** | The guard above, applied to a node that *creates*. `TDMS Open` with `operation` = `create or replace` does **not** reject a bare relative name: it resolves it against LabVIEW's working directory and creates the file there — measured in a generation run on 2026-08-14, which left `DaqReadAndTDMS_no_path_given.tdms` and its `_index` inside `C:\Program Files (x86)\National Instruments\LabVIEW 2026\` while the VI's own description claimed a file error had been returned. The `1430` in the row above came from `Read Delimited Spreadsheet.vi`, a **read**, where a relative path is invalid; for a create it is perfectly valid and gets created. **A file-path error code measured on one direction says nothing about the other.** Two consequences. If you use a placeholder at all, make it **absolute**. And check first whether the node needs a guard: the terminal name is the tell — `TDMS Open` takes `file path`, not `file path (use dialog)` or `(dialog if empty)`, so it cannot open a dialog, and an empty path returns error `118` in 48 ms on its own. The guard was protecting against something that node does not do. **Confirmed independently the same day with a purpose-built two-node probe** (`TDMS Open` → `TDMS Close`, create-or-replace, path taken as a string and converted on the diagram, error cluster unbundled): the bare relative name `lvai_probe_relative.tdms` returned **`status false`, `code 0`** — success, not an error — and the file plus its `_index` were then found at `C:\Program Files (x86)\National Instruments\LabVIEW 2026\`; the same probe with an **empty** path returned **`code 118` in 25 ms**, with `file path out` reading `<Not A Path>` and no dialog. Two runs of one VI settle both halves. |
 
 ## 12. This document has been tested
 

@@ -305,13 +305,19 @@ internal sealed class AixmlTools(LvaiConnection connection)
             // what a step costs is to bracket the call from outside, which in an agent loop
             // measures model latency - about 7 s per turn - rather than LabVIEW. Measured that
             // way, three calls read 30.4 s while the work was well under a second.
+            var symbolic = SymbolicUids.Prepare(aiXmlFilePath);
+
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
-                c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aiXmlFilePath },
+                c.ValidateAIXMLAsync(
+                    new ValidateAIXMLRequest { AiXMLFilePath = symbolic.PathForLabview },
                     deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
             stopwatch.Stop();
+
+            response.ErrorMessage = SymbolicUids.Annotate(response.ErrorMessage, symbolic.Map);
             return Json.Message(response,
-                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
+                [.. SymbolicFacts(symbolic),
+                 ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 
     [McpServerTool(Name = "lvai_convert_aixml_to_vi", Destructive = true, OpenWorld = true,
@@ -342,22 +348,26 @@ internal sealed class AixmlTools(LvaiConnection connection)
             // This is the number people actually ask for - "how long does generating a VI take" -
             // and it is not obtainable from outside the server: bracketing the call in an agent
             // loop measures the turn, not the generation.
+            var symbolic = SymbolicUids.Prepare(aiXmlFilePath);
+
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
                 c.ConvertAIXMLToVIAsync(new ConvertAIXMLToVIRequest
                 {
-                    AiXMLFilePath = aiXmlFilePath,
+                    AiXMLFilePath = symbolic.PathForLabview,
                     ViPath = viPath,
                     OpenVI = openVI,
                 }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
             stopwatch.Stop();
 
+            response.ErrorMessage = SymbolicUids.Annotate(response.ErrorMessage, symbolic.Map);
             return Json.Message(response,
-                ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
-                ("viExisted", JsonValue.Create(existedBefore)),
-                ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
-                ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
-                ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
+                [.. SymbolicFacts(symbolic),
+                 ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
+                 ("viExisted", JsonValue.Create(existedBefore)),
+                 ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
+                 ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+                 ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 
     [McpServerTool(Name = "lvai_apply_aixml_to_vi", Destructive = true, OpenWorld = true,
@@ -375,21 +385,45 @@ internal sealed class AixmlTools(LvaiConnection connection)
         await Rpc.GuardAsync(async () =>
         {
             var before = File.Exists(viPath) ? new FileInfo(viPath).Length : 0;
+            var symbolic = SymbolicUids.Prepare(aiXmlFilePath);
             var response = await connection.InvokeAsync((c, t) =>
                 c.ApplyAIXMLToVIAsync(new ApplyAIXMLToVIRequest
                 {
                     ViPath = viPath,
-                    AiXMLFilePath = aiXmlFilePath,
+                    AiXMLFilePath = symbolic.PathForLabview,
                 }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
 
+            response.ErrorMessage = SymbolicUids.Annotate(response.ErrorMessage, symbolic.Map);
             return Json.Message(response,
-                ("viBytesBefore", JsonValue.Create(before)),
-                ("viBytesAfter", JsonValue.Create(
-                    File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
-                ("note", JsonValue.Create(
-                    "A byte size that did not change may simply mean LabVIEW has the VI open " +
-                    "in memory and has not saved it yet.")));
+                [.. SymbolicFacts(symbolic),
+                 ("viBytesBefore", JsonValue.Create(before)),
+                 ("viBytesAfter", JsonValue.Create(
+                     File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+                 ("note", JsonValue.Create(
+                     "A byte size that did not change may simply mean LabVIEW has the VI open " +
+                     "in memory and has not saved it yet."))]);
         });
+
+    /// <summary>
+    /// What to add to a response when the source used symbolic uids - nothing at all when it did
+    /// not, so an ordinary numbered file's answer keeps exactly the shape it always had.
+    /// </summary>
+    private static (string, JsonNode?)[] SymbolicFacts(SymbolicUids.Result symbolic)
+    {
+        if (!symbolic.Rewritten) return [];
+
+        var map = new JsonObject();
+        foreach (var pair in symbolic.Map) map[pair.Key] = JsonValue.Create(pair.Value);
+
+        return [
+            ("symbolicUids", map),
+            ("aiXmlSentToLabview", JsonValue.Create(symbolic.PathForLabview)),
+            ("symbolicNote", JsonValue.Create(
+                "This source used symbolic uids; they were numbered before LabVIEW saw it. A " +
+                "message naming a number refers to the file at aiXmlSentToLabview, and " +
+                "symbolicUids gives the symbol each number came from.")),
+        ];
+    }
 
     private static async Task<(string, JsonNode?)[]> FileFactsAsync(
         string path, bool includeContent, int maxChars, CancellationToken ct)
