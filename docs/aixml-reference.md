@@ -173,11 +173,22 @@ choice either — LabVIEW gives every new VI the default pane from `LabVIEW.ini`
 DefaultConPane="4833"
 ```
 
-That key, read from the `LabVIEW.ini` next to `LabVIEW.exe`, is why everything generated on this
-station comes out 16-terminal. LabVIEW's own default is **4815**, the 12-terminal `4x2x2x4`. So the
-pattern of a *new* VI **is** knowable before you generate — just not from anything inside AIXML or
-the VI Server API. `lvai_connector_pane` with no argument reads it for you and prints the four
-`conIdx` values to write.
+That key, read from the `LabVIEW.ini` next to `LabVIEW.exe`, **overrides everything** — never assume
+a pattern when that file can be read, and it is why everything generated on this station comes out
+16-terminal. **If the key is absent, LabVIEW's factory default applies: 4815, the 12-terminal
+`4x2x2x4`.** So the pattern of a *new* VI **is** knowable before you generate — just not from
+anything inside AIXML or the VI Server API. `lvai_connector_pane` with no argument reads it for you.
+The file is read-only to us: read it, quote it, never write a key to it.
+
+**Take the whole style-guide block that call prints — not four numbers.** This paragraph said "prints
+the four `conIdx` values to write", and that phrasing is itself the cause of a bug that shipped three
+times: the tool prints **six** entries — `first input`, **`more inputs`**, `error in`, `first output`,
+**`more outputs`**, `error out` — and the two `more` rows are the ones a reader drops. A VI with two
+data inputs then gets its first on `conIdx 0`, correctly, and its second on **`conIdx 1`, because 1
+follows 0**. On 4833 the left edge is `0, 5, 7, 9`; `1` is the top of the second column, a middle
+slot. `lvai_connector_pane` with `viPath` catches it and forces a regeneration, so the cost is about
+30 s per occurrence rather than a defect — but **never derive the next index by adding one.** On 4815
+the left edge counts *down*: `11, 10, 9`.
 
 **Three revisions of this section were wrong before that was known, and the shape of the error is
 worth keeping.** The first said a generated VI "essentially always gets 4815" and called that map "a
@@ -577,9 +588,25 @@ that left your source is the string that reached disk.
 
 Same shape, with `maxin` / `maxout` alongside `count`.
 
-**`count` does NOT wire `N`. Nothing does — auto-indexing is the only way to give a For Loop its
-iteration count.** An earlier revision of this line said "`count` carries the iteration count wire",
-which is wrong in both spellings and cost a generation two validate cycles to discover. Measured:
+**`maxin` wires `N`. `count` does not — it names the loop's own `i` output net.** This section said
+for two revisions that *nothing* wires `N` and that auto-indexing was the only way; that was wrong,
+and it pushed at least two generations into building a literal array or a While-Loop counter to get
+a fixed iteration count. The measurements below are all still true — they simply tested the wrong
+attribute. `maxin` was in the attribute vocabulary in §2 the whole time, listed and never tried.
+
+NI's own export of `Flush Written TDMS Data.vi` settles it:
+
+```xml
+<Structure _name="For Loop" count="427.value" maxin="1426.value" maxout="" uid="427" uid_parent="root">
+<Constant outputs="value:1426.value" type="int32" uid="1426" uid_parent="root" value="100"/>
+```
+
+`maxin` takes the net of an int32 constant — that is the `N` terminal — while `count` holds
+`427.value`, the structure's *own* uid, which is the `i` terminal's net. Confirmed in the other
+direction by generating `maxin="210.value"` from an int32 constant `5`: it validated, generated, and
+the round-trip export preserved it, with no indexing tunnel anywhere on the loop.
+
+What `count` is not, measured before `maxin` was tried:
 
 | what was written | answer |
 |---|---|
@@ -588,18 +615,28 @@ which is wrong in both spellings and cost a generation two validate cycles to di
 | `<Tunnel _id="N" …>`, reaching for the terminal itself | **schema violation**: `value 'N' does not match regular expression facet '(In\|Out)[1-9][0-9]*'` |
 | `count=""` plus one `mode="index"` input tunnel | `errorCode 0` |
 
-So the `N` terminal is not addressable in this format at all, and the two extra errors in the second
-row are worth recognising: they name wires and types, they appear *because* `count` holds a net, and
-they vanish when it does not. Anyone chasing them is looking in the wrong place.
+The two extra errors in the second row are worth recognising: they name wires and types, they appear
+*because* `count` holds a net feeding the wrong terminal, and they vanish when it does not. Anyone
+chasing them is looking in the wrong place.
 
-**For a fixed iteration count with no array to index**, index over a literal array of the right
-length — `<Constant type="array{int32}" value="[0,0,0,0,0]"/>` into a `mode="index"` tunnel gives
-`N = 5` — or use a `While Loop` with an int32 shift register, `Increment` and `Greater?` against
-`n-1`, which is what one generated VI settled on and which validates and runs.
+**For a fixed iteration count with no array to index, use `maxin`.** The two workarounds this
+document used to prescribe — indexing over a literal `<Constant type="array{int32}"
+value="[0,0,0,0,0]"/>`, or a `While Loop` with an int32 shift register, `Increment` and `Greater?`
+against `n-1` — both work and both still validate, but neither is necessary and each costs three to
+five extra elements on the diagram.
 
 **Auto-indexing is `mode="index"` on the tunnel** — the attribute the rest of this section was
 missing. A tunnel *without* `mode` passes its whole value through unchanged; with it, the loop
-indexes one element per iteration and supplies `N`. Measured from OpenG's
+indexes one element per iteration and supplies `N`.
+
+**It works on an `Out` tunnel too, which this section only ever showed on `In` tunnels** — that is
+how a loop *builds* an array, one element per iteration, without `Build Array` and a shift register.
+`<Tunnel _id="Out1" inputs="value:530.waveform out" mode="index" outputs="value:540.value"/>`
+validated, generated and round-tripped, and NI's own example exports carry the same shape. The pair
+of them is the whole accumulate-per-channel idiom: index two `In` tunnels, index the `Out` tunnel
+back out.
+
+Measured from OpenG's
 `Filter 1D Array (String)__ogtk.vi`, which is also a compact model of the accumulate-in-a-loop
 idiom:
 
@@ -1507,6 +1544,40 @@ Three things the shape does not show:
 - Reading the result back, a Time Stamp's four I32 words are ordered fraction-low, fraction-high,
   seconds-low, seconds-high — see `vi-server-reference.md`, or every `t0` looks like zero.
 
+### Accumulating an array of waveforms across a loop: two traps
+
+Continuous acquisition hands you one block of N channels per iteration, and the block has to be
+accumulated or all but the last is lost. The obvious shape does not work, and the failure is silent
+rather than an error.
+
+**`Append Waveforms.vi` has no array instance.** `lvai_palette_index` returns exactly one candidate
+(`Categories\Programming\_WaveForm\AnalogWDT.mnu`), and `lvai_vi_terminals` on
+`vi.lib\Waveform\WDTOps.llb\Append Waveforms.vi` shows it is polymorphic with **7 instances, every
+one of them scalar**: `waveform A`, `waveform B`, `error in (no error)` → `waveform out`,
+`error out`. So an accumulator of type `array{doublewaveform}` cannot be appended in one `Call`.
+The correct shape is an **inner For loop that auto-indexes the accumulator and the new block
+together**, one channel per iteration, calling `instance="WDT Append Waveforms DBL.vi"`, with
+`waveform out` auto-indexed back into an array. Rebuilding Y-array concatenation from primitives is
+not needed and is the wrong instinct.
+
+**The empty accumulator makes that loop run zero times.** Initialise the shift register with
+`<Constant type="array{doublewaveform.Waveform}" value="[]"/>` — that type is accepted in `Constant`
+position, measured — and iteration 0 indexes an empty array against an N-element block, so the inner
+For loop runs `min(0, N) = 0` times and the accumulator stays empty **forever**. Nothing reports
+this: it validates, it runs, and the output is an empty array that looks exactly like a device error.
+Guard it with a seed case (`Empty Array?` → `Select`, or a Case on the accumulator's size) that takes
+the first block as-is.
+
+Worth a third frame while you are there. If a *late* read fails and hands the append an empty
+block, the same zero-iteration arithmetic wipes everything already accumulated. A three-way
+selector — seed / append / keep — returns the partial data instead, which is what a caller reading
+`error out` alongside the waveforms will expect.
+
+The symptom that led here: a generated DAQ-to-TDMS VI wired `DAQmx Read`'s `data` straight to the
+output terminal, so four of five blocks were discarded. The user spotted it in the block diagram —
+neither validation nor a run can see it, and on a station without a device the empty output is
+indistinguishable from the expected `-200220`.
+
 ### Reading a CSV: three things about `Read Delimited Spreadsheet` worth not re-deriving
 
 The polymorphic file reader is the standard answer to "load a CSV", and three of its behaviours
@@ -2008,6 +2079,79 @@ Two details that are easy to get wrong and are handled here: output files are na
 alone would have one silently overwrite another; and the path list is split on **newlines only**,
 not on commas, because a comma is legal in a Windows path (`C:\Data\Rev 2, final\`) while a line
 break is not.
+
+### Where a generation session's wall clock actually goes
+
+`CLAUDE.md` has long said that the cost of a generation is round trips rather than LabVIEW, on the
+strength of one session where three `lvai_*` calls took 30.4 s while LabVIEW's own share was 74 ms.
+That was right but thin. Here is the whole profile, taken from subagent transcript timestamps —
+which costs nothing and, unlike having the agent time itself, does not add the very round trips
+being measured. Scripts: `tprof.py` / `tphase.py` in the session scratchpad; attribution is
+`tool exec = tool_result.ts − assistant.ts` and `model turn = assistant.ts − previous.ts`.
+
+One **fresh, complete generation** of a DAQmx-to-TDMS VI by `labview-vi-generator`, 41 tool calls,
+455 s active (idle gaps > 60 s excluded):
+
+| | time | share |
+|---|---|---|
+| text-only turns — reasoning, plans, the final report | **240.3 s** | **52.8 %** |
+| model time in turns that end in a tool call | 146.3 s | 32.2 % |
+| **tool execution — LabVIEW and the MCP server together** | **72.2 s** | **15.9 %** |
+
+A second profile over 54 calls (a generation plus a correction round) agrees: 89.7 s of tool
+execution against 634 s of model turns, **12.5 % vs 88.1 %**.
+
+So the unit worth counting is a tool call, and it is worth about **11 s of wall clock** (455 s / 41)
+regardless of what the call does. That reframes the batching rule in `CLAUDE.md` as arithmetic
+rather than advice:
+
+- `lvai_aixml_reference`, 6 calls in that run, **0.1 s of server time in total** — the document cache
+  did its job — but 6 turns, so roughly 66 s of wall clock. Five of them were avoidable.
+- `lvai_palette_index`, 3 calls, again **0.1 s total**, ~33 s of wall clock.
+
+Batching saves nothing measurable on the server and everything on the clock. A cache on these calls
+would be pointless twice over: they are already sub-millisecond, and no two arguments repeat.
+
+No single `lvai_*` call exceeded 5 s. The expensive ones are exactly the ones that make LabVIEW
+work — `ConvertAIXMLToVI` 3.9 s, `lvai_connector_pane` with `viPath` 4.2 s,
+`lvai_run_vi_and_read_values` 4.0 s, `lvai_set_vi_icon` 3.6 s — and the read-only indexes are free.
+**LabVIEW is not the slow part; it is a sixth of the total.**
+
+By phase, over the 218.5 s that attributes to a tool call:
+
+| phase | calls | model s | tool s | total |
+|---|---|---|---|---|
+| authoring the AIXML — write, edit, validate, convert | 10 | 84.2 | 24.5 | 108.7 s |
+| research — palette, examples, references | 23 | 40.9 | 16.1 | 57.0 s |
+| verification — run, pane, project | 6 | 10.5 | 21.2 | 31.7 s |
+| icon | 2 | 10.7 | 10.4 | 21.1 s |
+
+**Bucket by what a call did, not by which tool ran it.** A first cut of this table charged every
+`Bash` and `PowerShell` call to the icon and reported it at 48.1 s — a fifth of the run — and that
+number was quoted onward before it was checked. Reading the actual commands back out of the
+transcript showed three of those `Bash` calls were `sed`/`python` edits to the AIXML. The icon is
+**21.1 s, under a tenth**; authoring is half the run. Dump the command strings, do not trust the
+tool name.
+
+**Research is 23 of 41 calls**, most individually free, which is where batching has room.
+
+Inside the icon's 21.1 s the split is worth knowing before anyone tries to optimise the VI Server
+side of it: **12.5 s goes on drawing the PNG** (a `PowerShell` call through `System.Drawing`, 6.8 s
+of it, plus 5.7 s of model time composing that call) and only **8.6 s on `lvai_set_vi_icon`** — which
+opens the VI reference, invokes `Set VI Icon from File`, `Save:Instrument` and `Save VI Icon to File`,
+and closes the reference, all in one helper run of 3.6 s. The write-and-read-back chain is already
+minimal; the cost is producing the image, and that never touches LabVIEW.
+
+The other lever is not a call count at all: the largest single turn in the run was **40.3 s of
+reasoning** and the final report cost **30.1 s for 6 001 characters**. Over half the wall clock is
+the model thinking and writing prose. Prescribing what the agent would otherwise derive — the
+station's `conIdx` set, the polymorphic instance name, the accumulator shape — buys more than any
+change on the LabVIEW side can.
+
+A worked example of that, from the same run: the agent authored `TDMS file path` on `conIdx` 1, a
+middle-column slot, and `lvai_connector_pane` flagged it — costing an extra `ConvertAIXMLToVI` and
+an extra pane measurement plus their turns, some 30 s, to arrive at the value the station's
+`DefaultConPane=4833` already fixed before the run began.
 
 ### Where a node's documentation comes from
 

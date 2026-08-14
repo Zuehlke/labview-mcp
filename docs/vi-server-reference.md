@@ -201,6 +201,41 @@ against a freshly generated VI:
 | persist it | `Invoke Node` `Save\3AInstrument` — without it the change dies with the reference |
 | verify | `Invoke Node` `Save VI Icon to File`, input `Image File` |
 
+**The image itself is produced here, not by the caller.** `lvai_set_vi_icon` takes `line1`,
+`line2`, `line3` plus optional `bannerColor` / `backgroundColor` / `borderColor` and renders the
+32×32 PNG in-process before running the helper above — a banner across the top carrying `line1`,
+up to two lines under it, a 1 px frame, five characters per line, drawn from an embedded 5×7 bitmap
+font. `iconImagePath` still accepts real artwork; pass one or the other.
+
+That replaced a `PowerShell` + `System.Drawing` recipe which both agent definitions used to
+prescribe, and the reason is a measurement rather than taste: profiling one whole VI generation (41
+tool calls, 455 s) put the icon at 21.1 s, of which **12.5 s was the caller composing and running
+that PowerShell call** and only 8.6 s was this tool reaching VI Server. Rendering server-side costs
+no measurable time and removes a tool call worth about 11 s of wall clock on its own. The full
+profile is in [`aixml-reference.md`](aixml-reference.md) §10.
+
+Two consequences of the quantisation described below. The default banner is **`006699`, not NI's
+own `005A9C`** — the web-safe neighbour, chosen so the PNG this tool wrote and the icon read back
+out of the VI are the same image. **Measured end to end on `DaqReadAndTDMS.vi`: 0 of 1 024 pixels
+differ**, against 189 of 1 024 for the non-web-safe icon below, and the three colours present
+(`000000`, `006699`, `FFFFFF`) come back untouched. And a caller-supplied colour outside the cube is
+reported in `warnings` together with the value it will actually read back as, rather than being
+silently corrected or silently changed by LabVIEW.
+
+**Compare the decoded pixels, not the PNG bytes.** The same measurement showed LabVIEW writes the
+read-back file as a **palette** PNG (colour type 3) while this tool writes **truecolour** (type 2),
+so the two files differ in length and in almost every byte while encoding an identical image. A
+byte or hash comparison of icon files reports a difference that is not there.
+
+Cost of the whole call, with the helper already generated: **4.39 s and 5.69 s** over two runs, both
+`verified: true`. Too few samples to separate from the 3.6 s measured before rendering moved
+in-process, and the render itself — a 200-byte PNG — cannot account for a second of it; the spread
+is the helper run. What is certain is that the separate `PowerShell` call is gone: 6.8 s of tool
+time and 5.7 s of model time, removed.
+
+A bitmap font rather than a system typeface is also deliberate: at 32 px an anti-aliased TrueType
+glyph turns to mush, which is why the old recipe had to set `SingleBitPerPixelGridFit`.
+
 Four things this measured that the catalogue does not say:
 
 - **`Set VI Icon from File` accepts a 32×32 PNG directly.** Neither `Set VI Icon from Image Data`
