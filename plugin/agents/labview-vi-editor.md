@@ -108,6 +108,13 @@ So when the VI has one, validate the **untouched** export before promising anyth
   breaks the guide is a defect worth naming in the report and correcting, since `conIdx` is one
   attribute per terminal and costs nothing to change. Detail in `lvai_aixml_reference` §2, "The
   connector pane".
+- **`uid` may be a symbol rather than a number** — `uid="read"`, `outputs="value:read.data"`. The
+  server assigns numbers before LabVIEW sees the file, and `symbolicUids` in the response maps each
+  one back. In an edit this matters most for elements you ADD to an exported diagram: name them
+  instead of hunting for numbers that are still free. Existing numbers in the export stay as they
+  are — the two spellings mix in one file, and a file with no symbol is not rewritten at all.
+  `scripts/aixml-skeletons/` holds validated shapes worth copying from, and its header says what in
+  it is a station-specific measurement rather than a fact.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.

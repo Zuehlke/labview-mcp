@@ -100,6 +100,24 @@ it an icon.
   it ran, and the user rejected it on sight. The pattern is a station setting, not a constant. Do not
   copy indices out of an NI VI either: those use patterns of their own. Both full maps in
   `lvai_aixml_reference` §2, "The connector pane".
+- **Start from a skeleton where one fits, and name your elements instead of numbering them.**
+  `scripts/aixml-skeletons/` holds complete, validated AIXML for shapes that are easy to get wrong.
+  `accumulate-across-a-loop.xml` carries the `maxin` For Loop, the shift-register accumulator and
+  the seed/append/keep case pair without which the inner indexing loop runs zero times on iteration
+  0 and the accumulator stays empty for the whole run. It answers a different question from
+  `lvai_example_index`: that one says whether NI already built this diagram, this one says how the
+  shape is **spelled**.
+
+  `uid` may be a **symbol** — `uid="read"`, `outputs="value:read.data"` — and the server assigns
+  numbers before LabVIEW sees the file. Measured: one generation spent a single 47 s turn planning
+  uid numbers, which is notation overhead and nothing else. Symbols also make copying out of a
+  skeleton free, because there is nothing to renumber.
+
+  **A skeleton does not replace the lookups that produced it — it replaces the typing.** It carries
+  no `conIdx`, because that is a station setting: still call `lvai_connector_pane`. Its polymorphic
+  `instance=` is a measurement with a date in the file header: still confirm it with
+  `lvai_vi_terminals`. A frozen measurement is exactly how "a generated VI always gets pattern
+  4815" came to ship a wrongly-populated pane.
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.

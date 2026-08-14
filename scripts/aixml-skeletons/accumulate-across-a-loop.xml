@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SKELETON - accumulate one block per iteration instead of keeping only the last.
+
+  Shows three shapes that were each got wrong at least once and re-derived three times:
+
+    * a For Loop given its N by `maxin` (here `maxin="n.value"` from an int32 constant),
+      not by indexing a literal array and not by a While Loop with a counter;
+    * an accumulator on a shift register, seeded from an EMPTY array constant;
+    * the seed / append / keep case pair that makes that accumulator work at all.
+
+  WHY THE CASE PAIR IS NOT OPTIONAL. The inner For Loop auto-indexes the accumulator against
+  the new block. On iteration 0 the accumulator is empty, so it runs min(0, N) = 0 times and
+  the accumulator stays empty FOREVER. Nothing reports this: it validates, it runs, and the
+  output is an empty array that looks exactly like a device error. Hence the inner case,
+  selected on "is the accumulator empty", which seeds instead of appending. The outer case,
+  selected on "is the new block empty", keeps what has already been accumulated when a late
+  read fails - without it the same zero-iteration arithmetic wipes the run's data.
+
+  WHAT YOU MUST NOT COPY FROM HERE
+
+    * There are no `conIdx` attributes, deliberately. Which index is which slot depends on the
+      pane pattern, which is a station setting (`DefaultConPane` in LabVIEW.ini). Call
+      `lvai_connector_pane` with no argument and take the numbers from there.
+    * `instance="WDT Append Waveforms DBL.vi"` is the polymorphic instance measured on the
+      station below. Confirm it with `lvai_vi_terminals` rather than trusting this file: a
+      skeleton is a frozen measurement, and this repository has already shipped one that
+      stopped being true ("a generated VI always gets pattern 4815").
+
+  Uses SYMBOLIC uids - the server numbers them before LabVIEW sees the file, so elements can
+  be copied out of here into your own AIXML without renumbering anything.
+
+  WHAT "VALIDATED" COVERS HERE, exactly:
+
+    * ValidateAIXML returns errorCode 0, and ConvertAIXMLToVI produces a real VI (3 166 bytes).
+      Measured 2026-08-14 on LabVIEW 2026, DefaultConPane=4833.
+    * The accumulation ARITHMETIC is NOT re-proven by this file. `block` is an array of
+      waveforms, and the run tools can only set string inputs, so running this skeleton feeds
+      it an empty block and every iteration takes the "keep" branch. The shape is copied from
+      the diagram of C:\temp\DaqReadAndTDMS.vi, where it WAS verified behaviourally at
+      3 channels x 500 samples through a harness that built synthetic waveforms on the diagram.
+      So the arithmetic is inherited evidence, not a measurement of this file.
+
+  Worth adding when someone next touches this: a sibling self-test that builds a synthetic block
+  on the diagram, so the skeleton proves its own central claim instead of inheriting it.
+-->
+<VI _name="accumulate-across-a-loop.vi"
+    description="Skeleton. Appends one block per iteration to an accumulator carried on a shift register\2C so the whole run is returned rather than the last block. Not meant to be shipped\3A copy the shapes\2C not the file.">
+
+  <Control _name="block" connection="required"
+           description="One block\2C as a real loop would receive it from an acquisition node."
+           outputs="value:block.value" type="array{doublewaveform.Waveform}"
+           uid="block" uid_parent="root" value=""/>
+
+  <Constant _name="blocks to accumulate" outputs="value:n.value" type="int32"
+            uid="n" uid_parent="root" value="5"/>
+
+  <Constant _name="empty accumulator" outputs="value:seed.value"
+            type="array{doublewaveform.Waveform}" uid="seed" uid_parent="root" value="[]"/>
+
+  <Structure _name="For Loop" count="" maxin="n.value" maxout="" uid="loop" uid_parent="root">
+
+    <Tunnel _id="In1" inputs="value:block.value" outputs="value:blockIn.value"
+            uid="blockIn" uid_parent="loop"/>
+
+    <ShiftReg uid="acc" uid_parent="loop">
+      <Left  inputs="value:seed.value"     outputs="value:accL.value" uid="accL" uid_parent="acc"/>
+      <Right inputs="value:outerOut.value" outputs="value:accR.value" uid="accR" uid_parent="acc"/>
+    </ShiftReg>
+
+    <Node _name="Empty Array?" inputs="array:accL.value"
+          outputs="empty?:accEmpty.empty?" uid="accEmpty" uid_parent="loop"/>
+    <Node _name="Empty Array?" inputs="array:blockIn.value"
+          outputs="empty?:blockEmpty.empty?" uid="blockEmpty" uid_parent="loop"/>
+
+    <Structure _name="Case Structure" selectin="blockEmpty.empty?" uid="outer" uid_parent="loop">
+      <Tunnel _id="In1" inputs="value:accL.value"          uid="oIn1" uid_parent="outer"/>
+      <Tunnel _id="In2" inputs="value:blockIn.value"       uid="oIn2" uid_parent="outer"/>
+      <Tunnel _id="In3" inputs="value:accEmpty.empty?"     uid="oIn3" uid_parent="outer"/>
+
+      <CaseFrame selector="True" selectout="" uid="keep" uid_parent="outer">
+        <FreeLabel comment="No data in this block \2D keep what has already been accumulated."
+                   uid="keepLabel" uid_parent="keep"/>
+        <Tunnel _id="In1"  outputs="value:kIn1.value" uid="kIn1" uid_parent="keep"/>
+        <Tunnel _id="In2"  outputs="value:"           uid="kIn2" uid_parent="keep"/>
+        <Tunnel _id="In3"  outputs="value:"           uid="kIn3" uid_parent="keep"/>
+        <Tunnel _id="Out1" inputs="value:kIn1.value"  uid="kOut" uid_parent="keep"/>
+      </CaseFrame>
+
+      <CaseFrame selector="False" selectout="" uid="work" uid_parent="outer">
+        <Tunnel _id="In1" outputs="value:wIn1.value" uid="wIn1" uid_parent="work"/>
+        <Tunnel _id="In2" outputs="value:wIn2.value" uid="wIn2" uid_parent="work"/>
+        <Tunnel _id="In3" outputs="value:wIn3.value" uid="wIn3" uid_parent="work"/>
+
+        <Structure _name="Case Structure" selectin="wIn3.value" uid="inner" uid_parent="work">
+          <Tunnel _id="In1" inputs="value:wIn1.value" uid="iIn1" uid_parent="inner"/>
+          <Tunnel _id="In2" inputs="value:wIn2.value" uid="iIn2" uid_parent="inner"/>
+
+          <CaseFrame selector="True" selectout="" uid="seedFrame" uid_parent="inner">
+            <FreeLabel comment="Accumulator still empty \2D take this block as the seed."
+                       uid="seedLabel" uid_parent="seedFrame"/>
+            <Tunnel _id="In1"  outputs="value:"           uid="sIn1" uid_parent="seedFrame"/>
+            <Tunnel _id="In2"  outputs="value:sIn2.value" uid="sIn2" uid_parent="seedFrame"/>
+            <Tunnel _id="Out1" inputs="value:sIn2.value"  uid="sOut" uid_parent="seedFrame"/>
+          </CaseFrame>
+
+          <CaseFrame selector="False" selectout="" uid="appendFrame" uid_parent="inner">
+            <Tunnel _id="In1" outputs="value:aIn1.value" uid="aIn1" uid_parent="appendFrame"/>
+            <Tunnel _id="In2" outputs="value:aIn2.value" uid="aIn2" uid_parent="appendFrame"/>
+
+            <Structure _name="For Loop" count="" maxin="" maxout=""
+                       uid="perChannel" uid_parent="appendFrame">
+              <Tunnel _id="In1" inputs="value:aIn1.value" mode="index"
+                      outputs="value:pIn1.value" uid="pIn1" uid_parent="perChannel"/>
+              <Tunnel _id="In2" inputs="value:aIn2.value" mode="index"
+                      outputs="value:pIn2.value" uid="pIn2" uid_parent="perChannel"/>
+              <Call adapt="true"
+                    inputs="waveform A:pIn1.value,waveform B:pIn2.value,error in (no error):"
+                    instance="WDT Append Waveforms DBL.vi"
+                    outputs="waveform out:appendCall.waveform out,error out:"
+                    target="Append Waveforms.vi" uid="appendCall" uid_parent="perChannel"/>
+              <Tunnel _id="Out1" inputs="value:appendCall.waveform out" mode="index"
+                      outputs="value:pOut.value" uid="pOut" uid_parent="perChannel"/>
+            </Structure>
+
+            <Tunnel _id="Out1" inputs="value:pOut.value" uid="aOut" uid_parent="appendFrame"/>
+          </CaseFrame>
+
+          <Tunnel _id="Out1" outputs="value:iOut.value" uid="iOut" uid_parent="inner"/>
+        </Structure>
+
+        <Tunnel _id="Out1" inputs="value:iOut.value" uid="wOut" uid_parent="work"/>
+      </CaseFrame>
+
+      <Tunnel _id="Out1" outputs="value:outerOut.value" uid="outerOut" uid_parent="outer"/>
+    </Structure>
+  </Structure>
+
+  <!-- value="" is REQUIRED on an Indicator, not only on a Control. Leaving it off fails
+       validation with `missing required attribute 'value'` and a line number, which is clear
+       enough once you know that Indicator and Control share the schema. -->
+  <Indicator _name="accumulated" connection="recommended"
+             description="Every block appended per channel\2C not just the last one."
+             inputs="value:accR.value" type="array{doublewaveform.Waveform}"
+             uid="out" uid_parent="root" value=""/>
+</VI>
