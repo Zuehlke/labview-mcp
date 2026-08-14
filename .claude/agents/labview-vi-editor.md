@@ -96,6 +96,16 @@ So when the VI has one, validate the **untouched** export before promising anyth
   pane, names every breach and gives you the corrected assignment. Do not reason from a remembered
   map: `error in` is `conIdx 8` on the 12-terminal 4815 pane and `11` on the 16-terminal 4833 one, a
   generated VI has been measured as either, and a regeneration can move the VI from one to the other.
+
+  Two things that make a regeneration land on the wrong pane. First, **a full regeneration gets the
+  station's default pane, not the one the VI had** — that default is `DefaultConPane` in the
+  `LabVIEW.ini` beside `LabVIEW.exe`, it **overrides everything**, and `lvai_connector_pane` with
+  **no argument** reads it for you; if the key is absent, LabVIEW's factory default **4815** applies.
+  Read that file, quote it, never write to it. Second, **copy the whole style-guide block the tool
+  prints, not four numbers** — it gives `first input`, **`more inputs`**, `error in`, `first output`,
+  **`more outputs`**, `error out`, and the two `more` entries are the ones that get dropped.
+  **Consecutive `conIdx` is not the left edge**: on 4833 that edge is `0, 5, 7, 9`, so a second input
+  written as `1` lands in a middle column. That exact slip has shipped three times.
   That is what makes the check part of the edit rather than optional. Preserving an existing pane is the default — but a pane that
   breaks the guide is a defect worth naming in the report and correcting, since `conIdx` is one
   attribute per terminal and costs nothing to change. Detail in `lvai_aixml_reference` §2, "The
@@ -339,26 +349,20 @@ was the old workaround and cost about eight minutes of hand-built harness per VI
 
 `lvai_set_vi_icon` with `viPath` and `iconImagePath` = `icon_before.png`.
 
-If Phase 4 found no real icon, make one instead — 32x32 PNG, which is the only size and format
-measured:
+If Phase 4 found no real icon, have the tool draw one instead — **one call, no PowerShell**:
 
-```powershell
-Add-Type -AssemblyName System.Drawing
-$bmp = New-Object System.Drawing.Bitmap 32,32
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.TextRenderingHint = 'SingleBitPerPixelGridFit'   # crisp at 32 px; antialiasing turns to mud
-$g.Clear([System.Drawing.Color]::White)
-$g.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(0,90,156))), 0,0,32,9)
-$g.DrawRectangle([System.Drawing.Pens]::Black, 0,0,31,31)
-$f = New-Object System.Drawing.Font 'Segoe UI',5.5,([System.Drawing.FontStyle]::Bold)
-$g.DrawString('FILE',$f,[System.Drawing.Brushes]::White,0,-1)
-$g.DrawString('SORT',$f,[System.Drawing.Brushes]::Black,0,12)
-$g.Dispose()
-$bmp.Save('<abs>\icon.png',[System.Drawing.Imaging.ImageFormat]::Png)
-$bmp.Dispose()
+```
+lvai_set_vi_icon  viPath=<abs>  line1="FILE"  line2="SORT"
 ```
 
-Four to five characters per line is the ceiling; abbreviate rather than shrink the font.
+`line1` becomes a coloured banner, `line2` and `line3` sit under it, and the tool renders the 32x32
+PNG itself. Optional `bannerColor`, `backgroundColor`, `borderColor` as `RRGGBB`; text colour is
+picked for contrast. **Five characters per line is the ceiling** — abbreviate rather than spill;
+longer lines are cut and reported in `warnings`. Drawable: `A-Z 0-9 space - . / : + #`.
+
+A `PowerShell` + `System.Drawing` recipe used to stand here. It was measured at **12.5 s** of a
+generation session, plus a whole extra tool call, against 0 ms now. Reaching for `System.Drawing`
+means you are reading a stale copy of this file.
 
 Judge the result by the `verified` field and by looking at the read-back PNG — **not** by
 `errorCode`, which is 91 on success. If you regenerate again afterwards, the icon is gone again:

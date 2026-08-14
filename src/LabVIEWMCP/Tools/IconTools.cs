@@ -32,6 +32,12 @@ internal sealed class IconTools(LvaiConnection connection)
         scripts\lvdoc_set_icon.xml (once, then reused), run it, read the icon back out.
         Measured on LabVIEW 2026: a 32x32 PNG is applied as-is and the icon read back out of
         the VI is pixel-identical. Other formats and sizes are untested.
+        TWO WAYS TO SUPPLY THE IMAGE. Either pass line1/line2/line3 and let this DRAW the
+        32x32 icon for you - banner across the top plus up to two lines under it, 5 characters
+        per line, from a built-in bitmap font - or pass iconImagePath if you have your own art.
+        PREFER THE LINES: drawing the PNG yourself through PowerShell and System.Drawing was
+        measured at 12.5 s of a generation session, against 0 ms here, and it costs an extra
+        tool call worth about 11 s of wall clock on top.
         CALL THIS LAST. lvai_convert_aixml_to_vi over an existing path DESTROYS the icon -
         measured on two VIs - so re-apply after every regeneration. It is safe in the other
         direction: setting an icon does not leave the VI in memory, so the path can still be
@@ -43,8 +49,12 @@ internal sealed class IconTools(LvaiConnection connection)
     public async Task<string> SetViIconAsync(
         [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
         string viPath,
-        [Description(@"Absolute path to the icon image. A 32x32 PNG is what was measured")]
-        string iconImagePath,
+        [Description("""
+            Absolute path to a ready-made icon image; a 32x32 PNG is what was measured. Leave
+            this out and pass line1/line2/line3 instead to have the icon drawn here. If both
+            are given the file wins and the lines are reported as ignored.
+            """)]
+        string? iconImagePath = null,
         [Description("""
             Where to write the icon read back OUT of the VI afterwards, for verification.
             Defaults to a temp file. Its directory is created if missing - LabVIEW's own file
@@ -64,14 +74,73 @@ internal sealed class IconTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
+        [Description("""
+            Text for the coloured banner across the top of a drawn icon, e.g. "DAQ". Up to 5
+            characters; A-Z, 0-9, space and - . / : + # are drawn, anything else is reported.
+            Lowercase is upper-cased - a 5x7 cell has no room for descenders.
+            """)]
+        string? line1 = null,
+        [Description("Second line of a drawn icon, under the banner. Up to 5 characters")]
+        string? line2 = null,
+        [Description("Third line of a drawn icon. Up to 5 characters")]
+        string? line3 = null,
+        [Description("""
+            Banner colour of a drawn icon as RRGGBB or #RRGGBB. Defaults to 006699, the web-safe
+            neighbour of NI blue - LabVIEW quantises a stored icon to the web-safe cube, so a
+            colour outside it reads back changed and is reported in warnings.
+            """)]
+        string? bannerColor = null,
+        [Description(@"Body background of a drawn icon as RRGGBB. Defaults to white FFFFFF")]
+        string? backgroundColor = null,
+        [Description(@"1 px frame of a drawn icon as RRGGBB. Defaults to black 000000")]
+        string? borderColor = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
-            if (!File.Exists(iconImagePath))
-                throw new FileNotFoundException($"No icon image at '{iconImagePath}'.", iconImagePath);
+
+            // Notes gathered while working out the image, folded into `warnings` further down.
+            // They are warnings, never errors: a cut line or an undrawable character still
+            // produces a usable icon, and failing the whole call over one would be worse.
+            var imageNotes = new List<string>();
+            var iconRendered = false;
+
+            if (iconImagePath is { Length: > 0 })
+            {
+                if (!File.Exists(iconImagePath))
+                    throw new FileNotFoundException($"No icon image at '{iconImagePath}'.", iconImagePath);
+                if (HasAnyLine(line1, line2, line3))
+                    imageNotes.Add("Both iconImagePath and line1/line2/line3 were given. The file was " +
+                                   "used and the lines were ignored.");
+            }
+            else if (HasAnyLine(line1, line2, line3))
+            {
+                var banner = Colour(bannerColor, NiBlue, nameof(bannerColor), imageNotes);
+                var background = Colour(backgroundColor, White, nameof(backgroundColor), imageNotes);
+                var border = Colour(borderColor, Black, nameof(borderColor), imageNotes);
+
+                foreach (var (line, name) in new[]
+                         { (line1, nameof(line1)), (line2, nameof(line2)), (line3, nameof(line3)) })
+                    NoteLineProblems(line, name, imageNotes);
+
+                iconImagePath = Path.GetFullPath(DefaultRenderedIconPath(viPath));
+                EnsureDirectoryOf(iconImagePath);
+                await File.WriteAllBytesAsync(iconImagePath,
+                    IconImage.Render(line1, line2, line3, banner, background, border,
+                                     IconImage.ReadableOn(banner), IconImage.ReadableOn(background)),
+                    ct);
+                iconRendered = true;
+            }
+            else
+            {
+                throw new ArgumentException(
+                    "Nothing to apply: pass line1 (and optionally line2/line3) to have a 32x32 icon " +
+                    "drawn here, or iconImagePath to use your own image. Drawing is cheaper - " +
+                    "producing the PNG yourself costs an extra tool call and about 12 s.",
+                    nameof(line1));
+            }
 
             var aixml = helperAixmlPath ?? DefaultHelperAixmlPath()
                 ?? throw new FileNotFoundException(
@@ -117,6 +186,7 @@ internal sealed class IconTools(LvaiConnection connection)
                         && readBackAfter.WriteUtc >= runStartedUtc.AddSeconds(-2);
 
             var warnings = new JsonArray();
+            foreach (var note in imageNotes) warnings.Add(note);
             var iconSize = PngSize(iconImagePath);
             if (iconSize is null)
                 warnings.Add("The icon image is not a PNG. Only 32x32 PNG has been measured.");
@@ -138,6 +208,8 @@ internal sealed class IconTools(LvaiConnection connection)
                 ("readBackPath", JsonValue.Create(readBack)),
                 ("readBackBytes", JsonValue.Create(readBackAfter.Bytes)),
                 ("readBackSize", JsonValue.Create(readBackAfter.Exists ? PngSize(readBack) : null)),
+                ("iconImagePath", JsonValue.Create(iconImagePath)),
+                ("iconRendered", JsonValue.Create(iconRendered)),
                 ("iconImageSize", JsonValue.Create(iconSize)),
                 ("warnings", warnings),
                 ("note", JsonValue.Create(
@@ -200,6 +272,63 @@ internal sealed class IconTools(LvaiConnection connection)
             });
     }
 
+    /// <summary>
+    /// NI blue is 005A9C, and this is deliberately its web-safe neighbour instead. LabVIEW
+    /// quantises a stored icon to the web-safe cube (vi-server-reference.md), so 005A9C would come
+    /// back out as 006699 anyway - defaulting to the value that survives means the PNG this tool
+    /// wrote and the icon read back out of the VI are the same image, and comparing them is
+    /// therefore meaningful rather than a guaranteed mismatch.
+    /// </summary>
+    private static readonly IconImage.Rgb NiBlue = new(0x00, 0x66, 0x99);
+    private static readonly IconImage.Rgb White = new(0xFF, 0xFF, 0xFF);
+    private static readonly IconImage.Rgb Black = new(0x00, 0x00, 0x00);
+
+    private static bool HasAnyLine(params string?[] lines) =>
+        lines.Any(l => !string.IsNullOrWhiteSpace(l));
+
+    /// <summary>
+    /// Parse a colour, or fall back to the default and say so. An unparseable colour is not worth
+    /// failing the call over - but it is worth reporting, because silently drawing the default is
+    /// how a caller comes to believe the parameter does nothing.
+    /// </summary>
+    private static IconImage.Rgb Colour(
+        string? text, IconImage.Rgb fallback, string parameter, List<string> notes)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return fallback;
+
+        if (IconImage.ParseColor(text) is not { } parsed)
+        {
+            notes.Add($"{parameter} '{text}' is not RRGGBB or #RRGGBB and was ignored; " +
+                      $"used {Hex(fallback)} instead.");
+            return fallback;
+        }
+
+        // Not an error and not corrected: the caller asked for this colour, and saying what
+        // LabVIEW will do with it beats letting them discover it from the read-back.
+        if (!IconImage.IsWebSafe(parsed))
+            notes.Add($"{parameter} {Hex(parsed)} is not web-safe. LabVIEW quantises a stored icon " +
+                      $"to the web-safe cube, so it will read back as {Hex(IconImage.Quantise(parsed))}.");
+
+        return parsed;
+    }
+
+    private static string Hex(IconImage.Rgb c) => $"{c.R:X2}{c.G:X2}{c.B:X2}";
+
+    private static void NoteLineProblems(string? line, string parameter, List<string> notes)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+
+        var trimmed = line.Trim();
+        if (trimmed.Length > IconImage.MaxCharsPerLine)
+            notes.Add($"{parameter} is {trimmed.Length} characters. Only the first " +
+                      $"{IconImage.MaxCharsPerLine} fit across a 32x32 icon; the rest was cut, " +
+                      $"leaving '{trimmed[..IconImage.MaxCharsPerLine]}'.");
+
+        if (IconImage.Unsupported(trimmed) is { Length: > 0 } missing)
+            notes.Add($"{parameter} contains characters the icon font cannot draw, left blank: " +
+                      $"'{missing}'. Drawable: A-Z, 0-9, space, - . / : + #");
+    }
+
     private static void EnsureDirectoryOf(string filePath)
     {
         if (Path.GetDirectoryName(filePath) is { Length: > 0 } directory)
@@ -224,6 +353,15 @@ internal sealed class IconTools(LvaiConnection connection)
     /// </summary>
     private static string DefaultHelperViPath() =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvdoc_set_icon.vi");
+
+    /// <summary>
+    /// Where a drawn icon lands. Kept rather than written to a scratch file and deleted: the
+    /// response reports the path, and being able to open the PNG that was sent to LabVIEW is how
+    /// you tell "the icon is wrong" from "the icon did not apply".
+    /// </summary>
+    private static string DefaultRenderedIconPath(string viPath) =>
+        Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+            $"{Path.GetFileNameWithoutExtension(viPath)}-icon.png");
 
     private static string DefaultReadBackPath(string viPath) =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP",

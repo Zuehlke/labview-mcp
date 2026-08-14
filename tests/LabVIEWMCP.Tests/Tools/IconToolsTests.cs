@@ -375,4 +375,132 @@ public sealed class IconToolsTests : IDisposable
         Assert.Equal(new FileInfo(vi).Length, Res.Long(result, "viBytesAfter"));
         Assert.False(Res.Bool(result, "viResaved"));   // the fake LabVIEW never touches it
     }
+
+    // ---- drawing the icon here instead of making the caller produce a PNG ----
+    // Measured motive: an agent drawing the bitmap through PowerShell and System.Drawing cost
+    // 12.5 s of a 455 s generation, plus a whole extra tool call. See docs/aixml-reference.md.
+
+    private static string Warnings(string result) =>
+        string.Join(" ", Res.Arr(result, "warnings").Select(w => w!.GetValue<string>()));
+
+    [Fact]
+    public async Task Draws_the_icon_from_lines_and_sends_that_file_to_labview()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+        var vi = WriteVi();
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            vi, iconImagePath: null, readBackPath: PlantReadBack(), helperViPath: At("helper.vi"),
+            helperAixmlPath: ShippedHelperAixml(), line1: "DAQ", line2: "3AI", line3: "TDMS");
+
+        var drawn = Res.Str(result, "iconImagePath")!;
+        Assert.True(Res.Bool(result, "iconRendered"));
+        Assert.Equal("32x32", Res.Str(result, "iconImageSize"));
+        Assert.True(File.Exists(drawn), $"no icon was written at '{drawn}'");
+
+        // What reaches LabVIEW must be the file that was drawn, not a path that only exists in
+        // the response - this is the one contract the fake can check.
+        var request = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
+        Assert.Equal(drawn, request.Inputs["Icon File Path"]);
+        Assert.Equal("", Warnings(result));   // a plain 5-char, 3-line icon warrants no warning
+    }
+
+    [Fact]
+    public async Task A_supplied_file_wins_over_lines_and_says_so()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+        var icon = WritePng("icon.png");
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), icon, At("readback.png"), At("helper.vi"), ShippedHelperAixml(),
+            line1: "DAQ");
+
+        Assert.False(Res.Bool(result, "iconRendered"));
+        Assert.Equal(icon, Res.Str(result, "iconImagePath"));
+        Assert.Contains("lines were ignored", Warnings(result));
+    }
+
+    [Fact]
+    public async Task Refuses_to_run_with_neither_a_file_nor_a_line()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), iconImagePath: null, readBackPath: At("readback.png"),
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+
+        Assert.False(Res.Bool(result, "ok"));
+        Assert.Equal("ArgumentException", Res.Str(result, "errorKind"));
+        Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
+    [Fact]
+    public async Task Warns_about_a_line_too_long_to_fit_but_still_applies_the_icon()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), iconImagePath: null, readBackPath: At("readback.png"),
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            line1: "ACQUISITION");
+
+        Assert.True(Res.Bool(result, "iconRendered"));
+        Assert.Contains("Only the first 5", Warnings(result));
+        Assert.Contains("'ACQUI'", Warnings(result));
+        Assert.Equal(1, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
+    [Fact]
+    public async Task Warns_about_an_undrawable_character_and_about_a_bad_colour()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), iconImagePath: null, readBackPath: At("readback.png"),
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            line1: "A_B", bannerColor: "octarine");
+
+        var warnings = Warnings(result);
+        Assert.Contains("cannot draw", warnings);
+        Assert.Contains("'_'", warnings);
+        Assert.Contains("not RRGGBB", warnings);
+        Assert.Contains("006699", warnings);          // names the fallback it actually used
+        Assert.True(Res.Bool(result, "iconRendered"));
+    }
+
+    [Fact]
+    public async Task Says_what_labview_will_do_to_a_colour_outside_the_web_safe_cube()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), iconImagePath: null, readBackPath: PlantReadBack(),
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            line1: "DAQ", bannerColor: "005A9C");   // real NI blue: not web-safe
+
+        var warnings = Warnings(result);
+        Assert.Contains("not web-safe", warnings);
+        Assert.Contains("005A9C", warnings);
+        Assert.Contains("006699", warnings);          // what it will read back as
+        Assert.True(Res.Bool(result, "iconRendered"));
+    }
+
+    [Fact]
+    public async Task The_default_colours_are_web_safe_so_nothing_is_warned_about()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "generated helper";
+
+        var result = await new IconTools(server.Connection).SetViIconAsync(
+            WriteVi(), iconImagePath: null, readBackPath: PlantReadBack(),
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(), line1: "DAQ");
+
+        Assert.Equal("", Warnings(result));
+    }
 }

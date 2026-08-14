@@ -62,22 +62,44 @@ it an icon.
      instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
 - **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
   reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
-  `error out` **bottom right**, nothing arranged so wires must cross. **A generated VI always gets
-  pattern 4815** — measured with the highest index at 3, 7 and 11, all three came out the same, and
-  there is no attribute to ask for another — so this map is a constant, not something to derive:
+  `error out` **bottom right**, nothing arranged so wires must cross. **Which `conIdx` sits where
+  depends on the pane pattern, so ask `lvai_connector_pane` and do not reason about it:**
 
-  | | `conIdx`, top → bottom |
-  |---|---|
-  | **left edge — inputs** | **11, 10, 9, 8** — put `error in` on **8** |
-  | middle columns | 7/6, then 5/4 (upper/lower) — secondary terminals only |
-  | **right edge — outputs** | **3, 2, 1, 0** — put `error out` on **0** |
+  1. **Before** you write any `conIdx`, call `lvai_connector_pane` with **no argument**. LabVIEW gives
+     every new VI the station's default pane, read from **`DefaultConPane` in the `LabVIEW.ini` beside
+     `LabVIEW.exe`**, and that key **overrides everything** — never assume a pattern when the file can
+     be read. If the key is absent, LabVIEW's factory default **4815** applies. That file is read-only
+     to us: read it, quote it, never write to it.
+  2. **Copy the WHOLE style-guide block the tool prints, not four numbers.** It gives six entries —
+     `first input`, **`more inputs`**, `error in`, `first output`, **`more outputs`**, `error out`.
+     The two in bold are the ones that get dropped, and dropping them is the actual bug below.
+  3. Author the AIXML with exactly those numbers.
+  4. After generating, call it again with `viPath`. That confirms the pane you actually got and checks
+     every terminal against the style guide. Read-only, about 1 s per call.
 
-  So a typical VI is: main input `11`, `error in` `8`, main output `3`, second output `2`,
-  `error out` `0`. **Do not invent an assignment by analogy** — a generated VI shipped with both
-  inputs on the right-hand edge and all three outputs in the middle columns, validated, ran, and
-  was rejected on sight. And do not copy a set of indices out of an NI VI: those use other
-  patterns, where the same numbers are different slots. Above 12 terminals the pattern changes and
-  this map no longer holds; detail in `lvai_aixml_reference` §2, "The connector pane".
+  **Consecutive `conIdx` is NOT the left edge.** This is the trap, and it has now shipped three
+  times in `DaqReadAndTDMS.vi`: the first input went correctly to `conIdx 0`, and the second input
+  was then written as `conIdx 1` because 1 follows 0. On pattern 4833 the left edge is
+  **`0, 5, 7, 9`** — `1` is the top of the *second column*, a middle slot, and the tool reports it as
+  a violation and forces a regeneration. On 4815 the left edge is `11, 10, 9`, counting *down*.
+  Never derive the next index by adding one.
+
+  | | 4833 (16 terminals, `5x2x2x2x5`) | 4815 (12 terminals, `4x2x2x4`) |
+  |---|---|---|
+  | first input | 0 | 11 |
+  | more inputs | 5, 7, 9 | 10, 9 |
+  | `error in` | **11** | **8** |
+  | first output | 4 | 3 |
+  | more outputs | 6, 8, 10 | 2, 1 |
+  | `error out` | **15** | **0** |
+
+  `conIdx 0` is top-**left** on 4833 but bottom-**right** on 4815, and `11` is `error in` on one and
+  the *first input* on the other. **This paragraph used to claim "a generated VI always gets pattern
+  4815, so this map is a constant".** That was measured, it did not generalise, and it is how a VI
+  shipped with both inputs on the *output* edge and `error out` in the top-left corner — it validated,
+  it ran, and the user rejected it on sight. The pattern is a station setting, not a constant. Do not
+  copy indices out of an NI VI either: those use patterns of their own. Both full maps in
+  `lvai_aixml_reference` §2, "The connector pane".
 - **Write AIXML to a file with the `Write` tool.** Never build it in a shell command or a string
   literal: the `\3A` and `\5C` escapes get eaten and the failure arrives disguised as an XML parse
   error, which sends you looking in the wrong place.
@@ -322,29 +344,26 @@ That is expected, and it is the check that your `URL` is right.
 
 ### Phase 7 — The icon, last
 
-`lvai_set_vi_icon` needs an image on disk. A **32x32 PNG** is what was measured — applied as-is,
-and the icon read back out is pixel-identical. Other sizes and formats are untested, so produce
-exactly that. `System.Drawing` is on every Windows box and needs no package:
+**One call. Do not draw the PNG yourself.**
 
-```powershell
-Add-Type -AssemblyName System.Drawing
-$bmp = New-Object System.Drawing.Bitmap 32,32
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.TextRenderingHint = 'SingleBitPerPixelGridFit'   # crisp at 32 px; antialiasing turns to mud
-$g.Clear([System.Drawing.Color]::White)
-$g.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(0,90,156))), 0,0,32,9)
-$g.DrawRectangle([System.Drawing.Pens]::Black, 0,0,31,31)
-$f = New-Object System.Drawing.Font 'Segoe UI',5.5,([System.Drawing.FontStyle]::Bold)
-$g.DrawString('FILE',$f,[System.Drawing.Brushes]::White,0,-1)
-$g.DrawString('SORT',$f,[System.Drawing.Brushes]::Black,0,12)
-$g.Dispose()
-$bmp.Save('<abs>\icon.png',[System.Drawing.Imaging.ImageFormat]::Png)
-$bmp.Dispose()
+```
+lvai_set_vi_icon  viPath=<abs>  line1="DAQ"  line2="3AI"  line3="TDMS"
 ```
 
-Design rules that survive 32 px: a coloured banner naming the category, one or two short words
-below it, nothing smaller than ~5.5 pt, and the 1 px black border LabVIEW users expect. Four to
-five characters per line is the ceiling — abbreviate rather than shrink the font.
+`line1` becomes a coloured banner across the top, `line2` and `line3` sit under it, and the tool
+renders the 32x32 PNG, applies it and reads it back. Optional `bannerColor`, `backgroundColor`,
+`borderColor` take `RRGGBB`; the banner defaults to NI blue and the text colour is chosen for
+contrast, so you cannot ask for an unreadable icon. **Five characters per line is the ceiling** —
+abbreviate rather than spill; over-long lines are cut and reported in `warnings`. Drawable:
+`A-Z 0-9 space - . / : + #`, lowercase is upper-cased.
+
+This replaced a `PowerShell` + `System.Drawing` recipe that used to live here. Profiling one whole
+generation showed why: **12.5 s went on composing and running that call**, against 0 ms now, and it
+was a separate tool call on top — worth about 11 s of wall clock on its own. If you find yourself
+reaching for `System.Drawing`, you are working from a stale copy of this file.
+
+`iconImagePath` still exists for real artwork. Pass one or the other, never both — the file wins and
+your lines are discarded.
 
 Then `lvai_set_vi_icon` with `viPath` and `iconImagePath`. **Judge the result by the `verified`
 field and by looking at the read-back PNG — not by `errorCode`**, which is 91 on success for the
