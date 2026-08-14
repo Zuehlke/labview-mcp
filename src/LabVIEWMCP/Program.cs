@@ -100,7 +100,11 @@ builder.Services
     })
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
-    .WithResourcesFromAssembly();
+    .WithResourcesFromAssembly()
+    // LAST, and it has to be: it wraps the tool registrations the line above just added. Without
+    // it a misspelled or missing argument answers "An error occurred invoking 'lvai_describe_vi'."
+    // and nothing else - our own masking, measured, not the client's. See Infra/ToolArguments.cs.
+    .WithArgumentDiagnostics();
 
 // Has NI's AI add-on been upgraded since last time? The AIXML export cache is keyed on the source
 // VI, which cannot see that the GENERATOR changed - so an add-on upgrade would leave entries built

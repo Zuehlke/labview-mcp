@@ -261,6 +261,22 @@ produced its 419-row table in 16 seconds and still stayed a script plus a `docs/
 it only needs re-running after an addon update. When it is genuinely borderline, build the script,
 say plainly that it could become a tool, and let the caller decide.
 
+## When a tool call fails
+
+**`An error occurred invoking 'lvai_…'` is OUR message, not the client's.** It is the MCP SDK masking
+an exception thrown while binding the arguments, and the detail — exception, stack, the parameter at
+fault — goes to the server's **stderr**, where no client looks. Issue #19 concluded the opposite, that
+a client rejected the call before it ever reached the server; the first reading of that issue in this
+repository agreed with it. Both were wrong, measured 2026-08-14 by driving the built exe over raw
+stdio with no client in between: same call, same sentence.
+
+Since then the server answers argument problems with data. A near-miss spelling is folded onto the
+declared one (`vi_path` → `viPath`, `max_content_chars` → `maxContentChars`), and a genuinely missing
+argument comes back as `{"ok": false, "errorKind": "badArguments", …}` naming what is missing, what
+arrived, and every accepted name with its type. So **seeing the masked sentence again means the
+wrapper is not in place** — check that `WithArgumentDiagnostics()` still runs last in `Program.cs`,
+and read stderr. Detail and the re-measuring recipe in `docs/tool-argument-errors.md`.
+
 ## Writing things down
 
 **Empirically derived `lvai` behaviour belongs in `docs/`, not only in the conversation.** This
@@ -290,6 +306,7 @@ literally it argued away 600 usable palette VIs.
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
+| Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 
 The seven documents served by an `lvai_*_reference` tool are **embedded in the assembly** and
 byte-verified on every build, so a binary-only install answers the same questions. See "Installing
