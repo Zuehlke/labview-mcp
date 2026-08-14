@@ -796,8 +796,12 @@ git push origin v0.9.0
 
 The tag must be a **lowercase `v`** followed by the version (`v0.9.0`, `v1.2.3`). The workflow
 triggers only on tags matching `v*`, and GitHub matches that **case-sensitively**, so an uppercase
-`V0.9.0` would be silently ignored and no release would be built. (The older `V0.7.0` and `V0.7.8`
-tags predate this workflow.)
+`V0.9.0` is silently ignored and no release is built.
+
+This is not hypothetical: `V0.8.5` was tagged uppercase, built nothing, was cut by hand instead —
+and since `/releases/latest/` follows the newest **published** release whether the workflow built it
+or not, that broke `claude plugin update` with a 404 for everyone until `v0.8.6` was cut from the
+same commit. Never publish a release by hand.
 
 On the tag push, the workflow runs on `windows-latest` and:
 
@@ -813,8 +817,9 @@ On the tag push, the workflow runs on `windows-latest` and:
 Nothing in the marketplace manifest needs editing between releases: it points at
 `releases/latest/download/labview-mcp.zip`, which GitHub redirects to the newest release, and no
 version is pinned, so the archive's digest becomes the plugin version and every release reads as an
-update. Watch a run with `gh run watch --repo Zuehlke/labview-mcp`; once it is green, confirm the
-asset resolves (expect a 302 then 200):
+update. Watch a run with `gh run watch --repo Zuehlke/labview-mcp`; once it is green, **always**
+confirm the asset resolves — this check, not the green run, is what proves the marketplace URL
+serves the new release (expect a 302 then 200):
 
 ```bash
 curl -IL https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip
