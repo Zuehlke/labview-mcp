@@ -58,7 +58,7 @@
 ## Quickstart with Claude
 
 **You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
-**LabVIEW 2026** (running before you *use* the tools — it is not needed just to install).
+**LabVIEW 2026 Q3** (running before you *use* the tools — it is not needed just to install).
 
 Open a terminal in your LabVIEW project folder and paste these two commands:
 
