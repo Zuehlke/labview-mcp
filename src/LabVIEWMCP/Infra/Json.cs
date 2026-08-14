@@ -36,11 +36,35 @@ internal static class Json
     }
 
     /// <summary>A stream result: the collected messages plus why collection stopped.</summary>
-    public static string Stream(IEnumerable<IMessage> messages, string stopReason, int limit)
+    public static string Stream(IEnumerable<IMessage> messages, string stopReason, int limit) =>
+        Stream(messages, stopReason, limit, 0);
+
+    /// <summary>
+    /// The same, with a cap on named string fields - the convention of `xml` / `xmlTruncated` in the
+    /// AIXML tools, applied to a stream. A cap of 0 leaves every message whole, which is why the
+    /// three-argument overload above can forward to this one unchanged.
+    /// </summary>
+    public static string Stream(IEnumerable<IMessage> messages, string stopReason, int limit,
+                                int maxFieldChars, params string[] cappedFields)
     {
         var arr = new JsonArray();
         var count = 0;
-        foreach (var m in messages) { arr.Add(Node(m)); count++; }
+        foreach (var m in messages)
+        {
+            var node = Node(m);
+            if (maxFieldChars > 0 && node is JsonObject obj)
+                foreach (var field in cappedFields)
+                {
+                    if (obj[field]?.GetValue<string>() is not { } text) continue;
+                    var truncated = text.Length > maxFieldChars;
+                    obj[field] = truncated ? text[..maxFieldChars] : text;
+                    obj[$"{field}Truncated"] = truncated;
+                }
+
+            arr.Add(node);
+            count++;
+        }
+
         return Indent(new JsonObject
         {
             ["messageCount"] = count,

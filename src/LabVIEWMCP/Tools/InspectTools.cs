@@ -14,9 +14,15 @@ internal sealed class InspectTools(LvaiConnection connection)
     [Description("""
         RPC GetDescribeVIPromptInfo (server streaming). Returns a JSON description of a VI,
         including its AIXML representation under 'viXml' and, with getNodesInfo, the block
-        diagram nodes. This is the primary way to READ LabVIEW code as text.
-        The VI does not need to be open. Large VIs can take a while on first touch because
-        LabVIEW has to load them.
+        diagram nodes.
+        TO READ CODE, PREFER lvai_convert_vi_to_aixml: it carries the same diagram for a fraction
+        of the context, MEASURED on one VI in issue #19 at 17 532 bytes against 62 091 characters
+        here, and it is cached on disk for installation VIs where this call never is. Use this tool
+        for what it adds instead - the description, the controls and indicators, the subVI list and
+        the owning project - or cap the payload with maxContentChars.
+        The VI does not need to be open. FIRST TOUCH CAN BE SLOW, and slow here means minutes: a
+        class-member VI drags its whole hierarchy in, and it exceeded the 120 s default in issue #19.
+        Raise timeoutSeconds rather than concluding the VI or the server is broken.
         """)]
     public async Task<string> DescribeViAsync(
         [Description(@"Absolute path to the .vi file, e.g. C:\path\To\My.vi")] string viPath,
@@ -26,6 +32,8 @@ internal sealed class InspectTools(LvaiConnection connection)
         bool getNodesInfo = true,
         [Description("Max stream messages to collect")] int maxMessages = 10,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        [Description("Truncate each message's infoJson to this many characters (0 = unlimited)")]
+        int maxContentChars = 0,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -43,7 +51,9 @@ internal sealed class InspectTools(LvaiConnection connection)
 
                 var (items, reason) = await Rpc.CollectAsync(
                     call.ResponseStream, maxMessages, timeoutSeconds, t);
-                return Json.Stream(items, reason, maxMessages);
+                // infoJson is where the size is - it carries viXml, the nodes and the control list
+                // as one string - so that is the field a context budget has to be able to cap.
+                return Json.Stream(items, reason, maxMessages, maxContentChars, "infoJson");
             }, ct);
         });
 

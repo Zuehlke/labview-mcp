@@ -96,6 +96,54 @@ public class JsonStreamTests
         Assert.Equal("timeout", Res.Str(result, "stopReason"));
         Assert.Empty(Res.Arr(result, "messages"));
     }
+
+    /// <summary>
+    /// The cap exists because lvai_describe_vi answered 62 091 characters for a VI whose whole AIXML
+    /// is 17 532 bytes (issue #19), and infoJson is where that size sits. Same shape as the AIXML
+    /// tools' `xml` / `xmlTruncated` pair, so a caller who knows one knows the other.
+    /// </summary>
+    [Fact]
+    public void A_capped_field_is_truncated_and_says_so()
+    {
+        var messages = new[]
+        {
+            new GetDescribeVIPromptInfoResponse { InfoJson = new string('x', 100) },
+        };
+
+        var result = Json.Stream(messages, "stream completed", 10, 10, "infoJson");
+
+        var message = Res.Arr(result, "messages")[0]!;
+        Assert.Equal(10, message["infoJson"]!.GetValue<string>().Length);
+        Assert.True(message["infoJsonTruncated"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void A_field_under_the_cap_is_whole_and_flagged_false()
+    {
+        var messages = new[] { new GetDescribeVIPromptInfoResponse { InfoJson = "short" } };
+
+        var result = Json.Stream(messages, "stream completed", 10, 1000, "infoJson");
+
+        var message = Res.Arr(result, "messages")[0]!;
+        Assert.Equal("short", message["infoJson"]!.GetValue<string>());
+        Assert.False(message["infoJsonTruncated"]!.GetValue<bool>());
+    }
+
+    /// <summary>
+    /// Zero means unlimited, and it is the default - so the three-argument overload and an explicit
+    /// 0 must both leave the message exactly as it arrived, flag included.
+    /// </summary>
+    [Fact]
+    public void A_cap_of_zero_leaves_the_message_untouched()
+    {
+        var messages = new[] { new GetDescribeVIPromptInfoResponse { InfoJson = new string('x', 99) } };
+
+        var result = Json.Stream(messages, "stream completed", 10, 0, "infoJson");
+
+        var message = Res.Arr(result, "messages")[0]!;
+        Assert.Equal(99, message["infoJson"]!.GetValue<string>().Length);
+        Assert.Null(message["infoJsonTruncated"]);
+    }
 }
 
 public class JsonErrorTests
