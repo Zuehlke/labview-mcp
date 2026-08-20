@@ -102,6 +102,16 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $staging 'bin/scripts') | Out-Null
           Copy-Item -Path 'scripts/*' -Destination (Join-Path $staging 'bin/scripts') -Recurse -Force
 
+          # the repository's docs/, placed as bin/docs/ so that <exe dir>\scripts\..\docs resolves
+          # exactly as scripts\..\docs does in the repository. This is NOT documentation for a human
+          # to read: scripts/pylv-conpane.py OPENS docs/connector-pane-patterns.tsv and
+          # docs/connector-pane-typecodes.tsv at run time, and without them it dies on its first
+          # call. Until v0.9.0 the staging tree carried the exe and scripts/ only, so a plugin
+          # install shipped a script whose data files were not there - the same
+          # embedded-is-not-shipped mistake CLAUDE.md records, one layer further out.
+          New-Item -ItemType Directory -Path (Join-Path $staging 'bin/docs') | Out-Null
+          Copy-Item -Path 'docs/*' -Destination (Join-Path $staging 'bin/docs') -Recurse -Force
+
           Write-Host "Staging tree:"
           $root = (Resolve-Path $staging).Path
           Get-ChildItem $staging -Recurse -Force | ForEach-Object { Write-Host "  $($_.FullName.Substring($root.Length))" }
@@ -114,6 +124,23 @@ jobs:
             throw "staging/.claude-plugin/plugin.json is missing — the zip would not be installable"
           }
           Write-Host "OK: staging/.claude-plugin/plugin.json present"
+
+      # 5b. A helper script is only shipped if the data it opens is shipped with it. These two
+      #     tables are read at run time by scripts/pylv-conpane.py, which resolves them as
+      #     <script dir>\..\docs — so the assertion is about the LAYOUT, not just the files.
+      - name: Assert the scripts' run-time data files are staged beside them
+        shell: pwsh
+        run: |
+          $needed = @(
+            'staging/bin/docs/connector-pane-patterns.tsv',
+            'staging/bin/docs/connector-pane-typecodes.tsv'
+          )
+          foreach ($path in $needed) {
+            if (-not (Test-Path $path)) {
+              throw "$path is missing — pylv-conpane.py opens it at run time and would fail on a plugin install"
+            }
+          }
+          Write-Host "OK: run-time data files staged at bin/docs/"
 
       # 6. Smoke-test the packaged binary. LabVIEW is not on the runner, so --help is the limit
       #    of what is testable — but it exercises the self-extract, which is the failure mode

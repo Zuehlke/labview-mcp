@@ -809,7 +809,9 @@ On the tag push, the workflow runs on `windows-latest` and:
 2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
    install is a binary-only install, so this is the only proof the knowledge tools still answer;
 3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
-4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`);
+4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
+   and `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
+   `scripts\..\docs` has to resolve on an install exactly as it does in the repository);
 5. asserts the plugin manifest sits at the tree root;
 6. smoke-tests the exe with `--help`;
 7. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.

@@ -1,0 +1,54 @@
+# Connector pane TYPE CODES: the `Pattern` attribute that pairs with a `conId`.
+# HARVESTED 2026-08-24 by extracting 400 random vi.lib VIs with the bundled pylabview and reading
+# each one's <conId> (front-panel heap) beside the `Pattern` on its own pane Function TypeDesc
+# (VCTP, reached through CONP -> TopLevel). Regenerate the same way after a LabVIEW upgrade.
+#
+# WHY THIS TABLE EXISTS. A pane is described TWICE in a VI file and the two numbers are not the
+# same number: `conId` 4833 pairs with `Pattern` 0x108, `conId` 4815 with 0x78. Change one without
+# the other and LabVIEW gets a VI whose heap and type descriptor disagree. `scripts/pylv-conpane.py`
+# refuses a conId that is missing here rather than guessing one.
+#
+# THE SHAPE, across all 25 rows: Pattern == (conId - 4800) * 8 + k, with k in 0..2. So the high
+# bits are the pattern id shifted three places, and k is a small low-order field.
+#
+# k IS NOT THE PANE'S ORIENTATION. That was the first reading - connector-pane-patterns.tsv marks
+# eight patterns as seen in more than one orientation, and the first few non-zero k values were
+# among them - and over the whole table it fails in both directions: 4804, 4808, 4809, 4821 and
+# 4831 carry a non-zero k on a pattern the sweep saw in exactly ONE orientation, while 4802, 4807,
+# 4811, 4815 and 4817 were seen in two orientations with k = 0. One row, 4829, has both. What k
+# means is not established.
+#
+# The shape is NOT used to synthesise a missing row. A code is only trustworthy paired with the
+# geometry harvested beside it, and pylv-conpane.py refuses an unlisted conId rather than
+# computing one - a guessed code would put terminals somewhere other than where the geometry says.
+#
+# One measured pair was DROPPED. `Positive Feedback with Rational Polynomials.vi` reports conId
+# 4800 with a single slot and Pattern 0x78, which is 4815's code and breaks the relation - its CONP
+# resolves to a type that is not its own pane. A wrong row is worse than a missing one.
+#
+# conId	patternCode	slots	measuredOn
+4801	0x8	2	Not A Notifier.vi
+4802	0x10	3	Preset terminal map id.vi
+4804	0x22	4	Contingency Table.vi
+4805	0x28	4	Complex Vector x A.vi
+4806	0x30	4	Configure Comparison.vi
+4807	0x38	5	Solve Linear Equations By Cholesky.vi
+4808	0x42	5	Complex LU Factorization.vi
+4809	0x4A	6	sort P(x) and q(x) by order (CDB).vi
+4810	0x50	6	pickLocalizedDecimal.vi
+4811	0x58	7	DoubleClick.vi
+4812	0x60	8	Send Notification.vi
+4814	0x70	10	Remove Queue Element.vi
+4815	0x78	12	3D Cartesian Coordinate Rotation (Direction) (Scalar).vi
+4817	0x88	7	Find Exact Peak.vi
+4821	0xAA	11	subCalculateConversions.vi
+4822	0xB0	9	3D ANOVA.vi
+4823	0xB8	6	initTabValues.vi
+4825	0xC8	8	Sawtooth Wave.vi
+4826	0xD0	10	WDT Get Waveform Subset SGL.vi
+4829	0xEA	11	Destroy Cursor.vi
+4831	0xF9	5	1D Bool Most Recent to DDT Now.vi
+4832	0x100	6	Complex FIR Filter (complex signal).vi
+4833	0x108	16	General Polynomial Fit (Bisquare).vi
+4834	0x110	20	GetTerms.vi
+4835	0x118	28	Ex_Inst_Report_Sub.vi
