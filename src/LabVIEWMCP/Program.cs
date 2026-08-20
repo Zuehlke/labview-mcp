@@ -81,6 +81,13 @@ if (CommandLine.HasFlag(args, "--corpus"))
 if (CommandLine.HasFlag(args, "--ensure-labview"))
     return await EnsureLabView.RunAsync(portOverride, CommandLine.IntArg(args, "--timeout") ?? 300);
 
+if (CommandLine.HasFlag(args, "--pylv-status"))
+    return PyLabviewCli.Status();
+
+if (CommandLine.HasFlag(args, "--pylv-extract"))
+    return await PyLabviewCli.ExtractAsync(CommandLine.StringArg(args, "--pylv-extract"),
+        CommandLine.StringArg(args, "--out"), !CommandLine.HasFlag(args, "--no-annotate"));
+
 // ---- default: MCP server over stdio ----
 var builder = Host.CreateApplicationBuilder(args);
 

@@ -168,6 +168,31 @@ the gRPC service until a human dismisses it.
 Verified by A/B, since validation says nothing about behaviour: run the helper → `status 0`; run it
 again → `Error 1055`, no active project. The project really is gone.
 
+### That `Save` has a side effect on the caller's project, and it is not cosmetic
+
+Measured 2026-08-22, on a throwaway project built for an unrelated test. Before the call the
+`.lvproj` listed one VI. After it:
+
+```xml
+<Property Name="specify.custom.address" Type="Bool">false</Property>
+<Item Name="APPLY_Fresh.vi" Type="VI" URL="../APPLY_Fresh.vi"/>
+<Item Name="lvai_close_active_project.vi" Type="VI"
+      URL="../../../../../../LabVIEWMCP/helpers/lvai_close_active_project.vi"/>
+```
+
+**The helper added itself to the project as a permanent member, and the `Save` above committed it
+to disk** — together with a `Property` element LabVIEW filled in, and a re-based `URL` for the
+original VI that no longer resolves from the project's own directory. Nothing was lost here because
+the project was disposable, but on a real `.lvproj` this is an uninvited edit to a file that is
+probably under version control, and the diff names a helper from a temp directory that will not
+exist on a colleague's machine.
+
+So `lvai_close_active_project` and `lvai_close_vi` are **not** read-only toward the project, and the
+`Save` that keeps LabVIEW from showing a modal prompt is what writes the change. Prefer closing the
+project by hand when the project matters; if a helper has already run, check `git status` on the
+`.lvproj` before committing. This is the cost of the back door that "Which interface to reach for"
+in `CLAUDE.md` warns about in general terms — here is a concrete instance of it.
+
 ## Writing back: setting a VI's icon
 
 **Set the icon LAST. Regenerating the VI destroys it.** `ConvertAIXMLToVI` over an existing path

@@ -37,6 +37,9 @@ internal static class CommandLine
         ["--skip"] = true,
         ["--restart-every"] = true,
         ["--out"] = true,
+        ["--pylv-status"] = false,
+        ["--pylv-extract"] = true,
+        ["--no-annotate"] = false,
     };
 
     /// <summary>
@@ -62,6 +65,8 @@ internal static class CommandLine
           LabVIEWMCP --panes <files>        build the connector pane pattern table from one or
                                             more scripts/lvpane_sweep.xml outputs (no LabVIEW)
           LabVIEWMCP --ensure-labview       start LabVIEW and wait for its gRPC service
+          LabVIEWMCP --pylv-status          is the bundled pylabview usable (no LabVIEW, no Python)
+          LabVIEWMCP --pylv-extract <vi>    read a VI to annotated XML with pylabview, --out <dir>
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
           --vi <path>       VI used by --selftest (defaults to a shipped LabVIEW example)
@@ -79,6 +84,7 @@ internal static class CommandLine
                             this is the only way to give back what the sweep opens.
                             DESTRUCTIVE: it kills every LabVIEW on the machine.
           --out <path>      output file for --diagram and --panes, output directory for --corpus
+          --no-annotate     --pylv-extract leaves primResID/parmIndex numbers unnamed
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port. The self-test needs LabVIEW 2026 running

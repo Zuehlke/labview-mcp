@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using LabVIEWMcp.Tests.Support;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -74,9 +75,36 @@ public class DqmhKnowledgeTests
         "27301716ef81140f720afd91224766d14e49fd37854a3a5ad1b9d270f4dd9634",
     ];
 
+    /// <summary>
+    /// Occurrences that are ordinary technical English, not the customer's name. One of the
+    /// forbidden tokens is a common word on its own — it is hashed because the product name
+    /// is two words and either half alone must trip the guard — so the benign uses have to
+    /// be named here rather than by weakening the denylist.
+    ///
+    /// Keyed by document and token, so the same word appearing in a NEW document still fails.
+    /// Add an entry only after reading the surrounding sentence and confirming it is generic.
+    /// </summary>
+    private static readonly HashSet<(string Document, string Token)> BenignOccurrences =
+    [
+        // "89 50 4E 47 magic" - the PNG file signature, in the icon section.
+        ("vi-server-reference.md", "magic"),
+    ];
+
     [Theory]
+    // Every embedded document, not just the two derived from the customer application:
+    // a leak can be pasted into any of them, and the guard is worthless where it does not run.
     [InlineData("dqmh-patterns.md")]
     [InlineData("aixml-reference.md")]
+    [InlineData("lvproj-structure.md")]
+    [InlineData("lvlib-lvclass-structure.md")]
+    [InlineData("vi-server-reference.md")]
+    [InlineData("vi-server-methods.tsv")]
+    [InlineData("vi-server-properties.tsv")]
+    [InlineData("connector-pane-patterns.tsv")]
+    [InlineData("labview-doc-generator.md")]
+    [InlineData("labview-vi-generator.md")]
+    [InlineData("labview-vi-editor.md")]
+    [InlineData("CLAUDE.md")]
     public void NoCustomerOrProductIdentifiersLeakedIntoTheNotes(string document)
     {
         // Both notes were derived from a customer application. They must carry framework
@@ -92,8 +120,48 @@ public class DqmhKnowledgeTests
             var hash = Convert.ToHexString(
                 SHA256.HashData(Encoding.UTF8.GetBytes(token.ToLowerInvariant()))).ToLowerInvariant();
 
-            Assert.False(ForbiddenTokenHashes.Contains(hash),
-                $"{document} contains the forbidden identifier \"{token}\" - anonymise it.");
+            if (!ForbiddenTokenHashes.Contains(hash)) continue;
+            Assert.True(BenignOccurrences.Contains((document, token.ToLowerInvariant())),
+                $"{document} contains the forbidden identifier \"{token}\" - anonymise it, "
+                + "or add it to BenignOccurrences if the sentence around it is generic "
+                + "technical English rather than the customer's name.");
+        }
+    }
+
+    /// <summary>
+    /// The theory above can only reach documents an lvai_*_reference tool serves, because that is
+    /// what KnowledgeTools.Load reads. Since 2026-08-23 the build also COPIES all of docs\ next to
+    /// the exe, so files that are shipped but unserved - aixml-gap-census.md, aixml-node-gaps.tsv,
+    /// lvai-internal-vis.tsv and the rest - now travel to other machines while sitting outside
+    /// that guard. This walks the folder itself, so coverage follows what ships rather than what
+    /// happens to be embedded, and a document added to docs\ is covered the moment it exists.
+    /// </summary>
+    [Fact]
+    public void NoCustomerOrProductIdentifiersAnywhereInTheDocsFolder()
+    {
+        var anchor = Res.FindRepoFile("docs/aixml-reference.md");
+        Assert.NotNull(anchor);
+        var folder = Path.GetDirectoryName(anchor!)!;
+
+        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
+        Assert.True(files.Length >= 15, $"only {files.Length} files found in {folder}");
+
+        foreach (var path in files)
+        {
+            var name = Path.GetFileName(path);
+            foreach (var token in Regex.Split(File.ReadAllText(path), "[^A-Za-z0-9]+"))
+            {
+                if (token.Length < 3) continue;
+
+                var hash = Convert.ToHexString(SHA256.HashData(
+                    Encoding.UTF8.GetBytes(token.ToLowerInvariant()))).ToLowerInvariant();
+
+                if (!ForbiddenTokenHashes.Contains(hash)) continue;
+                Assert.True(BenignOccurrences.Contains((name, token.ToLowerInvariant())),
+                    $"docs/{name} contains the forbidden identifier \"{token}\" - anonymise it, "
+                    + "or add it to BenignOccurrences if the sentence around it is generic "
+                    + "technical English rather than the customer's name.");
+            }
         }
     }
 

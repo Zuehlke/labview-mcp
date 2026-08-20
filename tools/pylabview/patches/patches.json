@@ -1,0 +1,20 @@
+{
+  "$comment": [
+    "Patches applied to the vendored pylabview WHEN THE BUNDLE IS ASSEMBLED, never to vendor/ itself.",
+    "That keeps VENDOR.md's 'local changes: none' true of the vendored tree, so an upstream fix can",
+    "still be taken by copying the package over it. provision.ps1 applies these; a Find string that",
+    "does not occur EXACTLY ONCE is a hard error, because the failure mode to avoid is a patch that",
+    "silently stops matching after an upstream change and leaves the bug back in.",
+    "Each entry: File relative to app/, Find and Replace as exact strings, Why, and Upstream."
+  ],
+  "patches": [
+    {
+      "id": "probe-table-guard",
+      "file": "pylabview/LVblock.py",
+      "find": "if tdProbeTable is not None:",
+      "replace": "if tdProbeTable is not None and tdProbeTable.fullType() == TD_FULL_TYPE.RepeatedBlock:",
+      "why": "getNumRepeats() is called on the probe table without checking that it IS a RepeatedBlock, so a VI whose probe table resolves to a Cluster, Number or NumberPtr dies with AttributeError and extracts nothing. Measured on a production codebase: 32 of 900 VIs, all with this one cause - 28 Cluster, 3 NumberPtr, 1 Number - and all of them DQMH module VIs, which is why NI's own example corpus never hit it. The two sibling call sites twelve lines above already guard with fullType() == TD_FULL_TYPE.RepeatedBlock; this one was missed. The crash is in cosmetic code - setPurposeText and setDataFillComments only add comments to the output - so no content was ever beyond reach. Verified: four previously-failing VIs extracted 30, 99, 27 and 18 files with the guard, nothing without it.",
+      "upstream": "not yet reported to mefistotelis/pylabview; remove this entry once it lands upstream"
+    }
+  ]
+}
