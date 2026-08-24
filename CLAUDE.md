@@ -254,6 +254,150 @@ identifiers (`Set Control Value [Variant]` is really `Ctrl Val.Set`), and an add
 invalidate the whole map. Before building a helper, check the table in "Where the knowledge lives"
 and the tool list — several capabilities that look missing are already shipped.
 
+**There is a THIRD interface, and for editing existing code it is the majority one.** The `pylv_*`
+tools read and rewrite a VI's binary form through a bundled pylabview, with no LabVIEW running and
+no Python installed. They do not replace AIXML and the dependency runs one way — every primitive
+name and terminal role they annotate with was harvested by joining against AIXML exports, and
+pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview edits and reads.**
+
+**Which one, decided by measurement rather than habit:**
+
+| what you are doing | route |
+|---|---|
+| create a NEW VI | **AIXML only.** pylabview has no empty starting point |
+| edit an EXISTING VI | **call `pylv_route` first.** It answers `route` + `routeReason` with the evidence |
+| read a VI when the gRPC service is up | AIXML — 37× smaller, so it costs less context |
+| read a VI with no LabVIEW, no licence, in CI | pylabview — the only route |
+| a `.ctl`, an icon, layout, decorations | pylabview. NI's list puts `.ctl` outside the generator entirely |
+
+`pylv_route` runs two checks because one is not sound: it validates the *untouched* export, and it
+scans that export for node families NI publishes as unsupported. The quiet families are listed in
+`docs/aixml-node-gaps.tsv` — those pass validation with `errorCode 0` and then come back **gutted**,
+the container built and its configuration silently discarded, which a router trusting validation
+alone would send to AIXML and destroy.
+
+**This clause used to name `Event Structure` and `Timed Loop` as those quiet cases, and both are
+loud.** `Timed Loop` returns `errorCode 1`, `Unsupported node type: Timed Loop`, by name.
+`Event Structure` returns `errorCode 1` too — re-measured 2026-08-22 on `State Machine
+Fundamentals.vi`, `Event Data Node: Cluster is invalid or empty` plus `Event Structure: One or more
+event cases have no events defined.` For `Event Structure` the export is faithful, `CaseFrame`s and
+event specifiers included; it is the generator that cannot read one back. So Check A catches both by
+name and their Check B entries are belt and braces. The `[0] Timeout` detail belonged to `Timed Loop`
+alone and had drifted onto both. Corrected in `experiments/pylabview/ROUTING.md` §2, which
+contradicted `FINDINGS.md` §3.11 on this for two commits.
+
+**"The export is faithful" is an `Event Structure` fact and does NOT generalise. For a `Timed Loop`
+the export is lossy.** Measured 2026-08-22 on a controlled pair: the loop comes back as
+`<Structure _name="Timed Loop" count="…" label="…"/>` with **no configuration node on either side** —
+so AIXML never carries the timing at all, and two VIs whose binaries differ by 3 703 bytes produced
+exports that were byte-identical apart from the VI name. Do not reason about a Timed Loop's timing
+from an AIXML export; there is nothing in it to reason about.
+
+**A Timed Loop's timing is reachable through pylabview — but only where the IDE has exposed the
+attribute on the configuration node.** This is the rule to apply before promising anything about
+`Period`, `Deadline`, `Timeout`, `Offset`, `Priority`, `Mode`, `Source Name` or `Assigned CPU`:
+
+- **collapsed node** (the default, and what every VI in the experiment happened to have): the heap
+  names only `Timing`, `Wakeup Reason`, `Error`, `Structure Name`. The individual fields are inside
+  the `Timing` cluster and are **not** reachable. `FINDINGS.md` §3.15 measured exactly this.
+- **exposed node**: each attribute becomes a real terminal with its own `TypeID` **and its own
+  `DefaultData` carrying the value** — measured `Priority` = 100, `Mode` = 2, `Timeout` = -1,
+  `Source Name` = `"Default"`. §3.15's "field values are absent from the parsed XML entirely" is
+  false for this case; §3.16 supersedes it.
+
+**Writing a timing value works — but only through the WIRED CONSTANT, never through the terminal.**
+This is the single most important thing on this page about Timed Loops, and it took five measurements
+and two wrong conclusions to reach:
+
+| where the value comes from | element | writable? |
+|---|---|---|
+| a **constant wired** to the input terminal | `<ConstValue>` on the `bDConstDCO`, hex text | **yes** — verified through a LabVIEW load *and* re-save, and confirmed by LabVIEW's own AIXML export reading `value="2500"` |
+| an **unwired** terminal's fallback | `<DefaultData>` on the terminal | no — LabVIEW overwrites it on its next save |
+| a field inside the collapsed `Timing` cluster | `DefaultData`, flattened | no — the rebuilt VI will not load at all |
+
+So the recipe is: **the inputs must be wired in the IDE once** — that is a diagram edit, and adding a
+constant plus a wire is composition, which pylabview cannot do (no composing from nothing) and AIXML
+cannot express here (its export drops the configuration node). Given the wire, changing the number is
+a one-line substitution: find the `ConstValue`, write the new hex, rebuild. `ConstValue` is plain hex
+with no MacRoman, no CDATA and no entity escaping, and the file size does not change — none of the
+`DefaultData` traps apply. `docs`-side detail in §3.19; §3.17 and §3.18 record the two blind alleys.
+
+**Wiring the inputs also makes the values visible to AIXML**, which §3.16 got too broadly: AIXML is
+blind to the configuration *node* and its terminals, but a wired constant is an ordinary diagram
+object, so it exports with its name and value — `Mode` even with its five enum item strings.
+
+The two routes that do NOT work, kept because each fails in an instructive way:
+
+| what was patched | result |
+|---|---|
+| the **collapsed** node's flattened `Timing` cluster | LabVIEW **refuses the file**: `load error code 6: Could not load block diagram` |
+| the **exposed terminal**'s own 4-byte `DefaultData` | loads with `errorCode 0`, then **LabVIEW overwrites it on its next save** |
+
+**Because these attributes are WIRED inputs, not stored settings.** A Timed Loop's `Timeout` is an
+input terminal; a value reaches it from a constant or control wired to it on the diagram.
+`DefaultData` is only the fallback for an unwired terminal, and LabVIEW treats it as its own to
+regenerate. Editing it changes nothing and does not survive. Setting a timeout for real means the
+value must arrive **on a wire** — so the IDE is needed for the wiring, once, and nothing more:
+after that the number lives in `ConstValue` and is ours. §3.18 has the reasoning, §3.17 the two
+blind alleys, §3.19 the working edit.
+
+**LOGIC inside a construct AIXML refuses is reachable too — through a subVI `Call` used as a
+slot.** This is the general escape from "AIXML cannot author it, pylabview cannot compose it", and
+it is worth reaching for before declaring anything impossible:
+
+- AIXML refuses a `Timed Loop` even hand-authored (`Error 53`, `Unsupported node type`), and
+  pylabview adds no nodes and no wires. So logic *inside* the loop looks unreachable.
+- It is not, once a person has put **one subVI `Call` inside the construct** in the IDE. That Call
+  is a socket. AIXML authors the plug — a subVI, with no restriction on its contents — and
+  `scripts/pylv-retarget-subvi.py` swaps which plug sits in it.
+- **Verified 2026-08-22**: a Timed Loop's Call retargeted from `alternate.vi` to `alternate2.vi` by
+  three text substitutions plus `pylv_rebuild`; LabVIEW's own export then read
+  `target="alternate2.vi"` with the loop, its `Timeout`/`Period`, the stop button and the indicator
+  untouched.
+- The constraint is the **connector pane contract**: same terminal names and types, because the
+  heap's wires bind to the pane. Check both VIs with `lvai_connector_pane`, and AIXML-export the
+  result — `pylv_rebuild` reporting `ok` says nothing about whether the swap was sound.
+
+So the IDE is needed **once per socket**, never again for what goes into it. Nothing about this is
+specific to Timed Loops; it applies to any construct the generator refuses, `Event Structure`
+included. `scripts/templates/README.md` has the substitution sites and the measurement.
+
+**Two process rules came out of getting this wrong**, and they generalise well past Timed Loops:
+
+- **Ask how a value ARRIVES before hunting where it is stored.** A wired input, a terminal default
+  and a dialog field look alike in a heap dump and behave nothing alike. Three measurements went into
+  "where is the byte" when the question was "who writes it".
+- **`pylv_rebuild` succeeding is not verification.** Read the value back **after LabVIEW has loaded
+  and saved the VI** — that is the first moment LabVIEW gets a vote, and it is where `2500` turned
+  into something else. `lvai_set_vi_icon` forces that save cheaply (`viResaved: true`).
+
+If you do ever edit a heap payload, two encoding rules apply: **keep the LF line endings** (Python's
+text mode turns them into CRLF and all 20 000 lines then differ, hiding the one that changed), and
+**let the CDATA wrapper follow the content** — `&#x00;` is literal text inside CDATA but an invalid
+character reference outside it.
+
+**Reading those values needs two encoding facts, each of which produced confident nonsense first.**
+pylabview renders `DefaultData` as **MacRoman** — byte `0xFF` returns as U+02C7, so a `Timeout` of
+`-1` decodes to garbage under latin-1 or UTF-8. And bytes with no printable form are written as the
+**literal six-character text** `&#x00;`, not as an XML character reference, so an XML parser hands
+them over unresolved. `scripts/pylv-decode-terminals.py` handles both — use it rather than
+re-deriving them.
+
+**Do not expect the AIXML route to be the common one when editing.** Measured over 900 VIs of a
+production codebase: **70 % call the project's own subVIs**, which AIXML refuses with `Error 53`, and
+87 % of all subVI calls go into own code. The same 70 % turns up independently in NI's example corpus
+(737 of 1052 regeneration failures). Only **15 %** carry no unsupported construct at all, and that is
+an upper bound rather than a promise. `docs/aixml-gap-census.md` has the whole table, including what
+is *rarer* than expected — `Timed Loop` was one VI in 900.
+
+**`pylv_route` decides; it does not switch.** A pylabview edit is a surgical change to an object
+heap — in one measured case six specific text edits, and they were only knowable because AIXML had
+generated a reference VI to diff against. That cannot be synthesised from "add error handling", so
+authoring the edit stays yours. `experiments/pylabview/ROUTING.md` §5 lists the six process gates;
+the one that has cost the most time is releasing the path from LabVIEW's memory with `lvai_close_vi`
+before rebuilding, because pylabview writes the file happily while LabVIEW keeps serving its stale
+in-memory copy — so a verification run confirms the VI you REPLACED.
+
 **Not every working measurement becomes a tool.** A repeatable operation on the user's own LabVIEW
 code gets productised — helper file under `scripts/`, an `lvai_*` tool, tests, docs, on its own
 branch. A one-shot investigation of NI's internals gets written down instead: `lvai_inventory.xml`
@@ -307,12 +451,48 @@ literally it argued away 600 usable palette VIs.
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
+| When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
+| How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
+| How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
+| Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
+| How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
+| How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |
+| What did the pylabview experiment measure? | `experiments/pylabview/FINDINGS.md` (source tree only) | `pylv_status` |
 
 The seven documents served by an `lvai_*_reference` tool are **embedded in the assembly** and
 byte-verified on every build, so a binary-only install answers the same questions. See "Installing
-on another machine" in the README. `docs/example-corpus.md` is deliberately not among them: it
-records how the example data is stored on disk, which the index reads for itself, so nothing has
-to hand the file out at run time.
+on another machine" in the README — which now ships too, rather than being named and left behind.
+`docs/example-corpus.md` is deliberately not *embedded*: it records how the example data is stored
+on disk, which the index reads for itself, so no tool has to hand it out at run time. It is still
+**copied** with the rest of `docs\`, so it is readable on any install; not embedding it and not
+shipping it were run together in this paragraph until 2026-08-23.
+
+**Editing an embedded document needs no copying anywhere — only a rebuild.** The `.csproj` includes
+the file itself (`<EmbeddedResource Include="..\..\docs\aixml-reference.md" …/>`), so there is no
+second copy to keep in step, and `EmbeddedDocumentIsByteIdenticalToTheFileInDocs` fails if one ever
+appears. `CLAUDE.md` is both embedded and copied to `claude\CLAUDE.md`; everything under `scripts\`
+is copied with `PreserveNewest`. So a new helper script ships as soon as it is written.
+
+**EMBEDDED AND SHIPPED ARE DIFFERENT THINGS, and conflating them cost nine dangling pointers.** An
+embedded resource lives inside the DLL and is reachable only through whatever tool serves it, so a
+document that is embedded but unserved is invisible on a binary-only install — and a document that
+is neither is not there at all. Audited 2026-08-23: the table above pointed at
+`aixml-gap-census.md`, `aixml-node-gaps.tsv`, `example-corpus.md`, `lvai-internal-vis.tsv`,
+`pylabview-controls.md`, `tool-argument-errors.md` and `README.md`, none of which shipped, and two
+of those are cited by *embedded* documents rather than only by this one.
+
+Since then the build **copies all of `docs\` and `README.md`** next to the exe, about 900 kB, so
+every row resolves. The eight served documents stay embedded as well: a tool answer must not depend
+on a file beside the exe surviving. Nothing about `docs\` needs a `.csproj` edit any more — the glob
+takes new files automatically, and `NoCustomerOrProductIdentifiersAnywhereInTheDocsFolder` walks the
+folder so a new document is covered by the confidentiality guard the moment it exists.
+
+**`experiments/` still ships nothing** — absent from the `.csproj`, embedded and copied alike, and
+`pylv_route`/`pylv_status` only *mention* `ROUTING.md` and `FINDINGS.md` in code comments rather than
+serving them. Those two rows are marked "source tree only". The consequence for writing: a rule that
+has to survive into a shipped build belongs in `CLAUDE.md` or one of the served documents, with
+`experiments/` holding the evidence behind it. Putting the rule only in `FINDINGS.md` means it is
+not installed — which is exactly how the Timed Loop slot pattern came to be re-derived from scratch.
 
 ## The agent definitions
 

@@ -90,3 +90,9 @@ __pycache__/
 /staging/
 /publish/
 /labview-mcp.zip
+
+# The self-contained pylabview runtime. tools\pylabview\provision.ps1 assembles it from whatever
+# CPython the machine has (about 32 MB: interpreter, trimmed stdlib, Pillow). Binaries that large
+# do not belong in git, and a runtime built from the local Python is more honest than a pinned copy
+# that silently rots. The pylabview SOURCES are committed, under tools/pylabview/vendor/.
+/tools/pylabview/runtime/

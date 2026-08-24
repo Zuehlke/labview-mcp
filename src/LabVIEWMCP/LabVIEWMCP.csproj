@@ -83,6 +83,35 @@
           CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\CLAUDE.md" Link="claude\CLAUDE.md"
           CopyToOutputDirectory="PreserveNewest" />
+    <!-- EVERY document, not only the eight served by an lvai_*_reference tool. Embedding and
+         shipping are different things: an embedded resource lives inside the DLL and is reachable
+         only through the tool that serves it, so a document that is embedded but unserved is
+         invisible on a binary-only install. CLAUDE.md's knowledge table points at
+         aixml-gap-census.md, aixml-node-gaps.tsv, example-corpus.md, lvai-internal-vis.tsv,
+         pylabview-controls.md and tool-argument-errors.md, and none of them was reachable there -
+         audited 2026-08-23, nine dangling pointers in all. Copying the folder costs about 700 kB
+         and makes every one of them resolve.
+         The eight that ARE embedded stay embedded as well: the tool answer must not depend on a
+         file next to the exe surviving. -->
+    <None Include="..\..\docs\**\*"
+          Link="docs\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <!-- "Installing on another machine" lives here, which is precisely what someone on another
+         machine needs, and it was the largest single unshipped document at 63 kB. -->
+    <None Include="..\..\README.md" Link="README.md"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The self-contained pylabview bundle, so a binary-only install can read and rebuild VI files
+       with no Python installed and nothing on PATH. Same arrangement as scripts\ above: one
+       absolute location next to the exe.
+       Conditioned on the folder existing because the runtime is NOT committed - it is 32 MB of
+       interpreter, trimmed stdlib and Pillow, assembled by tools\pylabview\provision.ps1. A fresh
+       checkout therefore builds without it, and the server must treat the bundle as optional. -->
+  <ItemGroup Condition="Exists('..\..\tools\pylabview\runtime')">
+    <None Include="..\..\tools\pylabview\runtime\**\*"
+          Link="pylabview\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

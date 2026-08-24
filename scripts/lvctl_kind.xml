@@ -1,0 +1,12 @@
+<VI _name="lvctl_kind.vi" description="Read {LV.VI} Control VI Type for one .ctl, to settle whether the TypeDef descriptor's Flag1 marks a strict typedef. Reading only - no panel is touched, so the addon's own application instance is enough. Driven by RunVIAsTopLevel, which sets only STRING controls, so the path is built on the diagram.">
+  <Control _name="VI Path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:12.path" uid="12" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:12.path,error in (no error):" outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Control VI Type" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):24.error out" outputs="Control VI Type:26.kind,reference out:26.reference out,error out:26.error out" uid="26" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:26.reference out,error in (no error):26.error out" outputs="error out:34.error out" uid="34" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:34.error out" outputs="status:60.status,code:60.code,source:60.source" uid="60" uid_parent="root"/>
+  <Indicator _name="kind" conIdx="4" connection="recommended" inputs="value:26.kind" type="int32" uid="40" uid_parent="root" value="0"/>
+  <Indicator _name="status" conIdx="5" connection="recommended" inputs="value:60.status" type="bool" uid="50" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="6" connection="recommended" inputs="value:60.code" type="int32" uid="51" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="8" connection="recommended" inputs="value:60.source" type="string" uid="52" uid_parent="root" value=""/>
+</VI>
