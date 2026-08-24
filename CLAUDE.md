@@ -237,6 +237,58 @@ Beware both renders: `Print.VI To HTML` and LabVIEW's Context Help draw inputs l
 right whatever the pane really says. Context Help does print the pattern id after the path, which is
 the quickest tell that a pane is not the one you assumed.
 
+**A pane is TWO numbers, and a wrong verdict usually accuses the wrong one.** The *assignment* is
+which terminal sits at which `conIdx`; the *pattern* is what those numbers mean. `lvai_connector_pane`
+reported five violations on `WriteWaveformsToCSV.vi` whose assignment had been cloned terminal for
+terminal from a style-compliant NI VI — because the generator stamps every new VI with the station's
+`DefaultConPane` (4833 here) while the assignment copied was a 4815 one, and on 4833 those same
+numbers mean the opposite edges. Changing 4833 → 4815 and **moving no terminal at all** turned it
+into "Nothing to change", measured 2026-08-24. So when a pane reads as wrong, ask which half is
+wrong before re-indexing anything: fixing the pattern touches no `conIdx`, and therefore no caller.
+
+**And the PATTERN half can now be repaired without LabVIEW, not only checked.**
+`scripts/pylv-conpane.py` reads a pane out of a pylabview bundle, gives the same verdict and the
+same corrected assignment as `lvai_connector_pane` (proven identical on two panes), and `--pattern`
+writes a corrected `conId` back — moving no terminal, so no caller has to change.
+
+**Moving terminals through the heap KILLS LabVIEW, measured twice, and the capability was removed
+rather than shipped.** `--reindex` and `--follow` existed, produced files that re-extracted cleanly
+and read back exactly as intended, and both times LabVIEW.exe was gone from the process table on the
+first probe that loaded the result — once on a standalone VI with no caller at all, once on a subVI
+whose caller had been followed. Dozens of `--pattern` changes, retargets, comment placements and
+runs in between went through untouched. The cause is not established and finding it means more
+crashes on a working station, so the script now *refuses* a non-identity mapping. **A genuinely
+wrong assignment is fixed by regenerating from AIXML** with the `conIdx` values
+`lvai_connector_pane` prints. `docs/connector-pane-repair.md` has both measurements.
+
+**A diagram comment authored in AIXML lands somewhere the generator chooses, not on the node you
+meant.** AIXML has no coordinate attribute at all, so `<FreeLabel>` can only be *created* there.
+Measured 2026-08-24 on `DaqReadAndTDMS2.vi`: six comments came out at six plausible node positions
+with the text-to-node mapping shifted — `TDMS-Logging einschalten` over the CSV subVI,
+`Timing 100 Hz` in the top-left corner over a wire. One of the six was right, by luck. Neither
+validation nor a run can see this, and a comment on the wrong node is worse than none because it
+reads as documentation. Place them afterwards with `scripts/pylv-place-labels.py`; the AIXML uids
+survive into the heap, so the same `--place` line can be re-run after every regeneration.
+`docs/diagram-comments.md` has the traps — bounds are relative to the enclosing diagram, a control's
+own caption is a `label` too, and node classes must not be enumerated.
+
+**And the side matters: a comment ABOUT A SUBVI CALL goes BELOW the node**, because the subVI's own
+label already occupies the space above it. A comment describing a stretch of diagram — anchored to a
+structure or a primitive — stays above. `--side auto` is the default and decides from the target, so
+anchoring a comment to what it is actually about gets the side right for free.
+
+**Everything you write INTO a VI is English by default — descriptions, terminal descriptions and
+diagram comments alike. A German request does not imply German text.** Only an explicit wish
+("auf Deutsch", "in French") changes it, and then everything in that VI follows it.
+
+This rule already existed and was still broken, which is the part worth keeping: all three
+`.claude/agents/labview-*.md` state it, and working *directly* — as this session did, because the
+Agent tool was not to be used — never reads them. A rule that lives only in an agent definition is
+invisible to the route that does not spawn an agent, the same failure mode as a document that is
+embedded but never served. Twelve German comments and sixteen German descriptions shipped before the
+user asked for English. Control NAMES are a different question: they are the VI's public interface,
+so they stay as the caller specified them.
+
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
@@ -394,9 +446,25 @@ is *rarer* than expected — `Timed Loop` was one VI in 900.
 heap — in one measured case six specific text edits, and they were only knowable because AIXML had
 generated a reference VI to diff against. That cannot be synthesised from "add error handling", so
 authoring the edit stays yours. `experiments/pylabview/ROUTING.md` §5 lists the six process gates;
-the one that has cost the most time is releasing the path from LabVIEW's memory with `lvai_close_vi`
-before rebuilding, because pylabview writes the file happily while LabVIEW keeps serving its stale
-in-memory copy — so a verification run confirms the VI you REPLACED.
+the one that has cost the most time is releasing the path from LabVIEW's memory before rebuilding,
+because pylabview writes the file happily while LabVIEW keeps serving its stale in-memory copy — so
+a verification run confirms the VI you REPLACED.
+
+**CLOSE THE PROJECT, not the VI.** `lvai_close_active_project` is the move; this clause used to name
+`lvai_close_vi`, and following it literally is what wedged a session on 2026-08-24. `lvai_close_vi`
+requires the project to be *active* to work at all, so it leaves the project loaded — and the usual
+way to make a project active is `lvai_open_file`, which makes LabVIEW **compile** the VI. From then
+on the file carries `VICD` compiled-code blocks (with `BNID`, `CNST`, `GCDI`, `NUID`, `SUID`), and
+**pylabview copies those through unparsed** — the same property that makes the round trip lossless
+now preserves compiled code describing the state *before* your edit.
+
+Measured on the same VI pair twice over: the round whose bundle had **0** `VICD` blocks generated,
+pane-fixed, retargeted, ran and wrote its TDMS and CSV; the round with **3** returned `1039, VI was
+aborted` on the first run and wedged LabVIEW on the second — every service port answering
+`DeadlineExceeded` while the process still answered the OS, which needed a restart. Nothing about the
+heap edits differed. So the order is: **close the project → extract → edit → rebuild → only then let
+LabVIEW load it.** A regeneration hitting `Error 1357` is a reason to close the project, never a
+reason to open it.
 
 **Not every working measurement becomes a tool.** A repeatable operation on the user's own LabVIEW
 code gets productised — helper file under `scripts/`, an `lvai_*` tool, tests, docs, on its own
@@ -454,6 +522,8 @@ literally it argued away 600 usable palette VIs.
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
+| How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
+| How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

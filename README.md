@@ -40,6 +40,8 @@
 
 - [Quickstart with Claude](#-quickstart-with-claude)
 - [LabVIEW MCP](#labview-mcp)
+  - [There are now two engines, not one](#there-are-now-two-engines-not-one)
+  - [Status — read this first](#status--read-this-before-you-point-it-at-code-you-care-about)
   - [Requirements](#requirements)
   - [Build and try it](#build-and-try-it)
   - [Install as a Claude Code plugin](#install-as-a-claude-code-plugin)
@@ -52,6 +54,7 @@
   - [Creating a project](#creating-a-project)
   - [Caveats](#caveats)
   - [Layout](#layout)
+  - [Credits and third-party code](#credits-and-third-party-code)
   - [Where the interface comes from](#where-the-interface-comes-from)
 
 
@@ -108,9 +111,53 @@ Once it is connected, this is what you can ask for:
 Nothing here does anything the IDE could not do itself, and every mutating tool is marked as
 one, so a client can ask before your code is touched.
 
-Under the hood: all 23 RPCs of LabVIEW's private `lvai.LVAI` gRPC interface, plus 13 tools of
-its own — 36 in total. That interface is undocumented, and
+Under the hood: all 23 RPCs of LabVIEW's private `lvai.LVAI` gRPC interface, plus 18 tools of
+its own, plus 4 that need no LabVIEW at all — 45 in total. That interface is undocumented, and
 [where it comes from](#where-the-interface-comes-from) is the last section, for the curious.
+
+### There are now two engines, not one
+
+Everything above goes through a **running LabVIEW**. The `pylv_*` tools add a second route: a
+bundled copy of **[pylabview](https://github.com/mefistotelis/pylabview)** reads and
+rewrites a `.vi`'s binary form directly — **no LabVIEW, no licence, no Python installation**
+required. It reads what AIXML cannot express at all: icons, front-panel layout, decorations,
+`.ctl` files, connector-pane patterns, and the diagram of a VI whose constructs LabVIEW's own
+generator refuses.
+
+The two do not compete, and the dependency runs one way:
+
+| | |
+|---|---|
+| **AIXML** (via LabVIEW) | **creates and names.** The only way to author a VI from nothing. |
+| **pylabview** | **edits and reads.** Cannot compose a diagram from nothing — no new nodes, no new wires — but can change what is already there, byte-precisely. |
+
+`pylv_route` decides which one a given VI needs, by measurement rather than by guess, and says
+why. Measured over 900 VIs of a production codebase, only **15 %** can be regenerated through
+AIXML at all — 70 % call the project's own subVIs, which the generator rejects — so for *editing
+existing code* pylabview is the majority route, not the exception.
+
+## Status — read this before you point it at code you care about
+
+> **This is not production-tested software.** It is a working research project: everything
+> documented here was measured on a real LabVIEW installation, and none of it has been through a
+> production validation cycle, a regression suite on customer code, or use by anyone but its
+> authors.
+>
+> Concretely, what that means for you:
+>
+> - **Tools that write are genuinely destructive.** `lvai_convert_aixml_to_vi` overwrites a `.vi`
+>   without asking. `pylv_rebuild` overwrites one without LabVIEW ever seeing it. Regenerating a
+>   VI discards its diagram layout, its decorations and its icon.
+> - **The pylabview route edits a binary object heap.** The round trip was measured lossless on
+>   38 of 38 files, and that is a sample, not a guarantee. A malformed edit produces a `.vi` that
+>   LabVIEW may refuse to load — and, in one measured class of edit, one that **terminated
+>   `LabVIEW.exe` on load** (see [`docs/connector-pane-repair.md`](docs/connector-pane-repair.md);
+>   the capability was removed rather than shipped).
+> - **It drives NI's private, undocumented `lvai.LVAI` interface**, with no compatibility
+>   guarantee across LabVIEW versions.
+>
+> **Work on copies, keep your code in version control, and commit before you let an assistant
+> loose on it.** Nothing here is covered by any warranty — see [LICENSE](LICENSE).
 
 ## Requirements
 
@@ -678,11 +725,11 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**34 tools over 23 RPCs.** Eleven are additions that map to no RPC: `lvai_status`,
-`lvai_dump_schema`, `lvai_palette_index`, `lvai_set_vi_icon` — which composes three RPCs
-rather than wrapping one — and the seven knowledge tools below. 24 carry
-`readOnlyHint`, 10 carry
-`destructiveHint`, so a client can gate the writes.
+**45 tools over 23 RPCs.** Twenty-two map to no RPC: `lvai_status`, `lvai_dump_schema`,
+`lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
+rather than wrapping one — the knowledge tools below, and the four `pylv_*` tools, which reach
+no LabVIEW at all. 31 carry `readOnlyHint`, 14 carry `destructiveHint`, so a client can gate the
+writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -727,6 +774,26 @@ resources rather than call tools.
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |
 | `lvai_drop_palette_item` | `DropPaletteItem` | edits a block diagram |
 | `lvai_log_usage_data` | `LogUsageData` | writes telemetry |
+
+### Without LabVIEW — the pylabview route
+
+These four need no running LabVIEW, no licence and no Python installation: the bundle ships its
+own isolated interpreter. They work on a checkout, on a build agent, in CI.
+
+| Tool | What it does |
+|---|---|
+| `pylv_status` | whether the bundle is present and usable, and which upstream commit it is |
+| `pylv_route` | **call this before planning any edit** — decides AIXML vs pylabview for one VI, with the evidence |
+| `pylv_extract` | reads a `.vi`, `.ctl` or `.llb` into a directory of XML plus binary sidecars, annotated with primitive and terminal names. Read-only. |
+| `pylv_rebuild` | **writes a `.vi`** back from such a bundle |
+
+The bundle is **optional and not committed** — about 32 MB — so a fresh checkout has none until
+`tools\pylabview\provision.ps1` has run. `pylv_status` says so rather than failing obscurely.
+
+Helper scripts that build on it ship in `scripts\`: `pylv-conpane.py` (repair a connector pane's
+pattern without regenerating), `pylv-place-labels.py` (put a diagram comment where you meant it),
+`pylv-retarget-subvi.py` (swap which subVI a call points at), `pylv-set-timedloop.py`,
+`pylv-decode-terminals.py`.
 
 ### Monitors — inverted direction
 
@@ -809,7 +876,9 @@ On the tag push, the workflow runs on `windows-latest` and:
 2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
    install is a binary-only install, so this is the only proof the knowledge tools still answer;
 3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
-4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`);
+4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
+   and `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
+   `scripts\..\docs` has to resolve on an install exactly as it does in the repository);
 5. asserts the plugin manifest sits at the tree root;
 6. smoke-tests the exe with `--help`;
 7. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
@@ -1099,6 +1168,46 @@ tests/LabVIEWMCP.Tests/
   Support/Res.cs                parse-and-assert helpers for tool JSON
   Infra/ Cli/ Grpc/ Tools/      the tests themselves
 ```
+
+## Credits and third-party code
+
+### pylabview — with thanks
+
+The `pylv_*` tools exist because of
+**[pylabview](https://github.com/mefistotelis/pylabview)**, and the debt is worth stating plainly:
+the hard part of this project's second engine — understanding LabVIEW's `RSRC` container and its
+object heaps well enough to take a `.vi` apart and put it back together byte-for-byte — was
+already solved there, by other people, years ago. Nothing in this repository reverse-engineers a
+`.vi` file format. It reads one through their work.
+
+Thank you to **Mefistotelis**, who wrote it. It is a decade of
+patient, unglamorous file-format archaeology, given away for free, and it turned "an assistant
+cannot edit a VI without a LabVIEW licence" into something that is simply not true any more.
+
+| | |
+|---|---|
+| Project | [mefistotelis/pylabview](https://github.com/mefistotelis/pylabview) |
+| Authors | Jessica Creighton (2013), Mefistotelis (2019–2020) — as the licence names them |
+| Licence | MIT — full text in `tools\pylabview\vendor\LICENSE-pylabview.txt` |
+| Pinned commit | `69768647c18d2d792a259b69884b2433761c3a4f` (2026-07-30) |
+| Local changes | **none** — see below |
+
+**Upstream is vendored unmodified, deliberately.** `tools\pylabview\vendor\pylabview\` is
+byte-identical to that commit, so upstream fixes can be taken by copying the package over it.
+Everything this project needed on top was added *from the outside* instead: the primitive and
+terminal names pylabview does not carry are written in as inert XML comments by
+`experiments\pylabview\annotate_names.py`, and the one upstream defect encountered — a crash on
+VIs whose probe table is not a `RepeatedBlock`, measured at 32 of 900 VIs in a production
+codebase — is applied to the assembled copy through `tools\pylabview\patches\patches.json`, never
+to `vendor\`. `tools\pylabview\VENDOR.md` has the provenance and the reasoning.
+
+If you use this server's editing tools, you are using their code. Please star their repository.
+
+### NI's grpc-labview
+
+The `lvai.LVAI` transport is NI's own open-source
+[grpc-labview](https://github.com/ni/grpc-labview), which is what makes the interface reachable at
+all — see the next section.
 
 ## Where the interface comes from
 
