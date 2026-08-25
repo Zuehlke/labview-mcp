@@ -787,8 +787,17 @@ own isolated interpreter. They work on a checkout, on a build agent, in CI.
 | `pylv_extract` | reads a `.vi`, `.ctl` or `.llb` into a directory of XML plus binary sidecars, annotated with primitive and terminal names. Read-only. |
 | `pylv_rebuild` | **writes a `.vi`** back from such a bundle |
 
-The bundle is **optional and not committed** — about 32 MB — so a fresh checkout has none until
+The bundle is **optional and not committed** — about 38 MB — so a fresh checkout has none until
 `tools\pylabview\provision.ps1` has run. `pylv_status` says so rather than failing obscurely.
+
+**A release ships it; up to and including v0.9.0 it did not.** The gap was not obvious, because
+nothing failed loudly: the `.csproj` only copies `tools\pylabview\runtime\` *if that folder happens
+to exist*, no MSBuild target assembles it, and the release workflow ran on a clean checkout where it
+never did. So every `pylv_*` tool answered `notProvisioned` on a plugin install and pointed the
+reader at `tools\pylabview\provision.ps1` — a path a binary install does not have. Since then the
+release workflow assembles the bundle itself and stages it as `bin\pylabview\`, next to the exe
+where `PyLabview.Locate()` looks, and fails the release if the interpreter will not import or if a
+patch from `patches.json` is missing from the staged copy. The asset is about 38 MB larger for it.
 
 Helper scripts that build on it ship in `scripts\`: `pylv-conpane.py` (repair a connector pane's
 pattern without regenerating), `pylv-place-labels.py` (put a diagram comment where you meant it),
@@ -876,12 +885,22 @@ On the tag push, the workflow runs on `windows-latest` and:
 2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
    install is a binary-only install, so this is the only proof the knowledge tools still answer;
 3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
-4. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
-   and `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
-   `scripts\..\docs` has to resolve on an install exactly as it does in the repository);
-5. asserts the plugin manifest sits at the tree root;
-6. smoke-tests the exe with `--help`;
-7. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
+4. assembles the pylabview bundle with `tools\pylabview\provision.ps1`, from a pinned CPython plus
+   a `pip install pillow` — the runtime is gitignored, so without this step the release carries no
+   bundle at all and every `pylv_*` tool answers `notProvisioned` on a plugin install;
+5. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
+   `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
+   `scripts\..\docs` has to resolve on an install exactly as it does in the repository — and the
+   bundle at `bin\pylabview\`, which is where `PyLabview.Locate()` looks);
+6. asserts the plugin manifest sits at the tree root;
+7. asserts the staged bundle is locatable **and patched** — the patches in
+   `tools\pylabview\patches\patches.json` are applied when the bundle is assembled, so a stale
+   runtime would ship the crash they fix while every log line still read "assembled";
+8. smoke-tests the staged interpreter (`import PIL`, `from pylabview import LVblock`) and the exe
+   with `--help`;
+9. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
+
+The asset is about 38 MB larger since step 4 was added.
 
 Nothing in the marketplace manifest needs editing between releases: it points at
 `releases/latest/download/labview-mcp.zip`, which GitHub redirects to the newest release, and no

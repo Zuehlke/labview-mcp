@@ -249,15 +249,34 @@ sys.exit(1 if leaked else 0)
 '@
 $probeFile = Join-Path $env:TEMP "pylabview-probe-$PID.py"
 Set-Content -Path $probeFile -Value $probe -Encoding utf8
+$probeOut = Join-Path $env:TEMP "pylabview-probe-$PID.out"
+$probeErr = Join-Path $env:TEMP "pylabview-probe-$PID.err"
 try {
-    # run with the environment scrubbed, which is the condition that actually matters
-    $out = & $py $probeFile (Join-Path $Destination 'app') 2>&1
-    $ok = $LASTEXITCODE -eq 0
+    # Run with the environment scrubbed, which is the condition that actually matters.
+    #
+    # NOT `2>&1`, and that is a measured failure rather than a style choice. In Windows PowerShell
+    # 5.1 redirecting a native command's stderr into the pipeline wraps every line in an
+    # ErrorRecord, which with $ErrorActionPreference = 'Stop' at the top of this script THROWS
+    # before $LASTEXITCODE is ever read. Measured 2026-08-25 provisioning from CPython 3.14.5:
+    # pylabview's LVheap.py emits three SyntaxWarnings on import, the probe exited 0 and the
+    # bundle was perfectly good, and this script still aborted with a NativeCommandError. Any
+    # stderr output at all would have done it - so the bundle got LESS trustworthy the more its
+    # interpreter had to say. Start-Process keeps the two streams apart and reports the real code.
+    $proc = Start-Process -FilePath $py -NoNewWindow -Wait -PassThru `
+        -ArgumentList @("`"$probeFile`"", "`"$(Join-Path $Destination 'app')`"") `
+        -RedirectStandardOutput $probeOut -RedirectStandardError $probeErr
     Write-Host 'smoke test     :'
-    $out | ForEach-Object { Write-Host "  $_" }
-    if (-not $ok) { throw 'The bundle is not isolated - see above.' }
+    if (Test-Path $probeOut) { Get-Content $probeOut | ForEach-Object { Write-Host "  $_" } }
+
+    # stderr is INFORMATION here, never the verdict. Print it so a real problem is visible.
+    $errText = if (Test-Path $probeErr) { (Get-Content $probeErr -Raw) } else { '' }
+    if ($errText.Trim()) {
+        Write-Host '  (interpreter also wrote to stderr - not a failure by itself:)'
+        $errText.Trim() -split "`r?`n" | ForEach-Object { Write-Host "    $_" }
+    }
+    if ($proc.ExitCode -ne 0) { throw 'The bundle is not isolated - see above.' }
 } finally {
-    Remove-Item $probeFile -Force -ErrorAction SilentlyContinue
+    Remove-Item $probeFile, $probeOut, $probeErr -Force -ErrorAction SilentlyContinue
 }
 
 # Applying a patch and importing the package are two different claims. Check the bytes are really
@@ -280,3 +299,26 @@ $files = (Get-ChildItem $Destination -Recurse -File).Count
 Write-Host "bundle         : $files files"
 Write-Host ''
 Write-Host "Use it as:  $Destination\pylabview.cmd -x -i <file.vi> -m <out.xml>"
+
+# RE-PROVISIONING DOES NOT REFRESH AN EXISTING BUILD OUTPUT, and the failure looks like a broken
+# bundle rather than a stale one. The .csproj stages this folder with CopyToOutputDirectory=
+# PreserveNewest, which compares timestamps - and these files carry the timestamps of the CPython
+# installation they were copied from, not of this run. Measured 2026-08-25: a re-provision from
+# Python 3.14 left PIL\_version.py dated 2026-06-10 in runtime\ against a 2026-08-20 copy already
+# in bin\Debug\net8.0\pylabview, so MSBuild skipped it. The output then held Pillow 12.3.0's Python
+# files beside 12.2.0's compiled _imaging - and every pylv_* call died with
+# "RuntimeWarning: The _imaging extension was built for another version of Pillow" followed by an
+# ImportError. Nothing about that message points at a stale copy.
+# CI never sees this: it provisions once into an empty checkout. Locally, delete and rebuild.
+# Only the folder the build STAGES, which is the one beside the exe - not the `app\pylabview`
+# package directory nested inside it, which a bare -Filter also matches.
+$stale = @(Get-ChildItem (Join-Path $here '..\..\src\LabVIEWMCP\bin') -Recurse -Directory `
+              -Filter 'pylabview' -ErrorAction SilentlyContinue |
+           Where-Object { Test-Path (Join-Path $_.Parent.FullName 'LabVIEWMCP.dll') })
+if ($stale.Count -gt 0) {
+    Write-Host ''
+    Write-Host 'NOTE: a previously built copy of the bundle exists and will NOT be refreshed by a' -ForegroundColor Yellow
+    Write-Host '      build - these files carry the source interpreter timestamps, so PreserveNewest' -ForegroundColor Yellow
+    Write-Host '      skips them and you get a half-old bundle that fails to import. Delete it:' -ForegroundColor Yellow
+    $stale | ForEach-Object { Write-Host "        Remove-Item -Recurse -Force '$($_.FullName)'" -ForegroundColor Yellow }
+}

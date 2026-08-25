@@ -140,6 +140,18 @@ internal static class PyLabview
             // site-packages, so nothing has to be scrubbed here.
             WorkingDirectory = bundle.Directory,
         };
+        // Silence ONE warning category, and only because it is about the vendored source rather
+        // than about the file being read. On CPython 3.14 pylabview's LVheap.py emits three
+        // SyntaxWarnings for invalid escape sequences (`"\("`), on import, on every single run.
+        // They are pylabview's own forward-compatibility wart - `vendor\` is deliberately
+        // unmodified - and nothing a caller of these tools can act on.
+        // The damage is not noise on a console: `Warnings` below selects any line containing
+        // "Warning:", so each answer of pylv_extract/pylv_rebuild would carry three
+        // rawFallbackWarnings that name no block and mean no fallback happened - which is exactly
+        // the signal that field exists to give. Measured after provisioning on 3.14.5; a bundle
+        // built from 3.11 or 3.12 emits none, so this only shows on a newer build machine.
+        info.ArgumentList.Add("-W");
+        info.ArgumentList.Add("ignore::SyntaxWarning");
         info.ArgumentList.Add(script);
         foreach (var a in args) info.ArgumentList.Add(a);
 
