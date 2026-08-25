@@ -70,6 +70,51 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
           if (-not (Test-Path publish/LabVIEWMCP.exe)) { throw "publish/LabVIEWMCP.exe missing after publish" }
 
+      # 3b. Assemble the pylabview bundle.
+      #
+      #     WHY THIS EXISTS. tools/pylabview/runtime/ is gitignored - 38 MB of interpreter,
+      #     trimmed stdlib and Pillow - and nothing in the build assembles it: the .csproj only
+      #     COPIES the folder if it happens to be there, and no MSBuild target runs provision.ps1.
+      #     So on a clean CI checkout the condition was false and the release shipped without the
+      #     bundle entirely. Up to and including v0.9.0 that meant pylv_status, pylv_extract,
+      #     pylv_rebuild, pylv_route and pylv_apply all answered `notProvisioned` on a plugin
+      #     install, pointing the reader at tools\pylabview\provision.ps1 - a path that does not
+      #     exist in a binary install. README framed the gap as a fresh-checkout concern only.
+      #
+      #     It runs AFTER publish on purpose: `dotnet publish` would otherwise copy all 636 files
+      #     into publish/ for nothing, since only the single-file exe is taken from there.
+      #
+      #     Cost: the asset grows by about 38 MB.
+      - name: Set up Python for the pylabview bundle
+        uses: actions/setup-python@v5
+        with:
+          # Pinned rather than "whatever the runner has", because this interpreter IS what ships.
+          # 3.14 also works - measured - but emits three SyntaxWarnings from pylabview's own
+          # LVheap.py on every import, and those are noise in every pylv_* answer.
+          python-version: '3.12'
+
+      - name: Install Pillow for the bundle
+        shell: pwsh
+        run: |
+          # provision.ps1 deliberately does NOT reach for the network - "installing it is a
+          # download, and that is the caller's decision". In CI we are the caller.
+          # `from PIL import Image` is an unguarded top-level import in LVblock.py, so this is a
+          # hard requirement, not an icons-only extra.
+          python -m pip install --disable-pip-version-check --no-input pillow
+          if ($LASTEXITCODE -ne 0) { throw "pip install pillow failed" }
+
+      - name: Assemble the pylabview bundle
+        shell: pwsh
+        run: |
+          $python = (Get-Command python).Source
+          $source = Split-Path -Parent $python
+          Write-Host "Assembling from $source"
+          powershell -ExecutionPolicy Bypass -File tools/pylabview/provision.ps1 -Source $source
+          if ($LASTEXITCODE -ne 0) { throw "provision.ps1 failed" }
+          if (-not (Test-Path 'tools/pylabview/runtime/python.exe')) {
+            throw "provision.ps1 reported success but tools/pylabview/runtime/python.exe is missing"
+          }
+
       # 4. Assemble the staging tree: the source-controlled plugin/ contents, plus the
       #    published exe at bin/LabVIEWMCP.exe (the path plugin/.mcp.json launches), plus the
       #    repository's scripts/ contents at bin/scripts/ — NEXT TO the exe, because that is where
@@ -112,9 +157,23 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $staging 'bin/docs') | Out-Null
           Copy-Item -Path 'docs/*' -Destination (Join-Path $staging 'bin/docs') -Recurse -Force
 
+          # the pylabview bundle, as bin/pylabview/. The location is not a choice: PyLabview.Locate()
+          # looks for <exe dir>\pylabview\python.exe plus <exe dir>\pylabview\app\pylabview\readRSRC.py,
+          # the same AppContext.BaseDirectory anchoring scripts/ and docs/ use above.
+          New-Item -ItemType Directory -Path (Join-Path $staging 'bin/pylabview') | Out-Null
+          Copy-Item -Path 'tools/pylabview/runtime/*' -Destination (Join-Path $staging 'bin/pylabview') -Recurse -Force
+
           Write-Host "Staging tree:"
           $root = (Resolve-Path $staging).Path
-          Get-ChildItem $staging -Recurse -Force | ForEach-Object { Write-Host "  $($_.FullName.Substring($root.Length))" }
+          # The bundle is 636 files of interpreter and stdlib; listing them buries everything else,
+          # so it is summarised. Its contents are asserted separately below.
+          $bundle = Join-Path $root 'bin\pylabview'
+          Get-ChildItem $staging -Recurse -Force |
+            Where-Object { -not $_.FullName.StartsWith($bundle, [StringComparison]::OrdinalIgnoreCase) } |
+            ForEach-Object { Write-Host "  $($_.FullName.Substring($root.Length))" }
+          $bundleFiles = @(Get-ChildItem $bundle -Recurse -File -Force)
+          $bundleMB = [math]::Round(($bundleFiles | Measure-Object Length -Sum).Sum / 1MB, 1)
+          Write-Host "  \bin\pylabview  ($($bundleFiles.Count) files, $bundleMB MB)"
 
       # 5. The manifest is what makes the zip installable. Fail loudly if it is not at the root.
       - name: Assert plugin manifest is at the staging root
@@ -141,6 +200,53 @@ jobs:
             }
           }
           Write-Host "OK: run-time data files staged at bin/docs/"
+
+      # 5c. The pylabview bundle: present, locatable, and PATCHED.
+      #     The last of those is the one worth a step of its own. Patches are applied when the
+      #     bundle is ASSEMBLED, never to vendor\, so a staging tree copied from a stale runtime
+      #     would ship the unpatched crash while every log line still said "assembled". Check the
+      #     bytes in the staged file against patches.json, which is the same test provision.ps1
+      #     runs on its own output - here it is run on what actually goes in the zip.
+      - name: Assert the pylabview bundle is staged, locatable and patched
+        shell: pwsh
+        run: |
+          # PyLabview.Locate() requires BOTH of these; half a bundle must not count.
+          $needed = @(
+            'staging/bin/pylabview/python.exe',
+            'staging/bin/pylabview/app/pylabview/readRSRC.py'
+          )
+          foreach ($path in $needed) {
+            if (-not (Test-Path $path)) {
+              throw "$path is missing - every pylv_* tool would answer notProvisioned on a plugin install"
+            }
+          }
+          Write-Host "OK: bundle staged at bin/pylabview/"
+
+          $patchFile = 'tools/pylabview/patches/patches.json'
+          if (Test-Path $patchFile) {
+            foreach ($patch in (Get-Content $patchFile -Raw | ConvertFrom-Json).patches) {
+              $target = Join-Path 'staging/bin/pylabview/app' $patch.file
+              if (-not (Test-Path $target)) { throw "patch '$($patch.id)': $target is not in the staged bundle" }
+              if (-not ([IO.File]::ReadAllText($target)).Contains($patch.replace)) {
+                throw "patch '$($patch.id)' is NOT applied in the staged bundle - it would ship the bug it fixes"
+              }
+              Write-Host "OK: patch $($patch.id) present in the staged bundle"
+            }
+          }
+
+      # 5d. Import the STAGED interpreter, not the one provision.ps1 tested. Copying 636 files is
+      #     itself a step that can go wrong, and `from PIL import Image` is an unguarded top-level
+      #     import in LVblock.py - so a bundle missing Pillow imports fine until the first real
+      #     call. Do not redirect stderr into the pipeline here: pylabview writes warnings there
+      #     and PowerShell would turn them into a failure (see the note in provision.ps1).
+      - name: Smoke-test the staged pylabview bundle
+        shell: pwsh
+        run: |
+          # No sys.path juggling: the pythonNN._pth beside python.exe already pins Lib, DLLs and
+          # app relative to the interpreter, so this also proves the _pth travelled with the copy.
+          & staging/bin/pylabview/python.exe -c "import sys, PIL; from pylabview import LVblock; print('python', sys.version.split()[0], '| Pillow', PIL.__version__, '| pylabview imported')"
+          if ($LASTEXITCODE -ne 0) { throw "the staged pylabview bundle does not import (exit $LASTEXITCODE)" }
+          Write-Host "OK: staged bundle imports"
 
       # 6. Smoke-test the packaged binary. LabVIEW is not on the runner, so --help is the limit
       #    of what is testable — but it exercises the self-extract, which is the failure mode

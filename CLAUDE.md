@@ -189,6 +189,16 @@ terminal. But validation passing says nothing about behaviour, and `lvai_run_vi_
 reports `errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*.
 Never report success from an empty answer.
 
+**Generate with `lvai_generate_vi`, not with validate-then-convert by hand.** It runs validate,
+convert and the pane measurement in one call, stops at the first failure and names it, and returns
+each sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would
+from the three separate tools. The reason it exists is the pane, not the two saved turns: generation
+cannot see a badly placed connector pane and neither can a run, which is how that defect shipped
+twice, so `ok` is false when the pane breaches the style guide and the corrected `conIdx` values
+come back ready to paste. `ok: false` with `failedAtStep: connectorPane` still means **the .vi was
+written** — it is the pane that needs another pass, not the diagram. Measured 2026-08-25: 1.1 s for
+the whole sequence against three round trips. `docs/bulk-operations.md`.
+
 **When any output is not a string, run it with `lvai_run_vi_and_read_values` instead.** That is
 almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
 plain call. The tool sets the inputs, runs the target and reads every control and indicator back
@@ -450,6 +460,19 @@ the one that has cost the most time is releasing the path from LabVIEW's memory 
 because pylabview writes the file happily while LabVIEW keeps serving its stale in-memory copy — so
 a verification run confirms the VI you REPLACED.
 
+**Run the whole pylabview cycle through `pylv_apply`, which enforces that order for you.** One call
+does close-project → extract → your operations → rebuild → AIXML-export to verify, and the bundle
+becomes an implementation detail: deleted on success, kept and named on failure. Call it with **no
+operations first** — that mode is read-only, does not close the project, and returns all three
+listings (pane `--show`, subVI link table, diagram-comment anchors) in one answer, which is what an
+operations array is written from. A malformed operation is refused *before* the extract, by name, so
+a typo costs a message rather than a half-applied bundle. It does not relieve you of the connector
+pane contract on a retarget, and it says so. Measured 2026-08-25: inspect 1.4 s, a pattern repair
+end to end 1.9 s, a retarget plus two comment placements 3.4 s. `docs/bulk-operations.md`.
+
+The rule the tool encodes is still worth knowing, because you will meet it whenever you drive the
+scripts directly:
+
 **CLOSE THE PROJECT, not the VI.** `lvai_close_active_project` is the move; this clause used to name
 `lvai_close_vi`, and following it literally is what wedged a session on 2026-08-24. `lvai_close_vi`
 requires the project to be *active* to work at all, so it leaves the project loaded — and the usual
@@ -519,6 +542,8 @@ literally it argued away 600 usable palette VIs.
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
+| How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
+| How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |

@@ -81,7 +81,33 @@ internal sealed class PaneTools(LvaiConnection connection)
         await Rpc.GuardAsync(async () =>
         {
             if (viPath is null) return pattern is { } id ? DescribePattern(id) : DescribeAll();
+            return (await MeasureViAsync(viPath, helperViPath, helperAixmlPath, regenerateHelper,
+                                         timeoutSeconds, ct)).Text;
+        });
 
+    /// <summary>
+    /// A measured pane, with the verdict as a NUMBER beside the prose.
+    ///
+    /// The text alone is what <see cref="ConnectorPaneAsync"/> returns, and it is written for a
+    /// reader. A caller that has to DECIDE on the verdict - <see cref="BulkTools"/> refusing to
+    /// call a generation successful - would have to grep its own output for "VERDICT:", which
+    /// breaks the moment the wording changes. Hence the counts. <c>Violations</c> is -1 when the
+    /// pane could not be measured at all, which is neither pass nor fail.
+    /// </summary>
+    internal sealed record PaneVerdict(string Text, int Pattern, int Violations, int Warnings)
+    {
+        public bool Measured => Violations >= 0;
+        public bool Clean => Violations == 0;
+    }
+
+    /// <summary>
+    /// Measure one VI's pane and review it. The body of <see cref="ConnectorPaneAsync"/>'s viPath
+    /// branch, lifted out so a composite tool can read the verdict rather than the prose.
+    /// </summary>
+    internal async Task<PaneVerdict> MeasureViAsync(
+        string viPath, string? helperViPath, string? helperAixmlPath, bool regenerateHelper,
+        int timeoutSeconds, CancellationToken ct)
+        {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
@@ -99,7 +125,7 @@ internal sealed class PaneTools(LvaiConnection connection)
 
             if (regenerateHelper || !File.Exists(helperVi))
                 if (await GenerateHelperAsync(aixmlSource, helperVi, timeoutSeconds, ct)
-                    is { } failure) return failure;
+                    is { } failure) return new PaneVerdict(failure, 0, -1, 0);
 
             // 1. the geometry, over VI Server
             var inputs = new JsonObject { ["VI Path"] = Path.GetFullPath(viPath) }.ToJsonString();
@@ -108,16 +134,17 @@ internal sealed class PaneTools(LvaiConnection connection)
                 regenerateHelper: false, timeoutSeconds, ct);
 
             if (Measurement(runner) is not { } measurement)
-                return Json.Error("paneNotMeasured",
+                return new PaneVerdict(Json.Error("paneNotMeasured",
                     "The probe helper returned no pattern, so the pane could not be measured.",
-                    new { viPath = Path.GetFullPath(viPath), helperViPath = helperVi, runner });
+                    new { viPath = Path.GetFullPath(viPath), helperViPath = helperVi, runner }),
+                    0, -1, 0);
 
             // 2. which terminal owns which slot, out of the VI's own export
             var terminals = await TerminalsAsync(viPath, timeoutSeconds, ct);
 
-            return Render(Path.GetFullPath(viPath), measurement.Pattern,
+            return RenderVerdict(Path.GetFullPath(viPath), measurement.Pattern,
                 measurement.Bounds, terminals);
-        });
+        }
 
     /// <summary>
     /// `pattern` and `bounds` out of the runner's payload. Null when the answer is not a runner
@@ -192,12 +219,21 @@ internal sealed class PaneTools(LvaiConnection connection)
     /// </summary>
     internal static string Render(
         string viPath, int pattern, string boundsXml,
+        IReadOnlyList<ConnectorPane.Terminal> terminals) =>
+        RenderVerdict(viPath, pattern, boundsXml, terminals).Text;
+
+    /// <summary>
+    /// <see cref="Render"/> with the finding counts kept alongside the prose. See
+    /// <see cref="PaneVerdict"/> for why a composite caller needs the numbers.
+    /// </summary>
+    internal static PaneVerdict RenderVerdict(
+        string viPath, int pattern, string boundsXml,
         IReadOnlyList<ConnectorPane.Terminal> terminals)
     {
         if (ConnectorPane.ParseBounds(pattern, boundsXml) is not { } geometry)
-            return Json.Error("boundsUnparsable",
+            return new PaneVerdict(Json.Error("boundsUnparsable",
                 "The helper returned a Terminal Bounds[] payload this build cannot read.",
-                new { viPath, pattern });
+                new { viPath, pattern }), pattern, -1, 0);
 
         var sb = new StringBuilder();
         sb.AppendLine($"{Path.GetFileName(viPath)} - connector pane pattern {pattern}, " +
@@ -216,7 +252,7 @@ internal sealed class PaneTools(LvaiConnection connection)
             sb.AppendLine();
             sb.Append("This VI has no terminals on its connector pane at all - every Control and " +
                       "Indicator is front-panel-only. As a subVI it cannot be wired.");
-            return sb.ToString();
+            return new PaneVerdict(sb.ToString(), pattern, 0, 0);
         }
 
         sb.AppendLine();
@@ -224,6 +260,7 @@ internal sealed class PaneTools(LvaiConnection connection)
         sb.AppendLine(ConnectorPane.RenderMap(geometry, terminals));
 
         var findings = ConnectorPane.Review(geometry, terminals);
+        var violationCount = findings.Count(f => f.Severity == "violation");
         sb.AppendLine();
         if (findings.Count == 0)
         {
@@ -232,9 +269,8 @@ internal sealed class PaneTools(LvaiConnection connection)
         }
         else
         {
-            var violations = findings.Count(f => f.Severity == "violation");
-            sb.AppendLine($"VERDICT: {violations} violation(s), " +
-                          $"{findings.Count - violations} warning(s).");
+            sb.AppendLine($"VERDICT: {violationCount} violation(s), " +
+                          $"{findings.Count - violationCount} warning(s).");
             foreach (var finding in findings)
                 sb.AppendLine($"  [{finding.Severity}] {finding.Terminal} (conIdx {finding.ConIdx}): " +
                               $"{finding.Problem} - {finding.Fix}");
@@ -270,7 +306,8 @@ internal sealed class PaneTools(LvaiConnection connection)
         sb.AppendLine();
         sb.Append("The pattern is chosen by the generator, so measure again after regenerating: " +
                   "a different pattern moves every number above.");
-        return sb.ToString();
+        return new PaneVerdict(sb.ToString(), pattern, violationCount,
+                               findings.Count - violationCount);
     }
 
     /// <summary>One pattern, with or without measured geometry.</summary>
