@@ -174,10 +174,14 @@ if (Test-Path $patchFile) {
         if (-not (Test-Path $target)) {
             throw "patch '$($patch.id)': no file at '$($patch.file)' in the assembled bundle."
         }
-        # -Raw plus [IO.File]::WriteAllText keeps the original line endings byte for byte. An
-        # earlier attempt at this patch used a backslash line continuation and produced
-        # "unexpected character after line continuation character", because the backslash landed
-        # in front of a CR. Single-line replacements only, and never rewrite the whole file.
+        # -Raw plus [IO.File]::WriteAllText keeps the original line endings byte for byte, and
+        # never rewrite the whole file.
+        # A multi-line Find/Replace is fine, and patches.json now carries one - but it must spell
+        # its own line endings as `\r\n`, because LVblock.py is CRLF throughout and a Find written
+        # with bare LF matches nothing. What is NOT fine is a Python backslash line continuation
+        # inside a replacement: an earlier attempt used one and produced "unexpected character
+        # after line continuation character", because the backslash landed in front of a CR. Break
+        # a long line inside brackets instead, which needs no backslash.
         $text = [IO.File]::ReadAllText($target)
         if ($text.Contains($patch.replace)) {
             Write-Host "patch          : $($patch.id) already present, skipped"
