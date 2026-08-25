@@ -70,6 +70,14 @@ it, while the space under an icon is empty.
 comment to an `iUse`/`polyIUse` and it goes below, anchor it to a primitive or a structure and it
 goes above. `--side above` or `--side below` forces one side for everything.
 
+**`above` can land a comment at a NEGATIVE top, and that is not an error — it is off the top of the
+visible diagram.** Measured 2026-08-25 regenerating `WriteWaveformsToCSV.vi`: a long comment
+anchored to a `Strip Path` primitive sitting at top 60 was placed at top **-98**, because the
+comment's own height is subtracted from the anchor's top. The script reports the resulting
+coordinate, so the tell is in its own output — read it. The fix is one more `--place` with
+`--side below`, which put the same comment at top 112. Worth checking whenever an anchor is within
+a comment's height of the diagram's top edge; `auto` cannot know how tall the text is.
+
 The split falls out naturally, because what a comment is *about* is what it is *anchored to*. In
 `DaqReadAndTDMS2.vi` the six comments on DAQmx calls and the CSV subVI went below, and
 `Bloecke aneinanderhaengen` — anchored to the Case structure that does the appending, not to any one
