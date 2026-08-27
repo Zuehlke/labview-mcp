@@ -1,0 +1,47 @@
+<VI _name="lvacc_one.vi" description="Create the Read and Write accessor for ONE private data field of a LabVIEW class, by calling the LVClass project provider's own wizard body, MemberVICreation.lvlib:CLSUIP_CreateNewAccessor.vi. The field is addressed by its index in the private data cluster's Controls[] array, and the VI names that come back say which field it actually was, so no name matching is needed on the diagram. Access UI = R/W creates both accessors in one call. The private data control is opened through the IDE's own application instance, reached by Project:Active Project then Project:Application, because a reference opened in the addon's instance does not see what the IDE has loaded. CLSUIP_GetPDCCluster.vi would be the direct route to the cluster but is private to MemberVICreation.lvlib and refuses an outside caller.">
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Constant type="string" value="C\3A\5Ctemp\5Cdemo\5Cfahrzeuge\5CRennauto\5CRennauto.lvclass\5CRennauto.ctl" outputs="value:24.value" uid="24" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:24.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:26.vi reference,error out:26.error out" uid="26" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:26.vi reference,error in (no error):26.error out" outputs="Front Panel:30.Panel,reference out:30.reference out,error out:30.error out" type="{LV.VI}" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:30.Panel,error in (no error):30.error out" outputs="Controls[]:32.Controls[],reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+  <Constant type="int32" value="0" outputs="value:35.value" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:32.Controls[],index:35.value" outputs="element:36.element" uid="36" uid_parent="root"/>
+
+  <Constant type="ref{LV.Cluster}" value="" outputs="value:33.value" uid="33" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:36.element,error in:32.error out,target class:33.value" outputs="specific class reference:37.specific class reference,error out:37.error out" uid="37" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:37.specific class reference,error in (no error):37.error out" outputs="Controls[]:38.Controls[],reference out:38.reference out,error out:38.error out" type="{LV.Cluster}" uid="38" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:38.Controls[]" outputs="size(s):39.size" uid="39" uid_parent="root"/>
+  <Indicator _name="field count" inputs="value:39.size" type="int32" uid="40" uid_parent="root" value="0"/>
+  <Constant type="int32" value="0" outputs="value:42.value" uid="42" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls[],index:42.value" outputs="element:43.element" uid="43" uid_parent="root"/>
+
+  <Node _name="Build Array" inputs="element:20.proj" outputs="appended array:50.appended array" uid="50" uid_parent="root"/>
+  <Call target="CLSUIP_GetAllClassesInProject.vi" inputs="Project Refs:50.appended array,error in (no error):38.error out" outputs="All Classes:52.All Classes,error out:52.error out" uid="52" uid_parent="root"/>
+  <Constant type="int32" value="2" outputs="value:54.value" uid="54" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:52.All Classes,index:54.value" outputs="element:55.element" uid="55" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Path" inputs="reference:55.element,error in (no error):52.error out" outputs="Path:56.Path,reference out:56.reference out,error out:56.error out" type="{LV.LVClassLibrary}" uid="56" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:56.Path" outputs="string:57.string" uid="57" uid_parent="root"/>
+  <Indicator _name="class path" inputs="value:57.string" type="string" uid="58" uid_parent="root" value=""/>
+
+  <Constant _name="Dynamic" type="uint32{Dynamic,Static}" value="0" outputs="value:60.value" uid="60" uid_parent="root"/>
+  <Constant _name="R/W" type="uint16{Read,Write,R/W}" value="2" outputs="value:61.value" uid="61" uid_parent="root"/>
+  <Constant type="bool" value="true" outputs="value:62.value" uid="62" uid_parent="root"/>
+  <Constant type="bool" value="false" outputs="value:63.value" uid="63" uid_parent="root"/>
+  <Constant type="string" value="" outputs="value:64.value" uid="64" uid_parent="root"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateNewAccessor.vi" inputs="VI Type:60.value,Access UI:61.value,error in (no error):56.error out,Include error terminals:62.value,Virtual Folder Name:64.value,Make available through Property Nodes:63.value,PDC Item Refnum:43.element,LVClassLibrary Ref:55.element" outputs="error out:70.error out,Read VI:70.Read VI,Write VI:70.Write VI" uid="70" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:70.Read VI,error in (no error):70.error out" outputs="VI Name:72.VI Name,reference out:72.reference out,error out:72.error out" type="{LV.VI}" uid="72" uid_parent="root"/>
+  <Indicator _name="read vi name" inputs="value:72.VI Name" type="string" uid="73" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:70.Write VI,error in (no error):72.error out" outputs="VI Name:74.VI Name,reference out:74.reference out,error out:74.error out" type="{LV.VI}" uid="74" uid_parent="root"/>
+  <Indicator _name="write vi name" inputs="value:74.VI Name" type="string" uid="75" uid_parent="root" value=""/>
+
+  <Node _name="Close Reference" inputs="reference:26.vi reference,error in (no error):74.error out" outputs="error out:80.error out" uid="80" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:80.error out" outputs="status:90.status,code:90.code,source:90.source" uid="90" uid_parent="root"/>
+  <Indicator _name="status" inputs="value:90.status" type="bool" uid="91" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:90.code" type="int32" uid="92" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:90.source" type="string" uid="93" uid_parent="root" value=""/>
+</VI>

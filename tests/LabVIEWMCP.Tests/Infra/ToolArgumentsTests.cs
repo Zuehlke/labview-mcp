@@ -191,4 +191,68 @@ public class ToolArgumentsTests
         Assert.Equal("ArgumentException", detail.GetProperty("exception").GetString());
         Assert.Equal("string, required", detail.GetProperty("accepted").GetProperty("viPath").GetString());
     }
+
+    // ------------------------------------------------------------ the value fold
+
+    /// <summary>
+    /// MEASURED 2026-08-26: `inputsJson` is declared a string and its own description shows a JSON
+    /// OBJECT, so a client that sends what it was shown is refused by the binder with
+    /// `The JSON value could not be converted to System.String`. The parameter was unreachable, and
+    /// the diagnostics named the problem clearly without making the call possible. Only a
+    /// wanted-a-string failure may trigger the fold - anything else must report, not retry.
+    /// </summary>
+    [Theory]
+    [InlineData("The JSON value could not be converted to System.String. Path: $", true)]
+    [InlineData("The JSON value could not be converted to System.Int32. Path: $", false)]
+    public void Wants_string_recognises_only_the_string_binding_failure(string message, bool expected) =>
+        Assert.Equal(expected, ToolArguments.WantsString(new JsonException(message)));
+
+    [Fact]
+    public void Wants_string_ignores_a_failure_that_is_not_a_json_exception() =>
+        Assert.False(ToolArguments.WantsString(
+            new ArgumentException("System.String was not the problem here.")));
+
+    [Fact]
+    public void Stringified_turns_an_object_into_its_own_json_text()
+    {
+        var supplied = Args("""{"inputsJson":{"VI Path":"C:\\x.vi"},"viPath":"C:\\y.vi"}""");
+
+        var folded = ToolArguments.Stringified(supplied);
+
+        Assert.NotNull(folded);
+        Assert.Equal(JsonValueKind.String, folded!["inputsJson"].ValueKind);
+        Assert.Equal("""{"VI Path":"C:\\x.vi"}""", folded["inputsJson"].GetString());
+
+        // A value the tool was already happy with is untouched.
+        Assert.Equal("C:\\y.vi", folded["viPath"].GetString());
+    }
+
+    [Fact]
+    public void Stringified_turns_a_number_into_its_digits()
+    {
+        // `section` on every reference tool: a heading number is the natural thing to pass.
+        var folded = ToolArguments.Stringified(Args("""{"section":14}"""));
+
+        Assert.Equal("14", folded!["section"].GetString());
+    }
+
+    /// <summary>
+    /// Null means "not supplied". Stringifying it would turn an omitted optional argument into the
+    /// four-character word `null`, which several tools would then treat as a path.
+    /// </summary>
+    [Fact]
+    public void Stringified_leaves_null_alone_and_reports_nothing_to_do()
+    {
+        Assert.Null(ToolArguments.Stringified(Args("""{"viName":null,"viPath":"C:\\x.vi"}""")));
+        Assert.Null(ToolArguments.Stringified(Args("""{"viPath":"C:\\x.vi"}""")));
+        Assert.Null(ToolArguments.Stringified(null));
+    }
+
+    private static Dictionary<string, JsonElement>? Args(string? json)
+    {
+        if (json is null) return null;
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
+    }
 }

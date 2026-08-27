@@ -110,6 +110,24 @@ internal sealed class RunTools(LvaiConnection connection)
                 helperGenerated = true;
             }
 
+            // AN EMPTY VALUE MISALIGNS EVERY INPUT AFTER IT, so it is refused rather than sent.
+            // The two lists below are joined with newlines and paired BY POSITION inside the
+            // helper, where Spreadsheet String To Array does not yield an element for an empty
+            // line - so one empty value shortens the Values list and every later name receives
+            // its neighbour's value. Measured 2026-08-27: an accessor call passing an empty
+            // `virtual folder` in the middle of nine inputs left the two after it unset, the
+            // helper kept their defaults, and a request for 2 fields silently built as many as
+            // the clock allowed. It went unnoticed for as long as the empty value happened to be
+            // LAST, which is exactly the kind of latent fault that surfaces on an unrelated
+            // change.
+            if (inputs.FirstOrDefault(i => i.Value.Length == 0) is { Key: { Length: > 0 } empty })
+                return Json.Error("badArguments",
+                    $"Input '{empty}' has an empty value. Names and values are paired by " +
+                    "POSITION, and an empty value does not survive the helper's split - it would " +
+                    "shift every input after it onto the wrong control. Omit the input instead: a " +
+                    "control that is not set keeps its own default.",
+                    new { inputName = empty, inputCount = inputs.Count });
+
             var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
             request.Inputs["VI Path"] = Path.GetFullPath(viPath);
             request.Inputs["Input Names"] = string.Join("\n", inputs.Select(i => i.Key));

@@ -1,4 +1,7 @@
 {
+  "env": {
+    "MCP_TOOL_TIMEOUT": "600000"
+  },
   "permissions": {
     "allow": [
       "mcp__labview__lvai_status",

@@ -1,0 +1,92 @@
+<VI _name="lvacc_saveall.vi" description="Save all ten accessors the scripter left in memory to the class's own directory, then save the class itself. Each VI is reopened by its QUALIFIED NAME through the IDE's application instance - a name-based Open VI Reference needs that reference, or it returns error 1004 and asks for a path. The destination is built as NI's provider builds it: the class's Path, Strip Path for the directory, Build Path with the file name. Save All This Library runs last, and only works once every member has a path; while any is unsaved it returns error 43, operation cancelled, because LabVIEW wants to prompt and cannot.">
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="Build Array" inputs="element:20.proj" outputs="appended array:50.appended array" uid="50" uid_parent="root"/>
+  <Call target="CLSUIP_GetAllClassesInProject.vi" inputs="Project Refs:50.appended array,error in (no error):22.error out" outputs="All Classes:52.All Classes,error out:52.error out" uid="52" uid_parent="root"/>
+  <Constant type="int32" value="2" outputs="value:54.value" uid="54" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:52.All Classes,index:54.value" outputs="element:55.element" uid="55" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Path" inputs="reference:55.element,error in (no error):52.error out" outputs="Path:56.Path,reference out:56.reference out,error out:56.error out" type="{LV.LVClassLibrary}" uid="56" uid_parent="root"/>
+  <Node _name="Strip Path" inputs="path:56.Path" outputs="stripped path:57.stripped path,name:57.name" uid="57" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:57.stripped path" outputs="string:58.string" uid="58" uid_parent="root"/>
+  <Indicator _name="class directory" inputs="value:58.string" type="string" uid="59" uid_parent="root" value=""/>
+
+  <Constant type="string" value="Rennauto.lvclass\3ARead Power hp.vi" outputs="value:200.value" uid="200" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:200.value,error in (no error):56.error out" outputs="vi reference:201.vi reference,error out:201.error out" uid="201" uid_parent="root"/>
+  <Constant type="string" value="Read Power hp.vi" outputs="value:202.value" uid="202" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:202.value" outputs="appended path:203.appended path" uid="203" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:201.vi reference,error in (no error):201.error out,Path to saved file:203.appended path,Save a Copy:,Without Diagram:" outputs="reference out:204.reference out,error out:204.error out" type="{LV.VI}" uid="204" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:204.reference out,error in (no error):204.error out" outputs="error out:205.error out" uid="205" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3AWrite Power hp.vi" outputs="value:220.value" uid="220" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:220.value,error in (no error):205.error out" outputs="vi reference:221.vi reference,error out:221.error out" uid="221" uid_parent="root"/>
+  <Constant type="string" value="Write Power hp.vi" outputs="value:222.value" uid="222" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:222.value" outputs="appended path:223.appended path" uid="223" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:221.vi reference,error in (no error):221.error out,Path to saved file:223.appended path,Save a Copy:,Without Diagram:" outputs="reference out:224.reference out,error out:224.error out" type="{LV.VI}" uid="224" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:224.reference out,error in (no error):224.error out" outputs="error out:225.error out" uid="225" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3ARead Team Name.vi" outputs="value:240.value" uid="240" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:240.value,error in (no error):225.error out" outputs="vi reference:241.vi reference,error out:241.error out" uid="241" uid_parent="root"/>
+  <Constant type="string" value="Read Team Name.vi" outputs="value:242.value" uid="242" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:242.value" outputs="appended path:243.appended path" uid="243" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:241.vi reference,error in (no error):241.error out,Path to saved file:243.appended path,Save a Copy:,Without Diagram:" outputs="reference out:244.reference out,error out:244.error out" type="{LV.VI}" uid="244" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:244.reference out,error in (no error):244.error out" outputs="error out:245.error out" uid="245" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3AWrite Team Name.vi" outputs="value:260.value" uid="260" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:260.value,error in (no error):245.error out" outputs="vi reference:261.vi reference,error out:261.error out" uid="261" uid_parent="root"/>
+  <Constant type="string" value="Write Team Name.vi" outputs="value:262.value" uid="262" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:262.value" outputs="appended path:263.appended path" uid="263" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:261.vi reference,error in (no error):261.error out,Path to saved file:263.appended path,Save a Copy:,Without Diagram:" outputs="reference out:264.reference out,error out:264.error out" type="{LV.VI}" uid="264" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:264.reference out,error in (no error):264.error out" outputs="error out:265.error out" uid="265" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3ARead Start Number.vi" outputs="value:280.value" uid="280" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:280.value,error in (no error):265.error out" outputs="vi reference:281.vi reference,error out:281.error out" uid="281" uid_parent="root"/>
+  <Constant type="string" value="Read Start Number.vi" outputs="value:282.value" uid="282" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:282.value" outputs="appended path:283.appended path" uid="283" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:281.vi reference,error in (no error):281.error out,Path to saved file:283.appended path,Save a Copy:,Without Diagram:" outputs="reference out:284.reference out,error out:284.error out" type="{LV.VI}" uid="284" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:284.reference out,error in (no error):284.error out" outputs="error out:285.error out" uid="285" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3AWrite Start Number.vi" outputs="value:300.value" uid="300" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:300.value,error in (no error):285.error out" outputs="vi reference:301.vi reference,error out:301.error out" uid="301" uid_parent="root"/>
+  <Constant type="string" value="Write Start Number.vi" outputs="value:302.value" uid="302" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:302.value" outputs="appended path:303.appended path" uid="303" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:301.vi reference,error in (no error):301.error out,Path to saved file:303.appended path,Save a Copy:,Without Diagram:" outputs="reference out:304.reference out,error out:304.error out" type="{LV.VI}" uid="304" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:304.reference out,error in (no error):304.error out" outputs="error out:305.error out" uid="305" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3ARead Has Halo.vi" outputs="value:320.value" uid="320" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:320.value,error in (no error):305.error out" outputs="vi reference:321.vi reference,error out:321.error out" uid="321" uid_parent="root"/>
+  <Constant type="string" value="Read Has Halo.vi" outputs="value:322.value" uid="322" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:322.value" outputs="appended path:323.appended path" uid="323" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:321.vi reference,error in (no error):321.error out,Path to saved file:323.appended path,Save a Copy:,Without Diagram:" outputs="reference out:324.reference out,error out:324.error out" type="{LV.VI}" uid="324" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:324.reference out,error in (no error):324.error out" outputs="error out:325.error out" uid="325" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3AWrite Has Halo.vi" outputs="value:340.value" uid="340" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:340.value,error in (no error):325.error out" outputs="vi reference:341.vi reference,error out:341.error out" uid="341" uid_parent="root"/>
+  <Constant type="string" value="Write Has Halo.vi" outputs="value:342.value" uid="342" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:342.value" outputs="appended path:343.appended path" uid="343" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:341.vi reference,error in (no error):341.error out,Path to saved file:343.appended path,Save a Copy:,Without Diagram:" outputs="reference out:344.reference out,error out:344.error out" type="{LV.VI}" uid="344" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:344.reference out,error in (no error):344.error out" outputs="error out:345.error out" uid="345" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3ARead Zero To Hundred s.vi" outputs="value:360.value" uid="360" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:360.value,error in (no error):345.error out" outputs="vi reference:361.vi reference,error out:361.error out" uid="361" uid_parent="root"/>
+  <Constant type="string" value="Read Zero To Hundred s.vi" outputs="value:362.value" uid="362" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:362.value" outputs="appended path:363.appended path" uid="363" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:361.vi reference,error in (no error):361.error out,Path to saved file:363.appended path,Save a Copy:,Without Diagram:" outputs="reference out:364.reference out,error out:364.error out" type="{LV.VI}" uid="364" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:364.reference out,error in (no error):364.error out" outputs="error out:365.error out" uid="365" uid_parent="root"/>
+
+  <Constant type="string" value="Rennauto.lvclass\3AWrite Zero To Hundred s.vi" outputs="value:380.value" uid="380" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:380.value,error in (no error):365.error out" outputs="vi reference:381.vi reference,error out:381.error out" uid="381" uid_parent="root"/>
+  <Constant type="string" value="Write Zero To Hundred s.vi" outputs="value:382.value" uid="382" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:57.stripped path,name or relative path:382.value" outputs="appended path:383.appended path" uid="383" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" inputs="reference:381.vi reference,error in (no error):381.error out,Path to saved file:383.appended path,Save a Copy:,Without Diagram:" outputs="reference out:384.reference out,error out:384.error out" type="{LV.VI}" uid="384" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:384.reference out,error in (no error):384.error out" outputs="error out:385.error out" uid="385" uid_parent="root"/>
+
+  <Constant type="ref{LV.Library}" value="" outputs="value:400.value" uid="400" uid_parent="root"/>
+  <Node _name="To More Generic Class" inputs="reference:56.reference out,target class:400.value" outputs="generic class reference:401.generic class reference" uid="401" uid_parent="root"/>
+  <Constant _name="Save Only Modified VIs and Libraries? (F)" type="bool" value="true" outputs="value:402.value" uid="402" uid_parent="root"/>
+  <Call target="Edit LVLibs.lvlib\3ASave All This Library.vi" inputs="error in (no error):385.error out,Save Only Modified VIs and Libraries? (F):402.value,Library in:401.generic class reference" outputs="error out:403.error out,Library out:403.Library out" uid="403" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:403.error out" outputs="status:500.status,code:500.code,source:500.source" uid="500" uid_parent="root"/>
+  <Indicator _name="status" inputs="value:500.status" type="bool" uid="501" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:500.code" type="int32" uid="502" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:500.source" type="string" uid="503" uid_parent="root" value=""/>
+</VI>

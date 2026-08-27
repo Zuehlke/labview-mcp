@@ -147,6 +147,46 @@ public class ActionBuildTests
 
 public class ActionOpenFileTests
 {
+    /// <summary>
+    /// A .lvproj handed to viPath is refused HERE, before LabVIEW gets to answer it, because
+    /// LabVIEW's answer is actively misleading: `Error 7, File not found` about a file that plainly
+    /// exists on disk. Measured 2026-08-27 - three identical Error 7 answers cost a diagnosis that
+    /// went to the disk, the XML and the URL resolution before reaching the argument name, while
+    /// lvai_describe_project read the very same path with errorCode 0 the whole time.
+    ///
+    /// The usual way in is not even a typo for `viPath`: there is no `filePath` parameter, and a
+    /// near-miss name is folded onto the closest declared one - which is `viPath`.
+    /// </summary>
+    [Fact]
+    public async Task A_project_passed_as_a_vi_is_refused_with_the_right_parameter_named()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        var result = await new ActionTools(server.Connection)
+            .OpenFileAsync(@"C:\temp\demo\fahrzeuge\Fahrzeuge.lvproj");
+
+        Assert.Equal("badArguments", Res.Str(result, "errorKind"));
+        var message = Res.Str(result, "error");
+        Assert.Contains("projectPath", message);
+        Assert.Contains("projectName", message);
+        Assert.Contains("filePath", message);
+        // And nothing reached LabVIEW, so the misleading Error 7 is never produced.
+        Assert.Equal(0, server.Service.CountOf("OpenFile"));
+    }
+
+    [Fact]
+    public async Task A_vi_passed_as_a_project_is_refused_the_same_way()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        var result = await new ActionTools(server.Connection)
+            .OpenFileAsync(projectPath: @"C:\p\My.vi");
+
+        Assert.Equal("badArguments", Res.Str(result, "errorKind"));
+        Assert.Contains("viPath", Res.Str(result, "error"));
+        Assert.Equal(0, server.Service.CountOf("OpenFile"));
+    }
+
     [Fact]
     public async Task Maps_all_four_optional_fields()
     {

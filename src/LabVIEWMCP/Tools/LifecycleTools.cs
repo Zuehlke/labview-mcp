@@ -51,6 +51,13 @@ internal sealed class LifecycleTools(LvaiConnection connection)
     public async Task<string> EnsureLabViewAsync(
         [Description("How long to wait for the gRPC service to answer, in seconds (capped at 45)")]
         int waitSeconds = 40,
+        [Description("""
+            Do NOT clear Documents\\LabVIEW Data\\LVAutoSave before starting LabVIEW. It is
+            cleared by default because leftover recovery data makes LabVIEW raise a modal
+            recovery dialog on start, and a modal dialog stops this gRPC service until a
+            human dismisses it. Only ever cleared when this tool starts LabVIEW itself.
+            """)]
+        bool keepAutoSave = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -71,9 +78,16 @@ internal sealed class LifecycleTools(LvaiConnection connection)
             var startedNow = false;
             string? launched = null;
             LaunchOutcome? launch = null;
+            AutoSaveRecovery.Result? autoSave = null;
 
             if (running.Count == 0)
             {
+                // BEFORE the launch. Leftover auto-save data makes LabVIEW raise a modal recovery
+                // dialog on start, and a modal dialog stops this very gRPC service until somebody
+                // dismisses it - so an unattended start clears the store first. Only when WE start
+                // LabVIEW: a process already running owns its own recovery data.
+                if (!keepAutoSave) autoSave = AutoSaveRecovery.Clear();
+
                 var installs = LabViewLocator.Discover();
                 var pick = LabViewLocator.Select(installs);
                 if (pick is null)
@@ -128,6 +142,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                         ["startedByThisCall"] = startedNow,
                         ["launched"] = launched,
                         ["launchMethod"] = launch?.Method,
+                    ["autoSaveCleared"] = autoSave?.Describe(),
                         ["port"] = connection.Port,
                         ["discoveredVia"] = connection.DiscoveredVia,
                         ["applicationLanguage"] = config.Language,
@@ -153,6 +168,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 ["startedByThisCall"] = startedNow,
                 ["launched"] = launched,
                 ["launchMethod"] = launch?.Method,
+                    ["autoSaveCleared"] = autoSave?.Describe(),
                 ["runningProcesses"] = stillRunning,
                 ["waitedMs"] = stopwatch.ElapsedMilliseconds,
                 ["lastError"] = last?.Message,

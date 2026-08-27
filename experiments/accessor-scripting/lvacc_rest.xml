@@ -1,0 +1,66 @@
+<VI _name="lvacc_rest.vi" description="Create Read and Write accessors for private data fields 1 to 4 of the class at index 2 of the active project, by calling the LVClass project provider's own wizard body four times over. Field 0 was created by lvacc_one.vi and is skipped. The wizard calls are chained through error out so they run in order, and each one's returned VI names are read back, which is how the field a given index refers to is verified rather than assumed.">
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Constant type="string" value="C\3A\5Ctemp\5Cdemo\5Cfahrzeuge\5CRennauto\5CRennauto.lvclass\5CRennauto.ctl" outputs="value:24.value" uid="24" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:24.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:26.vi reference,error out:26.error out" uid="26" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:26.vi reference,error in (no error):26.error out" outputs="Front Panel:30.Panel,reference out:30.reference out,error out:30.error out" type="{LV.VI}" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:30.Panel,error in (no error):30.error out" outputs="Controls[]:32.Controls[],reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+  <Constant type="int32" value="0" outputs="value:35.value" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:32.Controls[],index:35.value" outputs="element:36.element" uid="36" uid_parent="root"/>
+  <Constant type="ref{LV.Cluster}" value="" outputs="value:33.value" uid="33" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:36.element,error in:32.error out,target class:33.value" outputs="specific class reference:37.specific class reference,error out:37.error out" uid="37" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:37.specific class reference,error in (no error):37.error out" outputs="Controls[]:38.Controls[],reference out:38.reference out,error out:38.error out" type="{LV.Cluster}" uid="38" uid_parent="root"/>
+
+  <Node _name="Build Array" inputs="element:20.proj" outputs="appended array:50.appended array" uid="50" uid_parent="root"/>
+  <Call target="CLSUIP_GetAllClassesInProject.vi" inputs="Project Refs:50.appended array,error in (no error):38.error out" outputs="All Classes:52.All Classes,error out:52.error out" uid="52" uid_parent="root"/>
+  <Constant type="int32" value="2" outputs="value:54.value" uid="54" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:52.All Classes,index:54.value" outputs="element:55.element" uid="55" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Path" inputs="reference:55.element,error in (no error):52.error out" outputs="Path:56.Path,reference out:56.reference out,error out:56.error out" type="{LV.LVClassLibrary}" uid="56" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:56.Path" outputs="string:57.string" uid="57" uid_parent="root"/>
+  <Indicator _name="class path" inputs="value:57.string" type="string" uid="58" uid_parent="root" value=""/>
+
+  <Constant _name="Dynamic" type="uint32{Dynamic,Static}" value="0" outputs="value:60.value" uid="60" uid_parent="root"/>
+  <Constant _name="R/W" type="uint16{Read,Write,R/W}" value="2" outputs="value:61.value" uid="61" uid_parent="root"/>
+  <Constant type="bool" value="true" outputs="value:62.value" uid="62" uid_parent="root"/>
+  <Constant type="bool" value="false" outputs="value:63.value" uid="63" uid_parent="root"/>
+  <Constant type="string" value="" outputs="value:64.value" uid="64" uid_parent="root"/>
+
+  <Constant type="int32" value="1" outputs="value:100.value" uid="100" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls[],index:100.value" outputs="element:101.element" uid="101" uid_parent="root"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateNewAccessor.vi" inputs="VI Type:60.value,Access UI:61.value,error in (no error):56.error out,Include error terminals:62.value,Virtual Folder Name:64.value,Make available through Property Nodes:63.value,PDC Item Refnum:101.element,LVClassLibrary Ref:55.element" outputs="error out:102.error out,Read VI:102.Read VI,Write VI:102.Write VI" uid="102" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:102.Read VI,error in (no error):102.error out" outputs="VI Name:103.VI Name,reference out:103.reference out,error out:103.error out" type="{LV.VI}" uid="103" uid_parent="root"/>
+  <Indicator _name="field 1 read" inputs="value:103.VI Name" type="string" uid="104" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:102.Write VI,error in (no error):103.error out" outputs="VI Name:105.VI Name,reference out:105.reference out,error out:105.error out" type="{LV.VI}" uid="105" uid_parent="root"/>
+  <Indicator _name="field 1 write" inputs="value:105.VI Name" type="string" uid="106" uid_parent="root" value=""/>
+
+  <Constant type="int32" value="2" outputs="value:200.value" uid="200" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls[],index:200.value" outputs="element:201.element" uid="201" uid_parent="root"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateNewAccessor.vi" inputs="VI Type:60.value,Access UI:61.value,error in (no error):105.error out,Include error terminals:62.value,Virtual Folder Name:64.value,Make available through Property Nodes:63.value,PDC Item Refnum:201.element,LVClassLibrary Ref:55.element" outputs="error out:202.error out,Read VI:202.Read VI,Write VI:202.Write VI" uid="202" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:202.Read VI,error in (no error):202.error out" outputs="VI Name:203.VI Name,reference out:203.reference out,error out:203.error out" type="{LV.VI}" uid="203" uid_parent="root"/>
+  <Indicator _name="field 2 read" inputs="value:203.VI Name" type="string" uid="204" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:202.Write VI,error in (no error):203.error out" outputs="VI Name:205.VI Name,reference out:205.reference out,error out:205.error out" type="{LV.VI}" uid="205" uid_parent="root"/>
+  <Indicator _name="field 2 write" inputs="value:205.VI Name" type="string" uid="206" uid_parent="root" value=""/>
+
+  <Constant type="int32" value="3" outputs="value:300.value" uid="300" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls[],index:300.value" outputs="element:301.element" uid="301" uid_parent="root"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateNewAccessor.vi" inputs="VI Type:60.value,Access UI:61.value,error in (no error):205.error out,Include error terminals:62.value,Virtual Folder Name:64.value,Make available through Property Nodes:63.value,PDC Item Refnum:301.element,LVClassLibrary Ref:55.element" outputs="error out:302.error out,Read VI:302.Read VI,Write VI:302.Write VI" uid="302" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:302.Read VI,error in (no error):302.error out" outputs="VI Name:303.VI Name,reference out:303.reference out,error out:303.error out" type="{LV.VI}" uid="303" uid_parent="root"/>
+  <Indicator _name="field 3 read" inputs="value:303.VI Name" type="string" uid="304" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:302.Write VI,error in (no error):303.error out" outputs="VI Name:305.VI Name,reference out:305.reference out,error out:305.error out" type="{LV.VI}" uid="305" uid_parent="root"/>
+  <Indicator _name="field 3 write" inputs="value:305.VI Name" type="string" uid="306" uid_parent="root" value=""/>
+
+  <Constant type="int32" value="4" outputs="value:400.value" uid="400" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls[],index:400.value" outputs="element:401.element" uid="401" uid_parent="root"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateNewAccessor.vi" inputs="VI Type:60.value,Access UI:61.value,error in (no error):305.error out,Include error terminals:62.value,Virtual Folder Name:64.value,Make available through Property Nodes:63.value,PDC Item Refnum:401.element,LVClassLibrary Ref:55.element" outputs="error out:402.error out,Read VI:402.Read VI,Write VI:402.Write VI" uid="402" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:402.Read VI,error in (no error):402.error out" outputs="VI Name:403.VI Name,reference out:403.reference out,error out:403.error out" type="{LV.VI}" uid="403" uid_parent="root"/>
+  <Indicator _name="field 4 read" inputs="value:403.VI Name" type="string" uid="404" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:402.Write VI,error in (no error):403.error out" outputs="VI Name:405.VI Name,reference out:405.reference out,error out:405.error out" type="{LV.VI}" uid="405" uid_parent="root"/>
+  <Indicator _name="field 4 write" inputs="value:405.VI Name" type="string" uid="406" uid_parent="root" value=""/>
+
+  <Node _name="Close Reference" inputs="reference:26.vi reference,error in (no error):405.error out" outputs="error out:500.error out" uid="500" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:500.error out" outputs="status:510.status,code:510.code,source:510.source" uid="510" uid_parent="root"/>
+  <Indicator _name="status" inputs="value:510.status" type="bool" uid="511" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:510.code" type="int32" uid="512" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:510.source" type="string" uid="513" uid_parent="root" value=""/>
+</VI>

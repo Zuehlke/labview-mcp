@@ -1,0 +1,20 @@
+<VI _name="lvai_vis_in_memory.vi" description="Report which VIs LabVIEW currently holds in memory, in BOTH application instances: the addon's own, which is where a generated helper runs, and the IDE's, reached through Project:Active Project then Project:Application. The question this answers is whether a helper that has finished running is still loaded, and in which instance - which decides whether taking it out of the project is enough or whether the process has to be restarted.">
+  <Node _name="Property Node" fields="read+Application\3AAll VIs In Memory" type="{LV.Application}" outputs="Application\3AAll VIs In Memory:20.vis,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:20.vis" outputs="size(s):21.size" uid="21" uid_parent="root"/>
+  <Indicator _name="addon count" inputs="value:21.size" type="int32" uid="22" uid_parent="root" value="0"/>
+  <Indicator _name="addon vis" inputs="value:20.vis" type="array{string}" uid="23" uid_parent="root" value=""/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):20.error out" outputs="Project\3AActive Project:30.proj,reference out:30.reference out,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:30.proj,error in (no error):30.error out" outputs="Application:32.app,reference out:32.reference out,error out:32.error out" uid="32" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3AAll VIs In Memory" type="{LV.Application}" inputs="reference:32.app,error in (no error):32.error out" outputs="Application\3AAll VIs In Memory:34.vis,reference out:34.reference out,error out:34.error out" uid="34" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:34.vis" outputs="size(s):35.size" uid="35" uid_parent="root"/>
+  <Indicator _name="ide count" inputs="value:35.size" type="int32" uid="36" uid_parent="root" value="0"/>
+  <Indicator _name="ide vis" inputs="value:34.vis" type="array{string}" uid="37" uid_parent="root" value=""/>
+
+  <Node _name="Close Reference" inputs="reference:32.reference out,error in (no error):34.error out" outputs="error out:40.error out" uid="40" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:30.reference out,error in (no error):40.error out" outputs="error out:41.error out" uid="41" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:41.error out" outputs="status:50.status,code:50.code,source:50.source" uid="50" uid_parent="root"/>
+  <Indicator _name="status" inputs="value:50.status" type="bool" uid="51" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:50.code" type="int32" uid="52" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:50.source" type="string" uid="53" uid_parent="root" value=""/>
+</VI>

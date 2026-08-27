@@ -40,6 +40,17 @@ internal static class CommandLine
         ["--pylv-status"] = false,
         ["--pylv-extract"] = true,
         ["--no-annotate"] = false,
+        ["--create-class"] = true,
+        ["--describe-class"] = true,
+        ["--create-accessors"] = true,
+        ["--keep-autosave"] = false,
+        ["--tidy"] = false,
+        ["--validate"] = true,
+        ["--finish-project"] = true,
+        ["--static"] = false,
+        ["--access"] = true,
+        ["--fields"] = true,
+        ["--parent"] = true,
     };
 
     /// <summary>
@@ -67,6 +78,23 @@ internal static class CommandLine
           LabVIEWMCP --ensure-labview       start LabVIEW and wait for its gRPC service
           LabVIEWMCP --pylv-status          is the bundled pylabview usable (no LabVIEW, no Python)
           LabVIEWMCP --pylv-extract <vi>    read a VI to annotated XML with pylabview, --out <dir>
+          LabVIEWMCP --create-class <Name>  create a .lvclass with private data into --out <dir>;
+                                            --fields "string.A,int32.B", --parent <parent.lvclass>,
+                                            --project <p.lvproj>. Load-checked before it reports ok
+          LabVIEWMCP --describe-class <p>   a .lvclass's ancestry, members and scope (no LabVIEW)
+          LabVIEWMCP --validate <file.xml>  ask LabVIEW whether one AIXML file is acceptable;
+                                            creates nothing. Chainable after --ensure-labview in
+                                            ONE process, which is the only way to hit a service
+                                            window shorter than a client round trip
+          LabVIEWMCP --create-accessors <p>  Read/Write accessors for every private data
+                                            field of a .lvclass, through LabVIEW's own
+                                            wizard body. --static for static dispatch,
+                                            --access Read|Write|R/W. NEEDS the owning
+                                            project ACTIVE in the IDE
+                                            (--no-tidy keeps the helper in the project)
+          LabVIEWMCP --finish-project <p>    end of job: strip the generated helpers out of a
+                                            .lvproj, restart LabVIEW so they leave memory too,
+                                            and reopen the project. Does NOT save the project
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
           --vi <path>       VI used by --selftest (defaults to a shipped LabVIEW example)
@@ -75,6 +103,10 @@ internal static class CommandLine
                             and the per-VI budget for --corpus (default 90)
           --limit <n>       stop --corpus after n VIs; rows returned by --examples/--palette
           --include-specialised  let --examples list FPGA, Real-Time and toolkit examples too
+          --keep-autosave   do NOT clear Documents\LabVIEW Data\LVAutoSave before starting
+                            LabVIEW. It is cleared by default because leftover recovery data
+                            makes LabVIEW raise a modal recovery dialog on start, and a modal
+                            dialog stops the gRPC service until a human dismisses it
           --refresh         rebuild the example or palette index cache (--examples: about a
                             minute; --palette: see its own output for the measured cost)
           --skip <a,b>      substrings of a path --corpus must not touch; they are still
@@ -85,6 +117,8 @@ internal static class CommandLine
                             DESTRUCTIVE: it kills every LabVIEW on the machine.
           --out <path>      output file for --diagram and --panes, output directory for --corpus
           --no-annotate     --pylv-extract leaves primResID/parmIndex numbers unnamed
+          --fields <spec>   --create-class private data, as <type>.<name> comma separated
+          --parent <path>   --create-class parent .lvclass to derive from
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port. The self-test needs LabVIEW 2026 running

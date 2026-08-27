@@ -301,6 +301,17 @@ internal sealed class CloseTools(LvaiConnection connection)
               "the VI's .lvproj and make it the active project, then try again. Note that " +
               "lvai_open_file was measured to make a project active on one occasion and not on " +
               "another, so treat 'active' as the user's IDE state."
+        // 1149 IS NOT THE MEMBERSHIP FAILURE, and it used to be reported as one. Measured
+        // 2026-08-26 against lvai_create_accessors.vi, which a project HAD adopted: a helper run
+        // headlessly through a VI reference never gets a front-panel WINDOW, so there is no window
+        // whose State can be written. Nothing about membership would fix it, and nothing in the
+        // catalogue's 3 078 methods unloads a VI, so a window-less VI in memory cannot be evicted
+        // through this interface at all.
+        : code == "1149"
+            ? "Error 1149 means the VI has no front-panel WINDOW to close. That is what a VI run " +
+              "headlessly through a VI reference looks like - it is in memory but was never " +
+              "opened, so this route does not apply to it and no other route in this interface " +
+              "does either. Restarting LabVIEW is the only eviction for such a VI."
         : source.Contains("Front Panel Window", StringComparison.OrdinalIgnoreCase)
             ? "The write to 'Front Panel Window:State' failed, which is what happens when the VI " +
               "is not a MEMBER of the active project. A VI opened loose is loaded where the " +

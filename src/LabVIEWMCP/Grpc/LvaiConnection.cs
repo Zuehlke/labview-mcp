@@ -140,9 +140,16 @@ internal sealed class LvaiConnection : IAsyncDisposable
             Environment.NewLine +
             "Is LabVIEW 2026 running, and is the 'LV AI gRPC Service' active? " +
             "MEASURED: a running LabVIEW is not enough - the service starts with NIGEL, the AI " +
-            "assistant, not with the IDE. If the candidates above are LabVIEW.exe listeners that " +
-            "all answer Unavailable, LabVIEW is up and the service simply has not started: open " +
-            "Nigel in the IDE. " +
+            "assistant, not with the IDE. " +
+            "THE STATUS CODE ABOVE SAYS WHICH OF TWO VERY DIFFERENT PROBLEMS THIS IS, and reading " +
+            "it saves restarting LabVIEW for nothing: LabVIEW.exe listeners answering " +
+            "**Unavailable** mean the IDE is up and the service has not started - open Nigel. " +
+            "Listeners answering **DeadlineExceeded** mean the service is there and LabVIEW is " +
+            "HUNG - the process still answers the OS while its UI thread is blocked, which " +
+            "PowerShell confirms as (Get-Process LabVIEW).Responding = False and the title bar as " +
+            "'LabVIEW (Not Responding)'. Nigel will not help; the process has to be killed. " +
+            "Measured 2026-08-26, where it was reproducibly caused by firing several " +
+            "lvai_create_class calls back to back - spacing them apart avoided it entirely. " +
             "You can pin the port with --port <n> or LABVIEW_GRPC_PORT=<n>.");
     }
 

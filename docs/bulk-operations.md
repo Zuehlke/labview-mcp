@@ -1,4 +1,4 @@
-# Composed tools: `lvai_generate_vi` and `pylv_apply`
+# Composed tools: `lvai_generate_vi`, `pylv_apply` and `lvai_create_class`
 
 Two fixed-order sequences, each collapsed into one call. This document records **why they exist**,
 **which sequences are and are not bulkable**, and **what was measured** — the last part because the
@@ -31,6 +31,7 @@ The test is not "are these steps related" but **is the order known before the fi
 |---|---|---|
 | validate → convert → measure pane | yes | `lvai_generate_vi` |
 | close project → extract → edit → rebuild → verify | yes | `pylv_apply` |
+| AIXML a cluster → validate → generate → extract → patch → rebuild → wrap → write → load-check | yes | `lvai_create_class` |
 | `--list` anchors → choose a comment-to-node mapping | **no** | stays interactive |
 | measure pane → decide whether the *pattern* or the *assignment* is wrong | **no** | stays interactive |
 | look up terminal names | already batched | `node=` takes a comma-separated list |
@@ -49,6 +50,14 @@ Both sequences contain a step that is easy to skip and expensive to skip.
 - `lvai_convert_aixml_to_vi` **cannot see a badly placed connector pane**, and neither can a run: a
   VI whose inputs sit on the output edge validates, generates and executes. That defect has shipped
   twice. `lvai_generate_vi` therefore answers `ok: false` when the pane breaches NI's style guide.
+- **`lvai_create_class`'s load check is the same shape, and the sharpest example of it.** Every
+  step of the class sequence answered `ok` for a class LabVIEW then refused: the private data
+  blob's u32 length field sat two bytes late, `pylv_rebuild` reported success, the encoder's own
+  round trip closed. LabVIEW's answer was three class entries with every field blank plus an
+  error about invalid *paths* from inside NI's own `Get library info.vi` — nothing pointed at the
+  blob, and finding it cost most of an afternoon. The only signal that means anything is a
+  project describe coming back with a non-empty `libraryName`, so that is a step rather than a
+  suggestion. Measured: 18 min 20 s by hand against **9.0 s** for the same three classes.
 - `pylv_rebuild` answers with a `gatesNotChecked` list precisely because it cannot check those gates
   from where it stands. The first of them is the expensive one: LabVIEW does not lock a `.vi`, so a
   rebuild under a loaded VI succeeds and LabVIEW then keeps serving its stale in-memory copy — a

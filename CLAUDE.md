@@ -512,6 +512,58 @@ arrived, and every accepted name with its type. So **seeing the masked sentence 
 wrapper is not in place** — check that `WithArgumentDiagnostics()` still runs last in `Program.cs`,
 and read stderr. Detail and the re-measuring recipe in `docs/tool-argument-errors.md`.
 
+## When LabVIEW disappears
+
+**Starting LabVIEW through our tools EMPTIES the auto-save store first.** Both
+`lvai_ensure_labview` and `LabVIEWMCP --ensure-labview` clear
+`<Documents>\LabVIEW Data\LVAutoSave` recursively - files and subdirectories, everything but the
+store's own folder - and only when they start LabVIEW themselves; a process already running owns its
+own recovery data. `--keep-autosave` / `keepAutoSave: true` opts out.
+
+**The reason is the modal dialog, not the crash.** Leftover auto-save data makes LabVIEW offer
+recovery on start, and a modal dialog stops the whole gRPC service until a human dismisses it - which
+in an unattended start is nobody. The path is resolved through the Documents *known folder* rather
+than built from `%USERPROFILE%`, because Documents is commonly redirected and a hardcoded path would
+clear a directory nothing reads.
+
+**It is NOT a fix for the disappearances, and the measurement says so.** With `LVAutoSave` verified
+empty, validating an AIXML file naming an uncatalogued VI Server class still killed LabVIEW in eight
+seconds, same two `OMAutoClasses` entries, zero new archives. The archives are written when LabVIEW
+*starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
+causing the next one - eight in one day looked exactly like a cause and was not.
+
+**Read NI's own log, not the Windows event log.** LabVIEW installs its own crash handler: it catches
+the fault, writes `%TEMP%\LabVIEW_32_<ver>_interactive_<user>_cur.txt` plus a minidump, and exits.
+Windows Error Reporting never sees it, so an empty Application log is **not an alibi**. Measured
+2026-08-26 after three disappearances in one session were nearly attributed to the wrong cause on
+exactly that reasoning - the event-log query was sound, returning 150 other events, and still said
+nothing.
+
+`_cur.txt` is overwritten on the next start, so **copy it before restarting**. Grep it for `DWarn`,
+`minidump id` and `Executing:`.
+
+**And validation is not risk-free, which contradicts how this file describes it elsewhere.** The
+signature found twice was NI's own code:
+
+```
+source\ole\OMAutoClasses.cpp(74) : DWarn 0x762E6013:
+    Out of bounds TypedObjList access (index: -1, nObj: 0)
+[Executing: "LV AI Core.lvlibp:VI generator.vi"]   <- called from ValidateAIXML.vi
+```
+
+`OMAutoClasses` is the VI Server automation class registry; `index: -1, nObj: 0` is a name looked up
+in an empty list and then used as an index. It fires while LabVIEW PARSES AIXML, and every instance
+was validating a file naming classes the catalogue does not list - `{LV.LVClassLibrary}`,
+`{LV.Project}`, `{LV.Panel}`, `{LV.Cluster}`. Correlation, not proven cause; the crash site is what is
+established.
+
+So keep using `lvai_validate_aixml` - it is still the cheap failure path - but know that a helper is
+validated **once and then cached** under `%TEMP%\LabVIEWMCP\helpers\`, and do not delete that cache
+to force a rebuild unless the AIXML actually changed. A development loop that regenerates every
+iteration pays the risk every iteration, which is how three deaths happened in one afternoon.
+`docs/labview-crash-signatures.md` has the other crash points, including `Open project application
+ref.vi` - the `ProjectAActive Project` route itself.
+
 ## Writing things down
 
 **Empirically derived `lvai` behaviour belongs in `docs/`, not only in the conversation.** This
@@ -547,6 +599,9 @@ literally it argued away 600 usable palette VIs.
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
+| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
+| What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
+| How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
