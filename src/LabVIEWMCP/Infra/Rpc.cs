@@ -57,6 +57,12 @@ internal static class Rpc
     /// the client's patience reports nothing at all, which is strictly worse than reporting
     /// a timeout - so monitor tools clamp to this and the CLI --watch mode exists for
     /// genuinely long waits.
+    ///
+    /// The ceiling those two measurements bracketed is now known exactly: 60 s. The client's own
+    /// MCP log records 28 aborts in this project and every one reads "failed after 60s", across
+    /// nine tools - so 45 here has a 15 s margin rather than an unknown one. It is NOT raisable
+    /// from .claude/settings.json: MCP_TOOL_TIMEOUT reaches the process environment and the aborts
+    /// still land at 60 s. docs/lvclass-creation.md has the evidence.
     /// </summary>
     public const int MaxToolWaitSeconds = 45;
 

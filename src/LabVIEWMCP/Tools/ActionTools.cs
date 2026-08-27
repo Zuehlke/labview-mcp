@@ -85,12 +85,29 @@ internal sealed class ActionTools(LvaiConnection connection)
             return Json.Message(response, ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds)));
         });
 
+    /// <summary>
+    /// The path when it carries the extension it does NOT belong to, else null. Compared on the
+    /// extension alone: a caller who swapped the two parameters still passed a real path, so there is
+    /// nothing else to go on.
+    /// </summary>
+    internal static string? SwappedPath(string? path, string wrongExtension) =>
+        !string.IsNullOrWhiteSpace(path)
+        && Path.GetExtension(path).Equals(wrongExtension, StringComparison.OrdinalIgnoreCase)
+            ? path
+            : null;
+
     [McpServerTool(Name = "lvai_open_file", Destructive = true, OpenWorld = true,
                    Title = "Open a VI or project in the LabVIEW IDE")]
     [Description("""
         RPC OpenFile. MUTATING (IDE state): opens a VI and/or a project in the running LabVIEW
         editor. Pass the VI pair, the project pair, or both. Harmless but visible to whoever is
         sitting in front of LabVIEW.
+        THERE IS NO `filePath` PARAMETER, and getting that wrong is expensive because the failure
+        lies. A near-miss argument name is folded onto the closest declared one, so `filePath` lands
+        on `viPath` - and a .lvproj passed as a VI comes back as `Error 7, File not found` for a file
+        that plainly exists. Measured 2026-08-27: three identical Error 7 answers, while
+        lvai_describe_project read the very same path with errorCode 0. A .lvproj goes in
+        `projectPath` WITH `projectName`; that pair returned No Error immediately.
         """)]
     public async Task<string> OpenFileAsync(
         [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,
@@ -101,6 +118,21 @@ internal sealed class ActionTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            // The path/parameter swap is worth catching here rather than letting LabVIEW answer
+            // "File not found" about a file that exists - that answer sends the reader to check the
+            // disk, which is the one place the fault is not.
+            if (SwappedPath(viPath, ".lvproj") is { } projectAsVi)
+                return Json.Error("badArguments",
+                    $"viPath is a project file ({projectAsVi}). A .lvproj must go in projectPath, "
+                    + "with projectName alongside it; passed as a VI, LabVIEW answers 'Error 7, File "
+                    + "not found'. Note there is no filePath parameter - a near-miss name is folded "
+                    + "onto viPath, which is how this usually happens.");
+
+            if (SwappedPath(projectPath, ".vi") is { } viAsProject)
+                return Json.Error("badArguments",
+                    $"projectPath is a VI ({viAsProject}). A .vi must go in viPath, with viName "
+                    + "alongside it.");
+
             var response = await connection.InvokeAsync((c, t) =>
                 c.OpenFileAsync(new OpenFileRequest
                 {

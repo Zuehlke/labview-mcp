@@ -17,6 +17,23 @@ These two files remove that step for 3 078 methods and 6 410 properties across 1
 |---|---|---|
 | [`vi-server-methods.tsv`](vi-server-methods.tsv) | 3 078 | `class`, `method`, `parameters`, `returns` |
 | [`vi-server-properties.tsv`](vi-server-properties.tsv) | 6 410 | `class`, `property`, `access` |
+| [`vi-server-classes.tsv`](vi-server-classes.tsv) | 296 | `class`, `parentId` — the class list, authoritative |
+
+**THOSE 153 CLASSES ARE NOT ALL OF THEM, and the third file is why.** Both catalogues were harvested
+by placing nodes and exporting, so they contain what somebody happened to call — nothing more.
+LabVIEW itself will hand over the complete list: `{LV.ClassSpecifierConstant}` carries an
+`All Types[]` property returning every class name with its parent id, read through
+`scripts\lvai_class_names.xml`. Measured 2026-08-26: **296 classes, of which 143 appear in neither
+TSV.** Among the missing are `LVClassLibrary` (a `.lvclass`), `LabVIEWClassControl` (a front-panel
+control whose type is a LabVIEW class), `Library` and `LabVIEWClassConstant`.
+
+So **a class absent from the two TSVs is not absent from LabVIEW** — check `vi-server-classes.tsv`
+first, then probe its members with `ValidateAIXML` against a negative control: an invented class
+answers `Invalid property` with *"the type of the source is void"*, a real one only complains that
+`reference` is unwired, and an invented method answers `Invalid method`. The message does not name
+the offending node, so batch candidates and count the lines. That route confirmed `Add Item` and
+`Save` on `{LV.LVClassLibrary}` and refused fourteen invented names; `lvclass-creation.md` §5 has
+the run.
 
 Tab-separated so a single `grep` answers "what do I wire to this node":
 

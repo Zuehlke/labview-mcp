@@ -1,0 +1,21 @@
+<VI _name="lvai_class_names.vi" description="Dump every VI Server class name this station knows, by reading All Types[] off a Class Specifier Constant. Structure copied from vi.lib\Utility\traverseref.llb\Get Class Hierarchy from Class Name.vi, which is NI's own use of the same route - the catalogue in docs/vi-server-*.tsv is harvested from the addon's usage and is therefore incomplete, while this is authoritative.">
+  <Constant _name="csc" outputs="value:10.value" type="ref{LV.ClassSpecifierConstant}" uid="10" uid_parent="root" value=""/>
+  <Constant _name="name/order" outputs="value:20.value" type="string" uid="20" uid_parent="root" value="csc"/>
+  <Node _name="Property Node" fields="read+Block Diagram" inputs="reference:,error in (no error):" outputs="Block Diagram:30.Diagram,reference out:,error out:30.error out" type="{LV.VI}" uid="30" uid_parent="root"/>
+  <Node _name="Open VI Object Reference" inputs="owner refnum:30.Diagram,name/order:20.value,error in (no error):30.error out,vi object class:10.value" outputs="object refnum:40.object refnum,error out:40.error out" uid="40" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:30.Diagram,error in (no error):40.error out" outputs="error out:45.error out" uid="45" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Types[]" inputs="reference:40.object refnum,error in (no error):45.error out" outputs="All Types[]:50.AllTypes[],reference out:50.reference out,error out:50.error out" type="{LV.ClassSpecifierConstant}" uid="50" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:50.reference out,error in (no error):50.error out" outputs="error out:60.error out" uid="60" uid_parent="root"/>
+  <Structure _name="For Loop" count="70.value" maxin="" maxout="" uid="70" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:50.AllTypes[]" mode="index" outputs="value:71.value" uid="71" uid_parent="70"/>
+    <Node _name="Unbundle By Name" fields="Class Name (unlocalized),Parent ID string" inputs="input cluster:71.value" outputs="Class Name (unlocalized):72.name,Parent ID string:72.parent" uid="72" uid_parent="70"/>
+    <Node _name="Concatenate Strings" inputs="string:72.name,string:75.value,string:72.parent" outputs="concatenated string:74.concatenated string" uid="74" uid_parent="70"/>
+    <Constant _name="sep" outputs="value:75.value" type="string" uid="75" uid_parent="70" value=" &lt;- "/>
+    <Tunnel _id="Out1" inputs="value:74.concatenated string" mode="index" outputs="value:73.value" uid="73" uid_parent="70"/>
+  </Structure>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:60.error out" outputs="status:80.status,code:80.code,source:80.source" uid="80" uid_parent="root"/>
+  <Indicator _name="classes" conIdx="4" connection="recommended" inputs="value:73.value" type="array{string.String}" uid="90" uid_parent="root" value="[]"/>
+  <Indicator _name="status" conIdx="6" connection="recommended" inputs="value:80.status" type="bool" uid="91" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:80.code" type="int32" uid="92" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:80.source" type="string" uid="93" uid_parent="root" value=""/>
+</VI>

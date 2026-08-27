@@ -90,6 +90,55 @@ internal static class ToolArguments
         return renames;
     }
 
+    /// <summary>
+    /// Does this binding failure mean "I wanted a string and got something else"? The SDK's binder
+    /// throws <c>JsonException</c> with the target type in the message, so the test is on the
+    /// message rather than on a type we cannot see from here.
+    ///
+    /// MEASURED 2026-08-26, twice in one session. `lvai_run_vi_and_read_values` declares
+    /// `inputsJson` as a string and the natural value for it is a JSON OBJECT - the description
+    /// even shows one - so a client that serialises what it is given sends an object and gets
+    /// `The JSON value could not be converted to System.String. Path: $`. The same happens to
+    /// `section` on every reference tool when given a heading NUMBER rather than a quoted one.
+    /// Both parameters were unreachable from a JSON-speaking client, and the diagnostics reported
+    /// the failure clearly without making the call possible.
+    /// </summary>
+    public static bool WantsString(Exception cause) =>
+        cause is JsonException &&
+        cause.Message.Contains("System.String", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The same arguments with every non-string value turned into its JSON text: an object becomes
+    /// the object's own JSON, a number becomes its digits. Applied only after
+    /// <see cref="WantsString"/> - so this never reshapes a value a tool was happy to receive - and
+    /// it is the value the caller's own description asked for in the first place.
+    ///
+    /// Null and Undefined are left alone: a null means "not supplied" and stringifying it to "null"
+    /// would turn an omitted optional argument into the four-character word.
+    /// </summary>
+    public static Dictionary<string, JsonElement>? Stringified(
+        IEnumerable<KeyValuePair<string, JsonElement>>? supplied)
+    {
+        if (supplied is null) return null;
+
+        var changed = false;
+        var folded = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        foreach (var (key, value) in supplied)
+        {
+            if (value.ValueKind is JsonValueKind.String or JsonValueKind.Null or JsonValueKind.Undefined)
+            {
+                folded[key] = value;
+                continue;
+            }
+
+            folded[key] = JsonSerializer.SerializeToElement(value.GetRawText());
+            changed = true;
+        }
+
+        return changed ? folded : null;
+    }
+
     /// <summary>Required names the caller did not supply. No arguments at all means all of them.</summary>
     public static List<string> Missing(
         IReadOnlyCollection<string> required, IReadOnlyCollection<string>? supplied) =>

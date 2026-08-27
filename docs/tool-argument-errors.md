@@ -75,6 +75,23 @@ same envelope with the exception message that would otherwise have been masked.
 - **Folding covers near-misses of declared names, not synonyms.** `vi_path` works because `viPath`
   exists; `path` or `file` is still an unknown key, and an unknown key is still ignored - that is the
   MCP contract, not something this layer overrides.
+- **On a tool whose parameters are ALL optional, a dropped key produces no diagnostic at all - and
+  the error that surfaces blames the wrong thing.** Measured 2026-08-27: `lvai_open_file` was called
+  with `filePath`, which is not a near-miss of `viPath` or `projectPath`, so it was dropped. Nothing
+  was missing - every parameter defaults to empty - so `badArguments` never fired, LabVIEW received
+  `<Not A Path>`, and the answer was
+
+  ```
+  Error 7 occurred at ... OpenFile.vi
+  LabVIEW: (Hex 0x7) File not found. The file might be in a different location or deleted.
+  ```
+
+  on a `.lvproj` that was present, well-formed and readable - `lvai_describe_project` read it in the
+  same minute. Two calls and a file inspection went into that before the argument name was checked.
+  **So a "file not found" from a path you can `ls` means read the tool's parameter names first**, and
+  the diagnostic to reach for is not the filesystem: it is the tool schema. This layer cannot do
+  better on its own - an unknown key is dropped by the MCP contract and an all-optional tool has
+  nothing to report as missing.
 - **The wrapper must be registered last.** `WithArgumentDiagnostics()` rewrites the tool
   registrations that are already in the collection, so a tool registered after it is not wrapped.
   `DiagnosingToolTests` asserts that every served tool comes back wrapped, so an SDK upgrade that

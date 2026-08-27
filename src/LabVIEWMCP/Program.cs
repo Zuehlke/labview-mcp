@@ -47,6 +47,10 @@ if (CommandLine.HasFlag(args, "--selftest"))
 if (CommandLine.HasFlag(args, "--dump-schema"))
     return await DumpSchemaAsync(portOverride, CommandLine.StringArg(args, "--dump-schema"));
 
+if (CommandLine.HasFlag(args, "--validate"))
+    return await Validate.RunAsync(portOverride, CommandLine.StringArg(args, "--validate"),
+        CommandLine.IntArg(args, "--timeout") ?? 120);
+
 if (CommandLine.HasFlag(args, "--watch"))
     return await Watch.RunAsync(portOverride, CommandLine.StringArg(args, "--watch"),
         CommandLine.IntArg(args, "--timeout") ?? 300);
@@ -78,8 +82,13 @@ if (CommandLine.HasFlag(args, "--corpus"))
         CommandLine.IntArg(args, "--timeout") ?? 90, CommandLine.StringArg(args, "--skip"),
         CommandLine.IntArg(args, "--restart-every") ?? 40);
 
+if (CommandLine.StringArg(args, "--finish-project") is { Length: > 0 } finishProject)
+    return await Classes.FinishProjectAsync(portOverride, finishProject,
+        CommandLine.IntArg(args, "--timeout") ?? 420);
+
 if (CommandLine.HasFlag(args, "--ensure-labview"))
-    return await EnsureLabView.RunAsync(portOverride, CommandLine.IntArg(args, "--timeout") ?? 300);
+    return await EnsureLabView.RunAsync(portOverride, CommandLine.IntArg(args, "--timeout") ?? 300,
+        CommandLine.HasFlag(args, "--keep-autosave"));
 
 if (CommandLine.HasFlag(args, "--pylv-status"))
     return PyLabviewCli.Status();
@@ -87,6 +96,22 @@ if (CommandLine.HasFlag(args, "--pylv-status"))
 if (CommandLine.HasFlag(args, "--pylv-extract"))
     return await PyLabviewCli.ExtractAsync(CommandLine.StringArg(args, "--pylv-extract"),
         CommandLine.StringArg(args, "--out"), !CommandLine.HasFlag(args, "--no-annotate"));
+
+if (CommandLine.HasFlag(args, "--create-class"))
+    return await Classes.CreateAsync(portOverride, CommandLine.StringArg(args, "--create-class"),
+        CommandLine.StringArg(args, "--out"), CommandLine.StringArg(args, "--fields"),
+        CommandLine.StringArg(args, "--parent"), CommandLine.StringArg(args, "--project"),
+        CommandLine.IntArg(args, "--timeout") ?? 180);
+
+if (CommandLine.HasFlag(args, "--create-accessors"))
+    return await Classes.CreateAccessorsAsync(portOverride,
+        CommandLine.StringArg(args, "--create-accessors"),
+        CommandLine.HasFlag(args, "--static"), CommandLine.StringArg(args, "--access"),
+        CommandLine.HasFlag(args, "--no-tidy"), CommandLine.StringArg(args, "--project"),
+        CommandLine.IntArg(args, "--timeout") ?? 600);
+
+if (CommandLine.HasFlag(args, "--describe-class"))
+    return await Classes.DescribeAsync(CommandLine.StringArg(args, "--describe-class"));
 
 // ---- default: MCP server over stdio ----
 var builder = Host.CreateApplicationBuilder(args);

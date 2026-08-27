@@ -60,6 +60,30 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            // A wanted-a-string failure is worth ONE retry with the values as their own JSON text.
+            // Several parameters take a JSON document or a number in a string - `inputsJson` is a
+            // JSON object by its own description, `section` is a heading number - and a client that
+            // sends what it was shown gets rejected by the binder. Retrying is the fold that makes
+            // those reachable; it happens only after a failure, so a value a tool accepted is never
+            // reshaped. See ToolArguments.WantsString for the measurement.
+            if (ToolArguments.WantsString(e) &&
+                request.Params is { } retryParams &&
+                ToolArguments.Stringified(supplied) is { } stringified)
+            {
+                retryParams.Arguments = stringified;
+                try
+                {
+                    return await base.InvokeAsync(request, cancellationToken);
+                }
+                catch (Exception second) when (second is not OperationCanceledException)
+                {
+                    // Report the ORIGINAL failure: it names the type the binder wanted, which is
+                    // the useful half. The retry only ever adds quotes, so its own message is a
+                    // consequence of the first problem rather than a second one.
+                    return Failure(ToolArguments.InvocationProblem(name, schema, received, e));
+                }
+            }
+
             return Failure(ToolArguments.InvocationProblem(name, schema, received, e));
         }
     }

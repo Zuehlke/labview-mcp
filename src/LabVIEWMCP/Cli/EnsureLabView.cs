@@ -18,7 +18,7 @@ namespace LabVIEWMcp.Cli;
 /// </summary>
 internal static class EnsureLabView
 {
-    public static async Task<int> RunAsync(int? port, int timeoutSeconds)
+    public static async Task<int> RunAsync(int? port, int timeoutSeconds, bool keepAutoSave = false)
     {
         Console.WriteLine("LabVIEW readiness");
         Console.WriteLine("=================");
@@ -27,9 +27,25 @@ internal static class EnsureLabView
         if (running.Count > 0)
         {
             Console.WriteLine($"  {running.Count} LabVIEW process(es) already running - using those.");
+            Console.WriteLine("  auto-save store left alone - only cleared before a start we make.");
         }
         else
         {
+            // BEFORE the launch, never after: leftover auto-save data makes LabVIEW raise a
+            // recovery dialog on start, and a modal dialog stops the whole gRPC service until a
+            // human dismisses it. Clearing it afterwards would be too late to prevent that.
+            if (keepAutoSave)
+            {
+                Console.WriteLine("  --keep-autosave: recovery store left as it is.");
+            }
+            else
+            {
+                var cleared = AutoSaveRecovery.Clear();
+                Console.WriteLine($"  {cleared.Describe()}");
+                foreach (var failure in cleared.Failures)
+                    Console.WriteLine($"     could not delete {failure}");
+            }
+
             var installs = LabViewLocator.Discover();
             Console.WriteLine($"  {installs.Count} installation(s) found:");
             foreach (var i in installs.OrderByDescending(i => i.Release).ThenByDescending(i => i.Is32Bit))

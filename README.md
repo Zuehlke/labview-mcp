@@ -725,11 +725,11 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**45 tools over 23 RPCs.** Twenty-two map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**50 tools over 23 RPCs.** Twenty-seven map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
-rather than wrapping one — the knowledge tools below, and the four `pylv_*` tools, which reach
-no LabVIEW at all. 31 carry `readOnlyHint`, 14 carry `destructiveHint`, so a client can gate the
-writes.
+rather than wrapping one — `lvai_describe_class`, which reads a `.lvclass` file and needs no
+LabVIEW at all, the knowledge tools below, and the five `pylv_*` tools. 32 carry `readOnlyHint`,
+18 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -757,7 +757,11 @@ resources rather than call tools.
 | `lvai_filter_palette_search_candidates` | `FilterPaletteSearchCandidates` |
 | `lvai_filter_example_search_candidates` | `FilterExampleSearchCandidates` |
 | `lvai_convert_vi_to_aixml` | `ConvertVIToAIXML` |
+| `lvai_convert_vis_to_aixml` | — (batches `ConvertVIToAIXML`; cached exports come back concurrently, uncached ones queue through LabVIEW) |
 | `lvai_validate_aixml` | `ValidateAIXML` |
+| `lvai_vi_terminals` | — (composes `ConvertVIToAIXML` and reads the pane) |
+| `lvai_describe_class` | — (parses the `.lvclass` XML directly; **needs no LabVIEW**, so it is the one honest reading after a timeout) |
+| `lvai_list_labview_installations` | — (reads the installed versions off the machine) |
 
 ### Write — mutating
 
@@ -774,10 +778,15 @@ resources rather than call tools.
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |
 | `lvai_drop_palette_item` | `DropPaletteItem` | edits a block diagram |
 | `lvai_log_usage_data` | `LogUsageData` | writes telemetry |
+| `lvai_generate_vi` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + the pane measurement) | **creates a `.vi`** and reports a connector pane that breaches the style guide |
+| `lvai_run_vi_and_read_values` | — (same composition plus VI Server reads) | **executes code**, then reads every control and indicator back — use it whenever an output is not a string |
+| `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **creates a `.lvclass`** and its private data control |
+| `lvai_create_accessors` | — (same composition, driving NI's own accessor wizard body) | **creates Read/Write VIs** and registers them in the `.lvclass`, saving the library once per field |
+| `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 
 ### Without LabVIEW — the pylabview route
 
-These four need no running LabVIEW, no licence and no Python installation: the bundle ships its
+These five need no running LabVIEW, no licence and no Python installation: the bundle ships its
 own isolated interpreter. They work on a checkout, on a build agent, in CI.
 
 | Tool | What it does |
@@ -786,6 +795,7 @@ own isolated interpreter. They work on a checkout, on a build agent, in CI.
 | `pylv_route` | **call this before planning any edit** — decides AIXML vs pylabview for one VI, with the evidence |
 | `pylv_extract` | reads a `.vi`, `.ctl` or `.llb` into a directory of XML plus binary sidecars, annotated with primitive and terminal names. Read-only. |
 | `pylv_rebuild` | **writes a `.vi`** back from such a bundle |
+| `pylv_apply` | one call for a whole edit cycle — close project, extract, apply your operations, rebuild, AIXML-export to verify. Call it with **no operations** first: that mode is read-only and returns the three listings an operations array is written from |
 
 The bundle is **optional and not committed** — about 38 MB — so a fresh checkout has none until
 `tools\pylabview\provision.ps1` has run. `pylv_status` says so rather than failing obscurely.
