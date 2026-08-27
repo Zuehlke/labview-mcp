@@ -194,6 +194,20 @@ public class LvClassTests : IDisposable
     }
 
     [Fact]
+    public void ATimestampFieldIsAcceptedAndCarriesTheEmptyLiteral()
+    {
+        // Left out of the literal table at first, which refused `timestamp.Timestamp` with "no
+        // default literal for" - a message that reads as though AIXML could not express a
+        // timestamp at all. It can: 20 cached exports write `type="timestamp" ... value=""`,
+        // controls and constants alike, the same empty literal a string uses.
+        var fields = LvClass.ParseFields("timestamp.Timestamp,string.Name,double.Height");
+
+        Assert.Equal("cluster{timestamp.Timestamp,string.Name,double.Height}",
+                     LvClass.ClusterType(fields));
+        Assert.Equal("[,,0]", LvClass.ClusterValue(fields));
+    }
+
+    [Fact]
     public void PrivateDataAixmlNamesTheClusterWhatLabViewCallsIt()
     {
         var aixml = LvClass.PrivateDataAixml("Auto", LvClass.ParseFields("string.Make"));

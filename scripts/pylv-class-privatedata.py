@@ -35,18 +35,41 @@ HEADER = bytes.fromhex("26008000000000020005000500000c00400001ffffffff0000000100
 TRAILER = b"\x00\x00\x00\x00"
 BLOB_PROPERTY = "NI.LVClass.FlattenedPrivateDataCTL"
 
-# Attribute flips that separate a plain VI from a class private data control.  The strictness
-# trio (InStBit13, InStBit23, StrictTypeDefVI) is the recipe verified in pylabview-controls.md
-# section 2; IsPrivateDataForUDClass is what makes it private data rather than a strict typedef.
+# Attribute flips that separate a plain VI from a class private data control.
+#
+# InStBit13 IS DELIBERATELY NOT TOUCHED, and it used to be.  The strictness trio
+# (InStBit13, InStBit23, StrictTypeDefVI) is the recipe in pylabview-controls.md section 2 - and
+# that section is about a STRICT TYPEDEF.  A class private data control differs: measured
+# 2026-08-27 against a class built BY HAND IN THE IDE with the same five fields, whose control
+# carries `InStBit13="0"` - which is what an AIXML-generated VI already has, so setting it to 1
+# was pure damage.  `PropTypesIssues` and `DefaultErrorHandling` were wrong the same way.
+#
+# TAKE THE REFERENCE FROM A CLASS YOU BUILD, not from a shipped example.  A first attempt read
+# these off NI's `Circle Message.lvclass` and got InStBit23 backwards - that class disagrees with a
+# freshly authored one on exactly that bit, and its private data holds different fields so nothing
+# else could be held constant either.  That produced a second wrong answer on top of the first.
+#
+# All of it went unnoticed because the create-class load check asks LabVIEW whether it REPORTS the
+# class, and LabVIEW reports a class whose private data does not compile perfectly happily -
+# `missingItems: []`, a name, a private data item, `errorCode 0`.  Only the IDE's Error list shows
+# it, and `Execution.State`/`BadDDO` in the saved file.
+#
+# THE FLAGS ARE NOT THE WHOLE DEFECT.  With all of them correct the control still does not load:
+# its type space (VCTP/TM80/TopLevel) is a VI's, not a control's.  docs/lvclass-creation.md §2a has
+# that layout fully derived - it is buildable, and the piece still missing is that LabVIEW
+# RENUMBERS the type space when it saves, so a generator has to write the pre-save numbering rather
+# than the post-save one this was first measured in.
 FLAG_EDITS = [
     (r'(<Instrument Type=")Standard(")', r"\1Control\2", "Instrument Type"),
-    (r'(<Instrument [^>]*?InStBit13=")0(")', r"\g<1>1\2", "InStBit13"),
     (r'(<Instrument [^>]*?InStBit23=")1(")', r"\g<1>0\2", "InStBit23"),
     (r'(<Execution [^>]*?\bTypeDefVI=")0(")', r"\g<1>1\2", "TypeDefVI"),
     (r'(<Execution [^>]*?\bStrictTypeDefVI=")0(")', r"\g<1>1\2", "StrictTypeDefVI"),
+    # An AIXML-generated VI arrives with PropTypesIssues set - literally "this VI has property
+    # type problems" - and it survives into the control unless cleared here.  A LabVIEW-authored
+    # private data control carries 0.
+    (r'(<Execution [^>]*?\bPropTypesIssues=")1(")', r"\g<1>0\2", "PropTypesIssues"),
     (r'(<Execution2 [^>]*?\bInlinableDiagram=")1(")', r"\g<1>0\2", "InlinableDiagram"),
     (r'(<Execution2 [^>]*?\bIsPrivateDataForUDClass=")0(")', r"\g<1>1\2", "IsPrivateDataForUDClass"),
-    (r'(<Execution2 [^>]*?\bDefaultErrorHandling=")0(")', r"\g<1>1\2", "DefaultErrorHandling"),
 ]
 
 CLUSTER_LABEL = "Cluster of class private data"
@@ -112,9 +135,77 @@ def patch(main_xml: pathlib.Path, class_name: str) -> None:
         f"{indent}  </TypeDesc>\n")
     text = text[:match.start()] + wrapped + text[match.end():]
 
+    check_flags(text, main_xml)
+
     main_xml.write_text(text, encoding="utf-8", newline="")
     print(f"{main_xml.name}: patched into the private data control of {class_name}.lvclass. "
           f"pylv_rebuild it to {class_name}.ctl next.")
+
+    missing = check_data_space(text)
+    if missing:
+        print("  WARNING: this control will NOT load - " + ", ".join(missing) + ".")
+        print("  A class made from it is reported by LabVIEW and refused by its compiler: the IDE's")
+        print("  Error list says \"Front panel control contains a data type with a type definition\"")
+        print("  and every accessor built against it breaks with it. Take the private data control")
+        print("  from the IDE instead - docs/lvclass-creation.md section 2a has the transplant")
+        print("  recipe, and the layout that would have to be synthesised to lift this.")
+
+
+# What a loadable private data control has and a converted VI does not. These are the three
+# markers of the data space; the layout behind them is in docs/lvclass-creation.md section 2a.
+#
+# THIS IS A CHECK, NOT A CONSTANT MESSAGE, on purpose: the day the type space is synthesised these
+# markers appear and the warning goes quiet by itself, rather than having to be remembered.
+DATA_SPACE_MARKERS = [
+    (r'<TypeDesc Type="Cluster" Format="inline" Label="udf">',
+     "the VCTP carries no data-space cluster"),
+    (r'<Section Index="2" IndexShift="8"', "TM80 has no second section"),
+    (r'<DataFill TypeID="6">', "DFDS has no front-panel DCO table"),
+]
+
+
+def check_data_space(text: str):
+    """Which markers of a loadable control's data space are absent."""
+    return [why for pattern, why in DATA_SPACE_MARKERS if not re.search(pattern, text)]
+
+
+# What a LabVIEW-authored class private data control carries, measured 2026-08-27 against a
+# CONTROL CASE: a class built by hand in the IDE whose private data holds the very same five
+# fields as the generated one, so every difference is a difference in how the file was made
+# rather than in what it contains.
+#
+# THE REFERENCE MATTERS AS MUCH AS THE VALUES.  A first attempt took these off NI's shipped
+# `Circle Message.lvclass` and got InStBit23 wrong - that class disagrees with a freshly authored
+# one on exactly that bit, presumably a LabVIEW-version difference, and it has different fields
+# so nothing else could be held constant either.  Re-measure against a same-content class made by
+# the LabVIEW in front of you, not against whatever example is to hand.
+GOLDEN_FLAGS = {
+    "Instrument": {"Type": "Control", "InStBit13": "0", "InStBit23": "0"},
+    "Execution": {"TypeDefVI": "1", "StrictTypeDefVI": "1", "PropTypesIssues": "0"},
+    "Execution2": {"InlinableDiagram": "0", "IsPrivateDataForUDClass": "1",
+                   "DefaultErrorHandling": "0", "SourceOnly": "1"},
+}
+
+
+def check_flags(text: str, main_xml: pathlib.Path) -> None:
+    """Refuse to write a control whose flags differ from a LabVIEW-authored one."""
+    wrong = []
+    for element, wanted in GOLDEN_FLAGS.items():
+        found = re.search(r"<" + element + r"\b([^>]*)>", text)
+        if not found:
+            sys.exit(f"{main_xml.name}: no <{element}> element - this is not a VI bundle.")
+        for attribute, value in wanted.items():
+            got = re.search(re.escape(attribute) + r'="([^"]*)"', found.group(1))
+            if got is None or got.group(1) != value:
+                wrong.append(f"{element}.{attribute} is "
+                             f"{got.group(1) if got else 'absent'!r}, expected {value!r}")
+
+    if wrong:
+        sys.exit("  ABORT: the patched control does not match a LabVIEW-authored private data "
+                 "control:\n    " + "\n    ".join(wrong) +
+                 "\n  Writing it anyway produces a class LabVIEW loads and reports normally while "
+                 "its private data does not compile - which then breaks every accessor. Measured; "
+                 "see docs/lvclass-creation.md.")
 
 
 def encode(ctl: pathlib.Path, out: pathlib.Path) -> None:

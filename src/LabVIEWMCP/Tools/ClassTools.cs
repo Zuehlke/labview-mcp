@@ -70,6 +70,14 @@ internal sealed class ClassTools(LvaiConnection connection)
         written as a `Parent Libraries` item. Note that NOTHING in the gRPC interface confirms a
         parent link resolved - `lvai_describe_project`'s `parent` is the owning library, not the base
         class - so use lvai_describe_class to read back what was written.
+        THE PRIVATE DATA CONTROL DOES NOT LOAD, and that is the first thing to know: the class file
+        is written and LabVIEW reports it, but the IDE's Error list refuses the control - "Front
+        panel control contains a data type with a type definition" - and every accessor built
+        against it breaks with it. `ok` is false and `failedAtStep` is `privateData` when so. The
+        cause is measured: a control's type space (VCTP/TM80/DFDS) differs from the generated VI's
+        and cannot be synthesised from outside LabVIEW yet. USE THIS FOR THE CLASS SHELL and take
+        the private data control from the IDE; docs/lvclass-creation.md section 2a has the
+        transplant recipe, which is verified, and the full layout for anyone lifting the limit.
         MEMBER VIs ARE OUT OF REACH and this tool does not pretend otherwise: AIXML refuses a
         class-typed terminal (`Control with type=UDClassInst is not supported`), so accessors,
         constructors and dynamic dispatch methods cannot be generated. Use LabVIEW's own
@@ -142,6 +150,10 @@ internal sealed class ClassTools(LvaiConnection connection)
 
             // ---- the sequence -------------------------------------------------------------
             var total = Stopwatch.StartNew();
+            // Set from the patch step below. Nothing else in this sequence can tell a loadable
+            // private data control from one LabVIEW will refuse - not the project describe, which
+            // reports both identically.
+            var privateDataLoadable = true;
             var steps = new JsonArray();
             var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classes",
                 $"{className}-{Environment.ProcessId}-{total.GetHashCode():x}");
@@ -208,6 +220,14 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return Outcome(false, "patchPrivateData", steps, total, classPath, null,
                         $"{PrivateDataScript} could not turn the cluster VI into a private data " +
                         "control. Its stderr says which edit it expected and did not find.");
+
+                // The script inspects what it built and says so when the control lacks the data
+                // space a loadable one has. That is the honest verdict on this class, and it is
+                // the ONE thing the load check below cannot see - LabVIEW reports such a class
+                // as normal. Carried up here rather than left in the step's stdout, because a
+                // caller reads `note`, not a script's console output.
+                privateDataLoadable =
+                    patch["stdout"]?.GetValue<string>()?.Contains("will NOT load") is not true;
 
                 // 6. rebuild as the .ctl
                 var ctlPath = Path.Combine(work, $"{className}.ctl");
@@ -278,11 +298,23 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 if (scratch) TryDelete(projectUsed);
 
-                return verdict.Loaded
+                return verdict.Loaded && privateDataLoadable
                     ? Outcome(true, null, steps, total, classPath, verdict,
                         "Created and load-checked: LabVIEW reports the class by name with its " +
-                        "private data control. Inheritance is NOT confirmed by this - the RPC has " +
-                        "no field for it; read it back with lvai_describe_class.")
+                        "private data control, and the control carries the data space a loadable " +
+                        "one needs. Inheritance is NOT confirmed by this - the RPC has no field " +
+                        "for it; read it back with lvai_describe_class.")
+                    : verdict.Loaded
+                    ? Outcome(false, "privateData", steps, total, classPath, verdict,
+                        "THE CLASS FILE WAS WRITTEN and its private data control WILL NOT LOAD. " +
+                        "LabVIEW reports the class - that is all the loadCheck step shows, and it " +
+                        "cannot see this - but the IDE's Error list says \"Front panel control " +
+                        "contains a data type with a type definition\", and every accessor built " +
+                        "against it breaks with `ROOT CAUSE: Dependency is broken`. The " +
+                        "patchPrivateData step names what is missing. THE CLASS SHELL IS STILL " +
+                        "GOOD: take the private data control from the IDE and transplant it - " +
+                        "docs/lvclass-creation.md §2a has the recipe, and the layout that would " +
+                        "have to be synthesised to lift this limit altogether.")
                     : Outcome(false, "loadCheck", steps, total, classPath, verdict,
                         "THE FILE WAS WRITTEN and LabVIEW will not load it. A class reported with " +
                         "a blank libraryName means the private data blob was rejected; LabVIEW's " +

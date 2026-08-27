@@ -174,6 +174,133 @@ path…"* — points at paths and says nothing about the blob.
 is wrong" from "my blob is wrong" in one call. LabVIEW even renamed the private data control to the
 new class's name, so a donor blob is a legitimate way to get an empty-cluster class.
 
+## 2a. THE GENERATED PRIVATE DATA CONTROL DOES NOT LOAD — and why the load check misses it
+
+**Measured 2026-08-27. Read this before trusting `lvai_create_class`.** Every class it has produced
+carries a private data control that LabVIEW reports normally and refuses to compile:
+
+```
+Error list -> neillClass.lvclass:neillClass.ctl
+  Front Panel Errors
+    Panel: Front panel control contains a data type with a type definition.
+  Details: The front panel control contains a datatype with a typedef and you
+           cannot create a typedef from this control.
+```
+
+Every accessor generated against it then breaks too, with `ROOT CAUSE: Dependency is broken`.
+
+**The load check cannot see this and never could.** It asks `lvai_describe_project` whether LabVIEW
+reports the class, and LabVIEW reports a class whose private data does not compile perfectly
+happily — right name, `privateDataItem: neillClass.ctl`, `missingItems: []`, `errorCode 0`. The
+file itself says otherwise and nobody was reading it: after LabVIEW saves such a class,
+`Execution.State` is `0` and `Execution.BadDDO` is `1`. **Those two are the check that should have
+been there.**
+
+### Two causes, and the first one is fixed
+
+**Flags.** `pylv-class-privatedata.py` set three attributes to the opposite of what a
+LabVIEW-authored control carries — `InStBit23`, `PropTypesIssues` and `DefaultErrorHandling`. The
+strictness recipe it borrowed from `pylabview-controls.md` §2 is a **strict typedef** recipe, and a
+class private data control differs. Fixed, and the script now checks the whole flag set against
+measured values instead of trusting its own edit list.
+
+Take that reference from a class **you build in the IDE with the same fields**, not from a shipped
+example: NI's `Circle Message.lvclass` disagrees on `InStBit23`, and following it produced a second
+wrong answer.
+
+**The type space, which is NOT fixed.** With the flags corrected the control still does not load,
+and the reason is structural. A private data control's `VCTP` (VI Consolidated Type Pool) and
+`TM80` (Data Space Type Map) describe a *control*; the AIXML-generated VI's describe a *VI*, and
+the patch leaves them alone.
+
+Counted on two controls holding the identical five fields — one built by LabVIEW, one generated:
+
+| | LabVIEW's | generated |
+|---|---|---|
+| `VCTP` flat entries | 28 | 12 |
+| `TM80` sections | 2 (`IndexShift` 2 and 8) | 1 |
+| `TopLevel` entries | 19 | 12 |
+
+### The layout, derived — everything below is a function of the field list
+
+`VCTP` flat entries, for fields `f0..fn-1`:
+
+```
+0 .. n-1   the field types, each Labelled with the field name
+n          TypeDef  { Cluster "Cluster of class private data" { 0 .. n-1 } }
+n+1        NumUInt8
+n+2        RepeatedBlock
+n+3        NumInt32
+n+4        RepeatedBlock
+n+5        NumUInt32  Label="flg"
+n+6        Ptr        Label="oRt"
+n+7        NumUInt32  Label="eof"
+n+8        Cluster    Label="udf"  { flg, oRt, eof }
+n+9 ..     the DISTINCT field types, UNLABELLED, in order of first appearance
+k          Cluster    Label="txd"  { one distinct-type id PER FIELD, in field order }
+k+1        Cluster                 { udf, txd }
+k+2        Cluster "Cluster of class private data"  { 0 .. n-1 }      <- a SECOND copy
+k+3..k+5   NumInt16, NumUInt16, NumInt8
+k+6        Block BlockSize="0x4"
+k+7        Cluster                 (the front-panel DCO definition, 32 members)
+k+8        RepeatedBlock NumRepeats="1" { k+7 }
+k+9        Void
+k+10       Boolean
+```
+
+Measured on five fields (timestamp, string, double, double, string): `txd` came out
+`{14,15,16,16,15}` — the field sequence mapped onto the three distinct types. The same skeleton in
+the same order appears in NI's `Circle Message` private data, which is the second, independent
+sighting that says it is a skeleton rather than one class's accident.
+
+`TopLevel` maps the TypeIDs everything else uses onto those flat ids. LabVIEW's, for five fields:
+
+```
+1->TypeDef  2->RepeatedBlock(n+2)  3->RepeatedBlock(n+4)  4->Cluster{udf,txd}
+5->private-data cluster  6->DCO table  7->Void  8,9,10->field types 0,1,2
+11->Void  12,13->private-data cluster  14->Boolean  15..19->field types 0..4
+```
+
+`TM80` then needs its second section, `Index="2" IndexShift="8"`, one `<Client>` per TypeID from 8
+up — `TMFBit3="1"` for each field type, an empty `<Client />` for the `Void`.
+
+The data-space numbers in that DCO record are derivable too, and two references pin them:
+
+| | five fields | NI's, empty |
+|---|---|---|
+| `flagDSO` / `flagTMI` / `defaultDataTMI` | 700 / 2 / 3 | 700 / 2 / 3 |
+| `transferDataOffset` | 712 | 712 |
+| `defaultDataOffset` | 752 | 712 |
+| `dsSz` | 40 | 0 |
+
+So four constants, `defaultDataOffset = 712 + dsSz`, and `dsSz` = the plain sum of the field sizes
+— 16 for a timestamp, 4 for a string (it is a handle), 8 for a double: 16+4+8+8+4 = 40. **No
+alignment padding**: that control's second double sits at offset 20.
+
+### What is left to do — and the trap that stopped a first attempt
+
+Write the layout out for an arbitrary field list. Every entry above is derivable, so this is
+mechanical, but **the numbering above is the POST-SAVE one.** It was measured by decoding controls
+out of finished `.lvclass` files, and LabVIEW renumbers the type space when it saves. What
+`pylv-class-privatedata.py` actually receives is the freshly generated VI's bundle, whose flat list
+begins `Void, Function, Function, <fields>, Cluster, Boolean` — a different order with no
+connector-pane entries at all. A generator written against the post-save numbering aborts on the
+real input, which is how this was caught; one written to *emit* it would produce a control whose
+indices mean nothing.
+
+So the next step is to measure the same layout **before** LabVIEW has touched it: build a class in
+the IDE, extract its `.ctl` without ever letting LabVIEW re-save it, and derive the numbering from
+that. Then verify with `Execution.State`/`BadDDO` in the saved file, never with the project
+describe.
+
+**Until it exists, the honest split is: the class shell from this tool, the private data control
+from the IDE.** Transplanting a LabVIEW-authored control into a generated class works and is worth
+knowing: decode it with `pylv-class-privatedata.py decode`, rewrite the four places that carry the
+class name — `<Library>`, `<Section Name>` and the two `<Label>` in the TypeDef — rebuild, and
+`encode` it back into the class file. Verified 2026-08-27: the class loaded clean with its ten
+accessors intact. **The class name is not the problem** — it sits in exactly those four places in
+both a working and a broken control.
+
 ## 3. Where the route ends
 
 ### `lvai_describe_project` does not report class inheritance

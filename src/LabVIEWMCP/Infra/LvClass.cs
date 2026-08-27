@@ -193,6 +193,12 @@ internal static class LvClass
     private static readonly Dictionary<string, string> Literals = new(StringComparer.Ordinal)
     {
         ["string"] = "",
+        // A timestamp's default is the EMPTY literal, the same shape as a string's - counted in 20
+        // cached exports, every `type="timestamp"` carrying `value=""`, controls and constants
+        // alike. It was left out of this table at first, which refused `timestamp.Timestamp` as a
+        // type "this tool has no default literal for" and read as though AIXML could not express
+        // one. AIXML can; only the table could not.
+        ["timestamp"] = "",
         ["bool"] = "false",
         ["double"] = "0",
         ["single"] = "0",
