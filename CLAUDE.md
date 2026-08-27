@@ -83,18 +83,49 @@ any VI's description property, including `vi.lib`. Formats and measurements in
 `docs/example-corpus.md`.
 
 **Reuse a palette VI before you rebuild anything.** Query `lvai_palette_index` for the operation
-*before* designing a diagram; it lists exactly the VIs a generated `Call` may legally target on
-this station. **A hit in that index is the design — use it.** The palette path printed beside each
-hit (`Categories\OpenG\functions_oglib_string.mnu`) is the proof that this station has that VI.
-Rebuilding logic from primitives is the fallback, used only when the index has no hit or the target
-genuinely fails to resolve — and say which of the two it was.
+*before* designing a diagram; it is the searchable catalogue of what this station has. **A hit in
+that index is the design — use it.** The palette path printed beside each hit
+(`Categories\OpenG\functions_oglib_string.mnu`) is the proof that this station has that VI.
+Rebuilding logic from primitives is the fallback, used only when the index has no hit *and* the
+target genuinely fails to resolve — and say which of the two it was.
 
 The mistake this prevents: an empty-string filter was hand-built from a For loop, a Case
 structure, a shift register and `Build Array` — seven elements — because a `Call` to a
 library-owned VI was believed to be rejected. It is not.
 `openg_array.lvlib:Filter 1D Array__ogtk.vi` validated, generated, ran, and produced
-byte-identical output in three nodes. **The boundary is palette reachability, not library
-membership.**
+byte-identical output in three nodes.
+
+**A MISS IN THE INDEX IS NOT PROOF THAT A CALL IS ILLEGAL.** This clause used to end "the boundary
+is palette reachability, not library membership", and that is the *second* wrong answer this rule
+has had. Measured 2026-08-27 over eight probes: generation resolves a target **by name against what
+the installation can find**, and the palette has nothing to do with it. A library member resolves
+by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI in a plain folder
+under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
+does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
+seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
+loose or in a project library.
+
+The index compounds this by being incomplete: it scans `menus\` and `LVAddons\`, so it does not see
+Caraya at all, whose `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`. A query
+for `Caraya` answers "no match" for VIs that validate and run. Search the index to *find* something;
+settle a target spelling with a throwaway `ValidateAIXML`. Full table in §9 of
+`lvai_aixml_reference`.
+
+**The practical prize is a placeholder you generate yourself, and `lvai_placeholder_subvi` does
+it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be given a call node
+it is allowed to create — and pylabview can then point it at your own code, which AIXML can never
+target. That is how a generated unit test comes to call its subject as an ordinary subVI.
+
+The tool clones the subject's pane, caches the stub in `user.lib\LV_MCP\` under a hash of the
+signature, and hands back the `Call` element and the matching `retarget` operation. **Do not hunt
+the palette for a stand-in and do not hand-write one**: a borrowed placeholder needs a lucky hit per
+signature and forces the SUBJECT's pane to be reshaped, which then breaks on every regeneration —
+`7101, At least one test is not in a executable state`, with nothing in the message about panes.
+
+And the clone must be EXACT. Measured on a controlled pair differing only in terminal type: a
+Variant stub retargeted onto a `double` subject gives `Error 7, Bad Linkage`; the `double` one runs.
+The pane's type descriptor is part of the link binding, so there is no generic placeholder.
+`docs/labview-unit-testing.md` §3a.
 
 **But the index prints the bare name, and for a library-owned VI that name is not the target.**
 `Draw Image from File__ogtk.vi` is refused; `openg_picture.lvlib\3ADraw Image from
@@ -599,6 +630,8 @@ literally it argued away 600 usable palette VIs.
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
+| How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
+| How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |

@@ -19,9 +19,19 @@ internal sealed class PaletteTools
                    Title = "Palette-reachable VIs of the installed LabVIEW")]
     [Description("""
         The VIs reachable from this LabVIEW installation's palettes, read from its .mnu files.
-        Use this before putting a `Call` in AIXML: generation accepts a Call ONLY to a
-        palette-reachable VI. Project-local, library-local and loose .vi files are all rejected as
-        "Unsupported SubVI", so this list is exactly the set of legal targets.
+        Use this to FIND a VI to Call - it is the searchable catalogue of what this station has.
+        THIS LIST IS NOT THE SET OF LEGAL TARGETS, and this description claimed it was until
+        2026-08-27. Generation resolves a target BY NAME against what the installation can find, so
+        things absent from here resolve too: a library member with its qualifier
+        (`Caraya.lvlib:VI Name.vi`, in no palette), and a loose VI in a plain folder under vi.lib or
+        user.lib by its bare name - which is what lets a GENERATED placeholder dropped into
+        user.lib be callable with no .lvlib, no .mnu and no restart. What does NOT resolve: a VI
+        inside an .llb by bare name, a path in any spelling, and project-local code, loose or in a
+        project library. Full table in lvai_aixml_reference, section 9.
+        The index also misses whole toolkits: Caraya's .mnu files live under
+        vi.lib\addons\_JKI Toolkits\dynamic_palette\, which is neither scan root, so a query for
+        "Caraya" answers "no match" for VIs that validate and run. A MISS HERE IS NOT PROOF THAT A
+        CALL IS ILLEGAL - settle a target with a throwaway ValidateAIXML instead.
         A HIT IS THE VI, NOT NECESSARILY THE TARGET STRING. A palette VI owned by a library needs
         its `lvlib:` qualifier and is refused by bare name - MEASURED: `Draw Image from
         File__ogtk.vi` gives "Unsupported SubVI" where `openg_picture.lvlib:Draw Image from
