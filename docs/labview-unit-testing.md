@@ -154,6 +154,31 @@ Two blind alleys, so they are not walked again:
 - **The dynamic palette needs `.mnu` files**, which are binary LabVIEW resources and cannot be
   authored from nothing. Neither route is needed: loose in a plain folder already resolves.
 
+### The placeholder cannot bridge a CLASS, and that is the one gap worth knowing up front
+
+**The stub is itself generated through AIXML, so it inherits every AIXML refusal.** Measured
+2026-08-28 against `Read Name.vi`, an accessor of `Haus.lvclass`:
+
+```
+Error 53 occurred at LV AI Core.lvlibp:VI generator.vi
+  Control with type=UDClassInst is not supported
+  Indicator with type=UDClassInst is not supported
+```
+
+`lvai_placeholder_subvi` reports this as `errorKind: stubRefused` with the validate answer attached,
+so the cause is readable rather than mysterious — but there is no way around it. A dynamic dispatch
+accessor carries the class **in and out**, so both halves fail; a static one still has the class
+input. **Every class member VI has a class terminal on its pane**, so:
+
+- no generated VI can call an accessor, a constructor or a method, and
+- the slot pattern does not lift it either — the plug swapped into the socket would need that same
+  pane.
+
+So generated unit tests reach ordinary VIs and **not** class code, until AIXML accepts
+`UDClassInst`. This is why `labview-class-generator`'s toolset omits `lvai_placeholder_subvi`: it
+would look like an escape and is not one. `docs/lvclass-creation.md` §3 has the same limit from the
+other side, including the donor route that is blocked for a different reason.
+
 ### The original route, for the record
 
 The first working version borrowed `NI_Gmath.lvlib:Error Function.vi` from the palette — `x`

@@ -322,8 +322,8 @@ anchoring a comment to what it is actually about gets the side right for free.
 diagram comments alike. A German request does not imply German text.** Only an explicit wish
 ("auf Deutsch", "in French") changes it, and then everything in that VI follows it.
 
-This rule already existed and was still broken, which is the part worth keeping: all three
-`.claude/agents/labview-*.md` state it, and working *directly* — as this session did, because the
+This rule already existed and was still broken, which is the part worth keeping: every
+`.claude/agents/labview-*.md` states it, and working *directly* — as this session did, because the
 Agent tool was not to be used — never reads them. A rule that lives only in an agent definition is
 invisible to the route that does not spawn an agent, the same failure mode as a document that is
 embedded but never served. Twelve German comments and sixteen German descriptions shipped before the
@@ -383,6 +383,22 @@ Two practical notes, both measured: these providers need a project **open and ac
 LabVIEW through `Project\3AActive Project` and answer `Error 1055` otherwise — and LabVIEW **adopts
 every VI it has open** when it saves that project, so a run leaves its own helper and carrier listed
 in the user's project unless they are stripped afterwards.
+
+**CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
+untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the
+new class in LabVIEW's **memory past the project close**, so the next run opened a `.lvproj` listing
+that class, could not bind the item to the copy already in memory, and created a child class with
+**no parent and no error**. One `Close Reference` fixed it: `parent index` went from −1 to 0, and a
+two-class, twelve-accessor run that had needed **three LabVIEW restarts needed none**.
+
+The process lesson is bigger than the bug. *"Only a restart fixes it"* was accepted as a diagnosis
+for a day and written into a tool, a document and an agent — and it is not a diagnosis, it is a
+description of a symptom, because a restart clears every kind of leaked state at once and therefore
+identifies none of them. It also produced a confident wrong model (a "stale project cache") that a
+five-minute controlled test refuted: with the project closed, an edit to the `.lvproj` **is** picked
+up on the next open. What is real, and was the grain of truth underneath, is that
+`lvai_close_active_project` runs `Save` before `Close` — so an edit made while LabVIEW holds the
+project open is destroyed by the close. Edit a project file only while it is closed.
 
 `pylv_route` runs two checks because one is not sound: it validates the *untouched* export, and it
 scans that export for node families NI publishes as unsupported. The quiet families are listed in
@@ -645,6 +661,7 @@ literally it argued away 600 usable palette VIs.
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
+| How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
@@ -700,8 +717,9 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 
 ## The agent definitions
 
-The three `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
-of them needs a client restart before it can be spawned.
+The four `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
+before it can be spawned.
 
 **A definition whose YAML frontmatter does not parse is skipped in silence, and the error names the
 wrong cause.** What you get is `Agent type 'labview-vi-generator' not found`, which reads as "the
