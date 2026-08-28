@@ -394,9 +394,13 @@ two-class, twelve-accessor run that had needed **three LabVIEW restarts needed n
 The process lesson is bigger than the bug. *"Only a restart fixes it"* was accepted as a diagnosis
 for a day and written into a tool, a document and an agent — and it is not a diagnosis, it is a
 description of a symptom, because a restart clears every kind of leaked state at once and therefore
-identifies none of them. It also produced a confident wrong model (a "stale project cache") that a
-five-minute controlled test refuted: with the project closed, an edit to the `.lvproj` **is** picked
-up on the next open. What is real, and was the grain of truth underneath, is that
+identifies none of them. It also produced a model — a "stale project cache" — that a five-minute
+controlled test appeared to refute, because with the project closed an edit to the `.lvproj` was
+picked up on the next open. **A later cold run showed the stale copy is real after all**: a child
+class came back `parent index = -1` while LabVIEW held a project containing only carrier VIs, one
+of them from the previous run, so that copy had outlived a `closeProject` that reported success.
+Both observations stand; what decides between them is not known. Read `parent index` rather than
+trusting either. What is real, and was the grain of truth underneath, is that
 `lvai_close_active_project` runs `Save` before `Close` — so an edit made while LabVIEW holds the
 project open is destroyed by the close. Edit a project file only while it is closed.
 

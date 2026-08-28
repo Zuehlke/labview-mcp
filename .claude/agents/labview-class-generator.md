@@ -45,12 +45,18 @@ they were all measured, most of them twice.
   accessors once, and the correction was explicit: *"stelle bitte alles noch auf dynamic dispatch
   um. Das sollte Default sein, wenn wir klassen erstellen!"* Only an explicit request changes it.
 
-- **Back-to-back class calls on one project are fine — no restart between them.** A parent and its
-  child in one LabVIEW session give `parent index 0`, verified end to end. This used to be the
-  opposite rule, and the workaround (three kills per run) hid the actual bug for a day: NI's
-  provider returns a `Class` refnum the helper never closed, which kept each new class in memory
-  past the project close, so the next run could not bind the project item to it. Closing that one
-  reference removed every restart.
+- **Back-to-back class calls on one project USUALLY work — do not restart pre-emptively, but be
+  ready to.** Closing the `Class` refnum NI's provider returns (a leak the helper had for months)
+  removed the deterministic failure, and four two-class runs in a row then came back clean with
+  `parent index 0`. A fifth, on a **freshly started** LabVIEW, did not: the child came back
+  `parent index -1` from a `.lvproj` that plainly listed the parent, because LabVIEW was serving a
+  copy of the project that held only the carrier VIs. **The discriminator is unknown.**
+
+  So: run without restarts, and **read `parent index` on every child**. If it is `-1` while the
+  project file lists the parent, that is this case — restart LabVIEW, delete the class that was
+  just created without its parent, and repeat that one call. Do not carry on: the class is real,
+  compiles, and is silently a root class. `lvai_create_class` reports `ok: false` for it, so you
+  will not miss it unless you ignore the answer.
 
 - **Never delete a `.lvclass` file while LabVIEW holds it** — its class is then in memory with no
   file behind it, and the next `Add Class to Project (path).vi` answers **`Error 1614`** at

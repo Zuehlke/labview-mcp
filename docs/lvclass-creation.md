@@ -57,8 +57,17 @@ restart cleared it, and that a full run therefore needed three restarts (before 
 the accessors, and once at the end). Every symptom fitted. The reasoning did not survive a direct
 test:
 
-- **A fresh open DOES re-read the file.** With the project closed, adding an item to the `.lvproj`
-  on disk and re-opening showed that item. There is no cache.
+- **A fresh open re-read the file in that test.** With the project closed, adding an item to the
+  `.lvproj` on disk and re-opening showed that item.
+
+  **"There is no cache" is how this line first read, and it is too strong — a later cold run
+  refuted it.** Building `Haus` and then `Hochhaus` on a freshly started LabVIEW, the child came
+  back `parent index = -1`, and the reason was visible in the project file afterwards: LabVIEW's
+  copy held **both carrier VIs and no class at all**, including the carrier from the *previous*
+  run, so that copy had survived a `closeProject` that reported success. The `.lvproj` on disk
+  listed `Haus.lvclass` the whole time. So LabVIEW sometimes re-reads and sometimes serves a stale
+  copy; **what decides it is not known**, and neither observation may be generalised. A restart
+  clears it, and the tool's own guard catches the case rather than shipping a parentless class.
 - **What is real is that `lvai_close_active_project` SAVES before it closes** — the helper runs
   `Save` then `Close`, deliberately, because `Close` carries no save parameter and an unsaved
   project would risk a modal prompt. So an edit made to a `.lvproj` *while LabVIEW holds it open* is
@@ -131,6 +140,28 @@ documented crash site here. It was tested by wiring the owner back in and runnin
 first regenerated the helper and was **clean**, the second and third were clean on a cached helper,
 and the fourth **wedged on a cached helper** — LabVIEW itself hung, `Responding: False`. So that
 hypothesis is refuted too.
+
+### Cold versus warm LabVIEW: a fourth hypothesis, also refuted
+
+**Tested deliberately 2026-08-28** after three clean runs in a warm instance were followed by two
+failed cold ones. A *cold* trial is a parent-then-child pair issued as the first thing a freshly
+started LabVIEW does; a *warm* trial is the same pair after that instance has already created at
+least one class.
+
+| | trials | failed |
+|---|---|---|
+| **cold** | 4 | **4** — two hangs, one `parent index -1`, one death during the first class's `closeProject` |
+| **warm** | 6 | **1** — a hang, on the *first* class of the trial |
+
+So a cold start is much worse, and it is **not** the explanation: a warm instance hung too, three
+pairs into its life. Nothing distinguishes the runs that fail from the runs that do not. That makes
+four hypotheses proposed and refuted in one day — stale project cache, the `New Class Owner`
+wiring, helper regeneration, and now cold start.
+
+**What every failure has in common is only this: no result was ever wrong.** Each one either
+returned `ok: false` naming the problem, or aborted before writing anything, and every class that
+did get written was correct — right fields, right parent, right private data. The instability costs
+time and restarts; it has not yet produced a bad artefact.
 
 ### The tally, and why the owner stays unwired
 
