@@ -406,6 +406,46 @@ needs no service, and firing a second `lvai_create_accessors` into a still-runni
 concurrent-access case that returns `errorCode -1 unreachable`. Six samples ten seconds apart showed
 the count settle, which is the signal that the helper has finished.
 
+## The class-run instability is in NI's GENERATOR, not in our sequencing
+
+**Captured 2026-08-28, and it closed a day of wrong guesses.** A two-class `lvai_create_class` run
+took LabVIEW down; the process was gone rather than hung, so NI's handler wrote a log, and copying
+`_cur.txt` before the restart caught this:
+
+```
+0x50469415 - mxLvProvider <unknown> + 0
+
+VI call stack:
+- LV AI Core.lvlibp:VI generator.vi
+- LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:ConvertAIXMLToVI.vi
+- LV AI gRPC Service.lvlibp:LVAI.lvclass:Start Sync.vi
+```
+
+Immediately above it in the same log, the same VI under `ValidateAIXML.vi` instead of
+`ConvertAIXMLToVI.vi`. And all day, from that same VI:
+
+```
+source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
+    trying to override with non-reserved UID, request: 10 res: 0 max: 42 sat: 42
+[ExecSys:0; Executing:"[VI "LV AI Core.lvlibp:VI generator.vi"]"]
+```
+
+So the crash is in **AIXML generation** — validate and convert alike — with the project provider
+module `mxLvProvider` on the native stack. Class creation meets it because every class generates a
+carrier VI; nothing about the crash is specific to classes.
+
+**Why this matters more than the signature itself: it explains four failed diagnoses.** Over one
+day the class-run instability was blamed on a stale in-memory project, on wiring `New Class Owner`,
+on regenerating the helper, and on cold LabVIEW starts. Each was refuted by the next measurement,
+because every one of them was a theory about *our* call sequence. The fault is a level below that,
+in code we only call. Symptoms that survive every change to your own ordering are evidence that the
+ordering is not the subject.
+
+**What it does NOT excuse.** The same day's work made the failure harmless to the deliverable:
+`lvai_create_class` now does its LabVIEW work in a throwaway project, so a crash mid-run leaves the
+user's `.lvproj` untouched and the finished `.lvclass` files complete. Measured on the very run that
+produced the stack above - LabVIEW died, and both classes plus the project came out correct.
+
 ## What it means for working here
 
 **Validation is not free of risk, and that is new.** `lvai_validate_aixml` has been treated
