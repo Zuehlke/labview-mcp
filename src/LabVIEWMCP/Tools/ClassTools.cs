@@ -42,7 +42,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
-    private const string PrivateDataScript = "pylv-class-privatedata.py";
+    private const string CreateClassHelperAixmlFileName = "lvai_create_class.xml";
 
     // ---------------------------------------------------------------- create
 
@@ -123,15 +123,12 @@ internal sealed class ClassTools(LvaiConnection connection)
             try { parsed = LvClass.ParseFields(fields); }
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
-            if (PyLabview.Locate() is not { } bundle)
-                return Json.Error("notProvisioned",
-                    "The pylabview bundle is not present, and the private data control cannot be " +
-                    "built without it. Run tools\\pylabview\\provision.ps1.");
-
-            if (StatusTools.ScriptsDirectory() is not { } scriptsDirectory)
+            // pylabview is NO LONGER a precondition here. It was, while the private data control
+            // was built by converting a generated VI; LabVIEW's own provider VIs need none of it.
+            if (StatusTools.ScriptsDirectory() is null)
                 return Json.Error("noScriptsDirectory",
                     "No scripts folder next to the exe - lvai_status reports it as " +
-                    $"scriptsDirectory. {PrivateDataScript} lives there.");
+                    $"scriptsDirectory. {CreateClassHelperAixmlFileName} lives there.");
 
             if (parentClassPath is { Length: > 0 } && !File.Exists(parentClassPath))
                 return Json.Error("badArguments",
@@ -149,11 +146,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                     "that is what you want, or use lvai_describe_class to see what is there.");
 
             // ---- the sequence -------------------------------------------------------------
+            //
+            // NI'S OWN PROVIDER VIs DO THE WORK, and that is the whole design. A class private
+            // data control is compiler output: its type space and data-space offsets describe a
+            // control, not the VI an AIXML cluster produces. Converting one into the other by
+            // flipping flags gave a class LabVIEW reported normally and refused to compile, and
+            // every accessor built against it broke with it. LabVIEW does it correctly in about
+            // 350 ms. docs/lvclass-creation.md section 2a has what the old route would have had
+            // to synthesise, and why it was abandoned.
             var total = Stopwatch.StartNew();
-            // Set from the patch step below. Nothing else in this sequence can tell a loadable
-            // private data control from one LabVIEW will refuse - not the project describe, which
-            // reports both identically.
-            var privateDataLoadable = true;
             var steps = new JsonArray();
             var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classes",
                 $"{className}-{Environment.ProcessId}-{total.GetHashCode():x}");
@@ -162,117 +163,74 @@ internal sealed class ClassTools(LvaiConnection connection)
 
             try
             {
-                // 1. the cluster, as AIXML
-                var aixmlPath = Path.Combine(work, $"{className}.xml");
-                await File.WriteAllTextAsync(
-                    aixmlPath, LvClass.PrivateDataAixml(className, parsed), ct);
-                steps.Add(new JsonObject
+                // 1. the project, which must exist and be ACTIVE before the provider runs: the
+                //    helper reaches LabVIEW through Project:Active Project, and finds a parent
+                //    class only among the classes that project has open.
+                var (projectUsed, scratch, projectStep) =
+                    PrepareProject(projectPath, classPath, className, work, parentClassPath);
+                steps.Add(projectStep);
+
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed),
+                    timeoutSeconds, ct);
+                steps.Add(Step("openProject", opened));
+                if (ErrorCode(opened) is not 0)
+                    return Outcome(false, "openProject", steps, total, classPath, null,
+                        "The project could not be opened, so no project is active and NI's class " +
+                        "provider has nothing to work in. Nothing was written.");
+
+                // 2. the carrier: one front-panel control per field, which is what NI's
+                //    add-member-data takes references to. No carrier means no private data.
+                var carrierPath = "";
+                if (parsed.Count > 0)
                 {
-                    ["step"] = "authorCluster",
-                    ["aixmlPath"] = aixmlPath,
-                    ["clusterType"] = LvClass.ClusterType(parsed),
-                    ["fields"] = parsed.Count,
-                });
+                    var carrierAixml = Path.Combine(work, $"{className}-fields.xml");
+                    await File.WriteAllTextAsync(
+                        carrierAixml, LvClass.CarrierAixml(className, parsed), ct);
+                    carrierPath = Path.Combine(work, $"{className}-fields.vi");
 
-                var aixml = new AixmlTools(connection);
-
-                // 2. validate - the cheap failure path, and the one that judges a field type this
-                //    tool let through
-                var validate = await aixml.ValidateAixmlAsync(aixmlPath, timeoutSeconds, ct);
-                steps.Add(Step("validate", validate));
-                if (ErrorCode(validate) is not 0)
-                    return Outcome(false, "validate", steps, total, classPath, null,
-                        // An unreachable LabVIEW and a refused cluster both stop here, and saying
-                        // "LabVIEW refused the field" for a missing gRPC port sends the reader after
-                        // a field name that was never the problem.
-                        Guarded(validate)
-                            ? "LabVIEW could not be reached, so nothing was written and nothing " +
-                              "was judged. The step below carries the connection error - the " +
-                              "service starts with Nigel, not with the IDE."
-                            : "LabVIEW refused the cluster, so nothing was written. The message " +
-                              "under steps names the field it could not build.");
-
-                // 3. generate it as an ordinary VI. This is the only thing LabVIEW contributes, and
-                //    it is what makes the whole route work: the cluster's types and its front panel
-                //    heap are built by LabVIEW, so nothing downstream adds a type to VCTP.
-                var viPath = Path.Combine(work, $"{className}-privatedata.vi");
-                var convert = await aixml.ConvertAixmlToViAsync(aixmlPath, viPath, false,
-                                                                timeoutSeconds, ct);
-                steps.Add(Step("generateCluster", convert));
-                if (ErrorCode(convert) is not 0)
-                    return Outcome(false, "generateCluster", steps, total, classPath, null,
-                        "The cluster validated but would not generate.");
-
-                // 4. extract
-                var pylv = new PyLabviewTools(connection);
-                var bundleDirectory = Path.Combine(work, "bundle");
-                var extract = await pylv.ExtractAsync(viPath, bundleDirectory, true, timeoutSeconds, ct);
-                steps.Add(Step("extract", extract));
-                if (!Succeeded(extract) || Field(extract, "mainXml") is not { } mainXml)
-                    return Outcome(false, "extract", steps, total, classPath, null,
-                        "pylabview could not read the generated cluster VI.");
-
-                // 5. patch it into a class private data control
-                var patch = await RunScriptAsync(bundle, scriptsDirectory, "patchPrivateData",
-                    ["patch", mainXml, className], timeoutSeconds, ct);
-                steps.Add(patch);
-                if (patch["exitCode"]?.GetValue<int>() != 0)
-                    return Outcome(false, "patchPrivateData", steps, total, classPath, null,
-                        $"{PrivateDataScript} could not turn the cluster VI into a private data " +
-                        "control. Its stderr says which edit it expected and did not find.");
-
-                // The script inspects what it built and says so when the control lacks the data
-                // space a loadable one has. That is the honest verdict on this class, and it is
-                // the ONE thing the load check below cannot see - LabVIEW reports such a class
-                // as normal. Carried up here rather than left in the step's stdout, because a
-                // caller reads `note`, not a script's console output.
-                privateDataLoadable =
-                    patch["stdout"]?.GetValue<string>()?.Contains("will NOT load") is not true;
-
-                // 6. rebuild as the .ctl
-                var ctlPath = Path.Combine(work, $"{className}.ctl");
-                var rebuild = await pylv.RebuildAsync(mainXml, ctlPath, timeoutSeconds, ct);
-                steps.Add(Step("rebuildControl", rebuild));
-                if (!Succeeded(rebuild) || !File.Exists(ctlPath))
-                    return Outcome(false, "rebuildControl", steps, total, classPath, null,
-                        "The patch applied but the control would not rebuild.");
-
-                // 7. wrap it into the property text. The length field is computed here rather than
-                //    assumed - see LvClass.Wrap for what getting it wrong looks like.
-                var ctl = await File.ReadAllBytesAsync(ctlPath, ct);
-                var blob = LvClass.Wrap(ctl);
-                steps.Add(new JsonObject
-                {
-                    ["step"] = "wrapPrivateData",
-                    ["ctlBytes"] = ctl.Length,
-                    ["blobChars"] = blob.Length,
-                    ["roundTripped"] = LvClass.Unwrap(blob).SequenceEqual(ctl),
-                });
-
-                // 8. the document
-                string? parentQualified = null, parentUrl = null;
-                if (parentClassPath is { Length: > 0 })
-                {
-                    parentQualified = LvClass.QualifiedName(parentClassPath);
-                    // Relative to the CLASS FILE, not its folder - a parent one folder over is
-                    // ../../Auto/Auto.lvclass, which is the shape NI's own classes carry.
-                    parentUrl = LvClass.RelativeUrl(classPath, Path.GetFullPath(parentClassPath));
+                    var carrier = await new BulkTools(connection).GenerateViAsync(
+                        carrierAixml, carrierPath, openVI: false, measurePane: false,
+                        panePattern: null, timeoutSeconds, ct);
+                    steps.Add(Step("carrier", carrier));
+                    if (!File.Exists(carrierPath))
+                        return Outcome(false, "carrier", steps, total, classPath, null,
+                            "The carrier VI could not be generated, so there are no control " +
+                            "references to make fields from. LabVIEW's own message is in the step " +
+                            "above - a refused field type shows up here, by name.");
                 }
 
-                await File.WriteAllTextAsync(
-                    classPath, LvClass.Document(className, blob, parentQualified, parentUrl), ct);
-                steps.Add(new JsonObject
-                {
-                    ["step"] = "writeClass",
-                    ["classPath"] = classPath,
-                    ["bytes"] = new FileInfo(classPath).Length,
-                    ["parent"] = parentQualified,
-                    ["parentUrl"] = parentUrl,
-                });
+                // 3. NI's Add Class + Add Member Data, in one helper run
+                var helperRun = await RunCreateClassHelperAsync(
+                    classPath, parentClassPath, carrierPath, timeoutSeconds, ct);
+                steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
-                // 9. the project entry
-                var (projectUsed, scratch, projectStep) = PrepareProject(projectPath, classPath, className, work);
-                steps.Add(projectStep);
+                var provider = ReadProviderRun(helperRun);
+                if (provider.ErrorCode is not 0 || !File.Exists(classPath))
+                    return Outcome(false, "provider", steps, total, classPath, null,
+                        "NI's class provider did not create the class. Its own error is in the " +
+                        "provider step. Error 1055 there means no project was active after all.");
+
+                // A parent that was asked for and not found is SILENT in NI's VI: Search 1D Array
+                // answers -1, Index Array yields an invalid refnum, and the class is created with
+                // no parent and no error. Measured - so it is checked here rather than trusted.
+                if (parentClassPath is { Length: > 0 } && provider.ParentIndex < 0)
+                    return Outcome(false, "provider", steps, total, classPath, null,
+                        $"THE CLASS WAS CREATED WITHOUT ITS PARENT. '{parentClassPath}' was not " +
+                        "among the classes of the open project, so NI's provider silently made a " +
+                        "root class. Add the parent to the project first, delete this class, and " +
+                        "run again - lvai_describe_class reports what it actually inherits.");
+
+                // 4. the project entry. LabVIEW holds the .lvproj open, so it is closed first -
+                //    editing underneath it means the next save writes the old contents back.
+                if (!scratch)
+                {
+                    var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                        helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                        timeoutSeconds: timeoutSeconds, ct: ct);
+                    steps.Add(Step("closeProject", closed));
+                }
+                steps.Add(AddClassToProject(projectUsed, classPath, className));
 
                 // 10. the load check
                 if (!verify)
@@ -298,23 +256,13 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 if (scratch) TryDelete(projectUsed);
 
-                return verdict.Loaded && privateDataLoadable
+                return verdict.Loaded
                     ? Outcome(true, null, steps, total, classPath, verdict,
-                        "Created and load-checked: LabVIEW reports the class by name with its " +
-                        "private data control, and the control carries the data space a loadable " +
-                        "one needs. Inheritance is NOT confirmed by this - the RPC has no field " +
-                        "for it; read it back with lvai_describe_class.")
-                    : verdict.Loaded
-                    ? Outcome(false, "privateData", steps, total, classPath, verdict,
-                        "THE CLASS FILE WAS WRITTEN and its private data control WILL NOT LOAD. " +
-                        "LabVIEW reports the class - that is all the loadCheck step shows, and it " +
-                        "cannot see this - but the IDE's Error list says \"Front panel control " +
-                        "contains a data type with a type definition\", and every accessor built " +
-                        "against it breaks with `ROOT CAUSE: Dependency is broken`. The " +
-                        "patchPrivateData step names what is missing. THE CLASS SHELL IS STILL " +
-                        "GOOD: take the private data control from the IDE and transplant it - " +
-                        "docs/lvclass-creation.md §2a has the recipe, and the layout that would " +
-                        "have to be synthesised to lift this limit altogether.")
+                        $"Created and load-checked: LabVIEW reports the class by name with its "
+                        + $"private data control, and {provider.FieldsAdded} field(s) went in. "
+                        + "The control is LabVIEW's OWN - NI's provider VIs built it - so it "
+                        + "carries a real type space and compiles. Inheritance is NOT confirmed "
+                        + "by this check; read it back with lvai_describe_class.")
                     : Outcome(false, "loadCheck", steps, total, classPath, verdict,
                         "THE FILE WAS WRITTEN and LabVIEW will not load it. A class reported with " +
                         "a blank libraryName means the private data blob was rejected; LabVIEW's " +
@@ -416,22 +364,31 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// used rather than skipping the check, because a project describe is the only answer that
     /// means anything - and it is deleted afterwards so nothing is left beside the class.
     /// </summary>
+    /// <summary>
+    /// The project NI's provider will work in. It is prepared BEFORE the class exists, so the
+    /// class itself is deliberately not listed yet - a project naming a file that is not there
+    /// sends LabVIEW hunting for it on open, and that is a modal dialog which stops the whole
+    /// gRPC service. <see cref="AddClassToProject"/> adds it afterwards.
+    ///
+    /// A PARENT, though, must be listed and open before the run: NI's VI looks for it among the
+    /// active project's classes, and answers -1 rather than an error when it is absent.
+    /// </summary>
     private static (string Path, bool Scratch, JsonObject Step) PrepareProject(
-        string? projectPath, string classPath, string className, string work)
+        string? projectPath, string classPath, string className, string work,
+        string? parentClassPath)
     {
         if (projectPath is not { Length: > 0 })
         {
             var scratchPath = Path.Combine(work, $"{className}-loadcheck.lvproj");
-            File.WriteAllText(scratchPath, LvClass.Project(
-                [($"{className}.lvclass", LvClass.RelativeUrl(scratchPath, classPath))]));
+            File.WriteAllText(scratchPath, LvClass.Project(ParentEntry(scratchPath)));
             return (scratchPath, true, new JsonObject
             {
                 ["step"] = "project",
                 ["action"] = "scratch",
                 ["projectPath"] = scratchPath,
                 ["note"] = "No projectPath was given, so a throwaway project was written for the " +
-                           "load check and is deleted afterwards. The class itself is not listed " +
-                           "in any project you keep.",
+                           "run and the load check, and is deleted afterwards. The class itself " +
+                           "is not listed in any project you keep.",
             });
         }
 
@@ -441,37 +398,137 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         if (!File.Exists(full))
         {
-            File.WriteAllText(full, LvClass.Project([($"{className}.lvclass", url)]));
+            File.WriteAllText(full, LvClass.Project(ParentEntry(full)));
             return (full, false, new JsonObject
             {
                 ["step"] = "project",
                 ["action"] = "created",
                 ["projectPath"] = full,
                 ["url"] = url,
+                ["note"] = "The class is added after it exists, not now - a project pointing at a " +
+                           "missing file makes LabVIEW open a modal search dialog.",
             });
         }
 
-        bool added;
-        string? problem = null;
-        try { added = LvClass.AddToProject(full, className, url); }
-        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
+        // An EXISTING project only needs the parent making sure of; the class comes later.
+        if (parentClassPath is { Length: > 0 })
         {
-            added = false;
-            problem = e.Message;
+            var parentName = Path.GetFileNameWithoutExtension(parentClassPath);
+            try { LvClass.AddToProject(full, parentName, LvClass.RelativeUrl(full, Path.GetFullPath(parentClassPath))); }
+            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
+            {
+                return (full, false, new JsonObject
+                {
+                    ["step"] = "project",
+                    ["action"] = "failed",
+                    ["projectPath"] = full,
+                    ["note"] = $"The parent could not be listed in the project: {e.Message}",
+                });
+            }
         }
 
         return (full, false, new JsonObject
         {
             ["step"] = "project",
-            ["action"] = problem is not null ? "failed" : added ? "added" : "alreadyListed",
+            ["action"] = "prepared",
             ["projectPath"] = full,
             ["url"] = url,
-            ["note"] = problem ?? (added
-                ? null
-                : "The class was already listed, so the project was left alone - listing it twice " +
-                  "makes LabVIEW report a conflict, which reads as a broken class."),
+            ["note"] = parentClassPath is { Length: > 0 }
+                ? "The parent class was made sure of; the new class is added after it exists."
+                : "The new class is added after it exists.",
         });
+
+        (string Name, string Url)[] ParentEntry(string project) =>
+            parentClassPath is { Length: > 0 }
+                ? [($"{Path.GetFileNameWithoutExtension(parentClassPath)}.lvclass",
+                    LvClass.RelativeUrl(project, Path.GetFullPath(parentClassPath)))]
+                : [];
     }
+
+    /// <summary>Add the finished class to the project, once the file really is on disk.</summary>
+    private static JsonObject AddClassToProject(string projectPath, string classPath, string className)
+    {
+        try
+        {
+            var url = LvClass.RelativeUrl(projectPath, classPath);
+            var added = LvClass.AddToProject(projectPath, className, url);
+
+            // LabVIEW adopts every VI it has open when it saves the project, so the run's own
+            // helper and carrier end up listed in the user's project. Measured on the first live
+            // run of this route: three stray VIs, one of them from an earlier session. They are
+            // stripped here rather than left for the reader to notice.
+            var (tidied, removed) = StripHelperItems(File.ReadAllText(projectPath), projectPath);
+            if (removed > 0) File.WriteAllText(projectPath, tidied);
+
+            return new JsonObject
+            {
+                ["step"] = "projectEntry",
+                ["action"] = added ? "added" : "alreadyListed",
+                ["projectPath"] = projectPath,
+                ["url"] = url,
+                ["strayVisRemoved"] = removed,
+                ["note"] = "NI's provider writes the class FILE but does not list it - that is what "
+                         + "its New Class Owner input would do, and it is left unwired on purpose.",
+            };
+        }
+        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
+        {
+            return new JsonObject
+            {
+                ["step"] = "projectEntry",
+                ["action"] = "failed",
+                ["projectPath"] = projectPath,
+                ["note"] = $"The class was created but could not be listed: {e.Message}",
+            };
+        }
+    }
+
+    private static (int ErrorCode, int ParentIndex, int FieldsAdded) ReadProviderRun(string answer)
+    {
+        var values = Parsed(answer)?["values"];
+        int Read(string name) =>
+            int.TryParse(values?[name]?["value"]?.GetValue<string>(), out var v) ? v : -1;
+
+        // The helper's own error cluster travels as flattened XML like every other non-string
+        // value, so the code is dug out of it rather than read off a field.
+        var xml = values?["error out"]?["xml"]?.GetValue<string>() ?? "";
+        var code = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+        return (code.Success ? int.Parse(code.Groups[1].Value) : -1, Read("parent index"),
+                Read("fields added"));
+    }
+
+    private async Task<string> RunCreateClassHelperAsync(
+        string classPath, string? parentClassPath, string carrierPath, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        var aixml = StatusTools.ScriptsDirectory() is { } scripts
+            ? Path.Combine(scripts, CreateClassHelperAixmlFileName) : null;
+        if (aixml is null || !File.Exists(aixml))
+            return Json.Error("noHelperAixml",
+                $"The helper's AIXML source could not be found ({CreateClassHelperAixmlFileName} " +
+                "in the scripts folder next to the exe; lvai_status reports it as " +
+                "scriptsDirectory).");
+
+        var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+                                    "lvai_create_class.vi");
+        Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
+        if (!File.Exists(helperVi) &&
+            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+            return failure;
+
+        var inputs = new JsonObject
+        {
+            ["class path"] = Path.GetFullPath(classPath),
+            ["parent class path"] = parentClassPath is { Length: > 0 }
+                ? Path.GetFullPath(parentClassPath) : "",
+            ["carrier vi path"] = carrierPath,
+        }.ToJsonString();
+
+        return await new RunTools(connection).RunViAndReadValuesAsync(
+            helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+            regenerateHelper: false, timeoutSeconds, ct);
+    }
+
 
     /// <summary>
     /// Did LabVIEW actually load the class? A class it refused still appears in the `classes`
@@ -520,32 +577,6 @@ internal sealed class ClassTools(LvaiConnection connection)
         }
 
         return new LoadVerdict(false, reported, null, null);
-    }
-
-    private async Task<JsonObject> RunScriptAsync(
-        PyLabview.Bundle bundle, string scriptsDirectory, string label, string[] args,
-        int timeoutSeconds, CancellationToken ct)
-    {
-        var path = Path.Combine(scriptsDirectory, PrivateDataScript);
-        if (!File.Exists(path))
-            return new JsonObject
-            {
-                ["step"] = label,
-                ["exitCode"] = -1,
-                ["stderr"] = $"No helper script at '{path}'. It ships under scripts\\ next to the " +
-                             "exe; a source checkout has it under scripts\\ in the repository.",
-            };
-
-        var run = await PyLabview.RunAsync(bundle, path, args, Rpc.ClampToolWait(timeoutSeconds), ct);
-        return new JsonObject
-        {
-            ["step"] = label,
-            ["script"] = PrivateDataScript,
-            ["exitCode"] = run.ExitCode,
-            ["stdout"] = run.StdOut.TrimEnd(),
-            ["stderr"] = run.StdErr.Length == 0 ? null : run.StdErr.TrimEnd(),
-            ["elapsedMs"] = run.ElapsedMs,
-        };
     }
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
@@ -932,8 +963,13 @@ internal sealed class ClassTools(LvaiConnection connection)
     internal static (string Text, int Removed) StripHelperItems(
         string projectXml, string? projectPath = null)
     {
+        // BOTH of our temp trees, not just helpers/: a class run's carrier VI lives under
+        // classes/<work>/ and LabVIEW adopts it exactly the same way. Caught here as well as by
+        // the dangling pass below, because the work directory is deleted only after this runs -
+        // measured, a Reihenhaus-fields.vi that was still on disk survived a tidy that looked at
+        // nothing but helpers/.
         const string helperItem =
-            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*LabVIEWMCP/helpers/[^\"]*\"\\s*/>";
+            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*LabVIEWMCP/(?:helpers|classes)/[^\"]*\"\\s*/>";
 
         var removed = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem).Count;
         var text = removed == 0

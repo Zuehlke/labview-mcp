@@ -259,29 +259,29 @@ internal static class LvClass
         return fields;
     }
 
-    /// <summary>The AIXML <c>type</c> attribute for the private data cluster.</summary>
-    public static string ClusterType(IReadOnlyList<Field> fields) =>
-        "cluster{" + string.Join(",", fields.Select(f => $"{f.Type}.{f.Name}")) + "}";
-
     /// <summary>
-    /// The AIXML <c>value</c> literal for it: one entry per field, comma separated, in brackets.
-    /// An empty string field is written as nothing at all - the error cluster's <c>[false,0,]</c>
-    /// is the same rule, and <c>""</c> would put two literal quote characters in the value.
+    /// The CARRIER: a VI whose front panel holds one control per field, and nothing else.
+    ///
+    /// NI's <c>Add Member Data to Private Data Control.vi</c> takes an array of front-panel
+    /// CONTROL REFERENCES and makes one field out of each, taking its name and its type. So the
+    /// fields are expressed as controls on a throwaway VI rather than as a cluster, and this is
+    /// the one part of class creation AIXML is good at.
+    ///
+    /// The cluster this used to author - <c>Cluster of class private data</c>, converted into a
+    /// control by flipping flags - is gone with the route that needed it: the result was a class
+    /// LabVIEW reported normally and refused to compile, because a private data control's type
+    /// space is compiler output. docs/lvclass-creation.md section 2a.
     /// </summary>
-    public static string ClusterValue(IReadOnlyList<Field> fields) =>
-        "[" + string.Join(",", fields.Select(f => Literals[f.Type])) + "]";
-
-    /// <summary>
-    /// The whole AIXML document for the private data cluster: one Control, no connector pane, no
-    /// diagram. The control's label must be <c>Cluster of class private data</c> - that is what
-    /// LabVIEW calls it, and scripts\pylv-class-privatedata.py finds the cluster by that label.
-    /// </summary>
-    public static string PrivateDataAixml(string className, IReadOnlyList<Field> fields) =>
-        $"""
-         <VI _name="{className}.ctl" description="Private data of {className}.lvclass.">
-           <Control _name="Cluster of class private data" outputs="value:" type="{ClusterType(fields)}" uid="100" uid_parent="root" value="{ClusterValue(fields)}"/>
-         </VI>
-         """;
+    public static string CarrierAixml(string className, IReadOnlyList<Field> fields)
+    {
+        var controls = string.Join("\n", fields.Select((f, i) =>
+            $"""  <Control _name="{f.Name}" outputs="value:" type="{f.Type}" uid="{10 + i}" uid_parent="root" value="{Literals[f.Type]}"/>"""));
+        return $"""
+                <VI _name="{className}-fields.vi" description="Carrier for the private data fields of {className}.lvclass. Its front-panel controls are handed to NI's Add Member Data to Private Data Control.vi as references\2C so each control's name and type becomes a field. Nothing here runs.">
+                {controls}
+                </VI>
+                """;
+    }
 
     // ------------------------------------------------------------------ the document
 

@@ -782,7 +782,7 @@ resources rather than call tools.
 | `lvai_run_vi_and_read_values` | — (same composition plus VI Server reads) | **executes code**, then reads every control and indicator back — use it whenever an output is not a string |
 | `lvai_placeholder_subvi` | — (composes `ConvertVIToAIXML` + `ValidateAIXML` + `ConvertAIXMLToVI`) | **writes one folder into the LabVIEW installation** — a placeholder whose connector pane clones the VI you name, so a generated VI can be given a `Call` that `pylv_apply {"op":"retarget"}` then points at your own code. Cached by signature; uninstall by deleting `user.lib\LV_MCP` |
 | `lvai_generate_test` | — (composes the placeholder, `lvai_generate_vi` and the retarget) | **creates a Caraya unit-test `.vi`** that calls your VI as an ordinary static subVI, one node per case. Eighteen hand calls before this existed, ten of them editing an object heap |
-| `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **creates a `.lvclass`** and its private data control |
+| `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **creates a `.lvclass`**, its parent link and its private data — by driving LabVIEW's own project provider, because a private data control is compiler output and cannot be built from outside. Needs a project, and opens one |
 | `lvai_create_accessors` | — (same composition, driving NI's own accessor wizard body) | **creates Read/Write VIs** and registers them in the `.lvclass`, saving the library once per field |
 | `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 

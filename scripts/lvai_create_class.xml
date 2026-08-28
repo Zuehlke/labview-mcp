@@ -1,0 +1,44 @@
+<VI _name="lvai_create_class.vi" description="Create a LabVIEW class - optionally inheriting from another\2C optionally with private data fields - by calling the project provider's OWN VIs\3A Add Class.lvlib\3AAdd Class to Project (path).vi and Message Maker.lvlib\3AAdd Member Data to Private Data Control.vi. Every input is a string because a helper's controls are set as strings over VI Server\3B the two paths are converted on the diagram.\0A\0AWHY NI'S VIs AND NOT A BUILT FILE. A class private data control is COMPILER OUTPUT\3A its type space (VCTP\2C TM80\2C the TopLevel map) and its data-space offsets describe a control\2C not the VI an AIXML cluster produces. Converting a generated VI into one by flipping flags gives a class LabVIEW reports normally and refuses to compile - Front panel control contains a data type with a type definition - and every accessor built against it breaks with it. Measured repeatedly\3B docs/lvclass-creation.md section 2a has the layout that would have to be synthesised. LabVIEW does it correctly in about 350 ms\2C so it does it.\0A\0AThe FIELDS come from a carrier VI\3A NI's VI takes an array of front-panel CONTROL REFERENCES\2C and each control's name and type becomes a field. AIXML generates such a VI perfectly - that is the one part of this it is good at. Pass an empty carrier path for a class with no private data.\0A\0AThe PARENT is found among the classes of the ACTIVE PROJECT by comparing paths case-insensitively\2C the same route lvai_create_accessors uses. It must already be listed in the open project or Search 1D Array answers -1\2C Index Array then yields an invalid refnum\2C and the class is created with NO parent and no error at all - measured\2C and the reason parent index is reported rather than assumed. An empty parent class path takes the same road on purpose\3A -1 is exactly what 'no parent' needs.\0A\0ANew Class Owner stays an UNWIRED refnum. Measured\3A NI's VI accepts that\2C so no {LV.ProjectItem} has to be found - which matters because the catalogue lists no {LV.Project} property that yields one and guessing property names is what preceded three LabVIEW crashes. The price is that the class is NOT added to the .lvproj\3B the caller writes that entry itself.">
+  <Control _name="class path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="parent class path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="carrier vi path" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Node _name="Build Array" inputs="element:20.proj" outputs="appended array:30.appended array" uid="30" uid_parent="root"/>
+  <Call target="CLSUIP_GetAllClassesInProject.vi" inputs="Project Refs:30.appended array,error in (no error):22.error out" outputs="All Classes:31.All Classes,error out:31.error out" uid="31" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="40" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:31.All Classes" mode="index" outputs="value:401.value" uid="401" uid_parent="40"/>
+    <Node _name="Property Node" fields="read+Path" inputs="reference:401.value" outputs="Path:402.Path,reference out:402.reference out,error out:402.error out" type="{LV.LVClassLibrary}" uid="402" uid_parent="40"/>
+    <Node _name="Path To String" inputs="path:402.Path" outputs="string:403.string" uid="403" uid_parent="40"/>
+    <Node _name="To Upper Case" inputs="string:403.string" outputs="all upper case string:404.upper" uid="404" uid_parent="40"/>
+    <Tunnel _id="Out1" inputs="value:404.upper" mode="index" outputs="value:405.value" uid="405" uid_parent="40"/>
+  </Structure>
+
+  <Node _name="To Upper Case" inputs="string:11.value" outputs="all upper case string:50.upper" uid="50" uid_parent="root"/>
+  <Node _name="Search 1D Array" inputs="1D array:405.value,element:50.upper,start index (0):" outputs="index of element:51.index of element" uid="51" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:31.All Classes,index:51.index of element" outputs="element:52.element" uid="52" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:60.path" uid="60" uid_parent="root"/>
+  <Constant _name="no interfaces" outputs="value:61.value" type="array{ref{LV.LVClassLibrary}}" uid="61" uid_parent="root" value="[]"/>
+  <Constant _name="no owner" outputs="value:62.value" type="ref{LV.ProjectItem}" uid="62" uid_parent="root" value=""/>
+
+  <Call target="Add Class.lvlib\3AAdd Class to Project (path).vi" inputs="Class Path:60.path,New Class Owner:62.value,error in:31.error out,Application:22.app,Parent Interfaces:61.value,Parent Class:52.element" outputs="error out:70.error out,Class:70.Class" uid="70" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:80.path" uid="80" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:80.path,error in (no error):70.error out" outputs="vi reference:81.vi reference,error out:81.error out" uid="81" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:81.vi reference,error in (no error):81.error out" outputs="Front Panel:82.Panel,reference out:82.reference out,error out:82.error out" type="{LV.VI}" uid="82" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:82.Panel,error in (no error):82.error out" outputs="Controls[]:83.Controls,reference out:83.reference out,error out:83.error out" type="{LV.Panel}" uid="83" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3AAdd Member Data to Private Data Control.vi" inputs="error in (no error):83.error out,Target Path:60.path,AppInst:22.app,Controls:83.Controls" outputs="error out:84.error out" uid="84" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:81.vi reference,error in (no error):84.error out" outputs="error out:90.error out" uid="90" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:22.app,error in (no error):90.error out" outputs="error out:91.error out" uid="91" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.proj,error in (no error):91.error out" outputs="error out:92.error out" uid="92" uid_parent="root"/>
+
+  <Node _name="Array Size" inputs="array:83.Controls" outputs="size(s):95.size(s)" uid="95" uid_parent="root"/>
+  <Indicator _name="parent index" inputs="value:51.index of element" type="int32" uid="96" uid_parent="root" value="0"/>
+  <Indicator _name="fields added" inputs="value:95.size(s)" type="int32" uid="97" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:92.error out" type="cluster{bool.status,int32.code,string.source}" uid="98" uid_parent="root" value="[false,0,]"/>
+</VI>

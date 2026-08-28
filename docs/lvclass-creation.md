@@ -9,7 +9,23 @@ below is a supported interface. Everything here was measured against LabVIEW 202
 
 ## 0. Use `lvai_create_class`
 
-The recipe below is what that tool does. Call it instead of following the steps by hand:
+**It calls LabVIEW's own project provider.** Since 2026-08-27 the tool does not build a private
+data control at all — it hands the job to the two VIs the IDE itself uses, and only the fields are
+authored here:
+
+| step | who does it |
+|---|---|
+| the carrier: one front-panel control per field | AIXML — the one part it is good at |
+| the class, and its parent link | `Add Class.lvlib:Add Class to Project (path).vi` |
+| the private data control | `Message Maker.lvlib:Add Member Data to Private Data Control.vi` |
+| the `.lvproj` entry, and clearing the VIs LabVIEW adopts | this tool |
+
+The helper that drives them is `scripts/lvai_create_class.xml`. **A project must be open**, because
+the helper reaches LabVIEW through `Project:Active Project` and finds a parent class only among the
+classes that project has loaded; the tool opens one for you. pylabview is no longer involved.
+
+Section 1 below is the route this replaced — a private data control built from a converted VI. It
+is kept because every step of it is a thing that does *not* work, and §2a says exactly why.
 
 ```
 lvai_create_class  className=Bus  directory=…\Bus  parentClassPath=…\Auto\Auto.lvclass
@@ -40,11 +56,22 @@ path reads the export cache. `lvai_convert_vi_to_aixml` is the only reader, and 
 never reads a VI — it writes AIXML, validates it and generates. Worth knowing before wiping 1 168
 exports to make a measurement honest; the measurement was already honest.
 
-## 1. What works: the whole recipe
+## 1. THE ABANDONED ROUTE — kept because every step is a thing that does not work
+
+**Do not follow this recipe.** It builds a private data control by converting an AIXML-generated
+cluster VI, and the result is a class LabVIEW *reports* and its compiler *refuses*: "Front panel
+control contains a data type with a type definition", with every accessor built against it broken.
+§2a has the diagnosis and the measurements. It is written down because the failure is silent — the
+class file exists, `lvai_describe_project` answers `errorCode 0`, and only the IDE's Error list
+disagrees — so recognising it matters, and because §2a's derivation of what a real control carries
+is only readable next to what this route produced.
+
+The paragraph below was written when the route was believed to work. Its numbers are real; its
+conclusion was not.
 
 Three classes — a base plus two derived — went from nothing to `errorCode 0` out of
 `lvai_describe_project`, each with a private data cluster carrying its own named, typed fields, in
-**18 minutes** including the research. That is the number the tool above replaces.
+**18 minutes** including the research.
 
 1. **Author the private data cluster as a VI, with AIXML.** A `Control` whose `type` is
    `cluster{string.Manufacturer,int32.Year Of Manufacture,…}` generates without complaint —
@@ -174,10 +201,14 @@ path…"* — points at paths and says nothing about the blob.
 is wrong" from "my blob is wrong" in one call. LabVIEW even renamed the private data control to the
 new class's name, so a donor blob is a legitimate way to get an empty-cluster class.
 
-## 2a. THE GENERATED PRIVATE DATA CONTROL DOES NOT LOAD — and why the load check misses it
+## 2a. WHY A GENERATED PRIVATE DATA CONTROL DOES NOT LOAD — and why the load check missed it
 
-**Measured 2026-08-27. Read this before trusting `lvai_create_class`.** Every class it has produced
-carries a private data control that LabVIEW reports normally and refuses to compile:
+**Measured 2026-08-27.** This is the diagnosis that ended the §1 route. `lvai_create_class` no
+longer produces any of what follows; it is here so the failure is recognisable, and because the
+derivation at the end is the specification anyone would need to lift the limit after all.
+
+Every class the old route produced carried a private data control that LabVIEW reported normally
+and refused to compile:
 
 ```
 Error list -> neillClass.lvclass:neillClass.ctl
@@ -194,7 +225,8 @@ reports the class, and LabVIEW reports a class whose private data does not compi
 happily — right name, `privateDataItem: neillClass.ctl`, `missingItems: []`, `errorCode 0`. The
 file itself says otherwise and nobody was reading it: after LabVIEW saves such a class,
 `Execution.State` is `0` and `Execution.BadDDO` is `1`. **Those two are the check that should have
-been there.**
+been there** — and the lesson generalises past this bug: a describe answering `errorCode 0` says
+LabVIEW *parsed* something, never that it can *run* it.
 
 ### Two causes, and the first one is fixed
 

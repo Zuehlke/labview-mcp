@@ -362,6 +362,27 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 | read a VI when the gRPC service is up | AIXML — 37× smaller, so it costs less context |
 | read a VI with no LabVIEW, no licence, in CI | pylabview — the only route |
 | a `.ctl`, an icon, layout, decorations | pylabview. NI's list puts `.ctl` outside the generator entirely |
+| a class, its private data, an accessor | **neither — call NI's OWN provider VIs**, see below |
+
+**There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
+The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
+a generated helper can call them. Two capabilities already work this way and neither could be built
+any other way: `lvai_create_accessors` drives `CLSUIP_CreateNewAccessor.vi`, and `lvai_create_class`
+drives `Add Class.lvlib\3AAdd Class to Project (path).vi` plus
+`Message Maker.lvlib\3AAdd Member Data to Private Data Control.vi`.
+
+**The rule to take from it: ask whether LabVIEW COMPILES the thing before trying to write it.** A
+class private data control looks like a `.ctl` with a cluster in it and is really a type space plus
+a data-space layout — `VCTP`, `TM80`, a `TopLevel` map, a DCO record with byte offsets. Building it
+from a converted VI produced, for weeks, classes LabVIEW *reported* and its compiler *refused*, and
+no answer from the gRPC interface showed it: `lvai_describe_project` says `errorCode 0` for a class
+whose private data does not compile. Only the IDE's Error list, and `Execution.State`/`BadDDO` in
+the saved file, disagreed. `docs/lvclass-creation.md` §2a has the whole diagnosis.
+
+Two practical notes, both measured: these providers need a project **open and active** — they reach
+LabVIEW through `Project\3AActive Project` and answer `Error 1055` otherwise — and LabVIEW **adopts
+every VI it has open** when it saves that project, so a run leaves its own helper and carrier listed
+in the user's project unless they are stripped afterwards.
 
 `pylv_route` runs two checks because one is not sound: it validates the *untouched* export, and it
 scans that export for node families NI publishes as unsupported. The quiet families are listed in
