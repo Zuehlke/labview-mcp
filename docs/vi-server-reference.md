@@ -827,3 +827,176 @@ scanned — the tool names the ones it read, and names any it skipped for requir
 See Phase 4 of [`../.claude/agents/labview-doc-generator.md`](../.claude/agents/labview-doc-generator.md)
 for a worked example that runs end to end, and [`aixml-reference.md`](aixml-reference.md) for the
 AIXML rules themselves.
+
+## Reaching a class's private data control, and the write primitives on it
+
+Measured 2026-08-28, while trying to bind a class private data field to a typedef.
+
+**The catalogue does not list `{LV.LVClassLibrary}` at all** — 153 classes, and that is not one of
+them. It is nevertheless a real class with a real `Private Data Control` property, which hands back
+a VI reference to the control. Same lesson as `{LV.Project}`, which the catalogue also omits while
+`Save` and `Close` work: **a catalogue miss is not evidence that a property does not exist.** Settle
+it with a throwaway `ValidateAIXML`, which accepts a real name and refuses an invented one.
+
+**Two routes reach the same control.** `{LV.LVClassLibrary}` `Private Data Control`, or
+`Open VI Reference` on the control's **synthetic path** — `…\X.lvclass\X.ctl`, which does not exist
+on disk. The synthetic-path route is measured: `{LV.VI}` `VI Name` on the result answers
+`Baum.lvclass:Baum.ctl`, `Front Panel` → `{LV.Panel}` `Controls[]` has exactly **1** element whose
+`Class Name` is `Cluster`, and after a downcast `{LV.Cluster}` `Controls[]` has one element per
+field. The downcast is required; without it the property answers `Invalid property`.
+
+**`Is Typedef?` is NOT a boolean.** It is `uint32` with four items —
+`{not a typedef, typedef, strict typedef, class private data}` — so an AIXML indicator typed `bool`
+is refused at validation with "You have connected two terminals of different types", naming the enum.
+
+**The write primitives that exist**, and they are more than the typedef-named methods suggest:
+
+| class | method | parameters |
+|---|---|---|
+| `{LV.Control}`, `{LV.Panel}`, and nearly every control class | `Replace` | `Style; Path; PaletteString` |
+| same | `Replace No Attrib` | `Param 0; Param 1; PaletteString` |
+| `{LV.Control}` | `Move` | `position; owner; duplicate` |
+| `{LV.Panel}` | `Copy Selection`, `Paste Selection`, `Make Selection` | — |
+
+`Replace` with a `Path` is the IDE's "Replace → Select a Control…" gesture. An earlier revision of
+this repository concluded from a typedef-named search that "VI Server has only `Discon Typedef` and
+`Update Typedef`, so there is no *connect*" — that is wrong, because the operation is not named after
+typedefs.
+
+**`Replace` on a private-data FIELD is REFUSED — error 1073, and the route you take decides whether
+you are told.** Two attempts, same goal, different answers, which is the part worth keeping:
+
+| route to the control | what `Replace` did |
+|---|---|
+| IDE app instance → `Open VI Reference` on the **synthetic path** `…\X.lvclass\X.ctl` | clean error cluster, the field's refnum **invalid (1055)** on the next read, `.lvclass` byte-identical — a silent nothing |
+| `LVClass.Open` → `{LV.LVClassLibrary}` `Private Data Control` | **error 1073** on the Invoke Node, naming `Method Name: Replace` |
+
+The second route reads the field correctly first (`Is Typedef?` returns a real `not a typedef`), so
+it reaches the right control and is refused on the *operation*, not on the addressing. 1073 is
+LabVIEW's "not permitted in this state". **Prefer the `LVClass.Open` route for anything that edits:
+the synthetic-path route answers the same question by saying nothing.**
+
+No unlock was found to lift it. Probed by validation, which accepts a real method name and refuses an
+invented one: `{LV.LVClassLibrary}` **`Save` exists**; `Unlock` and `Unlock Library` are both refused
+with "Invoke Node: Invalid method". So the class can be saved from script, but the private data
+control's contents could not be edited from script here.
+
+**The export route works, measured end to end, and it needs NO PROJECT.** This is the one to start
+from. `LVClass.Open` takes **no application reference** — leave `reference` unwired — so none of the
+`Project:Active Project` machinery elsewhere in this repository is required:
+
+```
+LVClass.Open (Path)                      -> {LV.LVClassLibrary}      reference UNWIRED
+  {LV.LVClassLibrary}  read+Private Data Control   -> a {LV.VI} reference
+  {LV.VI}     read+Front Panel  ->  {LV.Panel}  read+Controls[]  ->  Index Array [0]   (the cluster)
+  New VI      vi type = Control VI (2)                            -> a fresh VI
+  {LV.VI}     read+Front Panel  on that new VI                    -> its panel
+  {LV.Control} Move   position; owner = the new panel; duplicate UNWIRED   (a move, not a copy)
+  {LV.VI}      Save.Instrument   Path to saved file; Save a Copy; Without Diagram
+```
+
+`New VI` is an ordinary node, not an invoke node, and its `vi type` enum is
+`{invalid VI type, Standard VI, Control VI, Global VI, Polymorphic VI, Configuration VI, SubSystem,
+Facade VI, Method VI, Statechart Diagram VI}` — `Control VI` is **2**. Note `Path to saved file`,
+lower case on *saved* and *file*.
+
+Measured on a five-field class with two bound typedefs, no project open: the written `.ctl` carries
+**every field and both bindings** — the `typeDef` heap wrappers survive, and the file names appear in
+its `VCTP` exactly as in the class. The result is a plain control VI (`TypeDefVI="0"`), not a typedef
+itself, and it is healthy (`State="1"`, `BadDDO="0"`). Both `.lvclass` files were untouched, so the
+export is non-destructive.
+
+So a class's private data **can** be handled as an ordinary `.ctl` — read it, diff it, extract it
+with pylabview — without unwrapping `NI.LVClass.FlattenedPrivateDataCTL` by hand. The reverse
+direction, putting an edited control back or `Move`-ing a bound instance **into** the live private
+data with `duplicate` TRUE, uses the same primitives and is **not measured**. The open part of it is
+saving: `Save.Instrument` writes a new file, and what writes the private data back into the
+`.lvclass` is not established — that is exactly where the `Replace` attempt above lost its change.
+
+### Binding a typedef from script DOES work — via the export, not in place
+
+**Measured 2026-08-28, and it overturns the verdict this section carried for most of that day.** The
+chain below bound a `PFBool.ctl` typedef onto a live class's private data field with no IDE gesture at
+all, verified from the class file afterwards: `<TypeDesc Type="TypeDef">` with `<Label
+Text="PFBool.ctl"/>`, three `typeDef` heap objects, `State="1"`, `BadDDO="0"`, `BadCompile="0"`.
+
+Two facts make it work, and each was the missing piece of an earlier failure:
+
+1. **`Save.Instrument` with an UNWIRED `Path to saved file` saves the control IN PLACE** — and for a
+   class's private data control, in place means back inside the `.lvclass`. Every earlier attempt
+   changed the control in memory and had nothing that wrote it.
+2. **`Replace` is refused on the class's private data control (error 1073) but ALLOWED on an ordinary
+   `.ctl`.** So the edit is done on an exported copy, not on the class's own control.
+
+```
+export   LVClass.Open → Private Data Control → Panel → Controls[0]
+         New VI (vi type = Control VI) → its Panel
+         {LV.Control} Move   owner = that panel        (duplicate TRUE keeps the source intact)
+         {LV.VI} Save.Instrument   Path to saved file = <somewhere>.ctl
+
+edit     Open VI Reference on that .ctl → Panel → Controls[0] → downcast {LV.Cluster}
+         → Controls[] → element i
+         {LV.Control} Replace   Path = the typedef .ctl        <- allowed here, 1073 on the class
+         {LV.VI} Save.Instrument   path UNWIRED                <- saves the .ctl in place
+
+import   LVClass.Open → Private Data Control → Panel → Controls[]
+         For Loop over them: {LV.Control} Delete               <- empties the cluster
+         Open VI Reference on the edited .ctl → Panel → Controls[0]
+         {LV.Control} Move   owner = the private data panel
+         {LV.VI} Save.Instrument   path UNWIRED                <- writes back into the .lvclass
+```
+
+Verify `Is Typedef?` on the field before and after: it is **not** a boolean but a `uint32` enum,
+`{not a typedef, typedef, strict typedef, class private data}`. A plain round trip with an unedited
+export is the right first test — it came back lossless, all six fields and both existing bindings
+intact.
+
+**Two caveats, both measured.**
+
+**The accessors are NOT refreshed.** After the scripted binding the class carried the typedef while
+`Read <field>.vi` and `Write <field>.vi` still held the bare type, and an open/close of the project
+did **not** rewrite them — unlike the same binding done as an IDE gesture, where LabVIEW rewrote every
+typedef-carrying accessor. Regenerate them if the accessor must show the typedef.
+
+**Reach the class the PROJECT holds, and then the project may stay open.** For the import, wire
+`Project:Active Project` → `{LV.Project}` `Application` into `LVClass.Open`'s `reference`; leave it
+unwired only for the export, which reads and needs no project. This paragraph first said "do not leave
+the project open across the import", which was the wrong lesson drawn from a real crash: with the app
+instance wired there is no second copy to diverge, and four bindings were made with the project open
+the whole time and LabVIEW alive throughout. An import helper **with** the instance wired answers
+`Error 1055` when the project is closed — the same fact from the other side.
+
+What did kill LabVIEW was a close/reopen/close cycle around a class that had been rewritten through an
+**unwired** `LVClass.Open`, so the project's copy and the edited copy were different objects. The log
+carries a signature not previously recorded here:
+
+```
+DWarnInternal 0x9AFA10AF: bad mlabel length
+    source\heapobjs\MultiLabel.cpp(452)
+[ExecSys:0; Executing:"[VI "lvai_close_active_project.vi"]"]
+DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42.
+```
+
+The files on disk were undamaged — the class kept its binding and all twelve members. Repeating the
+open/close on a freshly restarted LabVIEW was clean, so the trigger is the **stale in-memory copy**,
+not the operation. The fix is therefore not to cycle the project at all: wire the app instance, edit
+the copy the project already has, and leave it open.
+
+### `Move` with `duplicate` does NOT create a typedef binding
+
+Measured 2026-08-28, and it closes the last plausible scripting route. In the IDE, dragging a control
+out of a typedef's own window creates a **bound instance** — that is how a typedef gets into a
+cluster. From script it does not: `{LV.Control}` `Move` with `duplicate` TRUE, source = the control on
+`PFBool.ctl`'s own front panel, target = a fresh Control VI's panel, saved with `Save.Instrument`.
+The written file carries a plain `<TypeDesc Type="Boolean" Label="TrueFalse?"/>`, a `stdBool` heap
+object, and **zero** mentions of `PFBool.ctl`.
+
+That is the same de-linked result NI's own `Add Member Data to Private Data Control.vi` produces, and
+it explains why: the control on a typedef's panel **is** the definition, an ordinary `stdBool` /
+`stdRing` / `stdNum`, never a `typeDef` object. Copying it copies a plain control. The `typeDef`
+wrapper exists only in consumers, and nothing in VI Server was found that creates one.
+
+**This route is a dead end, but the goal is NOT out of reach: see "Binding a typedef from script DOES
+work - via the export, not in place" above.** What fails is creating a binding where the control sits;
+what works is exporting the cluster to an ordinary `.ctl`, calling `Replace` there, and importing it
+back. `Move` stays useful for exactly that - carrying the cluster out and back in.

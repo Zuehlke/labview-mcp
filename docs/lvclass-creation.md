@@ -667,6 +667,116 @@ offsets that point past them, by hand, in a block nothing here can validate. Tha
 **So a class can be created with its data, and its methods cannot** — but the scripting route is no
 longer untested. §5 records what it can and cannot reach.
 
+### A TYPEDEF FIELD loses its binding — NI's own provider de-links it
+
+**Measured 2026-08-28.** `lvai_create_class` refuses an enum, cluster or array field by name, so a
+field whose type is a `.ctl` has no supported route. NI's provider can still be driven directly, and
+it half works — which is worse than failing, because the half that is missing is invisible.
+
+A `.ctl` is a VI whose front panel holds exactly one control: the typedef's own. So
+`Message Maker.lvlib:Add Member Data to Private Data Control.vi` can be handed that control's
+reference the same way it is handed a carrier's, by opening the `.ctl` with `Open VI Reference` and
+reading `Front Panel` → `Controls[]`. Every node needed is already in `scripts/lvai_create_class.xml`;
+drop `Add Class to Project` from it and the rest is the sequence unchanged.
+
+**The result compiles.** The field lands with the typedef's control label as its name and the wrapped
+type as its type. Reproduced on two typedefs of different shape: a U16 enum, and a `double` - so the
+de-linking is not specific to enums. The private data control passes
+the §2a check that matters: `Execution State="1"`, `BadDDO="0"`, `BadCompile="0"`, and an accessor
+generated against it comes out on exactly the flags of a known-good one.
+
+**And it is not the typedef.** The private data control carries no `Type="TypeDef"` wrapper and no
+mention of the `.ctl` anywhere — not in `VCTP`, not in the front-panel heap, not in any sidecar of
+the extracted bundle. The provider took the *type* and dropped the *identity*. Editing the `.ctl`
+afterwards does not reach the class.
+
+**VI Server cannot put it back.** The catalogue offers exactly two typedef methods, on every control
+class — `Discon Typedef` and `Update Typedef`, disconnect and refresh — and every `Typedef:*`
+property (`Is Typedef?`, `Typedef:Path`, `Typedef:VI`, `Auto-Update From Typedef`) is read. There is
+no *connect*. Binding a control to a typedef is an IDE gesture with no scripting equivalent, so a
+route that starts from an unbound control cannot finish.
+
+Which leaves two honest answers to "add a typedef field":
+
+- **the IDE** — open the class's private data control and drag the `.ctl` into the cluster, or
+  right-click the member and replace it with the `.ctl`. Then regenerate that field's accessors, so
+  they carry the typedef instead of the copy.
+- **the provider route above**, when a correctly *typed* field is enough and the binding is not
+  wanted. Say which one was done: the two are indistinguishable from `lvai_describe_class`, whose
+  `privateDataBytes` moves either way.
+
+`docs/aixml-reference.md` §5 has the general form of this — no route through AIXML carries a typedef
+in either direction, and `pylv_route` does not warn about it.
+#### The transplant, settled by a controlled pair — 2026-08-28
+
+The IDE gesture was performed on a class that had the de-linked field, with nothing else touched, so
+the before and after differ in exactly one thing. Both private data controls were unwrapped out of
+the `.lvclass` and extracted. This supersedes an earlier revision of this section, which reasoned
+about the blocker instead of measuring it and got the size of it wrong.
+
+**Every heap detail derived beforehand was right.** LabVIEW's own wrapper is the structure lifted
+from `Bounds.vi`, down to the boilerplate:
+
+```xml
+<SL__arrayElement class="typeDef" uid="152">
+  <objFlags>32</objFlags>
+  <bounds>(99, 0, 136, 61)</bounds>          <!-- the bounds the plain control had -->
+  <partsList elements="3">
+    <SL__arrayElement class="label"   uid="154"> … </SL__arrayElement>
+    <SL__arrayElement class="stdRing" uid="156"> … </SL__arrayElement>   <!-- the real control -->
+    <SL__arrayElement class="annex"   …><rsrcID>3403</rsrcID></SL__arrayElement>
+  </partsList>
+  <typeDesc>TypeID(4)</typeDesc>
+  <MouseWheelSupport>0</MouseWheelSupport>
+  <kSLHDefaultValueMatchesCtlVI>True</kSLHDefaultValueMatchesCtlVI>
+</SL__arrayElement>
+```
+
+`rsrcID 3403` is the same value the donor's annex carries in `Bounds.vi` — the annex is boilerplate
+for a `typeDef` object, not something to derive. Three further guesses held:
+
+| guess | outcome |
+|---|---|
+| the stamp of a consumer of a typedef whose own `Flag1` is `0x0` is also `0x0` | **right** — `Flag1="0x0"`, and the heap object carries no `<stamp>` element at all |
+| a loose `.ctl` with no owning library binds by bare name | **right** — one `<Label Text="PFState.ctl"/>`, no library label |
+| the heap needs the plain type *and* the `TypeDef`, adjacent | **right** — `Heap 3 = UnitUInt16`, `Heap 4 = TypeDef` |
+
+**What was wrong is the type space, and it is worse than "an insertion renumbers what is above it".**
+LabVIEW did not edit the consolidated pool. It **re-emitted** it:
+
+| | before | after |
+|---|---|---|
+| `VCTP` entries | 45 | 52 |
+| heap slice | `IndexShift="14" Count="6"` | `IndexShift="16" Count="7"` |
+| `FlatTypeID 0` | `String` | `TypeDef` |
+
+Index 0 changes meaning. Nothing in the numbering is stable across the edit, so there is no local
+insertion to script — a transplant would have to reproduce LabVIEW's own consolidation *ordering*,
+and the control's three `VICD` sections, which pylabview copies through unparsed, would still
+describe the pool from before. That is the wall, and it is the one §2a names.
+
+**So the verdict stands and the reason is now measured, not inferred: the heap half of a typedef
+binding is graftable and fully specified above; the type-space half is compiler output that LabVIEW
+regenerates wholesale.** Do the gesture in the IDE. The result is healthy — `Execution State="1"`,
+`BadDDO="0"`, `BadCompile="0"`, `CtlChanged="0"`.
+
+**But a binding done in the IDE can leave the ACCESSORS STALE ON DISK, and nothing says so.**
+Measured on the second of two bindings in one session: the `.lvclass` was written — timestamp moved,
+`privateDataBytes` grew, the `TypeDef` in place — while `Read <field>.vi` and `Write <field>.vi`
+still carried the field as its bare type with no mention of the `.ctl`. The class and its own
+accessors disagreed on the file system. The *first* binding of the same session rewrote every
+accessor along with the class, so this depends on what the IDE was asked to save, not on the edit.
+
+A save cycle repairs it: `lvai_close_active_project` saves before closing, and that rewrote exactly
+the four accessors carrying a typedef while leaving the three scalar ones untouched. **Read an
+accessor back after an IDE binding rather than assuming it followed.** A stale one is not broken, so
+it reports nothing — it simply carries the old type until something saves it.
+
+Three bindings' worth of numbers, the third confirmation that the pool is re-emitted rather than
+patched: `VCTP` holds 45 entries with no binding, 52 with one, 58 with two, and the heap slice's
+`IndexShift` moves 14 → 16 → 17. Each bound field costs an **adjacent pair** in the heap — the plain
+type and the `TypeDef` — never a single entry.
+
 ## 5. Accessors: the scripting route, measured 2026-08-26
 
 The question is narrow: **an accessor needs a front-panel control whose type is the class.** AIXML

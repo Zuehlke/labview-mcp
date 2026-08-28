@@ -1,0 +1,28 @@
+<VI _name="[LV2025] Import Class Private Data from CTL.vi" description="">
+  <Control _name="Class Path" conIdx="11" connection="required" outputs="value:112.value" type="path" uid="112" uid_parent="root" value=""/>
+  <Constant _name="position" outputs="value:466.value" type="cluster{int32.Left,int32.Top}" uid="466" uid_parent="root" value="[0,0]"/>
+  <Control _name="error in (no error)" conIdx="8" connection="recommended" description="&lt;B>error in&lt;/B> can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.\0A\0ARight-click the &lt;B>error in&lt;/B> control on the front panel and select &lt;B>Explain Error&lt;/B> or &lt;B>Explain Warning&lt;/B> from the shortcut menu for more information about the error." outputs="value:154.value" type="cluster{bool.status,int32.code,string.source}" uid="154" uid_parent="root" value="[false,0,]"/>
+  <Control _name="CTL Path" conIdx="10" connection="required" outputs="value:517.value" type="path" uid="517" uid_parent="root" value=""/>
+  <Node _name="Invoke Node" inputs="reference:,error in (no error):154.value,Path:112.value" outputs="reference out:,error out:43.error out,LVClass.Open:43.LVClass.Open" target="LVClass.Open" type="{LV.Application}" uid="43" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Private Data Control" inputs="reference:43.LVClass.Open,error in (no error):43.error out" outputs="Private Data Control:190.Member Data,reference out:190.reference out,error out:190.error out" type="{LV.LVClassLibrary}" uid="190" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:190.Member Data,error in (no error):190.error out" outputs="Front Panel:294.Panel,reference out:294.reference out,error out:294.error out" type="{LV.VI}" uid="294" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:294.Panel,error in (no error):294.error out" outputs="Controls[]:369.Controls[],reference out:,error out:369.error out" type="{LV.Panel}" uid="369" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="817" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:369.Controls[]" mode="index" outputs="value:985.value" uid="985" uid_parent="817"/>
+    <Node _name="Invoke Node" inputs="reference:985.value,error in (no error):914.error in (no error)" outputs="reference out:,error out:914.error out" target="Delete" type="{LV.Control}" uid="914" uid_parent="817"/>
+    <ShiftReg uid="892" uid_parent="817">
+      <Left inputs="value:369.error out" outputs="value:914.error in (no error)" uid="899" uid_parent="892"/>
+      <Right inputs="value:914.error out" outputs="value:902.value" uid="902" uid_parent="892"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Open VI Reference" inputs="application reference (local):,vi path:517.value,options:,error in (no error):902.value,type specifier VI Refnum (for type only):,password (&quot;&quot;):" outputs="vi reference:1242.vi reference,error out:1242.error out" uid="1242" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:1242.vi reference,error in (no error):1242.error out" outputs="Front Panel:1037.Panel,reference out:1037.reference out,error out:1037.error out" type="{LV.VI}" uid="1037" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:1037.Panel,error in (no error):1037.error out" outputs="Controls[]:1944.Controls[],reference out:,error out:1944.error out" type="{LV.Panel}" uid="1944" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:1944.Controls[],index:" outputs="element:2147.element" uid="2147" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:2147.element,error in (no error):1944.error out,position:466.value,owner:294.Panel,duplicate:" outputs="reference out:,error out:187.error out" target="Move" type="{LV.Control}" uid="187" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:1037.reference out,error in (no error):187.error out" outputs="error out:1822.error out" uid="1822" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:294.reference out,error in (no error):1822.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:1363.reference out,error out:1363.error out" target="Save.Instrument" type="{LV.VI}" uid="1363" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:1363.reference out,error in (no error):1363.error out" outputs="error out:2066.error out" uid="2066" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:190.reference out,error in (no error):2066.error out" outputs="error out:135.error out" uid="135" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" description="&lt;B>error in&lt;/B> can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.\0A\0ARight-click the &lt;B>error in&lt;/B> control on the front panel and select &lt;B>Explain Error&lt;/B> or &lt;B>Explain Warning&lt;/B> from the shortcut menu for more information about the error." inputs="value:135.error out" type="cluster{bool.status,int32.code,string.source}" uid="370" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -517,6 +517,69 @@ A trailing `.Name` after a closing brace names the *instance*, not the type — 
 field holding a queue reference reads
 `ref{Queue}{cluster{string.Message,variant.Payload}.Inner Name}.Field Name`.
 
+### There is no typedef in this grammar, and that is a silent loss on every round trip
+
+**Measured 2026-08-28.** Nothing above can say that a control is an instance of a `.ctl`. NI's
+unsupported list says as much for *authoring* — "custom controls or typedefs (`.ctl`)" — but the
+consequence on the way **out** is the expensive one: an export renders a typedef as the type it
+wraps and drops the identity entirely.
+
+`vi.lib\Utility\AggHandler\Bounds.vi` carries two typedefs on its connector pane. Its export
+carries neither:
+
+| what the VI really has | what the AIXML says |
+|---|---|
+| `Bounds` — `XNodeBounds.ctl`, owned by `NI_XNodeSupport.lvlib` | `cluster{int32.Width,int32.Height}` |
+| that cluster's `Width` and `Height` — each an `XNodeInt.ctl` | `int32.Width`, `int32.Height` |
+| `State In` — the `SavedState` typedef of `Cls_AggHandler.xnode` | the whole nested cluster, written out |
+
+Not one `.ctl` name and not one library name survives, at any depth. So **regenerating a VI from
+its own export replaces every typedef with a de-linked copy of its type** — and since editing an
+existing VI through this route *is* a full regeneration, that is true of every AIXML edit, not of
+some exotic corner.
+
+**Nothing reports it.** The structure is identical, so the VI compiles, the connector pane is
+unchanged, and every caller's wires still bind. The damage surfaces much later, when someone edits
+the `.ctl` and the change does not reach a VI that used to follow it.
+
+**`pylv_route` does not catch it either — measured on the same VI:**
+
+```
+route: aixml
+routeReason: AIXML round-tripped its own export of this VI cleanly and the diagram
+             contains no silently-unsupported node family.
+silentlyUnsupported: []      validateErrorCode: 0
+```
+
+Both of its checks are blind to this by construction. Check A validates the export — and the export
+is valid, *precisely because* the typedef is already gone from it. Check B scans for unsupported
+**node families**, and a typedef is a property of a type, not a node. So the router gives its
+cleanest possible answer to one of the cases it exists to prevent. **Until that is fixed, ask
+separately whether the VI uses a typedef before accepting `route: aixml` for an edit.**
+
+`pylv_extract` answers that without LabVIEW. A bound typedef is recorded in two places at once:
+
+- in `VCTP`, a `<TypeDesc Type="TypeDef" Flag1="0x…">` whose `<Label>` children name the owning
+  library and the `.ctl` — `<Label Text="NI_XNodeSupport.lvlib"/>`, `<Label Text="XNodeInt.ctl"/>`.
+  A loose typedef with no owning library carries the second label only.
+- in the front-panel heap, an object whose **class is `typeDef`** — `<ddo class="typeDef" …>` — with
+  its own `partsList`, `bounds`, a `<stamp>` matching that `Flag1`, and the real control nested
+  inside it.
+
+**Can pylabview put a binding back? Only where one already exists.** The `VCTP` half is a text edit:
+wrap the `TypeDesc` in place, the way §1 of `docs/lvclass-creation.md` wraps the private data
+cluster, so the wrapper takes over the `FlatTypeID` and no type id moves. The heap half is not,
+because the object has to *be* of class `typeDef` — and synthesising one is composing a heap object
+of a class pylabview never writes from scratch, the same wall that document records for
+`udClassDDO`.
+
+| the control is | re-pointing it at a different `.ctl` |
+|---|---|
+| already a `typeDef` object naming the wrong file | NOT a plain `<Label>` substitution: measured 2026-08-28, the typedef file name sits 12 times in `VCTP` **and 3 times in `VITS`**, a block pylabview cannot parse and copies through unchanged. Untested, and no longer cheap. |
+| a plain control with no binding at all | composition — out of reach |
+
+So a stripped binding is repaired in the IDE, or by not stripping it in the first place.
+
 ## 6. Escaping
 
 Two layers stack, and both are needed:
@@ -2665,3 +2728,22 @@ small AIXML file put through `ValidateAIXML` (§9).
 A related trap in shell probes: suppressing `2>/dev/null` turns a path typo into an empty
 result that reads exactly like "no matches". Keep stderr visible when a negative result would
 change a conclusion.
+
+## 16. A `.ctl` exports to AIXML as an EMPTY `<VI>` — with `errorCode 0`
+
+Measured 2026-08-28. `ConvertVIToAIXML` on a control file succeeds and returns **47 bytes**:
+
+```xml
+<VI _name="Pflanze_export.ctl" description=""/>
+```
+
+The control it was asked about had a six-field cluster with two bound typedefs. None of it appears —
+not the cluster, not one field, not a name. NI lists `.ctl` as unsupported for *authoring*; this
+records that **reading** one is equally empty, and that it reports success while doing it.
+
+The consequence is worth spelling out, because the round trip it kills is an obvious thing to try:
+*export a class's private data to a `.ctl`, convert to AIXML, edit the structure, convert back,
+import*. Step two returns nothing to edit, so step four would write an **empty** control, and
+importing that would erase the class's private data. `errorCode 0` at every step.
+
+Read a `.ctl` with `pylv_extract` instead — it needs no LabVIEW and carries the whole heap.
