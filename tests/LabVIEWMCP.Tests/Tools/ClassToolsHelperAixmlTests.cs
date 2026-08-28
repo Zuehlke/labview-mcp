@@ -39,7 +39,41 @@ public class ClassToolsHelperAixmlTests
         var xml = Aixml();
         Assert.Contains("Add Class to Project (path).vi", xml);
         Assert.Contains("Add Member Data to Private Data Control.vi", xml);
-        Assert.Contains("CLSUIP_GetAllClassesInProject.vi", xml);
+    }
+
+    /// <summary>
+    /// The parent comes from its PATH, not from the active project.
+    ///
+    /// <c>CLSUIP_GetAllClassesInProject.vi</c> plus a For Loop, To Upper Case, Search 1D Array and
+    /// Index Array used to turn a path the caller already knew into a class refnum - and made the
+    /// parent's PROJECT MEMBERSHIP a precondition, which is the chain that forced the .lvproj entry
+    /// and the project close, and failed whenever LabVIEW's copy of the project was missing the
+    /// class. <c>LVClass.Open</c> needs none of it: probed 2026-08-28 against a project listing no
+    /// classes at all.
+    /// </summary>
+    [Fact]
+    public void Opens_the_parent_from_its_path_rather_than_searching_the_project()
+    {
+        var xml = Aixml();
+        Assert.Contains(@"target=""LVClass.Open""", xml);
+
+        // Match the CALL, not the name: the description still tells the story of the route this
+        // replaced, and a bare substring test fails on its own history.
+        Assert.DoesNotContain(@"<Call target=""CLSUIP_GetAllClassesInProject.vi""", xml);
+        Assert.DoesNotContain(@"_name=""Search 1D Array""", xml);
+    }
+
+    /// <summary>
+    /// The guard that replaced `parent index`. NI's provider makes a ROOT class, silently and with
+    /// no error, when the parent refnum is invalid - so something must still test it.
+    /// </summary>
+    [Fact]
+    public void Reports_whether_the_parent_actually_opened()
+    {
+        var xml = Aixml();
+        Assert.Contains("Not A Number/Path/Refnum?", xml);
+        Assert.Contains(@"_name=""parent opened""", xml);
+        Assert.DoesNotContain(@"_name=""parent index""", xml);
     }
 
     [Fact]
@@ -66,14 +100,18 @@ public class ClassToolsHelperAixmlTests
     {
         var xml = Aixml();
 
-        // The other three were closed from the start; they are pinned here so that a future edit
-        // adding a fourth reference meets a test that already counts them.
+        // Pinned so that a future edit adding another reference meets a test that already counts
+        // them. THE PARENT'S CLOSE IS DELIBERATELY OUT OF THE ERROR CHAIN: a root class has no
+        // parent to open, so that refnum is legitimately invalid, and closing an invalid one
+        // answers Error 1055 - wired into the chain, that turned every root class into a failed
+        // run. Measured 2026-08-28.
         var closes = Regex.Matches(xml, @"_name=""Close Reference""[^/]*?inputs=""reference:([^,""]+)")
                           .Select(m => m.Groups[1].Value)
                           .ToList();
 
-        Assert.Equal(4, closes.Count);
+        Assert.Equal(5, closes.Count);
         Assert.Contains(closes, r => r.EndsWith(".Class"));           // the new class
+        Assert.Contains(closes, r => r.EndsWith(".class"));           // the parent, from LVClass.Open
         Assert.Contains(closes, r => r.EndsWith(".vi reference"));    // the carrier VI
         Assert.Contains(closes, r => r.EndsWith(".app"));             // the application
         Assert.Contains(closes, r => r.EndsWith(".proj"));            // the project

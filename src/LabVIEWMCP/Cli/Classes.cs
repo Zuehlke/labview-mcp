@@ -39,7 +39,8 @@ internal static class Classes
         var stopwatch = Stopwatch.StartNew();
         var answer = await new ClassTools(connection).CreateClassAsync(
             className, directory, fields, parentPath, projectPath,
-            verify: true, overwrite: false, timeoutSeconds);
+            verify: true, overwrite: false, settleMs: 400, keepCarrier: true,
+            timeoutSeconds: timeoutSeconds);
         stopwatch.Stop();
 
         Console.WriteLine(answer);

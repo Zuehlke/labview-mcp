@@ -406,6 +406,61 @@ needs no service, and firing a second `lvai_create_accessors` into a still-runni
 concurrent-access case that returns `errorCode -1 unreachable`. Six samples ten seconds apart showed
 the count settle, which is the signal that the helper has finished.
 
+## The class-run instability is in NI's GENERATOR, not in our sequencing
+
+**Captured 2026-08-28, and it closed a day of wrong guesses.** A two-class `lvai_create_class` run
+took LabVIEW down; the process was gone rather than hung, so NI's handler wrote a log, and copying
+`_cur.txt` before the restart caught this:
+
+```
+VI call stack:
+- LV AI Core.lvlibp:VI generator.vi
+- LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:ConvertAIXMLToVI.vi
+- LV AI gRPC Service.lvlibp:LVAI.lvclass:Start Sync.vi
+```
+
+**Count the whole log rather than reading one dump.** It holds **12** stack dumps, and their VI call
+stacks are `ConvertAIXMLToVI.vi` six times and `ValidateAIXML.vi` six times - nothing else. Every
+logged warning in the file comes from AIXML generation; none from the class providers, none from
+project code.
+
+**And ignore `mxLvProvider`, which the first version of this section led with.** It is the last frame
+of 4 of the 12 native stacks and absent from the other 8, so it cannot be the fault site; it is the
+OUTERMOST frame, the entry point of the call chain, and the provider framework is loaded in the IDE
+at all times. Reading it as evidence was pattern-matching against the day's topic. The module names
+that appear at all - `mxLvProvider`, `nierclient`, `mgcore_SH_`, `sentry`, `lvMax` - are the ambient
+LabVIEW ones.
+
+All day, from that same VI:
+
+```
+source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
+    trying to override with non-reserved UID, request: 10 res: 0 max: 42 sat: 42
+[ExecSys:0; Executing:"[VI "LV AI Core.lvlibp:VI generator.vi"]"]
+```
+
+So everything this log records happens in **AIXML generation** — validate and convert alike. Class
+creation meets it because every class generates a carrier VI; nothing about it is specific to
+classes.
+
+Two limits on that, both worth keeping in view. These are DWarn entries with minidumps, i.e.
+WARNINGS: whether the process death is the same event is not established, and this document already
+shows elsewhere that minidumps count generation, not faults. And the carrier conversion that the
+last entry names **reported success** — `errorCode 0`, the .vi written, the provider then running
+for another three seconds. The crash came at the close afterwards.
+
+**Why this matters more than the signature itself: it explains four failed diagnoses.** Over one
+day the class-run instability was blamed on a stale in-memory project, on wiring `New Class Owner`,
+on regenerating the helper, and on cold LabVIEW starts. Each was refuted by the next measurement,
+because every one of them was a theory about *our* call sequence. The fault is a level below that,
+in code we only call. Symptoms that survive every change to your own ordering are evidence that the
+ordering is not the subject.
+
+**What it does NOT excuse.** The same day's work made the failure harmless to the deliverable:
+`lvai_create_class` now does its LabVIEW work in a throwaway project, so a crash mid-run leaves the
+user's `.lvproj` untouched and the finished `.lvclass` files complete. Measured on the very run that
+produced the stack above - LabVIEW died, and both classes plus the project came out correct.
+
 ## What it means for working here
 
 **Validation is not free of risk, and that is new.** `lvai_validate_aixml` has been treated
