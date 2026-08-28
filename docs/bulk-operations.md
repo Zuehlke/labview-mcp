@@ -128,7 +128,33 @@ Three things the tool will not do for you, each of which is a real trap:
 - **The connector pane contract is yours to check.** A retarget binds the caller's existing wires to
   the new subVI's pane; check both with `lvai_connector_pane` first. `pylv_apply` reporting `ok`
   says nothing about whether the swap was sound — that is what the `verify` step's `callTargets`
-  are for.
+  are for. **The symptom of a breach never mentions linking**: LabVIEW reports the *caller* as not
+  executable, which reads as a broken caller rather than a mismatched pane.
+
+### Naming the old and the new target
+
+`from` takes the qualified name exactly as the inspect listing prints it. For a library-owned subVI
+— which is most of a modern palette — that is a **path, not a name**:
+
+```
+NI_Gmath.lvlib:Error Function.vi
+Caraya.lvlib:Assert.lvclass:Assert Equal Value_Variant.vi
+Simple Error Handler.vi
+```
+
+The last segment alone is also accepted when only one link ends in it, so `Error Function.vi` works
+and an ambiguous one is refused by name rather than guessed at.
+
+Until 2026-08-27 the listing printed only the **first** segment — `NI_Gmath.lvlib` for a bundle that
+called `Error Function.vi` three times — and then rejected the name off the diagram as "not a subVI
+link in this bundle". Both halves of that misled: the listing named a library nobody had asked
+about, and the rejection read as though the VI were not called at all.
+
+`to` is always a plain **file name**. A library-owned new target is refused rather than half-written,
+because the record's owning-library path cannot be derived from the name. Retargeting *off* a
+library-owned placeholder *onto* a library-less VI is the supported direction, and it clears the
+record's `VILSPathRef` — scoped to that one record, because two subVIs of the same library each
+carry their own and a global edit would strip the library from the one you did not touch.
 
 A malformed or unknown operation is refused **before the extract runs**, by name
 (`operationsJson[0] has op 'conpain', which this build does not know`), so a typo costs a message

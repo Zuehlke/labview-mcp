@@ -64,6 +64,10 @@ internal sealed class BulkTools(LvaiConnection connection)
         succeeded; it is the pane that needs another pass.
         Pass measurePane=false to skip the measurement - only worth it for a scratch probe with no
         connector pane at all.
+        Pass panePattern to put the result on a SPECIFIC pane pattern instead of the station
+        default - needed when the VI must match a pane that already exists, because a caller's
+        wires bind to terminal positions and the same conIdx means different edges on a different
+        pattern. It runs before the measurement, so what comes back describes the final pane.
         """)]
     public async Task<string> GenerateViAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
@@ -71,6 +75,17 @@ internal sealed class BulkTools(LvaiConnection connection)
         [Description("Open the created VI in the LabVIEW editor")] bool openVI = false,
         [Description("Measure the connector pane afterwards and gate `ok` on it")]
         bool measurePane = true,
+        [Description("""
+            Connector pane PATTERN the generated VI must end up on, e.g. 4815. Omit to keep
+            whatever LabVIEW.ini's DefaultConPane gives it, which is the normal case.
+            Pass it when the VI has to match a pane that already exists - a caller's wires bind to
+            terminal positions, and the same conIdx means different edges on a different pattern.
+            Applied after generation by the same pylabview step as
+            pylv_apply {"op":"conpane"}, so it moves NO terminal and no caller has to change; it
+            also closes the active project first, because a rebuild under a loaded VI writes the
+            file while LabVIEW keeps serving its stale copy.
+            """)]
+        int? panePattern = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -92,9 +107,32 @@ internal sealed class BulkTools(LvaiConnection connection)
             steps.Add(Step("convert", convert));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
-                    "Validation passed but generation did not. Error 1357 here means LabVIEW " +
-                    "already holds that path in memory - close the project (lvai_close_active_" +
-                    "project) rather than opening it.");
+                    "Validation passed but generation did not. The two errors that get here are " +
+                    "different and the wording is the tell. Error 1357, \"from that path\": " +
+                    "LabVIEW holds THIS path in memory - close the project " +
+                    "(lvai_close_active_project) rather than opening it. Error 1051, \"of that " +
+                    "name\": something else carries the VI's internal name, and the commonest " +
+                    "source is YOUR OWN LAST FAILED VALIDATION of the same _name - measured, " +
+                    "twice in a row on the same document. Generate under a fresh name; the old " +
+                    "one stays poisoned until LabVIEW restarts.");
+
+            // The pattern repair goes BEFORE the measurement, so what gets reported is the pane
+            // the caller will actually get. Doing it the other way round measures a pane that is
+            // about to change, which is worse than not measuring at all.
+            if (panePattern is { } pattern)
+            {
+                var repair = await PyApplyAsync(
+                    viPath, $$"""[{"op":"conpane","pattern":{{pattern}}}]""",
+                    closeProject: true, verify: false, bundleDirectory: null,
+                    timeoutSeconds: timeoutSeconds, ct: ct);
+                steps.Add(Step("panePattern", repair));
+                if (Parsed(repair)?["ok"]?.GetValue<bool>() is not true)
+                    return Outcome(false, "panePattern", steps, total, viPath, null,
+                        "THE VI WAS WRITTEN and its diagram is sound - what failed is putting it " +
+                        "on pattern " + pattern + ". It is still on the station default, so a " +
+                        "caller whose wires expect the other pattern will report itself as not " +
+                        "executable. Read the panePattern step.");
+            }
 
             if (!measurePane)
                 return Outcome(true, null, steps, total, viPath, null,
@@ -189,8 +227,13 @@ internal sealed class BulkTools(LvaiConnection connection)
               point a subVI Call at a different subVI. Give `path` whenever the new VI is not in
               the same folder as the old one. A POLYMORPHIC target needs TWO entries, one for the
               instance and one for the wrapper, or the diagram caption keeps naming NI's wrapper.
+              `from` takes the qualified name the inspect listing prints - a library-owned subVI
+              reads `NI_Gmath.lvlib:Error Function.vi` - or just the file name when only one link
+              ends in it. `to` is always a plain file name; a library-owned NEW target is refused,
+              because its owning-library path cannot be derived.
               The new subVI must keep the connector pane contract - check both with
-              lvai_connector_pane first; this tool cannot.
+              lvai_connector_pane first; this tool cannot. When it is breached the symptom does
+              not mention linking at all: LabVIEW reports the CALLER as not executable.
           {"op":"placeLabels","place":"9001:130,9002:140","side":"auto","gap":20}
               move diagram comments onto the nodes they describe. `side` is auto|above|below and
               auto is right nearly always: a comment about a subVI CALL goes below it, because the

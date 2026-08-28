@@ -83,18 +83,49 @@ any VI's description property, including `vi.lib`. Formats and measurements in
 `docs/example-corpus.md`.
 
 **Reuse a palette VI before you rebuild anything.** Query `lvai_palette_index` for the operation
-*before* designing a diagram; it lists exactly the VIs a generated `Call` may legally target on
-this station. **A hit in that index is the design — use it.** The palette path printed beside each
-hit (`Categories\OpenG\functions_oglib_string.mnu`) is the proof that this station has that VI.
-Rebuilding logic from primitives is the fallback, used only when the index has no hit or the target
-genuinely fails to resolve — and say which of the two it was.
+*before* designing a diagram; it is the searchable catalogue of what this station has. **A hit in
+that index is the design — use it.** The palette path printed beside each hit
+(`Categories\OpenG\functions_oglib_string.mnu`) is the proof that this station has that VI.
+Rebuilding logic from primitives is the fallback, used only when the index has no hit *and* the
+target genuinely fails to resolve — and say which of the two it was.
 
 The mistake this prevents: an empty-string filter was hand-built from a For loop, a Case
 structure, a shift register and `Build Array` — seven elements — because a `Call` to a
 library-owned VI was believed to be rejected. It is not.
 `openg_array.lvlib:Filter 1D Array__ogtk.vi` validated, generated, ran, and produced
-byte-identical output in three nodes. **The boundary is palette reachability, not library
-membership.**
+byte-identical output in three nodes.
+
+**A MISS IN THE INDEX IS NOT PROOF THAT A CALL IS ILLEGAL.** This clause used to end "the boundary
+is palette reachability, not library membership", and that is the *second* wrong answer this rule
+has had. Measured 2026-08-27 over eight probes: generation resolves a target **by name against what
+the installation can find**, and the palette has nothing to do with it. A library member resolves
+by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI in a plain folder
+under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
+does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
+seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
+loose or in a project library.
+
+The index compounds this by being incomplete: it scans `menus\` and `LVAddons\`, so it does not see
+Caraya at all, whose `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`. A query
+for `Caraya` answers "no match" for VIs that validate and run. Search the index to *find* something;
+settle a target spelling with a throwaway `ValidateAIXML`. Full table in §9 of
+`lvai_aixml_reference`.
+
+**The practical prize is a placeholder you generate yourself, and `lvai_placeholder_subvi` does
+it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be given a call node
+it is allowed to create — and pylabview can then point it at your own code, which AIXML can never
+target. That is how a generated unit test comes to call its subject as an ordinary subVI.
+
+The tool clones the subject's pane, caches the stub in `user.lib\LV_MCP\` under a hash of the
+signature, and hands back the `Call` element and the matching `retarget` operation. **Do not hunt
+the palette for a stand-in and do not hand-write one**: a borrowed placeholder needs a lucky hit per
+signature and forces the SUBJECT's pane to be reshaped, which then breaks on every regeneration —
+`7101, At least one test is not in a executable state`, with nothing in the message about panes.
+
+And the clone must be EXACT. Measured on a controlled pair differing only in terminal type: a
+Variant stub retargeted onto a `double` subject gives `Error 7, Bad Linkage`; the `double` one runs.
+The pane's type descriptor is part of the link binding, so there is no generic placeholder.
+`docs/labview-unit-testing.md` §3a.
 
 **But the index prints the bare name, and for a library-owned VI that name is not the target.**
 `Draw Image from File__ogtk.vi` is refused; `openg_picture.lvlib\3ADraw Image from
@@ -291,8 +322,8 @@ anchoring a comment to what it is actually about gets the side right for free.
 diagram comments alike. A German request does not imply German text.** Only an explicit wish
 ("auf Deutsch", "in French") changes it, and then everything in that VI follows it.
 
-This rule already existed and was still broken, which is the part worth keeping: all three
-`.claude/agents/labview-*.md` state it, and working *directly* — as this session did, because the
+This rule already existed and was still broken, which is the part worth keeping: every
+`.claude/agents/labview-*.md` states it, and working *directly* — as this session did, because the
 Agent tool was not to be used — never reads them. A rule that lives only in an agent definition is
 invisible to the route that does not spawn an agent, the same failure mode as a document that is
 embedded but never served. Twelve German comments and sixteen German descriptions shipped before the
@@ -331,6 +362,47 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 | read a VI when the gRPC service is up | AIXML — 37× smaller, so it costs less context |
 | read a VI with no LabVIEW, no licence, in CI | pylabview — the only route |
 | a `.ctl`, an icon, layout, decorations | pylabview. NI's list puts `.ctl` outside the generator entirely |
+| a class, its private data, an accessor | **neither — call NI's OWN provider VIs**, see below |
+
+**There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
+The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
+a generated helper can call them. Two capabilities already work this way and neither could be built
+any other way: `lvai_create_accessors` drives `CLSUIP_CreateNewAccessor.vi`, and `lvai_create_class`
+drives `Add Class.lvlib\3AAdd Class to Project (path).vi` plus
+`Message Maker.lvlib\3AAdd Member Data to Private Data Control.vi`.
+
+**The rule to take from it: ask whether LabVIEW COMPILES the thing before trying to write it.** A
+class private data control looks like a `.ctl` with a cluster in it and is really a type space plus
+a data-space layout — `VCTP`, `TM80`, a `TopLevel` map, a DCO record with byte offsets. Building it
+from a converted VI produced, for weeks, classes LabVIEW *reported* and its compiler *refused*, and
+no answer from the gRPC interface showed it: `lvai_describe_project` says `errorCode 0` for a class
+whose private data does not compile. Only the IDE's Error list, and `Execution.State`/`BadDDO` in
+the saved file, disagreed. `docs/lvclass-creation.md` §2a has the whole diagnosis.
+
+Two practical notes, both measured: these providers need a project **open and active** — they reach
+LabVIEW through `Project\3AActive Project` and answer `Error 1055` otherwise — and LabVIEW **adopts
+every VI it has open** when it saves that project, so a run leaves its own helper and carrier listed
+in the user's project unless they are stripped afterwards.
+
+**CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
+untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the
+new class in LabVIEW's **memory past the project close**, so the next run opened a `.lvproj` listing
+that class, could not bind the item to the copy already in memory, and created a child class with
+**no parent and no error**. One `Close Reference` fixed it: `parent index` went from −1 to 0, and a
+two-class, twelve-accessor run that had needed **three LabVIEW restarts needed none**.
+
+The process lesson is bigger than the bug. *"Only a restart fixes it"* was accepted as a diagnosis
+for a day and written into a tool, a document and an agent — and it is not a diagnosis, it is a
+description of a symptom, because a restart clears every kind of leaked state at once and therefore
+identifies none of them. It also produced a model — a "stale project cache" — that a five-minute
+controlled test appeared to refute, because with the project closed an edit to the `.lvproj` was
+picked up on the next open. **A later cold run showed the stale copy is real after all**: a child
+class came back `parent index = -1` while LabVIEW held a project containing only carrier VIs, one
+of them from the previous run, so that copy had outlived a `closeProject` that reported success.
+Both observations stand; what decides between them is not known. Read `parent index` rather than
+trusting either. What is real, and was the grain of truth underneath, is that
+`lvai_close_active_project` runs `Save` before `Close` — so an edit made while LabVIEW holds the
+project open is destroyed by the close. Edit a project file only while it is closed.
 
 `pylv_route` runs two checks because one is not sound: it validates the *untouched* export, and it
 scans that export for node families NI publishes as unsupported. The quiet families are listed in
@@ -593,12 +665,15 @@ literally it argued away 600 usable palette VIs.
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
+| How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
+| How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
+| How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
@@ -646,8 +721,9 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 
 ## The agent definitions
 
-The three `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
-of them needs a client restart before it can be spawned.
+The four `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
+before it can be spawned.
 
 **A definition whose YAML frontmatter does not parse is skipped in silence, and the error names the
 wrong cause.** What you get is `Agent type 'labview-vi-generator' not found`, which reads as "the

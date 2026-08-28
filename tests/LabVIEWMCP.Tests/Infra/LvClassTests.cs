@@ -181,27 +181,33 @@ public class LvClassTests : IDisposable
     }
 
     [Fact]
-    public void ClusterTypeAndValueMatchTheAixmlGrammar()
+    public void TheCarrierIsOneControlPerField_NotACluster()
     {
-        var fields = LvClass.ParseFields("string.Make,int32.Year,double.Top Speed,bool.Electric");
+        // NI's Add Member Data to Private Data Control.vi takes front-panel CONTROL REFERENCES,
+        // one per field, so the fields travel as controls on a throwaway VI. The cluster this
+        // used to author went with the route that converted a VI into a control by flipping
+        // flags - that produced a class LabVIEW reported and refused to compile.
+        var aixml = LvClass.CarrierAixml("Auto",
+            LvClass.ParseFields("timestamp.Built,string.Make,double.Top Speed"));
 
-        Assert.Equal("cluster{string.Make,int32.Year,double.Top Speed,bool.Electric}",
-                     LvClass.ClusterType(fields));
-
-        // An empty string field is written as nothing at all - the same rule as the error
-        // cluster's [false,0,]; "" would put two literal quote characters in the value.
-        Assert.Equal("[,0,0,false]", LvClass.ClusterValue(fields));
+        Assert.Equal(3, aixml.Split("<Control ").Length - 1);
+        Assert.Contains("_name=\"Built\" outputs=\"value:\" type=\"timestamp\" ", aixml, StringComparison.Ordinal);
+        Assert.Contains("_name=\"Top Speed\"", aixml, StringComparison.Ordinal);
+        Assert.DoesNotContain("cluster{", aixml, StringComparison.Ordinal);
+        Assert.DoesNotContain("conIdx", aixml, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void PrivateDataAixmlNamesTheClusterWhatLabViewCallsIt()
+    public void ATimestampFieldIsAcceptedAndCarriesTheEmptyLiteral()
     {
-        var aixml = LvClass.PrivateDataAixml("Auto", LvClass.ParseFields("string.Make"));
+        // Left out of the literal table at first, which refused `timestamp.Timestamp` with "no
+        // default literal for" - a message that reads as though AIXML could not express a
+        // timestamp at all. It can: 20 cached exports write `type="timestamp" ... value=""`,
+        // controls and constants alike, the same empty literal a string uses.
+        var aixml = LvClass.CarrierAixml("X", LvClass.ParseFields("timestamp.When,double.How Far"));
 
-        // The helper script finds the cluster by this label; renaming it breaks the patch step.
-        Assert.Contains("_name=\"Cluster of class private data\"", aixml, StringComparison.Ordinal);
-        Assert.Contains("description=", aixml, StringComparison.Ordinal);
-        Assert.DoesNotContain("conIdx", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"timestamp\" uid=\"10\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"double\" uid=\"11\" uid_parent=\"root\" value=\"0\"", aixml, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------- the document

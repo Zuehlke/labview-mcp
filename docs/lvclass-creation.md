@@ -9,7 +9,266 @@ below is a supported interface. Everything here was measured against LabVIEW 202
 
 ## 0. Use `lvai_create_class`
 
-The recipe below is what that tool does. Call it instead of following the steps by hand:
+**It calls LabVIEW's own project provider.** Since 2026-08-27 the tool does not build a private
+data control at all — it hands the job to the two VIs the IDE itself uses, and only the fields are
+authored here:
+
+| step | who does it |
+|---|---|
+| the carrier: one front-panel control per field | AIXML — the one part it is good at |
+| the class, and its parent link | `Add Class.lvlib:Add Class to Project (path).vi` |
+| the private data control | `Message Maker.lvlib:Add Member Data to Private Data Control.vi` |
+| the `.lvproj` entry, and clearing the VIs LabVIEW adopts | this tool |
+
+The helper that drives them is `scripts/lvai_create_class.xml`. **A project must be open**, because
+the helper reaches LabVIEW through `Project:Active Project` and finds a parent class only among the
+classes that project has loaded; the tool opens one for you. pylabview is no longer involved.
+
+Section 1 below is the route this replaced — a private data control built from a converted VI. It
+is kept because every step of it is a thing that does *not* work, and §2a says exactly why.
+
+### A LEAKED CLASS REFERENCE is why a parent went missing — not a stale project
+
+**A parent created moments ago was invisible to its child's run.** Measured 2026-08-28 building
+`Haus` and then `Hochhaus` into one fresh project: `Haus` came out perfect, `Hochhaus` came out a
+**root class** — `parent index = -1` — from a `.lvproj` whose text plainly listed `Haus.lvclass`.
+
+The cause is one unclosed refnum. `Add Class to Project (path).vi` hands back a `Class` reference,
+and the helper closed the application, the project and the carrier VI but not that one. **While it
+is open LabVIEW keeps the new class in memory, and that survives the project being closed.** The
+next run opens a `.lvproj` listing the class, LabVIEW will not bind the item to the copy already in
+memory, `CLSUIP_GetAllClassesInProject.vi` does not report it, and the parent search answers −1 —
+silently, because NI's VI treats "not found" as "no parent wanted".
+
+One `Close Reference` node (uid 89 in `scripts/lvai_create_class.xml`) fixes it. Measured on the
+same pair, everything else identical:
+
+| | `parent index` | restarts needed for a two-class, twelve-accessor run |
+|---|---|---|
+| reference leaked | **−1** | **three** |
+| reference closed | **0** | **none** |
+
+`ClassToolsHelperAixmlTests` pins both halves of the wiring so a rename cannot quietly reintroduce
+it.
+
+**This section previously said the opposite, and the wrong answer was expensive.** It claimed
+LabVIEW served a *stale cached copy* of the project — that closing did not release it, that only a
+restart cleared it, and that a full run therefore needed three restarts (before the child, before
+the accessors, and once at the end). Every symptom fitted. The reasoning did not survive a direct
+test:
+
+- **A fresh open re-read the file in that test.** With the project closed, adding an item to the
+  `.lvproj` on disk and re-opening showed that item.
+
+  **"There is no cache" is how this line first read, and it is too strong — a later cold run
+  refuted it.** Building `Haus` and then `Hochhaus` on a freshly started LabVIEW, the child came
+  back `parent index = -1`, and the reason was visible in the project file afterwards: LabVIEW's
+  copy held **both carrier VIs and no class at all**, including the carrier from the *previous*
+  run, so that copy had survived a `closeProject` that reported success. The `.lvproj` on disk
+  listed `Haus.lvclass` the whole time. So LabVIEW sometimes re-reads and sometimes serves a stale
+  copy; **what decides it is not known**, and neither observation may be generalised. A restart
+  clears it, and the tool's own guard catches the case rather than shipping a parentless class.
+- **What is real is that `lvai_close_active_project` SAVES before it closes** — the helper runs
+  `Save` then `Close`, deliberately, because `Close` carries no save parameter and an unsaved
+  project would risk a modal prompt. So an edit made to a `.lvproj` *while LabVIEW holds it open* is
+  destroyed by the close. Measured with a marker item: it was gone afterwards, and LabVIEW had added
+  a property of its own. That is a genuine constraint — **edit a project file only while it is
+  closed** — but it was never the missing-parent bug.
+
+The lesson worth carrying: *"only a restart fixes it"* is a description of a symptom, not a
+diagnosis. A restart clears every kind of leaked state at once, so it proves nothing about which
+one. Ask what is still holding a reference before accepting it.
+
+### `New Class Owner` CAN be wired — `{LV.Project}` → `Targets` is the missing link
+
+Measured 2026-08-28, and it removes the reason for the whole open/edit/close dance below.
+
+The helper leaves `New Class Owner` unwired because it needs a `{LV.ProjectItem}` and the VI Server
+catalogue lists **no** `{LV.Project}` or `{LV.ProjectItem}` members at all. That is true of the
+catalogue and false of LabVIEW. Reading NI's own `Add Actor.vi` — which takes its target as a plain
+string cluster and must resolve it internally — turned up the route:
+
+```
+{LV.Application} → Project:Active Project → {LV.Project}
+{LV.Project}     → Targets                → array of target items
+                 → Index Array [0]        → "My Computer"
+```
+
+**`Targets`, not `Targets[]`.** The bracketed spelling answers `Property Node: Invalid property`;
+the bare one validates. Run against an open project it returns `target count 1`, and the element's
+`Type String` and `Name` both read `My Computer`.
+
+Wired into `New Class Owner`, NI's provider does the listing itself. Verified end to end on a bare
+project with `Owner1.lvclass`:
+
+| after the provider ran | |
+|---|---|
+| `error out` | clean |
+| `lvai_describe_project` | `classes: [Owner1.lvclass]` — **already a project member** |
+| the `.lvproj` file on disk | still **0** classes — nothing was written by us |
+| after `lvai_close_active_project` | LabVIEW wrote `<Item Name="Owner1.lvclass" Type="LVClass" URL="../Owner1.lvclass"/>` itself |
+
+So the `projectEntry` file edit is redundant in principle, and with it the close that has to precede
+it.
+
+### It is NOT shipped — and the reason is an open question, not a verdict on the wiring
+
+The route above is real, and the standalone probe proves it end to end. Wiring the same three nodes
+into `scripts/lvai_create_class.xml` was tried on 2026-08-28 and **reverted**. What was measured:
+
+| helper | what happened |
+|---|---|
+| owner wired, target refnum closed | first class fine; the **next** call never created its class, gRPC `DeadlineExceeded` on every port while LabVIEW still answered the OS |
+| owner wired, target refnum left open | class created, `projectEntry` reported `alreadyListed` — LabVIEW had written the entry itself — then the service died **during `closeProject`** |
+| **owner UNWIRED again** (the shipped helper) | first class fine; second class created correctly with `parent index 0` — and the service died **during `closeProject`, exactly as before** |
+
+**That third row is the important one, and it was measured only because the revert was verified
+instead of assumed.** The wedge happens with the wiring and without it, so blaming the wiring — which
+is what the first two rows invited, and what this section said for about ten minutes — is not
+supported by the evidence.
+
+**Two follow-up tests then cleared the close as well**, on a freshly started LabVIEW:
+
+| test | result |
+|---|---|
+| `lvai_open_file` + `lvai_close_active_project`, three cycles, no classes at all | **no wedge** |
+| two `lvai_create_class` calls back to back, parent then child, in that same instance | **no wedge** — `parent index 0`, both classes correct |
+
+That produced a third hypothesis — every wedging run so far had just had its helper cache cleared,
+so `lvai_create_class.vi` was **regenerated** inside the session, and helper regeneration is a
+documented crash site here. It was tested by wiring the owner back in and running four pairs: the
+first regenerated the helper and was **clean**, the second and third were clean on a cached helper,
+and the fourth **wedged on a cached helper** — LabVIEW itself hung, `Responding: False`. So that
+hypothesis is refuted too.
+
+### Cold versus warm LabVIEW: a fourth hypothesis, also refuted
+
+**Tested deliberately 2026-08-28** after three clean runs in a warm instance were followed by two
+failed cold ones. A *cold* trial is a parent-then-child pair issued as the first thing a freshly
+started LabVIEW does; a *warm* trial is the same pair after that instance has already created at
+least one class.
+
+| | trials | failed |
+|---|---|---|
+| **cold** | 4 | **4** — two hangs, one `parent index -1`, one death during the first class's `closeProject` |
+| **warm** | 6 | **1** — a hang, on the *first* class of the trial |
+
+So a cold start is much worse, and it is **not** the explanation: a warm instance hung too, three
+pairs into its life. Nothing distinguishes the runs that fail from the runs that do not. That makes
+four hypotheses proposed and refuted in one day — stale project cache, the `New Class Owner`
+wiring, helper regeneration, and now cold start.
+
+**What every failure has in common is only this: no result was ever wrong.** Each one either
+returned `ok: false` naming the problem, or aborted before writing anything, and every class that
+did get written was correct — right fields, right parent, right private data. The instability costs
+time and restarts; it has not yet produced a bad artefact.
+
+### The tally, and why the owner stays unwired
+
+Nine two-class runs (a parent, then its child, in one LabVIEW session), 2026-08-28:
+
+| helper | runs | wedges |
+|---|---|---|
+| owner **unwired** (shipped) | 4 | **1** |
+| owner **wired** | 5 | **3** |
+
+A wedge is always the same shape: it hits the **second** class, LabVIEW hangs or its gRPC service
+goes silent, and **no result is ever wrong** — every class that got created was correct, with the
+right fields and the right parent. Three explanations have now been proposed and each refuted by the
+next measurement:
+
+| blamed | refuted by |
+|---|---|
+| a stale cached project copy | an edit to a closed `.lvproj` **is** picked up on the next open |
+| the owner wiring | the reverted, unwired helper wedged the same way |
+| helper regeneration | a wedge on a cached helper |
+
+**The cause is open.** The owner stays unwired — not because it is guilty, but because it is not
+shown to be harmless and the sample points the wrong way. That is a judgement under uncertainty, and
+it should be revisited with more runs on a machine that has not spent a day being killed; this one
+had been killed roughly ten times by the end.
+
+What the wired runs did establish, and it is not in doubt: `projectEntry` reported **`alreadyListed`
+every time**, so NI's provider really does list the class in the live project and LabVIEW really
+does write the `.lvproj` entry itself. The capability is real. Only its cost is unsettled.
+
+What the second row does establish is the mechanism: `alreadyListed` means LabVIEW wrote
+`<Item Name="…lvclass" Type="LVClass" URL="../…"/>` on its own, without the file edit.
+
+Two process points worth more than the bug:
+
+- **Verify a revert.** A revert justified by a hypothesis is another experiment, and this one refuted
+  its own justification on the first run.
+- **A capability proven in a standalone probe is not proven in the helper**, and the converse trap is
+  worse: a failure seen after a change is not necessarily caused by it. The session that produced
+  this had killed LabVIEW eight times already, which is its own variable.
+
+### `LVClass.Open` — the more promising route, probed and working
+
+**This is the one to try next, and it does not touch `New Class Owner` at all.** Measured
+2026-08-28 with a standalone probe, against a class that is **not a member of the active project**
+(the project open at the time listed nothing):
+
+```
+LVClass.Open  on {LV.Application},  Path = C:\temp\haus\Haus.lvclass
+  -> class name           Haus.lvclass
+  -> class path read back C:\Temp\haus\Haus.lvclass
+  -> error out            clean
+```
+
+Why that matters is the chain it breaks. Today every constraint in this section follows from one
+design choice — the helper finds the parent class with `CLSUIP_GetAllClassesInProject.vi`, i.e. by
+searching the **active project**:
+
+| because | therefore |
+|---|---|
+| the parent must be in the active project | the `.lvproj` must list it |
+| the `.lvproj` must list it | the file must be written |
+| the file must be written | the project must be CLOSED first, or LabVIEW's save clobbers the edit |
+
+`LVClass.Open` removes the first row: the parent comes from its path. The class still has to reach
+the user's `.lvproj` eventually, so a close and a file write are still needed **once**, at the end of
+a run — but no longer *between* classes. A hierarchy would then cost one open and one close however
+many classes it has.
+
+Two things a real implementation has to solve, neither of them discovered yet:
+
+- **The empty-parent case.** A root class passes no parent path, and `LVClass.Open` on an empty path
+  will error and poison the error chain. Today's `Search 1D Array` answers −1 for that case, which is
+  exactly what "no parent" needs. A Case Structure on "is the path empty" is the obvious shape.
+- **`parent index` loses its meaning** — it is the search result. The output contract would become
+  something like "parent opened?", and `ClassTools` reads it to decide whether a child silently came
+  out a root class.
+
+Two other useful finds from the same reading, both used by NI and both closed afterwards:
+
+- **`LVClass.Open`** — an invoke method on `{LV.Application}` taking a `Path` and returning a class
+  reference. It opens a class **without the project**, which is another way to reach a parent.
+- **`{LV.ProjectItem}` has a `Target` property**, so any project item yields its target; and
+  `{LV.ProjectItem}` has an `AddItem` method.
+
+Dead ends, so they are not tried again: the `mxLv*` API (`mxLvGetTarget.vi`, `mxLvGetProjectRef.vi`)
+is keyed by a `uint64` handle the IDE passes to a provider, unavailable headless;
+`AFPP Shared.lvlib:Get Project Item from ID.vi` needs an Item ID with no headless source; and
+`lvai_open_file` cannot open a `.lvclass` at all — its VI path goes through `Open VI Reference`,
+which answers `Error 1059, Unexpected file type`.
+
+### `Error 1614` means LabVIEW still holds a class whose file you deleted
+
+Wiping a class directory to force a cold run leaves the class **in LabVIEW's memory**, and the next
+`Add Class to Project (path).vi` then fails:
+
+```
+Invoke Node in Add Class.lvlib:Add Class to Project (path).vi -> lvai_create_class.vi
+Method Name: LabVIEW Class:Create        code 1614
+```
+
+Deleting the file is what creates this state, so it is easy to walk into while resetting for a
+measurement. **It is the same leaked `Class` reference as the section above** — that is what held
+the class in memory after its file was gone — so the fix that removed the restarts removes most of
+these too. What remains genuinely unavoidable: a class LabVIEW has loaded for any *other* reason (a
+project you opened, an accessor run) is still in memory when you delete its file. Close the project
+first, or delete before LabVIEW ever sees the class.
 
 ```
 lvai_create_class  className=Bus  directory=…\Bus  parentClassPath=…\Auto\Auto.lvclass
@@ -29,8 +288,14 @@ a client in the way.
 | silent failures survived | 1, costing most of the time | 0 — the load check is a step |
 
 The first call carries process start-up and gRPC port discovery; the two after it are the honest
-per-class cost. The tool refuses to report success without a project describe coming back with a
-non-empty `libraryName`, which is the only signal that means anything (§2).
+per-class cost.
+
+**That last row used to read "the load check is a step", and the check it named is gone.** `ok` was
+gated on `lvai_describe_project` reporting a non-empty `libraryName` — and on a cold run that
+answered `ok: false` for a class that was entirely sound, because LabVIEW still had the project
+loaded from step 1 and served its cached copy rather than the `.lvproj` just written (the same
+staleness the section below is about). The verify step now reads the **finished `.lvclass` file**:
+field count, private data size, parent link. It needs no LabVIEW and cannot be lied to by one.
 
 **Those 9.4 s are a COLD run** — LabVIEW freshly started (35.7 s to the gRPC service on its own),
 the AIXML export cache moved out of the way, and every scratch directory under
@@ -40,11 +305,22 @@ path reads the export cache. `lvai_convert_vi_to_aixml` is the only reader, and 
 never reads a VI — it writes AIXML, validates it and generates. Worth knowing before wiping 1 168
 exports to make a measurement honest; the measurement was already honest.
 
-## 1. What works: the whole recipe
+## 1. THE ABANDONED ROUTE — kept because every step is a thing that does not work
+
+**Do not follow this recipe.** It builds a private data control by converting an AIXML-generated
+cluster VI, and the result is a class LabVIEW *reports* and its compiler *refuses*: "Front panel
+control contains a data type with a type definition", with every accessor built against it broken.
+§2a has the diagnosis and the measurements. It is written down because the failure is silent — the
+class file exists, `lvai_describe_project` answers `errorCode 0`, and only the IDE's Error list
+disagrees — so recognising it matters, and because §2a's derivation of what a real control carries
+is only readable next to what this route produced.
+
+The paragraph below was written when the route was believed to work. Its numbers are real; its
+conclusion was not.
 
 Three classes — a base plus two derived — went from nothing to `errorCode 0` out of
 `lvai_describe_project`, each with a private data cluster carrying its own named, typed fields, in
-**18 minutes** including the research. That is the number the tool above replaces.
+**18 minutes** including the research.
 
 1. **Author the private data cluster as a VI, with AIXML.** A `Control` whose `type` is
    `cluster{string.Manufacturer,int32.Year Of Manufacture,…}` generates without complaint —
@@ -174,6 +450,138 @@ path…"* — points at paths and says nothing about the blob.
 is wrong" from "my blob is wrong" in one call. LabVIEW even renamed the private data control to the
 new class's name, so a donor blob is a legitimate way to get an empty-cluster class.
 
+## 2a. WHY A GENERATED PRIVATE DATA CONTROL DOES NOT LOAD — and why the load check missed it
+
+**Measured 2026-08-27.** This is the diagnosis that ended the §1 route. `lvai_create_class` no
+longer produces any of what follows; it is here so the failure is recognisable, and because the
+derivation at the end is the specification anyone would need to lift the limit after all.
+
+Every class the old route produced carried a private data control that LabVIEW reported normally
+and refused to compile:
+
+```
+Error list -> neillClass.lvclass:neillClass.ctl
+  Front Panel Errors
+    Panel: Front panel control contains a data type with a type definition.
+  Details: The front panel control contains a datatype with a typedef and you
+           cannot create a typedef from this control.
+```
+
+Every accessor generated against it then breaks too, with `ROOT CAUSE: Dependency is broken`.
+
+**The load check cannot see this and never could.** It asks `lvai_describe_project` whether LabVIEW
+reports the class, and LabVIEW reports a class whose private data does not compile perfectly
+happily — right name, `privateDataItem: neillClass.ctl`, `missingItems: []`, `errorCode 0`. The
+file itself says otherwise and nobody was reading it: after LabVIEW saves such a class,
+`Execution.State` is `0` and `Execution.BadDDO` is `1`. **Those two are the check that should have
+been there** — and the lesson generalises past this bug: a describe answering `errorCode 0` says
+LabVIEW *parsed* something, never that it can *run* it.
+
+### Two causes, and the first one is fixed
+
+**Flags.** `pylv-class-privatedata.py` set three attributes to the opposite of what a
+LabVIEW-authored control carries — `InStBit23`, `PropTypesIssues` and `DefaultErrorHandling`. The
+strictness recipe it borrowed from `pylabview-controls.md` §2 is a **strict typedef** recipe, and a
+class private data control differs. Fixed, and the script now checks the whole flag set against
+measured values instead of trusting its own edit list.
+
+Take that reference from a class **you build in the IDE with the same fields**, not from a shipped
+example: NI's `Circle Message.lvclass` disagrees on `InStBit23`, and following it produced a second
+wrong answer.
+
+**The type space, which is NOT fixed.** With the flags corrected the control still does not load,
+and the reason is structural. A private data control's `VCTP` (VI Consolidated Type Pool) and
+`TM80` (Data Space Type Map) describe a *control*; the AIXML-generated VI's describe a *VI*, and
+the patch leaves them alone.
+
+Counted on two controls holding the identical five fields — one built by LabVIEW, one generated:
+
+| | LabVIEW's | generated |
+|---|---|---|
+| `VCTP` flat entries | 28 | 12 |
+| `TM80` sections | 2 (`IndexShift` 2 and 8) | 1 |
+| `TopLevel` entries | 19 | 12 |
+
+### The layout, derived — everything below is a function of the field list
+
+`VCTP` flat entries, for fields `f0..fn-1`:
+
+```
+0 .. n-1   the field types, each Labelled with the field name
+n          TypeDef  { Cluster "Cluster of class private data" { 0 .. n-1 } }
+n+1        NumUInt8
+n+2        RepeatedBlock
+n+3        NumInt32
+n+4        RepeatedBlock
+n+5        NumUInt32  Label="flg"
+n+6        Ptr        Label="oRt"
+n+7        NumUInt32  Label="eof"
+n+8        Cluster    Label="udf"  { flg, oRt, eof }
+n+9 ..     the DISTINCT field types, UNLABELLED, in order of first appearance
+k          Cluster    Label="txd"  { one distinct-type id PER FIELD, in field order }
+k+1        Cluster                 { udf, txd }
+k+2        Cluster "Cluster of class private data"  { 0 .. n-1 }      <- a SECOND copy
+k+3..k+5   NumInt16, NumUInt16, NumInt8
+k+6        Block BlockSize="0x4"
+k+7        Cluster                 (the front-panel DCO definition, 32 members)
+k+8        RepeatedBlock NumRepeats="1" { k+7 }
+k+9        Void
+k+10       Boolean
+```
+
+Measured on five fields (timestamp, string, double, double, string): `txd` came out
+`{14,15,16,16,15}` — the field sequence mapped onto the three distinct types. The same skeleton in
+the same order appears in NI's `Circle Message` private data, which is the second, independent
+sighting that says it is a skeleton rather than one class's accident.
+
+`TopLevel` maps the TypeIDs everything else uses onto those flat ids. LabVIEW's, for five fields:
+
+```
+1->TypeDef  2->RepeatedBlock(n+2)  3->RepeatedBlock(n+4)  4->Cluster{udf,txd}
+5->private-data cluster  6->DCO table  7->Void  8,9,10->field types 0,1,2
+11->Void  12,13->private-data cluster  14->Boolean  15..19->field types 0..4
+```
+
+`TM80` then needs its second section, `Index="2" IndexShift="8"`, one `<Client>` per TypeID from 8
+up — `TMFBit3="1"` for each field type, an empty `<Client />` for the `Void`.
+
+The data-space numbers in that DCO record are derivable too, and two references pin them:
+
+| | five fields | NI's, empty |
+|---|---|---|
+| `flagDSO` / `flagTMI` / `defaultDataTMI` | 700 / 2 / 3 | 700 / 2 / 3 |
+| `transferDataOffset` | 712 | 712 |
+| `defaultDataOffset` | 752 | 712 |
+| `dsSz` | 40 | 0 |
+
+So four constants, `defaultDataOffset = 712 + dsSz`, and `dsSz` = the plain sum of the field sizes
+— 16 for a timestamp, 4 for a string (it is a handle), 8 for a double: 16+4+8+8+4 = 40. **No
+alignment padding**: that control's second double sits at offset 20.
+
+### What is left to do — and the trap that stopped a first attempt
+
+Write the layout out for an arbitrary field list. Every entry above is derivable, so this is
+mechanical, but **the numbering above is the POST-SAVE one.** It was measured by decoding controls
+out of finished `.lvclass` files, and LabVIEW renumbers the type space when it saves. What
+`pylv-class-privatedata.py` actually receives is the freshly generated VI's bundle, whose flat list
+begins `Void, Function, Function, <fields>, Cluster, Boolean` — a different order with no
+connector-pane entries at all. A generator written against the post-save numbering aborts on the
+real input, which is how this was caught; one written to *emit* it would produce a control whose
+indices mean nothing.
+
+So the next step is to measure the same layout **before** LabVIEW has touched it: build a class in
+the IDE, extract its `.ctl` without ever letting LabVIEW re-save it, and derive the numbering from
+that. Then verify with `Execution.State`/`BadDDO` in the saved file, never with the project
+describe.
+
+**Until it exists, the honest split is: the class shell from this tool, the private data control
+from the IDE.** Transplanting a LabVIEW-authored control into a generated class works and is worth
+knowing: decode it with `pylv-class-privatedata.py decode`, rewrite the four places that carry the
+class name — `<Library>`, `<Section Name>` and the two `<Label>` in the TypeDef — rebuild, and
+`encode` it back into the class file. Verified 2026-08-27: the class loaded clean with its ten
+accessors intact. **The class name is not the problem** — it sits in exactly those four places in
+both a working and a broken control.
+
 ## 3. Where the route ends
 
 ### `lvai_describe_project` does not report class inheritance
@@ -197,6 +605,21 @@ The type grammar in `aixml-reference.md` §5 lists `ref{UDClassInst}` as *a refe
 class instance*, which reads as though it were available. It is not, for a `Control` or an
 `Indicator`. Every class member VI — accessor, constructor, dynamic dispatch method, override — has
 a class terminal on its connector pane, so **no class member VI can be generated through AIXML.**
+
+**And the PLACEHOLDER route does not lift this** — which is the first thing a reader who knows
+`lvai_placeholder_subvi` will reach for, because that tool exists precisely to give AIXML a call
+target it is otherwise refused. It cannot help here: the stub is a **pane clone**, generated through
+AIXML, so cloning a class member's pane hits the same `UDClassInst` refusal. Measured 2026-08-28 on
+`Read Name.vi`:
+
+```
+errorKind: stubRefused
+  Control with type=UDClassInst is not supported
+  Indicator with type=UDClassInst is not supported
+```
+
+So no generated VI can call a class member either, and the slot pattern is no escape — the plug it
+swaps in needs the same pane. `docs/labview-unit-testing.md` §3a has the consequence for tests.
 
 ### The donor route for a member VI is blocked by two blocks pylabview cannot parse
 
@@ -350,6 +773,37 @@ necessary. Its front-panel heap is `1 stdBool, 2 stdClust, 2 udClassDDO` where t
 carries `1 stdString` in that slot - the DDO class follows the FIELD TYPE. So a clone-and-patch route
 would have to both create a `udClassDDO` and swap a `stdString` DDO for a `stdBool` one, and
 pylabview does neither.
+
+### Which dispatch an accessor got: read the CLASS file, not the VI
+
+Measured 2026-08-28 by building the same five-field class both ways. The tool's `dynamicDispatch`
+becomes the wizard's `vi type` - **0 for dynamic, 1 for static** - and the difference lands in the
+`.lvclass`, one line per member:
+
+| `NI.ClassItem.Flags` | dispatch |
+|---|---|
+| `0` | dynamic |
+| `16777216` (`0x1000000`) | static |
+
+**The obvious place to look is the wrong one.** A dynamic dispatch accessor's own
+`Execution.DynamicDispatch` reads `"0"` in its extracted bundle - checked on a confirmed-correct
+one - so that attribute means something else and taking it for the dispatch marker would report
+every accessor as static.
+
+**Dynamic dispatch is the default and should stay it.** `lvai_create_accessors` already defaults
+`dynamicDispatch: true`; passing `false` because static is the commoner style for plain data
+accessors is a judgement the caller has not asked for, and it cost a full rebuild of twelve
+accessors here.
+
+### Rebuilding accessors: strip the members too, or LabVIEW hunts
+
+Deleting the accessor `.vi` files is not enough. Their `<Item>` entries stay in the `.lvclass`, and
+the next open sends LabVIEW looking for twelve missing files - a modal search dialog, which stops
+the whole gRPC service until somebody dismisses it. Remove the `<Item Name="Read …vi">…</Item>`
+blocks as well, then regenerate.
+
+And **`.lvclass` files are CRLF**. A removal pattern anchored on `\n` matches nothing, reports
+success and leaves every member in place; it was caught only by counting afterwards.
 
 ### LabVIEW GOES DOWN a few minutes after a run, and that is expected
 
