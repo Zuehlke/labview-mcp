@@ -393,7 +393,17 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["containingLibrary"] = info.ContainingLibrary,
                 ["ancestors"] = ancestors,
                 ["ancestorSource"] = info.AncestorSource,
-                ["inheritsFrom"] = info.Ancestors.Count > 0 ? info.Ancestors[0] : "LabVIEW Object",
+                // SKIP THE CLASS ITSELF. `NI.LVClass.Geneology` lists the class among its own
+                // ancestors when there is no parent, so taking Ancestors[0] blindly reported a root
+                // class as inheriting from ITSELF - `Haus.lvclass` inheriting from `Haus.lvclass`,
+                // caught 2026-08-28 by two independent runs of the class agent. `ancestorSource`
+                // did flag the uncertainty, so it was never silently wrong, but a caller reading
+                // this field alone would draw a false conclusion. lvai_create_class's own verify
+                // step already filtered it out; the two now agree.
+                ["inheritsFrom"] = info.Ancestors.FirstOrDefault(
+                                       a => !string.Equals(a, info.QualifiedName,
+                                                           StringComparison.OrdinalIgnoreCase))
+                                   ?? "LabVIEW Object",
                 ["privateDataItem"] = info.PrivateDataName,
                 ["privateDataBytes"] = info.PrivateDataBytes,
                 ["memberCount"] = info.Members.Count,
