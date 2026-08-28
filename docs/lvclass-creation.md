@@ -478,6 +478,37 @@ carries `1 stdString` in that slot - the DDO class follows the FIELD TYPE. So a 
 would have to both create a `udClassDDO` and swap a `stdString` DDO for a `stdBool` one, and
 pylabview does neither.
 
+### Which dispatch an accessor got: read the CLASS file, not the VI
+
+Measured 2026-08-28 by building the same five-field class both ways. The tool's `dynamicDispatch`
+becomes the wizard's `vi type` - **0 for dynamic, 1 for static** - and the difference lands in the
+`.lvclass`, one line per member:
+
+| `NI.ClassItem.Flags` | dispatch |
+|---|---|
+| `0` | dynamic |
+| `16777216` (`0x1000000`) | static |
+
+**The obvious place to look is the wrong one.** A dynamic dispatch accessor's own
+`Execution.DynamicDispatch` reads `"0"` in its extracted bundle - checked on a confirmed-correct
+one - so that attribute means something else and taking it for the dispatch marker would report
+every accessor as static.
+
+**Dynamic dispatch is the default and should stay it.** `lvai_create_accessors` already defaults
+`dynamicDispatch: true`; passing `false` because static is the commoner style for plain data
+accessors is a judgement the caller has not asked for, and it cost a full rebuild of twelve
+accessors here.
+
+### Rebuilding accessors: strip the members too, or LabVIEW hunts
+
+Deleting the accessor `.vi` files is not enough. Their `<Item>` entries stay in the `.lvclass`, and
+the next open sends LabVIEW looking for twelve missing files - a modal search dialog, which stops
+the whole gRPC service until somebody dismisses it. Remove the `<Item Name="Read …vi">…</Item>`
+blocks as well, then regenerate.
+
+And **`.lvclass` files are CRLF**. A removal pattern anchored on `\n` matches nothing, reports
+success and leaves every member in place; it was caught only by counting afterwards.
+
 ### LabVIEW GOES DOWN a few minutes after a run, and that is expected
 
 **Predicted by the user before it was measured** - "I suspect that at the end, once everything is
