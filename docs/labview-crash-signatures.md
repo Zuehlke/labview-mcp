@@ -413,16 +413,25 @@ took LabVIEW down; the process was gone rather than hung, so NI's handler wrote 
 `_cur.txt` before the restart caught this:
 
 ```
-0x50469415 - mxLvProvider <unknown> + 0
-
 VI call stack:
 - LV AI Core.lvlibp:VI generator.vi
 - LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:ConvertAIXMLToVI.vi
 - LV AI gRPC Service.lvlibp:LVAI.lvclass:Start Sync.vi
 ```
 
-Immediately above it in the same log, the same VI under `ValidateAIXML.vi` instead of
-`ConvertAIXMLToVI.vi`. And all day, from that same VI:
+**Count the whole log rather than reading one dump.** It holds **12** stack dumps, and their VI call
+stacks are `ConvertAIXMLToVI.vi` six times and `ValidateAIXML.vi` six times - nothing else. Every
+logged warning in the file comes from AIXML generation; none from the class providers, none from
+project code.
+
+**And ignore `mxLvProvider`, which the first version of this section led with.** It is the last frame
+of 4 of the 12 native stacks and absent from the other 8, so it cannot be the fault site; it is the
+OUTERMOST frame, the entry point of the call chain, and the provider framework is loaded in the IDE
+at all times. Reading it as evidence was pattern-matching against the day's topic. The module names
+that appear at all - `mxLvProvider`, `nierclient`, `mgcore_SH_`, `sentry`, `lvMax` - are the ambient
+LabVIEW ones.
+
+All day, from that same VI:
 
 ```
 source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
@@ -430,9 +439,15 @@ source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
 [ExecSys:0; Executing:"[VI "LV AI Core.lvlibp:VI generator.vi"]"]
 ```
 
-So the crash is in **AIXML generation** — validate and convert alike — with the project provider
-module `mxLvProvider` on the native stack. Class creation meets it because every class generates a
-carrier VI; nothing about the crash is specific to classes.
+So everything this log records happens in **AIXML generation** — validate and convert alike. Class
+creation meets it because every class generates a carrier VI; nothing about it is specific to
+classes.
+
+Two limits on that, both worth keeping in view. These are DWarn entries with minidumps, i.e.
+WARNINGS: whether the process death is the same event is not established, and this document already
+shows elsewhere that minidumps count generation, not faults. And the carrier conversion that the
+last entry names **reported success** — `errorCode 0`, the .vi written, the provider then running
+for another three seconds. The crash came at the close afterwards.
 
 **Why this matters more than the signature itself: it explains four failed diagnoses.** Over one
 day the class-run instability was blamed on a stale in-memory project, on wiring `New Class Owner`,
