@@ -109,6 +109,24 @@ internal sealed class ClassTools(LvaiConnection connection)
         bool verify = true,
         [Description("Replace an existing .lvclass. Refused by default - it would drop its members")]
         bool overwrite = false,
+        [Description("""
+            Milliseconds to wait after the .lvproj has been written and before LabVIEW opens it.
+            A MITIGATION FOR A SUSPECTED RACE, not a diagnosis: the file is written and LabVIEW
+            reads it milliseconds later, and this run has repeatedly seen LabVIEW open a project
+            without a class the file plainly listed. Whether timing causes that is unproven - the
+            pause is a parameter so it can be set to 0 and measured against.
+            """)]
+        int settleMs = 400,
+        [Description("""
+            Keep the generated carrier VI on disk instead of deleting it with the rest of the work
+            directory. TRUE by default, and it is not tidiness that is being traded away: LabVIEW
+            adopts the carrier into the project, and deleting it leaves LabVIEW holding a project
+            whose items no longer exist. That broken copy survives the close, overwrites the
+            .lvproj with itself, and stops `Project:Active Project` answering - which the accessor
+            phase reports as Error 1055. The carrier's project ENTRY is stripped from the file
+            either way; only a 6 kB VI in %TEMP% is left behind.
+            """)]
+        bool keepCarrier = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -167,12 +185,62 @@ internal sealed class ClassTools(LvaiConnection connection)
 
             try
             {
-                // 1. the project, which must exist and be ACTIVE before the provider runs: the
-                //    helper reaches LabVIEW through Project:Active Project, and finds a parent
-                //    class only among the classes that project has open.
-                var (projectUsed, scratch, projectStep) =
-                    PrepareProject(projectPath, classPath, className, work, parentClassPath);
+                // 1. THE PROJECT LABVIEW WORKS IN IS ALWAYS A THROWAWAY, and the user's .lvproj
+                //    is never opened at all. NI's providers need SOME active project - they reach
+                //    LabVIEW through Project:Active Project - but nothing says it has to be the
+                //    one the class belongs to, now that the parent is opened from its path rather
+                //    than searched for among the project's classes.
+                //
+                //    That single change removes a whole family of failures, every one of them
+                //    measured on 2026-08-28 and none of them ever explained:
+                //      - LabVIEW ADOPTS the carrier VI into whatever project is open. Into a
+                //        throwaway, that costs nothing; into the user's, it left an item pointing
+                //        at a deleted temp file, visible in the IDE as
+                //        `Haus-fields.vi [Warning: has been deleted, renamed or moved]`.
+                //      - LabVIEW SAVES that project on close, over the file. When its copy lacked
+                //        a class the file listed, the save deleted that entry - a two-class run
+                //        produced a .lvproj listing only the second class.
+                //      - LabVIEW KEEPS that broken project in memory across the close, which is
+                //        what made `Project:Active Project` answer nothing and the accessor phase
+                //        report Error 1055.
+                //    None of it can happen to a project LabVIEW never sees.
+                var userProject = EnsureUserProject(projectPath, classPath, parentClassPath);
+                var (projectUsed, _, projectStep) =
+                    PrepareProject(null, classPath, className, work, parentClassPath);
+                projectStep["userProject"] = userProject;
+                projectStep["note"] =
+                    "LabVIEW works in a throwaway project so it never opens, adopts into, or saves "
+                    + "over the project you keep. The class entry is written into that one "
+                    + "afterwards, by this tool, with LabVIEW not involved.";
                 steps.Add(projectStep);
+
+                // WHAT THE FILE LISTS BEFORE LABVIEW EVER OPENS IT, remembered so step 4 can put it
+                // back. The close in step 4 saves LabVIEW's own copy of the project, and when that
+                // copy is missing a class the file had, the save DELETES that entry - measured
+                // 2026-08-28 on a two-class run whose .lvproj came out listing only the second
+                // class, the first one silently gone. The user caught it; `projectEntry` reported
+                // `added` quite happily, because it only ever checked its own entry.
+                var listedBefore = userProject is { Length: > 0 }
+                    ? ListedClasses(userProject) : [];
+
+                // LET THE WRITE SETTLE BEFORE LABVIEW READS IT. PrepareProject has just written
+                // the .lvproj, and LabVIEW opens it in the very next call - on a fast machine that
+                // is milliseconds apart. Whether LabVIEW ever reads a half-written or stale-cached
+                // file is NOT established; this is a mitigation for a suspected race, not a
+                // diagnosis, and it is a parameter so it can be turned off and measured against.
+                // What IS established is that LabVIEW sometimes opens a project whose class the
+                // file plainly lists - the failure this would explain if the race is real.
+                if (settleMs > 0)
+                {
+                    await Task.Delay(settleMs, ct);
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "settle",
+                        ["milliseconds"] = settleMs,
+                        ["note"] = "Paused after writing the .lvproj and before LabVIEW opened it. "
+                                 + "Set settleMs=0 to remove the pause.",
+                    });
+                }
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed),
@@ -237,27 +305,29 @@ internal sealed class ClassTools(LvaiConnection connection)
                               + "be a project member. Delete this class and run again; "
                               + "lvai_describe_class reports what it actually inherits.");
 
-                // 4. the project entry. LabVIEW holds the .lvproj open, so it is closed first -
-                //    editing underneath it means the next save writes the old contents back.
+                // 4. close the THROWAWAY, then write the entry into the user's project.
                 //
-                //    THIS CLOSE IS WHY A HIERARCHY OPENS AND SHUTS THE IDE ONCE PER CLASS, and it
-                //    is not vanity: measured 2026-08-28, LabVIEW does not see a class added to the
-                //    .lvproj file while it holds the project open, and closing then overwrites the
-                //    edit with its own copy. So the entry has to be written with the project shut.
+                //    The close is now hygiene rather than a precondition: it releases the scratch
+                //    project so LabVIEW does not carry it into the next call. Whatever LabVIEW
+                //    saves into that file is irrelevant - it is deleted with the work directory.
                 //
-                //    The way out is to have NI's provider list the class itself, through
-                //    `New Class Owner`. That input is reachable - Project.Targets[0] is My Computer
-                //    - and it works in a standalone probe. Wiring it into the shipped helper wedged
-                //    the gRPC service twice, so it is NOT in. scripts/lvai_create_class.xml and
-                //    docs/lvclass-creation.md carry the measurement and the open question.
-                if (!scratch)
-                {
-                    var closed = await new CloseTools(connection).CloseActiveProjectAsync(
-                        helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                        timeoutSeconds: timeoutSeconds, ct: ct);
-                    steps.Add(Step("closeProject", closed));
-                }
-                steps.Add(AddClassToProject(projectUsed, classPath, className));
+                //    And the entry goes into a file LabVIEW has never opened, so there is nothing
+                //    to race with and nothing to overwrite it. The wait-for-release step that used
+                //    to guard this is gone with the reason for it.
+                var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                    helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                    timeoutSeconds: timeoutSeconds, ct: ct);
+                steps.Add(Step("closeScratchProject", closed));
+
+                steps.Add(userProject is { Length: > 0 }
+                    ? AddClassToProject(userProject, classPath, className, listedBefore)
+                    : new JsonObject
+                    {
+                        ["step"] = "projectEntry",
+                        ["action"] = "noProject",
+                        ["note"] = "No projectPath was given, so the class belongs to no project. "
+                                 + "The .lvclass itself is complete.",
+                    });
 
                 // 5. the check that means something: the CLASS FILE.
                 //
@@ -293,7 +363,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["fieldsAdded"] = provider.FieldsAdded,
                 });
 
-                if (scratch) TryDelete(projectUsed);
+                TryDelete(projectUsed);   // the throwaway; the work directory follows in `finally`
 
                 if (provider.FieldsAdded != parsed.Count)
                     return Outcome(false, "verify", steps, total, classPath, null,
@@ -322,7 +392,18 @@ internal sealed class ClassTools(LvaiConnection connection)
             }
             finally
             {
-                TryDeleteDirectory(work);
+                // THE CARRIER FILE STAYS. LabVIEW adopts it into the project while the provider
+                // runs, and deleting it leaves that project holding an item that no longer exists -
+                // seen in the IDE as `Haus-fields.vi [Warning: has been deleted, renamed or moved]`,
+                // with no classes beside it. That broken project is what LabVIEW keeps in memory,
+                // saves over the .lvproj on the next close (deleting the class entries), and what
+                // makes `Project:Active Project` answer nothing, which the accessor phase reports
+                // as Error 1055.
+                //
+                // The item is stripped from the .lvproj FILE either way, so nothing dangles for the
+                // user; what is left behind is a 6 kB VI in %TEMP%\LabVIEWMCP\classes\, which the
+                // next `--finish-project` or a reboot clears. Litter is the cheaper failure.
+                if (keepCarrier is false) TryDeleteDirectory(work);
             }
         });
 
@@ -433,6 +514,41 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// A PARENT, though, must be listed and open before the run: NI's VI looks for it among the
     /// active project's classes, and answers -1 rather than an error when it is absent.
     /// </summary>
+    /// <summary>
+    /// Make sure the project the user asked for EXISTS, and return its full path - without letting
+    /// LabVIEW anywhere near it. Creating it is all that happens here; the class entry is written
+    /// after the provider run, and the parent needs no entry at all now that it is opened from its
+    /// path rather than searched for among an open project's classes.
+    /// </summary>
+    private static string? EnsureUserProject(string? projectPath, string classPath,
+                                             string? parentClassPath)
+    {
+        if (projectPath is not { Length: > 0 }) return null;
+
+        var full = Path.GetFullPath(projectPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        // An EMPTY project, not one listing the class: LabVIEW opens a modal search dialog for a
+        // project item whose file is not there yet, and a modal dialog stops the gRPC service.
+        if (!File.Exists(full)) File.WriteAllText(full, LvClass.Project([]));
+
+        // The parent is listed for the READER's benefit - a hierarchy the project does not show is
+        // confusing - not because anything in the run needs it there.
+        if (parentClassPath is { Length: > 0 } && File.Exists(parentClassPath))
+        {
+            try
+            {
+                LvClass.AddToProject(full, Path.GetFileNameWithoutExtension(parentClassPath),
+                                     LvClass.RelativeUrl(full, Path.GetFullPath(parentClassPath)));
+            }
+            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
+            {
+                // A project we cannot parse is reported by the entry step later, not here.
+            }
+        }
+
+        return full;
+    }
+
     private static (string Path, bool Scratch, JsonObject Step) PrepareProject(
         string? projectPath, string classPath, string className, string work,
         string? parentClassPath)
@@ -506,10 +622,128 @@ internal sealed class ClassTools(LvaiConnection connection)
     }
 
     /// <summary>Add the finished class to the project, once the file really is on disk.</summary>
-    private static JsonObject AddClassToProject(string projectPath, string classPath, string className)
+    /// <summary>
+    /// Block until LabVIEW has finished with the .lvproj, so our own write cannot be overtaken by
+    /// its save.
+    ///
+    /// `lvai_close_active_project` returning is NOT that guarantee: it runs Save and then Close on
+    /// the project, and both are LabVIEW-side operations whose file I/O can still be in flight when
+    /// the RPC answers. Write the class entry into that window and LabVIEW's save lands on top of
+    /// it - which is exactly how a two-class run produced a .lvproj listing only the second class,
+    /// measured 2026-08-28.
+    ///
+    /// Two conditions, both needed. EXCLUSIVE OPEN says no one else holds a handle right now.
+    /// UNCHANGED SIZE AND TIMESTAMP across consecutive polls says the writing has stopped - on its
+    /// own, an exclusive open can succeed in the gap between two of LabVIEW's own writes.
+    /// </summary>
+    private static async Task<JsonObject> WaitForProjectFileAsync(
+        string projectPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+
+        // A SHORT BUDGET ON PURPOSE, and not the caller's timeout. Releasing a closed file is a
+        // millisecond operation; anything longer means LabVIEW is wedged, and waiting the caller's
+        // full 180 s on a wedge turns a recoverable failure into a client timeout that reports
+        // nothing at all. Measured the moment this was first wired to timeoutSeconds: LabVIEW hung,
+        // the wait sat on the lock, and the whole call died without a single step in the answer.
+        var budget = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 5));
+        (long Length, DateTime Written)? previous = null;
+        var polls = 0;
+
+        while (watch.Elapsed < budget)
+        {
+            polls++;
+            ct.ThrowIfCancellationRequested();
+
+            if (Released(projectPath) is { } sample)
+            {
+                if (previous == sample)
+                    return new JsonObject
+                    {
+                        ["step"] = "projectFileReleased",
+                        ["waitedMs"] = (int)watch.ElapsedMilliseconds,
+                        ["polls"] = polls,
+                        ["note"] = "LabVIEW has closed the .lvproj and stopped writing to it, so "
+                                 + "the class entry can be written without being overwritten by a "
+                                 + "save still in flight.",
+                    };
+                previous = sample;
+            }
+            else
+            {
+                previous = null;   // still locked: the stability run starts over
+            }
+
+            await Task.Delay(120, ct);
+        }
+
+        return new JsonObject
+        {
+            ["step"] = "projectFileReleased",
+            ["waitedMs"] = (int)watch.ElapsedMilliseconds,
+            ["polls"] = polls,
+            ["timedOut"] = true,
+            ["note"] = "The .lvproj never went quiet within the budget - it stayed locked, or "
+                     + "something kept writing to it. The class entry is written anyway, because "
+                     + "not writing it is the worse failure, but it may be overwritten. Check the "
+                     + "file, and `classEntriesRestored` on the next run.",
+        };
+
+        // Null while anyone else holds the file; otherwise its size and last-write time.
+        static (long Length, DateTime Written)? Released(string path)
+        {
+            try
+            {
+                using var exclusive = new FileStream(
+                    path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                var info = new FileInfo(path);
+                return (info.Length, info.LastWriteTimeUtc);
+            }
+            catch (IOException) { return null; }               // locked by LabVIEW
+            catch (UnauthorizedAccessException) { return null; }
+        }
+    }
+
+    /// <summary>Every class the .lvproj lists, as (name without extension, URL). Read before
+    /// LabVIEW opens the project so the entries can be put back after it closes it.</summary>
+    internal static List<(string Name, string Url)> ListedClasses(string projectPath)
     {
         try
         {
+            if (!File.Exists(projectPath)) return [];
+
+            // Parsed, not pattern-matched. A regex over the raw text has to guess at whitespace and
+            // attribute order, and the first version of this silently found nothing after
+            // LvClass.AddToProject had rewritten the file. XDocument is how AddToProject reads it,
+            // so the two agree by construction.
+            return System.Xml.Linq.XDocument.Load(projectPath).Descendants("Item")
+                .Where(i => (string?)i.Attribute("Type") == "LVClass")
+                .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
+                              Url: (string?)i.Attribute("URL") ?? ""))
+                .Where(c => c.Name.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase)
+                            && c.Url.Length > 0)
+                .Select(c => (c.Name[..^".lvclass".Length], c.Url))
+                .ToList();
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+        catch (System.Xml.XmlException) { return []; }
+    }
+
+    internal static JsonObject AddClassToProject(string projectPath, string classPath,
+                                                string className,
+                                                IReadOnlyList<(string Name, string Url)> listedBefore)
+    {
+        try
+        {
+            // RESTORE FIRST, then add. LabVIEW's close saves its own copy of the project over the
+            // file, and a class it never had in memory is deleted by that save - so the entries
+            // this run started with are re-asserted before the new one goes in. AddToProject is
+            // idempotent, so an entry that survived costs nothing.
+            var restored = listedBefore
+                .Count(c => !string.Equals(c.Name, className, StringComparison.OrdinalIgnoreCase)
+                            && LvClass.AddToProject(projectPath, c.Name, c.Url));
+
             var url = LvClass.RelativeUrl(projectPath, classPath);
             var added = LvClass.AddToProject(projectPath, className, url);
 
@@ -527,8 +761,12 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["projectPath"] = projectPath,
                 ["url"] = url,
                 ["strayVisRemoved"] = removed,
+                ["classEntriesRestored"] = restored,
                 ["note"] = "NI's provider writes the class FILE but does not list it - that is what "
-                         + "its New Class Owner input would do, and it is left unwired on purpose.",
+                         + "its New Class Owner input would do, and it is left unwired on purpose. "
+                         + "`classEntriesRestored` counts entries LabVIEW's own save had deleted "
+                         + "from the .lvproj and this step put back; anything above 0 means the "
+                         + "close clobbered the file, which is a known and unexplained behaviour.",
             };
         }
         catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
