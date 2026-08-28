@@ -48,15 +48,14 @@ they were all measured, most of them twice.
 - **Back-to-back class calls on one project USUALLY work — do not restart pre-emptively, but be
   ready to.** Closing the `Class` refnum NI's provider returns (a leak the helper had for months)
   removed the deterministic failure, and four two-class runs in a row then came back clean with
-  `parent index 0`. A fifth, on a **freshly started** LabVIEW, did not: the child came back
-  `parent index -1` from a `.lvproj` that plainly listed the parent, because LabVIEW was serving a
-  copy of the project that held only the carrier VIs. **The discriminator is unknown.**
+  a parent found. A fifth, on a **freshly started** LabVIEW, did not, and cold runs then failed 4
+  times out of 4 while warm ones failed 1 in 6. **The discriminator is unknown** — a warm instance
+  hung too.
 
-  So: run without restarts, and **read `parent index` on every child**. If it is `-1` while the
-  project file lists the parent, that is this case — restart LabVIEW, delete the class that was
-  just created without its parent, and repeat that one call. Do not carry on: the class is real,
-  compiles, and is silently a root class. `lvai_create_class` reports `ok: false` for it, so you
-  will not miss it unless you ignore the answer.
+  That failure mode has since been removed at its root: the parent no longer comes from the project
+  at all. What remains is the unexplained wedge — LabVIEW hanging or its gRPC service going silent,
+  always leaving correct files behind or nothing at all. So: run without restarts, read every
+  answer, and if LabVIEW stops responding, kill it, check what is on disk, and resume from there.
 
 - **Never delete a `.lvclass` file while LabVIEW holds it** — its class is then in memory with no
   file behind it, and the next `Add Class to Project (path).vi` answers **`Error 1614`** at
@@ -78,10 +77,15 @@ they were all measured, most of them twice.
   class run is routinely wrong — it reported `classes: []` for a project whose file listed the
   class, plus a `missingFiles` entry naming a carrier VI deleted minutes earlier.
 
-- **A parent must be listed in the `.lvproj` before its child is created.** NI's provider searches
-  the active project's classes and, finding nothing, makes a root class **silently**. The tool
-  checks this for you and reports `parent index`; read it, and read `inheritsFrom` in the verify
-  step. Build parents before children, always.
+- **A parent needs to EXIST, not to be a project member.** The helper opens it from its path with
+  `LVClass.Open`, so project membership stopped being a precondition on 2026-08-28. It used to
+  search the active project, which is what made a child come out a silent root class whenever
+  LabVIEW's copy of the project was missing the class. Build parents before children — the FILE has
+  to be there — but stop worrying about the `.lvproj`.
+
+- **NI's provider still makes a root class SILENTLY when the parent refnum is invalid.** That is why
+  the helper reports **`parent opened`**, a boolean: read it on every child, and read `inheritsFrom`
+  in the verify step. `ok` is already gated on it.
 
 - **Accessors go in slices, one class at a time, on clean memory.** A 7-field class needs about
   70 s and the MCP client gives up near 60 s, twice leaving 12 of 14 VIs half-written. Three fields
@@ -167,8 +171,9 @@ For each class, in dependency order — all in one LabVIEW session, no restarts:
 1. Call `lvai_create_class` with `className`, `directory`, `fields`, `projectPath`, and
    `parentClassPath` when there is a parent.
 2. **Read three things out of the answer** before moving on:
-   - `steps[provider].values["parent index"]` — `-1` means no parent was found. For a root class
-     that is correct; for a child it means the class must be deleted and redone.
+   - `steps[provider].values["parent opened"]` — `0` means no parent was opened. For a root class
+     that is correct and expected; for a child it means the parent path could not be opened, and the
+     class must be deleted and redone. Check the path itself: readable, a real `.lvclass`.
    - `steps[verify]` — `fieldsAdded` must equal `fieldsAsked`, `privateDataBytes` must be > 0, and
      `inheritsFrom` must name the parent.
    - `steps[projectEntry].strayVisRemoved` — LabVIEW adopts every VI it has open when it saves a

@@ -64,10 +64,12 @@ internal sealed class ClassTools(LvaiConnection connection)
         was not true until 2026-08-28: the helper leaked the Class refnum NI's provider returns,
         which kept the new class in LabVIEW's memory after the project closed, so the next run could
         not bind the project item to it and created the child as a ROOT class with no error. Closing
-        that one reference fixed it - measured on the same pair, `parent index` -1 before and 0
-        after, and a full two-class, twelve-accessor run then needed no restart anywhere. If a
-        `parent index = -1` ever comes back for a parent the .lvproj really lists, suspect a leaked
-        reference again rather than reaching for a restart.
+        that one reference fixed it. THE PARENT NO LONGER COMES FROM THE PROJECT AT ALL: the helper
+        opens it from its path with {LV.Application} LVClass.Open, which needs no project membership
+        - probed against a project listing no classes. That removes the whole chain that made this
+        fragile (parent must be a project member -> the .lvproj must list it -> the file must be
+        written -> the project must be closed to allow writing it). `parent opened` replaces the old
+        `parent index`: a boolean, false when a parent was asked for and did not open.
         FIELDS are `<type>.<name>`, comma separated, the same spelling AIXML's cluster grammar uses:
         `string.Manufacturer,int32.Year Of Manufacture,double.Top Speed kmh`. Scalars only - string,
         bool, double, single, timestamp and the int/uint widths. A cluster, array or enum field is
@@ -221,24 +223,19 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // costs a whole debugging round. "Add the parent to the project" is the right
                 // answer only when the parent really is absent from the file. When the file DOES
                 // list it, the parent is missing from LabVIEW's copy alone - see ProjectListsClass.
-                if (parentClassPath is { Length: > 0 } && provider.ParentIndex < 0)
+                if (parentClassPath is { Length: > 0 } && !provider.ParentOpened)
                     return Outcome(false, "provider", steps, total, classPath, null,
                         ProjectListsClass(projectUsed, parentClassPath)
-                            ? $"THE CLASS WAS CREATED WITHOUT ITS PARENT, and '{projectUsed}' DOES "
-                              + $"list '{Path.GetFileName(parentClassPath)}' - so the file is right "
-                              + "and LabVIEW's copy of it is not. That means the parent is still "
-                              + "held in memory by a reference nobody closed, so the project cannot "
-                              + "bind its item to it. This exact failure was the helper leaking the "
-                              + "Class refnum from Add Class to Project (path).vi, fixed 2026-08-28 "
-                              + "by closing it (uid 89 in lvai_create_class.xml). If you are seeing "
-                              + "it again, look for another unclosed reference before reaching for a "
-                              + "LabVIEW restart - a restart clears it but hides the cause. Delete "
-                              + "this class and run again."
-                            : $"THE CLASS WAS CREATED WITHOUT ITS PARENT. '{parentClassPath}' was "
-                              + "not among the classes of the open project, and the .lvproj does "
-                              + "not list it either, so NI's provider silently made a root class. "
-                              + "Add the parent to the project first, delete this class, and run "
-                              + "again - lvai_describe_class reports what it actually inherits.");
+                            ? $"THE CLASS WAS CREATED WITHOUT ITS PARENT. '{parentClassPath}' "
+                              + "could not be OPENED - the helper reaches it with LVClass.Open from "
+                              + "its path, so project membership is not the issue and neither is "
+                              + "LabVIEW's copy of the project. Check the file itself: readable, "
+                              + "not locked, a real .lvclass. Delete this class and run again."
+                            : $"THE CLASS WAS CREATED WITHOUT ITS PARENT. '{parentClassPath}' "
+                              + "could not be opened, and '{projectUsed}' does not list it either. "
+                              + "The path is the thing to check now - the parent no longer has to "
+                              + "be a project member. Delete this class and run again; "
+                              + "lvai_describe_class reports what it actually inherits.");
 
                 // 4. the project entry. LabVIEW holds the .lvproj open, so it is closed first -
                 //    editing underneath it means the next save writes the old contents back.
@@ -546,9 +543,10 @@ internal sealed class ClassTools(LvaiConnection connection)
         }
     }
 
-    /// <summary>Does the .lvproj ON DISK list this class? Separates the two reasons NI's provider
-    /// answers `parent index = -1`, which need opposite fixes: a parent genuinely missing from the
-    /// project, or a project LabVIEW is serving from a stale in-memory copy.</summary>
+    /// <summary>Does the .lvproj ON DISK list this class? Kept for the failure message only.
+    /// Project membership stopped being a PRECONDITION when the parent search became
+    /// <c>LVClass.Open</c> on the parent's path, but knowing whether the project lists it still
+    /// tells the reader which kind of mistake they are looking at.</summary>
     private static bool ProjectListsClass(string projectPath, string classPath)
     {
         try
@@ -565,7 +563,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         catch (UnauthorizedAccessException) { return false; }
     }
 
-    private static (int ErrorCode, int ParentIndex, int FieldsAdded) ReadProviderRun(string answer)
+    private static (int ErrorCode, bool ParentOpened, int FieldsAdded) ReadProviderRun(string answer)
     {
         var values = Parsed(answer)?["values"];
         int Read(string name) =>
@@ -575,7 +573,14 @@ internal sealed class ClassTools(LvaiConnection connection)
         // value, so the code is dug out of it rather than read off a field.
         var xml = values?["error out"]?["xml"]?.GetValue<string>() ?? "";
         var code = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
-        return (code.Success ? int.Parse(code.Groups[1].Value) : -1, Read("parent index"),
+        // `parent opened` is a BOOLEAN now, and it travels as flattened XML rather than as a
+        // plain value - the helper opens the parent from its path with LVClass.Open and tests the
+        // refnum, instead of searching the active project for it and reporting an index.
+        var openedXml = values?["parent opened"]?["xml"]?.GetValue<string>() ?? "";
+        var opened = System.Text.RegularExpressions.Regex.IsMatch(
+            openedXml, @"<Name>parent opened</Name>\s*<Val>1");
+
+        return (code.Success ? int.Parse(code.Groups[1].Value) : -1, opened,
                 Read("fields added"));
     }
 

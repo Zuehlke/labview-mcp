@@ -203,9 +203,9 @@ Two process points worth more than the bug:
   worse: a failure seen after a change is not necessarily caused by it. The session that produced
   this had killed LabVIEW eight times already, which is its own variable.
 
-### `LVClass.Open` — the more promising route, probed and working
+### `LVClass.Open` — SHIPPED: the parent now comes from its path
 
-**This is the one to try next, and it does not touch `New Class Owner` at all.** Measured
+**This is what the helper does since 2026-08-28, and it does not touch `New Class Owner` at all.** Probed first
 2026-08-28 with a standalone probe, against a class that is **not a member of the active project**
 (the project open at the time listed nothing):
 
@@ -226,19 +226,30 @@ searching the **active project**:
 | the `.lvproj` must list it | the file must be written |
 | the file must be written | the project must be CLOSED first, or LabVIEW's save clobbers the edit |
 
-`LVClass.Open` removes the first row: the parent comes from its path. The class still has to reach
-the user's `.lvproj` eventually, so a close and a file write are still needed **once**, at the end of
-a run — but no longer *between* classes. A hierarchy would then cost one open and one close however
-many classes it has.
+`LVClass.Open` removes the first row: the parent comes from its path, and **the whole table above
+is now history rather than constraint**. Five nodes went out of the helper — `Build Array`,
+`CLSUIP_GetAllClassesInProject.vi`, a For Loop reading each class's `Path`, `To Upper Case`,
+`Search 1D Array`, `Index Array` — all of which existed only to turn a path the caller already knew
+into a refnum.
 
-Two things a real implementation has to solve, neither of them discovered yet:
+Two things the implementation had to solve, and how:
 
-- **The empty-parent case.** A root class passes no parent path, and `LVClass.Open` on an empty path
-  will error and poison the error chain. Today's `Search 1D Array` answers −1 for that case, which is
-  exactly what "no parent" needs. A Case Structure on "is the path empty" is the obvious shape.
-- **`parent index` loses its meaning** — it is the search result. The output contract would become
-  something like "parent opened?", and `ClassTools` reads it to decide whether a child silently came
-  out a root class.
+- **The empty-parent case.** A root class passes no parent path, so `LVClass.Open` fails. Rather
+  than a Case Structure, its **error terminals are left unwired**: the failure then produces exactly
+  what is wanted, an invalid refnum meaning "no parent", and never reaches the error chain.
+- **The guard moved rather than disappearing.** `parent index` is gone; `Not A Number/Path/Refnum?`
+  plus `Not` report a boolean **`parent opened`**, and `ClassTools` gates `ok` on it. A parent that
+  was asked for and did not open is still caught — which matters, because NI's provider makes a root
+  class silently when the refnum is invalid.
+- **Closing the parent refnum needs the same care.** It is ours, so it is closed — but *out of the
+  error chain*, ordering wired through `error in` only. Closing the legitimately-invalid refnum of a
+  root class answers `Error 1055`, and wired into the chain that turned **every** root class into a
+  failed run. Measured, and fixed the same day.
+
+**Verified end to end on a cold LabVIEW**: root class `parent opened 0`, child `parent opened 1`
+with `inheritsFrom` reading back from the file, then all twelve accessors — no restart anywhere.
+That is one cold run, not a stability claim: the intermittent wedges described above are a separate,
+still-unexplained problem, and this change removes a *cause of wrong parents*, not the wedges.
 
 Two other useful finds from the same reading, both used by NI and both closed afterwards:
 
