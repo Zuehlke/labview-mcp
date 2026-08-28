@@ -410,6 +410,50 @@ scans that export for node families NI publishes as unsupported. The quiet famil
 the container built and its configuration silently discarded, which a router trusting validation
 alone would send to AIXML and destroy.
 
+**AND NEITHER CHECK SEES A TYPEDEF, so `route: aixml` is not a clean bill of health for one.**
+Measured 2026-08-28: AIXML has no way to express that a control is an instance of a `.ctl` — NI
+lists them as unsupported for authoring, and the *export* drops the identity too, rendering a
+typedef as the bare type it wraps. `Bounds.vi` in `vi.lib\Utility\AggHandler` carries two on its
+connector pane; its export names neither the `.ctl`s nor their library, at any depth. So an AIXML
+edit — which is always a full regeneration — replaces every typedef with a de-linked copy, and
+`pylv_route` answers `route: aixml`, `silentlyUnsupported: []`, `validateErrorCode: 0` for exactly
+that VI. Check A cannot see it because the export validates *precisely because* the typedef is
+already gone; Check B cannot because a typedef is a property of a type, not a node family.
+
+**Nothing anywhere reports this.** Same structure, same pane, callers' wires still bind, VI still
+compiles. It surfaces weeks later when someone edits the `.ctl` and the change does not propagate.
+So before editing a VI through AIXML, ask separately whether it uses a typedef: `pylv_extract`
+answers without LabVIEW — a bound one is a `<TypeDesc Type="TypeDef">` in `VCTP` whose `<Label>`
+children name the owning library and the `.ctl`, plus a front-panel heap object of class `typeDef`.
+**Putting a binding back IS scriptable — but not where the control sits.** This clause read "it is an
+IDE gesture" for most of 2026-08-28, on the grounds that VI Server has only `Discon Typedef` and
+`Update Typedef`; that was a search for typedef-named methods, and the operation is simply called
+`Replace`. Measured end to end the same day: `{LV.Control}` `Replace` with the typedef's `Path` is
+**refused on a class private data control** (`Error 1073`) and **allowed on an ordinary `.ctl`**, and
+`{LV.VI}` `Save.Instrument` with an **unwired path** saves a control in place — which for a private
+data control means back inside the `.lvclass`. So the move is: export the cluster to a `.ctl`,
+`Replace` the field there, import it back. Full wiring in `docs/vi-server-reference.md`.
+
+**Wire the IDE's application instance into `LVClass.Open` for the import** — `Project\3AActive
+Project` → `Application` → `reference` — and then **leave the project open**. That reaches the class
+the project holds instead of a second copy beside it; four bindings were made with the project open
+throughout. Unwired is right for the export, which only reads and needs no project at all. Both
+failure modes are this one fact from opposite sides: the wired helper answers `Error 1055` with the
+project closed, and a close/reopen cycle around a class rewritten through an **unwired** open killed
+LabVIEW, `bad mlabel length` in `MultiLabel.cpp`. This paragraph said "run it with the project closed"
+for an hour, which was the wrong lesson from that crash.
+
+The one thing the route does NOT do: it leaves the class's **accessors carrying the bare type**. The
+IDE gesture rewrites them; this does not, and a project open/close does not either. Regenerate them
+when the accessor must show the typedef.
+
+Pylabview cannot compose a typedef heap object where none exists; and re-pointing one that ALREADY
+exists is **not** the cheap label substitution it looks like — measured 2026-08-28, the typedef's file
+name sits 12 times in `VCTP` and 3 more in `VITS`, a block pylabview cannot parse and copies through
+unchanged. Untested either way; do not promise it — and with `Replace` available there is now little
+reason to try.
+`docs/aixml-reference.md` §5 and `docs/lvclass-creation.md` §3 have the measurements.
+
 **This clause used to name `Event Structure` and `Timed Loop` as those quiet cases, and both are
 loud.** `Timed Loop` returns `errorCode 1`, `Unsupported node type: Timed Loop`, by name.
 `Event Structure` returns `errorCode 1` too — re-measured 2026-08-22 on `State Machine
@@ -677,6 +721,7 @@ literally it argued away 600 usable palette VIs.
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
+| How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |

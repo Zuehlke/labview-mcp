@@ -1,0 +1,33 @@
+<VI _name="replace_in_ctl.vi" description="Bind one field of an ORDINARY .ctl to a typedef with {LV.Control} Replace\2C then save the .ctl in place. The class private data control refuses Replace with error 1073\3B this asks whether a plain control file does too. If it does not\2C the full chain is scripted\3A export the private data to a .ctl\2C Replace the field here\2C import the .ctl back into the class.">
+  <Control _name="ctl path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="typedef path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="field index" type="string" uid="14" uid_parent="root" value="0" outputs="value:14.value"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:12.path" uid="12" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:14.value" outputs="number:15.number" uid="15" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="vi path:12.path" outputs="vi reference:31.vi reference,error out:31.error out" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:31.vi reference,error in (no error):31.error out" outputs="Front Panel:32.Panel,reference out:32.reference out,error out:32.error out" type="{LV.VI}" uid="32" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:32.Panel,error in (no error):32.error out" outputs="Controls[]:33.Controls,reference out:33.reference out,error out:33.error out" type="{LV.Panel}" uid="33" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:33.Controls,index:" outputs="element:35.element" uid="35" uid_parent="root"/>
+
+  <Constant type="ref{LV.Cluster}" value="" outputs="value:36.value" uid="36" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:35.element,error in:33.error out,target class:36.value" outputs="specific class reference:37.cluster,error out:37.error out" uid="37" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:37.cluster,error in (no error):37.error out" outputs="Controls[]:38.Controls,reference out:38.reference out,error out:38.error out" type="{LV.Cluster}" uid="38" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:38.Controls,index:15.number" outputs="element:40.element" uid="40" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Is Typedef?" inputs="reference:40.element,error in (no error):38.error out" outputs="Is Typedef?:45.before,reference out:45.reference out,error out:45.error out" type="{LV.Control}" uid="45" uid_parent="root"/>
+
+  <Node _name="Invoke Node" inputs="reference:40.element,error in (no error):45.error out,Path:13.path" outputs="reference out:,error out:50.error out,Replace:" target="Replace" type="{LV.Control}" uid="50" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:37.cluster,error in (no error):50.error out" outputs="Controls[]:55.Controls,reference out:55.reference out,error out:55.error out" type="{LV.Cluster}" uid="55" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:55.Controls,index:15.number" outputs="element:56.element" uid="56" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Is Typedef?" inputs="reference:56.element,error in (no error):55.error out" outputs="Is Typedef?:57.after,reference out:57.reference out,error out:57.error out" type="{LV.Control}" uid="57" uid_parent="root"/>
+
+  <Node _name="Invoke Node" inputs="reference:31.vi reference,error in (no error):57.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:60.reference out,error out:60.error out" target="Save.Instrument" type="{LV.VI}" uid="60" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:60.reference out,error in (no error):60.error out" outputs="error out:90.error out" uid="90" uid_parent="root"/>
+
+  <Indicator _name="typedef before" inputs="value:45.before" type="uint32{not a typedef,typedef,strict typedef,class private data}" uid="96" uid_parent="root" value="0"/>
+  <Indicator _name="typedef after" inputs="value:57.after" type="uint32{not a typedef,typedef,strict typedef,class private data}" uid="97" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:90.error out" type="cluster{bool.status,int32.code,string.source}" uid="98" uid_parent="root" value="[false,0,]"/>
+</VI>
