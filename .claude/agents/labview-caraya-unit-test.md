@@ -255,8 +255,8 @@ State, in this order:
 | Job | Agent |
 |---|---|
 | Caraya unit tests | this one — the default |
-| LUnit unit tests | `labview-lunit-unit-test` *(not built yet — say so rather than substituting Caraya)* |
-| VI Tester unit tests | `labview-vitester-unit-test` *(not built yet — same)* |
+| LUnit unit tests | `labview-lunit-unit-test` *(scaffold — framework absent from this station)* |
+| VI Tester unit tests | `labview-vitester-unit-test` *(scaffold — unproven, files ship but nothing measured)* |
 | Create a class or a hierarchy | `labview-class-generator` |
 | Build a new VI | `labview-vi-generator` |
 | Change an existing VI | `labview-vi-editor` |

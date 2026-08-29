@@ -822,14 +822,21 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 ## The agent definitions
 
 **The unit-test agent is per FRAMEWORK, and `labview-class-generator` always calls one.** Caraya is
-the default (`labview-caraya-unit-test`); LUnit and VI Tester get their own agents when someone needs
-them, and until then a request for either is answered by saying the agent does not exist — never by
-substituting Caraya, because the framework is the user's choice and only the default is ours. The
+the default (`labview-caraya-unit-test`), and LUnit and VI Tester have their own agents —
+`labview-lunit-unit-test` and `labview-vitester-unit-test`, both added 2026-08-29. **Both are
+scaffolds, and deliberately so**: measured that day, LUnit is absent from `vi.lib\addons`, `user.lib`
+and `LVAddons` entirely, and VI Tester only *ships* files under `vi.lib\addons\_JKI Toolkits` with
+nothing about it ever measured here. So each carries the framework-independent rules — which are
+toolchain properties and do transfer — and a Phase 0 that establishes a callable target and returns
+`CANNOT PROCEED` when it cannot. **Neither may substitute Caraya**, because the framework is the
+user's choice and only the default is ours. The two scaffolds contain almost no target spellings on
+purpose: inventing a name is what preceded three LabVIEW crashes, and the way to get one is to export
+a VI that already calls the framework. The
 class agent's Phase 6 is the handoff and is not conditional on tests having been asked for. Carved out
 of the class agent on 2026-08-29 at the user's request, because testing and class creation share
 almost nothing.
 
-The five `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+The seven `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
 of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
 before it can be spawned.
 

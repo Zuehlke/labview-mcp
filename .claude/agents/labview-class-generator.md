@@ -300,9 +300,12 @@ tests is half a deliverable, and you are not the agent that writes them.
 
 1. **Pick the framework.** **Caraya is the default** — `labview-caraya-unit-test`. Use a different
    agent only where the user named a different framework; LUnit and VI Tester are the other two that
-   exist in this world, and their agents may not be built yet. If the user named one that has no
-   agent, **say so and stop** rather than substituting Caraya quietly: the framework is the user's
-   choice, only the default is yours.
+   exist in this world and both have an agent — `labview-lunit-unit-test` and
+   `labview-vitester-unit-test` — but both are **scaffolds over frameworks that are not installed
+   here**, and each stops at its own Phase 0 with `CANNOT PROCEED` rather than generating something
+   that cannot run. That is the correct outcome, not a failure of yours: relay it and let the user
+   choose. **Never substitute Caraya quietly** — the framework is the user's choice, only the
+   default is yours.
 
 2. **Spawn it with the Agent tool** and give it, in the task prompt:
    - the `.lvclass` path or paths you created;
@@ -422,7 +425,7 @@ Everything here was verified before this agent was written. Treat it as fact.
 |---|---|
 | Create a class or a hierarchy | this one |
 | **Unit-test what you created — Phase 6, always** | **`labview-caraya-unit-test`** (the default framework) |
-| Unit tests in LUnit / VI Tester | `labview-lunit-unit-test` / `labview-vitester-unit-test` *(not built yet — say so, do not substitute Caraya)* |
+| Unit tests in LUnit / VI Tester | `labview-lunit-unit-test` / `labview-vitester-unit-test` *(scaffolds — neither framework is installed here; each stops at Phase 0. Do not substitute Caraya)* |
 | Build a new VI | `labview-vi-generator` |
 | Change an existing VI | `labview-vi-editor` |
 | Document a library, class or project | `labview-doc-generator` |
