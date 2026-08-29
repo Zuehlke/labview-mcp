@@ -1,0 +1,42 @@
+<VI _name="lvbd_coercion_dots.vi" description="For ONE subVI call node on a VI's block diagram - addressed by its index in All Objects[] - report every terminal's Name and {LV.Terminal} Coercion Dot?\2C and alongside it the VI Name of every diagram object (empty for anything that is not a subVI call). A coercion dot means the wired type is not identical to the terminal type\2C which is what the placeholder-plus-retarget route leaves behind when the real subVI's pane carries typedefs. ADDRESSED BY INDEX\2C NOT BY NAME\3A a diagram may call the same subVI several times\2C and matching on VI Name collapses them to one - measured\2C a caller with four coerced terminals across two nodes reported two\2C and could report clean while a second node still wore dots. The index is safe here because subvis seen is emitted in the same pass and resolved in the same session\3B nothing persists it. Pass node index -1 to enumerate only. TWO SEQUENTIAL LOOPS\2C never nested\3A a nested pair accumulating through shift registers was measured to keep only the LAST outer iteration. Opened WITHOUT an application instance on purpose - this has to work while pylv_apply has the project closed. Read only.">
+  <Control _name="vi path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="node index" conIdx="1" connection="required" outputs="value:11.value" type="string" uid="11" uid_parent="root" value="-1"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:15.number" uid="15" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="vi path:14.path,error in (no error):" outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):24.error out" outputs="Block Diagram:26.bd,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:26.bd,error in (no error):26.error out" outputs="All Objects[]:28.objs,reference out:,error out:28.error out" uid="28" uid_parent="root"/>
+
+  <Constant type="ref{LV.SubVI}" value="" outputs="value:30.value" uid="30" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:28.objs" mode="index" outputs="value:101.obj" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:30.value" outputs="value:103.subclass" uid="103" uid_parent="100"/>
+    <Node _name="To More Specific Class" inputs="reference:101.obj,error in:,target class:103.subclass" outputs="specific class reference:104.sv,error out:104.error out" uid="104" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:104.sv,error in (no error):" outputs="VI Name:110.name,reference out:,error out:110.error out" uid="110" uid_parent="100"/>
+    <Tunnel _id="Out1" inputs="value:110.name" mode="index" outputs="value:140.seen" uid="140" uid_parent="100"/>
+  </Structure>
+
+  <Node _name="Index Array" inputs="array:28.objs,index:15.number" outputs="element:142.element" uid="142" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:142.element,error in:,target class:30.value" outputs="specific class reference:144.sv,error out:144.error out" uid="144" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name,read+Terminals[]" type="{LV.SubVI}" inputs="reference:144.sv,error in (no error):" outputs="VI Name:150.found,Terminals[]:150.terms,reference out:,error out:150.error out" uid="150" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:150.terms" mode="index" outputs="value:201.term" uid="201" uid_parent="200"/>
+    <Node _name="Property Node" fields="read+Name,read+Coercion Dot?" type="{LV.Terminal}" inputs="reference:201.term,error in (no error):" outputs="Name:210.tname,Coercion Dot?:210.dot,reference out:,error out:210.error out" uid="210" uid_parent="200"/>
+    <Tunnel _id="Out1" inputs="value:210.tname" mode="index" outputs="value:230.names" uid="230" uid_parent="200"/>
+    <Tunnel _id="Out2" inputs="value:210.dot" mode="index" outputs="value:231.dots" uid="231" uid_parent="200"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:24.vi reference,error in (no error):28.error out" outputs="error out:300.error out" uid="300" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:300.error out" outputs="code:310.code,source:310.source" uid="310" uid_parent="root"/>
+
+  <Indicator _name="subvis seen" conIdx="4" connection="recommended" inputs="value:140.seen" type="array{string}" uid="900" uid_parent="root" value="[]"/>
+  <Indicator _name="subvi found" conIdx="5" connection="recommended" inputs="value:150.found" type="string" uid="901" uid_parent="root" value=""/>
+  <Indicator _name="terminal names" conIdx="6" connection="recommended" inputs="value:230.names" type="array{string}" uid="902" uid_parent="root" value="[]"/>
+  <Indicator _name="coercion dots" conIdx="7" connection="recommended" inputs="value:231.dots" type="array{bool}" uid="903" uid_parent="root" value="[]"/>
+  <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:310.code" type="int32" uid="904" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:310.source" type="string" uid="905" uid_parent="root" value=""/>
+</VI>

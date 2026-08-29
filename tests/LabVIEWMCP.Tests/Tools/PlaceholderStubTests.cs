@@ -107,6 +107,24 @@ public sealed class PlaceholderStubTests
         Assert.NotEqual(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(renamed));
     }
 
+    /// <summary>
+    /// The staleness this guards was measured on a real pane. CloneTerminals copies each Control
+    /// element whole, so `connection` travels into the stub and the generator then enforces it on
+    /// the CALLER's AIXML. With `connection` outside the cache key, changing a terminal from
+    /// `required` to `recommended` left the signature identical, the old stub was reused, and a
+    /// caller that correctly left that input unwired was refused with
+    /// `required input 'X' is not wired` - an error naming the caller's document for a staleness in
+    /// this cache, with nothing pointing at `refresh`.
+    /// </summary>
+    [Fact]
+    public void TheSignatureSeparatesPanesThatDifferOnlyInWhatMustBeWired()
+    {
+        var relaxed = ViTerminals.Parse(
+            SubjectXml.Replace("connection=\"required\"", "connection=\"recommended\""))!;
+
+        Assert.NotEqual(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(relaxed));
+    }
+
     [Fact]
     public void TheSameePaneGivesTheSameSignature_WhichIsWhatMakesTheCacheHit()
     {

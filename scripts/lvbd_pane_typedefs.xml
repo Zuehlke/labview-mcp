@@ -1,0 +1,35 @@
+<VI _name="lvbd_pane_typedefs.vi" description="List a VI's front panel controls with their label\2C whether each is a typedef instance\2C and the .ctl it points at. This is what lvai_placeholder_subvi cannot learn from an AIXML export\3A the export renders a typedef as the bare type it wraps and names neither the .ctl nor its library\2C at any depth\2C so a stub cloned from it silently loses the binding and every caller terminal comes out coerced. Is Typedef? is compared against the enum's own zero rather than reported raw\2C because an enum array does not survive the string-only run-and-read boundary cleanly. Opened WITHOUT an application instance\3A this runs before anything is generated\2C so there may be no project at all. Read only.">
+  <Control _name="vi path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="vi path:14.path,error in (no error):" outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):24.error out" outputs="Front Panel:26.panel,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:26.panel,error in (no error):26.error out" outputs="Controls[]:28.controls,reference out:,error out:28.error out" uid="28" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:28.controls" outputs="size(s):29.size" uid="29" uid_parent="root"/>
+
+  <Constant type="uint32{not a typedef,typedef,strict typedef,class private data}" value="0" outputs="value:40.value" uid="40" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:28.controls" mode="index" outputs="value:101.ctl" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:40.value" outputs="value:102.zero" uid="102" uid_parent="100"/>
+
+    <Node _name="Property Node" fields="read+Label,read+Is Typedef?,read+Typedef\3APath" type="{LV.Control}" inputs="reference:101.ctl,error in (no error):" outputs="Label:110.label,Is Typedef?:110.kind,Typedef\3APath:110.path,reference out:,error out:110.error out" uid="110" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:110.label,error in (no error):" outputs="Text:112.name,reference out:,error out:112.error out" uid="112" uid_parent="100"/>
+    <Node _name="Not Equal?" inputs="x:110.kind,y:102.zero" outputs="x != y?:114.neq" uid="114" uid_parent="100"/>
+    <Node _name="Path To String" inputs="path:110.path" outputs="string:116.string" uid="116" uid_parent="100"/>
+
+    <Tunnel _id="Out1" inputs="value:112.name" mode="index" outputs="value:130.names" uid="130" uid_parent="100"/>
+    <Tunnel _id="Out2" inputs="value:114.neq" mode="index" outputs="value:131.flags" uid="131" uid_parent="100"/>
+    <Tunnel _id="Out3" inputs="value:116.string" mode="index" outputs="value:132.paths" uid="132" uid_parent="100"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:24.vi reference,error in (no error):28.error out" outputs="error out:300.error out" uid="300" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:300.error out" outputs="code:310.code,source:310.source" uid="310" uid_parent="root"/>
+
+  <Indicator _name="control names" conIdx="4" connection="recommended" inputs="value:130.names" type="array{string}" uid="900" uid_parent="root" value="[]"/>
+  <Indicator _name="is typedef" conIdx="5" connection="recommended" inputs="value:131.flags" type="array{bool}" uid="901" uid_parent="root" value="[]"/>
+  <Indicator _name="typedef paths" conIdx="6" connection="recommended" inputs="value:132.paths" type="array{string}" uid="902" uid_parent="root" value="[]"/>
+  <Indicator _name="control count" conIdx="7" connection="recommended" inputs="value:29.size" type="int32" uid="903" uid_parent="root" value="0"/>
+  <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:310.code" type="int32" uid="904" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:310.source" type="string" uid="905" uid_parent="root" value=""/>
+</VI>

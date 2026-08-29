@@ -421,16 +421,48 @@ internal sealed class BulkTools(LvaiConnection connection)
                          .Select(m => m.Groups[1].Value).Distinct().Order())
                 targets.Add(target);
 
-        return new JsonObject
+        var step = new JsonObject
         {
             ["step"] = "verify",
             ["ran"] = Parsed(answer) is JsonObject o && o["ok"]?.GetValue<bool>() != false,
             ["errorCode"] = ErrorCode(answer),
             ["callTargets"] = targets,
             ["exportPath"] = exportPath,
-            ["note"] = "Exporting does not keep the VI in memory - measured - so the path can " +
-                       "still be regenerated afterwards. Only lvai_open_file burns it.",
         };
+
+        // The export above proves the call POINTS at the right VI. It cannot prove the wires into
+        // it still carry the right type, and after a retarget onto a subVI whose pane holds
+        // typedefs they do not: the stub was cloned with the bare underlying type, so every wired
+        // input comes out coerced. Nothing else in this cycle sees that - validation, the
+        // retarget and a run all pass - which is why the check belongs here, at the step that
+        // creates the defect, rather than at generation time where the call still targets the stub
+        // and no dot can exist yet.
+        var dots = await new TypedefTools(connection).CoercedTerminalsAsync(viPath,
+            timeoutSeconds, ct);
+
+        if (dots is null)
+        {
+            step["coercionDots"] = null;
+        }
+        else
+        {
+            step["coercionDots"] = dots.Count;
+            if (dots.Count > 0)
+            {
+                var where = new JsonArray();
+                foreach (var d in dots) where.Add(d);
+                step["coercedTerminals"] = where;
+            }
+        }
+
+        step["note"] = "Exporting does not keep the VI in memory - measured - so the path can " +
+                       "still be regenerated afterwards. Only lvai_open_file burns it." +
+                       (dots is { Count: > 0 }
+                           ? $" {dots.Count} terminal(s) now wear a COERCION DOT: the retarget " +
+                             "linked, but the subVI's pane carries typedefs the stub could not. " +
+                             "Repair with lvai_bind_typedef_constants."
+                           : "");
+        return step;
     }
 
     private static string PyOutcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,

@@ -1,0 +1,87 @@
+<VI _name="lvbd_bind_constant.vi" description="Bind ONE block diagram constant to the typedef its subVI terminal expects\2C so the call loses its coercion dot. Everything is addressed BY NAME - the subVI by its VI Name\2C the terminal by its Name\2C the constant by its own Label. Matching the subVI by name is sound HERE even when a diagram calls it several times\2C because the node is used only to derive the terminal's TYPE\2C and a terminal's type is a property of the callee's pane rather than of the call node - every node named the same yields the same typedef. What the node cannot speak for is coercion\2C which is per node\3B that verdict therefore comes from a separate sweep over every node\2C not from this helper. The typedef path is not passed in\3A {LV.Terminal} Create Constant makes a throwaway constant that already carries the terminal's exact type\2C its Typedef Path is read off that\2C and the throwaway is deleted again. Then {LV.Constant} Replace re-points the WIRED constant\2C which is what preserves the wire - Create Constant alone does not rewire\2C measured. Opened through the IDE's application instance\2C so a project must be open and active. TWO MEASURED TRAPS around Replace. It INVALIDATES the reference it was called on - the next Property Node on that reference answers error 1055 - and its return value cannot be consumed either\3A capturing the Invoke Node's Replace output made generation fail with void sources at unrelated nodes\2C while the identical shape on Create Constant works. So nothing is read from the constant after the Replace\2C and this helper reports no verdict of its own beyond what it found and which .ctl it derived. The proof that the bind landed is a coercion sweep over EVERY call node\2C run before and after by the caller - a dot read from one node was measured to report alreadyClean for a constant that had in fact just been replaced. AIXML also rejects XML comments with Error 42\2C so notes live here rather than beside the node they describe.">
+  <Control _name="vi path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="subvi name" conIdx="1" connection="required" outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
+  <Control _name="terminal name" conIdx="2" connection="required" outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+  <Control _name="constant label" conIdx="3" connection="required" outputs="value:13.value" type="string" uid="13" uid_parent="root" value=""/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:,error out:22.error out" uid="22" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:14.path,error in (no error):22.error out" outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):24.error out" outputs="Block Diagram:26.bd,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+SubVIs[],read+All Objects[]" type="{LV.Diagram}" inputs="reference:26.bd,error in (no error):26.error out" outputs="SubVIs[]:28.subvis,All Objects[]:28.objs,reference out:,error out:28.error out" uid="28" uid_parent="root"/>
+
+  <Constant type="ref{LV.SubVI}" value="" outputs="value:30.value" uid="30" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:28.subvis" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:11.value" outputs="value:102.value" uid="102" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:101.value,error in (no error):" outputs="VI Name:110.name,reference out:,error out:110.error out" uid="110" uid_parent="100"/>
+    <Node _name="Equal?" inputs="x:110.name,y:102.value" outputs="x = y?:111.eq" uid="111" uid_parent="100"/>
+    <Node _name="Select" inputs="t:101.value,s:111.eq,f:113.acc" outputs="s? t\3Af:112.sel" uid="112" uid_parent="100"/>
+    <ShiftReg uid="120" uid_parent="100">
+      <Left inputs="value:30.value" outputs="value:113.acc" uid="121" uid_parent="120"/>
+      <Right inputs="value:112.sel" outputs="value:130.match" uid="122" uid_parent="120"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Property Node" fields="read+VI Name,read+Terminals[]" type="{LV.SubVI}" inputs="reference:130.match,error in (no error):28.error out" outputs="VI Name:140.foundname,Terminals[]:140.terms,reference out:,error out:140.error out" uid="140" uid_parent="root"/>
+
+  <Constant type="ref{LV.Terminal}" value="" outputs="value:150.value" uid="150" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:140.terms" mode="index" outputs="value:201.value" uid="201" uid_parent="200"/>
+    <Tunnel _id="In2" inputs="value:12.value" outputs="value:202.value" uid="202" uid_parent="200"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:201.value,error in (no error):" outputs="Name:210.name,reference out:,error out:210.error out" uid="210" uid_parent="200"/>
+    <Node _name="Equal?" inputs="x:210.name,y:202.value" outputs="x = y?:211.eq" uid="211" uid_parent="200"/>
+    <Node _name="Select" inputs="t:201.value,s:211.eq,f:213.acc" outputs="s? t\3Af:212.sel" uid="212" uid_parent="200"/>
+    <ShiftReg uid="220" uid_parent="200">
+      <Left inputs="value:150.value" outputs="value:213.acc" uid="221" uid_parent="220"/>
+      <Right inputs="value:212.sel" outputs="value:230.term" uid="222" uid_parent="220"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:230.term,error in (no error):140.error out" outputs="Name:240.foundterm,reference out:,error out:240.error out" uid="240" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Create Constant" type="{LV.Terminal}" inputs="reference:230.term,error in (no error):240.error out,Value:" outputs="reference out:,Create Constant:250.newref,error out:250.error out" uid="250" uid_parent="root"/>
+  <Constant type="ref{LV.Constant}" value="" outputs="value:252.value" uid="252" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:250.newref,error in:250.error out,target class:252.value" outputs="specific class reference:254.k,error out:254.error out" uid="254" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Is Typedef?,read+Typedef\3APath" type="{LV.Constant}" inputs="reference:254.k,error in (no error):254.error out" outputs="Is Typedef?:256.kind,Typedef\3APath:256.tdpath,reference out:,error out:256.error out" uid="256" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Delete" type="{LV.Constant}" inputs="reference:254.k,error in (no error):256.error out" outputs="reference out:,error out:258.error out" uid="258" uid_parent="root"/>
+
+  <Constant type="ref{LV.Constant}" value="" outputs="value:260.value" uid="260" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:28.objs" mode="index" outputs="value:301.value" uid="301" uid_parent="300"/>
+    <Tunnel _id="In2" inputs="value:13.value" outputs="value:302.value" uid="302" uid_parent="300"/>
+    <Tunnel _id="In3" inputs="value:252.value" outputs="value:303.value" uid="303" uid_parent="300"/>
+    <Node _name="To More Specific Class" inputs="reference:301.value,error in:,target class:303.value" outputs="specific class reference:310.k,error out:310.error out" uid="310" uid_parent="300"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:310.k,error in (no error):" outputs="Label:312.label,reference out:,error out:312.error out" uid="312" uid_parent="300"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:312.label,error in (no error):" outputs="Text:314.text,reference out:,error out:314.error out" uid="314" uid_parent="300"/>
+    <Node _name="Equal?" inputs="x:314.text,y:302.value" outputs="x = y?:316.eq" uid="316" uid_parent="300"/>
+    <Node _name="Select" inputs="t:310.k,s:316.eq,f:318.acc" outputs="s? t\3Af:317.sel" uid="317" uid_parent="300"/>
+    <ShiftReg uid="320" uid_parent="300">
+      <Left inputs="value:260.value" outputs="value:318.acc" uid="321" uid_parent="320"/>
+      <Right inputs="value:317.sel" outputs="value:330.const" uid="322" uid_parent="320"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Property Node" fields="read+Class Name" type="{LV.Constant}" inputs="reference:330.const,error in (no error):258.error out" outputs="Class Name:340.foundclass,reference out:,error out:340.error out" uid="340" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Replace" type="{LV.Constant}" inputs="reference:330.const,error in (no error):340.error out,Style:,Path:256.tdpath,PaletteString:" outputs="reference out:,error out:350.error out,Replace:" uid="350" uid_parent="root"/>
+
+
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):350.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:380.reference out,error out:380.error out" uid="380" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:380.reference out,error in (no error):380.error out" outputs="error out:390.error out" uid="390" uid_parent="root"/>
+
+  <Node _name="Path To String" inputs="path:256.tdpath" outputs="string:400.string" uid="400" uid_parent="root"/>
+  
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:390.error out" outputs="status:410.status,code:410.code,source:410.source" uid="410" uid_parent="root"/>
+
+  <Indicator _name="subvi found" conIdx="4" connection="recommended" inputs="value:140.foundname" type="string" uid="900" uid_parent="root" value=""/>
+  <Indicator _name="terminal found" conIdx="5" connection="recommended" inputs="value:240.foundterm" type="string" uid="901" uid_parent="root" value=""/>
+  <Indicator _name="constant class" conIdx="6" connection="recommended" inputs="value:340.foundclass" type="string" uid="902" uid_parent="root" value=""/>
+  <Indicator _name="typedef path" conIdx="7" connection="recommended" inputs="value:400.string" type="string" uid="903" uid_parent="root" value=""/>
+  
+  <Indicator _name="expected kind" conIdx="9" connection="recommended" inputs="value:256.kind" type="uint32{not a typedef,typedef,strict typedef,class private data}" uid="905" uid_parent="root" value="0"/>
+  <Indicator _name="status" conIdx="13" connection="recommended" inputs="value:410.status" type="bool" uid="908" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="14" connection="recommended" inputs="value:410.code" type="int32" uid="909" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:410.source" type="string" uid="910" uid_parent="root" value=""/>
+</VI>

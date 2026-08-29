@@ -650,6 +650,16 @@ writing the file directly.** If a script must generate it, build the escapes wit
 character map and re-read the file to confirm the escapes survived — never assume the string
 that left your source is the string that reached disk.
 
+**Python's octal escapes are a live instance of that, and the damage is invisible in a diff.**
+Building an AIXML string in Python, `'\3A'` is not backslash-three-A: it is `chr(3)` followed by
+`A`. Measured 2026-08-29 — a description written that way put literal `ETX` and `STX` bytes into
+the file, which rendered as `TRAP^CA` under `cat -v` and as an ordinary-looking `TRAPA` everywhere
+else. Use raw strings, or write the file with an editor tool rather than through a language whose
+escapes overlap AIXML's.
+
+**AIXML rejects XML comments.** `<!-- … -->` between elements gives `Error 42, Generic error`, with
+nothing naming the comment. Notes belong in the `description` attribute.
+
 ## 7. Structures
 
 ### While Loop
@@ -782,6 +792,19 @@ So the shift register's border crossing is implicit in AIXML, and an explicit tu
 makes the loop appear to feed itself. The same holds on the way in: `Left inputs="value:140.value"`
 takes its initialiser straight from a root-level constant with no `In` tunnel. Explicit `Tunnel`
 elements are for wires that cross the border on their own, not for shift-register terminals.
+
+**Do NOT accumulate across NESTED loops with shift registers — measured 2026-08-29, the outer one
+keeps only the LAST iteration.** An inner loop accumulating a string per subVI and an outer loop
+concatenating those blocks validated, generated, ran with `errorCode 0` and returned exactly one
+subVI's worth of records out of two. Nothing reports it: the answer is well-formed, plausible, and
+silently missing everything but the final outer iteration. It was only visible because switching the
+outer source from `SubVIs[]` to `All Objects[]` changed *which* single block came back — with the
+last object being a constant, the report went empty instead of wrong.
+
+The shape that works is **two SEQUENTIAL loops with indexed output tunnels**, never a nested pair:
+one loop to find and enumerate, a second over what it found. `scripts/lvbd_coercion_dots.xml` is a
+worked example — a `Select` plus shift register to carry the match out of the first loop, then
+`mode="index"` `Out` tunnels on the second.
 
 To filter rather than transform, put a `Case Structure` inside the loop, selected by the test, and
 let one frame append while the other passes the accumulator through. **Every frame must declare
@@ -1498,6 +1521,19 @@ must not be rejected merely for taking a cluster.
 `_name` is optional on `Constant` — anonymous constants are normal. Array literals are
 written JSON-style in `value`, e.g. `type="array{double}" value="[1.5,2.5,3.5]"`.
 
+**`_name` becomes the constant's block diagram LABEL, and that is the only handle anything has on
+it afterwards** — measured 2026-08-29. Nothing else distinguishes two boolean constants on one
+diagram: `{LV.Diagram} All Objects[]` order is not stable across VIs, so an index does not survive a
+regeneration. So when a constant feeds a **subVI call**, name it after the terminal it feeds:
+
+```xml
+<Constant _name="Borkenkaefer" type="bool" value="false" outputs="value:60.value" uid="60" uid_parent="root"/>
+```
+
+That is what lets `lvai_bind_typedef_constants` find it later and re-point it at the typedef the
+terminal expects — the repair for the coercion dots a placeholder-plus-retarget always leaves behind
+on a typedef-carrying pane. `docs/typedef-constants.md`.
+
 **"JSON-style" does not extend to quoting string elements — and getting this wrong frames an
 innocent node.** A string array literal is split on commas and each element taken **literally**,
 quote characters included:
@@ -1557,6 +1593,31 @@ documentation (§10), where a primitive gives you nothing but the terminal name.
 Finding the file at all is the fiddly part: OpenG installs under `user.lib\_OpenG.lib\`, not
 `vi.lib`, and the `.llb` in its path is a real directory here rather than a container. Search for
 the VI by name across both roots rather than assuming either.
+
+### Which inputs get a constant: the `required` ones, and only those
+
+**Create a constant for an input the callee marks `required`. Leave `recommended` and `optional`
+inputs unwired unless you have a real value for them** — an unwired input keeps the callee's own
+default. `lvai_vi_terminals` prints the flag beside every terminal and names the required set
+outright.
+
+**The reason this needs saying is that validation cannot teach it.** AIXML enforces `required` and
+says nothing at all about the rest, so *wire whatever the validator demands* behaves like a rule
+and is not one: it is right only while every input you care about happens to be required. Measured
+2026-08-29 — a second call to the same subVI was authored by mirroring the first call's wiring
+without re-reading the flags; it was correct purely because the terminal was still `required`.
+Changing that terminal to `recommended` produced no error and no warning anywhere, and the
+mirrored constant became surplus.
+
+A surplus constant is not harmless. On a typedef-carrying pane it also has to be typedef-bound
+(§ `docs/typedef-constants.md`) and kept in step with the `.ctl` — so it is maintenance bought for
+nothing.
+
+**Re-read the flags rather than trusting a cached view of them.** They live on the callee's pane
+and change when someone edits it. Note in particular that `lvai_placeholder_subvi` caches its stub
+by a signature that includes `connection`, so a flag change does invalidate it — but a stub cached
+by an older build of this server does not carry that in its key, and the symptom of a stale one is
+an error blaming YOUR document: `required input 'X' is not wired`. `refresh` settles it.
 
 ### Polymorphic subVI calls
 
@@ -2473,7 +2534,7 @@ Copying a skeleton must not replace the lookups that produced it. It replaces th
 | `Error 7 ... File not found` on the *output* path | The target directory does not exist. LabVIEW's file write does not create directories — create them first. |
 | `Error 53 ... Unsupported SubVI: X` | `Call` target not resolvable; see section 9. |
 | `Error 1357 ... A LabVIEW file **from that path** already exists in memory` on `Save\3AInstrument` | The VI at that exact path is loaded, so the second iteration of author-generate-run cannot overwrite it. **`OpenFile` is the only operation measured to cause it** — see the table below, which narrows this considerably. |
-| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". **The commonest source is your own last validation.** A `ValidateAIXML` that *fails* appears to leave a VI named after the document's `_name` behind, and the next `ConvertAIXMLToVI` for that name is then refused. Observed 5 for 5 across one session: every 1051 followed a failed validation of the same `_name`, and every file that validated cleanly on the first attempt generated without complaint. The fix is free — bump `_name` (and the output file name) after any validation error, which you want anyway per the fresh-name rule. An earlier note here blamed a sibling probe VI that carried the same `_name`; that explanation fitted one case and this one fits all of them. |
+| `Error 1051 ... A LabVIEW file **of that name** already exists in memory` | A *different* file with the same **filename** is loaded. Rename the target. The two errors are distinct and the wording is the tell: 1357 says "from that path", 1051 says "of that name". **The commonest source is your own last validation.** A `ValidateAIXML` that *fails* appears to leave a VI named after the document's `_name` behind, and the next `ConvertAIXMLToVI` for that name is then refused. Observed 5 for 5 across one session: every 1051 followed a failed validation of the same `_name`, and every file that validated cleanly on the first attempt generated without complaint. The fix is free — bump `_name` (and the output file name) after any validation error, which you want anyway per the fresh-name rule. An earlier note here blamed a sibling probe VI that carried the same `_name`; that explanation fitted one case and this one fits all of them. **But it is the output FILE NAME that has to change, not `_name`** — measured 2026-08-29: after two failed validations of `_name="MainVI.vi"`, generating with `_name="MainVI_g1.vi"` to the *same* path gave the identical 1051, and generating with the same `_name` to `MainVI_g1.vi` went through. This row and the tool's own hint both used to say "generate under a fresh name" without distinguishing the two, which sends you to change the harmless one. Recovery without restarting LabVIEW: generate to a scratch file name **in the same folder** so relative subVI links still resolve, then copy the file over the target — LabVIEW derives a VI's name from its file name, and no name is stored in the file (`strings` finds none). Verified by re-exporting the copy: `_name` came back as the target's name, diagram intact. |
 | `<Structure>: Is a member of a cycle` plus `Wire: Is a member of a cycle` | A redundant border crossing, most often an `Out` tunnel added for a shift register's `Right` terminal — see §7. The net already crosses the border implicitly, so the extra tunnel routes the loop's output back to its own input. Delete the tunnel and let consumers outside read the `Right` output net directly. |
 | `Error 1051` on the **first** generation of a path that does not exist yet | A *different* file carrying that VI's internal name is loaded — and the usual cause is self-inflicted: a scratch iteration generated from the deliverable's own XML keeps `_name="Final.vi"` while being saved as `Probe.vi`, so "Final.vi" is in memory under the wrong path. Change `_name` in every scratch variant, not just the file name. Measured: `viExisted: false`, `viExistsNow: false` — nothing was written, and a LabVIEW restart cleared it. |
 | `Object terminal not found for input: width\3A on Number To Decimal String` | A guessed terminal name. Every wrong guess is reported exactly like this, naming the node and the terminal, so the cheap move is to drop the terminal and re-validate rather than guess again. `Number To Decimal String` has no `width` input. |

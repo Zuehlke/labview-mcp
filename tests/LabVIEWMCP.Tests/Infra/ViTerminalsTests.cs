@@ -110,6 +110,35 @@ public sealed class ViTerminalsTests
         Assert.Contains("ORDER inside a Call does not matter",
                         ViTerminals.Render(ViTerminals.Parse(PlainVi)!));
 
+    /// <summary>
+    /// The flags are printed per terminal and were still read and not acted on: a caller mirrored
+    /// a sibling call's wiring instead. So the answer states the rule and names the set, rather
+    /// than leaving it to be inferred from a column.
+    /// </summary>
+    [Fact]
+    public void RenderedOutputNamesWhichInputsGetAConstant()
+    {
+        var rendered = ViTerminals.Render(ViTerminals.Parse(PlainVi)!);
+
+        Assert.Contains("CONSTANTS: create one ONLY for the `required` input(s) - file name",
+                        rendered);
+        // `error in (no error)` is optional here, so it must NOT be in the required set.
+        Assert.DoesNotContain("required` input(s) - file name, error in", rendered);
+    }
+
+    /// <summary>
+    /// A pane with nothing required must not read as "no rule applies" - it is the case where a
+    /// Call needs no constant at all, which is exactly what a mirroring caller gets wrong.
+    /// </summary>
+    [Fact]
+    public void APaneWithNoRequiredInputSaysSoRatherThanNamingAnEmptySet()
+    {
+        var relaxed = ViTerminals.Parse(
+            PlainVi.Replace("connection=\"required\"", "connection=\"recommended\""))!;
+
+        Assert.Contains("none of these inputs is `required`", ViTerminals.ConstantsRule(relaxed));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

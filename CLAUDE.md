@@ -116,6 +116,36 @@ it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be
 it is allowed to create — and pylabview can then point it at your own code, which AIXML can never
 target. That is how a generated unit test comes to call its subject as an ordinary subVI.
 
+**A PLACEHOLDER LOSES EVERY TYPEDEF ON THE PANE, and the whole chain stays silent about it.** AIXML
+cannot express that a control is an instance of a `.ctl`, so the clone carries the bare underlying
+type — and after the retarget every input you wired a constant to sits behind a **coercion dot**.
+Validation, the retarget, its verify step, a run and `Bad SubVI Linkage` all pass; measured
+2026-08-29 on two strict typedefs (`Control VI Type` = 2). `pylv_route` cannot catch it either: its
+Check A validates the export, which validates *precisely because* the typedef is already gone.
+
+So the placeholder route has a third step. `lvai_placeholder_subvi` now reports `typedefTerminals`
+up front, `pylv_apply`'s verify reports `coercionDots` after the retarget, `lvai_coercion_dots`
+answers the question on demand, and `lvai_bind_typedef_constants` repairs it — deriving each `.ctl`
+from the terminal itself, so you pass no paths. **Name every constant you wire into a generated call
+after the terminal it feeds** (`<Constant _name="Borkenkaefer" …/>`): AIXML's `_name` becomes the
+block diagram label, and the label is how the repair finds the constant. Two boolean constants are
+otherwise indistinguishable, and `All Objects[]` order is not stable across VIs.
+
+**And wire a constant ONLY where the callee marks the input `required`.** `recommended` and
+`optional` inputs stay unwired unless you have a real value; an unwired input keeps the callee's
+default. `lvai_vi_terminals` prints the flag per terminal and names the required set. The trap is
+that **validation cannot teach you this rule**: AIXML enforces `required` and is silent about the
+rest, so "wire what the validator demands" looks like a rule and is only ever accidentally right.
+Measured 2026-08-29 — a second call was authored by mirroring the first call's wiring without
+re-reading the flags, and was correct only because the terminal was still `required`; changing it
+to `recommended` produced no error anywhere and the mirrored constant became surplus. Surplus is
+not free on a typedef pane: it has to be bound and kept in step with the `.ctl` as well.
+
+The one thing the repair does NOT reach is an **output** terminal: nothing is wired into it, so
+there is no dot and no constant — the bare type travels into whatever consumes the wire.
+`docs/typedef-constants.md` has the measurements, including why `Create Constant` alone is not the
+fix and the two traps around `Replace`.
+
 The tool clones the subject's pane, caches the stub in `user.lib\LV_MCP\` under a hash of the
 signature, and hands back the `Call` element and the matching `retarget` operation. **Do not hunt
 the palette for a stand-in and do not hand-write one**: a borrowed placeholder needs a lucky hit per
@@ -722,6 +752,7 @@ literally it argued away 600 usable palette VIs.
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
+| Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
