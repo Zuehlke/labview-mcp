@@ -240,13 +240,27 @@ Accessors need the project **open and active**. No restart before this phase —
 created last is found straight away (`classIndex` in the answer proves it).
 
 1. `lvai_open_file` with `projectPath` **and** `projectName`.
-2. Per class, in slices: `fromField: 0, fieldCount: 3`, then `fieldCount: 2` from `nextFromField`
-   until `nextFromField` reaches the field count. `dynamicDispatch: true`, `accessUi: "R/W"`,
-   `tidyProject` and `closeProject` left off.
+2. Per class: **call it with no `fromField` at all, and keep calling until `moreToDo` is false.**
+   The default `-1` RESUMES from the class file's own member count, and one call now takes as many
+   slices as fit `budgetSeconds`. `dynamicDispatch: true`, `accessUi: "R/W"`, `tidyProject` and
+   `closeProject` left off. Do not compute an offset — that arithmetic is gone as of 2026-08-29, and
+   the answer's `slicesRun`, `slices` and `resumedFrom` say what the call actually did.
 3. Check `membersAfter` after every call. It is the **class file's own count**, not a prediction —
    `2 × fields` when Read and Write both landed.
-4. If a slice fails, do not simply retry: a failed run leaves accessors in memory unsaved and the
-   next one names them `Read X 2.vi`. Restart LabVIEW first.
+4. **On `Request timed out`, JUST CALL AGAIN.** The work is usually done: measured 2026-08-29, a
+   timed-out call had written 8 of 12 members, and the next call answered `resumedFrom: 4` and
+   finished. That used to need a restart and a hand-computed offset; it needs neither.
+5. **Lower `budgetSeconds` for a big class.** One slice of two fields took **25 s** on this station,
+   so the default 45 lets a second slice START at 25 and finish past 50 — beyond the client's
+   patience, losing the answer to a call that had done the work. The budget is checked BETWEEN
+   slices, so it bounds how many are started, not how long one takes. 20 is the safe figure here.
+
+**`Error 1562` at `AddVIToClass.vi` — "the specified project or library is locked" — is the one
+failure that is NOT a retry.** Measured 2026-08-29 on a cold LabVIEW, immediately after the classes
+were created: `membersAfter: 0`, nothing written, `classIndex` correct. **Closing the project and
+re-opening it did not clear it**; only a LabVIEW restart did. The `.lvclass` on disk is writable and
+carries no lock property, so nothing on the file system hints at it. Cause unknown — report it as an
+unexplained restart rather than treating a restart as normal.
 
 A child class gets accessors for **its own** fields only. It inherits the parent's.
 

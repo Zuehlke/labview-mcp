@@ -772,6 +772,9 @@ literally it argued away 600 usable palette VIs.
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
+| How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
+| How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
+| How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |

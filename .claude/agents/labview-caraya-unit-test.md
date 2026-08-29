@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through Caraya's own runner, reads the JUnit report, and proves the tests can fail before reporting them green. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -45,7 +45,8 @@ green run can be meaningless.
   class-typed terminal (`Control with type=UDClassInst is not supported`), so no generated `Call` can
   name an accessor and `lvai_placeholder_subvi` answers `stubRefused`. The way through is LabVIEW's
   own `{LV.SubVI}` `Replace`, which **re-types the wires** where a pylabview link retarget cannot.
-  Full recipe in `docs/labview-unit-testing.md` §3d; the four steps are summarised in Phase 3b.
+  **`lvai_generate_class_test` does the whole thing in one call** - Phase 3b. Full recipe and
+  the traps in `docs/labview-unit-testing.md` §3d.
 
 - **A DYNAMIC DISPATCH INPUT IS A REQUIRED TERMINAL.** This is the trap that decides whether a class
   test runs at all. Leave the first accessor's class input unwired and you get `Error 1003, VI is not
@@ -63,9 +64,19 @@ green run can be meaningless.
   lands in the wrong case **with no error at all**.
 
 - **AN ALL-GREEN FIRST RUN PROVES NOTHING. Break something on purpose, once.** Point one assertion at
-  a wrong expectation, or one node at the wrong subject, run it, confirm `ASSERTATION FAILED`, then
-  restore. Report that you did it. Two defects have shipped behind a green run: a VI Server chain
-  where cases 2 and 3 never executed, and a suite that wrote no report at all.
+  a wrong expectation, or one node at the wrong subject (`lvai_swap_subvis` with a single entry), run
+  it, confirm the report names exactly the case you broke, then restore. Report that you did it.
+  THREE defects have now shipped behind a green run: a VI Server chain where cases 2 and 3 never
+  executed, a suite that wrote no report at all, and the boolean below — which the negative control
+  is what caught.
+
+- **A BOOLEAN CASE VALUE MUST BE LOWER CASE, and getting it wrong is SILENT.** `value="TRUE"` in an
+  AIXML constant is accepted, validates, generates and runs — and LabVIEW's own export reads the
+  constant back as `false`. Measured 2026-08-29: the round trip that produced wrote FALSE onto a
+  default-FALSE object and **passed while testing nothing**. `lvai_generate_class_test` now
+  normalises it, but the rule applies to anything you author by hand, and the only way to see it is
+  to export the VI and read the constant. Choose a boolean value that is NOT the field's default, so
+  a write that does not happen shows up.
 
 - **Read the JUnit report, not `error out`.** The error cluster carries the **first** failed
   assertion only, so a partial run and a single failure are indistinguishable. Wire
@@ -147,7 +158,7 @@ NEEDS CLARIFICATION
 | the subject | route |
 |---|---|
 | a plain VI, no class terminal on its pane | **Phase 3a** — `lvai_generate_test` does the whole thing |
-| a class member — accessor, method, anything with a class terminal | **Phase 3b** — sockets plus `Replace` |
+| a class member — accessor, method, anything with a class terminal | **Phase 3b** — `lvai_generate_class_test` does the whole thing |
 
 `lvai_placeholder_subvi` answering `stubRefused` with `UDClassInst` is how you find out you are in
 the second row, if the pane did not already tell you.
@@ -166,24 +177,37 @@ the value is written verbatim into an AIXML constant; and a **failed validation 
 name** — the phantom stays under that `_name` until LabVIEW restarts, so retry under a **fresh**
 name rather than the same one.
 
-### Phase 3b — Class members: sockets, then `Replace`
+### Phase 3b — Class members: `lvai_generate_class_test`, one call
 
-Four steps, all measured 2026-08-29 over twelve properties of a three-class hierarchy:
+**Do not hand-build this.** One call per class, one write-then-read round trip per field:
 
-1. **Author one socket VI per node**, on the subject's pane pattern. Class terminals become **`path`**
-   — no private data field is a path, so the class-source constant stays findable by class name — and
-   the data terminal becomes **`variant`**, so one socket serves `string`, `double`, `int32` and
-   `bool` alike. Number them: `LVMCP Acc Wv1`, `Rv1`, `Wv2`, … Generate them into
-   `<LabVIEW>\user.lib\LV_MCP\`, where a loose VI resolves as a `Call` target by bare name.
-2. **Author the test against those sockets** with ordinary AIXML — the constants, Caraya's
-   `Define Test.vi`, `Assert Equal Value_Variant.vi`, and the socket chain write → read.
-3. **Swap the nodes**: `{LV.SubVI}` `Replace` with each accessor's path, re-reading `SubVIs[]` every
-   iteration.
-4. **Swap the class source LAST**: `{LV.Constant}` `Replace` on each path constant with the
-   `.lvclass` path. Nodes first, constant last — the other way round the wire has a class source and
-   a path sink, and breaks.
+```json
+[{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
+```
 
-Then **verify with LabVIEW's own export**. What you want to see:
+`seedClassPath` is what tests INHERITANCE: leave it out and each chain starts from the class's own
+constant; point it at a CHILD class to run the parent's accessors on a child object. The accessors
+stay the parent's — only the object changes.
+
+Measured 2026-08-29, cold: **12 sockets, 12 node swaps and 6 constant swaps in 34 s**, verified
+against LabVIEW's own export, where the same thing by hand had cost about forty calls.
+
+What the tool does, so an unexpected answer is readable:
+
+1. **One socket VI per slot**, generated into `<LabVIEW>\user.lib\LV_MCP\`, where a loose VI resolves
+   as a `Call` target by bare name. Class terminals are **`path`** — no private data field is a path,
+   so the class-source constant stays findable among the diagram's objects by its class name.
+2. **The test authored against those sockets** — constants, `Define Test.vi`,
+   `Assert Equal Value_Variant.vi`, and the socket chain write → read.
+3. **The nodes swapped**, then **the class constants LAST** (`lvai_swap_subvis` enforces the order).
+4. **Verified by re-export**: `socketsLeft: 0` and `callTargets` naming the real accessors.
+
+**THE DATA TERMINAL IS TYPED TO THE FIELD, and a Variant is NOT interchangeable.** This section said
+Variant until 2026-08-29 and it was wrong: the constant is wired while the terminal is still the
+socket's type, and after `Replace` a Variant meeting a `string` terminal is a type conflict LabVIEW
+will not coerce away. The tool reads each field's type off its Write accessor's own export.
+
+What you want to see in the verify export:
 
 ```xml
 <Call target="Netzteil.lvclass\3AWrite Hersteller.vi"
@@ -192,6 +216,16 @@ Then **verify with LabVIEW's own export**. What you want to see:
 ```
 
 and zero socket names left anywhere in the file.
+
+**A FAILED RUN POISONS THE SOCKET NAMES for the rest of the LabVIEW session.** The tool numbers them
+by slot, so a retry after fixing anything reuses the same names — and a name whose validation failed
+once answers `Error 1051, a LabVIEW file of that name already exists in memory` on the next attempt,
+with validation now passing. Restart LabVIEW before retrying the same class; nothing else clears it.
+Measured 2026-08-29.
+
+`lvai_swap_subvis` is also the tool for a **single** node swap, which is how the negative control in
+Phase 5 is done. It matches by VI Name, so after the tool has run the names are the accessors' own
+(`Netzteil.lvclass:Read Modell.vi`), not the socket names.
 
 ### Phase 4 — The runner
 
@@ -212,8 +246,35 @@ case fail. Record the failure message in your report.
 ### Phase 6 — Hand over clean
 
 Icons on the test VIs and the runner with `lvai_set_vi_icon` — it also re-saves each VI, which is a
-free check that LabVIEW can load it. Then list them in the `.lvproj`, **while it is closed**, and
-re-open it for the user. Delete anything you generated and superseded.
+free check that LabVIEW can load it. Delete anything you generated and superseded.
+
+**THEN PUT THE TESTS IN THE PROJECT. NO TOOL DOES THIS FOR YOU, and the user WILL notice.** Measured
+2026-08-29: a complete, green, verified suite was handed over and the Project Explorer showed three
+classes and no tests at all, because `lvai_generate_class_test` writes the `.vi` files and lists
+nothing. The user's whole reply was *"Die Tests fehlen im Projekt!"*.
+
+Two things to write, and the order is not optional:
+
+1. **`lvai_close_active_project` FIRST.** A `.lvproj` edited while LabVIEW holds it open is destroyed
+   by the next close, because the close SAVES. Edit the file, then re-open it for the user.
+2. **Add the tests, and STRIP THE STRAYS.** LabVIEW adopts every VI it has open when it saves a
+   project, so a socket out of `user.lib\LV_MCP` lands in the user's project as
+   `<Item Name="LVMCP ClsR1.vi" Type="VI" URL="/&lt;userlib&gt;/LV_MCP/LVMCP ClsR1.vi"/>`. It was ONE
+   of twelve sockets, which is what makes it easy to miss. Anything under `<userlib>/LV_MCP` or
+   `%TEMP%\LabVIEWMCP` is a stray: remove it.
+
+A `Tests` virtual folder is the shape to write, and a sibling file's `URL` climbs one level because
+it resolves against the project FILE rather than its directory:
+
+```xml
+<Item Name="Tests" Type="Folder">
+  <Item Name="Test Netzteil.vi" Type="VI" URL="../Test Netzteil.vi"/>
+  <Item Name="Run NetzteilACDC Tests.vi" Type="VI" URL="../Run NetzteilACDC Tests.vi"/>
+</Item>
+```
+
+Then **verify with `lvai_describe_project`**, not by looking at what you wrote: every test VI must
+appear under `vis`, `missingFiles` must be empty, and no `LVMCP` item may remain.
 
 ### Phase 7 — Report
 
@@ -249,6 +310,21 @@ State, in this order:
 - **A half-applied `Replace` leaves the in-memory VI unusable**: `VI Name` came back empty for *both*
   nodes afterwards, including one never touched. The file on disk was untouched — generate under a
   fresh name and start over.
+- **Three AIXML authoring facts, each of which validated for one type and not another** — which is
+  what made them expensive. `outputs` is REQUIRED on a `Control` and a `Constant` even when nothing
+  consumes the net (`Error -2628 ... missing required attribute 'outputs'`, which reads like
+  malformed XML). `type="double" value=""` is refused where `value=""` is fine for a string
+  (`Error 53 - Unrecognized or unsupported attribute set in Constant with UID 11`, naming the object
+  and not the attribute). And `type="bool" value="TRUE"` is accepted and silently becomes `false`.
+- **`Error 1562` at `AddVIToClass.vi` means the class LIBRARY is locked in LabVIEW's memory**, and a
+  project close plus re-open does NOT clear it — only a restart did. The `.lvclass` on disk is
+  writable and carries no lock property, so the file tells you nothing. Measured 2026-08-29 on a cold
+  LabVIEW, right after `lvai_create_class`. It is the class agent's problem rather than yours, but
+  you will see it if you are asked to test a class that was just created.
+- **NO TOOL LISTS THE TESTS IN THE PROJECT.** `lvai_generate_class_test` writes the `.vi` files and
+  nothing else, and LabVIEW adopts an open socket out of `user.lib` into the user's `.lvproj` while
+  it is at it. Phase 6 is where both are dealt with; skipping it hands over a project that shows the
+  classes and none of the tests.
 
 ## Related agents
 

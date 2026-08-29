@@ -98,6 +98,26 @@ hold for LUnit too.
   references die. Two nodes sharing a socket name put the wrong subject in the wrong case **with no
   error at all**.
 
+- **THREE AIXML AUTHORING FACTS, each of which validates for one type and not another** — which is
+  what makes them expensive to find. `outputs` is REQUIRED on a `Control` and a `Constant` even when
+  nothing consumes the net; omitting it answers `Error -2628 ... missing required attribute
+  'outputs'` with a line and column, reading like malformed XML. `type="double" value=""` is refused
+  where `value=""` is fine for a string, as `Error 53 - Unrecognized or unsupported attribute set in
+  Constant with UID 11`, naming the object rather than the attribute. And **`type="bool"
+  value="TRUE"` is accepted and silently becomes `false`** — the format wants lower case, nothing
+  reports it, and the round trip it produced wrote FALSE onto a default-FALSE object and passed while
+  testing nothing.
+
+- **A FAILED VALIDATION POISONS THAT `_name` until LabVIEW restarts.** The next attempt under the
+  same name answers `Error 1051, a LabVIEW file of that name already exists in memory` — with
+  validation now passing, so the message describes a different problem from the one you fixed.
+  Restart before retrying the same names, or generate under fresh ones.
+
+- **NO TOOL LISTS YOUR TEST VIs IN THE `.lvproj`.** Write the entries yourself, and only while the
+  project is CLOSED — the close SAVES, so an edit made while LabVIEW holds it is destroyed. Strip
+  anything LabVIEW adopted out of `user.lib` or `%TEMP%\LabVIEWMCP` at the same time, then verify
+  with `lvai_describe_project` rather than by re-reading what you wrote.
+
 - **AN ALL-GREEN FIRST RUN PROVES NOTHING. Break something on purpose, once**, confirm the failure
   names the case you broke, restore, and report that you did it.
 
