@@ -69,11 +69,22 @@ nothing is wired *into* it; the bare type travels into whatever consumes the wir
 
 `{LV.Terminal}` carries `Name`, `Coercion Dot?`, `Connected Wire` and `Type Descriptor`.
 
-Two things about addressing, both learned the expensive way:
+Three things about addressing, all learned the expensive way:
 
-**`{LV.Diagram} All Objects[]` order is not stable across VIs.** A helper hard-coded to index 1 read
-the wanted subVI in one VI and `error 1099` in another built from the same AIXML. Address the subVI
-by `VI Name` and the terminal by `Name`.
+**A CALL NODE IS ADDRESSED BY ITS INDEX IN `All Objects[]`, NOT BY VI NAME.** A diagram may call one
+subVI several times, and each call is wired separately. Matching on `VI Name` collapses them to a
+single node: measured on a caller with **four** coerced terminals across two nodes, the check
+reported **two** — and the same shape can report `clean` while a second node still wears dots, which
+is a check tool handing out a green light it has not earned.
+
+**A HARD-CODED index is still wrong**, and that is not a contradiction. One hard-coded to 1 read the
+wanted subVI in one VI and `error 1099` in another built from the same AIXML. What is safe is an
+index **enumerated and used in the same call** — the helper fills `subvis seen` with one entry per
+`All Objects[]` element (empty for anything that is not a call), so the position is known in the same
+pass that uses it and is never persisted. Pass node index `-1` to enumerate without addressing
+anything.
+
+The terminal is still found by `Name`.
 
 **`{LV.SubVI} Terminals[]` is indexed by connector pane SLOT, not by terminal.** On pattern 4833 it
 is sixteen entries; a measured five-terminal call occupied slots **0, 4, 9, 11, 15** and left eleven
@@ -109,6 +120,20 @@ generation fail with *"the type of the source is void"* at three unrelated nodes
 twenty lines earlier; the identical shape on `Create Constant` works. So read nothing from the
 constant after the replace. The proof that the bind landed is the **terminal's** `Coercion Dot?`,
 whose reference does survive.
+
+### The verdict is a sweep, not the repair helper's own reading
+
+The repair helper matches its subVI by `VI Name`, and that is sound — it uses the node only to
+derive the terminal's **type**, which is a property of the callee's pane rather than of the call
+node, so every node of that name yields the same typedef. What one node cannot speak for is
+**coercion**, which is per node and per wire.
+
+So `lvai_bind_typedef_constants` runs the coercion sweep before and after the whole batch and
+reports `coercedBefore` / `coercedAfter` / `stillCoerced`. Its per-terminal rows say what was found
+and which `.ctl` was derived; they are not the verdict. Measured: with the verdict taken from a
+single node, binding a second call's constants reported them as *already clean* although the
+`Replace` had just landed — the reading described the wrong node. `coercedAfter: null` means the
+sweep could not run, and then nothing at all should be concluded.
 
 ### The constant must carry a label
 

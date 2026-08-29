@@ -37,12 +37,22 @@ namespace LabVIEWMcp.Tools;
 /// So the helper does both: Create Constant to learn the type, read `Typedef:Path` off it, Delete
 /// it again, then Replace the real one. The caller never supplies a `.ctl` path.
 ///
-/// EVERYTHING IS ADDRESSED BY NAME, and that is a correction rather than a preference.
-/// <c>{LV.Diagram} All Objects[]</c> order is not stable - a helper hard-coded to index 1 read
-/// `CalculateSomething.vi` in one VI and error 1099 in another built from the same AIXML - and
-/// <c>{LV.SubVI} Terminals[]</c> is indexed by connector pane SLOT, so on pattern 4833 it is 16
-/// entries of which most are empty and the wanted one is nowhere near its pane position. The subVI
-/// is found by `VI Name`, the terminal by `Name`, and the constant by its own `Label`.
+/// ADDRESSING, which took two corrections to get right. <c>{LV.SubVI} Terminals[]</c> is indexed
+/// by connector pane SLOT - on pattern 4833 it is 16 entries of which most are empty - so a
+/// terminal is found by `Name`, and a constant by its own `Label`.
+///
+/// A CALL NODE, THOUGH, IS FOUND BY ITS INDEX IN <c>All Objects[]</c>, not by VI Name. Matching on
+/// name collapses every call to one node, and a diagram may call one subVI several times: measured
+/// on a caller with four coerced terminals across two nodes, the check reported two, and it could
+/// equally have reported `clean` while a second node still wore dots - a check tool handing out a
+/// green light it had not earned. A hard-coded index is unsafe (one read `CalculateSomething.vi` in
+/// one VI and error 1099 in another built from the same AIXML), but an index ENUMERATED and USED in
+/// the same call is not: nothing persists it.
+///
+/// The repair helper still matches the subVI by name, and that is sound: it uses the node only to
+/// derive the terminal's TYPE, which is a property of the callee's pane rather than of the call
+/// node. What a single node cannot speak for is coercion, so that verdict comes from a sweep over
+/// every node instead.
 ///
 /// THE CONSTANT'S LABEL IS THE CONTRACT. AIXML's `_name` on a `Constant` becomes that constant's
 /// block diagram label - measured - so authoring
@@ -69,9 +79,6 @@ internal sealed class TypedefTools(LvaiConnection connection)
         throwaway constant carrying the terminal's exact type, reads Typedef:Path off it, deletes
         it, and only then Replaces the wired constant. Create Constant alone is NOT the fix -
         measured, it creates a floating constant and does not rewire, so the coercion dot survives.
-        ADDRESSED BY NAME, never by index: the subVI by VI Name, the terminal by Name, the constant
-        by its own Label. All Objects[] order is not stable across VIs and Terminals[] is indexed by
-        connector pane slot, so indices do not survive a regeneration.
         THE CONSTANT MUST CARRY A LABEL, and AIXML's `_name` on a Constant is what becomes one.
         Author every constant you wire into a subVI call as `_name="<terminal name>"`; without a
         label this tool cannot tell two boolean constants apart. Pass constantLabels only when the
@@ -79,10 +86,14 @@ internal sealed class TypedefTools(LvaiConnection connection)
         PRECONDITION: a project must be OPEN and ACTIVE in the IDE - the helper reaches the VI
         through Application:Project:Active Project so it edits the copy the project holds. Error
         1055 means no project was active.
-        `dotBefore` and `dotAfter` per terminal are the verdict, read from the TERMINAL's own
-        Coercion Dot? property. Nothing is read back from the constant after the Replace: that
-        method invalidates the reference it was called on (error 1055) and its return value cannot
-        be consumed either.
+        THE VERDICT IS `coercedAfter` AND `stillCoerced`, from a sweep over EVERY subVI call node
+        run before and after the edit - not the per-terminal rows. Those come from a helper that
+        matches one node by VI Name, which cannot speak for a diagram calling the same subVI twice:
+        measured, it reported terminals as already clean when it had in fact just replaced their
+        constants. `coercedAfter: 0` is the proof; `coercedAfter: null` means the sweep could not
+        run and nothing should be concluded.
+        Nothing is read back from the constant after the Replace: that method invalidates the
+        reference it was called on (error 1055) and its return value cannot be consumed either.
         """)]
     public async Task<string> BindTypedefConstantsAsync(
         [Description(@"Absolute path to the .vi whose constants should be bound")] string viPath,
@@ -94,8 +105,8 @@ internal sealed class TypedefTools(LvaiConnection connection)
         [Description("""
             Comma-separated terminal names on that call whose constants should be bound - e.g.
             'Borkenkaefer,PlantColor'. Spelled exactly as lvai_vi_terminals prints them, including
-            any double spaces. A terminal whose constant already matches is left alone and reported
-            with dotBefore false.
+            any double spaces. A terminal whose constant already carries the typedef is replaced
+            again harmlessly; the sweep afterwards is what says whether anything was wrong.
             """)]
         string terminals,
         [Description("""
@@ -157,6 +168,8 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 helperGenerated = true;
             }
 
+            var before = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct);
+
             // One helper run per terminal, in order. LabVIEW serialises this work anyway - six
             // generate calls issued together were measured at 559 ms against 543 ms sequentially -
             // so there is nothing to win by fanning out, and each run saves the VI, which makes
@@ -178,7 +191,15 @@ internal sealed class TypedefTools(LvaiConnection connection)
                     helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct));
             }
 
-            return Describe(answers, wanted, viPath, subViName, helperVi, aixml, helperGenerated);
+            // THE VERDICT IS A SWEEP, not the helper's own reading. The helper matches the subVI by
+            // name and can therefore only see ONE call node, so on a diagram that calls the same
+            // subVI twice its dot reading described the wrong node: measured, it reported
+            // `alreadyClean` for constants it had in fact just replaced. A sweep before and after
+            // covers every node and is the only honest proof.
+            var after = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct);
+
+            return Describe(answers, wanted, viPath, subViName, helperVi, aixml, helperGenerated,
+                            before, after);
         });
 
     /// <summary>
@@ -188,11 +209,11 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// </summary>
     internal static string Describe(
         IReadOnlyList<string> runnerAnswers, IReadOnlyList<string> wanted, string viPath,
-        string subViName, string helperVi, string aixml, bool helperGenerated)
+        string subViName, string helperVi, string aixml, bool helperGenerated,
+        IReadOnlyList<string>? before, IReadOnlyList<string>? after)
     {
         var rows = new JsonArray();
-        var bound = 0;
-        var alreadyClean = 0;
+        var replaced = 0;
         var failed = 0;
         string? firstHint = null;
 
@@ -205,8 +226,6 @@ internal sealed class TypedefTools(LvaiConnection connection)
             // to the runner and reads 0 whenever the target merely ran.
             var code = Value(values, "code");
             var raised = Value(values, "status") is { } s && s != "0";
-            var dotBefore = Value(values, "dot before") == "1";
-            var dotAfter = Value(values, "dot after") == "1";
             var foundSubVi = Value(values, "subvi found") ?? "";
             var foundTerminal = Value(values, "terminal found") ?? "";
             var constantClass = Value(values, "constant class") ?? "";
@@ -219,8 +238,6 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 ["terminalFound"] = foundTerminal,
                 ["constantClass"] = constantClass,
                 ["typedefPath"] = typedefPath,
-                ["dotBefore"] = dotBefore,
-                ["dotAfter"] = dotAfter,
             };
 
             if (values is null)
@@ -241,39 +258,38 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 }
                 failed++;
             }
-            else if (dotAfter)
+            else if (typedefPath.Length == 0)
             {
-                row["outcome"] = "stillCoerced";
+                row["outcome"] = "notATypedef";
                 row["note"] =
-                    "The Replace raised no error but the terminal still wears a coercion dot. " +
-                    "The usual cause is a typedefPath that came back empty, which means the " +
-                    "terminal is not a typedef at all and the mismatch is an ordinary type " +
-                    "difference this tool cannot repair.";
-                failed++;
-            }
-            else if (dotBefore)
-            {
-                row["outcome"] = "bound";
-                bound++;
+                    "The terminal carries no typedef, so there was nothing to bind to. A mismatch " +
+                    "here is an ordinary type difference this tool cannot repair.";
             }
             else
             {
-                row["outcome"] = "alreadyClean";
-                row["note"] = "No coercion dot before the call, so nothing needed binding.";
-                alreadyClean++;
+                row["outcome"] = "replaced";
+                replaced++;
             }
 
             rows.Add(row);
         }
 
+        // THE VERDICT IS THE SWEEP. Per-terminal dot readings used to decide this and were wrong
+        // on any diagram calling one subVI twice: the helper sees a single node, so it reported
+        // `alreadyClean` for constants it had just replaced. before/after cover every node.
+        var stillCoerced = new JsonArray();
+        foreach (var t in after ?? []) stillCoerced.Add(t);
+
         var result = new JsonObject
         {
-            ["ok"] = failed == 0,
+            ["ok"] = failed == 0 && after is not null && after.Count == 0,
             ["viPath"] = Path.GetFullPath(viPath),
             ["subViName"] = subViName,
-            ["bound"] = bound,
-            ["alreadyClean"] = alreadyClean,
+            ["replaced"] = replaced,
             ["failed"] = failed,
+            ["coercedBefore"] = before?.Count,
+            ["coercedAfter"] = after?.Count,
+            ["stillCoerced"] = stillCoerced,
             ["terminals"] = rows,
             ["helperViPath"] = helperVi,
             ["helperAixmlPath"] = Path.GetFullPath(aixml),
@@ -282,12 +298,15 @@ internal sealed class TypedefTools(LvaiConnection connection)
 
         if (firstHint is { } h) result["hint"] = h;
 
-        result["note"] = failed == 0
-            ? "dotAfter is false on every terminal, read from the TERMINAL's own Coercion Dot? " +
-              "property after the Replace. The VI was saved in place. Nothing is read back from " +
-              "the constant itself: Replace invalidates the reference it was called on."
-            : "At least one terminal did not bind - read its outcome and hint. The VI may have " +
-              "been saved by the terminals that did succeed, so re-run rather than assuming " +
+        result["note"] = after is null
+            ? "The VI was edited but the verifying sweep could not run, so NOTHING here says the " +
+              "coercion dots are gone. Check with lvai_coercion_dots before believing this."
+            : failed == 0 && after.Count == 0
+            ? "A sweep over EVERY subVI call node reports no coercion dot left. That sweep is the " +
+              "verdict, not the per-terminal rows: the helper matches one node by name and cannot " +
+              "speak for a diagram that calls the same subVI twice. The VI was saved in place."
+            : "Coercion dots remain - see stillCoerced, which names every call node. The VI may " +
+              "have been saved by the terminals that did succeed, so re-run rather than assuming " +
               "nothing changed.";
 
         return Json.Document(result);
@@ -350,37 +369,32 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var runner = new RunTools(connection);
             var full = Path.GetFullPath(viPath);
 
-            async Task<JsonObject?> Run(string? name) => ValuesOf(
+            async Task<JsonObject?> Run(int nodeIndex) => ValuesOf(
                 await runner.RunViAndReadValuesAsync(
-                    helperVi, Inputs(full, name),
+                    helperVi, Inputs(full, nodeIndex),
                     includeRawXml: false, helperViPath: null, helperAixmlPath: null,
                     regenerateHelper: false, timeoutSeconds, ct));
 
-            // One run with NO name still fills `subvis seen`, so this is also the cheapest
-            // enumeration of the diagram's calls. It must not pass an empty string: the runner
-            // rejects an empty value, and the failure would come back as "no calls", which the
-            // caller would read as "no dots".
-            var first = await Run(null);
+            var first = await Run(EnumerateOnly);
             if (first is null) return null;
 
-            var seen = StringArray(first, "subvis seen")
-                .Where(n => n.Length > 0).Distinct(StringComparer.Ordinal).ToList();
+            var nodes = Nodes(first, subViName: null);
 
             // pylv_apply only ever calls this after retargeting a subVI call, so a diagram with no
             // calls at all means the enumeration failed rather than that there is nothing to
             // check. Null says "unknown", which the verify step reports as such.
-            if (seen.Count == 0) return null;
+            if (nodes.Count == 0) return null;
 
             var coerced = new List<string>();
-            foreach (var subVi in seen)
+            foreach (var (name, index) in nodes)
             {
-                if (await Run(subVi) is not { } values) continue;
+                if (await Run(index) is not { } values) continue;
 
                 var names = StringArray(values, "terminal names");
                 var flags = BoolArray(values, "coercion dots");
                 for (var i = 0; i < names.Count; i++)
                     if (names[i].Length > 0 && i < flags.Count && flags[i])
-                        coerced.Add($"{subVi} / {names[i]}");
+                        coerced.Add(Where(name, index, nodes, names[i]));
             }
 
             return coerced;
@@ -468,8 +482,13 @@ internal sealed class TypedefTools(LvaiConnection connection)
         Repair what it finds with lvai_bind_typedef_constants.
         Needs no active project - it opens the VI without an application instance on purpose, so it
         also works while pylv_apply has the project closed.
-        Omit subViName to sweep every subVI call on the diagram; pass it to check one. Unassigned
-        connector pane slots are dropped rather than reported as nameless terminals.
+        ONE ENTRY PER CALL NODE, not per subVI name. A diagram may call the same subVI several
+        times and each call is wired separately, so each is reported on its own with the
+        `nodeIndex` that identifies it. Omit subViName to sweep the whole diagram; pass it to
+        restrict the sweep to one subVI's calls - it still reports every node that calls it.
+        Unassigned connector pane slots are dropped rather than reported as nameless terminals.
+        `clean` is only ever true when nodes were actually examined: a sweep that saw nothing says
+        so instead of passing for a clean bill of health.
         """)]
     public async Task<string> CoercionDotsAsync(
         [Description(@"Absolute path to the .vi to inspect")] string viPath,
@@ -519,16 +538,16 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var runner = new RunTools(connection);
             var full = Path.GetFullPath(viPath);
 
-            async Task<string> RunFor(string? name) =>
+            async Task<string> RunFor(int nodeIndex) =>
                 await runner.RunViAndReadValuesAsync(
-                    helperVi, Inputs(full, name),
+                    helperVi, Inputs(full, nodeIndex),
                     includeRawXml: false, helperViPath: null, helperAixmlPath: null,
                     regenerateHelper: false, timeoutSeconds, ct);
 
-            // The helper reports `subvis seen` from an indexed output tunnel that runs regardless
-            // of whether the name matched, so one run with NO name is also the cheapest way to
-            // enumerate the diagram's calls.
-            var first = await RunFor(subViName);
+            // `subvis seen` is filled by an indexed output tunnel that runs whatever the node
+            // index is, so one run with the enumerate-only index is the cheapest way to learn
+            // which objects are calls and where they sit.
+            var first = await RunFor(EnumerateOnly);
             if (ValuesOf(first) is not { } firstValues)
                 return Json.Error("sweepFailed",
                     "The helper ran but returned nothing this tool could read, so NOTHING can be " +
@@ -536,20 +555,9 @@ internal sealed class TypedefTools(LvaiConnection connection)
                     "answer follows.",
                     new JsonObject { ["run"] = JsonNode.Parse(first) });
 
-            var names = subViName is { } one
-                ? [one]
-                : StringArray(firstValues, "subvis seen")
-                    .Where(n => n.Length > 0).Distinct(StringComparer.Ordinal).ToList();
-
-            var answers = new List<(string SubVi, string Answer)>();
-            if (subViName is not null)
-            {
-                answers.Add((subViName, first));
-            }
-            else
-            {
-                foreach (var name in names) answers.Add((name, await RunFor(name)));
-            }
+            var answers = new List<(string SubVi, int NodeIndex, string Answer)>();
+            foreach (var node in Nodes(firstValues, subViName))
+                answers.Add((node.Name, node.Index, await RunFor(node.Index)));
 
             return DescribeDots(answers, viPath, helperVi, aixml, helperGenerated);
         });
@@ -559,7 +567,8 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// pairing of names to dots - which is where an off-by-one would hide - is unit-testable.
     /// </summary>
     internal static string DescribeDots(
-        IReadOnlyList<(string SubVi, string Answer)> runs, string viPath, string helperVi,
+        IReadOnlyList<(string SubVi, int NodeIndex, string Answer)> runs, string viPath,
+        string helperVi,
         string aixml, bool helperGenerated)
     {
         var calls = new JsonArray();
@@ -567,7 +576,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
         var checkedTerminals = 0;
         var failed = 0;
 
-        foreach (var (subVi, answer) in runs)
+        foreach (var (subVi, nodeIndex, answer) in runs)
         {
             var values = ValuesOf(answer);
             var found = Value(values, "subvi found") ?? "";
@@ -598,6 +607,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var call = new JsonObject
             {
                 ["subVi"] = subVi,
+                ["nodeIndex"] = nodeIndex,
                 ["subViFound"] = found,
                 ["coerced"] = callCoerced,
                 ["terminals"] = terminals,
@@ -693,12 +703,52 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// terminals: the run failed, the enumeration came back empty, and an empty sweep read as a
     /// clean one.
     /// </summary>
-    private static string Inputs(string viPath, string? subViName)
-    {
-        var inputs = new JsonObject { ["vi path"] = viPath };
-        if (!string.IsNullOrEmpty(subViName)) inputs["subvi name"] = subViName;
-        return inputs.ToJsonString();
-    }
+    /// <summary>
+    /// The node index that addresses no call at all. The helper still fills `subvis seen` on such
+    /// a run, so this is how the diagram is enumerated before anything is inspected.
+    /// </summary>
+    private const int EnumerateOnly = -1;
+
+    /// <summary>
+    /// How a coerced terminal is named for a human. The node index is only shown when the diagram
+    /// calls that subVI more than once - which is exactly the case the old name-only addressing
+    /// got wrong, and exactly the case where "CalculateSomething.vi / PlantColor" on its own would
+    /// leave the reader unable to tell which call to look at.
+    /// </summary>
+    private static string Where(string name, int index,
+                                IReadOnlyList<(string Name, int Index)> nodes, string terminal) =>
+        nodes.Count(n => string.Equals(n.Name, name, StringComparison.Ordinal)) > 1
+            ? $"{name} [node {index}] / {terminal}"
+            : $"{name} / {terminal}";
+
+    private static string Inputs(string viPath, int nodeIndex) =>
+        new JsonObject
+        {
+            ["vi path"] = viPath,
+            // Always a non-empty string: the runner rejects an empty value outright, and passing
+            // "" once cost a false `clean: true` on a VI with two coerced terminals. -1 is the
+            // enumerate-only index - it addresses no node while still filling `subvis seen`.
+            ["node index"] = nodeIndex.ToString(),
+        }.ToJsonString();
+
+    /// <summary>
+    /// The diagram's subVI call NODES, as (VI name, index into All Objects[]).
+    ///
+    /// ADDRESSED BY INDEX, NOT BY NAME, and that is the whole point of this helper. A diagram may
+    /// call one subVI several times: measured on a caller with four coerced terminals across two
+    /// nodes, matching on VI Name collapsed them to one and reported two - and it could equally
+    /// report `clean` while a second node still wore dots. The index is resolved in the same
+    /// session it is used in and never persisted, so the instability that rules index addressing
+    /// out elsewhere does not apply.
+    /// </summary>
+    private static IReadOnlyList<(string Name, int Index)> Nodes(JsonObject values,
+                                                                 string? subViName) =>
+        StringArray(values, "subvis seen")
+            .Select((name, index) => (Name: name, Index: index))
+            .Where(n => n.Name.Length > 0)
+            .Where(n => subViName is null ||
+                        string.Equals(n.Name, subViName, StringComparison.Ordinal))
+            .ToList();
 
     /// <summary>The runner's `values` map, or null when the payload is not readable.</summary>
     private static JsonObject? ValuesOf(string runnerAnswer)
