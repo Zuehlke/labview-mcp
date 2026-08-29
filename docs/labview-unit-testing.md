@@ -84,6 +84,30 @@ a `.lvproj` and then runs a tidy pass has to read the file back before it may cl
 count is computed too early to be evidence. `ok` on the `projectEntry` step now means *verified from
 the file*, and `notOnDisk` / `notListed` name what did not make it.
 
+### A third defect, found by the fix on its first live run
+
+The cold rebuild that exercised the two fixes above turned up a third, and it is the reason
+`notOnDisk` earns its place: the path it named was
+`C:\Windows\system32\["C:\temp\NetzteilACDC\Run NetzteilACDC Tests.vi"]`.
+
+`alsoListInProject` is a **newline-separated list of absolute paths**. The caller had sent it as a
+**JSON array**, which arrives as one ordinary string — and nothing checked. `Path.GetFullPath`
+treated the array literal as a *relative* path and resolved it against the **server's** working
+directory, which on this station is `C:\Windows\system32`. The nonsense path was then written into
+the user's `.lvproj` and swept out again by the tidy pass.
+
+**A relative path is the same trap without the JSON**, and so is a quoted one — a leading `"` is an
+ordinary path character, so `"C:\temp\x.vi"` is relative. There is no directory the tool could
+sensibly resolve any of them against, so all three are now **refused by name before anything is
+generated**, the way `pylv_apply` refuses a malformed operation before the extract: nothing has been
+built yet, so a bad argument costs a message instead of a half-finished suite. `testViPath` gets the
+same check, having had the identical flaw.
+
+The lesson that generalises past this tool: **a path parameter that reaches `Path.GetFullPath`
+without a rooted-ness check will silently accept anything at all**, because `GetFullPath` never
+fails on a syntactically legal relative path — it invents an answer from the process's working
+directory, and that directory belongs to the server rather than to the caller.
+
 ## 1. The blocker: a generated test cannot call its subject statically *by AIXML alone*
 
 A unit test calls the VI under test. AIXML cannot express that call. Measured with one throwaway

@@ -207,7 +207,10 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Virtual folder inside the project to list the tests in")]
         string testFolderName = "Tests",
         [Description("""
-            Further VIs to list in that same folder, ONE PATH PER LINE - normally the suite runner.
+            Further VIs to list in that same folder, ONE ABSOLUTE PATH PER LINE, plain text and NOT
+            JSON - normally the suite runner. A bracket, a quote or a relative path is refused by
+            name before anything is generated; it used to be resolved against the SERVER's working
+            directory and written into the .lvproj as a path that cannot exist.
             They go in through this call because the project has to be CLOSED while the file is
             edited, and doing it here costs one close/re-open instead of two.
             A runner is not this call's artefact - it spans several classes, and one exists per
@@ -231,6 +234,16 @@ internal sealed class TestTools(LvaiConnection connection)
 
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
                 return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
+
+            // REFUSED BEFORE ANY WORK IS DONE, the way pylv_apply refuses a malformed operation
+            // before the extract: nothing has been generated yet, so a bad argument costs a message
+            // rather than a half-finished suite.
+            if (PathListFault(alsoListInProject, nameof(alsoListInProject)) is { } listFault)
+                return Json.Error("badArguments", listFault,
+                    new { parameter = nameof(alsoListInProject), arrived = alsoListInProject });
+            if (PathListFault(testViPath, nameof(testViPath)) is { } viFault)
+                return Json.Error("badArguments", viFault,
+                    new { parameter = nameof(testViPath), arrived = testViPath });
 
             var seed = Path.GetFullPath(seedClassPath ?? lvclassPath);
             if (!File.Exists(seed))
@@ -399,6 +412,48 @@ internal sealed class TestTools(LvaiConnection connection)
                 "break one case on purpose once, because an all-green first run proves very little.",
                 swapAnswer["callTargets"]?.DeepClone());
         });
+
+    /// <summary>
+    /// What is wrong with a path-list argument, or <c>null</c> when nothing is.
+    ///
+    /// THE BUG THIS CLOSES. `alsoListInProject` is a NEWLINE-separated list of absolute paths, and
+    /// on its first live run a caller sent it as JSON - <c>["C:\temp\…\Run Tests.vi"]</c> arriving
+    /// as one string. Nothing rejected it. <c>Path.GetFullPath</c> resolved the array literal
+    /// against the SERVER's working directory and produced
+    /// <c>C:\Windows\system32\["C:\temp\…"]</c>, which was then written into the user's `.lvproj`
+    /// and swept back out again by the tidy pass. It became visible only once `notOnDisk` existed,
+    /// and before that it was invisible altogether - measured 2026-08-29.
+    ///
+    /// A RELATIVE PATH IS THE SAME TRAP WITHOUT THE JSON. The server's working directory is not
+    /// the caller's, so `Tests\Run.vi` lands somewhere neither of them meant. Refused rather than
+    /// guessed at: there is no directory this tool could sensibly resolve it against.
+    /// </summary>
+    internal static string? PathListFault(string? value, string parameterName)
+    {
+        if (value is not { Length: > 0 }) return null;
+
+        var trimmed = value.TrimStart();
+        if (trimmed.StartsWith('[') || trimmed.StartsWith('{'))
+            return $"`{parameterName}` is a NEWLINE-separated list of absolute paths, not JSON - " +
+                   "it starts with a bracket. Send one path per line. A JSON literal is not " +
+                   "refused by the path layer: it is resolved against the server's working " +
+                   "directory and becomes a path that cannot exist.";
+
+        foreach (var line in value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                                       StringSplitOptions.TrimEntries))
+        {
+            if (line.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                return $"`{parameterName}` contains a character no path may hold, in '{line}'. " +
+                       "Send one absolute path per line, unquoted.";
+
+            if (!Path.IsPathRooted(line))
+                return $"`{parameterName}` needs ABSOLUTE paths and '{line}' is relative. It " +
+                       "would be resolved against the server's working directory, which is not " +
+                       "yours. Quotes around a path make it relative too - send it bare.";
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Close the project, list the test VI in it, strip whatever LabVIEW adopted, re-open.
