@@ -269,7 +269,17 @@ internal sealed class BulkTools(LvaiConnection connection)
                 var answer = await GenerateViAsync(request.Aixml, request.Vi, openVI, measurePane,
                                                    request.PanePattern, timeoutSeconds, ct);
                 var parsed = Parse(answer);
-                var wrote = (parsed as JsonObject)?["viExistsNow"]?.GetValue<bool>() is true;
+                // THE SUB-ANSWER'S OWN VERDICT, NOT `viExistsNow`. That field is true for a file
+                // some EARLIER run left behind, so a batch over targets that already existed
+                // reported `generated: 6, failed: 0` while five of the six entries carried
+                // `ok: false` - LabVIEW had gone down mid-batch and not one AIXML was even
+                // validated. Measured 2026-08-29. A green summary over red entries is the worst
+                // thing this tool could do, because the entries are exactly what nobody re-reads.
+                //
+                // `failedAtStep: connectorPane` is the one failure that still WROTE the file: the
+                // diagram is sound and the pane needs another pass, which lvai_generate_vi says in
+                // those words. It counts as generated here and keeps its own answer.
+                var wrote = CountsAsGenerated(parsed as JsonObject);
                 if (wrote) generated++; else failed++;
 
                 // Deleted only when the .vi is actually there. A kept AIXML after a failure is the
@@ -308,6 +318,25 @@ internal sealed class BulkTools(LvaiConnection connection)
                       "would have given, so read that rather than this summary.",
             });
         });
+
+    /// <summary>
+    /// Did THIS run write the VI? Read from <see cref="GenerateViAsync"/>'s own verdict, never from
+    /// <c>viExistsNow</c> — that field is true for a file some EARLIER run left behind.
+    ///
+    /// Measured 2026-08-29: a batch of six sockets that all already existed reported
+    /// <c>generated: 6, failed: 0</c> while five of the six entries carried <c>ok: false</c>,
+    /// because LabVIEW had gone down mid-batch and not one AIXML was even validated. A green
+    /// summary over red entries is the worst thing a batch tool can do, since the entries are
+    /// exactly what nobody re-reads.
+    ///
+    /// <c>failedAtStep: connectorPane</c> is the one failure that still WROTE the file — the
+    /// diagram is sound and only the pane needs another pass — so it counts, and keeps its own
+    /// answer for the reader.
+    /// </summary>
+    internal static bool CountsAsGenerated(JsonObject? answer) =>
+        answer?["ok"]?.GetValue<bool>() is true
+        || (answer?["failedAtStep"]?.GetValue<string>() == "connectorPane"
+            && answer["viExistsNow"]?.GetValue<bool>() is true);
 
     /// <summary>One entry of <see cref="GenerateVisAsync"/>'s <c>pairsJson</c>.</summary>
     internal sealed record GenerationRequest(string Aixml, string Vi, int? PanePattern)

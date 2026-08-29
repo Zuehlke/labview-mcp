@@ -293,10 +293,25 @@ internal sealed class TestTools(LvaiConnection connection)
                     var source = Path.Combine(scratch, Path.ChangeExtension(name, ".xml"));
                     await File.WriteAllTextAsync(
                         source, SocketAixml(name, test.DataType, isWrite), ct);
+
+                    // DELETE AN EXISTING SOCKET RATHER THAN OVERWRITE IT. Regenerating over one
+                    // KILLED LabVIEW, measured 2026-08-29:
+                    //   source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
+                    //     trying to override with non-reserved UID, request: 11 res: 0 max: 59
+                    //   VI call stack: LV AI Core.lvlibp:VI generator.vi -> ConvertAIXMLToVI.vi
+                    // The requests were 10-13, which are exactly the uids this socket's AIXML
+                    // assigns: the generator forces them into the heap object map of the file
+                    // already on disk, where they are not reserved. A file that is not there has
+                    // no map to collide with, and the sockets are cheap to rebuild.
+                    var target = Path.Combine(socketRoot, name);
+                    try { if (File.Exists(target)) File.Delete(target); }
+                    catch (Exception failure) when (failure is IOException
+                                                    or UnauthorizedAccessException) { }
+
                     pairs.Add(new JsonObject
                     {
                         ["aixml"] = source,
-                        ["vi"] = Path.Combine(socketRoot, name),
+                        ["vi"] = target,
                         ["panePattern"] = AccessorPanePattern,
                     });
                 }
