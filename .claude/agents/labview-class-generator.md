@@ -328,6 +328,10 @@ tests is half a deliverable, and you are not the agent that writes them.
    - the field table from Phase 1, so it does not have to re-derive the data model;
    - anything the user said about values or cases, verbatim.
 
+   **Name the `.lvproj` explicitly.** `lvai_generate_class_test` lists its test VIs in the project
+   only when it is given `projectPath`, and a suite the Project Explorer does not show is one the
+   user cannot run. That gap was found the hard way on 2026-08-29.
+
 3. **Read its answer before you report.** If it comes back with `NEEDS CLARIFICATION`, relay those
    questions to the user verbatim and continue **that same agent** with `SendMessage` — do not
    answer on the user's behalf and do not re-spawn it.

@@ -607,6 +607,84 @@ internal static class LvClass
     }
 
     /// <summary>
+    /// List plain VIs under the target, inside a virtual folder, and answer how many were added.
+    /// Already-listed VIs are skipped by NAME at any depth, so calling this twice is safe.
+    ///
+    /// WHY IT EXISTS: nothing else writes a VI into a `.lvproj`. `lvai_generate_class_test` produced
+    /// a complete, green, verified suite on 2026-08-29 and the user's Project Explorer showed three
+    /// classes and no tests at all — *"Die Tests fehlen im Projekt!"*. A test nobody can find from
+    /// the project is a test nobody runs.
+    ///
+    /// THE PROJECT MUST BE CLOSED IN LABVIEW WHEN THIS RUNS. LabVIEW's close SAVES its own copy over
+    /// the file, so an edit made while it holds the project open is destroyed by the next close.
+    /// That is the caller's job to arrange; this only writes the file.
+    /// </summary>
+    public static int AddVisToProject(string projectPath, string folderName,
+                                      IReadOnlyList<(string Name, string Url)> vis)
+    {
+        if (vis.Count == 0) return 0;
+
+        var document = XDocument.Load(projectPath);
+        var target = document.Root?.Elements("Item")
+            .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer")
+            ?? throw new InvalidDataException(
+                $"'{projectPath}' has no <Item Type=\"My Computer\"> target to add the VIs to.");
+
+        // At ANY depth: a VI already inside some other folder is listed, and adding it again would
+        // give the project two items for one file.
+        var listed = target.Descendants("Item")
+            .Where(i => (string?)i.Attribute("Type") == "VI")
+            .Select(i => (string?)i.Attribute("Name"))
+            .Where(n => n is { Length: > 0 })
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missing = vis.Where(v => !listed.Contains(v.Name)).ToList();
+        if (missing.Count == 0) return 0;
+
+        var text = File.ReadAllText(projectPath);
+        var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split(newline).ToList();
+
+        var folderOpen = $"<Item Name=\"{Xml(folderName)}\" Type=\"Folder\">";
+        var folderIndex = lines.FindIndex(l => l.TrimStart().StartsWith(folderOpen,
+                                                                       StringComparison.Ordinal));
+
+        int at;
+        string indent;
+        if (folderIndex >= 0)
+        {
+            at = folderIndex + 1;
+            indent = Indent(lines[folderIndex]) + "\t";
+        }
+        else
+        {
+            // Same anchors as AddToProject: Dependencies and Build Specifications are machine
+            // managed and always last, so inserting before either lands among the content items.
+            var anchor = lines.FindIndex(l => IsItemOfType(l, "Dependencies"));
+            if (anchor < 0) anchor = lines.FindIndex(l => IsItemOfType(l, "Build"));
+            if (anchor < 0)
+                throw new InvalidDataException(
+                    $"'{projectPath}' has neither a Dependencies nor a Build Specifications item, " +
+                    "so there is no anchor to insert before.");
+
+            indent = Indent(lines[anchor]);
+            lines.Insert(anchor, $"{indent}</Item>");
+            lines.Insert(anchor, $"{indent}{folderOpen}");
+            at = anchor + 1;
+            indent += "\t";
+        }
+
+        foreach (var vi in Enumerable.Reverse(missing))
+            lines.Insert(at,
+                $"{indent}<Item Name=\"{Xml(vi.Name)}\" Type=\"VI\" URL=\"{Xml(vi.Url)}\"/>");
+
+        File.WriteAllText(projectPath, string.Join(newline, lines));
+        return missing.Count;
+
+        static string Indent(string line) => line[..(line.Length - line.TrimStart().Length)];
+    }
+
+    /// <summary>
     /// The <c>URL</c> one LabVIEW file uses to point at another.
     ///
     /// **`../` IS RELATIVE TO THE REFERENCING FILE, NOT ITS DIRECTORY** - the leading `..` pops the

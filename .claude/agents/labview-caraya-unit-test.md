@@ -248,23 +248,30 @@ case fail. Record the failure message in your report.
 Icons on the test VIs and the runner with `lvai_set_vi_icon` — it also re-saves each VI, which is a
 free check that LabVIEW can load it. Delete anything you generated and superseded.
 
-**THEN PUT THE TESTS IN THE PROJECT. NO TOOL DOES THIS FOR YOU, and the user WILL notice.** Measured
-2026-08-29: a complete, green, verified suite was handed over and the Project Explorer showed three
-classes and no tests at all, because `lvai_generate_class_test` writes the `.vi` files and lists
-nothing. The user's whole reply was *"Die Tests fehlen im Projekt!"*.
+**PASS `projectPath` TO `lvai_generate_class_test` AND THE TEST LANDS IN THE PROJECT.** Do it every
+time the class belongs to one. The tool closes the project, writes the entry into a `Tests` virtual
+folder, strips whatever LabVIEW adopted, and re-opens it — the `projectEntry` step reports `added`,
+`straysRemoved` and where it put things.
 
-Two things to write, and the order is not optional:
+**This became the tool's job on 2026-08-29 because it was measured NOT being anybody's.** A complete,
+green, verified suite was handed over and the user's Project Explorer showed three classes, no tests
+at all, and one stray `LVMCP ClsR1.vi` adopted out of `user.lib`. Their whole reply was *"Die Tests
+fehlen im Projekt!"*. Nothing in any tool answer showed either half — every file was on disk and
+every assertion passed.
+
+**If you ever write the entries by hand** — an older build, or a runner the tool did not generate —
+two rules, and the order is not optional:
 
 1. **`lvai_close_active_project` FIRST.** A `.lvproj` edited while LabVIEW holds it open is destroyed
    by the next close, because the close SAVES. Edit the file, then re-open it for the user.
-2. **Add the tests, and STRIP THE STRAYS.** LabVIEW adopts every VI it has open when it saves a
+2. **STRIP THE STRAYS at the same time.** LabVIEW adopts every VI it has open when it saves a
    project, so a socket out of `user.lib\LV_MCP` lands in the user's project as
    `<Item Name="LVMCP ClsR1.vi" Type="VI" URL="/&lt;userlib&gt;/LV_MCP/LVMCP ClsR1.vi"/>`. It was ONE
    of twelve sockets, which is what makes it easy to miss. Anything under `<userlib>/LV_MCP` or
-   `%TEMP%\LabVIEWMCP` is a stray: remove it.
+   `%TEMP%\LabVIEWMCP` is a stray. The file still EXISTS, so a dangling-item check does not catch it.
 
-A `Tests` virtual folder is the shape to write, and a sibling file's `URL` climbs one level because
-it resolves against the project FILE rather than its directory:
+A `Tests` virtual folder is the shape, and a sibling file's `URL` climbs one level because it
+resolves against the project FILE rather than its directory:
 
 ```xml
 <Item Name="Tests" Type="Folder">
@@ -321,10 +328,10 @@ State, in this order:
   writable and carries no lock property, so the file tells you nothing. Measured 2026-08-29 on a cold
   LabVIEW, right after `lvai_create_class`. It is the class agent's problem rather than yours, but
   you will see it if you are asked to test a class that was just created.
-- **NO TOOL LISTS THE TESTS IN THE PROJECT.** `lvai_generate_class_test` writes the `.vi` files and
-  nothing else, and LabVIEW adopts an open socket out of `user.lib` into the user's `.lvproj` while
-  it is at it. Phase 6 is where both are dealt with; skipping it hands over a project that shows the
-  classes and none of the tests.
+- **A GENERATED TEST IS NOT IN THE PROJECT UNLESS SOMEBODY PUTS IT THERE**, and LabVIEW adopts an
+  open socket out of `user.lib` into the user's `.lvproj` while it is at it. `lvai_generate_class_test`
+  now does both when given `projectPath`; without it the files are written and nothing is listed.
+  Phase 6.
 
 ## Related agents
 

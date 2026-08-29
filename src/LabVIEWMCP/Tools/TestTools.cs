@@ -195,6 +195,17 @@ internal sealed class TestTools(LvaiConnection connection)
             the parent's, only the object changes.
             """)]
         string? seedClassPath = null,
+        [Description("""
+            The `.lvproj` to LIST the test VIs in. Pass it whenever the class belongs to a project,
+            which is nearly always: nothing else writes a VI into a `.lvproj`, and a suite that is
+            not listed is one the user cannot find. Measured 2026-08-29 - a complete, green, verified
+            suite was handed over and the Project Explorer showed the classes and no tests at all.
+            The project is CLOSED before the file is edited and re-opened afterwards, because
+            LabVIEW's close saves its own copy over the file and would destroy the edit.
+            """)]
+        string? projectPath = null,
+        [Description("Virtual folder inside the project to list the tests in")]
+        string testFolderName = "Tests",
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
@@ -203,6 +214,9 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
+
+            if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
+                return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
 
             var seed = Path.GetFullPath(seedClassPath ?? lvclassPath);
             if (!File.Exists(seed))
@@ -334,6 +348,13 @@ internal sealed class TestTools(LvaiConnection connection)
                                                 or UnauthorizedAccessException) { }
             }
 
+            // 4. list the test in the project, and take out whatever LabVIEW adopted while it was
+            //    open. The close is not optional: LabVIEW's close SAVES its own copy over the file,
+            //    so an edit made while it holds the project is destroyed by the next close.
+            if (projectPath is { Length: > 0 })
+                steps.Add(await ListInProjectAsync(projectPath, testFolderName, testViPath,
+                                                   timeoutSeconds, ct));
+
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {cases.Count} round trip(s), each a static call to the class's own " +
                 "Write and Read accessors, verified against LabVIEW's own export. Run it through " +
@@ -341,6 +362,67 @@ internal sealed class TestTools(LvaiConnection connection)
                 "break one case on purpose once, because an all-green first run proves very little.",
                 swapAnswer["callTargets"]?.DeepClone());
         });
+
+    /// <summary>
+    /// Close the project, list the test VI in it, strip whatever LabVIEW adopted, re-open.
+    ///
+    /// THE ORDER IS THE WHOLE POINT. LabVIEW's close SAVES its own copy of the project over the
+    /// file, so a `.lvproj` edited while the IDE holds it open is silently reverted by the next
+    /// close - measured with a marker item, gone afterwards. Closing first is what makes the edit
+    /// stick, and re-opening leaves the user where they were.
+    ///
+    /// Failure here is REPORTED, NOT FATAL: the tests exist and run whether or not the project
+    /// lists them, so a project that could not be edited must not turn a green suite into a failed
+    /// call. It comes back as its own step with `ok: false` and says what to do by hand.
+    /// </summary>
+    private async Task<JsonObject> ListInProjectAsync(
+        string projectPath, string folderName, string testViPath, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
+        try
+        {
+            var closed = await new CloseTools(connection)
+                .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct);
+            step["closed"] = Read(closed);
+
+            var url = LvClass.RelativeUrl(projectPath, Path.GetFullPath(testViPath));
+            var added = LvClass.AddVisToProject(
+                projectPath, folderName, [(Path.GetFileName(testViPath), url)]);
+
+            var (tidied, removed) = ClassTools.StripHelperItems(
+                await File.ReadAllTextAsync(projectPath, ct), projectPath);
+            if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
+
+            var reopened = await new ActionTools(connection).OpenFileAsync(
+                null, null, projectPath, Path.GetFileName(projectPath), timeoutSeconds, ct);
+
+            step["ok"] = true;
+            step["added"] = added;
+            step["folder"] = folderName;
+            step["url"] = url;
+            step["straysRemoved"] = removed;
+            step["reopened"] = Read(reopened);
+            step["note"] = added > 0
+                ? $"Listed under '{folderName}'." + (removed > 0
+                    ? $" {removed} stray item(s) LabVIEW had adopted were removed - a socket out of " +
+                      "user.lib\\LV_MCP lands in the project when LabVIEW saves it with the file open."
+                    : "")
+                : "Already listed; nothing added.";
+            return step;
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException
+                                        or System.Xml.XmlException
+                                        or UnauthorizedAccessException)
+        {
+            step["ok"] = false;
+            step["note"] = $"The tests were generated and are sound, but the project could not be " +
+                           $"edited: {failure.Message}. List '{Path.GetFileName(testViPath)}' by " +
+                           "hand - and do it with the project CLOSED, because LabVIEW's close saves " +
+                           "over the file.";
+            return step;
+        }
+    }
 
     /// <summary>
     /// A field's type, read off its Write accessor's own export. Authoritative where a convention

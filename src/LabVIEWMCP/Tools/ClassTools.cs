@@ -1386,8 +1386,16 @@ internal sealed class ClassTools(LvaiConnection connection)
         // the dangling pass below, because the work directory is deleted only after this runs -
         // measured, a Reihenhaus-fields.vi that was still on disk survived a tidy that looked at
         // nothing but helpers/.
+        // `<userlib>/LV_MCP` is the THIRD tree and it needs naming separately, because unlike the
+        // other two its files still EXIST when the tidy runs - the sockets stay installed on
+        // purpose - so the dangling pass below cannot catch them. Measured 2026-08-29: exactly one
+        // of twelve sockets was adopted, listed as
+        // `URL="/&lt;userlib&gt;/LV_MCP/LVMCP ClsR1.vi"`, and the user found it before we did. The
+        // URL is XML-escaped in the file, which is why the pattern matches `&lt;userlib&gt;`
+        // rather than the angle brackets.
         const string helperItem =
-            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*LabVIEWMCP/(?:helpers|classes)/[^\"]*\"\\s*/>";
+            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*(?:LabVIEWMCP/(?:helpers|classes)" +
+            "|(?:&lt;userlib&gt;|<userlib>)/LV_MCP)/[^\"]*\"\\s*/>";
 
         var removed = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem).Count;
         var text = removed == 0
