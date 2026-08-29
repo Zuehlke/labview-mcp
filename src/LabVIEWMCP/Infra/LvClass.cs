@@ -619,6 +619,37 @@ internal static class LvClass
     /// the file, so an edit made while it holds the project open is destroyed by the next close.
     /// That is the caller's job to arrange; this only writes the file.
     /// </summary>
+    /// <summary>
+    /// Every VI the <c>.lvproj</c> lists, as (file name, URL), at any depth.
+    ///
+    /// TWO CALLERS, BOTH ABOUT THE SAME FAILURE. Read BEFORE LabVIEW closes a project, it says
+    /// what has to be put back afterwards - the close saves LabVIEW's own copy over the file and
+    /// drops VI items it never had in memory, which is how five test suites generated one at a
+    /// time ended up with a single one listed. Read AFTER the edit, it is the only honest answer
+    /// to "is it listed now": <c>AddVisToProject</c>'s count is what was written, and the tidy
+    /// pass that follows can still take an entry back out.
+    /// </summary>
+    public static List<(string Name, string Url)> ListedVis(string projectPath)
+    {
+        try
+        {
+            if (!File.Exists(projectPath)) return [];
+
+            // Parsed, not pattern-matched, for the reason ListedClasses gives: a regex has to
+            // guess at whitespace and attribute order, and XDocument is how AddVisToProject reads
+            // the file, so the two agree by construction.
+            return XDocument.Load(projectPath).Descendants("Item")
+                .Where(i => (string?)i.Attribute("Type") == "VI")
+                .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
+                              Url: (string?)i.Attribute("URL") ?? ""))
+                .Where(v => v.Name.Length > 0 && v.Url.Length > 0)
+                .ToList();
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+        catch (System.Xml.XmlException) { return []; }
+    }
+
     public static int AddVisToProject(string projectPath, string folderName,
                                       IReadOnlyList<(string Name, string Url)> vis)
     {

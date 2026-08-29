@@ -173,4 +173,97 @@ public sealed class ProjectTestEntryTests
         Assert.Equal(0, removed);
         Assert.Contains("Mein LV_MCP Bericht.vi", text, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// THE BUG THE USER FOUND. `alsoListInProject` named a runner that was not on disk yet, and
+    /// the answer said `ok: true` with the VI counted in `added` - while the tidy pass that runs
+    /// straight afterwards swept it back out as dangling. Nothing in the answer said so, and the
+    /// five VIs had to be listed by hand.
+    ///
+    /// The order below is the one the tool used: add, then tidy. It is what the fix inverts.
+    /// </summary>
+    [Fact]
+    public void A_vi_that_is_not_on_disk_is_added_and_then_swept_out_again()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Test Netzteil.vi");
+
+            var added = LvClass.AddVisToProject(project, "Tests",
+            [
+                ("Test Netzteil.vi", "../Test Netzteil.vi"),
+                ("Run Tests.vi", "../Run Tests.vi"),      // never written - the runner comes later
+            ]);
+            var (tidied, removed) = ClassTools.StripHelperItems(
+                File.ReadAllText(project), project);
+
+            // Both halves are honest on their own; together they lose a VI in silence.
+            Assert.Equal(2, added);
+            Assert.Equal(1, removed);
+            Assert.DoesNotContain("Run Tests.vi", tidied, StringComparison.Ordinal);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>
+    /// What survives is what the FILE says, not what `added` counted. This is the assertion the
+    /// tool now makes for itself before reporting `ok`.
+    /// </summary>
+    [Fact]
+    public void Listed_vis_are_read_back_from_the_file()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Test Netzteil.vi", "Run Tests.vi");
+            LvClass.AddVisToProject(project, "Tests",
+            [
+                ("Test Netzteil.vi", "../Test Netzteil.vi"),
+                ("Run Tests.vi", "../Run Tests.vi"),
+            ]);
+
+            var listed = LvClass.ListedVis(project);
+
+            Assert.Equal(2, listed.Count);
+            Assert.Contains(listed, v => v.Name == "Test Netzteil.vi"
+                                         && v.Url == "../Test Netzteil.vi");
+            Assert.Contains(listed, v => v.Name == "Run Tests.vi");
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>
+    /// The second failure mode, and the one that made a five-call run end with a single test
+    /// listed: LabVIEW's close SAVES its own copy of the project over the file and drops VI items
+    /// it never had in memory, so each call's close wiped the previous call's entry. `AddClassToProject`
+    /// has re-asserted class entries for exactly this reason since 2026-08-28; the test route did not.
+    /// </summary>
+    [Fact]
+    public void Entries_a_close_clobbered_are_put_back()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Test Netzteil.vi", "Test NetzteilAC.vi");
+            LvClass.AddVisToProject(project, "Tests",
+                [("Test Netzteil.vi", "../Test Netzteil.vi")]);
+
+            var before = LvClass.ListedVis(project);
+
+            // LabVIEW's close, simulated: it rewrites the file without the item it never loaded.
+            WriteProject(dir);
+            Assert.Empty(LvClass.ListedVis(project));
+
+            // Restore first, then add the new one - the order AddClassToProject uses.
+            var restored = LvClass.AddVisToProject(project, "Tests", before);
+            var added = LvClass.AddVisToProject(project, "Tests",
+                [("Test NetzteilAC.vi", "../Test NetzteilAC.vi")]);
+
+            Assert.Equal(1, restored);
+            Assert.Equal(1, added);
+            Assert.Equal(2, LvClass.ListedVis(project).Count);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

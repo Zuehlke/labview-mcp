@@ -65,6 +65,25 @@ patience, losing the answer to a call that had done the work. The budget is chec
 so it bounds how many are started, not how long one takes; set it below one slice's cost when the
 class is large.
 
+## 0b. Listing the suite in the project — two ways it went missing in silence
+
+Measured 2026-08-29 on a five-suite run over a three-class hierarchy: every VI generated, every
+assertion green, and the user's Project Explorer showed **one** test. The other five had to be
+listed by hand. `lvai_generate_class_test` had answered `ok: true` each time.
+
+Two independent defects, both now fixed in `ListInProjectAsync`, and both worth recognising because
+the same shape can occur wherever a `.lvproj` is edited around a LabVIEW close:
+
+| defect | what happened | fix |
+|---|---|---|
+| **written, then swept out again** | `alsoListInProject` named the suite runner before the runner had been generated. The entry was written, counted in `added`, and then removed by `StripHelperItems`' dangling pass — which deletes any self-closing item whose URL resolves to no file. Both halves are individually correct; together they lose a VI without a word | the tidy pass now runs **after** the add rather than before it, a path with no file on disk is **refused by name** and reported in `notOnDisk`, and the answer is **verified by re-reading the `.lvproj`** instead of trusting `added` |
+| **clobbered by the next call's close** | each call closes the project first, and LabVIEW's close SAVES its own copy over the file, dropping VI items it never had in memory — so call *n+1* deleted call *n*'s entry. `AddClassToProject` has re-asserted class entries for exactly this reason since 2026-08-28; the test route never did | the VI items are read **before** the close and re-asserted after it, reported as `restored` |
+
+The general rule this leaves: **`added` is what was written, not what survived.** Any step that edits
+a `.lvproj` and then runs a tidy pass has to read the file back before it may claim success — the
+count is computed too early to be evidence. `ok` on the `projectEntry` step now means *verified from
+the file*, and `notOnDisk` / `notListed` name what did not make it.
+
 ## 1. The blocker: a generated test cannot call its subject statically *by AIXML alone*
 
 A unit test calls the VI under test. AIXML cannot express that call. Measured with one throwaway
