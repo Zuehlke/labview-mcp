@@ -256,3 +256,57 @@ public class PaneVerdictTests
             PaneTools.RenderVerdict(@"C:\p\Ok.vi", 4833, Bounds4833, Corrected).Text,
             PaneTools.Render(@"C:\p\Ok.vi", 4833, Bounds4833, Corrected));
 }
+
+/// <summary>
+/// The batch generator's per-entry verdict. It has exactly one job: never call an entry generated
+/// when this run did not generate it.
+/// </summary>
+public class BulkGenerateVisVerdictTests
+{
+    private static System.Text.Json.Nodes.JsonObject Answer(string json) =>
+        (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse(json)!;
+
+    [Fact]
+    public void A_stale_file_from_an_earlier_run_does_not_count()
+    {
+        // The defect this pins: LabVIEW went down mid-batch, nothing was validated, and every
+        // target happened to exist from a previous run - so `viExistsNow` was true for all six and
+        // the summary read `generated: 6, failed: 0`.
+        var dead = Answer("""
+            {"ok":false,"failedAtStep":"validate","viExistsNow":true,"viBytes":4939}
+            """);
+
+        Assert.False(BulkTools.CountsAsGenerated(dead));
+    }
+
+    [Fact]
+    public void A_clean_generation_counts()
+    {
+        Assert.True(BulkTools.CountsAsGenerated(
+            Answer("""{"ok":true,"failedAtStep":null,"viExistsNow":true}""")));
+    }
+
+    [Fact]
+    public void A_pane_violation_counts_because_the_file_was_written()
+    {
+        // lvai_generate_vi says so in those words: ok false with failedAtStep connectorPane still
+        // means the .vi was written and it is the pane that needs another pass.
+        Assert.True(BulkTools.CountsAsGenerated(Answer("""
+            {"ok":false,"failedAtStep":"connectorPane","viExistsNow":true,"paneViolations":2}
+            """)));
+    }
+
+    [Fact]
+    public void A_pane_step_that_wrote_nothing_does_not_count()
+    {
+        Assert.False(BulkTools.CountsAsGenerated(Answer("""
+            {"ok":false,"failedAtStep":"connectorPane","viExistsNow":false}
+            """)));
+    }
+
+    [Fact]
+    public void An_unparseable_answer_does_not_count()
+    {
+        Assert.False(BulkTools.CountsAsGenerated(null));
+    }
+}

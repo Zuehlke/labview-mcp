@@ -205,6 +205,183 @@ internal sealed class BulkTools(LvaiConnection connection)
 
     // ---------------------------------------------------------------- pylv_apply
 
+    // ---------------------------------------------------------------- generate, plural
+
+    [McpServerTool(Name = "lvai_generate_vis", Destructive = true, OpenWorld = true,
+                   Title = "Generate several VIs from AIXML in one call")]
+    [Description("""
+        MUTATING: several AIXML files through the whole lvai_generate_vi sequence - validate,
+        convert, measure the pane - in ONE call, applied in the order given.
+        USE IT FOR BOILERPLATE SETS, which is where it pays: the socket VIs a class unit test needs
+        are one per test slot and fully determined by the subject's pane. Measured 2026-08-29 over a
+        three-class hierarchy, generating them one at a time cost 34 calls of lvai_generate_vi for
+        29 distinct targets - about four minutes, nearly all of it turn latency rather than LabVIEW.
+        pairsJson is a JSON ARRAY, one object per VI:
+          [{"aixml":"C:\\t\\a.xml","vi":"C:\\t\\a.vi","panePattern":4815},
+           {"aixml":"C:\\t\\b.xml","vi":"C:\\t\\b.vi"}]
+        `panePattern` is optional and per VI - a socket that has to match an accessor's pane needs
+        4815 while the test beside it takes the station default.
+        SEQUENTIAL ON PURPOSE, exactly like lvai_convert_vis_to_aixml: six generate calls issued
+        together took 559 ms against 543 ms one after another, because LabVIEW serialises the RPC.
+        The saving here is round trips, not throughput.
+        IT DOES NOT STOP AT THE FIRST FAILURE. Each entry gets its own answer under `results`, so
+        one bad AIXML does not cost you the other nine; `ok` is true only when every entry
+        generated. A failure reads exactly as lvai_generate_vi's would.
+        THE AIXML IS DELETED ON SUCCESS and KEPT ON FAILURE, the same bargain pylv_apply makes with
+        its bundle: the intermediate is noise once the .vi exists, and it is the only evidence when
+        the .vi does not. Pass keepAixml to keep it either way.
+        """)]
+    public async Task<string> GenerateVisAsync(
+        [Description("JSON array of {aixml, vi, panePattern?} objects, applied in order")]
+        string pairsJson,
+        [Description("Open each created VI in the LabVIEW editor")] bool openVI = false,
+        [Description("Measure each connector pane afterwards and gate `ok` on it")]
+        bool measurePane = true,
+        [Description("Keep the AIXML sources instead of deleting the ones that succeeded")]
+        bool keepAixml = false,
+        [Description("Local budget in seconds, per VI")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            List<GenerationRequest> requests;
+            try { requests = GenerationRequest.ParseAll(pairsJson); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+
+            var total = Stopwatch.StartNew();
+            var results = new JsonArray();
+            int generated = 0, failed = 0, removed = 0;
+
+            foreach (var request in requests)
+            {
+                if (!File.Exists(request.Aixml))
+                {
+                    failed++;
+                    results.Add(new JsonObject
+                    {
+                        ["vi"] = request.Vi,
+                        ["aixml"] = request.Aixml,
+                        ["ok"] = false,
+                        ["note"] = $"No AIXML at '{request.Aixml}', so this VI was not attempted.",
+                    });
+                    continue;
+                }
+
+                var answer = await GenerateViAsync(request.Aixml, request.Vi, openVI, measurePane,
+                                                   request.PanePattern, timeoutSeconds, ct);
+                var parsed = Parse(answer);
+                // THE SUB-ANSWER'S OWN VERDICT, NOT `viExistsNow`. That field is true for a file
+                // some EARLIER run left behind, so a batch over targets that already existed
+                // reported `generated: 6, failed: 0` while five of the six entries carried
+                // `ok: false` - LabVIEW had gone down mid-batch and not one AIXML was even
+                // validated. Measured 2026-08-29. A green summary over red entries is the worst
+                // thing this tool could do, because the entries are exactly what nobody re-reads.
+                //
+                // `failedAtStep: connectorPane` is the one failure that still WROTE the file: the
+                // diagram is sound and the pane needs another pass, which lvai_generate_vi says in
+                // those words. It counts as generated here and keeps its own answer.
+                var wrote = CountsAsGenerated(parsed as JsonObject);
+                if (wrote) generated++; else failed++;
+
+                // Deleted only when the .vi is actually there. A kept AIXML after a failure is the
+                // only thing that says WHY - the answer names the node, the file is what you fix.
+                if (wrote && !keepAixml)
+                {
+                    try { File.Delete(request.Aixml); removed++; }
+                    catch (Exception failure) when (failure is IOException
+                                                    or UnauthorizedAccessException) { }
+                }
+
+                results.Add(new JsonObject
+                {
+                    ["vi"] = request.Vi,
+                    ["aixml"] = wrote && !keepAixml ? null : request.Aixml,
+                    ["ok"] = wrote,
+                    ["answer"] = parsed,
+                });
+            }
+
+            return Json.Document(new JsonObject
+            {
+                ["ok"] = failed == 0 && requests.Count > 0,
+                ["requested"] = requests.Count,
+                ["generated"] = generated,
+                ["failed"] = failed,
+                ["aixmlDeleted"] = removed,
+                ["results"] = results,
+                ["totalElapsedMs"] = total.ElapsedMilliseconds,
+                ["note"] = failed == 0
+                    ? $"{generated} VI(s) generated in order. " + (keepAixml
+                        ? "The AIXML sources were kept."
+                        : $"{removed} AIXML source(s) deleted - the .vi is the artefact.")
+                    : $"{failed} of {requests.Count} did NOT generate; their AIXML was kept and is " +
+                      "named in `results`. Each entry carries the same answer lvai_generate_vi " +
+                      "would have given, so read that rather than this summary.",
+            });
+        });
+
+    /// <summary>
+    /// Did THIS run write the VI? Read from <see cref="GenerateViAsync"/>'s own verdict, never from
+    /// <c>viExistsNow</c> — that field is true for a file some EARLIER run left behind.
+    ///
+    /// Measured 2026-08-29: a batch of six sockets that all already existed reported
+    /// <c>generated: 6, failed: 0</c> while five of the six entries carried <c>ok: false</c>,
+    /// because LabVIEW had gone down mid-batch and not one AIXML was even validated. A green
+    /// summary over red entries is the worst thing a batch tool can do, since the entries are
+    /// exactly what nobody re-reads.
+    ///
+    /// <c>failedAtStep: connectorPane</c> is the one failure that still WROTE the file — the
+    /// diagram is sound and only the pane needs another pass — so it counts, and keeps its own
+    /// answer for the reader.
+    /// </summary>
+    internal static bool CountsAsGenerated(JsonObject? answer) =>
+        answer?["ok"]?.GetValue<bool>() is true
+        || (answer?["failedAtStep"]?.GetValue<string>() == "connectorPane"
+            && answer["viExistsNow"]?.GetValue<bool>() is true);
+
+    /// <summary>One entry of <see cref="GenerateVisAsync"/>'s <c>pairsJson</c>.</summary>
+    internal sealed record GenerationRequest(string Aixml, string Vi, int? PanePattern)
+    {
+        public static List<GenerationRequest> ParseAll(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                throw new ArgumentException("pairsJson is empty; name at least one VI to generate.");
+
+            JsonNode? parsed;
+            try { parsed = JsonNode.Parse(json); }
+            catch (JsonException bad)
+            { throw new ArgumentException($"pairsJson is not JSON: {bad.Message}"); }
+
+            if (parsed is not JsonArray array || array.Count == 0)
+                throw new ArgumentException(
+                    "pairsJson must be a non-empty JSON array, e.g. " +
+                    "[{\"aixml\":\"C:\\\\t\\\\a.xml\",\"vi\":\"C:\\\\t\\\\a.vi\"}].");
+
+            return [.. array.Select((entry, i) => One(entry, i))];
+        }
+
+        private static GenerationRequest One(JsonNode? entry, int index)
+        {
+            if (entry is not JsonObject o)
+                throw new ArgumentException($"pairsJson[{index}] is not an object.");
+
+            var aixml = o["aixml"]?.GetValue<string>();
+            var vi = o["vi"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(aixml) || string.IsNullOrWhiteSpace(vi))
+                throw new ArgumentException(
+                    $"pairsJson[{index}] needs both \"aixml\" and \"vi\" as absolute paths.");
+
+            int? pattern = o["panePattern"] is { } p && int.TryParse(p.ToString(), out var value)
+                ? value : null;
+            return new GenerationRequest(Path.GetFullPath(aixml), Path.GetFullPath(vi), pattern);
+        }
+    }
+
+    private static JsonNode? Parse(string answer)
+    {
+        try { return JsonNode.Parse(answer); }
+        catch (JsonException) { return null; }
+    }
+
     [McpServerTool(Name = "pylv_apply", Destructive = true, OpenWorld = true,
                    Title = "Close, extract, edit and rebuild a VI in one call")]
     [Description("""

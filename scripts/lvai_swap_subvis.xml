@@ -1,0 +1,82 @@
+<VI _name="lvai_swap_subvis.vi" description="Swap MANY subVI nodes and MANY diagram constants on one block diagram\2C in one run\2C then save the VI in place.\0A\0AWHY IT LOOPS INSTEAD OF TAKING ONE INDEX. Driving this from outside cost 19 tool calls for a single three-class test suite\2C alternating a list call and a replace call almost every time - measured 2026-08-29. The list call is not avoidable from outside because {LV.Diagram} SubVIs[] RE-ORDERS after every Replace and the replaced node's reference dies with it\2C so an index taken before a swap means something else after it. Inside one run the ordering problem disappears\3A the references and the names are collected ONCE\2C and each swap is then addressed BY NAME through Search 1D Array.\0A\0AWHY THE LOOPS ARE NOT NESTED. They were at first\2C with SubVIs[] re-read per swap\2C and AIXML auto-indexes a tunnel that carries a refnum array into an inner loop - `the type of the sink is 1D array of SubVI Refnum` - plus two For Loops reported as members of a cycle. Collecting first and matching second needs no nesting and no shift register at all.\0A\0AWHY A SOCKET NAME MUST BE UNIQUE. Matching is by VI Name\2C so two nodes calling the same socket are indistinguishable and the wrong subject lands in the wrong case with no error at all. The caller generates one socket per slot for exactly this reason. A name that is not found gives Search 1D Array -1\2C and Index Array then clamps to element 0 - so an unmatched name silently swaps the WRONG node. The caller checks the names against the listing before calling.\0A\0AWHY CONSTANTS COME SECOND. A dynamic dispatch input is a REQUIRED terminal\2C so a class chain needs a class value\3B AIXML cannot author a class constant\2C so the caller authors a PATH constant\2C wires it\2C and it is replaced here. Order matters\3A with the nodes swapped first the wire already has a class sink and Replace re-types it. The other way round the wire has a class source and a path sink\2C and breaks.\0A\0ALists are pipe separated. A pipe is illegal in a Windows path so it cannot occur inside a value\3B a newline could not be used because the runner separates its own name/value pairs that way.\0A\0ANothing is read back after a Replace\2C on purpose\3A both its reference out and its Replace output are poison - Error 1055 on the next property read\2C and because that error travels down the wire it would also stop Save.Instrument and leave the edit unwritten. Verify by AIXML-exporting the VI and reading target=.">
+  <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI to edit. It is saved in place." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="socket names" conIdx="1" connection="recommended" description="VI Names of the nodes to replace\2C pipe separated. Empty to swap no nodes." outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
+  <Control _name="target paths" conIdx="2" connection="recommended" description="Absolute paths the nodes should call instead\2C pipe separated\2C same order as socket names." outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+  <Control _name="constant labels" conIdx="3" connection="recommended" description="Block diagram labels of the constants to replace\2C pipe separated. Empty to swap no constants." outputs="value:13.value" type="string" uid="13" uid_parent="root" value=""/>
+  <Control _name="constant paths" conIdx="4" connection="recommended" description="Absolute .lvclass paths the constants should become\2C pipe separated\2C same order as constant labels." outputs="value:14.value" type="string" uid="14" uid_parent="root" value=""/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:20.path" uid="20" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:20.path" outputs="vi reference:22.vi reference,error out:22.error out" uid="22" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:22.vi reference,error in (no error):22.error out" outputs="Block Diagram:24.bd,reference out:,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+SubVIs[],read+All Objects[]" type="{LV.Diagram}" inputs="reference:24.bd,error in (no error):24.error out" outputs="SubVIs[]:26.subvis,All Objects[]:26.objs,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
+
+  <Constant _name="Zeilenformat" outputs="value:30.value" type="string" uid="30" uid_parent="root" value="%s"/>
+  <Constant _name="leeres Stringarray" outputs="value:31.value" type="array{string.String}" uid="31" uid_parent="root" value="[]"/>
+  <Constant _name="Trennzeichen" outputs="value:32.value" type="string" uid="32" uid_parent="root" value="|"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:30.value,spreadsheet string:11.value,array type (2D Dbl):31.value,delimiter (Tab):32.value" outputs="array:33.array" uid="33" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:30.value,spreadsheet string:12.value,array type (2D Dbl):31.value,delimiter (Tab):32.value" outputs="array:34.array" uid="34" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:30.value,spreadsheet string:13.value,array type (2D Dbl):31.value,delimiter (Tab):32.value" outputs="array:35.array" uid="35" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:30.value,spreadsheet string:14.value,array type (2D Dbl):31.value,delimiter (Tab):32.value" outputs="array:36.array" uid="36" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:26.subvis" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:101.value,error in (no error):" outputs="VI Name:110.name,reference out:,error out:110.error out" uid="110" uid_parent="100"/>
+    <Tunnel _id="Out1" inputs="value:110.name" mode="index" outputs="value:120.names" uid="120" uid_parent="100"/>
+  </Structure>
+
+  <Constant _name="keine Konstante" outputs="value:40.value" type="ref{LV.Constant}" uid="40" uid_parent="root" value=""/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:26.objs" mode="index" outputs="value:201.value" uid="201" uid_parent="200"/>
+    <Tunnel _id="In2" inputs="value:40.value" outputs="value:202.value" uid="202" uid_parent="200"/>
+    <Node _name="To More Specific Class" inputs="reference:201.value,error in:,target class:202.value" outputs="specific class reference:210.k,error out:210.error out" uid="210" uid_parent="200"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:210.k,error in (no error):" outputs="Label:212.label,reference out:,error out:212.error out" uid="212" uid_parent="200"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:212.label,error in (no error):" outputs="Text:214.text,reference out:,error out:214.error out" uid="214" uid_parent="200"/>
+    <Tunnel _id="Out1" inputs="value:214.text" mode="index" outputs="value:220.labels" uid="220" uid_parent="200"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:33.array" mode="index" outputs="value:301.value" uid="301" uid_parent="300"/>
+    <Tunnel _id="In2" inputs="value:34.array" mode="index" outputs="value:302.value" uid="302" uid_parent="300"/>
+    <Tunnel _id="In3" inputs="value:120.names" outputs="value:303.value" uid="303" uid_parent="300"/>
+    <Tunnel _id="In4" inputs="value:26.subvis" outputs="value:304.value" uid="304" uid_parent="300"/>
+    <ShiftReg uid="305" uid_parent="300">
+      <Left inputs="value:26.error out" outputs="value:306.err" uid="307" uid_parent="305"/>
+      <Right inputs="value:320.error out" outputs="value:330.error out" uid="308" uid_parent="305"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:303.value,element:301.value,start index (0):" outputs="index of element:310.index" uid="310" uid_parent="300"/>
+    <Node _name="Index Array" inputs="array:304.value,index:310.index" outputs="element:312.element" uid="312" uid_parent="300"/>
+    <Node _name="String To Path" inputs="string:302.value" outputs="path:314.path" uid="314" uid_parent="300"/>
+    <Node _name="Invoke Node" target="Replace" type="{LV.SubVI}" inputs="reference:312.element,error in (no error):306.err,Style:,Path:314.path,PaletteString:" outputs="reference out:,error out:320.error out,Replace:" uid="320" uid_parent="300"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:35.array" mode="index" outputs="value:401.value" uid="401" uid_parent="400"/>
+    <Tunnel _id="In2" inputs="value:36.array" mode="index" outputs="value:402.value" uid="402" uid_parent="400"/>
+    <Tunnel _id="In3" inputs="value:220.labels" outputs="value:403.value" uid="403" uid_parent="400"/>
+    <Tunnel _id="In4" inputs="value:26.objs" outputs="value:404.value" uid="404" uid_parent="400"/>
+    <Tunnel _id="In5" inputs="value:40.value" outputs="value:405.value" uid="405" uid_parent="400"/>
+    <ShiftReg uid="406" uid_parent="400">
+      <Left inputs="value:330.error out" outputs="value:407.err" uid="408" uid_parent="406"/>
+      <Right inputs="value:420.error out" outputs="value:430.error out" uid="409" uid_parent="406"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:403.value,element:401.value,start index (0):" outputs="index of element:410.index" uid="410" uid_parent="400"/>
+    <Node _name="Index Array" inputs="array:404.value,index:410.index" outputs="element:412.element" uid="412" uid_parent="400"/>
+    <Node _name="To More Specific Class" inputs="reference:412.element,error in:407.err,target class:405.value" outputs="specific class reference:414.k,error out:414.error out" uid="414" uid_parent="400"/>
+    <Node _name="String To Path" inputs="string:402.value" outputs="path:416.path" uid="416" uid_parent="400"/>
+    <Node _name="Invoke Node" target="Replace" type="{LV.Constant}" inputs="reference:414.k,error in (no error):414.error out,Style:,Path:416.path,PaletteString:" outputs="reference out:,error out:420.error out,Replace:" uid="420" uid_parent="400"/>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:22.vi reference,error in (no error):430.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:500.reference out,error out:500.error out" uid="500" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:500.reference out,error in (no error):500.error out" outputs="error out:510.error out" uid="510" uid_parent="root"/>
+
+  <Node _name="Array Size" inputs="array:33.array" outputs="size(s):520.size" uid="520" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:35.array" outputs="size(s):522.size" uid="522" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:510.error out" outputs="status:530.status,code:530.code,source:530.source" uid="530" uid_parent="root"/>
+
+  <Indicator _name="nodes requested" conIdx="6" connection="recommended" description="How many socket names were given. Replace cannot be read back\2C so this counts what was asked for - AIXML-export the VI to see what landed." inputs="value:520.size" type="int32" uid="900" uid_parent="root" value="0"/>
+  <Indicator _name="constants requested" conIdx="7" connection="recommended" description="How many constant labels were given." inputs="value:522.size" type="int32" uid="901" uid_parent="root" value="0"/>
+  <Indicator _name="node names found" conIdx="5" connection="recommended" description="Every subVI node name on the diagram BEFORE the swap. Compare it with socket names - a name missing here is the silent-wrong-node case." inputs="value:120.names" type="array{string.String}" uid="902" uid_parent="root" value="[]"/>
+  <Indicator _name="status" conIdx="13" connection="recommended" description="True when anything failed." inputs="value:530.status" type="bool" uid="903" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="14" connection="recommended" description="Zero when every swap and the save succeeded." inputs="value:530.code" type="int32" uid="904" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="15" connection="recommended" description="Source of the first error." inputs="value:530.source" type="string" uid="905" uid_parent="root" value=""/>
+</VI>

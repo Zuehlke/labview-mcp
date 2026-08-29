@@ -116,6 +116,29 @@ it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be
 it is allowed to create — and pylabview can then point it at your own code, which AIXML can never
 target. That is how a generated unit test comes to call its subject as an ordinary subVI.
 
+**A UNIT TEST CALLS ITS SUBJECT AS A STATIC SUBVI. ALWAYS. Never drive it through VI Server.** This
+holds for CLASS code too, where it looks impossible: AIXML refuses a class-typed terminal, so a
+generated test cannot name an accessor — but LabVIEW's own `{LV.SubVI}` `Replace` puts one into a
+node AIXML *was* allowed to create, and unlike a pylabview link retarget it **re-types the wires**,
+so the two panes need not match. Author the test against a socket whose class terminals are `path`
+stand-ins, then swap. Measured 2026-08-29 over twelve properties of a three-class hierarchy:
+`failures="0"`, with a negative control that fails on demand.
+
+The VI Server variant — open a reference, `Ctrl Val.Set`, `Run VI`, `Ctrl Val.Get` — also works and
+is written up as §3c, and it is **the fallback, not the default**. It was built first in that session
+and the user's correction was explicit: *"Du musst die statischen VIs einsetzen bei den tests!"* Three
+reasons it loses: the diagram is not what a LabVIEW developer reads, the assertion compares a
+formatted string instead of the field's real type, and a renamed field breaks the test at run time
+instead of at edit time. Reach for it only when the subject genuinely cannot be linked statically,
+and say why.
+
+**The trap that decides whether the static route runs at all: a DYNAMIC DISPATCH INPUT IS A REQUIRED
+TERMINAL.** Leave the first accessor's class input unwired and the test is `Error 1003, not
+executable` — after the file generated, the swap succeeded and the export looked right. So each chain
+needs a class constant, authored as a path constant and converted with `{LV.Constant}` `Replace`
+**after** the nodes, never before. Recipe and the other four traps in `docs/labview-unit-testing.md`
+§3d.
+
 **A PLACEHOLDER LOSES EVERY TYPEDEF ON THE PANE, and the whole chain stays silent about it.** AIXML
 cannot express that a control is an instance of a `.ctl`, so the clone carries the bare underlying
 type — and after the retarget every input you wired a constant to sits behind a **coercion dot**.
@@ -204,6 +227,14 @@ three `lvai_*` calls took 30.4 s of wall clock while LabVIEW's own share was 74 
 under a second for validate plus convert — about **7 s per turn**, all of it latency. So the 17
 turns a batch removes are worth roughly two minutes, where the server-side gain is worth
 milliseconds. Optimise the number of calls, not the cost of one.
+
+**That 7 s now has a sample instead of an anecdote, and it held.** Measured 2026-08-29 across the six
+session transcripts in `~/.claude/projects/`: **2 641 tool calls over 2 549 turns, 12.90 h of model
+latency against 3.63 h inside tools — a ratio of 3.6 to 1, median 7.1 s per turn.** The worst session
+ran at 7.8 : 1. So the rule above is not a rule of thumb derived from three calls any more; it is the
+dominant cost of every session in this repository, and the tools it points at are named with counts
+in `docs/workflow-economics.md`. The largest single item there: a class unit-test run spends about
+**40 calls** hand-driving a route `lvai_generate_test` already automates for plain VIs.
 
 For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
 and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
@@ -740,11 +771,16 @@ literally it argued away 600 usable palette VIs.
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
+| How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
+| How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
+| How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
+| How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
+| Where does a session's time actually go, and what should we build next? | `docs/workflow-economics.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
@@ -797,7 +833,22 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 
 ## The agent definitions
 
-The four `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+**The unit-test agent is per FRAMEWORK, and `labview-class-generator` always calls one.** Caraya is
+the default (`labview-caraya-unit-test`), and LUnit and VI Tester have their own agents —
+`labview-lunit-unit-test` and `labview-vitester-unit-test`, both added 2026-08-29. **Both are
+scaffolds, and deliberately so**: measured that day, LUnit is absent from `vi.lib\addons`, `user.lib`
+and `LVAddons` entirely, and VI Tester only *ships* files under `vi.lib\addons\_JKI Toolkits` with
+nothing about it ever measured here. So each carries the framework-independent rules — which are
+toolchain properties and do transfer — and a Phase 0 that establishes a callable target and returns
+`CANNOT PROCEED` when it cannot. **Neither may substitute Caraya**, because the framework is the
+user's choice and only the default is ours. The two scaffolds contain almost no target spellings on
+purpose: inventing a name is what preceded three LabVIEW crashes, and the way to get one is to export
+a VI that already calls the framework. The
+class agent's Phase 6 is the handoff and is not conditional on tests having been asked for. Carved out
+of the class agent on 2026-08-29 at the user's request, because testing and class creation share
+almost nothing.
+
+The seven `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
 of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
 before it can be spawned.
 

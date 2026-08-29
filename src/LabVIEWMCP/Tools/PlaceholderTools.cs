@@ -358,7 +358,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// user.lib of the installation the tools actually talk to - the same discovery and preference
     /// order as everywhere else, so the placeholder lands beside the LabVIEW that will resolve it.
     /// </summary>
-    private static string? UserLibFolder()
+    internal static string? UserLibFolder()
     {
         var install = LabViewLocator.Select(LabViewLocator.Discover());
         if (install is null) return null;
