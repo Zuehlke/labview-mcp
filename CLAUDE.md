@@ -131,6 +131,16 @@ after the terminal it feeds** (`<Constant _name="Borkenkaefer" …/>`): AIXML's 
 block diagram label, and the label is how the repair finds the constant. Two boolean constants are
 otherwise indistinguishable, and `All Objects[]` order is not stable across VIs.
 
+**And wire a constant ONLY where the callee marks the input `required`.** `recommended` and
+`optional` inputs stay unwired unless you have a real value; an unwired input keeps the callee's
+default. `lvai_vi_terminals` prints the flag per terminal and names the required set. The trap is
+that **validation cannot teach you this rule**: AIXML enforces `required` and is silent about the
+rest, so "wire what the validator demands" looks like a rule and is only ever accidentally right.
+Measured 2026-08-29 — a second call was authored by mirroring the first call's wiring without
+re-reading the flags, and was correct only because the terminal was still `required`; changing it
+to `recommended` produced no error anywhere and the mirrored constant became surplus. Surplus is
+not free on a typedef pane: it has to be bound and kept in step with the `.ctl` as well.
+
 The one thing the repair does NOT reach is an **output** terminal: nothing is wired into it, so
 there is no dot and no constant — the bare type travels into whatever consumes the wire.
 `docs/typedef-constants.md` has the measurements, including why `Create Constant` alone is not the

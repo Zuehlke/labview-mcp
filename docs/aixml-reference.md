@@ -1594,6 +1594,31 @@ Finding the file at all is the fiddly part: OpenG installs under `user.lib\_Open
 `vi.lib`, and the `.llb` in its path is a real directory here rather than a container. Search for
 the VI by name across both roots rather than assuming either.
 
+### Which inputs get a constant: the `required` ones, and only those
+
+**Create a constant for an input the callee marks `required`. Leave `recommended` and `optional`
+inputs unwired unless you have a real value for them** — an unwired input keeps the callee's own
+default. `lvai_vi_terminals` prints the flag beside every terminal and names the required set
+outright.
+
+**The reason this needs saying is that validation cannot teach it.** AIXML enforces `required` and
+says nothing at all about the rest, so *wire whatever the validator demands* behaves like a rule
+and is not one: it is right only while every input you care about happens to be required. Measured
+2026-08-29 — a second call to the same subVI was authored by mirroring the first call's wiring
+without re-reading the flags; it was correct purely because the terminal was still `required`.
+Changing that terminal to `recommended` produced no error and no warning anywhere, and the
+mirrored constant became surplus.
+
+A surplus constant is not harmless. On a typedef-carrying pane it also has to be typedef-bound
+(§ `docs/typedef-constants.md`) and kept in step with the `.ctl` — so it is maintenance bought for
+nothing.
+
+**Re-read the flags rather than trusting a cached view of them.** They live on the callee's pane
+and change when someone edits it. Note in particular that `lvai_placeholder_subvi` caches its stub
+by a signature that includes `connection`, so a flag change does invalidate it — but a stub cached
+by an older build of this server does not carry that in its key, and the symptom of a stale one is
+an error blaming YOUR document: `required input 'X' is not wired`. `refresh` settles it.
+
 ### Polymorphic subVI calls
 
 A `Call` to a **polymorphic** VI names the concrete instance in a separate attribute:

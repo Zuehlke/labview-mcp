@@ -138,9 +138,40 @@ internal static class ViTerminals
         sb.AppendLine("Ready to paste - fill in the nets you need, leave the rest as `name:`:");
         sb.AppendLine(CallSkeleton(result));
         sb.AppendLine();
+        sb.AppendLine(ConstantsRule(result));
+        sb.AppendLine();
         sb.Append("Terminal ORDER inside a Call does not matter (measured); the names do, " +
                   "exactly as spelled above including any double spaces.");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Which inputs get a constant, spelled out rather than left to be inferred from the list
+    /// above.
+    ///
+    /// WHY THIS IS IN THE ANSWER AND NOT ONLY IN A DOCUMENT. The `required` flags are already
+    /// printed per terminal, and they were still read and not acted on: a caller mirrored a
+    /// sibling call's wiring instead, which is correct only for as long as the callee's pane does
+    /// not change. AIXML validation enforces `required` and says nothing about the rest, so
+    /// "wire whatever the validator demands" passes for a rule until a terminal becomes
+    /// `recommended` - at which point it silently produces a surplus constant. A surplus constant
+    /// is not free: on a typedef pane it also has to be bound and maintained.
+    /// </summary>
+    internal static string ConstantsRule(Result result)
+    {
+        var required = result.Inputs
+            .Where(t => string.Equals(t.Connection, "required", StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Name).ToList();
+
+        return required.Count == 0
+            ? "CONSTANTS: none of these inputs is `required`, so a Call needs no constant at all - " +
+              "wire only what you actually have a value for. An unwired recommended or optional " +
+              "input keeps the callee's own default."
+            : "CONSTANTS: create one ONLY for the `required` input(s) - " +
+              string.Join(", ", required) + ". Leave every `recommended` and `optional` input " +
+              "unwired unless you have a real value: they keep the callee's default, and a " +
+              "surplus constant still has to be typedef-bound and maintained. Validation only " +
+              "enforces `required`, so it will not tell you about the difference.";
     }
 
     private static void Append(StringBuilder sb, string title, IReadOnlyList<Terminal> terminals)

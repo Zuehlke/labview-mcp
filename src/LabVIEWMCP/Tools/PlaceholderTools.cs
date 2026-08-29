@@ -333,13 +333,23 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// What makes two panes interchangeable: direction, name, type and position, in order.
-    /// Anything outside this list may differ without the retarget noticing.
+    /// What makes two panes interchangeable: direction, name, type, position and CONNECTION, in
+    /// order. Anything outside this list may differ without the retarget noticing.
+    ///
+    /// CONNECTION IS IN THE KEY BECAUSE THE STUB CARRIES IT. <see cref="CloneTerminals"/> copies
+    /// each Control element whole, so `connection="required"` travels into the placeholder and the
+    /// generator then enforces it on the CALLER's AIXML. Leaving it out of the signature made the
+    /// cache miss a real change: measured 2026-08-29, a terminal was changed from `required` to
+    /// `recommended` in the IDE, the signature was unchanged, the cached stub was reused, and a
+    /// caller that correctly left that input unwired was refused with
+    /// `required input 'X' is not wired` - an error naming the caller's document for a staleness in
+    /// this cache. `refresh` was the only way out, and nothing pointed at it.
     /// </summary>
     internal static string Signature(ViTerminals.Result subject) =>
         string.Join("|",
-            subject.Inputs.Select(t => $"i:{t.Name}:{t.Type}:{t.ConIdx}")
-                  .Concat(subject.Outputs.Select(t => $"o:{t.Name}:{t.Type}:{t.ConIdx}")));
+            subject.Inputs.Select(t => $"i:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")
+                  .Concat(subject.Outputs
+                      .Select(t => $"o:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")));
 
     private static string Hash(string signature) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(signature)))[..10].ToLowerInvariant();
