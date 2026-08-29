@@ -629,8 +629,26 @@ errorKind: stubRefused
   Indicator with type=UDClassInst is not supported
 ```
 
-So no generated VI can call a class member either, and the slot pattern is no escape — the plug it
-swaps in needs the same pane. `docs/labview-unit-testing.md` §3a has the consequence for tests.
+So no generated VI can call a class member **as a static subVI**, and the slot pattern is no escape —
+the plug it swaps in needs the same pane. `docs/labview-unit-testing.md` §3a has the consequence for
+tests.
+
+**This sentence used to read "no generated VI can call a class member either", without the
+qualifier, and that is wrong.** The refusal is about a class-typed *terminal*, so it binds the static
+call and nothing else. Measured 2026-08-29: a generated VI drove twelve accessors of a three-class
+hierarchy through **VI Server** — `Run VI` runs a dynamic dispatch accessor top-level, `Ctrl Val.Get`
+hands its class output back as a Variant, and `Ctrl Val.Set` puts that Variant into the next
+accessor's class input. The object is never a wire, so no terminal is ever class-typed and the whole
+helper is plain strings. `docs/labview-unit-testing.md` §3c has the diagram, the four traps and the
+green Caraya run.
+
+**And the static call is reachable too — `{LV.SubVI}` `Replace` re-types the wires.** AIXML cannot
+author the `Call`, but LabVIEW's own "Replace with a VI from disk" can put the accessor into a node
+that AIXML *was* allowed to create, and unlike a pylabview link retarget it does not need the two
+panes to be type-identical. Measured 2026-08-29: twelve properties over three classes, every accessor
+an ordinary static subVI call, `failures="0"`. The catch that makes it non-obvious is that a **dynamic
+dispatch input is a required terminal**, so each chain also needs a class constant — authored as a
+path constant, converted with `{LV.Constant}` `Replace`. `docs/labview-unit-testing.md` §3d.
 
 ### The donor route for a member VI is blocked by two blocks pylabview cannot parse
 

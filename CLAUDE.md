@@ -116,6 +116,29 @@ it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be
 it is allowed to create — and pylabview can then point it at your own code, which AIXML can never
 target. That is how a generated unit test comes to call its subject as an ordinary subVI.
 
+**A UNIT TEST CALLS ITS SUBJECT AS A STATIC SUBVI. ALWAYS. Never drive it through VI Server.** This
+holds for CLASS code too, where it looks impossible: AIXML refuses a class-typed terminal, so a
+generated test cannot name an accessor — but LabVIEW's own `{LV.SubVI}` `Replace` puts one into a
+node AIXML *was* allowed to create, and unlike a pylabview link retarget it **re-types the wires**,
+so the two panes need not match. Author the test against a socket whose class terminals are `path`
+stand-ins, then swap. Measured 2026-08-29 over twelve properties of a three-class hierarchy:
+`failures="0"`, with a negative control that fails on demand.
+
+The VI Server variant — open a reference, `Ctrl Val.Set`, `Run VI`, `Ctrl Val.Get` — also works and
+is written up as §3c, and it is **the fallback, not the default**. It was built first in that session
+and the user's correction was explicit: *"Du musst die statischen VIs einsetzen bei den tests!"* Three
+reasons it loses: the diagram is not what a LabVIEW developer reads, the assertion compares a
+formatted string instead of the field's real type, and a renamed field breaks the test at run time
+instead of at edit time. Reach for it only when the subject genuinely cannot be linked statically,
+and say why.
+
+**The trap that decides whether the static route runs at all: a DYNAMIC DISPATCH INPUT IS A REQUIRED
+TERMINAL.** Leave the first accessor's class input unwired and the test is `Error 1003, not
+executable` — after the file generated, the swap succeeded and the export looked right. So each chain
+needs a class constant, authored as a path constant and converted with `{LV.Constant}` `Replace`
+**after** the nodes, never before. Recipe and the other four traps in `docs/labview-unit-testing.md`
+§3d.
+
 **A PLACEHOLDER LOSES EVERY TYPEDEF ON THE PANE, and the whole chain stays silent about it.** AIXML
 cannot express that a control is an instance of a `.ctl`, so the clone carries the bare underlying
 type — and after the retarget every input you wired a constant to sits behind a **coercion dot**.
@@ -740,6 +763,7 @@ literally it argued away 600 usable palette VIs.
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
+| How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
@@ -797,7 +821,15 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 
 ## The agent definitions
 
-The four `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+**The unit-test agent is per FRAMEWORK, and `labview-class-generator` always calls one.** Caraya is
+the default (`labview-caraya-unit-test`); LUnit and VI Tester get their own agents when someone needs
+them, and until then a request for either is answered by saying the agent does not exist — never by
+substituting Caraya, because the framework is the user's choice and only the default is ours. The
+class agent's Phase 6 is the handoff and is not conditional on tests having been asked for. Carved out
+of the class agent on 2026-08-29 at the user's request, because testing and class creation share
+almost nothing.
+
+The five `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
 of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
 before it can be spawned.
 
