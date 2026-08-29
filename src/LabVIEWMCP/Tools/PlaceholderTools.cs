@@ -120,6 +120,12 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             var stubPath = Path.Combine(folder, stubName);
             var existed = File.Exists(stubPath);
 
+            // The one thing the export cannot tell us, and the one that silently costs the caller
+            // a coercion dot per terminal. Fails soft: a probe that cannot run leaves the answer
+            // exactly as it was before this existed rather than failing a working placeholder.
+            var typedefs = await new TypedefTools(connection)
+                .PaneTypedefsAsync(viPath, timeoutSeconds, ct);
+
             var answer = new JsonObject
             {
                 ["ok"] = true,
@@ -132,8 +138,32 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 // TYPES to write constants of - lvai_generate_test does - and re-deriving them by
                 // splitting the signature string is the kind of parsing that breaks on the first
                 // terminal name nobody expected.
-                ["terminals"] = Terminals(subject),
+                ["terminals"] = Terminals(subject, typedefs),
             };
+
+            if (typedefs is null)
+            {
+                answer["typedefTerminals"] = null;
+                answer["typedefNote"] =
+                    "Whether this pane carries typedefs could not be determined - the VI Server " +
+                    "probe did not run. Check with lvai_coercion_dots after the retarget.";
+            }
+            else if (typedefs.Count > 0)
+            {
+                answer["typedefTerminals"] = typedefs.Count;
+                answer["typedefNote"] =
+                    $"{typedefs.Count} of this pane's terminals are TYPEDEF instances, and the " +
+                    "stub cannot carry that: AIXML has no way to express a typedef, so the clone " +
+                    "gets the bare underlying type. The retarget will still link and run, and " +
+                    "every INPUT you wire a constant to will wear a coercion dot. Repair them " +
+                    "with lvai_bind_typedef_constants after the retarget, and name each constant " +
+                    "`_name=\"<terminal name>\"` so it can be found. An OUTPUT terminal gets no " +
+                    "dot here - the bare type travels into whatever consumes the wire instead.";
+            }
+            else
+            {
+                answer["typedefTerminals"] = 0;
+            }
 
             if (!existed || refresh)
             {
@@ -267,20 +297,39 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     }
 
     /// <summary>The subject's terminals as data, in the order a Call lists them.</summary>
-    internal static JsonArray Terminals(ViTerminals.Result subject)
+    internal static JsonArray Terminals(ViTerminals.Result subject) => Terminals(subject, null);
+
+    /// <summary>
+    /// The same, annotated with which terminals are typedef INSTANCES and which `.ctl` each points
+    /// at. That cannot come from the export this list is otherwise built from: AIXML renders a
+    /// typedef as the bare type it wraps, so `type` here reads `bool` for a control bound to a
+    /// strict typedef, and the stub is cloned with that bare type. `typedefs` null means the probe
+    /// could not run, which is reported as unknown rather than as none.
+    /// </summary>
+    internal static JsonArray Terminals(
+        ViTerminals.Result subject, IReadOnlyDictionary<string, string>? typedefs)
     {
         var list = new JsonArray();
         foreach (var t in subject.Inputs) list.Add(One("input", t));
         foreach (var t in subject.Outputs) list.Add(One("output", t));
         return list;
 
-        static JsonObject One(string direction, ViTerminals.Terminal t) => new()
+        JsonObject One(string direction, ViTerminals.Terminal t)
         {
-            ["direction"] = direction,
-            ["name"] = t.Name,
-            ["type"] = t.Type,
-            ["conIdx"] = t.ConIdx,
-        };
+            var entry = new JsonObject
+            {
+                ["direction"] = direction,
+                ["name"] = t.Name,
+                ["type"] = t.Type,
+                ["conIdx"] = t.ConIdx,
+            };
+            if (typedefs is null) return entry;
+
+            var bound = typedefs.TryGetValue(t.Name, out var path);
+            entry["typedef"] = bound;
+            if (bound) entry["typedefPath"] = path;
+            return entry;
+        }
     }
 
     /// <summary>

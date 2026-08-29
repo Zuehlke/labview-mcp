@@ -857,6 +857,26 @@ is refused at validation with "You have connected two terminals of different typ
 | same | `Replace No Attrib` | `Param 0; Param 1; PaletteString` |
 | `{LV.Control}` | `Move` | `position; owner; duplicate` |
 | `{LV.Panel}` | `Copy Selection`, `Paste Selection`, `Make Selection` | — |
+| `{LV.GObject}` — so **every** diagram object, no narrowing cast needed | `Replace` | `Style; Path; PaletteString` |
+| `{LV.Terminal}` | `Create Constant`, `Create Control`, `Create Indicator` | `Value` |
+
+**The same gesture works on a BLOCK DIAGRAM constant, which is how a generated call is bound to the
+typedef its subVI expects.** `{LV.Constant}` is the generic class to reach for — it carries
+`Is Typedef?`, `Typedef:Path`, `Typedef:VI`, `Label`, `Terminal`, `Value`, `Discon Typedef` and
+`Update Typedef` without a per-class cast — and `{LV.Terminal}` carries `Name`, `Coercion Dot?`,
+`Connected Wire` and `Type Descriptor`.
+
+Two traps, both measured 2026-08-29. `Replace` **invalidates the reference it was called on**: the
+next Property Node on it answers `error 1055`, and a label written afterwards is silently lost. And
+its **return value cannot be consumed** — capturing the Invoke Node's `Replace` output made
+generation fail with "the type of the source is void" at three unrelated nodes, while the identical
+shape on `Create Constant` works. Read nothing from the constant after the replace; verify through
+the terminal's `Coercion Dot?`, whose reference does survive.
+
+`Create Constant` on a terminal yields a constant of the terminal's **exact** type, typedef
+included, with no path passed in — but it does **not rewire**, so it cannot replace `Replace`: the
+diagram simply gains a floating constant while the old one stays wired. Use it to *learn* the
+`.ctl`, then delete it. Full account in `docs/typedef-constants.md`.
 
 `Replace` with a `Path` is the IDE's "Replace → Select a Control…" gesture. An earlier revision of
 this repository concluded from a typedef-named search that "VI Server has only `Discon Typedef` and
