@@ -68,6 +68,34 @@ public sealed class ProjectTestEntryTests
     }
 
     [Fact]
+    public void Lists_the_runner_beside_the_test_in_one_pass()
+    {
+        // The runner is not the generating call's artefact - it spans several classes - so it has
+        // to be nameable. It goes in through the SAME closed-project window as the test, because
+        // the close is what makes an edit stick and doing it twice costs a second cycle.
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Test Netzteil.vi", "Run NetzteilACDC Tests.vi");
+
+            var added = LvClass.AddVisToProject(project, "Tests",
+            [
+                ("Test Netzteil.vi", "../Test Netzteil.vi"),
+                ("Run NetzteilACDC Tests.vi", "../Run NetzteilACDC Tests.vi"),
+            ]);
+
+            Assert.Equal(2, added);
+            var folder = System.Xml.Linq.XDocument.Load(project).Root!
+                .Elements("Item").First()
+                .Elements("Item").First(i => (string?)i.Attribute("Type") == "Folder");
+            Assert.Equal(
+                ["Test Netzteil.vi", "Run NetzteilACDC Tests.vi"],
+                folder.Elements("Item").Select(i => (string?)i.Attribute("Name")));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void Is_idempotent_so_a_second_run_adds_nothing()
     {
         var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;

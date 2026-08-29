@@ -172,6 +172,26 @@ public sealed class GenerateClassTestTests
     // ------------------------------------------------------------------ the test diagram
 
     [Fact]
+    public void TheSuiteIsNamedAfterTheTestVi_NotTheClass()
+    {
+        // Caraya puts this string in the report as <testsuite name="…">. Deriving it from the class
+        // made three of five suites report as `Test Netzteil` - two of them inheritance tests
+        // seeded with a different class - and a report you cannot map back to a file is not much
+        // of a report. Measured 2026-08-29.
+        var root = XElement.Parse(TestTools.ClassTestAixml(
+            @"C:\cls\Test Vererbung AC.vi", "Netzteil",
+            [Case(1, "Hersteller", "string", "Fluke")]));
+
+        var define = root.Elements("Call")
+            .First(c => ((string)c.Attribute("target")!).Contains("Define Test"));
+        var titleUid = Wire(define, "Label (VI Title)").Split('.')[0];
+        var title = root.Elements("Constant")
+            .First(c => (string)c.Attribute("uid")! == titleUid);
+
+        Assert.Equal("Test Vererbung AC", (string?)title.Attribute("value"));
+    }
+
+    [Fact]
     public void EachCaseGetsItsOwnSocketPair_SoTheSwapCanTellThemApart()
     {
         var root = Author(Case(1, "Hersteller", "string", "Fluke"),

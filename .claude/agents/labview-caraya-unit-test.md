@@ -253,6 +253,12 @@ time the class belongs to one. The tool closes the project, writes the entry int
 folder, strips whatever LabVIEW adopted, and re-opens it — the `projectEntry` step reports `added`,
 `straysRemoved` and where it put things.
 
+**AND NAME THE RUNNER IN `alsoListInProject`, on the LAST of the class calls.** The runner is not
+that call's artefact — one exists per suite, not per class — so nothing can derive it, and it goes
+in through the same closed-project window rather than costing a second close/re-open. Measured
+2026-08-29: without it the runner reached the project only because LabVIEW happened to adopt it
+while saving, which is luck, not a mechanism.
+
 **This became the tool's job on 2026-08-29 because it was measured NOT being anybody's.** A complete,
 green, verified suite was handed over and the user's Project Explorer showed three classes, no tests
 at all, and one stray `LVMCP ClsR1.vi` adopted out of `user.lib`. Their whole reply was *"Die Tests

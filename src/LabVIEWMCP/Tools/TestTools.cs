@@ -206,6 +206,16 @@ internal sealed class TestTools(LvaiConnection connection)
         string? projectPath = null,
         [Description("Virtual folder inside the project to list the tests in")]
         string testFolderName = "Tests",
+        [Description("""
+            Further VIs to list in that same folder, ONE PATH PER LINE - normally the suite runner.
+            They go in through this call because the project has to be CLOSED while the file is
+            edited, and doing it here costs one close/re-open instead of two.
+            A runner is not this call's artefact - it spans several classes, and one exists per
+            suite rather than per class - so it cannot be derived. Measured 2026-08-29: the runner
+            reached the project only because LabVIEW happened to adopt it while saving, which is
+            luck rather than a mechanism.
+            """)]
+        string? alsoListInProject = null,
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
@@ -352,8 +362,16 @@ internal sealed class TestTools(LvaiConnection connection)
             //    open. The close is not optional: LabVIEW's close SAVES its own copy over the file,
             //    so an edit made while it holds the project is destroyed by the next close.
             if (projectPath is { Length: > 0 })
-                steps.Add(await ListInProjectAsync(projectPath, testFolderName, testViPath,
-                                                   timeoutSeconds, ct));
+            {
+                // NEWLINE separated, deliberately not a comma: both a comma and a semicolon are
+                // legal in a Windows path, and a runner under `C:\Data\Rev 2, final\` would arrive
+                // as two nonexistent files.
+                var extra = (alsoListInProject ?? "")
+                    .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                         StringSplitOptions.TrimEntries);
+                steps.Add(await ListInProjectAsync(projectPath, testFolderName,
+                                                   [testViPath, .. extra], timeoutSeconds, ct));
+            }
 
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {cases.Count} round trip(s), each a static call to the class's own " +
@@ -376,7 +394,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// call. It comes back as its own step with `ok: false` and says what to do by hand.
     /// </summary>
     private async Task<JsonObject> ListInProjectAsync(
-        string projectPath, string folderName, string testViPath, int timeoutSeconds,
+        string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct)
     {
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
@@ -386,9 +404,13 @@ internal sealed class TestTools(LvaiConnection connection)
                 .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct);
             step["closed"] = Read(closed);
 
-            var url = LvClass.RelativeUrl(projectPath, Path.GetFullPath(testViPath));
-            var added = LvClass.AddVisToProject(
-                projectPath, folderName, [(Path.GetFileName(testViPath), url)]);
+            var entries = viPaths
+                .Select(Path.GetFullPath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(vi => (Path.GetFileName(vi), LvClass.RelativeUrl(projectPath, vi)))
+                .ToList();
+            var url = entries[0].Item2;
+            var added = LvClass.AddVisToProject(projectPath, folderName, entries);
 
             var (tidied, removed) = ClassTools.StripHelperItems(
                 await File.ReadAllTextAsync(projectPath, ct), projectPath);
@@ -416,10 +438,11 @@ internal sealed class TestTools(LvaiConnection connection)
                                         or UnauthorizedAccessException)
         {
             step["ok"] = false;
-            step["note"] = $"The tests were generated and are sound, but the project could not be " +
-                           $"edited: {failure.Message}. List '{Path.GetFileName(testViPath)}' by " +
-                           "hand - and do it with the project CLOSED, because LabVIEW's close saves " +
-                           "over the file.";
+            step["note"] = "The tests were generated and are sound, but the project could not be " +
+                           $"edited: {failure.Message}. List " +
+                           string.Join(", ", viPaths.Select(v => $"'{Path.GetFileName(v)}'")) +
+                           " by hand - and do it with the project CLOSED, because LabVIEW's close " +
+                           "saves over the file.";
             return step;
         }
     }
@@ -639,8 +662,14 @@ internal sealed class TestTools(LvaiConnection connection)
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        // THE SUITE NAME IS THE TEST VI'S OWN, not the class's. Caraya puts this string in the
+        // report as `<testsuite name="…">`, and deriving it from the class made every test of one
+        // class report under the same name - measured 2026-08-29, a five-suite report where three
+        // suites were called `Test Netzteil`, two of them inheritance tests seeded with a different
+        // class. A report you cannot map back to a file is not much of a report.
         var title = uid++;
-        sb.AppendLine(Constant(title, "string", $"Test {className}", "Label (VI Title)"));
+        sb.AppendLine(Constant(title, "string",
+            Path.GetFileNameWithoutExtension(testViPath), "Label (VI Title)"));
 
         var define = uid++;
         sb.AppendLine(
