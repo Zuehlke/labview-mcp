@@ -1013,16 +1013,20 @@ internal sealed class ClassTools(LvaiConnection connection)
         The per-field cost is not constant: Save All This Library checks the whole library every time,
         so it went 11.5 s with an empty class, about 20 s at 6 members and past 30 s at 12 - which
         means three fields fit the FIRST call and two fit any of them, against a client that gives up
-        near 60 s. A 7-field class is therefore three calls: fromField 0 with fieldCount 3, then
-        3 and 5 with 2. Do not compute the next offset yourself - every answer carries nextFromField,
-        read off the class file, and the answer's `fieldCount` is the cluster's real size, so a caller
-        can see how many calls are left. The library is saved after EVERY field, so an interrupted
-        call leaves a consistent partial class rather than orphan VIs the class file does not mention.
+        near 60 s.
+        BUT YOU NO LONGER TRACK THE OFFSET, AND THAT IS THE POINT: `fromField` defaults to -1, which
+        RESUMES from the class file's own member count, and one call now takes slice after slice
+        until either the class is finished or `budgetSeconds` (45, deliberately under the client's
+        limit) is spent. So the whole class is "call it, read moreToDo, call it again with the same
+        arguments" - no offset arithmetic, and a retry after a timeout is correct by default.
+        `slicesRun` and `slices` say what one call actually did. The library is saved after EVERY
+        field, so an interrupted call leaves a consistent partial class rather than orphan VIs the
+        class file does not mention.
         A TIMED-OUT CALL HAS USUALLY DONE ITS WORK. The client gives up near 60 s while the helper
         keeps going, and because the library is saved after every field the class is left consistent -
         measured repeatedly: 6 VIs and 6 members, 12 and 12, 4 and 4, never a mismatch. So on
-        "Request timed out", do not retry the same slice: read the class with lvai_describe_class and
-        continue from memberCount / 2. Every successful answer also carries membersBefore,
+        "Request timed out", just call again: the default -1 reads the class file and continues from
+        exactly where the lost answer got to. Every successful answer also carries membersBefore,
         membersAfter and nextFromField, all read off the class file rather than from the run.
         VERIFY IMMEDIATELY - lvai_describe_class reads the .lvclass file and needs no LabVIEW, so
         the check survives whatever the IDE does next. This used to read "expect LabVIEW to go down
@@ -1057,8 +1061,14 @@ internal sealed class ClassTools(LvaiConnection connection)
             many fields gets built without any single call outliving the MCP client's patience.
             MEASURED: a 7-field class needs about 70 s and the client gives up near 60 s, twice
             leaving 12 of 14 VIs on disk. Two calls of 4 and 3 fields fit with room to spare.
+            LEAVE IT AT -1, WHICH RESUMES. The class file's own member count says how many fields
+            already have accessors, so -1 reads it and starts there - which is what nextFromField
+            has always reported and what a caller used to spend a turn passing back in. It also
+            makes the retry after a client timeout correct by default: measured 2026-08-29, a slice
+            that answered `Request timed out` had COMPLETED on disk, and resuming from the file
+            picked up exactly where it stopped. Pass an explicit index only to rebuild a slice.
             """)]
-        int fromField = 0,
+        int fromField = -1,
         [Description("""
             How many fields to build from fromField. TWO by default, and the number is measured
             rather than chosen: the per-field library save gets slower as the class grows, because
@@ -1110,6 +1120,17 @@ internal sealed class ClassTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
+        [Description("""
+            How long this call may keep taking SLICES before it returns, in seconds. It runs slice
+            after slice - resuming from the class file each time - until the class is finished or
+            this budget is spent, then answers with moreToDo.
+            45 by default, and the number is the MCP client's limit rather than a preference: the
+            client gives up near 60 s, so a loop that simply built every field would reliably
+            outlive its own answer, which is the exact failure slicing exists to prevent. The
+            budget is checked BETWEEN slices, so one slow slice can still overrun it - the check
+            bounds how many are started, not how long one takes.
+            """)]
+        int budgetSeconds = 45,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -1117,10 +1138,10 @@ internal sealed class ClassTools(LvaiConnection connection)
             if (!File.Exists(lvclassPath))
                 throw new FileNotFoundException($"No .lvclass at '{lvclassPath}'.", lvclassPath);
 
-            if (fromField < 0 || fieldCount < 1)
+            if (fromField < -1 || fieldCount < 1)
                 return Json.Error("badArguments",
-                    $"fromField must be 0 or more and fieldCount at least 1; got {fromField} " +
-                    $"and {fieldCount}.");
+                    $"fromField must be -1 (resume where the class file left off) or 0 or more, " +
+                    $"and fieldCount at least 1; got {fromField} and {fieldCount}.");
 
             var accessIndex = Array.FindIndex(AccessUiNames,
                 n => string.Equals(n, accessUi, StringComparison.OrdinalIgnoreCase));
@@ -1162,38 +1183,103 @@ internal sealed class ClassTools(LvaiConnection connection)
                 helperGenerated = true;
             }
 
-            // Every value crosses as a STRING - that is the runner's contract on the way in - so
-            // the flags are digits here and are converted on the helper's diagram.
-            var inputObject = new JsonObject
+            // How many accessors one field produces, which is what turns a member count back into a
+            // field offset. "R/W" is two, either one alone is one.
+            var perField = accessIndex == 2 ? 2 : 1;
+
+            // fromField -1 means RESUME. The class file's member count is the only record that
+            // survives a client timeout, and dividing it by perField is exactly the nextFromField
+            // every answer already reports - so computing it here makes the caller stateless.
+            // Measured 2026-08-29: a first slice returned `Request timed out` to the client while
+            // having COMPLETED on disk, and the turn after it was spent reading membersAfter back
+            // and passing it in again. That turn is worth ~7 s and buys no decision.
+            var resumedFrom = -1;
+            if (fromField < 0)
             {
-                ["class path"] = Path.GetFullPath(lvclassPath),
-                ["pdc name"] = pdcName,
-                ["vi type"] = dynamicDispatch ? "0" : "1",
-                ["access ui"] = accessIndex.ToString(),
-                ["include error terminals"] = includeErrorTerminals ? "1" : "0",
-                ["property nodes"] = makeAvailableThroughPropertyNodes ? "1" : "0",
-                ["from field"] = fromField.ToString(),
-                ["take fields"] = fieldCount.ToString(),
-            };
+                fromField = Math.Max(0, LvClass.Read(lvclassPath).Members.Count / perField);
+                resumedFrom = fromField;
+            }
 
-            // Only when it has content: an empty value would shift every later input onto the
-            // wrong control, and the helper's own default for this one is already empty.
-            if (virtualFolderName.Length > 0) inputObject["virtual folder"] = virtualFolderName;
+            var slices = new JsonArray();
+            var wall = Stopwatch.StartNew();
+            var moreToDo = false;
+            string verdict;
 
-            var inputs = inputObject.ToJsonString();
+            // SEVERAL SLICES PER CALL, BUT NEVER ONE LONG ONE. The client gives up near 60 s, so a
+            // naive "do them all" loop would reliably outlive it and lose its own answer - the very
+            // failure slicing exists to avoid. Instead each slice is checked against a budget that
+            // sits UNDER that limit: the call returns while it still can, saying how far it got.
+            while (true)
+            {
+                // Every value crosses as a STRING - that is the runner's contract on the way in - so
+                // the flags are digits here and are converted on the helper's diagram.
+                var inputObject = new JsonObject
+                {
+                    ["class path"] = Path.GetFullPath(lvclassPath),
+                    ["pdc name"] = pdcName,
+                    ["vi type"] = dynamicDispatch ? "0" : "1",
+                    ["access ui"] = accessIndex.ToString(),
+                    ["include error terminals"] = includeErrorTerminals ? "1" : "0",
+                    ["property nodes"] = makeAvailableThroughPropertyNodes ? "1" : "0",
+                    ["from field"] = fromField.ToString(),
+                    ["take fields"] = fieldCount.ToString(),
+                };
 
-            // Counted BEFORE and AFTER off the class file, because that is the only record that
-            // survives a client timeout: the work completes and is saved per field, but the answer
-            // is lost, so a caller needs to be able to see how far it got and resume.
-            var membersBefore = LvClass.Read(lvclassPath).Members.Count;
+                // Only when it has content: an empty value would shift every later input onto the
+                // wrong control, and the helper's own default for this one is already empty.
+                if (virtualFolderName.Length > 0) inputObject["virtual folder"] = virtualFolderName;
 
-            var answer = await new RunTools(connection).RunViAndReadValuesAsync(
-                helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct);
+                // Counted BEFORE and AFTER off the class file, because that is the only record that
+                // survives a client timeout: the work completes and is saved per field, but the
+                // answer is lost, so a caller needs to see how far it got and resume.
+                var membersBefore = LvClass.Read(lvclassPath).Members.Count;
 
-            var verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml, fromField,
-                membersBefore,
-                helperGenerated);
+                var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                    helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+
+                verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
+                    fromField, membersBefore, helperGenerated);
+                slices.Add(new JsonObject
+                {
+                    ["fromField"] = fromField,
+                    ["fieldCount"] = fieldCount,
+                    ["membersBefore"] = membersBefore,
+                    ["membersAfter"] = MembersOnDisk(lvclassPath),
+                    ["elapsedMs"] = wall.ElapsedMilliseconds,
+                });
+
+                if (!Succeeded(verdict)) break;
+
+                // The cluster's REAL size, read off the class file by DescribeAccessorRun - not the
+                // fieldCount that was asked for.
+                var total = Parsed(verdict) is JsonObject v
+                    ? v["fieldCount"]?.GetValue<int>() ?? 0 : 0;
+                var next = MembersOnDisk(lvclassPath) / perField;
+
+                if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
+                if (wall.Elapsed.TotalSeconds >= budgetSeconds) { moreToDo = true; break; }
+
+                fromField = next;
+                helperGenerated = false;   // it was generated at most once, on the first slice
+            }
+
+            // The last slice's answer IS the answer - every field a caller already reads stays where
+            // it was - with the multi-slice bookkeeping added beside it.
+            if (Parsed(verdict) is JsonObject final)
+            {
+                final["slicesRun"] = slices.Count;
+                final["slices"] = slices;
+                final["moreToDo"] = moreToDo;
+                final["resumedFrom"] = resumedFrom < 0 ? null : resumedFrom;
+                if (moreToDo)
+                    final["note"] = $"Stopped after {slices.Count} slice(s) with " +
+                        $"{wall.Elapsed.TotalSeconds:F0} s spent, because the budget of " +
+                        $"{budgetSeconds} s is what keeps this call inside the MCP client's " +
+                        "patience. Call again with no fromField - it resumes from the class file " +
+                        "itself - until moreToDo is false.";
+                verdict = Json.Document(final);
+            }
 
             // Only tidy a run that produced something. A failed run has nothing to hand back and
             // closing the project underneath the caller would only make the next attempt harder.

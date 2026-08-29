@@ -228,6 +228,14 @@ under a second for validate plus convert — about **7 s per turn**, all of it l
 turns a batch removes are worth roughly two minutes, where the server-side gain is worth
 milliseconds. Optimise the number of calls, not the cost of one.
 
+**That 7 s now has a sample instead of an anecdote, and it held.** Measured 2026-08-29 across the six
+session transcripts in `~/.claude/projects/`: **2 641 tool calls over 2 549 turns, 12.90 h of model
+latency against 3.63 h inside tools — a ratio of 3.6 to 1, median 7.1 s per turn.** The worst session
+ran at 7.8 : 1. So the rule above is not a rule of thumb derived from three calls any more; it is the
+dominant cost of every session in this repository, and the tools it points at are named with counts
+in `docs/workflow-economics.md`. The largest single item there: a class unit-test run spends about
+**40 calls** hand-driving a route `lvai_generate_test` already automates for plain VIs.
+
 For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
 and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
 
@@ -769,6 +777,7 @@ literally it argued away 600 usable palette VIs.
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
+| Where does a session's time actually go, and what should we build next? | `docs/workflow-economics.md` | — |
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
