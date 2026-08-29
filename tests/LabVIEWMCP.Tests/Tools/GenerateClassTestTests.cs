@@ -79,6 +79,96 @@ public sealed class GenerateClassTestTests
             .First(e => (string?)e.Attribute("_name") == "value").Attribute("type"));
     }
 
+    // ------------------------------------------------------------------ what AIXML demands
+
+    // Both of these pin a defect that shipped and was caught only by LabVIEW, in a batch where the
+    // three string-typed sockets generated and the two double-typed ones did not.
+
+    [Theory]
+    [InlineData("string", true)]
+    [InlineData("double", true)]
+    [InlineData("int32", false)]
+    [InlineData("bool", false)]
+    public void EveryTerminalDeclaresItsWire(string type, bool write)
+    {
+        var xml = XElement.Parse(TestTools.SocketAixml("LVMCP Cls9.vi", type, write));
+
+        foreach (var element in xml.Elements())
+        {
+            // `outputs` is REQUIRED on a Control and a Constant even when nothing consumes the net.
+            // Leaving it off answers `Error -2628 ... missing required attribute 'outputs'` with a
+            // line and column, which reads like malformed XML and is not.
+            if (element.Name == "Control" || element.Name == "Constant")
+                Assert.True(element.Attribute("outputs") is not null,
+                    $"{element.Name} '{(string?)element.Attribute("_name")}' has no outputs");
+            if (element.Name == "Indicator")
+                Assert.True(element.Attribute("inputs") is not null,
+                    $"Indicator '{(string?)element.Attribute("_name")}' has no inputs");
+        }
+    }
+
+    [Theory]
+    [InlineData("double")]
+    [InlineData("int32")]
+    [InlineData("uint16")]
+    public void ANumericTerminalNeverCarriesAnEmptyValue(string type)
+    {
+        // `type="double" value=""` is refused - Error 53, "Unrecognized or unsupported attribute
+        // set in Constant with UID 11", which names the object and not the attribute.
+        foreach (var write in new[] { true, false })
+        {
+            var xml = XElement.Parse(TestTools.SocketAixml("LVMCP Cls9.vi", type, write));
+            foreach (var element in xml.Elements()
+                         .Where(e => (string?)e.Attribute("type") == type))
+                Assert.False(string.IsNullOrEmpty((string?)element.Attribute("value")),
+                    $"{element.Name} of type {type} has an empty value");
+        }
+    }
+
+    [Fact]
+    public void DefaultForKnowsWhichTypesTakeAnEmptyString()
+    {
+        Assert.Equal("", TestTools.DefaultFor("string"));
+        Assert.Equal("", TestTools.DefaultFor("path"));
+        Assert.Equal("false", TestTools.DefaultFor("bool"));
+        Assert.Equal("0", TestTools.DefaultFor("double"));
+        Assert.Equal("0", TestTools.DefaultFor("int32"));
+        Assert.Equal("0", TestTools.DefaultFor("uint64"));
+    }
+
+    [Theory]
+    [InlineData("TRUE", "true")]
+    [InlineData("True", "true")]
+    [InlineData("T", "true")]
+    [InlineData("1", "true")]
+    [InlineData("FALSE", "false")]
+    [InlineData("0", "false")]
+    public void ABooleanValueIsLowerCased(string given, string expected)
+    {
+        // `type="bool" value="TRUE"` validates, generates, runs - and LabVIEW's export reads it
+        // back as false, because the format wants lower case. A round trip written that way put
+        // FALSE onto a default-FALSE object and passed while testing nothing. Measured.
+        Assert.Equal(expected, TestTools.ValueFor("bool", given));
+    }
+
+    [Fact]
+    public void ANonBooleanValueIsPassedThroughUntouched()
+    {
+        Assert.Equal("TRUE", TestTools.ValueFor("string", "TRUE"));
+        Assert.Equal("30", TestTools.ValueFor("double", "30"));
+        // An unrecognised boolean is NOT reinterpreted - it must still fail at validation.
+        Assert.Equal("vielleicht", TestTools.ValueFor("bool", "vielleicht"));
+    }
+
+    [Fact]
+    public void TheAuthoredBooleanConstantIsLowerCase()
+    {
+        var root = Author(Case(1, "Ausgang aktiv", "bool", "TRUE"));
+        var constant = root.Elements("Constant")
+            .First(c => (string?)c.Attribute("type") == "bool");
+        Assert.Equal("true", (string?)constant.Attribute("value"));
+    }
+
     // ------------------------------------------------------------------ the test diagram
 
     [Fact]

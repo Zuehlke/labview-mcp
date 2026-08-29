@@ -476,12 +476,17 @@ internal sealed class TestTools(LvaiConnection connection)
             "description=\"Stands in for the class input.\" outputs=\"value:10.value\" " +
             "type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"/>");
 
+        var empty = DefaultFor(dataType);
         if (write)
         {
+            // `outputs` IS REQUIRED even though nothing consumes this net. Omitting it answers
+            // `Error -2628 ... missing required attribute 'outputs'` with a line and column, which
+            // reads like malformed XML and is a missing attribute - measured 2026-08-29.
             sb.AppendLine(
                 $"  <Control _name=\"value\" conIdx=\"10\" connection=\"recommended\" " +
-                $"description=\"Stands in for the data input.\" type=\"{Escape(dataType)}\" " +
-                "uid=\"11\" uid_parent=\"root\" value=\"\"/>");
+                $"description=\"Stands in for the data input.\" outputs=\"value:11.value\" " +
+                $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
+                $"value=\"{Escape(empty)}\"/>");
             sb.AppendLine(
                 "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
                 "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
@@ -492,7 +497,8 @@ internal sealed class TestTools(LvaiConnection connection)
             // The data OUTPUT needs a source of its own type; a path cannot feed it.
             sb.AppendLine(
                 $"  <Constant _name=\"leer\" outputs=\"value:11.value\" " +
-                $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" value=\"\"/>");
+                $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
+                $"value=\"{Escape(empty)}\"/>");
             sb.AppendLine(
                 "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
                 "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
@@ -500,7 +506,8 @@ internal sealed class TestTools(LvaiConnection connection)
             sb.AppendLine(
                 $"  <Indicator _name=\"value\" conIdx=\"2\" connection=\"recommended\" " +
                 $"description=\"Stands in for the data output.\" inputs=\"value:11.value\" " +
-                $"type=\"{Escape(dataType)}\" uid=\"13\" uid_parent=\"root\" value=\"\"/>");
+                $"type=\"{Escape(dataType)}\" uid=\"13\" uid_parent=\"root\" " +
+                $"value=\"{Escape(empty)}\"/>");
         }
 
         sb.AppendLine("</VI>");
@@ -569,7 +576,8 @@ internal sealed class TestTools(LvaiConnection connection)
             sb.AppendLine(Constant(seed, "path", "", test.SeedLabel));
 
             var written = uid++;
-            sb.AppendLine(Constant(written, test.DataType, test.Value, $"wert {test.Slot}"));
+            sb.AppendLine(Constant(written, test.DataType, ValueFor(test.DataType, test.Value),
+                                   $"wert {test.Slot}"));
 
             var write = uid++;
             sb.AppendLine($"  <Call target=\"{Escape(test.WriteSocket)}\" " +
@@ -619,6 +627,48 @@ internal sealed class TestTools(LvaiConnection connection)
         sb.AppendLine("</VI>");
         return sb.ToString();
     }
+
+    /// <summary>
+    /// An empty value of the given AIXML type, for a socket terminal nothing meaningful feeds.
+    ///
+    /// AN EMPTY STRING IS NOT UNIVERSALLY LEGAL, which is what makes this a function rather than a
+    /// literal. Measured 2026-08-29: `type="string" value=""` validates, and `type="double"
+    /// value=""` answers `Error 53 - Unrecognized or unsupported attribute set in Constant with UID
+    /// 11`, naming the object rather than the attribute. The three string-typed sockets of a class
+    /// therefore generated while the two double-typed ones did not, in the same batch.
+    /// </summary>
+    /// <summary>
+    /// A case's value as AIXML spells it for that type.
+    ///
+    /// A BOOLEAN IS THE ONE THAT BITES, and it does so SILENTLY. `type="bool" value="TRUE"` is
+    /// accepted, generates and runs - and LabVIEW's own export reads the constant back as
+    /// `value="false"`, because the format wants lower case. Measured 2026-08-29 on a round trip
+    /// that therefore wrote FALSE onto a default-FALSE object and passed while testing nothing.
+    /// Nothing anywhere reports it: validation is happy, the run is green, and only reading the
+    /// export shows the value that was actually authored.
+    ///
+    /// Anything unrecognised is passed through untouched, so a genuinely wrong value still fails
+    /// at validation rather than being quietly reinterpreted here.
+    /// </summary>
+    internal static string ValueFor(string type, string value)
+    {
+        if (!type.StartsWith("bool", StringComparison.Ordinal)) return value;
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "true" or "t" or "1" or "yes" => "true",
+            "false" or "f" or "0" or "no" => "false",
+            _ => value,
+        };
+    }
+
+    internal static string DefaultFor(string type) => type switch
+    {
+        var t when t.StartsWith("string", StringComparison.Ordinal) => "",
+        var t when t.StartsWith("path", StringComparison.Ordinal) => "",
+        var t when t.StartsWith("bool", StringComparison.Ordinal) => "false",
+        var t when t.StartsWith("timestamp", StringComparison.Ordinal) => "0",
+        _ => "0",   // every int width, single, double, extended
+    };
 
     /// <summary>One field round trip: which accessors, which sockets, and the value to write.</summary>
     internal sealed record ClassCase(int Slot, string Field, string DataType, string Value,
@@ -692,7 +742,7 @@ internal sealed class TestTools(LvaiConnection connection)
                     continue;
                 }
                 var constant = uid++;
-                sb.AppendLine(Constant(constant, terminal.Type, value));
+                sb.AppendLine(Constant(constant, terminal.Type, ValueFor(terminal.Type, value)));
                 wired.Add($"{terminal.Name}:{constant}.value");
             }
 
@@ -710,7 +760,7 @@ internal sealed class TestTools(LvaiConnection connection)
             {
                 var terminal = terminals.First(t => t.Name == name);
                 var wanted = uid++;
-                sb.AppendLine(Constant(wanted, terminal.Type, expected));
+                sb.AppendLine(Constant(wanted, terminal.Type, ValueFor(terminal.Type, expected)));
 
                 var label = uid++;
                 var text = test.Expect.Count > 1 ? $"{test.Label} - {name}" : test.Label;

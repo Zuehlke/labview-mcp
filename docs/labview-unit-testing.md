@@ -33,6 +33,38 @@ retarget cannot — §3d, measured over twelve properties of a three-class hiera
 Use the fallback only where the subject genuinely cannot be linked statically, and say in the report
 which route you took and why the static one was not available.
 
+## 0a. What a cold end-to-end run cost, measured 2026-08-29
+
+The whole route — three classes, 24 accessors, five test VIs, 18 assertions — run against a freshly
+started LabVIEW with `lvai_generate_class_test`. It works, and **two LabVIEW restarts were needed**,
+both for reasons worth recognising rather than working around blindly.
+
+| what | symptom | what it actually was |
+|---|---|---|
+| **`Error 1562`** at `AddVIToClass.vi`, first accessor slice | `membersAfter: 0`, nothing written, `classIndex` correct | *"The specified project or library is locked"* — the class LabVIEW holds after `lvai_create_class` is locked for editing. **A project close and re-open does NOT clear it**; only a restart did. The `.lvclass` on disk is not read-only and carries no lock property, so the file tells you nothing |
+| **`Error 1051`** at the socket's `Save:Instrument` | validation passes, generation does not | the socket name is **poisoned by its own earlier failed validation** and stays so until LabVIEW restarts. A retry after fixing the authoring bug therefore still fails, on the same names, for a different reason |
+
+Three authoring facts came out of the same run, each of which validated for one type and not another —
+which is what makes them expensive to find:
+
+- **`outputs` is required on a `Control` and a `Constant`**, even when nothing consumes the net.
+  Omitting it answers `Error -2628 ... missing required attribute 'outputs'` with a line and column,
+  which reads like malformed XML and is a missing attribute.
+- **`type="double" value=""` is refused**; `type="string" value=""` is fine. The message is
+  `Error 53 - Unrecognized or unsupported attribute set in Constant with UID 11`, naming the object
+  and not the attribute. In one batch the three string-typed sockets generated and the two
+  double-typed ones did not.
+- **`type="bool" value="TRUE"` is accepted and silently becomes `false`** — the format wants lower
+  case. Nothing reports it: validation passes, the run is green, and only LabVIEW's own export shows
+  it. The round trip it produced wrote FALSE onto a default-FALSE object and **passed while testing
+  nothing**. Found by the negative control, not by the run.
+
+And one about the accessor budget: **one slice of two fields took 25 s on this station**, so a
+`budgetSeconds` of 45 lets a second slice START at 25 s and finish past 50 — beyond the client's
+patience, losing the answer to a call that had done the work. The budget is checked BETWEEN slices,
+so it bounds how many are started, not how long one takes; set it below one slice's cost when the
+class is large.
+
 ## 1. The blocker: a generated test cannot call its subject statically *by AIXML alone*
 
 A unit test calls the VI under test. AIXML cannot express that call. Measured with one throwaway
