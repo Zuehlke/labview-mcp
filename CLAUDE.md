@@ -852,6 +852,20 @@ The seven `labview-*` agents in `.claude/agents/` are read at **session start**,
 of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
 before it can be spawned.
 
+**The plugin ships its OWN copy of each of them, and that copy is GENERATED — never edit
+`plugin/agents/` by hand.** The two differ in one thing only: the same server is `labview` when a
+user registers it directly and `plugin_labview-mcp_labview` when it arrives as a plugin, so every
+name in the frontmatter `tools:` list changes, and an agent carrying the wrong flavour registers
+happily and can then call no LabVIEW tool at all. `scripts/Sync-PluginAgents.ps1` rewrites the
+prefix (`-Check` reports drift without writing) and `PluginAgentTests` fails the test run when the
+folders disagree.
+
+Hand-maintaining the two did not work, measured 2026-08-30: `plugin/agents/` held **three** of the
+seven and all three were stale forks — the class generator and the three unit-test agents shipped
+to nobody, and the three that did ship had missed several rules added since. Nothing reported it
+because nothing compared them, which is the same shape as the embedded-but-unshipped documents
+above: a file being in the repository says nothing about it being in the artefact people install.
+
 **A definition whose YAML frontmatter does not parse is skipped in silence, and the error names the
 wrong cause.** What you get is `Agent type 'labview-vi-generator' not found`, which reads as "the
 file is missing" and sends you looking at paths — while all three files sat in the right directory

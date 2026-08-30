@@ -207,13 +207,20 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Virtual folder inside the project to list the tests in")]
         string testFolderName = "Tests",
         [Description("""
-            Further VIs to list in that same folder, ONE PATH PER LINE - normally the suite runner.
+            Further VIs to list in that same folder, ONE ABSOLUTE PATH PER LINE, plain text and NOT
+            JSON - normally the suite runner. A bracket, a quote or a relative path is refused by
+            name before anything is generated; it used to be resolved against the SERVER's working
+            directory and written into the .lvproj as a path that cannot exist.
             They go in through this call because the project has to be CLOSED while the file is
             edited, and doing it here costs one close/re-open instead of two.
             A runner is not this call's artefact - it spans several classes, and one exists per
             suite rather than per class - so it cannot be derived. Measured 2026-08-29: the runner
             reached the project only because LabVIEW happened to adopt it while saving, which is
             luck rather than a mechanism.
+            THE FILE MUST ALREADY EXIST. A path named here before its VI has been generated used
+            to be written into the .lvproj, counted in `added`, and then swept back out by the tidy
+            pass's dangling check - `ok: true`, nothing in the tree. It is now refused by name and
+            reported in `notOnDisk`, so generate the runner FIRST and name it on the last call.
             """)]
         string? alsoListInProject = null,
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
@@ -227,6 +234,16 @@ internal sealed class TestTools(LvaiConnection connection)
 
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
                 return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
+
+            // REFUSED BEFORE ANY WORK IS DONE, the way pylv_apply refuses a malformed operation
+            // before the extract: nothing has been generated yet, so a bad argument costs a message
+            // rather than a half-finished suite.
+            if (PathListFault(alsoListInProject, nameof(alsoListInProject)) is { } listFault)
+                return Json.Error("badArguments", listFault,
+                    new { parameter = nameof(alsoListInProject), arrived = alsoListInProject });
+            if (PathListFault(testViPath, nameof(testViPath)) is { } viFault)
+                return Json.Error("badArguments", viFault,
+                    new { parameter = nameof(testViPath), arrived = testViPath });
 
             var seed = Path.GetFullPath(seedClassPath ?? lvclassPath);
             if (!File.Exists(seed))
@@ -397,6 +414,48 @@ internal sealed class TestTools(LvaiConnection connection)
         });
 
     /// <summary>
+    /// What is wrong with a path-list argument, or <c>null</c> when nothing is.
+    ///
+    /// THE BUG THIS CLOSES. `alsoListInProject` is a NEWLINE-separated list of absolute paths, and
+    /// on its first live run a caller sent it as JSON - <c>["C:\temp\…\Run Tests.vi"]</c> arriving
+    /// as one string. Nothing rejected it. <c>Path.GetFullPath</c> resolved the array literal
+    /// against the SERVER's working directory and produced
+    /// <c>C:\Windows\system32\["C:\temp\…"]</c>, which was then written into the user's `.lvproj`
+    /// and swept back out again by the tidy pass. It became visible only once `notOnDisk` existed,
+    /// and before that it was invisible altogether - measured 2026-08-29.
+    ///
+    /// A RELATIVE PATH IS THE SAME TRAP WITHOUT THE JSON. The server's working directory is not
+    /// the caller's, so `Tests\Run.vi` lands somewhere neither of them meant. Refused rather than
+    /// guessed at: there is no directory this tool could sensibly resolve it against.
+    /// </summary>
+    internal static string? PathListFault(string? value, string parameterName)
+    {
+        if (value is not { Length: > 0 }) return null;
+
+        var trimmed = value.TrimStart();
+        if (trimmed.StartsWith('[') || trimmed.StartsWith('{'))
+            return $"`{parameterName}` is a NEWLINE-separated list of absolute paths, not JSON - " +
+                   "it starts with a bracket. Send one path per line. A JSON literal is not " +
+                   "refused by the path layer: it is resolved against the server's working " +
+                   "directory and becomes a path that cannot exist.";
+
+        foreach (var line in value.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                                       StringSplitOptions.TrimEntries))
+        {
+            if (line.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                return $"`{parameterName}` contains a character no path may hold, in '{line}'. " +
+                       "Send one absolute path per line, unquoted.";
+
+            if (!Path.IsPathRooted(line))
+                return $"`{parameterName}` needs ABSOLUTE paths and '{line}' is relative. It " +
+                       "would be resolved against the server's working directory, which is not " +
+                       "yours. Quotes around a path make it relative too - send it bare.";
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Close the project, list the test VI in it, strip whatever LabVIEW adopted, re-open.
     ///
     /// THE ORDER IS THE WHOLE POINT. LabVIEW's close SAVES its own copy of the project over the
@@ -415,37 +474,96 @@ internal sealed class TestTools(LvaiConnection connection)
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
         try
         {
+            // READ WHAT IS LISTED BEFORE THE CLOSE. LabVIEW's close saves its own copy of the
+            // project over the file and drops VI items it never had in memory, so the PREVIOUS
+            // call's suite is gone by the time this one writes. Measured 2026-08-29: five suites
+            // generated one call at a time left a single test listed, and the other five VIs had
+            // to be put in by hand. `AddClassToProject` has re-asserted class entries for this
+            // same reason since 2026-08-28; this route did not, and that is half of the defect.
+            var listedBefore = LvClass.ListedVis(projectPath);
+
             var closed = await new CloseTools(connection)
                 .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct);
             step["closed"] = Read(closed);
 
-            var entries = viPaths
+            // A VI THAT IS NOT ON DISK IS REFUSED RATHER THAN LISTED. It used to be added, counted
+            // in `added`, and then swept straight back out by the tidy pass's dangling check - so
+            // naming a runner in `alsoListInProject` before that runner had been generated gave
+            // `ok: true` and an empty tree. That is the other half of the defect, and the half
+            // that made it silent.
+            var wanted = viPaths
                 .Select(Path.GetFullPath)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(vi => (Path.GetFileName(vi), LvClass.RelativeUrl(projectPath, vi)))
                 .ToList();
-            var url = entries[0].Item2;
-            var added = LvClass.AddVisToProject(projectPath, folderName, entries);
+            var notOnDisk = wanted.Where(vi => !File.Exists(vi)).ToList();
+            var entries = wanted
+                .Where(File.Exists)
+                .Select(vi => (Name: Path.GetFileName(vi),
+                               Url: LvClass.RelativeUrl(projectPath, vi)))
+                .ToList();
+
+            // RESTORE, ADD, THEN TIDY - in that order. Tidy last is what makes the pass safe: it
+            // can only ever remove an entry whose file is missing or which points into one of our
+            // temp trees, and nothing written above is either. AddVisToProject is idempotent, so
+            // an entry that survived the close costs nothing.
+            var restored = LvClass.AddVisToProject(projectPath, folderName, listedBefore);
+            var added = entries.Count > 0
+                ? LvClass.AddVisToProject(projectPath, folderName, entries)
+                : 0;
 
             var (tidied, removed) = ClassTools.StripHelperItems(
                 await File.ReadAllTextAsync(projectPath, ct), projectPath);
             if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
 
+            // VERIFY FROM THE FILE, NOT FROM THE COUNT. `added` says what was written; this says
+            // what survived, and the two differ whenever the tidy pass fires.
+            var listedNow = LvClass.ListedVis(projectPath)
+                .Select(v => v.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var notListed = entries
+                .Select(e => e.Name)
+                .Where(name => !listedNow.Contains(name))
+                .ToList();
+
             var reopened = await new ActionTools(connection).OpenFileAsync(
                 null, null, projectPath, Path.GetFileName(projectPath), timeoutSeconds, ct);
 
-            step["ok"] = true;
+            step["ok"] = notOnDisk.Count == 0 && notListed.Count == 0;
             step["added"] = added;
+            step["restored"] = restored;
             step["folder"] = folderName;
-            step["url"] = url;
+            step["url"] = entries.Count > 0 ? entries[0].Url : null;
+            step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
             step["reopened"] = Read(reopened);
-            step["note"] = added > 0
-                ? $"Listed under '{folderName}'." + (removed > 0
-                    ? $" {removed} stray item(s) LabVIEW had adopted were removed - a socket out of " +
-                      "user.lib\\LV_MCP lands in the project when LabVIEW saves it with the file open."
-                    : "")
-                : "Already listed; nothing added.";
+            if (notOnDisk.Count > 0)
+                step["notOnDisk"] = new JsonArray([.. notOnDisk.Select(v => (JsonNode)v)]);
+            if (notListed.Count > 0)
+                step["notListed"] = new JsonArray([.. notListed.Select(v => (JsonNode)v)]);
+
+            var note = new List<string>();
+            if (notOnDisk.Count > 0)
+                note.Add("NOT LISTED, because no file exists at that path: " +
+                         string.Join(", ", notOnDisk.Select(v => $"'{v}'")) +
+                         ". Generate the VI first, then name it in `alsoListInProject` - a path " +
+                         "listed ahead of its file is removed again by the tidy pass.");
+            if (notListed.Count > 0)
+                note.Add("WRITTEN AND THEN REMOVED AGAIN: " +
+                         string.Join(", ", notListed.Select(v => $"'{v}'")) +
+                         ". The tidy pass took them back out; list them by hand with the project " +
+                         "CLOSED, because LabVIEW's close saves over the file.");
+            if (added > 0) note.Add($"Listed under '{folderName}'.");
+            else if (notOnDisk.Count == 0 && notListed.Count == 0)
+                note.Add("Already listed; nothing added.");
+            if (restored > 0)
+                note.Add($"{restored} entry/entries LabVIEW's close had deleted from the .lvproj " +
+                         "were put back - anything above 0 means the close clobbered the file, " +
+                         "which is a known and unexplained behaviour.");
+            if (removed > 0)
+                note.Add($"{removed} stray item(s) LabVIEW had adopted were removed - a socket " +
+                         "out of user.lib\\LV_MCP lands in the project when LabVIEW saves it " +
+                         "with the file open.");
+            step["note"] = string.Join(" ", note);
             return step;
         }
         catch (Exception failure) when (failure is IOException or InvalidDataException

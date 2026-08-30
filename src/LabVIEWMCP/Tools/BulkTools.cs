@@ -455,7 +455,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
             if (PyLabview.Locate() is not { } bundle)
                 return Json.Error("notProvisioned",
-                    "The pylabview bundle is not present. Run tools\\pylabview\\provision.ps1.");
+                    PyLabview.NotProvisionedMessage());
 
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("noScriptsDirectory",

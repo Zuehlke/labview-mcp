@@ -259,4 +259,40 @@ public sealed class PyLabviewTests : IDisposable
     [Fact]
     public void CleanRunsHaveNoWarnings() =>
         Assert.Empty(new PyLabview.Run(0, "", "", 12).Warnings);
+
+    // ------------------------------------------------- the missing-bundle message
+
+    /// <summary>
+    /// The advice has to match the install. A checkout can run provision.ps1; a binary-only
+    /// install has no such file, and its owner needs to hear "update the plugin" rather than a
+    /// path they do not have - which is exactly what the old, unconditional text told one of them
+    /// on 2026-08-30.
+    /// </summary>
+    [Fact]
+    public void ACheckoutIsToldToRunTheProvisionScript()
+    {
+        var message = PyLabview.NotProvisionedMessage(
+            @"C:\repo\tools\pylabview\provision.ps1", @"C:\install\pylabview");
+
+        Assert.Contains(@"C:\repo\tools\pylabview\provision.ps1", message);
+        Assert.DoesNotContain("plugin update", message);
+    }
+
+    [Fact]
+    public void ABinaryInstallIsToldToUpdateRatherThanToRunAScriptItDoesNotHave()
+    {
+        var message = PyLabview.NotProvisionedMessage(null, @"C:\install\pylabview");
+
+        Assert.DoesNotContain("provision.ps1", message);
+        Assert.Contains("claude plugin update labview-mcp", message);
+        Assert.Contains(@"C:\install\pylabview", message);
+    }
+
+    /// <summary>
+    /// And the discovery behind it works: from a checkout the script is genuinely above the
+    /// assembly, so the branch a developer sees is the checkout one.
+    /// </summary>
+    [Fact]
+    public void TheProvisionScriptIsFoundFromACheckout() =>
+        Assert.EndsWith("provision.ps1", PyLabview.ProvisionScript() ?? "");
 }

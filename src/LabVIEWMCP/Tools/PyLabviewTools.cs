@@ -23,11 +23,11 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
 
-    private const string NotProvisioned =
-        "The pylabview bundle is not provisioned. Run tools\\pylabview\\provision.ps1, which " +
-        "assembles about 32 MB of interpreter, trimmed standard library and Pillow into " +
-        "tools\\pylabview\\runtime. It is deliberately not committed. Set " +
-        PyLabview.DirectoryVariable + " to point at a bundle in another location.";
+    // NOT a const: the right advice differs between a checkout and a binary-only install, and
+    // only the running exe can tell them apart - see PyLabview.NotProvisionedMessage. Naming
+    // provision.ps1 unconditionally is what sent one binary install's owner looking for a folder
+    // that install does not have.
+    private static string NotProvisioned => PyLabview.NotProvisionedMessage();
 
     // ---------------------------------------------------------------- status
 
@@ -36,9 +36,11 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
         Whether the bundled pylabview is present and usable, where it is, and what it is made of -
         Python version and architecture, the pinned upstream commit, when it was provisioned, and
         whether the two name tables travelled with it.
-        Start here: every other pylv_* tool is unusable without the bundle, and the bundle is
-        OPTIONAL - it is about 32 MB and deliberately not committed, so a fresh checkout has none
-        until tools\\pylabview\\provision.ps1 has run.
+        Start here: every other pylv_* tool is unusable without the bundle. It is about 38 MB, so
+        it is not committed: a CHECKOUT has none until tools\pylabview\provision.ps1 has run,
+        while a BINARY install carries it inside the release archive - every release up to and
+        including v0.9.0 shipped without one, and there the fix is updating the plugin, not
+        running a script that is not installed.
         Needs NO running LabVIEW and no Python installation. The bundle is isolated by a
         pythonNNN._pth file beside its python.exe, python.org's own embeddable mechanism, so it
         ignores PYTHONPATH, PYTHONHOME, the registry and every site-packages directory.
