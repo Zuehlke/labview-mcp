@@ -642,6 +642,16 @@ Two rules it enforces, both learned the expensive way:
 The pane is not measured: a runner has no inputs and its two indicators are read from the front
 panel, so there is no connector pane to get wrong.
 
+**Why only this one carries the framework in its name.** `lvai_generate_test` and
+`lvai_generate_class_test` are just as Caraya-specific — both hard-wire
+`Caraya.lvlib\3ATest.lvclass\3ADefine Test.vi` and `Assert Equal Value_Variant.vi` — and they are
+*not* called `lvai_generate_caraya_*`. That is a decision, taken 2026-08-30, not an oversight: those
+two are released, and an MCP tool name is quoted literally in agent frontmatter `tools:` lists and in
+users' permission allow-lists, where a rename fails **silently** — the agent registers and simply
+cannot call the tool, which is the same failure the plugin tool-prefix drift produced that morning.
+The runner was unreleased, so it cost nothing to name properly. Rename the other two only as a
+deliberate, announced change.
+
 ## 5. Why Caraya rather than JKI VI Tester
 
 Both ship in `vi.lib\addons\_JKI Toolkits`. A Caraya test is a plain VI calling library VIs, which
