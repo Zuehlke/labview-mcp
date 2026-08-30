@@ -12,7 +12,7 @@
         "source": "archive",
         "url": "https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip"
       },
-      "description": "Read, write and run LabVIEW 2026 code from an AI assistant — VIs as text via AIXML, palette and shipping-example search, and three bundled LabVIEW agents. Windows x64 only.",
+      "description": "Read, write and run LabVIEW 2026 code from an AI assistant — VIs as text via AIXML, palette and shipping-example search, and seven bundled LabVIEW agents. Windows x64 only.",
       "author": {
         "name": "Zühlke Engineering AG"
       },

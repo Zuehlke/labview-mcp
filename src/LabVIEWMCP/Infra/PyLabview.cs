@@ -14,8 +14,10 @@ namespace LabVIEWMcp.Infra;
 /// measured cost of shelling out is nothing against the work itself - 0.67 s to extract a VI,
 /// 1.2 s to rebuild one. See experiments/pylabview/FINDINGS.md sections 7 and 8.
 ///
-/// The bundle is OPTIONAL. It is 32 MB and deliberately not committed, so a fresh checkout has
-/// none and every entry point here has to answer "not provisioned" rather than throw.
+/// The bundle is OPTIONAL. It is about 38 MB and deliberately not committed, so a fresh checkout
+/// has none and every entry point here has to answer "not provisioned" rather than throw. A
+/// binary-only install cannot build one at all - it gets the bundle from the release archive -
+/// which is where NotProvisionedMessage below stops giving both installs the same advice.
 /// </summary>
 internal static class PyLabview
 {
@@ -67,6 +69,57 @@ internal static class PyLabview
             yield return Path.Combine(dir.FullName, "tools", "pylabview", "runtime");
         }
     }
+
+    /// <summary>
+    /// The provision script, when this install could actually run it. A repository checkout has
+    /// tools\pylabview\provision.ps1 somewhere above the exe; a binary-only install has nothing of
+    /// the sort, and telling its owner to run one is advice that cannot be followed.
+    /// </summary>
+    public static string? ProvisionScript()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+        {
+            var script = Path.Combine(dir.FullName, "tools", "pylabview", "provision.ps1");
+            if (File.Exists(script)) return script;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// What to DO about a missing bundle - and the two installs need opposite advice.
+    ///
+    /// A checkout provisions it. A binary install cannot: the bundle is assembled by the release
+    /// workflow and travels inside the archive, so there is no provision.ps1 to run. Measured
+    /// 2026-08-30 over the published assets - every release up to and including v0.9.0 is 32 MB
+    /// and carries no bundle, every release from v0.9.2 on is 49 MB and carries it. So on a
+    /// binary install "not provisioned" almost always means "installed before 2026-08-25", and
+    /// the fix is an update. The old text named the script unconditionally and sent at least one
+    /// reader looking for a folder their install does not have.
+    /// </summary>
+    public static string NotProvisionedMessage() =>
+        NotProvisionedMessage(ProvisionScript(),
+                              Path.Combine(AppContext.BaseDirectory, "pylabview"));
+
+    /// <summary>
+    /// The two texts, given the two facts they turn on - split out so both branches are testable
+    /// from a checkout, where ProvisionScript() always finds something.
+    /// </summary>
+    internal static string NotProvisionedMessage(string? provisionScript, string bundleDirectory) =>
+        provisionScript is not null
+            ? "The pylabview bundle is not provisioned, so every pylv_* tool is unusable. Run " +
+              provisionScript + ", which assembles about 38 MB of interpreter, trimmed standard " +
+              "library and Pillow into tools\\pylabview\\runtime. It is deliberately not " +
+              "committed. Set " + DirectoryVariable +
+              " to point at a bundle in another location."
+            : "The pylabview bundle is not provisioned, so every pylv_* tool is unusable. This is " +
+              "a binary-only install, which cannot assemble one - the bundle ships inside the " +
+              "release archive and belongs next to the exe, at " + bundleDirectory +
+              ". Releases up to and including v0.9.0 carried none at all (the asset grew from " +
+              "32 MB to 49 MB when it was added), so update the plugin with " +
+              "`claude plugin update labview-mcp`, or re-extract labview-mcp.zip from the latest " +
+              "release, and restart the client. Or set " + DirectoryVariable +
+              " to point at a bundle in another location.";
 
     private static Bundle Describe(string directory, string python, string readRsrc)
     {

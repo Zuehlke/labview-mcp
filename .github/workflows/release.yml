@@ -163,6 +163,18 @@ jobs:
           New-Item -ItemType Directory -Path (Join-Path $staging 'bin/pylabview') | Out-Null
           Copy-Item -Path 'tools/pylabview/runtime/*' -Destination (Join-Path $staging 'bin/pylabview') -Recurse -Force
 
+          # the repository's .claude\ assets as bin/claude/ - the SAME arrangement the local build
+          # output has, because scripts\Install-ClaudeAssets.ps1 looks for a 'claude' folder beside
+          # the exe and README section 7 tells a non-plugin install to run it. Until 2026-08-30 the
+          # zip's ONLY agents were the plugin-flavoured ones at the root, whose tools: lists name
+          # mcp__plugin_labview-mcp_labview__* - tool names that do not exist when the server is
+          # registered directly as `labview`, so installing those into ~\.claude\agents produced
+          # agents with no LabVIEW tools at all.
+          New-Item -ItemType Directory -Path (Join-Path $staging 'bin/claude') | Out-Null
+          Copy-Item -Path '.claude/agents'        -Destination (Join-Path $staging 'bin/claude') -Recurse -Force
+          Copy-Item -Path '.claude/settings.json' -Destination (Join-Path $staging 'bin/claude') -Force
+          Copy-Item -Path 'CLAUDE.md'             -Destination (Join-Path $staging 'bin/claude') -Force
+
           Write-Host "Staging tree:"
           $root = (Resolve-Path $staging).Path
           # The bundle is 636 files of interpreter and stdlib; listing them buries everything else,
@@ -247,6 +259,40 @@ jobs:
           & staging/bin/pylabview/python.exe -c "import sys, PIL; from pylabview import LVblock; print('python', sys.version.split()[0], '| Pillow', PIL.__version__, '| pylabview imported')"
           if ($LASTEXITCODE -ne 0) { throw "the staged pylabview bundle does not import (exit $LASTEXITCODE)" }
           Write-Host "OK: staged bundle imports"
+
+      # 5e. Both agent flavours, each carrying the tool names its own install actually serves.
+      #     The zip ships the agents TWICE on purpose: agents/ at the root is what the plugin
+      #     loader reads, and its tools: lists must name mcp__plugin_<plugin>_<server>__*, while
+      #     bin/claude/agents/ is what scripts\Install-ClaudeAssets.ps1 installs for a plain
+      #     `claude mcp add labview` and must name mcp__labview__*. Swapping the two costs nothing
+      #     at install time and leaves an agent that can call no LabVIEW tool at all.
+      #     scripts\Sync-PluginAgents.ps1 generates the plugin flavour; PluginAgentTests asserts
+      #     the SOURCE relationship, this asserts the staged LAYOUT.
+      - name: Assert both agent flavours are staged with the right tool names
+        shell: pwsh
+        run: |
+          $source = @(Get-ChildItem '.claude/agents' -Filter '*.md')
+          $flavours = @(
+            @{ Path = 'staging/agents';            Prefix = 'mcp__plugin_labview-mcp_labview__'; Wrong = 'mcp__labview__lvai' },
+            @{ Path = 'staging/bin/claude/agents'; Prefix = 'mcp__labview__';                    Wrong = 'mcp__plugin_' }
+          )
+          foreach ($flavour in $flavours) {
+            $staged = @(Get-ChildItem $flavour.Path -Filter '*.md' -ErrorAction SilentlyContinue)
+            if ($staged.Count -ne $source.Count) {
+              throw "$($flavour.Path) holds $($staged.Count) agent(s); .claude/agents holds $($source.Count)"
+            }
+            foreach ($agent in $staged) {
+              $tools = @(Get-Content $agent.FullName | Where-Object { $_ -like 'tools:*' })
+              if ($tools.Count -ne 1) { throw "$($agent.FullName) has $($tools.Count) tools: lines" }
+              if ($tools[0] -notmatch [regex]::Escape($flavour.Prefix)) {
+                throw "$($agent.Name) in $($flavour.Path) names no $($flavour.Prefix)* tool"
+              }
+              if ($tools[0] -match [regex]::Escape($flavour.Wrong)) {
+                throw "$($agent.Name) in $($flavour.Path) names $($flavour.Wrong)* tools - the flavours are swapped"
+              }
+            }
+            Write-Host "OK: $($staged.Count) agent(s) at $($flavour.Path) naming $($flavour.Prefix)*"
+          }
 
       # 6. Smoke-test the packaged binary. LabVIEW is not on the runner, so --help is the limit
       #    of what is testable — but it exercises the self-extract, which is the failure mode

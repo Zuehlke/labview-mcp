@@ -21,8 +21,7 @@ internal static class PyLabviewCli
         if (bundle is null)
         {
             Console.Error.WriteLine("pylabview bundle: NOT PROVISIONED");
-            Console.Error.WriteLine("  run tools\\pylabview\\provision.ps1, or set " +
-                                    PyLabview.DirectoryVariable);
+            Console.Error.WriteLine("  " + PyLabview.NotProvisionedMessage());
             return 1;
         }
 
@@ -48,6 +47,7 @@ internal static class PyLabviewCli
         if (bundle is null)
         {
             Console.Error.WriteLine("pylabview bundle: NOT PROVISIONED");
+            Console.Error.WriteLine("  " + PyLabview.NotProvisionedMessage());
             return 1;
         }
         if (!File.Exists(viPath))

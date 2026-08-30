@@ -72,9 +72,9 @@ claude plugin install labview-mcp@zuehlke-labview
 
 That's the whole setup — no clone, no build, no config file to edit. Claude Code downloads a
 prebuilt Windows binary from the [latest release](https://github.com/Zuehlke/labview-mcp/releases/latest),
-and you get the MCP server, three LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
-`labview-doc-generator`), and a read-only allow-list so reads run without a prompt while every
-mutating tool still asks first.
+and you get the MCP server, seven LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
+`labview-doc-generator`, `labview-class-generator` and one per unit-test framework), and a
+read-only allow-list so reads run without a prompt while every mutating tool still asks first.
 
 Now start LabVIEW 2026, open Claude Code in your project, and try:
 
@@ -340,8 +340,9 @@ claude plugin marketplace add Zuehlke/labview-mcp
 claude plugin install labview-mcp@zuehlke-labview
 ```
 
-That gives you the MCP server, the three LabVIEW agents (`labview-vi-generator`,
-`labview-vi-editor`, `labview-doc-generator`), and the read-only tool allow-list, all wired up.
+That gives you the MCP server, all seven LabVIEW agents (`labview-vi-generator`,
+`labview-vi-editor`, `labview-doc-generator`, `labview-class-generator` and one per unit-test
+framework), and the read-only tool allow-list, all wired up.
 The plugin is **Windows x64 only** and needs **LabVIEW 2026** — the same requirement as every
 other install route; on macOS or Linux the plugin installs but a session-start hook tells you
 the server cannot run there.
@@ -598,10 +599,16 @@ resources travel inside `LabVIEWMCP.dll` and `build.ps1` proves it byte for byte
 `lvai_aixml_reference`, `lvai_vi_server_reference` and the rest answer identically with no
 repository present.
 
+The `pylabview\` folder beside the exe travels with that copy — **if the source machine had it**.
+`tools\pylabview\runtime\` is gitignored, so the build stages it only where `provision.ps1` has
+run, and a copy from a machine without it silently yields an install where every `pylv_*` tool
+answers `notProvisioned`. Check rather than assume: `LabVIEWMCP.exe --pylv-status`. The release
+zip always carries it, but only since **v0.9.2** — see the troubleshooting table.
+
 Two things are not reachable through a tool and need one command:
 
-- the **documentation agent** — Claude Code loads an agent from a file under `.claude\agents`, not
-  from an MCP resource
+- the **seven agents** — Claude Code loads an agent from a file under `.claude\agents`, not from
+  an MCP resource
 - the **tool allow-list**, which lives in a settings file
 
 Both are copied next to the exe at build time, into `claude\`. Put them where Claude Code looks:
@@ -610,8 +617,8 @@ Both are copied next to the exe at build time, into `claude\`. Put them where Cl
 powershell -ExecutionPolicy Bypass -File scripts\Install-ClaudeAssets.ps1 -Scope User -Confirm
 ```
 
-`-Scope User` installs the agent for every project on the machine. `-Scope Project
--TargetProject <path>` installs the agent, the allow-list and `CLAUDE.md` into one repository
+`-Scope User` installs the agents for every project on the machine. `-Scope Project
+-TargetProject <path>` installs the agents, the allow-list and `CLAUDE.md` into one repository
 instead. Without `-Confirm` the script only prints what it would do, and it backs up anything it
 overwrites to `*.bak-labviewmcp`.
 
@@ -627,6 +634,7 @@ and — only for the documentation generator — `python-docx` and a Chromium br
 | Symptom | Cause and fix |
 |---|---|
 | Server does not appear at all | Config not loaded — restart Claude Code. For project scope, confirm you approved it. |
+| Every `pylv_*` tool answers `notProvisioned` | The 38 MB pylabview bundle is not beside the exe. On a plugin or zip install that means the install predates **v0.9.2**, the first release to carry it (the asset went from 32 MB to 49 MB): `claude plugin update labview-mcp`, or re-extract the latest `labview-mcp.zip`, then restart the client. In a checkout, run `tools\pylabview\provision.ps1`. `LabVIEWMCP.exe --pylv-status` answers in one line from either, and `LABVIEWMCP_PYLABVIEW` points at a bundle kept elsewhere. |
 | Server fails to start | The `command` path is wrong or unbuilt. Run the `.exe` in a terminal: it should log two `info:` lines to stderr ("transport reading messages", "Application started") and then wait on stdin. Anything else is the real error. |
 | `ok: false`, `InvalidOperationException`, "Could not find a port serving lvai.LVAI" | LabVIEW is not running, or its AI feature is off. The message lists every port that was probed. |
 | The same, but **LabVIEW is visibly running** and the probed list is full of `LabVIEW.exe listener` ports answering `Unavailable` | **The service starts with Nigel, not with the IDE.** Measured: LabVIEW up for twenty minutes, 30 listener ports open, `lvai.LVAI` served on none of them; opening Nigel in the IDE brought it up within seconds. `lvai_ensure_labview` cannot do this for you — it starts LabVIEW, and reports `starting` forever while the assistant stays closed. Open Nigel, then call `lvai_status` once. |
@@ -655,8 +663,10 @@ The server is:
 <extracted>\bin\LabVIEWMCP.exe
 ```
 
-Keep the `bin\scripts\` folder that ships beside it — the icon, close-VI, run-and-read and
-documentation tools look for their helpers there. (Building from source instead? The exe is at
+Keep the folders that ship beside it — `bin\scripts\` holds the helpers the icon, close-VI,
+run-and-read and documentation tools drive, `bin\docs\` holds tables two of those scripts open at
+run time, `bin\pylabview\` is the bundle every `pylv_*` tool needs, and `bin\claude\` holds the
+agent definitions and the allow-list for `Install-ClaudeAssets.ps1`. (Building from source instead? The exe is at
 `src\LabVIEWMCP\bin\Debug\net8.0\LabVIEWMCP.exe`.)
 
 ### 2. Point your client at it
@@ -842,7 +852,7 @@ IDE, and the client answers on the request stream. This is the same hook NI's ow
 dotnet test
 ```
 
-247 tests, no LabVIEW required — they run in about 10 seconds.
+1 100 tests, no LabVIEW required — they run in about 27 seconds.
 
 A `pre-push` hook runs them before every push and rejects the push unless all pass. It is
 activated automatically on the first build (see [`.githooks/README.md`](.githooks/README.md));
@@ -907,12 +917,17 @@ On the tag push, the workflow runs on `windows-latest` and:
    bundle at all and every `pylv_*` tool answers `notProvisioned` on a plugin install;
 5. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
    `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
-   `scripts\..\docs` has to resolve on an install exactly as it does in the repository — and the
-   bundle at `bin\pylabview\`, which is where `PyLabview.Locate()` looks);
+   `scripts\..\docs` has to resolve on an install exactly as it does in the repository — the
+   bundle at `bin\pylabview\`, which is where `PyLabview.Locate()` looks, and the `.claude\`
+   assets at `bin\claude\`, which is where `Install-ClaudeAssets.ps1` looks: the agents at the zip
+   root carry the plugin's tool-name prefix and are useless to an install that registers the
+   server directly);
 6. asserts the plugin manifest sits at the tree root;
 7. asserts the staged bundle is locatable **and patched** — the patches in
    `tools\pylabview\patches\patches.json` are applied when the bundle is assembled, so a stale
-   runtime would ship the crash they fix while every log line still read "assembled";
+   runtime would ship the crash they fix while every log line still read "assembled" — and that
+   **both agent flavours** are staged, complete, and naming the tool prefix their own install
+   serves;
 8. smoke-tests the staged interpreter (`import PIL`, `from pylabview import LVblock`) and the exe
    with `--help`;
 9. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
@@ -1160,10 +1175,14 @@ scripts/                        copied next to the exe at build time; path in lv
   lvdoc_print.xml               AIXML for the helper VI that exports icon + connector pane
   Export-VIDoc.ps1              same over ActiveX; fallback, does not work on every station
 
-.claude/agents/
+.claude/agents/                 the source; plugin\agents\ is GENERATED from it, see below
   labview-doc-generator.md      the documentation agent that drives the scripts above
   labview-vi-generator.md       the VI-generation agent: contract, reuse, generate, run, icon
   labview-vi-editor.md          the VI-editing agent: feasibility gate, icon backup, regenerate
+  labview-class-generator.md    classes, private data, typedef binding, accessors, then tests
+  labview-caraya-unit-test.md   the default unit-test agent: Caraya, static subVI calls
+  labview-lunit-unit-test.md    LUnit scaffold; Phase 0 stops if the framework is absent
+  labview-vitester-unit-test.md VI Tester scaffold; same
 
 .githooks/
   pre-push                      sh stub git invokes

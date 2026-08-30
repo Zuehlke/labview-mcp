@@ -2,8 +2,10 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file
 ---
+
+<!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
 
 # LabVIEW VI Editor
 
@@ -64,7 +66,10 @@ So when the VI has one, validate the **untouched** export before promising anyth
   **`lvai_aixml_reference` with `node='<name>'`** — §8 lists 289 nodes with their ordered
   terminals, and `node=` returns just the passages naming yours, each with its table header or
   whole code block. Do **not** ask for `section='8'`: 54 kB comes back, your client spills it to
-  a one-line JSON file, and `Grep` cannot find anything in it. For Property and Invoke nodes use
+  a one-line JSON file, and `Grep` cannot find anything in it. **Name every node you are adding
+  in that one call, comma-separated** — `node='Select,Build Waveform,Greater?'` — because terms
+  match by substring and single lookups return the same block repeatedly; measured on 18 terms,
+  one batch cost 38.9 % less text than 18 calls. For Property and Invoke nodes use
   `lvai_vi_server_reference`. For a **`Call` to a palette VI** neither of those applies — the
   terminals are the target's own front-panel labels, so use **`lvai_vi_terminals`**, which reads
   them out of it and prints a ready-to-paste `Call` (including the `instance` a polymorphic
@@ -89,8 +94,8 @@ So when the VI has one, validate the **untouched** export before promising anyth
   crossings. **Which `conIdx` is where depends on the pane pattern, so call `lvai_connector_pane`
   with the VI's path before you judge a pane and again after you regenerate it** — it measures the
   pane, names every breach and gives you the corrected assignment. Do not reason from a remembered
-  map: `error in` is `conIdx 8` on the 12-terminal 4815 pane and `11` on the 16-terminal 4833 one, and
-  a generated VI has been measured as either.
+  map: `error in` is `conIdx 8` on the 12-terminal 4815 pane and `11` on the 16-terminal 4833 one, a
+  generated VI has been measured as either, and a regeneration can move the VI from one to the other.
 
   Two things that make a regeneration land on the wrong pane. First, **a full regeneration gets the
   station's default pane, not the one the VI had** — that default is `DefaultConPane` in the
@@ -101,10 +106,7 @@ So when the VI has one, validate the **untouched** export before promising anyth
   **`more outputs`**, `error out`, and the two `more` entries are the ones that get dropped.
   **Consecutive `conIdx` is not the left edge**: on 4833 that edge is `0, 5, 7, 9`, so a second input
   written as `1` lands in a middle column. That exact slip has shipped three times.
-
-  This paragraph used to give the 4-2-2-4 map as a flat constant — input `11`, `error in` `8`, output
-  `3`, `error out` `0` — which is right for 4815 and wrong for whatever the station is actually set
-  to. Preserving an existing pane is the default — but a pane that
+  That is what makes the check part of the edit rather than optional. Preserving an existing pane is the default — but a pane that
   breaks the guide is a defect worth naming in the report and correcting, since `conIdx` is one
   attribute per terminal and costs nothing to change. Detail in `lvai_aixml_reference` §2, "The
   connector pane".
