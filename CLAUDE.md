@@ -236,6 +236,22 @@ dominant cost of every session in this repository, and the tools it points at ar
 in `docs/workflow-economics.md`. The largest single item there: a class unit-test run spends about
 **40 calls** hand-driving a route `lvai_generate_test` already automates for plain VIs.
 
+**The way to find the next tool is to measure a whole run and look for the step whose WALL CLOCK is
+large and whose TOOL time is not.** Measured 2026-08-30 over a cold three-class build — project,
+three classes, 24 accessors, five Caraya suites, 920 s end to end, 86 calls, 327 s of it inside
+tools. The two halves separate cleanly and point in opposite directions:
+
+- **The class build is LabVIEW-bound**: 151 s for the accessors, 115 s of that inside LabVIEW.
+  Nothing to win there — `Save All This Library` re-checks the whole library per field, so a slice
+  costs more the bigger the class gets.
+- **The test build is latency-bound**: 648 s, only 196 s in tools. And the single largest item in
+  the whole run was **authoring the suite runner: 186 s of wall clock against 6.1 s inside
+  LabVIEW** — the model re-deriving AIXML whose shape never varies.
+
+That is what `lvai_generate_caraya_test_runner` now does in one call, and the general lesson is the one
+this file has learned twice: **a step that is cheap for LabVIEW and expensive in turns is a tool
+waiting to be written.** Optimise the number of calls, not the cost of one.
+
 For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
 and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
 
@@ -772,6 +788,7 @@ literally it argued away 600 usable palette VIs.
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
+| How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |

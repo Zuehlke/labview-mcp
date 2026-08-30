@@ -37,6 +37,11 @@ internal sealed class TestTools(LvaiConnection connection)
         @"Caraya.lvlib\3AAssert.lvclass\3AAssert Equal Value_Variant.vi";
     private const string ErrorCluster = "cluster{bool.status,int32.code,string.source}";
 
+    // The runner is a POLYMORPHIC call: `target` is the wrapper, `instance` picks the array-of-paths
+    // member. Both spellings measured off a working runner's own export, not guessed.
+    private const string RunTests = @"Caraya.lvlib\3ARun Tests.vi";
+    private const string RunTestArrayPath = @"Caraya.lvlib\3ARun Test (Array Path).vi";
+
     [McpServerTool(Name = "lvai_generate_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya unit test for a VI, wired to call it")]
     [Description("""
@@ -411,6 +416,165 @@ internal sealed class TestTools(LvaiConnection connection)
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
                 "break one case on purpose once, because an all-green first run proves very little.",
                 swapAnswer["callTargets"]?.DeepClone());
+        });
+
+    [McpServerTool(Name = "lvai_generate_caraya_test_runner", Destructive = true, OpenWorld = true,
+                   Title = "Generate the Caraya suite runner for a set of test VIs")]
+    [Description("""
+        MUTATING: writes the ONE VI that runs a whole Caraya suite - every test VI's path built
+        relative to the runner's own location, collected into an array, handed to
+        `Caraya.lvlib\3ARun Tests.vi` (instance `Run Test (Array Path)`) with `Interactive (T)`
+        FALSE and a `Report Path` ending in .xml - and lists it in the project.
+        THIS REPLACES THE MOST EXPENSIVE HAND-AUTHORED STEP OF A TEST RUN. Measured 2026-08-30 over
+        a three-class, five-suite build: authoring, generating and debugging the runner took 186 s
+        of wall clock against 6.1 s inside LabVIEW. Almost all of it was the model writing AIXML it
+        had written twice before, because the runner's shape never varies - only the file names do.
+        The whole build was 920 s, so this one step was a fifth of it.
+        RELATIVE PATHS ARE THE DESIGN, not a detail. `Current VI's Path` -> `Strip Path` ->
+        `Build Path` per test means the folder can be copied or renamed and the suite still runs. A
+        test VI that does not live under the runner's own folder is therefore REFUSED by name rather
+        than written as an absolute constant that breaks at run time with `Error 7`.
+        `Interactive (T)` IS FALSE AND STAYS FALSE - TRUE opens Caraya's modal report dialog, and a
+        modal dialog stops LabVIEW's whole gRPC service until a human dismisses it.
+        READ THE JUNIT REPORT, NOT `error out`. Caraya answers 7002 when a suite FAILED, which is a
+        pass/fail signal rather than a fault, and the cluster carries the first failed assertion
+        only. The runner returns the report's absolute path in `Report Path used`.
+        CARAYA ONLY. The array-of-paths shape and both target spellings were measured off a working
+        runner's export; nothing equivalent has been measured here for LUnit or VI Tester, so this
+        does not pretend to be framework-neutral.
+        """)]
+    public async Task<string> GenerateCarayaTestRunnerAsync(
+        [Description("""
+            The test VIs to run, ONE ABSOLUTE PATH PER LINE, plain text and NOT JSON. Every one of
+            them must live under the runner's own folder, directly or in a subfolder.
+            """)]
+        string testViPaths,
+        [Description(@"Absolute path of the runner .vi - WILL BE OVERWRITTEN.")]
+        string runnerViPath,
+        [Description("""
+            File name of the JUnit report, written beside the runner. MUST end in .xml - a .txt
+            extension makes Caraya write no file at all. Defaults to '<runner>-TestReport.xml'.
+            """)]
+        string? reportFileName = null,
+        [Description("""
+            The `.lvproj` to list the runner in. Pass it whenever the tests belong to a project: the
+            project is CLOSED before the file is edited and re-opened afterwards, because LabVIEW's
+            close saves its own copy over the file and would destroy the edit.
+            """)]
+        string? projectPath = null,
+        [Description("Virtual folder inside the project to list the runner in")]
+        string testFolderName = "Tests",
+        [Description("Keep the generated AIXML instead of deleting what succeeded")]
+        bool keepAixml = false,
+        [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (PathListFault(testViPaths, nameof(testViPaths)) is { } listFault)
+                return Json.Error("badArguments", listFault,
+                    new { parameter = nameof(testViPaths), arrived = testViPaths });
+            if (PathListFault(runnerViPath, nameof(runnerViPath)) is { } runnerFault)
+                return Json.Error("badArguments", runnerFault,
+                    new { parameter = nameof(runnerViPath), arrived = runnerViPath });
+            if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
+                return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
+
+            var tests = testViPaths
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                     StringSplitOptions.TrimEntries)
+                .Select(Path.GetFullPath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (tests.Count == 0)
+                return Json.Error("badArguments", "testViPaths named no test VI.");
+
+            var missing = tests.Where(t => !File.Exists(t)).ToList();
+            if (missing.Count > 0)
+                return Json.Error("badArguments",
+                    "No file at " + string.Join(", ", missing.Select(m => $"'{m}'")) +
+                    ". Generate the test VIs first - a runner listing a VI that is not there fails " +
+                    "at run time with Error 7, and the report says nothing about which path it was.",
+                    new { missing });
+
+            // The relative-path rule, enforced where it can still be explained. Writing an absolute
+            // constant instead would generate happily and strand the suite the first time anyone
+            // copied the folder.
+            var relatives = new List<string>();
+            var outside = new List<string>();
+            foreach (var test in tests)
+            {
+                if (RelativeToRunner(runnerViPath, test) is { } relative) relatives.Add(relative);
+                else outside.Add(test);
+            }
+            if (outside.Count > 0)
+                return Json.Error("badArguments",
+                    "These test VIs are not under the runner's folder '" +
+                    Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) + "': " +
+                    string.Join(", ", outside.Select(o => $"'{o}'")) +
+                    ". The runner builds every path relative to its own location so the suite moves " +
+                    "with the folder; put the runner above the tests, or generate one runner per " +
+                    "folder.",
+                    new { outside });
+
+            reportFileName ??=
+                $"{Path.GetFileNameWithoutExtension(runnerViPath)}-TestReport.xml";
+            if (!reportFileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                return Json.Error("badArguments",
+                    $"reportFileName '{reportFileName}' does not end in .xml. Caraya writes no " +
+                    "report file at all for any other extension, and answers no error about it.");
+
+            var total = Stopwatch.StartNew();
+            var steps = new JsonArray();
+
+            var aixml = Path.ChangeExtension(runnerViPath, ".runner.xml");
+            await File.WriteAllTextAsync(
+                aixml, CarayaRunnerAixml(runnerViPath, relatives, reportFileName), ct);
+
+            var generated = await new BulkTools(connection).GenerateViAsync(
+                aixml, runnerViPath, openVI: false, measurePane: false, panePattern: null,
+                timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
+
+            if ((Read(generated) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
+                return RunnerOutcome(false, "generate", steps, total, runnerViPath, aixml,
+                    reportFileName, relatives.Count,
+                    "The runner was NOT generated. Read the generate step - a Caraya target that " +
+                    "does not resolve on this station shows up there as an unresolved Call.");
+
+            if (!keepAixml)
+            {
+                try { File.Delete(aixml); }
+                catch (Exception failure) when (failure is IOException
+                                                or UnauthorizedAccessException) { }
+            }
+
+            if (projectPath is { Length: > 0 })
+                steps.Add(await ListInProjectAsync(projectPath, testFolderName, [runnerViPath],
+                                                   timeoutSeconds, ct));
+
+            return RunnerOutcome(true, null, steps, total, runnerViPath,
+                keepAixml ? aixml : null, reportFileName, relatives.Count,
+                $"Generated. It runs {relatives.Count} test VI(s) and writes " +
+                $"'{reportFileName}' beside itself. Run it, then read that JUnit report rather " +
+                "than `error out` - 7002 means a suite failed, not that the runner did.");
+        });
+
+    private static string RunnerOutcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
+                                        string runnerViPath, string? aixmlPath,
+                                        string reportFileName, int testCount, string note) =>
+        Json.Document(new JsonObject
+        {
+            ["ok"] = ok,
+            ["failedAtStep"] = failedAt,
+            ["runnerViPath"] = runnerViPath,
+            ["runnerExistsNow"] = File.Exists(runnerViPath),
+            ["reportPath"] = Path.Combine(
+                Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) ?? "", reportFileName),
+            ["testCount"] = testCount,
+            ["aixml"] = aixmlPath,
+            ["steps"] = steps,
+            ["totalElapsedMs"] = total.ElapsedMilliseconds,
+            ["note"] = note,
         });
 
     /// <summary>
@@ -1051,6 +1215,112 @@ internal sealed class TestTools(LvaiConnection connection)
         var named = name is null ? "" : $" _name=\"{Escape(name)}\"";
         return $"  <Constant{named} outputs=\"value:{uid}.value\" type=\"{Escape(type)}\" " +
                $"uid=\"{uid}\" uid_parent=\"root\" value=\"{Escape(value)}\"/>";
+    }
+
+    /// <summary>
+    /// The suite runner's AIXML: every test VI's path built RELATIVE TO THE RUNNER'S OWN LOCATION,
+    /// collected into an array, and handed to Caraya's array-of-paths runner with the report path
+    /// beside them.
+    ///
+    /// RELATIVE IS THE WHOLE DESIGN. `Current VI's Path` → `Strip Path` → `Build Path` per test
+    /// means the folder can be copied or renamed and the suite still runs; a runner holding
+    /// absolute path constants breaks the moment anyone moves it, and it breaks at run time with
+    /// `Error 7` rather than at edit time. That is also why a test VI outside the runner's own
+    /// folder is refused by the caller rather than silently written as an absolute constant.
+    ///
+    /// `Interactive (T)` IS FALSE AND MUST STAY FALSE. TRUE opens Caraya's modal report dialog,
+    /// and a modal dialog stops LabVIEW's whole gRPC service until a human dismisses it - which in
+    /// an unattended run is nobody.
+    /// </summary>
+    internal static string CarayaRunnerAixml(string runnerViPath, IReadOnlyList<string> relativeTestPaths,
+                                       string reportFileName)
+    {
+        var sb = new StringBuilder();
+        sb.Append($"<VI _name=\"{Escape(Path.GetFileName(runnerViPath))}\" description=\"")
+          .Append("Caraya suite runner\\2C generated by lvai_generate_caraya_test_runner.\\0A\\0AIt builds ")
+          .Append("every test VI's path relative to its OWN location\\2C so the suite moves with the ")
+          .Append("folder\\2C and runs them through Caraya's Run Tests.vi (Array Path instance) with ")
+          .Append("Interactive FALSE - a TRUE there opens a modal report dialog\\2C which stops ")
+          .Append("LabVIEW's gRPC service until a human dismisses it.\\0A\\0ARead the JUnit report ")
+          .AppendLine("named by 'Report Path used'\\2C not 'error out'\\3A the error cluster carries " +
+                      "the FIRST failed assertion only.\">");
+
+        // Spaced ranges rather than one running counter: the name constants and their Build Path
+        // nodes are parallel arrays, and a suite of forty tests must not have uid 20+n collide with
+        // the node block.
+        const int here = 10, strip = 11, array = 40, interactive = 50, call = 60;
+        const int nameBase = 100, reportName = 199, buildBase = 200, reportBuild = 299;
+
+        sb.AppendLine($"  <Node _name=\"Current VI's Path\" outputs=\"path:{here}.path\" " +
+                      $"uid=\"{here}\" uid_parent=\"root\"/>");
+        sb.AppendLine($"  <Node _name=\"Strip Path\" inputs=\"path:{here}.path\" " +
+                      $"outputs=\"stripped path:{strip}.stripped path,name:\" uid=\"{strip}\" " +
+                      "uid_parent=\"root\"/>");
+
+        for (var i = 0; i < relativeTestPaths.Count; i++)
+            sb.AppendLine(Constant(nameBase + i, "string", relativeTestPaths[i],
+                                   $"name or relative path {i + 1}"));
+        sb.AppendLine(Constant(reportName, "string", reportFileName, "report file name"));
+
+        for (var i = 0; i < relativeTestPaths.Count; i++)
+            sb.AppendLine($"  <Node _name=\"Build Path\" inputs=\"base path:{strip}.stripped path," +
+                          $"name or relative path:{nameBase + i}.value\" " +
+                          $"outputs=\"appended path:{buildBase + i}.appended path\" " +
+                          $"uid=\"{buildBase + i}\" uid_parent=\"root\"/>");
+        sb.AppendLine($"  <Node _name=\"Build Path\" inputs=\"base path:{strip}.stripped path," +
+                      $"name or relative path:{reportName}.value\" " +
+                      $"outputs=\"appended path:{reportBuild}.appended path\" " +
+                      $"uid=\"{reportBuild}\" uid_parent=\"root\"/>");
+
+        var elements = string.Join(",", Enumerable.Range(0, relativeTestPaths.Count)
+            .Select(i => $"element:{buildBase + i}.appended path"));
+        sb.AppendLine($"  <Node _name=\"Build Array\" inputs=\"{elements}\" " +
+                      $"outputs=\"appended array:{array}.appended array\" uid=\"{array}\" " +
+                      "uid_parent=\"root\"/>");
+
+        sb.AppendLine(Constant(interactive, "bool", "false", "Interactive (T)"));
+
+        // Every terminal is named, the unwired ones with an empty target - that is the shape a
+        // working runner's own export has, and a Call that lists only some of a polymorphic
+        // instance's terminals is not one this generator will accept.
+        sb.AppendLine($"  <Call adapt=\"true\" inputs=\"Interactive (T):{interactive}.value," +
+                      $"Paths:{array}.appended array,Inspect Recursively (T):,error in:," +
+                      $"Report Path:{reportBuild}.appended path,Test Report:,Verbose:," +
+                      $"timeout (2000 ms):\" instance=\"{RunTestArrayPath}\" " +
+                      $"outputs=\"Test Results:,error out:{call}.error out\" target=\"{RunTests}\" " +
+                      $"uid=\"{call}\" uid_parent=\"root\"/>");
+
+        sb.AppendLine("  <Indicator _name=\"Report Path used\" description=\"Absolute path of the " +
+                      $"JUnit XML report this run wrote.\" inputs=\"value:{reportBuild}.appended path\" " +
+                      "type=\"path\" uid=\"61\" uid_parent=\"root\" value=\"\"/>");
+        sb.AppendLine("  <Indicator _name=\"error out\" description=\"Caraya returns 7002 when a " +
+                      "test suite FAILED - that is a pass/fail signal\\2C not a fault. It also " +
+                      "carries the FIRST failed assertion only; read the JUnit report for all of " +
+                      $"them.\" inputs=\"value:{call}.error out\" type=\"{ErrorCluster}\" uid=\"62\" " +
+                      "uid_parent=\"root\" value=\"[false,0,]\"/>");
+
+        sb.AppendLine("</VI>");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// A test VI's path as the runner must spell it: relative to the runner's own directory, with
+    /// backslashes, or <c>null</c> when it does not live under that directory at all.
+    /// </summary>
+    internal static string? RelativeToRunner(string runnerViPath, string testViPath)
+    {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(runnerViPath));
+        if (folder is not { Length: > 0 }) return null;
+
+        var relative = Path.GetRelativePath(folder, Path.GetFullPath(testViPath));
+
+        // GetRelativePath happily walks upwards, and `..\..\Other\Test.vi` is exactly the kind of
+        // path that survives generation and breaks when the folder is copied somewhere else.
+        // Rooted means it could not make it relative at all - a different drive.
+        if (Path.IsPathRooted(relative) || relative.StartsWith("..", StringComparison.Ordinal))
+            return null;
+
+        return relative.Replace('/', '\\');
     }
 
     private static string ConIdx(int? slot) => slot is { } idx ? $" conIdx=\"{idx}\"" : "";
