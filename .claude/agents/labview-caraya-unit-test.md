@@ -1,8 +1,8 @@
 ---
 name: labview-caraya-unit-test
 description: >-
-  Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through Caraya's own runner, reads the JUnit report, and proves the tests can fail before reporting them green. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_test_runner, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+  Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -63,12 +63,15 @@ green run can be meaningless.
   matches by name. Two nodes calling the same socket cannot be told apart, and the wrong subject
   lands in the wrong case **with no error at all**.
 
-- **AN ALL-GREEN FIRST RUN PROVES NOTHING. Break something on purpose, once.** Point one assertion at
-  a wrong expectation, or one node at the wrong subject (`lvai_swap_subvis` with a single entry), run
-  it, confirm the report names exactly the case you broke, then restore. Report that you did it.
-  THREE defects have now shipped behind a green run: a VI Server chain where cases 2 and 3 never
-  executed, a suite that wrote no report at all, and the boolean below — which the negative control
-  is what caught.
+- **AN ALL-GREEN FIRST RUN PROVES NOTHING — and as of 2026-08-30 you do NOT prove otherwise unless
+  asked.** THREE defects have shipped behind a green run here: a VI Server chain where cases 2 and 3
+  never executed, a suite that wrote no report at all, and the boolean below. All three were caught
+  by a negative control. The user has nonetheless asked for it to be off by default, because it costs
+  four LabVIEW round trips, so: run one only when the task prompt asks, and **say in your report that
+  the suite's ability to fail was not demonstrated** when you did not. Do not quietly imply a green
+  run is evidence it is not. When one IS asked for, point one assertion at a wrong expectation or one
+  node at the wrong subject (`lvai_swap_subvis` with a single entry), confirm the report names exactly
+  the case you broke, then restore.
 
 - **A BOOLEAN CASE VALUE MUST BE LOWER CASE, and getting it wrong is SILENT.** `value="TRUE"` in an
   AIXML constant is accepted, validates, generates and runs — and LabVIEW's own export reads the
@@ -227,7 +230,7 @@ Measured 2026-08-29.
 Phase 5 is done. It matches by VI Name, so after the tool has run the names are the accessors' own
 (`Netzteil.lvclass:Read Modell.vi`), not the socket names.
 
-### Phase 4 — The runner: `lvai_generate_test_runner`, one call
+### Phase 4 — The runner: `lvai_generate_caraya_test_runner`, one call
 
 **Do not hand-author the runner.** One call takes the test VI paths (one absolute path per line),
 the runner's path and optionally the `.lvproj`, and writes the whole thing: every test's path built

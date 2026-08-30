@@ -619,7 +619,7 @@ the error cluster carries one, because `Merge Errors` keeps the first.
 `7002` is the pass/fail signal, not a fault: `resource\errors\Caraya-errors.txt` defines it as
 `Caraya Test Manager: Test Suite failed`. A green run returns `errorCode 0`.
 
-### 4a. The runner is generated, not hand-authored — `lvai_generate_test_runner`
+### 4a. The runner is generated, not hand-authored — `lvai_generate_caraya_test_runner`
 
 A suite of several tests uses the **`Run Test (Array Path)`** instance instead: one call, an array
 of paths, one report. That runner's shape never varies — `Current VI's Path` → `Strip Path` → one

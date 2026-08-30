@@ -17,7 +17,7 @@ namespace LabVIEWMcp.Tests.Tools;
 public sealed class RunnerAixmlTests
 {
     private static string Runner(params string[] relative) =>
-        TestTools.RunnerAixml(@"C:\temp\Suite\Run Suite Tests.vi", relative, "Suite-TestReport.xml");
+        TestTools.CarayaRunnerAixml(@"C:\temp\Suite\Run Suite Tests.vi", relative, "Suite-TestReport.xml");
 
     /// <summary>
     /// `Current VI's Path` -> `Strip Path` -> one `Build Path` per test is what makes the folder
@@ -95,7 +95,7 @@ public sealed class RunnerAixmlTests
     public void A_large_suite_does_not_collide_uids()
     {
         var many = Enumerable.Range(1, 40).Select(i => $"Test {i}.vi").ToArray();
-        var xml = TestTools.RunnerAixml(@"C:\temp\Suite\Run.vi", many, "R.xml");
+        var xml = TestTools.CarayaRunnerAixml(@"C:\temp\Suite\Run.vi", many, "R.xml");
 
         var uids = System.Text.RegularExpressions.Regex.Matches(xml, "uid=\"(\\d+)\"")
             .Select(m => m.Groups[1].Value)

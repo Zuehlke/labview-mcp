@@ -248,7 +248,7 @@ tools. The two halves separate cleanly and point in opposite directions:
   the whole run was **authoring the suite runner: 186 s of wall clock against 6.1 s inside
   LabVIEW** — the model re-deriving AIXML whose shape never varies.
 
-That is what `lvai_generate_test_runner` now does in one call, and the general lesson is the one
+That is what `lvai_generate_caraya_test_runner` now does in one call, and the general lesson is the one
 this file has learned twice: **a step that is cheap for LabVIEW and expensive in turns is a tool
 waiting to be written.** Optimise the number of calls, not the cost of one.
 
@@ -788,7 +788,7 @@ literally it argued away 600 usable palette VIs.
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
-| How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_test_runner` |
+| How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
