@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through Caraya's own runner, reads the JUnit report, and proves the tests can fail before reporting them green. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_test_runner, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -227,21 +227,45 @@ Measured 2026-08-29.
 Phase 5 is done. It matches by VI Name, so after the tool has run the names are the accessors' own
 (`Netzteil.lvclass:Read Modell.vi`), not the socket names.
 
-### Phase 4 — The runner
+### Phase 4 — The runner: `lvai_generate_test_runner`, one call
 
-Build one runner VI calling `Caraya.lvlib\3ARun Test (Array Path).vi` with `Paths` (an array of the
-test VIs), `Report Path` ending in `.xml`, and `Interactive (T)` FALSE. Run it, then read the report.
+**Do not hand-author the runner.** One call takes the test VI paths (one absolute path per line),
+the runner's path and optionally the `.lvproj`, and writes the whole thing: every test's path built
+relative to the runner's own location, the array, the `Report Path`, `Interactive (T)` FALSE, and
+the project entry. Then run it and read the report.
+
+The reason it is a tool: measured 2026-08-30 on a five-suite build, hand-authoring the runner took
+**186 s of wall clock against 6.1 s inside LabVIEW** — a fifth of the whole run, spent re-writing
+AIXML whose shape never varies. Only the file names differ.
+
+Two constraints it enforces rather than trusting you with, both of which have bitten:
+
+- **Every test VI must live under the runner's folder**, directly or in a subfolder. Paths are built
+  relative to the runner so the folder stays movable; a test outside it is refused by name instead of
+  being written as an absolute constant that fails at run time with `Error 7`.
+- **`reportFileName` must end in `.xml`.** Any other extension makes Caraya write no file at all and
+  report no error about it.
 
 **Caraya can fail once, right after the test VIs were re-saved** — `Error 1` at `Generate User Event`
 in `Caraya.lvlib:Basic Test Manager.lvclass:Send Test Event.vi`, and no report written. The next run
 is green. It is a stale refnum in Caraya, not a failing test, but a CI job that runs the suite
 exactly once after a rebuild will report it as a failure. Say so.
 
-### Phase 5 — Prove it can fail
+### Phase 5 — Prove it can fail — ONLY IF ASKED
 
-Break one thing, run, confirm the failure names the case you broke, restore, re-run green. Cheapest
-form for a class test: `Replace` one Read accessor with a different field's, which makes exactly one
-case fail. Record the failure message in your report.
+**Do NOT run a negative control by default.** It costs a break, a run, a restore and a re-run — four
+LabVIEW round trips and about 75 s measured on 2026-08-30 — and the user has asked for it to be off.
+Skip it unless the task prompt explicitly asks for one.
+
+When it IS asked for: break one thing, run, confirm the failure names the case you broke, restore,
+re-run green. Cheapest form for a class test: `Replace` one Read accessor with a different field's,
+which makes exactly one case fail. Record the failure message in your report.
+
+**What this costs you, and say so in the report rather than hiding it:** an all-green first run is
+weak evidence on its own. It has twice been green here while testing nothing — a `value="TRUE"` on a
+`bool` constant is silently read as `false`, so the round trip wrote FALSE onto a default-FALSE field
+and passed. Without the negative control, name in your report that the suite's ability to fail was
+not demonstrated.
 
 ### Phase 6 — Hand over clean
 
@@ -297,7 +321,9 @@ State, in this order:
 2. **Which route** each test took, 3a or 3b — and if you used VI Server anywhere, why the static call
    was not available.
 3. The **report numbers**, quoted: `tests=`, `failures=` per suite, and the report's path.
-4. The **negative control**: what you broke, what it said, that you restored it.
+4. The **negative control**, only if one was asked for: what you broke, what it said, that you
+   restored it. When none was run — the default — say plainly that the suite's ability to fail was
+   not demonstrated.
 5. Paths of every test VI and the runner, and how to re-run the suite.
 6. What is **not** covered — the fields, branches or error paths you did not test, and why.
 7. Anything left in the LabVIEW installation (`user.lib\LV_MCP\`) and whether it is safe to delete.

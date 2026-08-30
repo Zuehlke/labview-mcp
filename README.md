@@ -735,7 +735,7 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**57 tools over 23 RPCs.** Thirty-one map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**58 tools over 23 RPCs.** Thirty-two map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
 rather than wrapping one — `lvai_describe_class`, which reads a `.lvclass` file and needs no
 LabVIEW at all, the knowledge tools below, and the five `pylv_*` tools. 33 carry `readOnlyHint`,
@@ -795,6 +795,7 @@ resources rather than call tools.
 | `lvai_bind_typedef_constants` | — (same composition plus VI Server writes) | **re-points block diagram constants** onto the typedef their subVI terminal expects, removing the coercion dot the placeholder route leaves behind. You supply no `.ctl` path — `Create Constant` on the terminal yields the exact type, and `Replace` is what preserves the wire. Finds each constant by its **label**, so author them as `_name="<terminal name>"`. Needs a project open and active |
 | `lvai_generate_test` | — (composes the placeholder, `lvai_generate_vi` and the retarget) | **creates a Caraya unit-test `.vi`** that calls your VI as an ordinary static subVI, one node per case. Eighteen hand calls before this existed, ten of them editing an object heap |
 | `lvai_generate_class_test` | — (composes `lvai_generate_vis`, `lvai_generate_vi` and `lvai_swap_subvis`) | **creates a Caraya round-trip test for a CLASS**, one write-then-read per field, every accessor an ordinary static subVI. `lvai_generate_test` cannot reach class code — its placeholder is generated through AIXML, which refuses a class-typed terminal — so this authors `path` sockets and lets LabVIEW's own `Replace` re-type the wires. About forty hand calls before it existed |
+| `lvai_generate_test_runner` | — (composes `lvai_generate_vi`) | **creates the ONE VI that runs a whole Caraya suite** — every test's path built relative to the runner's own location, so the folder stays movable, `Interactive (T)` FALSE and a `.xml` report path. Hand-authoring it cost 186 s of wall clock against 6.1 s inside LabVIEW, measured over a five-suite build |
 | `lvai_swap_subvis` | — (composes `ConvertAIXMLToVI` + `RunVIAsTopLevel` + `ConvertVIToAIXML`) | **repoints many subVI nodes and class constants on one diagram** through LabVIEW's own `Replace`, in a single run. Driving it from outside cost 19 calls for one suite, because `SubVIs[]` re-orders after every swap and the replaced reference dies. Nodes first, constants last; verifies against LabVIEW's own export |
 | `lvai_generate_vis` | — (composes `lvai_generate_vi` per entry) | **generates several VIs from AIXML in one call**, in order, each with its own optional pane pattern. Sequential on purpose — LabVIEW serialises the RPC — so the saving is round trips. Deletes each AIXML on success and keeps it on failure |
 | `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **creates a `.lvclass`**, its parent link and its private data — by driving LabVIEW's own project provider, because a private data control is compiler output and cannot be built from outside. Needs a project, and opens one |

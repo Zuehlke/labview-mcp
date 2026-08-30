@@ -619,6 +619,29 @@ the error cluster carries one, because `Merge Errors` keeps the first.
 `7002` is the pass/fail signal, not a fault: `resource\errors\Caraya-errors.txt` defines it as
 `Caraya Test Manager: Test Suite failed`. A green run returns `errorCode 0`.
 
+### 4a. The runner is generated, not hand-authored — `lvai_generate_test_runner`
+
+A suite of several tests uses the **`Run Test (Array Path)`** instance instead: one call, an array
+of paths, one report. That runner's shape never varies — `Current VI's Path` → `Strip Path` → one
+`Build Path` per test → `Build Array` → the call, with the report path built the same way — and
+only the file names differ between runs.
+
+**Which is why hand-authoring it was the single most expensive step of a test build.** Measured
+2026-08-30 on a cold three-class, five-suite run: writing, generating and debugging the runner cost
+**186 s of wall clock against 6.1 s inside LabVIEW**, out of 920 s for the whole build. Nearly all
+of it was the model re-deriving AIXML it had produced twice before. The tool does it in one call.
+
+Two rules it enforces, both learned the expensive way:
+
+- **Paths are relative to the runner's own location**, never absolute. That is what lets the folder
+  be copied or renamed with the suite still working. A test VI that does not live under the runner's
+  folder is refused by name rather than written as an absolute constant — that failure would arrive
+  at run time as `Error 7`, with nothing in the report to say which path was wrong.
+- **`Interactive (T)` is FALSE and stays false**, for the modal-dialog reason above.
+
+The pane is not measured: a runner has no inputs and its two indicators are read from the front
+panel, so there is no connector pane to get wrong.
+
 ## 5. Why Caraya rather than JKI VI Tester
 
 Both ship in `vi.lib\addons\_JKI Toolkits`. A Caraya test is a plain VI calling library VIs, which
