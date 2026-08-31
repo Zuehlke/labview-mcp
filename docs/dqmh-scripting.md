@@ -7,8 +7,9 @@ on 2026-08-31 against DQMH "Delacor QMH Event Scripter 5.0.0.112" under LabVIEW 
 Read together with [dqmh-patterns.md](dqmh-patterns.md), which describes what a finished module
 *looks like*; this note is about how to *make* one.
 
-The short answer: **yes for modules, proven end to end. Yes for module discovery. Not yet for
-events** — the last gap is named in §6 and it is a piece of work, not a wall.
+The short answer: **yes for modules, proven end to end. Yes for module discovery. Not for events** —
+§6 has the two routes tried, why the helper route is structurally impossible, and how far driving
+Delacor's dialog gets (three of four steps, measured).
 
 ## 1. The layout: menu VIs versus scripting VIs
 
@@ -362,6 +363,59 @@ values and works end to end (§5).
 
 The route that works today: **Tools ▸ DQMH ▸ Create New DQMH Event**, or the project's right-click
 menu, which the provider pre-fills with the module.
+
+## 6.3 Driving the dialog headless: three of four steps work
+
+Measured 2026-08-31 against a running `Create New DQMH Event.vi`. Each step succeeded on its own,
+with `error out` 0 and a read-back proving it; the sequence as a whole did not produce an event.
+
+| Step | How | Result |
+|---|---|---|
+| Set the text and numeric fields | `Ctrl Val.Set` by control **label** | **works** — `Event Name` and `Event Description` read back verbatim |
+| Put controls in the Arguments Window | `Select All` + `Copy Selection` on a carrier panel, `Paste Selection` on the dialog's | **works** — the window's `Controls[]` then reported `Name`, `Gewicht` |
+| Fire OK | `Value (Signaling)` on the button's reference | **write succeeds** — label read back as `OK` |
+| The event itself | Delacor's scripting inside the dialog | **did not happen**; the module was byte-for-byte unchanged |
+
+### The transferable finding: moving controls between panels
+
+`{LV.Panel}` has **no** add-a-control method and `{LV.Application}` offers only
+`New LabVIEW Document`, so creating a control on someone else's front panel looks impossible. It is
+not: **`Select All` → `Copy Selection` on the source panel, then `Paste Selection` on the target**
+moves controls with their labels and types intact, which is all that scripting reading a panel
+needs. Combined with an AIXML-generated **carrier VI** — the pattern `lvai_create_class` already
+uses for private data fields — that means an argument list can be *authored* as AIXML and then
+placed into a dialog that otherwise only accepts hand-dragged controls. `Paste Selection`'s `Pos`
+and `Pane` may be left unwired.
+
+This is worth remembering well beyond DQMH.
+
+### Two traps on the same panel
+
+**A Ring's index means different things depending on how the dialog was opened.** Launched from the
+Tools menu, the `Module` ring carries `<Select a Module>` at index 0. Launched from the project's
+right-click menu, Delacor's provider pre-selects the module and index **0 is the module itself** —
+measured: the dialog displayed `DQMHdemo.lvlib` while `Ctrl Val.Get` returned `0`. An earlier run had
+written index 1 on the assumption that 0 was a placeholder, which in that instance would have
+scripted the event into **FirstClone**. So **read the ring, or leave it alone** — and leaving a
+provider-set field alone is the better move, since it is already right.
+
+**A generic control reference cannot carry a subclass property.** `Strings []` and
+`Strings And Values []` on `{LV.Ring}` are both refused for a reference taken out of `Controls[]`,
+because AIXML has no way to express the cast to a more specific class. `{LV.Control}` properties
+work — `Label.Text` and `Value (Signaling)` both do — so anything a panel walk needs must exist on
+the generic class.
+
+### Why it still did not finish
+
+`error out` 0 from the `Value (Signaling)` write means the property was written, **not** that the
+Event Structure ran its case. The module never changed, and NI's log for that window carries three
+minidumps whose VI call stacks all sit in **our** `VI generator.vi` under `ConvertAIXMLToVI` /
+`ValidateAIXML` — the `HeapObjMapImpl.cpp(226)` signature of §  in
+`docs/labview-crash-signatures.md`, not anything of Delacor's. Whether the dialog was killed
+mid-scripting or never received the event is **not established**.
+
+What is established: the three mechanical steps are available and measured, so the remaining
+unknown is narrow. What is not: that this route works end to end. Do not present it as one.
 
 ## 7. What is not reachable this way
 
