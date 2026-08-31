@@ -267,6 +267,19 @@ backup and `lvai_describe_project` confirmed `missingItems: []`, `missingFiles: 
 The cause was not established, because the run outlived the MCP client's request timeout while
 LabVIEW kept working — so the `error out` was never read.
 
+**A third attempt, instrumented to write its `error out` to a FILE so the timeout could not take
+it, killed LabVIEW.** Same partial result — the argument cluster written, nothing else — and no log
+file, because the process died first. NI's `_cur.txt` puts the fault inside
+`LV AI Core.lvlibp:VI generator.vi` under `ConvertAIXMLToVI.vi`, i.e. in **AIXML generation, not in
+Delacor's code**, with `HeapObjMapImpl.cpp(226)` warnings naming our own low uids. That attempt was
+also the one carrying a `Constant` whose `type` spelled out eleven `ref{LV.ProjectItem}` fields —
+the same class of input as the settled `OMAutoClasses` crash. `docs/labview-crash-signatures.md`
+has the analysis; the practical rule is that **a refnum-typed AIXML constant is risky input**, and
+the module route never needs one because it moves such values as variants.
+
+Three attempts, three different failure modes, one dead LabVIEW, and no event. The module was
+restored from a backup each time and verified clean.
+
 ### 6.3 Why not to keep pushing
 
 **`Create New DQMH Event.vi` has no connector pane at all** — 136 bytes of AIXML, no controls, no
