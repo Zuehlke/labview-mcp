@@ -1,0 +1,27 @@
+<VI _name="lvdqmh_module_types.vi" description="Read the DQMH module-type catalogue by opening DQMH New Module.lvlib\3AGet Module Type Info.vi BY PATH over VI Server and running it. Read-only\3A that VI takes no inputs and only reports.\0A\0AWHY THIS IS A SEPARATE HELPER AND MUST BE RUN FIRST. Script New Module.vi's Module Type terminal is a bare uint16 with NO enum strings in its export\2C so nothing in the pane says what 0 or 1 means. The meaning is a RUNTIME catalogue\3A Type Strings and Descriptions come back as parallel arrays and Module Type indexes them. DQMH 7.x makes module types pluggable\2C so the list differs per station - measured here as Singleton\2C Cloneable\2C Cloneable Panel\2C Singleton Panel\2C where the last two come from an MGI add-on that another machine need not have. An index is therefore only meaningful next to the catalogue it came from\3A read this\2C match the caller's wording to a NAME\2C and take that name's position. Never carry an index between stations or between sessions.\0A\0AWHY BY PATH AND NOT AS A Call. Measured 2026-08-31\3A an AIXML Call naming DQMH New Module.lvlib\3AGet Module Type Info.vi is refused with Error 53\2C Unsupported SubVI\2C because the generator resolves a target by name against what the INSTALLATION can find and the DQMH scripting VIs live under project\5CDelacor\5C - not vi.lib\2C not user.lib\2C not an LVAddon. Open VI Reference takes a PATH and has no such restriction.\0A\0ATHE APPLICATION REFERENCE IS THE IDE'S\2C not the addon's. A generated helper runs inside the AI addon's application instance\2C where the IDE's DQMH VIs do not exist. {LV.Application} -> Project\3AActive Project -> {LV.Project} -> Application yields the IDE's own app reference. A project must therefore be OPEN AND ACTIVE or this answers Error 1055 - which is the commonest reason this helper returns nothing.\0A\0AINDICATORS ARE VARIANTS ON PURPOSE. Ctrl Val.Get hands back a variant\2C and converting it would need a Variant To Data type constant\2C for which the AIXML reference gives two different spellings of the first terminal. A variant indicator needs neither\2C and lvai_run_vi_and_read_values returns compound values as flattened XML in which the type strings are plainly readable.">
+  <Control _name="type info vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Constant _name="wait until done" outputs="value:35.value" type="bool" uid="35" uid_parent="root" value="true"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:30.vi reference,error in (no error):30.error out,Wait until done:35.value" outputs="reference out:40.reference out,error out:40.error out" uid="40" uid_parent="root"/>
+
+  <Constant _name="type strings name" outputs="value:50.value" type="string" uid="50" uid_parent="root" value="Type Strings"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:40.reference out,error in (no error):40.error out,Control Name:50.value" outputs="reference out:51.reference out,error out:51.error out,Value:51.Value" uid="51" uid_parent="root"/>
+
+  <Constant _name="descriptions name" outputs="value:60.value" type="string" uid="60" uid_parent="root" value="Descriptions"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:51.reference out,error in (no error):51.error out,Control Name:60.value" outputs="reference out:61.reference out,error out:61.error out,Value:61.Value" uid="61" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):61.error out" outputs="error out:70.error out" uid="70" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:22.app,error in (no error):70.error out" outputs="error out:71.error out" uid="71" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.proj,error in (no error):71.error out" outputs="error out:72.error out" uid="72" uid_parent="root"/>
+
+  <Indicator _name="type strings" inputs="value:51.Value" type="variant" uid="80" uid_parent="root" value=""/>
+  <Indicator _name="descriptions" inputs="value:61.Value" type="variant" uid="81" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:61.error out" type="cluster{bool.status,int32.code,string.source}" uid="82" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:72.error out" type="cluster{bool.status,int32.code,string.source}" uid="83" uid_parent="root" value="[false,0,]"/>
+</VI>

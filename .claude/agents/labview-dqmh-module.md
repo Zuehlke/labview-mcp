@@ -72,10 +72,19 @@ On the station where this was written the catalogue was `Singleton`, `Cloneable`
 `Cloneable Panel`, `Singleton Panel` — and the last two come from an **MGI add-on**. DQMH 7.x makes
 module types pluggable, so **a different station has a different list**. Therefore:
 
-- **Read `Type Strings` on this station, every run.** The helper returns it.
-- **Match the user's wording to a name, then take that name's index.** Never carry an index in your
-  head and never copy one out of this file or the docs.
+- **Read the catalogue FIRST, every run, with `scripts/lvdqmh_module_types.xml`.** That is a
+  separate, read-only helper and it exists precisely because the index cannot be known in advance.
+  Generate it and run it exactly like the module helper; it takes one input, `type info vi path`.
+- **Match the user's wording to a name, then take that name's position.** Never carry an index in
+  your head and never copy one out of this file or the docs.
+- Watch for near-misses: `Singleton` and `Singleton Panel` are different entries, and so are
+  `Cloneable` and `Cloneable Panel`. A user who says "singleton" means the plain one unless they
+  named the Panel framework.
 - If the user's wording matches no entry, return `NEEDS CLARIFICATION` quoting the actual catalogue.
+
+The module helper *also* returns `type strings`, but that is a **record of what it used**, not the
+lookup — it comes back after the module has been built, which is too late to choose with. Use it to
+state in your report which catalogue the index pointed into.
 
 Do not pass an empty `External Modules` array. It is the catalogue those pluggable types come from,
 it is marked `required`, and emptying it silently changes what every index means. The helper passes

@@ -91,7 +91,10 @@ Four things about this that each cost a measurement:
   clusters; carrying it from one `Ctrl Val.Get` straight into one `Ctrl Val.Set` means the helper
   never spells that type out. This is the trick that makes the whole approach tractable.
 
-`scripts/lvdqmh_new_module.xml` is the working helper.
+Two helpers ship for this, and the split is not cosmetic: **`scripts/lvdqmh_module_types.xml`**
+reads the catalogue (read-only) and **`scripts/lvdqmh_new_module.xml`** builds the module. The
+index must be chosen *before* the build, so it cannot come from the builder's own output — the
+builder returns `type strings` as well, but only as a record of the catalogue it used.
 
 ## 5. Creating a module
 
