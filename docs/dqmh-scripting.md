@@ -226,37 +226,66 @@ one clean run is not evidence that the next one will be.
 Adoption also leaves the helper in memory: regenerating it to the same path then fails with
 `Error 1357`, which is why later measurements had to be generated under fresh names.
 
-## 6. Events: discovery works, creation is one piece short
+## 6. Events: the dialog is the only supported route
 
-`Script New Event.vi` takes eleven inputs. Two of them are the obstacle:
+**Creating an event headless does not work, and the reason is not a missing piece of wiring — it is
+that Delacor never built one.** Measured 2026-08-31, in this order.
 
-- **`Module Info`** — a 19-field cluster that is mostly refnums: an `LV.Library`, an
-  `LV.Application`, and **eleven `LV.ProjectItem` references** naming the module's folders and
-  framework VIs. Nothing can hand-build this; a refnum has no literal spelling.
-- **`Arguments VI`** and **`Reply Payload VI`** — `ref{LV.VI}`, the VIs whose front panels carry the
-  event's argument controls.
+### 6.1 What does work
 
-**`Module Info` is solved.** `DQMH New Event.lvlib:Parse Project for DQMH Modules.vi` produces it,
-and it runs over the same VI-Server-by-path route. Measured against the `Heater` module: 506 ms,
-`error out` 0, one element returned with all nineteen fields populated and every `ProjectItem`
-refnum resolved. Its `Project` control is labelled `Project (unwired: Active Project)`, so leaving
-it unset selects the active project — which is what a helper wants anyway.
+`Module Info` — the 19-field, mostly-refnum cluster `Script New Event.vi` wants — is obtainable.
+`DQMH New Event.lvlib:Parse Project for DQMH Modules.vi` produces it over the same
+VI-Server-by-path route: 506 ms, `error out` 0, every `ProjectItem` refnum resolved. Its `Project`
+control is labelled `Project (unwired: Active Project)`, so leaving it unset selects the active
+project.
 
-**The refnums cannot cross the gRPC boundary.** They are valid only inside the LabVIEW session that
-made them, so `Parse Project…` and `Script New Event.vi` must run **in one helper**, not as two
-tool calls. This is the main design constraint on any future `lvai_dqmh_new_event`.
+**The carrier-VI pattern also works, and that was the genuinely uncertain part.** A VI whose front
+panel holds one control per argument (`Name` as string, `Gewicht` as double), handed to
+`Script New Event.vi` as `Arguments VI`, produced a real `SimpleEvent Argument--cluster.ctl` of
+12 678 bytes in the module folder. So Delacor's `Script Arguments Cluster.vi` does read an ordinary
+generated VI's panel — the same trick `lvai_create_class` uses for private data.
 
-**`Arguments VI` is the open piece, and the shape of the answer is already known.**
-`Script Arguments Cluster.vi` takes an `Arguments Window` `ref{LV.VI}` and returns
-`Argument Names` plus an `Argument Cluster path` — so the argument definition genuinely flows from
-a VI's front panel. That is exactly the **carrier-VI pattern** `lvai_create_class` already uses for
-private data fields: generate a VI whose front panel carries one control per field, hand over its
-reference, let NI's (here Delacor's) code read the controls. AIXML is good at precisely that.
+Two traps on the way there, both worth keeping:
 
-So the remaining work is: generate a carrier VI with one control per event argument, open a
-reference to it, and pass it as `Arguments VI`. **Untested — do not promise it until it is
-measured.** `Event Type` is a proper enum here (`Request`, `Broadcast`,
-`Request and Wait for Reply`, `Round Trip`), unlike `Module Type`.
+- **`Library Owning App` dies with the parse.** `Parse Project…` is run as a top-level VI and then
+  *ends*, and LabVIEW releases the refnums a VI opened when it finishes. By the time
+  `Script New Event.vi` uses the cluster, that one field is dead — the failure is
+  `Error 1025, Application Reference is invalid`, raised inside `Script Arguments Cluster.vi` while
+  opening Delacor's own `Argument--cluster.ctt` template. The eleven `ProjectItem` references and
+  the `Library` reference survive, being the live project's own objects. A `Bundle By Name` putting
+  the helper's own IDE application reference into that field fixes it.
+- **The carrier VI is CONSUMED.** After the first run it was gone from disk entirely — not moved,
+  not renamed, absent from a filesystem-wide search. Generate a fresh one for every attempt.
+
+### 6.2 Where it stops
+
+With both traps fixed the run got as far as the argument cluster and then **stopped**: no
+`SimpleEvent.vi`, `Main.vi` byte-identical to its backup, the `.lvlib` still at 63 members and not
+listing the event. One orphaned `.ctl` on disk, nothing else. The module was rolled back from a
+backup and `lvai_describe_project` confirmed `missingItems: []`, `missingFiles: []`.
+
+The cause was not established, because the run outlived the MCP client's request timeout while
+LabVIEW kept working — so the `error out` was never read.
+
+### 6.3 Why not to keep pushing
+
+**`Create New DQMH Event.vi` has no connector pane at all** — 136 bytes of AIXML, no controls, no
+indicators. Like the module menu VIs (§1) it is a dialog launcher.
+
+And the project provider under `resource\Framework\Providers\ZE_DQMH\` — which *is* readable,
+unlike Delacor's scripting VIs — settles it. `CreateEvent_Item_OnCommand.vi` calls exactly three
+things: `mxLvGetItemRef.vi`, **`FP.Open` with `Activate? = true`**, and **`Run VI` with
+`Wait Until Done = false`**. It pre-selects a `Ring` control named `Module` and hands the dialog to
+the user. That is the whole of it.
+
+**So the officially supported path for creating an event is the dialog, on both routes Delacor
+ships.** `Script New Event.vi` is internal implementation reached only from a running dialog that
+has already built state around it; driving it directly is fighting an API that was never a
+contract, and a DQMH upgrade may change it without notice. Modules are different — there
+`Script New Module.vi` takes plain values and works end to end (§5).
+
+The practical answer for a caller who wants an event: **Tools ▸ DQMH ▸ Create New DQMH Event**, or
+the project's right-click menu, which the provider pre-fills with the module.
 
 ## 7. What is not reachable this way
 
@@ -273,5 +302,5 @@ and `_DQMH Validate Module\` exist as directories and are the place to look. Do 
 | List module types | `Get Module Type Info.vi` over VI Server | **measured**, 121 ms |
 | Create a module | `+ Script New Module.vi` | **measured end to end**, 30–43 s |
 | Find modules in a project | `Parse Project for DQMH Modules.vi` | **measured**, 506 ms |
-| Create an event | `+ Script New Event.vi` + a carrier VI | **designed, not measured** |
+| Create an event | dialog only — see §6 | **not scriptable**; carrier VI proven, the rest stops |
 | Validate / rename / remove | menu VIs have no pane; look in `_DQMH *\` | **not investigated** |
