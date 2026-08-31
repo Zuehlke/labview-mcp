@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates every accessor on dynamic dispatch, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, Agent, SendMessage
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, Agent, SendMessage
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -126,6 +126,7 @@ they were all measured, most of them twice.
 | **required** | the target directory |
 | optional | the parent class, for a hierarchy |
 | optional | interfaces the class implements, and/or interfaces to create — see Phase 1b |
+| optional | the METHODS each interface declares. Settle the full list in Phase 1: a method added after the implementers exist breaks every one of them |
 | optional | an existing `.lvproj`; otherwise you create a minimal one |
 | optional | an explicit dispatch or scope wish — otherwise the defaults above stand |
 
@@ -213,20 +214,76 @@ a class can later become an interface without touching caller code. NI's shapes 
 then use the name the user gave — a user who wants `IHaustier` gets `IHaustier`, and you do not raise
 it again.
 
-**You cannot create interface METHODS, and you must say so rather than working around it.** A method
-needs a dynamic dispatch terminal typed on the interface; AIXML refuses a class-typed terminal
-(`Error 53`), the accessor wizard works off private data an interface does not have, and NI's
-retyping provider `CLSUIP_ReplaceLVClassControls.vi` is private scope. So an interface you create has
-**no methods**. Report that plainly, with the IDE steps — right-click the interface →
-**New » VI from Dynamic Dispatch Template**, add the outputs, put them on the connector pane, save
-beside the interface; then right-click the class → **New » VI for Override…**. §3 of
-`docs/lvclass-interfaces.md` has a working scripted route with four sharp traps; do not attempt it
-inside a normal class build, and never invent a substitute.
+4. **INTERFACE METHODS ARE CURRENTLY BROKEN AND YOU MAY NOT SHIP THEM SILENTLY.** Measured on a cold
+   rebuild 2026-08-31: the scripted route writes VIs that load, export with the correct diagram and
+   read back correctly through every tool here — **and do not compile.** The whole class then answers
+   `Error 1003`, an isolated probe with one accessor call confirms it is the class and not the test
+   harness, and `{LV.SubVI}` `Replace` refuses each method VI with `Error 1154` while accepting every
+   wizard accessor. `pylv_extract` shows the cause's shape: no parsed `LIvi` owning-library link and a
+   malformed front-panel class link. The banner at the top of §3 in `docs/lvclass-interfaces.md` has
+   the full measurement.
 
-**And warn the user about the consequence**: once the interface HAS methods, every implementing class
-must override **every one of them** or the whole class is `Error 1003`. Measured with the
-require-override flag both set and cleared — the requirement holds either way, so do not describe
-that flag as what enforces it.
+   **ROOT CAUSE, from LabVIEW itself: the member link is ONE-SIDED.** The IDE says
+   `"Lautgebung.vi" is at the expected path but is not part of "IHaustier.lvclass"`, and the Error
+   list reports `Owning library has blocked execution of the VI.` against the library. So
+   `AddItemFromMemory` writes the entry into the LIBRARY while the VI on disk carries no
+   owning-library record - and a broken library blocks EVERY VI it owns, healthy wizard accessors
+   included. That is why an isolated `Read Name.vi` probe fails although nothing is wrong with it,
+   and why no single-file check can see the defect: each file is well-formed, and the fault is the
+   disagreement between two of them.
+
+   The fix is the ORDER, which the doc had backwards: `AddItemFromMemory` first, then the VI's
+   `Save.Instrument`, then the library's `Save` - both sides must be written. Not yet measured in
+   that order. Files already written the wrong way are repaired by answering LabVIEW's dialog with
+   **Update** once per VI, no regeneration needed.
+
+   So, unless the user has explicitly accepted a class that does not compile:
+
+   - **Do NOT create interface methods as part of a normal class build.** Build the interface with no
+     members — that is valid — deliver the class, its accessors and its tests working, and report the
+     methods as not yet scriptable with the IDE steps below.
+   - If the user asks for them anyway, say plainly what will happen first, and **verify by EXECUTION**
+     before reporting success: a probe VI calling one accessor on a class constant, run, must not
+     answer `Error 1003`. A file that reads back correctly is NOT verification — that is exactly the
+     trap this route fell into, and the second time in this repository that file-level checks passed
+     while LabVIEW's compiler disagreed.
+   - Never leave a class broken without saying so in your report, in the first paragraph.
+
+   The route itself, for when it is fixed, is written up with its traps in §3 of
+   `docs/lvclass-interfaces.md`. Read that section rather than re-deriving it; do not invent a
+   substitute.
+
+   The short form, so you recognise the shape: AIXML cannot author a class-typed terminal
+   (`Error 53`), so generate the method with `path` stand-ins on the pane, then retype them with
+   `{LV.Control}` `Replace` pointing at the `.lvclass`, make the VI a member with
+   `{LV.LVClassLibrary}` `AddItemFromMemory`, and set dynamic dispatch with `SetWireRule(TermIdx, 4)`.
+   The two traps that cost a session each: **find terminals by NAME, never by index** — `Controls[]`
+   returns the error clusters first, and indexing blindly retyped the error clusters into class
+   terminals — and **generate with the project CLOSED**, or LabVIEW adopts the VI as a loose project
+   item and `AddItemFromMemory` then answers `Error 56002`.
+
+   `CLSUIP_MemberTemplate.vit` is NOT the way in, though it looks like it: it instantiates cleanly
+   but types its terminals on `LabVIEW Object`, and `AddItemFromMemory` does not retype them. NI's
+   own retyper `CLSUIP_ReplaceLVClassControls.vi` is **private scope** and cannot be called.
+
+   If the user named no methods, the interface legitimately has none — an interface with no members
+   is valid and not broken. Say so, and give the IDE steps for adding them later: right-click the
+   interface → **New » VI from Dynamic Dispatch Template**, add the outputs, put them on the
+   connector pane, save beside the interface; then right-click the class → **New » VI for Override…**.
+
+**A DECLARED METHOD BREAKS EVERY IMPLEMENTING CLASS UNTIL ITS OVERRIDE EXISTS**, and that is what
+fixes the order of the next two phases. Every implementing class must override **every** method the
+interface declares or the whole class is `Error 1003`. Measured with the require-override flag both
+set and cleared — the requirement holds either way, so do not describe that flag as what enforces it.
+
+So from the moment a class is created against an interface that declares methods, that class is
+**not executable** until Phase 2a has run. Nothing may run against it in between: not the typedef
+binding, not the accessor wizard. That is why overrides come first and accessors last, and it is not
+a stylistic preference.
+
+**Do NOT go back and add a method to an interface after its implementers are built.** It breaks all
+of them at once, and each then needs its override before anything works again. Settle the interface's
+full method list in Phase 1 with the user, and finish it here.
 
 ### Phase 2 — The classes, parents first
 
@@ -254,6 +311,33 @@ If `ok` is false, the note tells you which of two causes it was. **The project d
 parent** → add it first. **The project DOES list it** → something is still holding that class in
 memory, which is a bug, not a workflow step: that exact case was a leaked refnum in the helper, and
 the answer names it. Report it rather than restarting your way past it.
+
+### Phase 2a — The interface overrides, IMMEDIATELY after the classes
+
+Skip this phase entirely when no interface declares a method.
+
+Otherwise every class created in Phase 2 against such an interface is `Error 1003` right now, and it
+stays that way until it overrides **every** method its interfaces declare. Do that here, before
+anything else touches the class — the typedef binding of Phase 2b and the accessor wizard of Phase 3
+both run against the class, and neither should be asked to work on one that is not executable.
+
+Same route as the interface methods themselves, §3 of `docs/lvclass-interfaces.md`, with one addition
+that is easy to miss and produces the same `Error 1003` you are trying to clear:
+
+- **An override's terminals must match the parent's CONNECTION TYPES, not merely its types.**
+  AIXML-generated terminals arrive as wire rule **1** (optional); NI's own wizard makes them **2**
+  (recommended). A pane that is right in every other respect but rule 1 is not executable. Set
+  `SetWireRule(…, 2)` on the override's terminals, then read `Execution:State` back — `1` (Idle) is
+  what you want.
+- **A parent and its override cannot share a directory**, because they carry the same file name. Put
+  each class's members in a subfolder named after the class, which is what NI does in
+  `examples\Object-Oriented Programming\Basic Interfaces` (`Lever\Multiply Force.vi` beside
+  `Flathead\Multiply Force.vi`).
+- Derive the override FROM the parent method you just built rather than authoring it independently.
+  The panes must agree, and copying the one you have is the cheap way to guarantee that.
+
+Verify by running: read `Execution:State` on each override and on the class, and report both. A class
+that is still `Error 1003` here must not be carried into Phase 3 — say so and stop.
 
 ### Phase 2b — Typedef fields, BEFORE the accessors
 

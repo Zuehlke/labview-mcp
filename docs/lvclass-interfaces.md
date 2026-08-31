@@ -171,6 +171,179 @@ dynamic dispatch. Four traps came with it:
 - `HasThrall` is **not** the dynamic dispatch marker — `Read Name.vi` has `HasThrall="0"`. The
   marker is flag bit `0x8000`; static dispatch reads `0x1000000` in `NI.ClassItem.Flags`.
 
+> ## ⚠️ §3 IS NOT EXECUTION-VERIFIED, AND THE COLD RUN OF 2026-08-31 PRODUCED A CLASS THAT DOES NOT COMPILE
+>
+> Read this before following anything below. The route in §3 and §3.0 writes VIs that **load, export
+> to AIXML with the correct diagram, and read back correctly through every tool in this repository —
+> and then do not compile.** Everything §3 offered as verification was file-level. That is not
+> enough, and this is the second time in this repository that reading a file back has passed while
+> LabVIEW's compiler disagreed (the first was the class private data control, §2a of
+> `docs/lvclass-creation.md`).
+>
+> What was measured on the cold rebuild, all of it on `C:\temp\hund`:
+>
+> - An isolated probe — one `Hund` class constant, one `Read Name.vi` call, one string indicator,
+>   no Caraya — returns **`Error 1003, VI is not executable`**. So the whole class is broken, not the
+>   test harness: this rules out Caraya, the test structure and the socket/`Replace` route as causes.
+> - `{LV.SubVI}` `Replace` **refuses all four scripted interface-method VIs with `Error 1154`** while
+>   accepting all eight wizard-generated accessors on the same diagram, in the same pane position,
+>   with the same wire types. Ruled out by control: the socket and diagram (a swap to `Read Name.vi`
+>   succeeded on that exact node), wire re-typing (staged so the wire was already `Hund`-typed —
+>   still 1154), the file location, and a stale save state (forced re-save via `lvai_set_vi_icon`,
+>   `viResaved: true` — still 1154).
+> - `pylv_apply` inspect shows the structural difference without LabVIEW. A scripted override has
+>   **12 blocks and no parsed `LIvi`** — the owning-library link — plus a malformed front-panel class
+>   link (`LIfp … LinkObjUDClassDDOToUDClassAPILink b'FPPI' Offset List length 7208960 exceeds
+>   limit`). A wizard accessor has **20 blocks including `LIvi` and `VICD`**, and only the benign
+>   `LIfp` warning. A class is broken if any member is broken, which explains both the 1154 and the
+>   class-wide 1003.
+>
+> **A raw byte grep for `LIvi` does NOT discriminate** — the string occurs in the broken files too.
+> Only the parsed block list from `pylv_extract` does. A grep was tried first and was misleading.
+>
+> ### ROOT CAUSE, from LabVIEW itself — the link is ONE-SIDED
+>
+> Settled 2026-08-31 by opening the project in the IDE, which is the one interface that answers this.
+> LabVIEW puts up a dialog naming the fault exactly:
+>
+> > `"Lautgebung.vi" is at the expected path but is not part of "IHaustier.lvclass". Do you want to`
+> > `update the VI to be part of the library or remove the item from the library?`
+>
+> and the Error list reports, against `IHaustier.lvclass` itself: **`Owning library has blocked
+> execution of the VI.`** — *"This VI's owning library has some problem. The library has blocked the
+> VIs that it owns from executing until the problem is resolved."*
+>
+> So the member link exists on ONE side only. `AddItemFromMemory` writes the member entry into the
+> **library**; the VI on disk carries no owning-library record, which is the missing parsed `LIvi`
+> block. LabVIEW sees library and VI disagree, marks the library broken, and the library then blocks
+> **every** VI it owns.
+>
+> That explains three things that looked unrelated:
+>
+> - why the **healthy wizard accessors** answered `Error 1003` too — the library blocks all its
+>   members, not just the malformed ones, so the isolated `Read Name.vi` probe was never about
+>   `Read Name.vi`;
+> - why `{LV.SubVI}` `Replace` refused exactly those four VIs with `Error 1154`;
+> - why every file-level check passed: each file is internally well-formed, and the defect is the
+>   *disagreement between two files*. No single-file check can see it.
+>
+> **The fix is the ORDER, and §3.0's own rule had it backwards.** §3.0 says `Save.Instrument` must
+> come before `AddItemFromMemory` "or a failure there discards the retyping". That protects against a
+> small failure and causes a larger one: saving first writes the VI while it is not yet a member, so
+> the owning-library link never reaches the file. The correct sequence is
+>
+> 1. `{LV.LVClassLibrary}` `AddItemFromMemory` — make it a member **first**, in memory
+> 2. `{LV.VI}` `Save.Instrument` on the VI — now the owning-library link is written into the file
+> 3. `{LV.LVClassLibrary}` `Save` — write the library's side
+>
+> Both sides must be saved. Untested in that order at the time of writing; the diagnosis is LabVIEW's
+> own words, the corrected sequence follows from it and is the next thing to measure.
+>
+> **Repairing files already written this way needs no regeneration**: answer that dialog with
+> **Update** once per affected VI, which is LabVIEW writing the missing side itself. Dismiss it
+> promptly either way — a modal stops the whole gRPC service while it is open.
+>
+> **Historical note on the earlier run.** An earlier run on 2026-08-30 reported
+> running `Hund\Lautgebung.vi` and reading `Sound = "Wuff"` back, and the archived copy of that
+> override at `C:\temp\hund_pre_cold_20260831-101115\Hund\Get Name.vi` does carry a `VICD` block
+> where every VI from the cold run carries none. If that route worked and this one does not, the
+> candidate difference is §3.0's own reordering — putting the VI's `Save.Instrument` **before**
+> `AddItemFromMemory`, so the VI is saved standalone before it is ever a member and the owning-library
+> link is never written. **That is a hypothesis from one archived file, not a measurement.** Settle it
+> by probing the archived class for `Error 1003` before changing the order on a guess.
+>
+> The cheapest way to get LabVIEW's own reason, which no interface in this repository reaches: open
+> `C:\temp\hund\Hund.lvproj` in the IDE and click the broken run arrow on `Hund\Lautgebung.vi`. The
+> Error list names the exact fault.
+>
+> Until that is resolved: **do not present this route as working**, and do not let a class build
+> depend on it. `lvai_create_interface` and `lvai_create_class`'s `parentInterfaces` are unaffected —
+> both were verified by execution and by file, and an interface with no members is valid.
+
+### 3.0 The scripted route, measured end to end on 2026-08-31 (cold rebuild)
+
+A second cold run of the whole route settled four things §3 left open or got wrong. All four came
+from driving it for real; none is visible from validation.
+
+**`AddItemFromMemory` takes a STRING, and the string is the VI's BARE NAME IN MEMORY.** §3 above
+implies a refnum. It is not one: wiring a `Generic VI Reference` into it fails at *validation* with
+`You have connected two terminals of different types … The type of the sink is string`, and wiring
+the VI's full PATH as a string fails at *run time* with **Error 1004**. `"Get Name.vi"` — the name
+LabVIEW knows the VI by, once `Open VI Reference` has loaded it — returns `error out = 0` and the
+member appears in the `.lvclass`. Four for four across two classes.
+
+**Error 1004 is unattributable without per-stage indicators, and the fix is cheap.** The helper's
+merged error chain reported only `Invoke Node in ifm_apply.vi` for a diagram with fifteen invoke
+nodes. Fanning each stage's `error out` net to its own front-panel indicator — AIXML expresses that
+by repeating the net string — named the culprit in one run. Do this before guessing.
+
+**Order the VI's own `Save.Instrument` BEFORE `AddItemFromMemory`, not after.** With the save
+downstream, the first failure of the membership step discards the `Replace` retyping and all five
+`SetWireRule` calls, because they only ever existed in memory. Measured: one wasted iteration.
+
+**`Save` and `AddItem` exist on `{LV.LVClassLibrary}`; `Save.Instrument`, `SaveLibrary` and
+`Save Library` do not.** The class is absent from the VI Server catalogue, so the only way to settle
+a name is `lvai_validate_aixml`, which answers `Invoke Node: Invalid method` for one that does not
+exist and something else for one that does. Six candidates cost one call: put one node per candidate
+in a file and count the `Invalid method` lines against the node order. **The reference input must be
+WIRED for that to discriminate** — with it unwired every node answers `Contains unwired or bad
+terminal` and a bogus name looks exactly like a real one.
+
+### 3.0.1 `Controls[]` is NOT error-clusters-first for an AIXML-generated VI
+
+§3's first trap says `Controls[]` returns the error clusters first. Measured on a VI generated from
+AIXML, it returns them in **front-panel creation order, which is the AIXML declaration order**:
+
+```
+0 IHaustier in   1 error in (no error)   2 IHaustier out   3 Name   4 error out
+```
+
+The trap is real for `CLSUIP_MemberTemplate.vit`, whose panel LabVIEW built. It does not generalise
+to a panel you authored. Either way the rule stands — **find the terminal by name** — and the cheap
+way to do that is a nine-element helper: `Open VI Reference` → `{LV.VI}` `Front Panel` →
+`{LV.Panel}` `Controls[]` → a For Loop with an indexed `In` tunnel, `{LV.Control}` `Terminal` →
+`{LV.Terminal}` `Name`, and an indexed `Out` tunnel. One run prints the whole order.
+
+### 3.0.2 A CLUSTER stand-in survives `Replace`, so an override CAN read a field
+
+This is the part §3 records as impossible, and it is not. §3 prescribes `path` stand-ins for the
+class terminals, which is correct for a declaration whose body is a pass-through — but a `path`
+cannot be unbundled, so an override that must read private data looks unreachable.
+
+Author the class terminals as a **cluster matching the private data exactly** instead, put an
+`Unbundle By Name` on the diagram, and `Replace` as usual:
+
+```xml
+<Control _name="IHaustier in" conIdx="11" type="cluster{string.Name,string.Rasse,int32.Alter,double.Gewicht}" .../>
+<Node _name="Unbundle By Name" fields="Name" inputs="input cluster:10.value" outputs="Name:20.Name" .../>
+```
+
+`{LV.Control}` `Replace` **re-types the wire and the unbundle rebinds to the class's private data** —
+which is legal precisely because the VI is a class member. Verified by reading the result back
+through `lvai_describe_vi`, whose export shows `type="ref{UDClassInst}"`, `connection="dynamic"` and
+the `Unbundle By Name fields="Name"` still feeding the `Name` indicator, `errorCode 0`.
+
+So a scripted override is not limited to returning constants.
+
+### 3.0.3 Wire rules, and what the flags actually came out as
+
+`SetWireRule(11, 4)` and `SetWireRule(3, 4)` on the two class terminals produce
+`connection="dynamic"` in the export — that is the readable confirmation, and it is worth preferring
+over the flag word. `SetWireRule(8|2|0, 2)` puts the error and value terminals on NI's `recommended`.
+Ten of five SetWireRule calls across four VIs: `error out = 0` every time.
+
+`NI.ClassItem.Flags` came out **inconsistent and unexplained**: `0` on nine of the twelve members,
+`8` on `IHaustier:Lautgebung.vi` and `11` on `Hund:Get Name.vi`. None carries the static bit
+`0x1000000`, so all twelve are dynamic, and the export's `connection="dynamic"` agrees. What the low
+bits mean is **not established** — do not read them as a dispatch setting, and do not repeat this
+paragraph as if it were one.
+
+### 3.0.4 `lvai_describe_project` CAN now tell an interface from a class
+
+§2.3 says it cannot. Measured 2026-08-31, it reports `"interface": true` on the interface and
+`"interfaces": ["IHaustier.lvclass"]` on the implementing class. The tool was improved after §2.3
+was written; the sentence in §2.3 is stale. It is still not evidence that anything COMPILES.
+
 Until that is productised, the IDE steps are: right-click the interface → **New » VI from Dynamic
 Dispatch Template**, add the outputs, put them on the connector pane, save beside the interface;
 then right-click the implementing class → **New » VI for Override…**.
