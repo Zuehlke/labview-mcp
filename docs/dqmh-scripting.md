@@ -389,21 +389,63 @@ and `Pane` may be left unwired.
 
 This is worth remembering well beyond DQMH.
 
-### Two traps on the same panel
+### Reading a Ring's entries: the cast AIXML *can* express
 
-**A Ring's index means different things depending on how the dialog was opened.** Launched from the
-Tools menu, the `Module` ring carries `<Select a Module>` at index 0. Launched from the project's
-right-click menu, Delacor's provider pre-selects the module and index **0 is the module itself** —
-measured: the dialog displayed `DQMHdemo.lvlib` while `Ctrl Val.Get` returned `0`. An earlier run had
-written index 1 on the assumption that 0 was a placeholder, which in that instance would have
-scripted the event into **FirstClone**. So **read the ring, or leave it alone** — and leaving a
-provider-set field alone is the better move, since it is already right.
+`Strings []` on `{LV.Ring}` is refused for a reference taken out of `Controls[]` — those are
+**generic** control references and the property does not exist on the generic class. The fix is
+**`To More Specific Class`**, which is an ordinary AIXML node: its `target class` input takes a
+refnum constant of the wanted class (`type="ref{LV.Ring}"`), and the downcast reference then carries
+`Strings []` normally.
 
-**A generic control reference cannot carry a subclass property.** `Strings []` and
-`Strings And Values []` on `{LV.Ring}` are both refused for a reference taken out of `Controls[]`,
-because AIXML has no way to express the cast to a more specific class. `{LV.Control}` properties
-work — `Label.Text` and `Value (Signaling)` both do — so anything a panel walk needs must exist on
-the generic class.
+An earlier revision of this note concluded the entries "could not be read" and fell back on
+deriving the index — which is how a run came one button press from scripting into the wrong module.
+**Read the list.**
+
+### THE RING ORDER IS NOT WHAT ANYONE WOULD GUESS
+
+Measured on the same project, dialog launched programmatically:
+
+| index | entry |
+|---|---|
+| 0 | `DQMHdemo.lvlib` |
+| 1 | `FirstClone.lvlib` |
+| 2 | `Korrekt.lvlib` |
+| 3 | `<Select a Module>` |
+
+**The placeholder is LAST, not first.** Two separate assumptions that index 0 was the placeholder —
+and therefore that index 1 was the first module — were both wrong, and `Step 6` proved it: with the
+ring set to 1 the dialog read *"The new event will be created in FirstClone.lvlib."* The order also
+matches neither the project order nor `Parse Project for DQMH Modules.vi`'s output.
+
+**`Step 6` is the verification, and it is free.** That indicator names the target module in words,
+and the dialog rewrites it on a module change — so setting the ring through `Value (Signaling)` and
+then reading `Step 6` turns an unverifiable index into a checkable fact. With index 0 it read
+*"…created in DQMHdemo.lvlib."*
+
+**The dialog needs a round trip to react.** Reading `Step 6` in the same helper run that wrote the
+ring returns the OLD text — the write and the Event Structure's response are not synchronous. Read
+it in a *separate* tool call.
+
+### Where it stops: Error 1193 on OK
+
+With the module verified, the name and description read back, and `Name`/`Gewicht` present in the
+Arguments Window, `Value (Signaling)` on OK answers **`Error 1193`** — where the identical call on a
+dialog the *user* had opened returned 0. `Execution:State` explains the difference:
+
+| VI | state |
+|---|---|
+| `Create New DQMH Event.vi` | `2` — Run top level |
+| `DQMH Arguments Window.vi` | `1` — **Idle** |
+
+So the dialog is still running, but the Arguments Window it launched is not. `Paste Selection` is an
+**edit** operation, and using it on that window takes it out of its run — after which OK cannot be
+signalled. The controls do land (verified by reading the window's `Controls[]` back), so the paste
+"works" while quietly breaking the thing it was needed for.
+
+**That is the unresolved conflict at the heart of this route:** the argument controls must be
+*edited* into a panel that must be *running*. Nothing measured so far reconciles the two. A
+plausible next probe is to paste into the Arguments Window and then restart *it* (`Run VI`) before
+signalling OK — untested.
 
 ### Why it still did not finish
 
