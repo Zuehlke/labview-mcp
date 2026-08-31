@@ -109,11 +109,22 @@ public class ClassToolsHelperAixmlTests
                           .Select(m => m.Groups[1].Value)
                           .ToList();
 
-        Assert.Equal(5, closes.Count);
+        // SIX SINCE 2026-08-31, and the sixth is inside a loop. `parentInterfaces` opens one
+        // LVClassLibrary refnum per interface with LVClass.Open, so a single Close Reference in a
+        // second For Loop releases all of them - the same obligation as the parent class, for the
+        // same measured reason, and the count grew because there is genuinely one more KIND of
+        // reference to release rather than because the wiring was restructured.
+        //
+        // It is out of the error chain too: an interface path that did not open leaves an invalid
+        // refnum, and closing one answers Error 1055. Its `error in` is wired purely for ORDERING,
+        // without which the loop has no data dependency on the provider call and LabVIEW may run it
+        // first, closing the parents before they are used.
+        Assert.Equal(6, closes.Count);
         Assert.Contains(closes, r => r.EndsWith(".Class"));           // the new class
         Assert.Contains(closes, r => r.EndsWith(".class"));           // the parent, from LVClass.Open
         Assert.Contains(closes, r => r.EndsWith(".vi reference"));    // the carrier VI
         Assert.Contains(closes, r => r.EndsWith(".app"));             // the application
         Assert.Contains(closes, r => r.EndsWith(".proj"));            // the project
+        Assert.Contains(closes, r => r.EndsWith(".value"));           // each parent INTERFACE
     }
 }

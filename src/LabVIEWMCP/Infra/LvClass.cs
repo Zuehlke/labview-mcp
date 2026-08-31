@@ -338,7 +338,7 @@ internal static class LvClass
     public sealed record ClassInfo(
         string Path, string ClassName, string? ContainingLibrary, string QualifiedName,
         IReadOnlyList<string> Ancestors, string AncestorSource, string? PrivateDataName,
-        int PrivateDataBytes, IReadOnlyList<Member> Members);
+        int PrivateDataBytes, IReadOnlyList<Member> Members, bool IsInterface);
 
     /// <summary>
     /// A class file's own account of itself. The reason this is worth a reader at all:
@@ -373,12 +373,25 @@ internal static class LvClass
             try { blobBytes = Unwrap(blob).Length; }
             catch (InvalidDataException) { blobBytes = -1; }
 
+        // AN INTERFACE AND A CLASS ARE THE SAME FILE FORMAT, and this one property is the whole
+        // difference the grammar records. NI's manual puts it as an interface being "a class
+        // without a private data control", and that shows up here twice over: IsInterface is
+        // true, and there is no `Class Private Data` item at all. The flag is what to trust -
+        // a class with empty private data still has the item.
+        //
+        // Worth having because NOTHING ELSE REPORTS IT. Measured 2026-08-31 on a generated
+        // interface: lvai_describe_project lists it as `Type="LVClass"` exactly like a class, and
+        // lvai_describe_class had no field for it either, so a real interface read back as an
+        // ordinary empty class through every tool while the flag sat in the file.
+        var isInterface = string.Equals(Property(root, "NI.LVClass.IsInterface"), "true",
+                                        StringComparison.OrdinalIgnoreCase);
+
         return new ClassInfo(
             full, className, library,
             library is null ? $"{className}.lvclass" : $"{library}:{className}.lvclass",
             ancestors, source,
             (string?)privateData?.Attribute("Name"), blobBytes,
-            [.. Members(root)]);
+            [.. Members(root)], isInterface);
     }
 
     /// <summary>

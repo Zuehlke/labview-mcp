@@ -318,6 +318,14 @@ This clause used to say "write the result to a file and inspect that". That work
 about eight minutes of hand-built VI Server harness per VI — measured, twice, before the harness
 was productised. Use the tool; write to a file only for something it cannot reach.
 
+**A VALUE PASSED IN MUST NOT CONTAIN A LINE BREAK.** The tool pairs control names with values *by
+line*, so it refuses one outright — `errorKind: inputContainsNewline`, naming the control. That rules
+out newline-separated lists as a way to hand a helper several paths, and the failure appears **only
+when the helper actually runs**: the AIXML validates, the C# compiles, and the design looks right up
+to the first real call. Measured 2026-08-31, after `lvai_create_class`'s new `parentInterfaces` was
+built that way. Use a separator the data cannot contain — a `|` is in
+`Path.GetInvalidFileNameChars()` on Windows, so no path carries one.
+
 **Ask `lvai_connector_pane` where the terminals go. Never assume, and do not carry a map in your
 head.** `conIdx` is a *position*, and which position depends on the pane pattern. Generated VIs have
 come out both 4815 (12 terminals, bottom-left is `8`) and 4833 (16 terminals, bottom-left is `11`),
@@ -460,6 +468,37 @@ Two practical notes, both measured: these providers need a project **open and ac
 LabVIEW through `Project\3AActive Project` and answer `Error 1055` otherwise — and LabVIEW **adopts
 every VI it has open** when it saves that project, so a run leaves its own helper and carrier listed
 in the user's project unless they are stripped afterwards.
+
+**AN INTERFACE IS A `.lvclass`, and the same provider pattern creates one.** NI's manual defines it
+as "a class without a private data control", there is no `.lvinterface`, and
+`Add Interface.lvlib\3AAdd Interface to Project (path).vi` is an exact mirror of the class provider
+with two differences: **no `Parent Class` terminal at all** — an interface inherits only from
+interfaces — and the refnum it returns is called `Interface`. `lvai_create_interface` drives it;
+`lvai_create_class`'s `parentInterfaces` wires the terminal that was hardcoded to an empty array
+until 2026-08-31, which is why multiple inheritance was unreachable through the tool while LabVIEW
+had always accepted it.
+
+Three things about interfaces that cost a session each, all in `docs/lvclass-interfaces.md`:
+
+- **The link is only settable AT CREATION TIME.** NI's after-the-fact provider is a modal dialog, and
+  a modal stops the whole gRPC service. A class that should implement an interface must be *created*
+  with it — the remedy for getting it wrong is delete and rebuild, before the accessors.
+- **An interface link and a parent-class link are the SAME item type.** Both are
+  `<Item Type="Parent">` in `Parent Libraries`, so `Ancestors` mixes them and its **order** decides
+  what `inheritsFrom` reports; the only way to tell them apart is to open each and read its own
+  `IsInterface`. Check parents by MEMBERSHIP, never by "is it first".
+- **A class must override EVERY method its interface declares** — measured with the flag set *and*
+  cleared, both `Error 1003`. So `1073741824` on an interface member is behaviour-neutral and this
+  test cannot show what it means; isolating it needs an ordinary class as parent. Do not repeat the
+  claim that it is the require-override flag.
+
+**Interface METHODS are not scriptable yet** and the reason is worth knowing before trying: a method
+needs a dynamic dispatch terminal typed on the interface, AIXML refuses a class-typed terminal, the
+accessor wizard works off private data an interface cannot have, and NI's retyper
+`CLSUIP_ReplaceLVClassControls.vi` is **private scope**. A working manual route is written up in §3
+of that document — `Replace` on `.lvclass`, `AddItemFromMemory`, `SetWireRule` — with its four traps,
+of which the sharpest is that **`Controls[]` returns the error clusters FIRST**, so terminals must be
+found by name and never by index.
 
 **CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
 untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the
@@ -802,6 +841,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
+| How do I create an INTERFACE, and why can't I script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
