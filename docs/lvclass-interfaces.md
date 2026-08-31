@@ -135,10 +135,14 @@ started failing the moment `parentInterfaces` was used alongside `parentClassPat
 Not through `lvai_describe_project`: it cannot tell an interface from a class, and it answers
 `errorCode 0` for a class whose private data does not compile.
 
-## 3. What is NOT scriptable: interface METHODS
+## 3. Interface METHODS: scriptable, but by no route NI offers
+
+This section was headed "What is NOT scriptable" until 2026-08-31, and that was true of every route
+NI exposes and false of the composition below, which is now execution-verified over two cold
+rebuilds. There is still no single tool for it - see the banner.
 
 An interface method needs a **dynamic dispatch input whose type is the interface**. That is a
-class-typed connector pane, and every route to one is closed:
+class-typed connector pane, and every route NI offers to one is closed:
 
 | route | result |
 |---|---|
@@ -171,11 +175,16 @@ dynamic dispatch. Four traps came with it:
 - `HasThrall` is **not** the dynamic dispatch marker — `Read Name.vi` has `HasThrall="0"`. The
   marker is flag bit `0x8000`; static dispatch reads `0x1000000` in `NI.ClassItem.Flags`.
 
-> ## ⚠️ §3 IS NOT EXECUTION-VERIFIED, AND THE COLD RUN OF 2026-08-31 PRODUCED A CLASS THAT DOES NOT COMPILE
+> ## ✅ §3 WORKS — AND ONLY IN THE SAVE ORDER BELOW. A RESOLVED DEFECT, KEPT BECAUSE IT COST TWO RUNS
 >
-> Read this before following anything below. The route in §3 and §3.0 writes VIs that **load, export
-> to AIXML with the correct diagram, and read back correctly through every tool in this repository —
-> and then do not compile.** Everything §3 offered as verification was file-level. That is not
+> **Current status: the route in §3 is execution-verified.** Two independent cold rebuilds in the
+> corrected save order came out executable, the second with a green **10-test Caraya suite** over the
+> result (4 accessor round trips, 4 defaults, both overrides). Follow §3 as written.
+>
+> What follows is the defect that made it fail, kept in full because the failure is invisible and
+> would be re-derived otherwise. In the WRONG order the route writes VIs that **load, export to AIXML
+> with the correct diagram, and read back correctly through every tool in this repository — and then
+> do not compile.** Everything §3 originally offered as verification was file-level. That is not
 > enough, and this is the second time in this repository that reading a file back has passed while
 > LabVIEW's compiler disagreed (the first was the class private data control, §2a of
 > `docs/lvclass-creation.md`).
@@ -276,9 +285,13 @@ dynamic dispatch. Four traps came with it:
 > `C:\temp\hund\Hund.lvproj` in the IDE and click the broken run arrow on `Hund\Lautgebung.vi`. The
 > Error list names the exact fault.
 >
-> Until that is resolved: **do not present this route as working**, and do not let a class build
-> depend on it. `lvai_create_interface` and `lvai_create_class`'s `parentInterfaces` are unaffected —
-> both were verified by execution and by file, and an interface with no members is valid.
+> **Resolved.** The save order above is the fix and it holds on a cold rebuild, twice.
+> `lvai_create_interface` and `lvai_create_class`'s `parentInterfaces` were never affected — both were
+> verified by execution and by file from the start, and an interface with no members is valid.
+>
+> The rule to carry away, which is bigger than this bug: **a link between two artefacts cannot be
+> verified by reading either one.** Every file here was well-formed; the fault was that two disagreed.
+> Verify a member link, a subVI link, a typedef binding or a project entry by RUNNING something.
 
 ### 3.0 The scripted route, measured end to end on 2026-08-31 (cold rebuild)
 
