@@ -161,6 +161,17 @@ Both flags demonstrably take effect. The output is the structure documented in
 `Obtain`/`Destroy Request`/`Broadcast Events.vi`, `Test <Module> API.vi`, and the
 `--cluster.ctl` typedefs.
 
+**A Cloneable module is structurally bigger, not just flagged differently.** Measured on
+`FirstClone` (type 1, Do Something = 1, 28.2 s): 71 files against 56 for the same request as a
+Singleton, and the extra 15 are all clone machinery — `Acquire`/`Obtain`/`Release`/
+`Destroy Module Semaphore*.vi`, `Addressed to This Module.vi`, `Get Module Running State.vi` with
+`Module Running State--enum.ctl`, `Module Running as Cloneable--error.vi` / `…as Singleton--error.vi`,
+and `Init`/`Update Select Module Ring.vi` for the tester's clone selector. It also brings **two
+nested libraries**, which `lvai_describe_project` reports in their own right:
+`FirstClone.lvlib:Clone Registration.lvlib` and `FirstClone.lvlib:VI Reference Management.lvlib`.
+So the module type is checkable after the fact from the file list alone — useful, because the
+`.lvlib` mentions both words and grepping it proves nothing.
+
 ### 5.5 The directory layout: `Libraries\<ModuleName>\`
 
 A module belongs in its own folder under a `Libraries` folder beside the `.lvproj`, never loose in
@@ -205,11 +216,12 @@ verified on the second run: `0`, `0`, `1055`.
 `.lvproj` listed `lvdqmh_new_module.vi` alongside `Heater.lvlib` — the behaviour `CLAUDE.md`
 records, that LabVIEW adopts every VI it has open when it saves a project.
 
-**But it is not reliable, and that matters more than the adoption itself.** Measured over three
-runs on 2026-08-31: adopted twice (`Heater`, `DQMHdemo`), **not** adopted once (`Vent`), with no
-difference identified between them — same helper, same route, same session. So a tool must
-**always inspect the `.lvproj` afterwards** rather than either assuming a cleanup is needed or
-assuming it is not. The condition is open.
+**But it is not reliable, and that matters more than the adoption itself.** Measured over four
+runs on 2026-08-31: adopted on three (`Heater`, `DQMHdemo`, `FirstClone` — the last adopting *both*
+helpers of that run), **not** adopted on one (`Vent`), with no difference identified between them —
+same helpers, same route, same session. So a tool must **always inspect the `.lvproj` afterwards**
+rather than either assuming a cleanup is needed or assuming it is not. The condition is open, and
+one clean run is not evidence that the next one will be.
 
 Adoption also leaves the helper in memory: regenerating it to the same path then fails with
 `Error 1357`, which is why later measurements had to be generated under fresh names.
