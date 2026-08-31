@@ -66,6 +66,35 @@ tool signature moved.
 A call that fails **inside** the binding for any other reason - a wrong JSON type, mostly - gets the
 same envelope with the exception message that would otherwise have been masked.
 
+## The string-retry once destroyed the arguments beside it
+
+Fixed 2026-08-31, and worth keeping because the symptom pointed at the wrong parameter.
+
+The retry that makes a JSON-document argument reachable — a client sends `constantsJson` as a real
+JSON array, the binder wants a `string`, so the arguments are re-sent as their own JSON text — used
+to stringify **every** non-string value. A bool or a number in the same call was collateral: `true`
+became `"true"`, which the bool binder then rejects.
+
+| call | result before |
+|---|---|
+| `lvai_swap_subvis` with a valid `constantsJson` **and** `verify: true` | refused, `badArguments` |
+| `lvai_run_vi_and_read_values` with `inputsJson` **and** `includeRawXml: false` | refused, same |
+| either, with the bool **omitted** | worked |
+| any tool with a bool and no document argument | worked — nothing triggered a retry |
+
+Two things made this hard to read. The reported error is deliberately the **first** failure, because
+that is the one naming the type the binder wanted — so it named the document parameter and never
+mentioned the bool. And the advice that appeared to work, "omit `verify`", is a real workaround for
+the wrong cause: the bool was never the problem, the retry's blast radius was.
+
+`ToolArguments.StringTyped(schema)` now limits the retry to the parameters the schema declares as
+`string`, plus any property carrying no `type` at all — the retry exists for text-hungry parameters,
+and an untyped one is exactly where that cannot be ruled out. Regression tests in
+`ToolArgumentsTests`; the shape of the fixture is `lvai_swap_subvis`' own.
+
+**The general lesson: a repair applied to a whole argument set needs the schema to scope it.** The
+original fix was written for the parameter that was broken and reached every parameter beside it.
+
 ## Limits worth knowing
 
 - **A wrong type is reported but not located.** The SDK's own message is

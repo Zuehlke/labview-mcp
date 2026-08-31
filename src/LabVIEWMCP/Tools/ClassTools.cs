@@ -95,6 +95,20 @@ internal sealed class ClassTools(LvaiConnection connection)
         [Description("Absolute path to the parent .lvclass this one derives from")]
         string? parentClassPath = null,
         [Description("""
+            Interfaces this class implements, ONE ABSOLUTE PATH PER LINE. Each must be a .lvclass
+            whose NI.LVClass.IsInterface is true - checked here from the file, because passing an
+            ordinary class would land in NI's `Parent Interfaces` terminal where nothing says it is
+            wrong. This is MULTIPLE inheritance and it is legal: a class may implement any number of
+            interfaces alongside its single parent class. NI's Basic Interfaces example has Flathead
+            implementing both Rotating Tool and Lever.
+            THE LINK IS ONLY SETTABLE AT CREATION TIME - NI's provider takes it as an input, and
+            there is no scriptable way to add one afterwards (CLSUIP_ChangeInterfaceInheritance.vi
+            is a modal dialog, which would stop the gRPC service). So a class that should implement
+            an interface has to be created with it, or deleted and created again. That is why this
+            is a parameter here rather than a separate tool.
+            """)]
+        string? parentInterfaces = null,
+        [Description("""
             A .lvproj to list the class in - created if absent, extended if it exists. When omitted
             a throwaway project is used for the load check and deleted afterwards.
             """)]
@@ -157,6 +171,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                     $"No parent class at '{parentClassPath}'. A parent that cannot be read would " +
                     "be written into the child as an unresolvable link, which LabVIEW reports as a " +
                     "broken class rather than a missing file.");
+
+            // EVERY PARENT INTERFACE IS CHECKED FROM ITS FILE, not trusted. NI's provider takes
+            // these as an array of LVClassLibrary refnums, and an ordinary class opens into that
+            // array perfectly well - so handing over a class instead of an interface produces no
+            // error anywhere, just a link that is not the one asked for. The flag is one XML
+            // property away, so there is no reason to find out later.
+            List<string> interfacePaths;
+            try { interfacePaths = ParseInterfaceList(parentInterfaces); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
             var classDirectory = Path.GetFullPath(directory);
             var classPath = Path.Combine(classDirectory, $"{className}.lvclass");
@@ -274,7 +297,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 // 3. NI's Add Class + Add Member Data, in one helper run
                 var helperRun = await RunCreateClassHelperAsync(
-                    classPath, parentClassPath, carrierPath, timeoutSeconds, ct);
+                    classPath, parentClassPath, carrierPath, interfacePaths, timeoutSeconds, ct);
                 steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
                 var provider = ReadProviderRun(helperRun);
@@ -354,6 +377,22 @@ internal sealed class ClassTools(LvaiConnection connection)
                     a => !string.Equals(a, info.QualifiedName, StringComparison.OrdinalIgnoreCase));
                 var wantedParent = parentClassPath is { Length: > 0 }
                     ? Path.GetFileNameWithoutExtension(parentClassPath) + ".lvclass" : null;
+                // AN INTERFACE LINK SITS IN THE SAME `Parent Libraries` LIST AS THE PARENT CLASS,
+                // measured on a generated pair: both arrive as `<Item Type="Parent">`. So Ancestors
+                // mixes the two and its ORDER decides what `inheritsFrom` reports - a class with
+                // one parent and one interface can read as inheriting from the interface. Nothing
+                // in the file distinguishes them; the only way to tell is to open each name and
+                // read its own IsInterface.
+                //
+                // Hence both checks below are membership tests rather than "is it first", which is
+                // what the parent check used to be. That would have started failing the moment
+                // parentInterfaces was used together with parentClassPath.
+                var missingInterfaces = interfacePaths
+                    .Select(p => Path.GetFileName(p))
+                    .Where(name => !info.Ancestors.Any(
+                        a => a.EndsWith(name, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
                 steps.Add(new JsonObject
                 {
                     ["step"] = "verify",
@@ -361,6 +400,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["inheritsFrom"] = inherits,
                     ["fieldsAsked"] = parsed.Count,
                     ["fieldsAdded"] = provider.FieldsAdded,
+                    ["interfacesAsked"] = interfacePaths.Count,
+                    ["interfacesOpened"] = provider.InterfacesOpened,
+                    ["interfacesLinked"] = interfacePaths.Count - missingInterfaces.Count,
                 });
 
                 TryDelete(projectUsed);   // the throwaway; the work directory follows in `finally`
@@ -378,17 +420,35 @@ internal sealed class ClassTools(LvaiConnection connection)
                         + "wrongly wrapped blob looks like from the file.");
 
                 if (wantedParent is not null &&
-                    !string.Equals(inherits, wantedParent, StringComparison.OrdinalIgnoreCase))
+                    !info.Ancestors.Any(
+                        a => a.EndsWith(wantedParent, StringComparison.OrdinalIgnoreCase)))
                     return Outcome(false, "verify", steps, total, classPath, null,
-                        $"THE CLASS WAS CREATED but inherits from '{inherits}', not "
-                        + $"'{wantedParent}'. NI's provider is silent about a parent it could not "
-                        + "find - it makes a root class instead.");
+                        $"THE CLASS WAS CREATED but does not list '{wantedParent}' among its "
+                        + $"parents - it has [{string.Join(", ", info.Ancestors)}]. NI's provider "
+                        + "is silent about a parent it could not find - it makes a root class "
+                        + "instead.");
+
+                if (missingInterfaces.Count > 0)
+                    return Outcome(false, "verify", steps, total, classPath, null,
+                        $"THE CLASS WAS CREATED but {missingInterfaces.Count} of "
+                        + $"{interfacePaths.Count} interface(s) did not land: "
+                        + $"[{string.Join(", ", missingInterfaces)}]. It lists "
+                        + $"[{string.Join(", ", info.Ancestors)}]. The provider opened "
+                        + $"{provider.InterfacesOpened} refnum(s) - if that count matches what was "
+                        + "asked for, the paths opened and it is the LINK that did not take; if it "
+                        + "is lower, a path did not open at all. Note that the link is only "
+                        + "settable AT CREATION TIME, so fixing this means creating the class "
+                        + "again rather than amending it.");
+
+                var interfaceNote = interfacePaths.Count == 0 ? ""
+                    : $", implementing {interfacePaths.Count} interface(s) "
+                      + $"[{string.Join(", ", interfacePaths.Select(Path.GetFileName))}]";
 
                 return Outcome(true, null, steps, total, classPath, null,
                     $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
                     + $"{info.PrivateDataBytes} bytes of private data, inherits from "
-                    + $"'{inherits}'. The private data control is LabVIEW's own - NI's "
-                    + "provider VIs built it - so it carries a real type space and compiles.");
+                    + $"'{inherits}'{interfaceNote}. The private data control is LabVIEW's own - "
+                    + "NI's provider VIs built it - so it carries a real type space and compiles.");
             }
             finally
             {
@@ -406,6 +466,306 @@ internal sealed class ClassTools(LvaiConnection connection)
                 if (keepCarrier is false) TryDeleteDirectory(work);
             }
         });
+
+    // ---------------------------------------------------------------- create interface
+
+    private const string CreateInterfaceHelperAixmlFileName = "lvai_create_interface.xml";
+
+    [McpServerTool(Name = "lvai_create_interface", Destructive = true, OpenWorld = true,
+                   Title = "Create a LabVIEW interface (.lvclass with no private data)")]
+    [Description("""
+        MUTATING: creates a real LabVIEW INTERFACE on disk and lists it in a project. An interface
+        is a `.lvclass` file - there is no `.lvinterface` - and NI's manual defines it as "a class
+        without a private data control". That one difference is what enables a form of MULTIPLE
+        inheritance: a class has one parent class but any number of interfaces, so its objects can
+        be passed into several modules each requiring a different role.
+        LabVIEW's OWN project provider does the work: `Add Interface.lvlib:Add Interface to Project
+        (path).vi`, an exact mirror of the class provider - measured 2026-08-31 with
+        lvai_vi_terminals against both - with two differences that matter. There is NO `Parent
+        Class` terminal at all, because an interface may only inherit from other interfaces, and
+        the refnum it returns is called `Interface`. A RUNNING, ACTIVE PROJECT IS THE PRECONDITION,
+        as for classes: the provider reaches LabVIEW through `Project:Active Project` and answers
+        Error 1055 without one. LabVIEW works in a THROWAWAY project it opens itself, so the
+        project you keep is never opened, adopted into, or saved over.
+        NO FIELDS PARAMETER, and that is not an omission: an interface cannot hold private data, so
+        there is no carrier VI and no call to add-member-data - the two steps that make up most of
+        `lvai_create_class`. If you want data, you want a class.
+        WHAT IT DOES NOT DO: interface METHODS. NI's dynamic-dispatch template is an IDE gesture and
+        the provider that retypes its terminals (`CLSUIP_ReplaceLVClassControls.vi`) is private
+        scope, so a method's class-typed connector pane cannot be reached from here yet. Create the
+        interface, then add methods in the IDE with `New >> VI from Dynamic Dispatch Template`.
+        docs/lvclass-interfaces.md has the measurements and the manual steps.
+        NAMING, from NI's manual: avoid a leading capital `I`. LabVIEW distinguishes interfaces and
+        classes by GLYPH, most of the IDE treats them identically, and callers do not care which
+        they have - so avoiding the `I` lets a class become an interface, or the reverse, without
+        refactoring caller code. Prefer a capability (`Can Measure Voltage`) or a category (`Lever`).
+        Advice, not a rule: the name you pass is used as given.
+        Verification is FROM THE FILE - `NI.LVClass.IsInterface` and the absence of a private data
+        item - because `lvai_describe_project` reports an interface as `Type="LVClass"`, exactly
+        like a class, and cannot tell you which you got.
+        """)]
+    public async Task<string> CreateInterfaceAsync(
+        [Description("Interface name without the extension, e.g. Lever or Can Measure Voltage")]
+        string interfaceName,
+        [Description("Folder to create <interfaceName>.lvclass in; created if absent")]
+        string directory,
+        [Description("""
+            Interfaces this one inherits from, ONE ABSOLUTE PATH PER LINE. An interface may inherit
+            from other interfaces and from nothing else - there is no Parent Class terminal on NI's
+            provider. Each path is checked to BE an interface before anything is written.
+            """)]
+        string? parentInterfaces = null,
+        [Description("""
+            A .lvproj to list the interface in - created if absent, extended if it exists. When
+            omitted a throwaway project is used for the run and deleted afterwards.
+            """)]
+        string? projectPath = null,
+        [Description("""
+            Read the finished file back and gate `ok` on it: the IsInterface flag and the absence of
+            a private data item, plus every parent link asked for. From the FILE, never through
+            lvai_describe_project - that reported ok:false for a sound class because LabVIEW served
+            its cached copy of the project.
+            """)]
+        bool verify = true,
+        [Description("Replace an existing .lvclass. Refused by default - it would drop its members")]
+        bool overwrite = false,
+        [Description("""
+            Milliseconds to wait after the .lvproj has been written and before LabVIEW opens it.
+            Carried over from lvai_create_class, where it mitigates a SUSPECTED race that has never
+            been diagnosed. Set to 0 to measure against it.
+            """)]
+        int settleMs = 400,
+        [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (string.IsNullOrWhiteSpace(interfaceName))
+                return Json.Error("badArguments", "interfaceName is empty.");
+
+            if (interfaceName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                interfaceName.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase))
+                return Json.Error("badArguments",
+                    $"interfaceName '{interfaceName}' is not a bare name. Pass 'Lever', not " +
+                    "'Lever.lvclass' and not a path. An interface is a .lvclass file, so the " +
+                    "extension is added here.");
+
+            if (StatusTools.ScriptsDirectory() is null)
+                return Json.Error("noScriptsDirectory",
+                    "No scripts folder next to the exe - lvai_status reports it as " +
+                    $"scriptsDirectory. {CreateInterfaceHelperAixmlFileName} lives there.");
+
+            List<string> parents;
+            try { parents = ParseInterfaceList(parentInterfaces); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+
+            var interfaceDirectory = Path.GetFullPath(directory);
+            var interfacePath = Path.Combine(interfaceDirectory, $"{interfaceName}.lvclass");
+
+            if (File.Exists(interfacePath) && !overwrite)
+                return Json.Error("alreadyExists",
+                    $"'{interfacePath}' already exists. Creating it again would write a document " +
+                    "with no members, dropping every method the interface declares. Pass " +
+                    "overwrite=true if that is what you want, or use lvai_describe_class - it " +
+                    "reports isInterface and the member list.");
+
+            var total = Stopwatch.StartNew();
+            var steps = new JsonArray();
+            var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "interfaces",
+                $"{interfaceName}-{Environment.ProcessId}-{total.GetHashCode():x}");
+            Directory.CreateDirectory(work);
+            Directory.CreateDirectory(interfaceDirectory);
+
+            try
+            {
+                // THE SAME THROWAWAY-PROJECT ARRANGEMENT AS lvai_create_class, and for the same
+                // measured reasons: LabVIEW adopts whatever it has open, saves that copy over the
+                // file on close, and keeps it in memory afterwards. A project LabVIEW never sees
+                // cannot suffer any of it. `parentClassPath` is null throughout - an interface has
+                // no parent class, and NI's provider has no terminal for one.
+                var userProject = EnsureUserProject(projectPath, interfacePath, null);
+                var (projectUsed, _, projectStep) =
+                    PrepareProject(null, interfacePath, interfaceName, work, null);
+                projectStep["userProject"] = userProject;
+                projectStep["note"] =
+                    "LabVIEW works in a throwaway project so it never opens, adopts into, or saves "
+                    + "over the project you keep. The interface entry is written into that one "
+                    + "afterwards, by this tool, with LabVIEW not involved.";
+                steps.Add(projectStep);
+
+                var listedBefore = userProject is { Length: > 0 }
+                    ? ListedClasses(userProject) : [];
+
+                if (settleMs > 0)
+                {
+                    await Task.Delay(settleMs, ct);
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "settle",
+                        ["milliseconds"] = settleMs,
+                        ["note"] = "Paused after writing the .lvproj and before LabVIEW opened it. "
+                                 + "Set settleMs=0 to remove the pause.",
+                    });
+                }
+
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed),
+                    timeoutSeconds, ct);
+                steps.Add(Step("openProject", opened));
+                if (ErrorCode(opened) is not 0)
+                    return Outcome(false, "openProject", steps, total, interfacePath, null,
+                        "The project could not be opened, so no project is active and NI's "
+                        + "interface provider has nothing to work in. Nothing was written.");
+
+                var helperRun = await RunCreateInterfaceHelperAsync(
+                    interfacePath, parents, timeoutSeconds, ct);
+                steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
+
+                var provider = ReadInterfaceProviderRun(helperRun);
+                if (provider.ErrorCode is not 0 || !File.Exists(interfacePath))
+                    return Outcome(false, "provider", steps, total, interfacePath, null,
+                        "NI's interface provider did not create the interface. Its own error is in "
+                        + "the provider step. Error 1055 there means no project was active after "
+                        + "all; Error 1614 means a file of this name is still in LabVIEW's memory "
+                        + "from an earlier run whose refnum leaked.");
+
+                var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                    helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                    timeoutSeconds: timeoutSeconds, ct: ct);
+                steps.Add(Step("closeScratchProject", closed));
+
+                steps.Add(userProject is { Length: > 0 }
+                    ? AddClassToProject(userProject, interfacePath, interfaceName, listedBefore)
+                    : new JsonObject
+                    {
+                        ["step"] = "projectEntry",
+                        ["action"] = "noProject",
+                        ["note"] = "No projectPath was given, so the interface belongs to no "
+                                 + "project. The .lvclass itself is complete.",
+                    });
+
+                if (!verify)
+                    return Outcome(true, null, steps, total, interfacePath, null,
+                        "Written, but NOT verified - verify was false. The provider reporting no "
+                        + "error is not the same as the file carrying the IsInterface flag; "
+                        + "lvai_describe_class reads it back.");
+
+                var info = LvClass.Read(interfacePath);
+                var missing = parents
+                    .Select(Path.GetFileName)
+                    .Where(name => !info.Ancestors.Any(
+                        a => a.EndsWith(name!, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "verify",
+                    ["isInterface"] = info.IsInterface,
+                    ["privateDataItem"] = info.PrivateDataName,
+                    ["parentsAsked"] = parents.Count,
+                    ["parentsOpened"] = provider.ParentsOpened,
+                    ["parentsLinked"] = parents.Count - missing.Count,
+                    ["memberCount"] = info.Members.Count,
+                });
+
+                TryDelete(projectUsed);
+
+                // THE FLAG IS THE WHOLE POINT. Without it the provider has written an ordinary
+                // empty class, which looks identical in the project tree and in every other tool,
+                // and would then accept private data and refuse multiple inheritance.
+                if (!info.IsInterface)
+                    return Outcome(false, "verify", steps, total, interfacePath, null,
+                        "A .lvclass WAS CREATED but NI.LVClass.IsInterface is not true - so this "
+                        + "is an ordinary class, not an interface. Nothing else in the file or in "
+                        + "lvai_describe_project distinguishes the two, which is why this is "
+                        + "checked here. Delete it and run again.");
+
+                // A private data item on an interface contradicts the definition. Not seen, and
+                // checked anyway: it is one attribute, and the failure it would cause - a class
+                // inheriting data it cannot have - would surface far from here.
+                if (info.PrivateDataName is { Length: > 0 })
+                    return Outcome(false, "verify", steps, total, interfacePath, null,
+                        $"THE FILE CARRIES A PRIVATE DATA ITEM ('{info.PrivateDataName}') while "
+                        + "reporting itself as an interface. An interface is by definition a class "
+                        + "WITHOUT private data, so this file is internally inconsistent and "
+                        + "LabVIEW's behaviour on it is not something this tool has measured.");
+
+                if (missing.Count > 0)
+                    return Outcome(false, "verify", steps, total, interfacePath, null,
+                        $"THE INTERFACE WAS CREATED but {missing.Count} of {parents.Count} parent "
+                        + $"interface(s) did not land: [{string.Join(", ", missing)}]. It lists "
+                        + $"[{string.Join(", ", info.Ancestors)}]. The provider opened "
+                        + $"{provider.ParentsOpened} refnum(s) - a lower count than asked for "
+                        + "means a path did not open at all. The link is only settable AT CREATION "
+                        + "TIME, so this means creating the interface again.");
+
+                var parentNote = parents.Count == 0
+                    ? "inheriting from LabVIEW Object alone"
+                    : $"inheriting from [{string.Join(", ", parents.Select(Path.GetFileName))}]";
+
+                return Outcome(true, null, steps, total, interfacePath, null,
+                    $"Created and verified from the file: IsInterface is true, no private data "
+                    + $"item, {parentNote}. It has NO METHODS yet - AIXML cannot author a "
+                    + "class-typed connector pane and NI's retyping provider is private scope, so "
+                    + "add them in the IDE with New >> VI from Dynamic Dispatch Template. Any "
+                    + "class implementing this interface must OVERRIDE every method it declares, "
+                    + "measured 2026-08-31: a missing override is Error 1003 on the whole class, "
+                    + "with or without the require-override flag.");
+            }
+            finally
+            {
+                TryDeleteDirectory(work);
+            }
+        });
+
+    private static (int ErrorCode, int ParentsOpened) ReadInterfaceProviderRun(string answer)
+    {
+        var values = Parsed(answer)?["values"];
+        var xml = values?["error out"]?["xml"]?.GetValue<string>() ?? "";
+        var code = System.Text.RegularExpressions.Regex.Match(
+            xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+        var opened = int.TryParse(values?["parents opened"]?["value"]?.GetValue<string>(),
+                                  out var n) ? n : -1;
+        return (code.Success ? int.Parse(code.Groups[1].Value) : -1, opened);
+    }
+
+    private async Task<string> RunCreateInterfaceHelperAsync(
+        string interfacePath, IReadOnlyList<string> parents, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        var aixml = StatusTools.ScriptsDirectory() is { } scripts
+            ? Path.Combine(scripts, CreateInterfaceHelperAixmlFileName) : null;
+        if (aixml is null || !File.Exists(aixml))
+            return Json.Error("noHelperAixml",
+                $"The helper's AIXML source could not be found " +
+                $"({CreateInterfaceHelperAixmlFileName} in the scripts folder next to the exe; " +
+                "lvai_status reports it as scriptsDirectory).");
+
+        var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+                                    "lvai_create_interface.vi");
+        Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
+        if (HelperNeedsRebuild(aixml, helperVi) &&
+            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+            return failure;
+
+        // ONLY THE INPUTS THAT HAVE A VALUE - the runner pairs names and values by POSITION and
+        // refuses an empty one, which would shift every later input onto the wrong control. A
+        // control left unset keeps its own default, and for the two parent controls those defaults
+        // (empty string, 0) are exactly what a root interface needs.
+        var inputObject = new JsonObject
+        {
+            ["interface path"] = Path.GetFullPath(interfacePath),
+        };
+        if (parents.Count > 0)
+        {
+            inputObject["parent interface paths"] = string.Join('|', parents);
+            inputObject["parent interface count"] =
+                parents.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return await new RunTools(connection).RunViAndReadValuesAsync(
+            helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
+            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+    }
 
     // ---------------------------------------------------------------- describe
 
@@ -468,6 +828,12 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["classPath"] = info.Path,
                 ["className"] = info.ClassName,
                 ["qualifiedName"] = info.QualifiedName,
+                // TRUE FOR AN INTERFACE. A .lvclass carries both kinds and this property is the
+                // only thing in the grammar that separates them, so without this field a real
+                // interface read back here as an ordinary class with empty private data - which is
+                // exactly how it was reported on 2026-08-31. lvai_describe_project cannot help
+                // either: it lists an interface as Type="LVClass", the same as a class.
+                ["isInterface"] = info.IsInterface,
                 ["containingLibrary"] = info.ContainingLibrary,
                 ["ancestors"] = ancestors,
                 ["ancestorSource"] = info.AncestorSource,
@@ -801,7 +1167,71 @@ internal sealed class ClassTools(LvaiConnection connection)
         catch (UnauthorizedAccessException) { return false; }
     }
 
-    private static (int ErrorCode, bool ParentOpened, int FieldsAdded) ReadProviderRun(string answer)
+    /// <summary>
+    /// One absolute .lvclass path per line, each verified to BE an interface. Shared by
+    /// lvai_create_class's `parentInterfaces` and lvai_create_interface's own parent list, because
+    /// NI's two providers take the identical `Parent Interfaces` array - measured 2026-08-31 with
+    /// lvai_vi_terminals against both Support VIs.
+    ///
+    /// One path per line rather than comma-separated, matching lvai_convert_vis_to_aixml: a Windows
+    /// path may contain a comma and cannot contain a newline.
+    /// </summary>
+    internal static List<string> ParseInterfaceList(string? spec)
+    {
+        var paths = new List<string>();
+        if (string.IsNullOrWhiteSpace(spec)) return paths;
+
+        foreach (var raw in spec.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = raw.Trim().Trim('"');
+            if (line.Length == 0) continue;
+
+            // THE PIPE IS THE WIRE FORMAT, so a path containing one would split into two halves
+            // inside the helper and open neither. It cannot happen on Windows - a pipe is in
+            // Path.GetInvalidFileNameChars() - which is exactly why it was chosen as the
+            // separator, and the check is here so that a future non-Windows host fails with a
+            // sentence instead of two unopenable paths.
+            if (line.Contains('|', StringComparison.Ordinal))
+                throw new ArgumentException(
+                    $"'{line}' contains a '|'. That character separates the paths on their way to " +
+                    "the helper VI - the transport there refuses line breaks, so a pipe is used " +
+                    "instead - and a path carrying one would be split in two. Rename it.");
+
+            if (!line.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException(
+                    $"'{line}' is not a .lvclass. An interface is a .lvclass file like a class - " +
+                    "NI's manual calls it \"a class without a private data control\" - so the " +
+                    "extension is the same and there is no .lvinterface.");
+
+            var full = Path.GetFullPath(line);
+            if (!File.Exists(full))
+                throw new ArgumentException(
+                    $"No interface at '{full}'. It would be written into the class as an " +
+                    "unresolvable link, which LabVIEW reports as a broken class.");
+
+            LvClass.ClassInfo info;
+            try { info = LvClass.Read(full); }
+            catch (Exception bad) when (bad is InvalidDataException or System.Xml.XmlException)
+            {
+                throw new ArgumentException($"'{full}' does not read as a .lvclass: {bad.Message}");
+            }
+
+            if (!info.IsInterface)
+                throw new ArgumentException(
+                    $"'{full}' is a CLASS, not an interface - NI.LVClass.IsInterface is not true. " +
+                    "NI's provider would accept it into the Parent Interfaces array without " +
+                    "complaint and the link would silently not be the one you asked for. Create " +
+                    "it with lvai_create_interface, or pass it as parentClassPath instead: a class " +
+                    "may have one parent CLASS and any number of parent INTERFACES.");
+
+            paths.Add(full);
+        }
+
+        return paths;
+    }
+
+    private static (int ErrorCode, bool ParentOpened, int FieldsAdded, int InterfacesOpened)
+        ReadProviderRun(string answer)
     {
         var values = Parsed(answer)?["values"];
         int Read(string name) =>
@@ -819,11 +1249,12 @@ internal sealed class ClassTools(LvaiConnection connection)
             openedXml, @"<Name>parent opened</Name>\s*<Val>1");
 
         return (code.Success ? int.Parse(code.Groups[1].Value) : -1, opened,
-                Read("fields added"));
+                Read("fields added"), Read("parent interfaces opened"));
     }
 
     private async Task<string> RunCreateClassHelperAsync(
-        string classPath, string? parentClassPath, string carrierPath, int timeoutSeconds,
+        string classPath, string? parentClassPath, string carrierPath,
+        IReadOnlyList<string> parentInterfaces, int timeoutSeconds,
         CancellationToken ct)
     {
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
@@ -837,7 +1268,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
                                     "lvai_create_class.vi");
         Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-        if (!File.Exists(helperVi) &&
+        if (HelperNeedsRebuild(aixml, helperVi) &&
             await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
             return failure;
 
@@ -853,6 +1284,28 @@ internal sealed class ClassTools(LvaiConnection connection)
             inputObject["parent class path"] = Path.GetFullPath(parentClassPath);
         if (carrierPath.Length > 0)
             inputObject["carrier vi path"] = carrierPath;
+
+        // THE LIST IS PIPE-SEPARATED, NOT NEWLINE-SEPARATED, and the transport forces that rather
+        // than it being a choice: RunViAndReadValuesAsync pairs control names with values BY LINE
+        // and refuses outright any value carrying a line break - `inputContainsNewline`, by name.
+        // Measured 2026-08-31 by driving the helper directly, which is the only place it shows up:
+        // the AIXML validates either way and this compiles either way, so the first newline-based
+        // design would have failed only at run time. A pipe is in Path.GetInvalidFileNameChars()
+        // on Windows, so no real path can contain one and the separator cannot collide with data.
+        //
+        // THE COUNT IS WHAT THE For Loop's N IS WIRED TO, and it is sent only when there is
+        // something to iterate - the same positional rule as the two paths above. With no
+        // interfaces the control keeps its default of 0, the loop runs zero times, and the
+        // indexing output tunnel hands NI's provider an EMPTY array, which is what a class
+        // implementing nothing needs. The alternative - deriving N from the split array - would
+        // depend on what Spreadsheet String To Array returns for an empty string, and one empty
+        // element there means one INVALID refnum in the array.
+        if (parentInterfaces.Count > 0)
+        {
+            inputObject["parent interface paths"] = string.Join('|', parentInterfaces);
+            inputObject["parent interface count"] =
+                parentInterfaces.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         var inputs = inputObject.ToJsonString();
 
@@ -1176,7 +1629,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (regenerateHelper || HelperNeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct)
                     is { } failure) return failure;
@@ -1187,16 +1640,19 @@ internal sealed class ClassTools(LvaiConnection connection)
             // field offset. "R/W" is two, either one alone is one.
             var perField = accessIndex == 2 ? 2 : 1;
 
-            // fromField -1 means RESUME. The class file's member count is the only record that
-            // survives a client timeout, and dividing it by perField is exactly the nextFromField
-            // every answer already reports - so computing it here makes the caller stateless.
+            // fromField -1 means RESUME. The class file is the only record that survives a client
+            // timeout, so the offset is computed from it and the caller stays stateless.
             // Measured 2026-08-29: a first slice returned `Request timed out` to the client while
             // having COMPLETED on disk, and the turn after it was spent reading membersAfter back
             // and passing it in again. That turn is worth ~7 s and buys no decision.
+            //
+            // COUNTED FROM THE MEMBERS THAT ARE ACCESSORS, not from the member count - see
+            // FieldsWithAccessorsOnDisk. Dividing the total by perField skipped a field on any class
+            // that also carries a method, which is every class implementing an interface.
             var resumedFrom = -1;
             if (fromField < 0)
             {
-                fromField = Math.Max(0, LvClass.Read(lvclassPath).Members.Count / perField);
+                fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex));
                 resumedFrom = fromField;
             }
 
@@ -1245,6 +1701,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["fromField"] = fromField,
                     ["fieldCount"] = fieldCount,
                     ["membersBefore"] = membersBefore,
+                    ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex),
                     ["membersAfter"] = MembersOnDisk(lvclassPath),
                     ["elapsedMs"] = wall.ElapsedMilliseconds,
                 });
@@ -1255,7 +1712,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // fieldCount that was asked for.
                 var total = Parsed(verdict) is JsonObject v
                     ? v["fieldCount"]?.GetValue<int>() ?? 0 : 0;
-                var next = MembersOnDisk(lvclassPath) / perField;
+                var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex);
 
                 if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
                 if (wall.Elapsed.TotalSeconds >= budgetSeconds) { moreToDo = true; break; }
@@ -1499,7 +1956,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             // the CLASS actually holds.
             membersBefore,
             membersAfter = MembersOnDisk(lvclassPath),
-            nextFromField = MembersOnDisk(lvclassPath) / 2,
+            nextFromField = FieldsWithAccessorsOnDisk(lvclassPath, 2),
             errorCode = code,
             errorSource = source.Length == 0 ? null : source,
             helperViPath = helperVi,
@@ -1610,11 +2067,36 @@ internal sealed class ClassTools(LvaiConnection connection)
         catch (Exception failure) when (failure is IOException or InvalidDataException) { return -1; }
     }
 
+    /// <summary>
+    /// How many fields already have accessors, read off the class file. The counting rule and the
+    /// defect it replaces are in <see cref="LvClass.FieldsWithAccessors"/>.
+    /// </summary>
+    private static int FieldsWithAccessorsOnDisk(string lvclassPath, int accessIndex)
+    {
+        try { return LvClass.FieldsWithAccessors(LvClass.Read(lvclassPath).Members, accessIndex); }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return -1; }
+    }
+
     /// <summary>One indicator's plain value out of the runner's `values` map, or null.</summary>
     private static string? Value(JsonObject? values, string name) =>
         values?[name] is JsonObject entry ? entry["value"]?.GetValue<string>() : null;
 
     /// <summary>Validate then generate the accessor helper. Null on success, else an error payload.</summary>
+    // A CHANGED HELPER AIXML MUST REGENERATE THE CACHED .vi, and it did not until 2026-08-31. The
+    // cache was keyed on existence alone - `!File.Exists(helperVi)` - so editing a helper under
+    // scripts\ left LabVIEW running the PREVIOUS build's VI, silently, with nothing in any answer
+    // to say so. Same shape as the embedded-but-unshipped documents: the file in the repository was
+    // not the file in use. Found while adding parentInterfaces to lvai_create_class.xml, where the
+    // new controls simply were not there at run time.
+    //
+    // The timestamp is the whole check and it is deliberately narrow. CLAUDE.md warns against
+    // deleting this cache to force a rebuild, because validating a helper is what killed LabVIEW
+    // three times in one afternoon, and a development loop that regenerates every iteration pays
+    // that risk every iteration. An AIXML that has genuinely changed is the one sanctioned case.
+    private static bool HelperNeedsRebuild(string aixml, string helperVi) =>
+        !File.Exists(helperVi) ||
+        File.GetLastWriteTimeUtc(aixml) > File.GetLastWriteTimeUtc(helperVi);
+
     private async Task<string?> GenerateAccessorHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
     {

@@ -735,11 +735,11 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**58 tools over 23 RPCs.** Thirty-two map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**59 tools over 23 RPCs.** Thirty-three map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
 rather than wrapping one — `lvai_describe_class`, which reads a `.lvclass` file and needs no
 LabVIEW at all, the knowledge tools below, and the five `pylv_*` tools. 33 carry `readOnlyHint`,
-21 carry `destructiveHint`, so a client can gate the writes.
+22 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -799,6 +799,7 @@ resources rather than call tools.
 | `lvai_swap_subvis` | — (composes `ConvertAIXMLToVI` + `RunVIAsTopLevel` + `ConvertVIToAIXML`) | **repoints many subVI nodes and class constants on one diagram** through LabVIEW's own `Replace`, in a single run. Driving it from outside cost 19 calls for one suite, because `SubVIs[]` re-orders after every swap and the replaced reference dies. Nodes first, constants last; verifies against LabVIEW's own export |
 | `lvai_generate_vis` | — (composes `lvai_generate_vi` per entry) | **generates several VIs from AIXML in one call**, in order, each with its own optional pane pattern. Sequential on purpose — LabVIEW serialises the RPC — so the saving is round trips. Deletes each AIXML on success and keeps it on failure |
 | `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **creates a `.lvclass`**, its parent link and its private data — by driving LabVIEW's own project provider, because a private data control is compiler output and cannot be built from outside. Needs a project, and opens one |
+| `lvai_create_interface` | — (same composition, driving `Add Interface.lvlib:Add Interface to Project (path).vi`) | **creates a LabVIEW interface** — a `.lvclass` with no private data control, which is what enables multiple inheritance. `lvai_create_class`'s `parentInterfaces` links a class to the ones it implements, and only at creation time. Interface *methods* have **no tool of their own**: the route is scriptable and execution-verified, but it is a hand-driven composition written up in `docs/lvclass-interfaces.md` §3 |
 | `lvai_create_accessors` | — (same composition, driving NI's own accessor wizard body) | **creates Read/Write VIs** and registers them in the `.lvclass`, saving the library once per field |
 | `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 

@@ -248,6 +248,80 @@ public class ToolArgumentsTests
         Assert.Null(ToolArguments.Stringified(null));
     }
 
+    /// <summary>
+    /// lvai_swap_subvis' shape, reduced to the two parameters that interacted: a JSON-document
+    /// argument declared as a string, and a bool. This pairing is what the regression below is about.
+    /// </summary>
+    private const string SwapSubVisSchema = """
+        {
+          "type": "object",
+          "properties": {
+            "viPath": { "type": "string" },
+            "constantsJson": { "type": "string" },
+            "verify": { "type": "boolean", "default": true },
+            "timeoutSeconds": { "type": "integer", "default": 300 }
+          },
+          "required": [ "viPath" ]
+        }
+        """;
+
+    [Fact]
+    public void StringTyped_takes_string_and_string_union_and_leaves_bool_and_integer_out()
+    {
+        var stringTyped = ToolArguments.StringTyped(Schema());
+
+        Assert.Contains("viPath", stringTyped);
+        Assert.Contains("viName", stringTyped);          // type: ["string", "null"]
+        Assert.DoesNotContain("getNodesInfo", stringTyped);
+        Assert.DoesNotContain("maxMessages", stringTyped);
+    }
+
+    [Fact]
+    public void StringTyped_counts_an_untyped_property_as_a_string()
+    {
+        // The retry exists for parameters the binder wants as text; an untyped property is exactly
+        // where that cannot be ruled out, so it stays eligible.
+        var stringTyped = ToolArguments.StringTyped(
+            Schema("""{"type":"object","properties":{"node":{"description":"no type"}}}"""));
+
+        Assert.Contains("node", stringTyped);
+    }
+
+    /// <summary>
+    /// THE REGRESSION, measured 2026-08-31. `lvai_swap_subvis` refused every call that passed a valid
+    /// `constantsJson` together with an explicit `verify: true`, and `lvai_run_vi_and_read_values` did
+    /// the same for `inputsJson` plus `includeRawXml: false`. The document argument arrives as a real
+    /// JSON array, the binder wants a string, the retry fires - and it also rewrote `true` into
+    /// `"true"`, which the bool binder then rejects. The reported error was the FIRST failure, so it
+    /// named the document parameter and never mentioned the bool; the advice that appeared to work
+    /// was the misleading "omit verify". A bool alone never reproduced it: nothing triggered a retry.
+    /// </summary>
+    [Fact]
+    public void Stringified_leaves_a_bool_alone_while_folding_the_document_beside_it()
+    {
+        var supplied = Args("""
+            {"viPath":"C:\\x.vi","constantsJson":[{"label":"a","class":"B.lvclass"}],"verify":true}
+            """);
+
+        var folded = ToolArguments.Stringified(supplied, ToolArguments.StringTyped(Schema(SwapSubVisSchema)));
+
+        Assert.NotNull(folded);
+        Assert.Equal(JsonValueKind.True, folded!["verify"].ValueKind);
+        Assert.Equal(JsonValueKind.String, folded["constantsJson"].ValueKind);
+        Assert.Equal("""[{"label":"a","class":"B.lvclass"}]""", folded["constantsJson"].GetString());
+        Assert.Equal("C:\\x.vi", folded["viPath"].GetString());
+    }
+
+    [Fact]
+    public void Stringified_reports_nothing_to_do_when_only_a_bool_is_not_a_string()
+    {
+        // Without the schema filter this returned a folded dictionary with `verify` rewritten to
+        // "true", which is what broke the call. There is now nothing to fold, so no retry happens.
+        Assert.Null(ToolArguments.Stringified(
+            Args("""{"viPath":"C:\\x.vi","verify":false}"""),
+            ToolArguments.StringTyped(Schema(SwapSubVisSchema))));
+    }
+
     private static Dictionary<string, JsonElement>? Args(string? json)
     {
         if (json is null) return null;
