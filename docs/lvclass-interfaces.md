@@ -191,15 +191,28 @@ dynamic dispatch. Four traps came with it:
 >   succeeded on that exact node), wire re-typing (staged so the wire was already `Hund`-typed —
 >   still 1154), the file location, and a stale save state (forced re-save via `lvai_set_vi_icon`,
 >   `viResaved: true` — still 1154).
-> - `pylv_apply` inspect shows the structural difference without LabVIEW. A scripted override has
->   **12 blocks and no parsed `LIvi`** — the owning-library link — plus a malformed front-panel class
->   link (`LIfp … LinkObjUDClassDDOToUDClassAPILink b'FPPI' Offset List length 7208960 exceeds
->   limit`). A wizard accessor has **20 blocks including `LIvi` and `VICD`**, and only the benign
->   `LIfp` warning. A class is broken if any member is broken, which explains both the 1154 and the
->   class-wide 1003.
+> - `pylv_apply` inspect shows a structural difference, and **it is NOT the fault** — see the
+>   correction below. A scripted override has **12 blocks and no parsed `LIvi`** (the owning-library
+>   link) plus a malformed front-panel class link (`LIfp …
+>   LinkObjUDClassDDOToUDClassAPILink b'FPPI' Offset List length 7208960 exceeds limit`); a wizard
+>   accessor has **20 blocks including `LIvi` and `VICD`** and only the benign `LIfp` warning.
 >
-> **A raw byte grep for `LIvi` does NOT discriminate** — the string occurs in the broken files too.
-> Only the parsed block list from `pylv_extract` does. A grep was tried first and was misleading.
+> **CORRECTION, measured 2026-08-31 on the fixed run: the missing `LIvi` is CORRELATION, not the
+> defect.** This bullet originally presented it as the file-level signature of a broken member. It is
+> not. The *working* override — one that runs, that `{LV.SubVI}` `Replace` accepts, and whose class
+> passes a green Caraya suite — extracts to **the same 12 blocks, still with no parsed `LIvi`, and the
+> same `LIfp … exceeds limit` warning**, checked before and after every save. So that signature
+> separates a *scripted* member VI from a *wizard-generated* one, and says nothing about whether it is
+> healthy.
+>
+> The practical consequence is the important part: **`pylv_extract` cannot detect this defect at all,
+> in either direction.** Only execution can. What did differ between the broken and the fixed override
+> was in the class file — `NI.ClassItem.Flags` 11 → 3 and `NI.ClassItem.InvokeUsage` 4 → 1 — and
+> neither is claimed as the cause; one file pair is not a measurement.
+>
+> **A raw byte grep for `LIvi` does NOT discriminate either** — the string occurs in the broken files
+> too. A grep was tried first and was misleading, and the parsed block list then misled in a subtler
+> way.
 >
 > ### ROOT CAUSE, from LabVIEW itself — the link is ONE-SIDED
 >
@@ -236,8 +249,15 @@ dynamic dispatch. Four traps came with it:
 > 2. `{LV.VI}` `Save.Instrument` on the VI — now the owning-library link is written into the file
 > 3. `{LV.LVClassLibrary}` `Save` — write the library's side
 >
-> Both sides must be saved. Untested in that order at the time of writing; the diagnosis is LabVIEW's
-> own words, the corrected sequence follows from it and is the next thing to measure.
+> Both sides must be saved.
+>
+> **MEASURED AND CONFIRMED, 2026-08-31.** A full cold rebuild in that order produced a class that
+> compiles: four applications with every per-stage error indicator zero, and both probes that failed
+> before now pass — a wizard accessor (`Read Name.vi`) runs with `error out = 0` where it answered
+> `Error 1003`, and `{LV.SubVI}` `Replace` accepts both scripted overrides where it refused them with
+> `Error 1154`. Caraya over the result: **6 tests, 0 failures, 0 errors** in two suites, against the
+> previous run's single synthetic `VI not in an executable state` per suite. The route in this section
+> may now be presented as working.
 >
 > **Repairing files already written this way needs no regeneration**: answer that dialog with
 > **Update** once per affected VI, which is LabVIEW writing the missing side itself. Dismiss it

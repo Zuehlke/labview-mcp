@@ -66,9 +66,12 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
             // sends what it was shown gets rejected by the binder. Retrying is the fold that makes
             // those reachable; it happens only after a failure, so a value a tool accepted is never
             // reshaped. See ToolArguments.WantsString for the measurement.
+            // Only the parameters the schema declares as `string` are reshaped. Stringifying
+            // everything broke any call that paired a JSON-document argument with a bool or a
+            // number - see ToolArguments.Stringified for the measurement.
             if (ToolArguments.WantsString(e) &&
                 request.Params is { } retryParams &&
-                ToolArguments.Stringified(supplied) is { } stringified)
+                ToolArguments.Stringified(supplied, ToolArguments.StringTyped(schema)) is { } stringified)
             {
                 retryParams.Arguments = stringified;
                 try

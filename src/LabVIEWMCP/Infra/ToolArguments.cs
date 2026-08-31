@@ -108,16 +108,58 @@ internal static class ToolArguments
         cause.Message.Contains("System.String", StringComparison.Ordinal);
 
     /// <summary>
-    /// The same arguments with every non-string value turned into its JSON text: an object becomes
-    /// the object's own JSON, a number becomes its digits. Applied only after
-    /// <see cref="WantsString"/> - so this never reshapes a value a tool was happy to receive - and
-    /// it is the value the caller's own description asked for in the first place.
+    /// The names the schema declares as taking a `string`. A property whose schema carries no `type`
+    /// at all counts as one: the retry exists for parameters the binder wants as text, and an
+    /// untyped property is exactly the case where we cannot rule that out.
+    /// </summary>
+    public static HashSet<string> StringTyped(JsonElement schema)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (schema.ValueKind != JsonValueKind.Object ||
+            !schema.TryGetProperty("properties", out var props) ||
+            props.ValueKind != JsonValueKind.Object)
+            return names;
+
+        foreach (var property in props.EnumerateObject())
+        {
+            if (!property.Value.TryGetProperty("type", out var t)) { names.Add(property.Name); continue; }
+
+            var isString = t.ValueKind switch
+            {
+                JsonValueKind.String => t.GetString() == "string",
+                JsonValueKind.Array => t.EnumerateArray().Any(x => x.GetString() == "string"),
+                _ => false,
+            };
+
+            if (isString) names.Add(property.Name);
+        }
+
+        return names;
+    }
+
+    /// <summary>
+    /// The same arguments with non-string values turned into their JSON text: an object becomes the
+    /// object's own JSON, a number becomes its digits. Applied only after <see cref="WantsString"/> -
+    /// so this never reshapes a value a tool was happy to receive - and it is the value the caller's
+    /// own description asked for in the first place.
+    ///
+    /// ONLY THE PARAMETERS DECLARED AS STRING ARE TOUCHED, and that is a correction rather than a
+    /// refinement. This method used to stringify EVERY non-string value, which quietly broke any call
+    /// that combined a JSON-document argument with a bool or a number: measured 2026-08-31,
+    /// `lvai_swap_subvis` with a valid `constantsJson` AND an explicit `verify: true` was refused
+    /// outright, and so was `lvai_run_vi_and_read_values` with `inputsJson` and
+    /// `includeRawXml: false`. The document argument arrives as a real JSON object, the binder wants
+    /// a string, the retry fires - and it also rewrote `true` into `"true"`, which the bool binder
+    /// then rejects. The reported error is the FIRST failure, so it named the document parameter and
+    /// said nothing about the bool, and the working advice was the misleading "omit `verify`".
+    /// A bool on its own never reproduced it, because nothing triggered the retry.
     ///
     /// Null and Undefined are left alone: a null means "not supplied" and stringifying it to "null"
     /// would turn an omitted optional argument into the four-character word.
     /// </summary>
     public static Dictionary<string, JsonElement>? Stringified(
-        IEnumerable<KeyValuePair<string, JsonElement>>? supplied)
+        IEnumerable<KeyValuePair<string, JsonElement>>? supplied,
+        HashSet<string>? stringTyped = null)
     {
         if (supplied is null) return null;
 
@@ -126,7 +168,8 @@ internal static class ToolArguments
 
         foreach (var (key, value) in supplied)
         {
-            if (value.ValueKind is JsonValueKind.String or JsonValueKind.Null or JsonValueKind.Undefined)
+            if (value.ValueKind is JsonValueKind.String or JsonValueKind.Null or JsonValueKind.Undefined ||
+                (stringTyped is not null && !stringTyped.Contains(key)))
             {
                 folded[key] = value;
                 continue;

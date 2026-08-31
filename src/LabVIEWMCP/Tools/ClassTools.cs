@@ -1640,16 +1640,19 @@ internal sealed class ClassTools(LvaiConnection connection)
             // field offset. "R/W" is two, either one alone is one.
             var perField = accessIndex == 2 ? 2 : 1;
 
-            // fromField -1 means RESUME. The class file's member count is the only record that
-            // survives a client timeout, and dividing it by perField is exactly the nextFromField
-            // every answer already reports - so computing it here makes the caller stateless.
+            // fromField -1 means RESUME. The class file is the only record that survives a client
+            // timeout, so the offset is computed from it and the caller stays stateless.
             // Measured 2026-08-29: a first slice returned `Request timed out` to the client while
             // having COMPLETED on disk, and the turn after it was spent reading membersAfter back
             // and passing it in again. That turn is worth ~7 s and buys no decision.
+            //
+            // COUNTED FROM THE MEMBERS THAT ARE ACCESSORS, not from the member count - see
+            // FieldsWithAccessorsOnDisk. Dividing the total by perField skipped a field on any class
+            // that also carries a method, which is every class implementing an interface.
             var resumedFrom = -1;
             if (fromField < 0)
             {
-                fromField = Math.Max(0, LvClass.Read(lvclassPath).Members.Count / perField);
+                fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex));
                 resumedFrom = fromField;
             }
 
@@ -1698,6 +1701,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["fromField"] = fromField,
                     ["fieldCount"] = fieldCount,
                     ["membersBefore"] = membersBefore,
+                    ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex),
                     ["membersAfter"] = MembersOnDisk(lvclassPath),
                     ["elapsedMs"] = wall.ElapsedMilliseconds,
                 });
@@ -1708,7 +1712,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // fieldCount that was asked for.
                 var total = Parsed(verdict) is JsonObject v
                     ? v["fieldCount"]?.GetValue<int>() ?? 0 : 0;
-                var next = MembersOnDisk(lvclassPath) / perField;
+                var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex);
 
                 if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
                 if (wall.Elapsed.TotalSeconds >= budgetSeconds) { moreToDo = true; break; }
@@ -1952,7 +1956,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             // the CLASS actually holds.
             membersBefore,
             membersAfter = MembersOnDisk(lvclassPath),
-            nextFromField = MembersOnDisk(lvclassPath) / 2,
+            nextFromField = FieldsWithAccessorsOnDisk(lvclassPath, 2),
             errorCode = code,
             errorSource = source.Length == 0 ? null : source,
             helperViPath = helperVi,
@@ -2060,6 +2064,16 @@ internal sealed class ClassTools(LvaiConnection connection)
     private static int MembersOnDisk(string lvclassPath)
     {
         try { return LvClass.Read(lvclassPath).Members.Count; }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return -1; }
+    }
+
+    /// <summary>
+    /// How many fields already have accessors, read off the class file. The counting rule and the
+    /// defect it replaces are in <see cref="LvClass.FieldsWithAccessors"/>.
+    /// </summary>
+    private static int FieldsWithAccessorsOnDisk(string lvclassPath, int accessIndex)
+    {
+        try { return LvClass.FieldsWithAccessors(LvClass.Read(lvclassPath).Members, accessIndex); }
         catch (Exception failure) when (failure is IOException or InvalidDataException) { return -1; }
     }
 

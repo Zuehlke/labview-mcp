@@ -335,6 +335,37 @@ internal static class LvClass
     public sealed record Member(string Name, string Url, string Type, string Scope,
                                 bool? DynamicDispatch);
 
+    /// <summary>
+    /// HOW MANY FIELDS ALREADY HAVE ACCESSORS, counted from the members that ARE accessors.
+    /// <paramref name="accessIndex"/> is 0 Read, 1 Write, 2 both, matching the wizard's own UI order.
+    ///
+    /// The naive form of this - member count divided by two - is what `lvai_create_accessors` used
+    /// until 2026-08-31, and it assumed every member of a class is half of an accessor pair. Measured
+    /// that day: a class carrying two interface overrides resumed at field 1, so field 0 got no
+    /// accessors and nothing pointed back at it. The answer reported `membersAfter: 8` and looked
+    /// complete. Any class with a method breaks it, which since interfaces became scriptable is every
+    /// class that implements one.
+    ///
+    /// The wizard names an accessor `Read &lt;field&gt;.vi` / `Write &lt;field&gt;.vi` and builds them in field
+    /// order, so this is exact under that contract. It cannot tell a hand-written `Read something.vi`
+    /// for a non-field `something` from a real accessor - far narrower than the defect it replaces.
+    /// </summary>
+    public static int FieldsWithAccessors(IEnumerable<Member> members, int accessIndex)
+    {
+        string[] prefixes = accessIndex switch
+        {
+            0 => ["Read "],
+            1 => ["Write "],
+            _ => ["Read ", "Write "],
+        };
+
+        var matching = members.Count(
+            m => m.Name.EndsWith(".vi", StringComparison.OrdinalIgnoreCase) &&
+                 prefixes.Any(p => m.Name.StartsWith(p, StringComparison.Ordinal)));
+
+        return matching / (accessIndex == 2 ? 2 : 1);
+    }
+
     public sealed record ClassInfo(
         string Path, string ClassName, string? ContainingLibrary, string QualifiedName,
         IReadOnlyList<string> Ancestors, string AncestorSource, string? PrivateDataName,

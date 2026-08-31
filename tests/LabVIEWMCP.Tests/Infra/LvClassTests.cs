@@ -578,4 +578,56 @@ public class LvClassTests : IDisposable
         File.WriteAllText(path, text.ToString());
         return path;
     }
+    /// <summary>
+    /// THE REGRESSION, measured 2026-08-31 on the Hund class. `lvai_create_accessors` resumed from
+    /// the MEMBER COUNT divided by two, which assumed every member is half an accessor pair. A class
+    /// carrying two interface overrides therefore resumed at field 1 and `Name` silently got no
+    /// accessors, while the answer reported `membersAfter: 8` and looked complete.
+    /// </summary>
+    [Fact]
+    public void FieldsWithAccessorsIgnoresMembersThatAreNotAccessors()
+    {
+        // The exact shape that broke it: two overrides and no accessors at all.
+        List<LvClass.Member> justOverrides =
+        [
+            new("Get Name.vi", "Hund/Get Name.vi", "vi", "public", true),
+            new("Lautgebung.vi", "Hund/Lautgebung.vi", "vi", "public", true),
+        ];
+
+        Assert.Equal(0, LvClass.FieldsWithAccessors(justOverrides, 2));
+        Assert.Equal(2, justOverrides.Count);   // the old rule read this as "resume at field 1"
+    }
+
+    [Fact]
+    public void FieldsWithAccessorsCountsPairsAndIgnoresMethodsBesideThem()
+    {
+        List<LvClass.Member> mixed =
+        [
+            new("Get Name.vi", "Hund/Get Name.vi", "vi", "public", true),
+            new("Lautgebung.vi", "Hund/Lautgebung.vi", "vi", "public", true),
+            new("Read Name.vi", "Read Name.vi", "vi", "public", true),
+            new("Write Name.vi", "Write Name.vi", "vi", "public", true),
+            new("Read Rasse.vi", "Read Rasse.vi", "vi", "public", true),
+            new("Write Rasse.vi", "Write Rasse.vi", "vi", "public", true),
+        ];
+
+        Assert.Equal(2, LvClass.FieldsWithAccessors(mixed, 2));   // two fields done, not three
+        Assert.Equal(2, LvClass.FieldsWithAccessors(mixed, 0));   // Read only
+        Assert.Equal(2, LvClass.FieldsWithAccessors(mixed, 1));   // Write only
+    }
+
+    [Fact]
+    public void FieldsWithAccessorsIgnoresAControlMember()
+    {
+        // The private data control is a member too, and it is not an accessor.
+        List<LvClass.Member> withControl =
+        [
+            new("Hund.ctl", "Hund.ctl", "control", "public", null),
+            new("Read Name.vi", "Read Name.vi", "vi", "public", true),
+            new("Write Name.vi", "Write Name.vi", "vi", "public", true),
+        ];
+
+        Assert.Equal(1, LvClass.FieldsWithAccessors(withControl, 2));
+    }
+
 }
