@@ -1,0 +1,24 @@
+<VI _name="lvdqmh_ring2.vi" description="READ-ONLY. Reads a Ring control's entry list off a running panel\2C by the control's index in Controls[].\0A\0ATHE CAST IS THE WHOLE POINT. Controls[] hands back GENERIC control references\2C and a Property Node typed {LV.Ring} refuses one - 'Invalid property' - because Strings [] does not exist on the generic class. To More Specific Class does the downcast\2C taking the wanted class as a REFNUM CONSTANT on its target class input. An earlier revision concluded the entries simply could not be read and fell back on guessing an index\2C which is how a run came within one button press of scripting an event into the wrong module.\0A\0AWHY IT MATTERS HERE. A ring index is not portable\3A launched from the Tools menu\2C Delacor's Module ring has '&lt;Select a Module&gt;' at 0\2C and the order after it follows neither the project order nor the alphabet - measured\2C index 1 was FirstClone.lvlib while Parse Project for DQMH Modules.vi lists DQMHdemo first. So the list has to be read\2C never derived.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control index" type="string" uid="11" uid_parent="root" value="0" outputs="value:11.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:31.Panel,reference out:31.reference out,error out:31.error out" type="{LV.VI}" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:31.Panel,error in (no error):31.error out" outputs="Controls[]:32.Controls,reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:35.number" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:32.Controls,index:35.number" outputs="element:36.element" uid="36" uid_parent="root"/>
+
+  <Constant _name="ring class" outputs="value:37.value" type="ref{LV.Ring}" uid="37" uid_parent="root" value=""/>
+  <Node _name="To More Specific Class" inputs="reference:36.element,error in:32.error out,target class:37.value" outputs="specific class reference:38.specific,error out:38.error out" uid="38" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Strings []" inputs="reference:38.specific,error in (no error):38.error out" outputs="Strings []:39.entries,reference out:39.reference out,error out:39.error out" type="{LV.Ring}" uid="39" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):39.error out" outputs="error out:45.error out" uid="45" uid_parent="root"/>
+
+  <Indicator _name="entries" inputs="value:39.entries" type="array{string}" uid="50" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" inputs="value:39.error out" type="cluster{bool.status,int32.code,string.source}" uid="51" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:45.error out" type="cluster{bool.status,int32.code,string.source}" uid="52" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,33 @@
+<VI _name="lvdqmh_args_paste2.vi" description="Copies every front-panel control from a carrier VI into a target VI addressed BY NAME rather than by path.\0A\0AWHY BY NAME. Delacor's event dialog does not show DQMH Arguments Window.vi itself - it shows a TEMPORARY COPY of it\2C whose window title reads 'DQMH Arguments Window [lvtemporary_95526.vi]'. The number changes per invocation and the copy has no file on disk. Pasting into the template instead is silent and useless\3A the controls land\2C the copy on screen stays empty\2C and the template reads back as Idle because it is not the window the dialog is using. That cost several rounds of wrong diagnosis - including a conclusion that Paste Selection had knocked the window out of its run.\0A\0AOpen VI Reference's vi path input is polymorphic and takes a STRING NAME for a VI already in memory. Converting the name with String To Path instead makes it a RELATIVE path and the call answers Error 1445\2C naming a file beside the helper that never existed.\0A\0AThe carrier is still opened by path\2C because it is a real file.">
+  <Control _name="carrier vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="arguments window vi name" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:32.Panel,reference out:32.reference out,error out:32.error out" type="{LV.VI}" uid="32" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:32.Panel,error in (no error):32.error out" outputs="Controls[]:33.Controls,reference out:33.reference out,error out:33.error out" type="{LV.Panel}" uid="33" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Select All" type="{LV.Panel}" inputs="reference:32.Panel,error in (no error):33.error out" outputs="reference out:34.reference out,error out:34.error out" uid="34" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Copy Selection" type="{LV.Panel}" inputs="reference:34.reference out,error in (no error):34.error out" outputs="reference out:35.reference out,error out:35.error out" uid="35" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:11.value,error in (no error):35.error out" outputs="vi reference:41.vi reference,error out:41.error out" uid="41" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:41.vi reference,error in (no error):41.error out" outputs="Front Panel:42.Panel,reference out:42.reference out,error out:42.error out" type="{LV.VI}" uid="42" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Paste Selection" type="{LV.Panel}" inputs="reference:42.Panel,error in (no error):42.error out" outputs="reference out:43.reference out,error out:43.error out" uid="43" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:42.Panel,error in (no error):43.error out" outputs="Controls[]:44.Controls,reference out:44.reference out,error out:44.error out" type="{LV.Panel}" uid="44" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="50" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:44.Controls" mode="index" outputs="value:51.value" uid="51" uid_parent="50"/>
+    <Tunnel _id="In2" inputs="value:44.error out" outputs="value:52.value" uid="52" uid_parent="50"/>
+    <Node _name="Property Node" fields="read+Label.Text" inputs="reference:51.value,error in (no error):52.value" outputs="Label.Text:53.Label,reference out:53.reference out,error out:53.error out" type="{LV.Control}" uid="53" uid_parent="50"/>
+    <Tunnel _id="Out1" inputs="value:53.Label" mode="index" outputs="value:54.value" uid="54" uid_parent="50"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:41.vi reference,error in (no error):44.error out" outputs="error out:61.error out" uid="61" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):61.error out" outputs="error out:62.error out" uid="62" uid_parent="root"/>
+
+  <Indicator _name="target labels" inputs="value:54.value" type="array{string}" uid="71" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" inputs="value:44.error out" type="cluster{bool.status,int32.code,string.source}" uid="72" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:62.error out" type="cluster{bool.status,int32.code,string.source}" uid="73" uid_parent="root" value="[false,0,]"/>
+</VI>
