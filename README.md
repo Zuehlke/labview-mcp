@@ -72,8 +72,9 @@ claude plugin install labview-mcp@zuehlke-labview
 
 That's the whole setup — no clone, no build, no config file to edit. Claude Code downloads a
 prebuilt Windows binary from the [latest release](https://github.com/Zuehlke/labview-mcp/releases/latest),
-and you get the MCP server, seven LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
-`labview-doc-generator`, `labview-class-generator` and one per unit-test framework), and a
+and you get the MCP server, eight LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
+`labview-doc-generator`, `labview-class-generator`, `labview-dqmh-module` and one per
+unit-test framework), and a
 read-only allow-list so reads run without a prompt while every mutating tool still asks first.
 
 Now start LabVIEW 2026, open Claude Code in your project, and try:
@@ -340,9 +341,9 @@ claude plugin marketplace add Zuehlke/labview-mcp
 claude plugin install labview-mcp@zuehlke-labview
 ```
 
-That gives you the MCP server, all seven LabVIEW agents (`labview-vi-generator`,
-`labview-vi-editor`, `labview-doc-generator`, `labview-class-generator` and one per unit-test
-framework), and the read-only tool allow-list, all wired up.
+That gives you the MCP server, all eight LabVIEW agents (`labview-vi-generator`,
+`labview-vi-editor`, `labview-doc-generator`, `labview-class-generator`, `labview-dqmh-module`
+and one per unit-test framework), and the read-only tool allow-list, all wired up.
 The plugin is **Windows x64 only** and needs **LabVIEW 2026** — the same requirement as every
 other install route; on macOS or Linux the plugin installs but a session-start hook tells you
 the server cannot run there.
@@ -607,7 +608,7 @@ zip always carries it, but only since **v0.9.2** — see the troubleshooting tab
 
 Two things are not reachable through a tool and need one command:
 
-- the **seven agents** — Claude Code loads an agent from a file under `.claude\agents`, not from
+- the **eight agents** — Claude Code loads an agent from a file under `.claude\agents`, not from
   an MCP resource
 - the **tool allow-list**, which lives in a settings file
 

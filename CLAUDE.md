@@ -936,7 +936,7 @@ class agent's Phase 6 is the handoff and is not conditional on tests having been
 of the class agent on 2026-08-29 at the user's request, because testing and class creation share
 almost nothing.
 
-The seven `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
+The eight `labview-*` agents in `.claude/agents/` are read at **session start**, so a change to one
 of them — or a new one, as `labview-class-generator` was on 2026-08-28 — needs a client restart
 before it can be spawned.
 
@@ -949,7 +949,7 @@ prefix (`-Check` reports drift without writing) and `PluginAgentTests` fails the
 folders disagree.
 
 Hand-maintaining the two did not work, measured 2026-08-30: `plugin/agents/` held **three** of the
-seven and all three were stale forks — the class generator and the three unit-test agents shipped
+seven that existed then, and all three were stale forks — the class generator and the three unit-test agents shipped
 to nobody, and the three that did ship had missed several rules added since. Nothing reported it
 because nothing compared them, which is the same shape as the embedded-but-unshipped documents
 above: a file being in the repository says nothing about it being in the artefact people install.

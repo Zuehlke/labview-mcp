@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "labview-mcp",
   "displayName": "LabVIEW MCP",
-  "description": "Read, write and run LabVIEW 2026 code from an AI assistant - VIs as text via AIXML, classes and interfaces through NI's own project providers, palette and shipping-example search, Caraya unit tests, and seven bundled LabVIEW agents. Windows x64 only.",
+  "description": "Read, write and run LabVIEW 2026 code from an AI assistant - VIs as text via AIXML, classes and interfaces through NI's own project providers, palette and shipping-example search, Caraya unit tests, DQMH modules and events driven through Delacor's own scripting, and eight bundled LabVIEW agents. Windows x64 only.",
   "author": {
     "name": "Zühlke Engineering AG"
   },
@@ -21,6 +21,8 @@
     "lvclass",
     "oop",
     "interfaces",
-    "caraya"
+    "caraya",
+    "dqmh",
+    "delacor"
   ]
 }
