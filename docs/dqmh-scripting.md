@@ -267,8 +267,39 @@ backup and `lvai_describe_project` confirmed `missingItems: []`, `missingFiles: 
 The cause was not established, because the run outlived the MCP client's request timeout while
 LabVIEW kept working — so the `error out` was never read.
 
-**A third attempt, instrumented to write its `error out` to a FILE so the timeout could not take
-it, killed LabVIEW.** Same partial result — the argument cluster written, nothing else — and no log
+### 6.2a The real obstacle, settled: EVERY refnum in `Module Info` dies with the parse
+
+Instrumenting the helper to write its `error out` to a **file** removed the blindness — the run
+outlives the MCP request timeout, but the file does not. Two runs then bracket the problem exactly:
+
+| `Library Owning App` set to | how far it got | error |
+|---|---|---|
+| the **IDE's** application reference (ours, still open) | past the template, argument cluster **written** | `1055` in `Save VI and Add to Library.vi` |
+| **`My Computer`**, read from the parse VI's own output | not even the template | `1025` at `Open VI Reference` in `Script Arguments Cluster.vi` |
+
+Read together these settle it. `My Computer` is *also* an output of the finished parse VI, so
+substituting it made things **worse**, not better — and the 1055 in the first row is the `Library`
+field failing for the same reason one step later. **`Parse Project for DQMH Modules.vi` is run as a
+TOP-LEVEL VI and LabVIEW releases the refnums a VI opened when it stops.** All thirteen refnums in
+`Module Info` are dead by the time `Script New Event.vi` touches them; the earlier note that the
+`ProjectItem` and `Library` references survive was wrong.
+
+Only **one** of the thirteen can be replaced — the application reference, because the helper holds
+its own. The other twelve cannot:
+
+- **`LVLibrary.Open` does not exist.** Probed 2026-08-31 on `{LV.Application}`, the way
+  `LVClass.Open` was found: `Invoke Node: Invalid method`. (Safe to probe — a wrong *method* is
+  rejected cleanly; it is a wrong *class* that provokes the `OMAutoClasses` crash.)
+- The VI Server catalogue carries no library or project-item opener either.
+
+**The only route that would work is running the parse as a SUBVI of the helper**, so its refnums
+belong to a hierarchy that is still executing. That needs `Call By Reference Node`, which AIXML
+does not document and whose strictly-typed VI refnum AIXML cannot express anyway.
+
+So this is a structural dead end with the tools available, not a missing wire. That is a different
+and much firmer statement than "it stops", which is all the earlier attempts could say.
+
+**An earlier attempt, before the file logging was in place, killed LabVIEW.** Same partial result — the argument cluster written, nothing else — and no log
 file, because the process died first. NI's `_cur.txt` puts the fault inside
 `LV AI Core.lvlibp:VI generator.vi` under `ConvertAIXMLToVI.vi`, i.e. in **AIXML generation, not in
 Delacor's code**, with `HeapObjMapImpl.cpp(226)` warnings naming our own low uids. That attempt was
