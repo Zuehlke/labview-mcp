@@ -1,3 +1,7 @@
+>  We’re currently having a problem with the installer. Please use the vole repository or 
+>  the ZIP file for the tag directly! Sorry for the inconvenience!
+>
+>
 > ## 🧪 Read this before you let a robot touch your VIs
 >
 > **Not affiliated with, endorsed by, or supported by NI or Emerson.** Nobody at NI asked for
