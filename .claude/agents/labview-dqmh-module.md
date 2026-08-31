@@ -294,8 +294,14 @@ AIXML node and does the downcast; its `target class` input takes a refnum consta
 4. Author the carrier VI (4) and paste its controls into the `lvtemporary_*` window (5). Verify the
    window's `Controls[]` came back with your labels.
 5. Compute OK's position (6), sanity-check it against `PanelBounds`, click (7).
-6. Verify from the files (below). Then clean up — this route adopts **many** helper VIs into the
-   `.lvproj`; on the measured run there were ten.
+6. Verify from the files (below). Then clean up — this route adopts **many** helper VIs; on the
+   measured runs there were ten and then six.
+
+   **CLOSE THE PROJECT FIRST, then read the `.lvproj`.** Before the close the file is not evidence:
+   measured 2026-08-31, `lvai_describe_project` reported ten adopted helpers while the `.lvproj` on
+   disk still listed none — LabVIEW had adopted them in memory and not yet written them.
+   `lvai_close_active_project` saves, and six then appeared in the file. Reading the file first and
+   concluding "clean" leaves them in the user's project.
 
 ### Verifying an event
 

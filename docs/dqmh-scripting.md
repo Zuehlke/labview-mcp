@@ -525,6 +525,28 @@ mid-scripting or never received the event is **not established**.
 What is established: the three mechanical steps are available and measured, so the remaining
 unknown is narrow. What is not: that this route works end to end. Do not present it as one.
 
+### 6.6 Reproduced, and what the second run added
+
+`SecondEvent` was created the same way on the same module immediately afterwards, following the
+written procedure rather than the session that produced it. All seven steps ran clean, and three
+documented traps reproduced exactly: the ring order with the placeholder LAST (`0` DQMHdemo,
+`1` FirstClone, `2` Korrekt, `3` `<Select a Module>`), `Step 6` still stale inside the writing call
+and correct on the next one, and `Origin` again `(40, -10)`.
+
+Two things the second run established that the first could not:
+
+- **The `lvtemporary_*` name can be found without a human.** It was read out of the window title by
+  enumerating LabVIEW's visible windows — `DQMH Arguments Window [lvtemporary_961995.vi]` — where
+  the first run had it from a screenshot. So no step of the chain needs a person to read the screen.
+- **Before the project is closed, the `.lvproj` file is not evidence of what was adopted.**
+  `lvai_describe_project` reported ten helper VIs in the project while the file on disk listed none;
+  `lvai_close_active_project` then wrote six of them into it. The order must be **close, then read
+  the file, then strip** — reading first and finding nothing is a false clean bill.
+
+Result: `SecondEvent.vi` with `Name` [string] and `Gewicht` [double], the `.lvlib` from 65 to 67
+members, `Main.vi`'s export from 72 512 to 75 654 bytes carrying both the EHL case and an MHL frame
+labelled with the description, and `missingItems`/`missingFiles` empty.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
