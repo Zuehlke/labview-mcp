@@ -7,9 +7,11 @@ on 2026-08-31 against DQMH "Delacor QMH Event Scripter 5.0.0.112" under LabVIEW 
 Read together with [dqmh-patterns.md](dqmh-patterns.md), which describes what a finished module
 *looks like*; this note is about how to *make* one.
 
-The short answer: **yes for modules, proven end to end. Yes for module discovery. Not for events** —
-§6 has the two routes tried, why the helper route is structurally impossible, and how far driving
-Delacor's dialog gets (three of four steps, measured).
+The short answer: **yes for modules, and yes for events** — both proven end to end. Modules go
+through `Script New Module.vi` directly (§5). Events cannot: §6 shows why driving
+`Script New Event.vi` from a helper is structurally impossible, and how the supported route is to
+drive Delacor's own dialog — which works, at the cost of one synthesised mouse click, because its
+OK button is a latched boolean that VI Server may not write.
 
 ## 1. The layout: menu VIs versus scripting VIs
 
@@ -468,12 +470,48 @@ refusal. The same call succeeds on the `Module` **ring** in the same dialog and 
 state, which is what isolates the cause to the control's mechanical action rather than to anything
 about the dialog.
 
-So **VI Server cannot press this button**, and no amount of ordering will change it. What remains:
+So **VI Server cannot press this button**, and no amount of ordering will change it.
 
-- a human click — everything else can be set up programmatically first, which is worth something:
-  module, event type, name, description, tester flag and the argument controls all land and verify;
-- or an OS-level mouse click synthesised onto the button's screen position, which leaves VI Server
-  entirely and depends on window placement. Not attempted.
+### The synthesised click — and with it the route works end to end
+
+An OS-level click does press it, and the coordinates need not be guessed: **VI Server supplies
+them.** Three properties are enough, and the arithmetic is the only subtle part —
+
+```
+{LV.VI}      Front Panel Window:Panel Bounds   -> panel area in SCREEN coordinates
+{LV.VI}      Front Panel Window:Origin         -> how far the panel is scrolled
+{LV.Control} Position:Left / :Top              -> control position within the panel
+{LV.Control} Bounds:Area Width / :Area Height  -> to aim at the middle
+
+x = PanelBounds.Left + (Position.Left - Origin.Horizontal) + Width  / 2
+y = PanelBounds.Top  + (Position.Top  - Origin.Vertical  ) + Height / 2
+```
+
+**The Origin term is not optional.** This dialog is taller than its window and scrolls; measured
+here, `Origin` was `(40, -10)` — dropping it would have missed by 40 px horizontally.
+
+Measured 2026-08-31: `PanelBounds = (172, 148, 782, 687)`, `Origin = (40, -10)`, OK at
+`(373, 496)` sized `75 x 23` → click at **(542, 665)**, which falls inside the panel bounds as a
+sanity check. `SetForegroundWindow` on the dialog, `SetCursorPos`, then `mouse_event` down/up.
+
+**And that completed it.** `SimpleEvent`, a Request on `DQMHdemo` with arguments `Name` (string) and
+`Gewicht` (double), was created with no human interaction beyond the initial instruction:
+
+| check | result |
+|---|---|
+| new files | `SimpleEvent.vi`, `SimpleEvent Argument--cluster.ctl` |
+| library members | 63 → **65**, both registered |
+| `Main.vi` | changed, +3 496 bytes — the MHL frame |
+| `Test DQMHdemo API.vi` | changed — the tester button |
+| `Request Events--cluster.ctl` | changed — the new event refnum |
+| terminals | `Name` [string], `Gewicht` [double], both `required` |
+| argument cluster | `cluster{string.Name,double.Gewicht}` |
+| VI description | `"Liebe Welt das ist ein Text"` |
+| `lvai_describe_project` | `errorCode 0`, `missingItems []`, `missingFiles []` |
+
+**So events ARE scriptable — through the dialog, not through `Script New Event.vi`.** The honest
+caveat: one step of the chain is a synthesised mouse click, which depends on the dialog being on
+screen and unobscured. Everything before it is ordinary VI Server and verifies itself.
 
 ### Why it still did not finish
 
