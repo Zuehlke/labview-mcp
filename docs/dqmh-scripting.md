@@ -426,26 +426,54 @@ then reading `Step 6` turns an unverifiable index into a checkable fact. With in
 ring returns the OLD text — the write and the Event Structure's response are not synchronous. Read
 it in a *separate* tool call.
 
-### Where it stops: Error 1193 on OK
+### The Arguments Window on screen is a TEMPORARY COPY
 
-With the module verified, the name and description read back, and `Name`/`Gewicht` present in the
-Arguments Window, `Value (Signaling)` on OK answers **`Error 1193`** — where the identical call on a
-dialog the *user* had opened returned 0. `Execution:State` explains the difference:
+`Show Arguments Window.vi` does not display `DQMH Arguments Window.vi`. It displays a copy, whose
+window title reads:
 
-| VI | state |
-|---|---|
-| `Create New DQMH Event.vi` | `2` — Run top level |
-| `DQMH Arguments Window.vi` | `1` — **Idle** |
+```
+DQMH Arguments Window [lvtemporary_95526.vi] Front Panel on firstDQMH.lvproj
+```
 
-So the dialog is still running, but the Arguments Window it launched is not. `Paste Selection` is an
-**edit** operation, and using it on that window takes it out of its run — after which OK cannot be
-signalled. The controls do land (verified by reading the window's `Controls[]` back), so the paste
-"works" while quietly breaking the thing it was needed for.
+The number changes per invocation and the copy has **no file on disk**. Pasting into the template on
+disk therefore succeeds, reports the controls back, and changes nothing the dialog will ever read —
+the window on screen stays empty. This wasted several rounds and produced a confident wrong
+diagnosis (that `Paste Selection` had knocked the window out of its run, since the template read
+back as `Idle` — of course it did, it was never the running window).
 
-**That is the unresolved conflict at the heart of this route:** the argument controls must be
-*edited* into a panel that must be *running*. Nothing measured so far reconciles the two. A
-plausible next probe is to paste into the Arguments Window and then restart *it* (`Run VI`) before
-signalling OK — untested.
+**Address it by NAME.** `Open VI Reference`'s `vi path` input is polymorphic and accepts a string VI
+name for anything in memory. Do **not** run the name through `String To Path`: that makes it a
+relative path and the call answers `Error 1445` naming a file beside the helper. Wiring the string
+straight in works — pasted into `lvtemporary_95526.vi`, the window's `Controls[]` returned
+`Name`, `Gewicht`, and the controls appeared on screen.
+
+Finding the name at run time is the open piece; the title bar shows it, and
+`{LV.Application}` `All VIs In Memory` is the obvious place to look.
+
+### Where it stops, and this one is a hard wall: the OK button is LATCHED
+
+With the module verified through `Step 6`, the name and description read back, and the argument
+controls in the real window, `Value (Signaling)` on OK still answers **`Error 1193`**.
+
+The cause is not sequencing, timing or state. Measured on the button itself:
+
+```
+Label.Text        = "OK"
+Mechanical Action = 4   -> Latch When Released
+```
+
+**LabVIEW refuses `Value` and `Value (Signaling)` on a latched boolean.** A latch's value belongs to
+the run-time between reads, so a property write has nowhere to put it. `Error 1193` is exactly that
+refusal. The same call succeeds on the `Module` **ring** in the same dialog and the same execution
+state, which is what isolates the cause to the control's mechanical action rather than to anything
+about the dialog.
+
+So **VI Server cannot press this button**, and no amount of ordering will change it. What remains:
+
+- a human click — everything else can be set up programmatically first, which is worth something:
+  module, event type, name, description, tester flag and the argument controls all land and verify;
+- or an OS-level mouse click synthesised onto the button's screen position, which leaves VI Server
+  entirely and depends on window placement. Not attempted.
 
 ### Why it still did not finish
 
