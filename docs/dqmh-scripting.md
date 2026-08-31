@@ -23,17 +23,31 @@ callable:
 
 The `.txt` file in each menu directory (`Module\Module.txt`) is the menu ordering, not an API.
 
-**The tell is the connector pane, and it is unambiguous.** A menu VI exports as ~135–141 bytes of
-AIXML — the `<VI>` element and a description, nothing else — because it has no terminals at all:
+**CORRECTED 2026-08-31. This section previously claimed the menu VIs "have no terminals at all",
+citing 135–141 byte exports, and used that to conclude they were unscriptable. That was wrong, and
+the way it was wrong is worth more than the claim.**
 
-```
-Module\Add New DQMH Module.vi        135 bytes, no controls
-Module\Validate DQMH Module.vi       141 bytes, no controls
-```
+A first export of `Module\Add New DQMH Module.vi` returned 135 bytes — the `<VI>` element and a
+description, no controls, no diagram — and `lvai_vi_terminals` duly reported
+`errorKind: noTerminalsFound` with the message that such an export means the VI is
+"password-protected or otherwise withheld". Re-exported later with `refresh=true`, the same file
+gives a full polymorphic terminal listing, and `Event\Create New DQMH Event.vi` goes from 136 bytes
+to **80 361 bytes** with its whole diagram and fourteen front-panel controls.
 
-`lvai_vi_terminals` reports these as `errorKind: noTerminalsFound`. A scripting VI, by contrast,
-returns a full terminal list. **So the first move against any DQMH VI is `lvai_vi_terminals`**: it
-separates the two kinds in one call, and it is the only contract available (§2).
+**An empty AIXML export is not proof that a VI is locked.** The likely cause here: those first
+exports ran at the very start of a session, with no project open and none of the DQMH libraries in
+memory, so LabVIEW could not resolve the hierarchy and returned the bare shell — and
+`lvai_convert_vi_to_aixml` **cached that result**, freezing the wrong answer for every later read.
+
+Two rules follow, and they generalise well past DQMH:
+
+- **A suspiciously small export deserves one `refresh=true` before any conclusion is drawn from
+  it**, especially for a VI belonging to a library that may not be loaded.
+- **Open the project first.** Anything that reads a VI belonging to a framework reads it better
+  once that framework is in memory.
+
+The genuinely locked VIs are a different set — `Script New Module.vi` and its siblings under
+`_DQMH *\` still export their controls with no `<Diagram>` even on a refresh (§2).
 
 ## 2. The source is locked, so connector panes are the whole contract
 
@@ -313,23 +327,41 @@ restored from a backup each time and verified clean.
 
 ### 6.3 Why not to keep pushing
 
-**`Create New DQMH Event.vi` has no connector pane at all** — 136 bytes of AIXML, no controls, no
-indicators. Like the module menu VIs (§1) it is a dialog launcher.
+`Create New DQMH Event.vi` **is readable after all** (§1 — the 136-byte export was a cached
+artefact), and reading it shows exactly why a helper cannot substitute for it. Its diagram calls,
+in order:
 
-And the project provider under `resource\Framework\Providers\ZE_DQMH\` — which *is* readable,
-unlike Delacor's scripting VIs — settles it. `CreateEvent_Item_OnCommand.vi` calls exactly three
-things: `mxLvGetItemRef.vi`, **`FP.Open` with `Activate? = true`**, and **`Run VI` with
-`Wait Until Done = false`**. It pre-selects a `Ring` control named `Module` and hands the dialog to
-the user. That is the whole of it.
+```
+Parse Project for DQMH Modules.vi      <- as a SUBVI
+Preflight Main VI.vi
+Show Arguments Window.vi
+Determine Existing Argument Typedef Path.vi
+Verify Event Names.vi
+Script New Event.vi                    <- as a SUBVI, same hierarchy
+Close Scripting References.vi
+```
 
-**So the officially supported path for creating an event is the dialog, on both routes Delacor
-ships.** `Script New Event.vi` is internal implementation reached only from a running dialog that
-has already built state around it; driving it directly is fighting an API that was never a
-contract, and a DQMH upgrade may change it without notice. Modules are different — there
-`Script New Module.vi` takes plain values and works end to end (§5).
+**Parse and Script are subVIs of one running VI.** That is precisely what keeps the thirteen
+refnums alive across them, and precisely what a helper driving each as a separate top-level `Run VI`
+cannot reproduce (§6.2a). It also runs `Preflight Main VI.vi` and `Verify Event Names.vi` first —
+preparation steps a direct call skips entirely.
 
-The practical answer for a caller who wants an event: **Tools ▸ DQMH ▸ Create New DQMH Event**, or
-the project's right-click menu, which the provider pre-fills with the module.
+The dialog carries fourteen front-panel controls, including `Module`, `Event Type`, `Event Name`,
+`Event Description`, `Add Tester Button`, `Custom Enqueue VI`, `Broadcast Argument Source`, and
+`OK` / `Cancel`, behind an Event Structure.
+
+The project provider under `resource\Framework\Providers\ZE_DQMH\` does no more than launch it:
+`CreateEvent_Item_OnCommand.vi` calls `mxLvGetItemRef.vi`, **`FP.Open` with `Activate? = true`** and
+**`Run VI` with `Wait Until Done = false`**, pre-selecting the `Module` ring.
+
+**So the entry point Delacor supports is this dialog VI, not `Script New Event.vi`.** Whether it can
+be driven headless — set the controls over VI Server, then fire `OK` through a `Value (Signaling)`
+property so the Event Structure sees it — is **untested**, and `Show Arguments Window.vi` is a second
+dialog that would have to be handled too. Modules are different: `Script New Module.vi` takes plain
+values and works end to end (§5).
+
+The route that works today: **Tools ▸ DQMH ▸ Create New DQMH Event**, or the project's right-click
+menu, which the provider pre-fills with the module.
 
 ## 7. What is not reachable this way
 

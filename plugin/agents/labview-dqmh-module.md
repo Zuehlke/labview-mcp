@@ -1,7 +1,7 @@
 ---
 name: labview-dqmh-module
 description: >-
-  Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It does NOT create DQMH events, and that is a measured finding rather than an unfinished feature: Delacor ships no headless route for events — its menu VI has no connector pane and its own project provider just opens a dialog and does not wait — so an event request returns a `CANNOT PROCEED` block pointing at Tools ▸ DQMH ▸ Create New DQMH Event instead of half-building one. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+  Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It does NOT create DQMH events, and that is a measured finding rather than an unfinished feature: Delacor ships no headless route for events — its supported entry point is a dialog VI whose diagram calls the scripting VIs as subVIs of one running hierarchy, which a helper cannot reproduce — so an event request returns a `CANNOT PROCEED` block pointing at Tools ▸ DQMH ▸ Create New DQMH Event instead of half-building one. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations
 ---
 
@@ -45,8 +45,14 @@ copy it. Its own description block explains every wiring decision.
    - `_DQMH New Module\Get Module Type Info.vi`
    - `_DQMH New Module\Script New Module.vi`
 
-   A `noTerminalsFound` answer means you are pointed at a **menu VI**, not a scripting VI — the
-   ones in `Module\` and `Event\` are dialog launchers with no pane. Re-check the path.
+   **A `noTerminalsFound` answer is most likely a STALE CACHE, not a locked VI.** Measured
+   2026-08-31: three DQMH VIs each exported as ~135 bytes with "no controls, indicators or
+   instances", and every one of them returned a full listing on a second call with
+   `refresh: true` — one of them 80 361 bytes with its whole diagram. The first exports had run
+   with no project open, so LabVIEW could not resolve the library and returned a bare shell,
+   which the export cache then froze. **Always re-check with `refresh: true`, and with the
+   project open, before concluding anything about a VI.** Two documents and this agent carried a
+   wrong conclusion built on exactly that mistake.
 
 ## Phase 1 — settle the request
 
@@ -208,18 +214,26 @@ Never edit a `.lvproj` while LabVIEW holds it open.
 If the user asks you to **add an event**, do not attempt it and do not treat it as unfinished work.
 Return `CANNOT PROCEED` with this substance — it was measured on 2026-08-31, not assumed:
 
-- **Delacor ships no headless route for events.** `Create New DQMH Event.vi` has no connector pane
-  at all (136 bytes of AIXML, no controls). And the project provider
-  `resource\Framework\Providers\ZE_DQMH\CreateEvent_Item_OnCommand.vi` — which is readable, so
-  this is not inference — calls exactly three things: `mxLvGetItemRef.vi`, `FP.Open` with
-  `Activate? = true`, and `Run VI` with `Wait Until Done = false`. It pre-selects a `Ring` control
-  named `Module` and hands the dialog to a human. Both routes Delacor ships end in that dialog.
+- **The entry point Delacor supports is the dialog VI `Create New DQMH Event.vi`, not
+  `Script New Event.vi`.** Reading its diagram (it is not locked — an earlier claim that it had no
+  connector pane came from a stale cached export) shows it calling
+  `Parse Project for DQMH Modules.vi` and `Script New Event.vi` **as subVIs of one running VI**,
+  with `Preflight Main VI.vi` and `Verify Event Names.vi` in between. The project provider
+  `…\ZE_DQMH\CreateEvent_Item_OnCommand.vi` only launches it: `FP.Open` plus `Run VI` with
+  `Wait Until Done = false`.
 - **A direct drive of `Script New Event.vi` gets partway and stops.** With the module found and an
   arguments carrier VI supplied, it wrote a real `SimpleEvent Argument--cluster.ctl` — so the
   carrier-VI pattern itself works — and then produced no request VI, left `Main.vi` untouched and
   the `.lvlib` unchanged. One orphaned `.ctl`. The cause is not established.
-- So driving it is **fighting an internal implementation that was never a contract**, and a DQMH
-  upgrade may change it silently.
+- **The refnums are why, and it is structural.** `Module Info` holds thirteen refnums; LabVIEW
+  releases the ones a VI opened when that VI stops, so driving `Parse Project…` as its own
+  top-level `Run VI` leaves every one of them dead by the time `Script New Event.vi` runs. Only
+  the application reference can be substituted (the helper holds its own); `LVLibrary.Open` does
+  not exist, so `Library` and the eleven `ProjectItem`s cannot be rebuilt. Being subVIs of one
+  caller is exactly what the dialog provides.
+- Driving the **dialog** headless — set its controls over VI Server, fire `OK` through a
+  `Value (Signaling)` property — is **untested**, and `Show Arguments Window.vi` is a second dialog
+  that would also need handling. Do not present it as a route that works.
 
 Tell the user plainly: **Tools ▸ DQMH ▸ Create New DQMH Event**, or the project's right-click menu,
 which the provider pre-fills with the module. That is Delacor's own tested path and takes a minute.
