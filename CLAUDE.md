@@ -448,6 +448,7 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 | read a VI with no LabVIEW, no licence, in CI | pylabview — the only route |
 | a `.ctl`, an icon, layout, decorations | pylabview. NI's list puts `.ctl` outside the generator entirely |
 | a class, its private data, an accessor | **neither — call NI's OWN provider VIs**, see below |
+| a DQMH module, or anything a vendor toolkit under `project\` scripts | **neither — VI Server BY PATH**, see below |
 
 **There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
 The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
@@ -468,6 +469,35 @@ Two practical notes, both measured: these providers need a project **open and ac
 LabVIEW through `Project\3AActive Project` and answer `Error 1055` otherwise — and LabVIEW **adopts
 every VI it has open** when it saves that project, so a run leaves its own helper and carrier listed
 in the user's project unless they are stripped afterwards.
+
+**AND THERE IS A FIFTH INTERFACE, for the VIs a VENDOR TOOLKIT ships under `project\`.** DQMH is the
+worked example and the lesson generalises to anything installed there. Its scripting VIs —
+`Script New Module.vi`, `Script New Event.vi`, `Parse Project for DQMH Modules.vi` — are ordinary
+VIs with ordinary connector panes, and they build a forty-file module correctly. But **an AIXML
+`Call` cannot reach them: `Error 53, Unsupported SubVI`, in every spelling.** That is not the
+library-qualifier trap; a correct qualifier is not the missing piece. Generation resolves a target
+by name against what the installation can **find** — `vi.lib`, `user.lib`, `LVAddons` — and
+`project\Delacor\` is none of those, so no spelling exists that works.
+
+**`Open VI Reference` takes a PATH and has no such restriction.** So the route is VI Server: open by
+path into the **IDE's** application instance (`Project\3AActive Project` → `Application`, the same
+hop the class providers need), `Ctrl Val.Set` each input, `Run VI`, `Ctrl Val.Get` each output.
+Measured 2026-08-31 end to end: two DQMH modules created, 30 s and 43 s, Delacor's own `error out`
+`0` both times. **Values move as VARIANTS and never have to be named** — DQMH's `External Modules`
+is an array of six-field clusters, and carrying it from one `Ctrl Val.Get` straight into one
+`Ctrl Val.Set` means the helper never spells that type out. That trick is what makes the approach
+tractable, and it applies to any refnum- or cluster-heavy vendor API.
+
+Three things worth knowing before trying it on another toolkit. **A menu VI has no connector pane**
+— DQMH's `Module\Add New DQMH Module.vi` exports 135 bytes with no terminals at all, because the
+Tools-menu entry points are dialog launchers; the scriptable code sits beside them in `_DQMH *\`,
+and `lvai_vi_terminals` separates the two in one call. **The source may be locked**, as all of
+DQMH's is, so connector panes are the entire contract and the usual "export a VI that already calls
+it and copy the shape" does not work. And **an enum-looking input may be a bare index**: DQMH's
+`Module Type` is a `uint16` with no enum strings, whose meaning comes from a *runtime* catalogue
+that differs per station because module types are pluggable — so read the catalogue and match by
+name, never carry an index. `docs/dqmh-scripting.md` has the measurements;
+`scripts/lvdqmh_new_module.xml` is the working helper.
 
 **AN INTERFACE IS A `.lvclass`, and the same provider pattern creates one.** NI's manual defines it
 as "a class without a private data control", there is no `.lvinterface`, and
@@ -813,6 +843,7 @@ literally it argued away 600 usable palette VIs.
 |---|---|---|
 | How do I read or write AIXML? | `docs/aixml-reference.md` | `lvai_aixml_reference` |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
+| How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
 | How is a `.lvproj` structured? | `docs/lvproj-structure.md` | `lvai_lvproj_reference` |
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |
