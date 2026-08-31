@@ -55,12 +55,48 @@ You need four things. Ask about the ones you cannot derive; **never invent any o
 | Input | Rule |
 |---|---|
 | module name | as the user gave it. It becomes the `.lvlib` name and is baked into ~60 filenames, so a rename later is not cheap |
-| target directory | from the orchestrator. Must exist |
+| target directory | **derive it — see the layout rule below.** Do not take a bare folder at face value |
 | `.lvproj` | **required.** You do not create one and you do not pick one. No project → `NEEDS CLARIFICATION` |
 | module type | see below — read the catalogue, match by name |
 | Do Something | keep the example events, or not. Default to **keeping** them unless the user said otherwise: they are how a DQMH developer learns the module's shape, and removing them later is a supported operation |
 
 If the module name would collide with an existing `.lvlib` in the target directory, stop and ask.
+
+### THE LAYOUT RULE: every module lives in `Libraries\<ModuleName>\`
+
+A module is **never** written loose beside the `.lvproj`. It goes in its own folder under a
+`Libraries` folder next to the project:
+
+```
+<project folder>\
+    <project>.lvproj
+    Libraries\
+        <ModuleName>\          <- the .lvlib, all ~50 VIs and .ctls, AND the tester
+        <OtherModule>\
+```
+
+So the value you pass as `module save path` is **`<project folder>\Libraries\<ModuleName>`**, not
+the project folder. Create that directory before the run.
+
+**Get this right up front, because Delacor then does the rest for you.** Measured 2026-08-31 with
+`module save path` pointing straight at `…\Libraries\Vent`: all 48 files landed there, the project
+folder stayed clean, and the scripter wrote the relative URLs itself —
+
+```xml
+<Item Name="Vent Module" Type="Folder">
+  <Item Name="Vent.lvlib" Type="Library" URL="../Libraries/Vent/Vent.lvlib"/>
+</Item>
+<Item Name="Test Vent API.vi" Type="VI" URL="../Libraries/Vent/Test Vent API.vi"/>
+```
+
+Note the shape: the `.lvlib` sits inside a virtual folder called **`<ModuleName> Module`**, while
+the tester is listed at **target top level**, not inside that folder — even though the tester's
+*file* lives in the module folder with everything else. That is Delacor's own layout; do not
+"tidy" it.
+
+Passing the project folder instead produces a module strewn across it, and putting that right
+afterwards means moving ~56 files and hand-editing the `.lvproj` URLs. Cheap to avoid, tedious to
+repair.
 
 ### The module type is an INDEX, and you must read the catalogue
 
@@ -92,6 +128,8 @@ it straight through from `Get Module Type Info.vi`; leave that alone.
 
 ## Phase 2 — build
 
+0. **Create `<project folder>\Libraries\<ModuleName>`** if it does not exist, and pass exactly that
+   as `module save path`. See the layout rule in Phase 1.
 1. **Open the project** with `lvai_open_file` (`projectPath` **and** `projectName` — there is no
    `filePath` parameter, and a `.lvproj` passed as a VI answers a misleading `Error 7`). The
    Active Project route answers `Error 1055` if no project is active, and that is the single
@@ -129,7 +167,10 @@ target's. Read the values.
 
 A clean `error out` is necessary and not sufficient. Check on disk:
 
-- `<Module>.lvlib` exists in the target directory.
+- **Everything is inside `Libraries\<ModuleName>\` and the project folder is clean.** A stray
+  `Main.vi` or `.ctl` beside the `.lvproj` means the save path was wrong — say so rather than
+  quietly moving files, because the `.lvproj` URLs will be wrong too.
+- `<Module>.lvlib` exists in that folder.
 - The framework VIs are there: `Main.vi`, `Start Module.vi`, `Stop Module.vi`,
   `Obtain Request Events.vi`, `Obtain Broadcast Events.vi`, `Synchronize Module Events.vi`,
   `Module Did Init.vi`, `Show Panel.vi` / `Hide Panel.vi`.
@@ -144,15 +185,21 @@ what a module contains.
 
 ## Phase 5 — clean up after yourself
 
-**LabVIEW adopts every VI it has open into the project when it saves.** After a run, the user's
-`.lvproj` lists *your helper VI* alongside the new module. This is not optional tidying — you put
-it there.
+**LabVIEW MAY adopt your helper VI into the project when it saves**, and when it does, the user's
+`.lvproj` lists it alongside the new module. This is not optional tidying — you put it there.
+
+It does not happen every time and the condition is **not known**: measured 2026-08-31, adopted on
+two runs and not on a third, with no difference anyone identified. So **always look, never assume
+either way** — do not skip the check because a previous run was clean, and do not report a removal
+you did not make.
 
 1. `lvai_close_active_project` (it **saves**, then closes — that is what releases the files).
-2. With the project closed, strip your helper's `<Item>` line out of the `.lvproj`. It is plain
-   XML; edit it **only while the project is closed**, because the next close would otherwise save
-   over your edit.
+2. With the project closed, read the `.lvproj` and strip any `<Item>` line pointing at a helper of
+   yours. It is plain XML; edit it **only while the project is closed**, because the next close
+   would otherwise save over your edit. Preserve the leading UTF-8 BOM.
 3. Delete the generated helper `.vi` from the temp directory.
+4. **Confirm with `lvai_describe_project`** that `missingItems` and `missingFiles` are both empty.
+   Reading the file back cannot see a link you broke; only LabVIEW resolving it can.
 
 Never edit a `.lvproj` while LabVIEW holds it open.
 

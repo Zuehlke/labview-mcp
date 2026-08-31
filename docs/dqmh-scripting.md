@@ -161,7 +161,38 @@ Both flags demonstrably take effect. The output is the structure documented in
 `Obtain`/`Destroy Request`/`Broadcast Events.vi`, `Test <Module> API.vi`, and the
 `--cluster.ctl` typedefs.
 
-### 5.5 Two things the caller must clean up afterwards
+### 5.5 The directory layout: `Libraries\<ModuleName>\`
+
+A module belongs in its own folder under a `Libraries` folder beside the `.lvproj`, never loose in
+the project folder:
+
+```
+<project folder>    <project>.lvproj
+    Libraries        <ModuleName>\      <- the .lvlib, ~50 VIs and .ctls, and the tester
+```
+
+**Pass that folder as `Module Save Path` and Delacor does the rest.** Measured 2026-08-31 with the
+path pointing straight at `…\Libraries\Vent`: all 48 files landed there, the project folder stayed
+clean, and the scripter wrote the relative URLs itself —
+
+```xml
+<Item Name="Vent Module" Type="Folder">
+  <Item Name="Vent.lvlib" Type="Library" URL="../Libraries/Vent/Vent.lvlib"/>
+</Item>
+<Item Name="Test Vent API.vi" Type="VI" URL="../Libraries/Vent/Test Vent API.vi"/>
+```
+
+Note the asymmetry, which is Delacor's own and should not be "tidied": the `.lvlib` goes inside a
+virtual folder named `<ModuleName> Module`, while the tester is listed at target top level — even
+though the tester *file* sits in the module folder with everything else.
+
+Getting this wrong is cheap to avoid and tedious to repair: a module written into the project
+folder has to be moved file by file (~56 of them) and the `.lvproj` URLs hand-edited afterwards.
+The `.lvlib` itself survives such a move untouched, because it references its members as
+`../<name>` — relative to its own folder — so moving the library together with its members keeps
+every path valid.
+
+### 5.6 Two things the caller must clean up afterwards
 
 **The scripter invalidates the `Project` reference it was handed.** The first run reported
 `Error 1055` from a `Close Reference` while the module itself was built perfectly and Delacor's own
@@ -170,12 +201,18 @@ scripting failure and reads as "the module was not created". So the helper now r
 out`** (everything up to and including the scripting) and **`cleanup error out`** separately —
 verified on the second run: `0`, `0`, `1055`.
 
-**LabVIEW adopts the helper VI into the user's project.** After the first run the saved `.lvproj`
-listed `lvdqmh_new_module.vi` alongside `Heater.lvlib`. This is the documented behaviour from
-`CLAUDE.md` — LabVIEW adopts every VI it has open when it saves a project — and it means a
-productised tool **must strip its own helper from the `.lvproj` afterwards**. It also leaves the
-helper in memory: regenerating it to the same path then fails with `Error 1357`, which is why the
-second measurement had to be generated under a fresh name.
+**LabVIEW MAY adopt the helper VI into the user's project.** After the first run the saved
+`.lvproj` listed `lvdqmh_new_module.vi` alongside `Heater.lvlib` — the behaviour `CLAUDE.md`
+records, that LabVIEW adopts every VI it has open when it saves a project.
+
+**But it is not reliable, and that matters more than the adoption itself.** Measured over three
+runs on 2026-08-31: adopted twice (`Heater`, `DQMHdemo`), **not** adopted once (`Vent`), with no
+difference identified between them — same helper, same route, same session. So a tool must
+**always inspect the `.lvproj` afterwards** rather than either assuming a cleanup is needed or
+assuming it is not. The condition is open.
+
+Adoption also leaves the helper in memory: regenerating it to the same path then fails with
+`Error 1357`, which is why later measurements had to be generated under fresh names.
 
 ## 6. Events: discovery works, creation is one piece short
 
