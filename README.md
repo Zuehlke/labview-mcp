@@ -1,5 +1,6 @@
->  We’re currently having a problem with the installer. Please use the vole repository or 
->  the ZIP file for the tag directly! Sorry for the inconvenience!
+> $${\color{orange}\Large\textsf{There is currently a problem with the installer.}}$$
+> $${\color{orange}\Large\textsf{Please use the repository or the ZIP file for the tag directly!}}$$
+> $${\color{orange}\Large\textsf{We apologise for the inconvenience!}}$$
 >
 >
 > ## 🧪 Read this before you let a robot touch your VIs
