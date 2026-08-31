@@ -1,0 +1,33 @@
+<VI _name="lvdqmh_btnpos.vi" description="READ-ONLY. Computes the SCREEN position of a front-panel control\2C so an OS-level mouse click can be aimed at it.\0A\0AWHY THIS EXISTS. Delacor's event dialog OK button has Mechanical Action 4\2C Latch When Released\2C and LabVIEW refuses Value and Value (Signaling) on a latched boolean - Error 1193. VI Server therefore cannot press it at all\2C and the only remaining route is a synthesised click. Aiming that click at coordinates read off a screenshot would be guesswork\3B these come from the panel itself.\0A\0ATHE ARITHMETIC. Front Panel Window\3APanel Bounds gives the panel AREA in screen coordinates. A control's Position is relative to the panel's own origin\2C and Front Panel Window\3AOrigin is how far that origin has been scrolled\2C so the control's screen position is PanelBounds.Left + (Position.Left - Origin.x)\2C plus half its width to land in the middle. The scroll term matters\3A this dialog is taller than its window and does scroll.\0A\0AThe label is returned alongside so the caller can prove the coordinates belong to the control it meant.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control index" type="string" uid="11" uid_parent="root" value="10" outputs="value:11.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel Window\3APanel Bounds" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel Window\3APanel Bounds:31.bounds,reference out:31.reference out,error out:31.error out" type="{LV.VI}" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel Window\3AOrigin" inputs="reference:30.vi reference,error in (no error):31.error out" outputs="Front Panel Window\3AOrigin:32.origin,reference out:32.reference out,error out:32.error out" type="{LV.VI}" uid="32" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):32.error out" outputs="Front Panel:33.Panel,reference out:33.reference out,error out:33.error out" type="{LV.VI}" uid="33" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:33.Panel,error in (no error):33.error out" outputs="Controls[]:34.Controls,reference out:34.reference out,error out:34.error out" type="{LV.Panel}" uid="34" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:35.number" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:34.Controls,index:35.number" outputs="element:36.element" uid="36" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label.Text" inputs="reference:36.element,error in (no error):34.error out" outputs="Label.Text:37.Label,reference out:37.reference out,error out:37.error out" type="{LV.Control}" uid="37" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Position\3ALeft" inputs="reference:36.element,error in (no error):37.error out" outputs="Position\3ALeft:38.left,reference out:38.reference out,error out:38.error out" type="{LV.Control}" uid="38" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Position\3ATop" inputs="reference:36.element,error in (no error):38.error out" outputs="Position\3ATop:39.top,reference out:39.reference out,error out:39.error out" type="{LV.Control}" uid="39" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Bounds\3AArea Width" inputs="reference:36.element,error in (no error):39.error out" outputs="Bounds\3AArea Width:40.width,reference out:40.reference out,error out:40.error out" type="{LV.Control}" uid="40" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Bounds\3AArea Height" inputs="reference:36.element,error in (no error):40.error out" outputs="Bounds\3AArea Height:41.height,reference out:41.reference out,error out:41.error out" type="{LV.Control}" uid="41" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):41.error out" outputs="error out:45.error out" uid="45" uid_parent="root"/>
+
+  <Indicator _name="label" inputs="value:37.Label" type="string" uid="50" uid_parent="root" value=""/>
+  <Indicator _name="panel bounds" inputs="value:31.bounds" type="variant" uid="51" uid_parent="root" value=""/>
+  <Indicator _name="origin" inputs="value:32.origin" type="variant" uid="52" uid_parent="root" value=""/>
+  <Indicator _name="ctl left" inputs="value:38.left" type="int32" uid="53" uid_parent="root" value="0"/>
+  <Indicator _name="ctl top" inputs="value:39.top" type="int32" uid="54" uid_parent="root" value="0"/>
+  <Indicator _name="ctl width" inputs="value:40.width" type="int32" uid="55" uid_parent="root" value="0"/>
+  <Indicator _name="ctl height" inputs="value:41.height" type="int32" uid="56" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:41.error out" type="cluster{bool.status,int32.code,string.source}" uid="57" uid_parent="root" value="[false,0,]"/>
+</VI>

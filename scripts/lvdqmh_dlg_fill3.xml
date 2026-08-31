@@ -1,0 +1,55 @@
+<VI _name="lvdqmh_dlg_fill3.vi" description="Fills Delacor's running Create New DQMH Event.vi dialog and PROVES which module it will write to. Does not press OK.\0A\0ATHE MODULE RING IS SET THROUGH Value (Signaling)\2C not Ctrl Val.Set\2C and that is the whole point of this revision. The dialog rebuilds its own text when the module changes - step 6 reads 'The new event will be created in &lt;name&gt;.lvlib' - and only a Value Change event makes it do that. Ctrl Val.Set writes the number and the dialog never notices\2C so the ring would say one thing and the dialog would still be aimed somewhere else.\0A\0AAND THAT TEXT IS THE VERIFICATION. Reading the Step 6 indicator back turns an unverifiable index into a checkable fact\3A a ring index means different things depending on how the dialog was launched - from the Tools menu entry 0 is the placeholder '&lt;Select a Module&gt;'\2C from the project's right-click menu the provider pre-selects and entry 0 is a real module. Measured 2026-08-31\2C where writing index 1 on the placeholder assumption would have aimed the event at the wrong module. Step 6 names the module in words\2C so it cannot be misread.\0A\0AControls[] INDEX 0 IS THE MODULE RING and index 14 is Step 6 - measured by lvdqmh_dlg_probe.vi over all sixteen controls. Value (Signaling) is taken on {LV.Control} rather than {LV.Ring} because a reference out of Controls[] is generic and AIXML cannot express a cast to a subclass\3B the catalogue lists the property on {LV.Control} too\2C which is what makes this possible at all.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="module index" type="string" uid="11" uid_parent="root" value="1" outputs="value:11.value"/>
+  <Control _name="event type index" type="string" uid="12" uid_parent="root" value="0" outputs="value:12.value"/>
+  <Control _name="event name" type="string" uid="13" uid_parent="root" value="" outputs="value:13.value"/>
+  <Control _name="event description" type="string" uid="14" uid_parent="root" value="" outputs="value:14.value"/>
+  <Control _name="add tester button" type="string" uid="15" uid_parent="root" value="1" outputs="value:15.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:31.Panel,reference out:31.reference out,error out:31.error out" type="{LV.VI}" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:31.Panel,error in (no error):31.error out" outputs="Controls[]:32.Controls,reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:35.number" uid="35" uid_parent="root"/>
+  <Node _name="To Unsigned Word Integer" inputs="number:35.number" outputs="unsigned 16bit integer:36.unsigned 16bit integer" uid="36" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:36.unsigned 16bit integer" outputs="Variant:37.Variant" uid="37" uid_parent="root"/>
+  <Constant _name="ring index" outputs="value:38.value" type="int32" uid="38" uid_parent="root" value="0"/>
+  <Node _name="Index Array" inputs="array:32.Controls,index:38.value" outputs="element:39.element" uid="39" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:39.element,error in (no error):32.error out,Value (Signaling):37.Variant" outputs="reference out:40.reference out,error out:40.error out" type="{LV.Control}" uid="40" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:12.value" outputs="number:41.number" uid="41" uid_parent="root"/>
+  <Node _name="To Unsigned Word Integer" inputs="number:41.number" outputs="unsigned 16bit integer:42.unsigned 16bit integer" uid="42" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:42.unsigned 16bit integer" outputs="Variant:43.Variant" uid="43" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:13.value" outputs="Variant:44.Variant" uid="44" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:14.value" outputs="Variant:45.Variant" uid="45" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:15.value" outputs="number:46.number" uid="46" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:46.number" outputs="x != 0?:47.x != 0?" uid="47" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:47.x != 0?" outputs="Variant:48.Variant" uid="48" uid_parent="root"/>
+
+  <Constant _name="k type" outputs="value:52.value" type="string" uid="52" uid_parent="root" value="Event Type"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:30.vi reference,error in (no error):40.error out,Control Name:52.value,Value:43.Variant" outputs="reference out:53.reference out,error out:53.error out" uid="53" uid_parent="root"/>
+  <Constant _name="k name" outputs="value:54.value" type="string" uid="54" uid_parent="root" value="Event Name"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:53.reference out,error in (no error):53.error out,Control Name:54.value,Value:44.Variant" outputs="reference out:55.reference out,error out:55.error out" uid="55" uid_parent="root"/>
+  <Constant _name="k desc" outputs="value:56.value" type="string" uid="56" uid_parent="root" value="Event Description"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:55.reference out,error in (no error):55.error out,Control Name:56.value,Value:45.Variant" outputs="reference out:57.reference out,error out:57.error out" uid="57" uid_parent="root"/>
+  <Constant _name="k tester" outputs="value:58.value" type="string" uid="58" uid_parent="root" value="Add Tester Button"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:57.reference out,error in (no error):57.error out,Control Name:58.value,Value:48.Variant" outputs="reference out:59.reference out,error out:59.error out" uid="59" uid_parent="root"/>
+
+  <Constant _name="k step6" outputs="value:60.value" type="string" uid="60" uid_parent="root" value="Step 6"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:59.reference out,error in (no error):59.error out,Control Name:60.value" outputs="reference out:61.reference out,error out:61.error out,Value:61.Value" uid="61" uid_parent="root"/>
+  <Constant _name="k rname" outputs="value:62.value" type="string" uid="62" uid_parent="root" value="Event Name"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:61.reference out,error in (no error):61.error out,Control Name:62.value" outputs="reference out:63.reference out,error out:63.error out,Value:63.Value" uid="63" uid_parent="root"/>
+  <Constant _name="k rdesc" outputs="value:64.value" type="string" uid="64" uid_parent="root" value="Event Description"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:63.reference out,error in (no error):63.error out,Control Name:64.value" outputs="reference out:65.reference out,error out:65.error out,Value:65.Value" uid="65" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):65.error out" outputs="error out:70.error out" uid="70" uid_parent="root"/>
+
+  <Indicator _name="step 6 text" inputs="value:61.Value" type="variant" uid="80" uid_parent="root" value=""/>
+  <Indicator _name="name read back" inputs="value:63.Value" type="variant" uid="81" uid_parent="root" value=""/>
+  <Indicator _name="desc read back" inputs="value:65.Value" type="variant" uid="82" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:65.error out" type="cluster{bool.status,int32.code,string.source}" uid="83" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:70.error out" type="cluster{bool.status,int32.code,string.source}" uid="84" uid_parent="root" value="[false,0,]"/>
+</VI>

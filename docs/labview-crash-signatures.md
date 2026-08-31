@@ -461,6 +461,53 @@ ordering is not the subject.
 user's `.lvproj` untouched and the finished `.lvclass` files complete. Measured on the very run that
 produced the stack above - LabVIEW died, and both classes plus the project came out correct.
 
+## A FIFTH signature: `HeapObjMapImpl.cpp(226)`, and our own low uids are implicated
+
+Measured 2026-08-31 while trying to script a DQMH event. LabVIEW died and restarted (PID changed);
+the saved `_cur.txt` ends with a stack whose VI call stack is unambiguous about the *site*:
+
+```
+VI call stack:
+- LV AI Core.lvlibp:VI generator.vi
+- LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:ConvertAIXMLToVI.vi
+- ...:LVAI.lvclass:Start Sync.vi
+```
+
+So it fell over **generating a VI from AIXML**, not inside the third-party scripting VIs that the
+session was actually driving. Earlier in the same log, repeatedly:
+
+```
+source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420:
+    trying to override with non-reserved UID, request: 10 res: 0 max: 42 sat: 42
+[ExecSys:0; Executing:"[VI "LV AI Core.lvlibp:VI generator.vi"]"]
+```
+
+**`request: 10` and `request: 11` are OUR uid values** — every helper in `scripts/` numbers its
+first front-panel controls `uid="10"`, `uid="11"`. LabVIEW is saying those collide with UIDs it
+reserves in the panel heap. The warnings are emitted on ordinary, *successful* generations too, so
+they are not by themselves a fault; but they establish that the generator is being asked to place
+objects at UIDs it did not want to give out, and the fatal stack is in that same code.
+
+**This is correlation, not a demonstrated cause**, and two things argue against jumping to
+"renumber everything": those same uids have generated hundreds of working VIs in this repository,
+and the AIXML that preceded this crash was also the most unusual ever fed to the generator — a
+single `Constant` whose `type` spelled out a nineteen-field cluster containing `ref{LV.Library}`,
+`ref{LV.Application}` and eleven `ref{LV.ProjectItem}` fields. That is the same *kind* of input as
+the settled `OMAutoClasses` signature above: **AIXML naming VI Server classes, parsed by the
+generator.** Either or both may be responsible.
+
+What to take from it, pending a controlled test:
+
+- **A refnum-typed constant is not a free construct.** If AIXML needs `ref{LV.*}` inside a
+  `type=`, treat that file as risky input and do not run it in a session holding work you cannot
+  lose. Prefer a route that never has to name the type — carrying a value as a **variant** from one
+  `Ctrl Val.Get` straight into one `Ctrl Val.Set` does exactly that, and is why the module helper
+  (`scripts/lvdqmh_new_module.xml`) never needed such a constant.
+- **Validation passing says nothing here.** The file validated in 2.5 s and generated with
+  `errorCode 0`; the death came later.
+- The restarted LabVIEW comes back **without the gRPC service** — it starts with Nigel, not the
+  IDE — so a crash mid-session costs a manual step before any `lvai_*` call works again.
+
 ## What it means for working here
 
 **Validation is not free of risk, and that is new.** `lvai_validate_aixml` has been treated

@@ -1,0 +1,27 @@
+<VI _name="lvdqmh_dlg_probe.vi" description="READ-ONLY probe of a running dialog's front panel\3A lists every control's label\2C class name and index. Written for Delacor's Create New DQMH Event.vi\2C whose controls have to be reached by NAME because {LV.Panel} offers no get-control-by-label method - measured\2C its method list has Replace\2C Traverse and Make Selection but nothing that resolves a label.\0A\0AWHY THE LABELS MATTER. Ctrl Val.Set and Ctrl Val.Get take a control NAME\2C so setting the dialog's text and numeric fields needs no reference at all. Two things do need one\3A reading a Ring's Strings And Values [] to learn which INDEX means which module\2C and firing OK through Value (Signaling)\2C which is the only way an Event Structure sees a programmatic write. Both need the control's position in Controls[]\2C and this probe is what supplies it.\0A\0ACONTROLS[] ORDER IS NOT ASSUMED TO BE ANYTHING. It is read and reported\2C never guessed - the same reason lvai_create_class warns that All Objects[] order is not stable across VIs.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:32.Panel,reference out:32.reference out,error out:32.error out" type="{LV.VI}" uid="32" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:32.Panel,error in (no error):32.error out" outputs="Controls[]:34.Controls,reference out:34.reference out,error out:34.error out" type="{LV.Panel}" uid="34" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="40" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:34.Controls" mode="index" outputs="value:41.value" uid="41" uid_parent="40"/>
+    <Tunnel _id="In2" inputs="value:34.error out" outputs="value:42.value" uid="42" uid_parent="40"/>
+    <Node _name="Property Node" fields="read+Label.Text" inputs="reference:41.value,error in (no error):42.value" outputs="Label.Text:43.Label,reference out:43.reference out,error out:43.error out" type="{LV.Control}" uid="43" uid_parent="40"/>
+    <Node _name="Property Node" fields="read+Class Name" inputs="reference:41.value,error in (no error):42.value" outputs="Class Name:44.Class Name,reference out:44.reference out,error out:44.error out" type="{LV.Control}" uid="44" uid_parent="40"/>
+    <Tunnel _id="Out1" inputs="value:43.Label" mode="index" outputs="value:45.value" uid="45" uid_parent="40"/>
+    <Tunnel _id="Out2" inputs="value:44.Class Name" mode="index" outputs="value:46.value" uid="46" uid_parent="40"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):34.error out" outputs="error out:50.error out" uid="50" uid_parent="root"/>
+
+  <Indicator _name="labels" inputs="value:45.value" type="array{string}" uid="60" uid_parent="root" value="[]"/>
+  <Indicator _name="classes" inputs="value:46.value" type="array{string}" uid="61" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" inputs="value:50.error out" type="cluster{bool.status,int32.code,string.source}" uid="62" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,19 @@
+<VI _name="lvdqmh_dlg_start.vi" description="Opens and starts Delacor's Create New DQMH Event.vi dialog\2C exactly the way NI's own project provider does it. MUTATING only in that it puts a dialog on screen.\0A\0AWHY THIS SHAPE. resource\5CFramework\5CProviders\5CZE_DQMH\5CCreateEvent_Item_OnCommand.vi - which is readable\2C unlike Delacor's own scripting VIs - does three things\3A get the item reference\2C FP.Open with Activate true\2C and Run VI with Wait Until Done FALSE. Copying that is safer than inventing a launch sequence\2C and asynchronous is essential\3A a synchronous Run VI would block this helper until the dialog closed\2C and the dialog is what has to be filled in afterwards.\0A\0ANO WAIT NODE. Wait (ms) carries no error terminals\2C so it has no data dependency on anything and LabVIEW may schedule it before the Run VI it was meant to follow. The delay the dialog needs to come up is supplied instead by the round trip to the next tool call\2C which is seconds - far longer than the dialog takes.\0A\0AThe VI reference is closed on the way out. The dialog keeps running\3A it was started as a top-level VI\2C so it does not depend on this reference staying open.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Constant _name="activate" outputs="value:32.value" type="bool" uid="32" uid_parent="root" value="true"/>
+  <Node _name="Invoke Node" target="FP.Open" type="{LV.VI}" inputs="reference:30.vi reference,error in (no error):30.error out,Activate:32.value" outputs="reference out:33.reference out,error out:33.error out" uid="33" uid_parent="root"/>
+
+  <Constant _name="do not wait" outputs="value:35.value" type="bool" uid="35" uid_parent="root" value="false"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:33.reference out,error in (no error):33.error out,Wait until done:35.value" outputs="reference out:36.reference out,error out:36.error out" uid="36" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):36.error out" outputs="error out:40.error out" uid="40" uid_parent="root"/>
+
+  <Indicator _name="error out" inputs="value:36.error out" type="cluster{bool.status,int32.code,string.source}" uid="50" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:40.error out" type="cluster{bool.status,int32.code,string.source}" uid="51" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,578 @@
+# (primResID, parmIndex) -> terminal name, harvested by following wires.
+# parmIndex 'out' means the terminal carries no parmIndex, which is how the
+# heap marks an output. Numbering is geometric, bottom-to-top; see FINDINGS 3.8.
+primResID	node	parmIndex	terminal	seen	competing
+1044	Complex To Re/Im	1	x	4	
+1044	Complex To Re/Im	out	x + iy	7	
+1045	Complex To Polar	1	r	4	
+1045	Complex To Polar	2	theta	1	
+1045	Complex To Polar	out	r * e^(i*theta)	6	
+1046	Re/Im To Complex	1	y	3	
+1046	Re/Im To Complex	2	x	4	
+1046	Re/Im To Complex	out	x + iy	6	
+1047	Polar To Complex	1	theta	4	
+1047	Polar To Complex	2	r	3	
+1047	Polar To Complex	out	r * e^(i*theta)	3	
+1048	Complex Conjugate	1	x + iy	1	
+1048	Complex Conjugate	out	x - iy	1	
+1049	Sign	1	number	1	
+1049	Sign	out	-1, 0, 1	1	
+1050	Add	1	y	96	
+1050	Add	2	x	126	
+1050	Add	out	x+y	108	
+1051	Subtract	1	y	57	
+1051	Subtract	2	x	72	
+1051	Subtract	out	x-y	72	
+1052	Multiply	1	y	118	
+1052	Multiply	2	x	170	
+1052	Multiply	out	x*y	194	
+1053	Divide	1	y	52	
+1053	Divide	2	x	77	
+1053	Divide	out	x/y	103	
+1054	Absolute Value	1	x	21	
+1054	Absolute Value	out	abs(x)	15	
+1055	Round To Nearest	1	number	1	
+1055	Round To Nearest	out	nearest integer value	1	
+1056	Quotient &amp; Remainder	1	x-y*floor(x/y)	12	
+1056	Quotient &amp; Remainder	2	y	14	
+1056	Quotient &amp; Remainder	3	x	29	
+1056	Quotient &amp; Remainder	out	floor(x/y)	10	
+1057	Increment	1	x	88	
+1057	Increment	out	x+1	45	
+1058	Decrement	1	x	30	
+1058	Decrement	out	x-1	26	
+1059	Reciprocal	1	x	22	
+1059	Reciprocal	out	1/x	22	
+1060	Square Root	1	x	13	
+1060	Square Root	out	sqrt(x)	11	
+1061	And	1	y	22	
+1061	And	2	x	19	
+1061	And	out	x .and. y?	14	
+1062	Or	1	y	97	
+1062	Or	2	x	128	
+1062	Or	out	x .or. y?	7	
+1063	Exclusive Or	2	x	1	
+1064	Not	1	x	28	
+1064	Not	out	.not. x?	26	
+1069	Negate	1	x	10	
+1069	Negate	out	-x	7	
+1070	Random Number (0-1)	out	number: 0 to 1	42	
+1071	Not And	1	y	2	
+1071	Not And	2	x	2	
+1071	Not And	out	.not. (x .and. y)?	2	
+1075	Round Toward -Infinity	1	x	2	
+1075	Round Toward -Infinity	out	floor(x): largest int &lt;= x	2	
+1077	Path To String	1	path	1	
+1077	Path To String	out	string	1	
+1079	Cast Unit Bases	out	x	1	
+1083	First Call?	out	First Call?: T/F	3	
+1084	DataSocket Open	11	URL	1	
+1085	DataSocket Close	out	error out	1	
+1086	DataSocket Read	2	data	1	
+1086	DataSocket Read	11	connection in	1	
+1086	DataSocket Read	out	error out	1	
+1102	Equal?	1	y	25	
+1102	Equal?	2	x	35	
+1102	Equal?	out	x = y?	34	
+1104	Less Or Equal?	1	y	7	
+1104	Less Or Equal?	2	x	6	
+1104	Less Or Equal?	out	x &lt;= y?	5	
+1105	Not Equal?	1	y	13	
+1105	Not Equal?	2	x	12	
+1105	Not Equal?	out	x != y?	5	
+1108	Max &amp; Min	1	max(x,y)	7	
+1108	Max &amp; Min	2	y	14	
+1108	Max &amp; Min	3	x	16	
+1108	Max &amp; Min	out	min(x,y)	6	
+1111	Less?	1	y	5	
+1111	Less?	2	x	10	
+1111	Less?	out	x &lt; y?	9	
+1112	Empty String/Path?	1	string/path	5	
+1112	Empty String/Path?	out	empty?	2	
+1113	?	1	x	20	
+1113	?	out	x = 0?	22	
+1115	Less Or Equal To 0?	out	x &lt;= 0?	1	
+1116	Not Equal To 0?	1	x	11	
+1116	Not Equal To 0?	out	x != 0?	10	
+1118	Less Than 0?	1	x	12	
+1118	Less Than 0?	out	x &lt; 0?	2	
+1119	Decimal Digit?	1	char	1	
+1119	Decimal Digit?	out	digit?	1	
+1120	Sort 1D Array	1	array	2	
+1120	Sort 1D Array	out	sorted array	2	
+1123	Hex Digit?	1	char	1	
+1123	Hex Digit?	out	hex?	1	
+1124	Printable?	1	char	1	
+1124	Printable?	out	printable ASCII?	1	
+1125	White Space?	1	char	1	
+1125	White Space?	out	space, h/v tab, cr, lf, ff?	1	
+1126	Lexical Class	1	char	1	
+1126	Lexical Class	out	class number	1	
+1127	In Range and Coerce	1	coerced(x)	18	
+1127	In Range and Coerce	2	lower limit	7	
+1127	In Range and Coerce	3	x	20	
+1127	In Range and Coerce	4	upper limit	8	
+1127	In Range and Coerce	out	In Range?	9	
+1128	Not A Number/Path/Refnum?	1	number/path/refnum	51	
+1128	Not A Number/Path/Refnum?	out	NaN/Path/Refnum?	4	
+1129	Octal Digit?	1	char	1	
+1129	Octal Digit?	out	octal?	1	
+1142	To Long Integer	1	number	6	
+1142	To Long Integer	out	32bit integer	6	
+1143	To Unsigned Byte Integer	1	number	2	
+1143	To Unsigned Byte Integer	out	unsigned 8bit integer	2	
+1144	To Unsigned Word Integer	1	number	2	
+1144	To Unsigned Word Integer	out	unsigned 16bit integer	2	
+1145	To Unsigned Long Integer	1	number	1	
+1145	To Unsigned Long Integer	out	unsigned 32bit integer	2	
+1147	To Double Precision Float	1	number	10	
+1147	To Double Precision Float	out	double precision float	13	
+1156	To Unsigned Quad Integer	1	number	1	
+1156	To Unsigned Quad Integer	out	unsigned 64bit integer	1	
+1165	Unflatten From String	2	value	1	
+1165	Unflatten From String	11	binary string	1	
+1165	Unflatten From String	out	error out	1	
+1166	Type Cast	2	*(type *) &amp;x	4	
+1166	Type Cast	out	x	2	
+1167	Boolean To (0\2C1)	1	Boolean	4	
+1167	Boolean To (0\2C1)	out	0, 1	5	
+1168	Array To Cluster	1	array	5	
+1168	Array To Cluster	out	cluster	5	
+1169	Cluster To Array	1	cluster	2	
+1169	Cluster To Array	out	array	2	
+1170	Split Number	out	x	1	
+1180	Number To Decimal String	2	number	2	
+1180	Number To Decimal String	out	decimal integer string	2	
+1184	Decimal String To Number	4	string	5	
+1184	Decimal String To Number	out	number	3	
+1187	Fract/Exp String To Number	5	string	3	
+1187	Fract/Exp String To Number	out	number	6	
+1189	To Lower Case	1	string	3	
+1189	To Lower Case	out	all lower case string	2	
+1200	Sine	1	x	43	
+1200	Sine	out	sin(x)	32	
+1201	Cosine	1	x	11	
+1201	Cosine	out	cos(x)	9	
+1209	Natural Logarithm	1	x	2	
+1209	Natural Logarithm	out	ln(x)	3	
+1210	Logarithm Base 10	1	x	2	
+1210	Logarithm Base 10	out	log(x)	2	
+1211	Exponential	1	x	12	
+1211	Exponential	out	exp(x)	11	
+1213	Power Of X	1	x	2	
+1213	Power Of X	out	x^y	2	
+1220	Sine &amp; Cosine	1	sin(x)	6	
+1220	Sine &amp; Cosine	2	cos(x)	6	
+1220	Sine &amp; Cosine	out	x	8	
+1223	Power Of 2	1	x	3	
+1223	Power Of 2	out	2^x	5	
+1227	Sinc	1	x	2	
+1300	Tick Count (ms)	out	millisecond timer value	8	
+1302	Wait (ms)	1	milliseconds to wait	12	
+1303	Get Date/Time In Seconds	out	seconds since 1Jan1904	29	
+1327	Wait Until Next ms Multiple	1	millisecond multiple	24	
+1340	One Button Dialog	2	message	11	
+1341	Two Button Dialog	1	F button name (&quot;Cancel&quot;)	1	
+1341	Two Button Dialog	2	T button name (&quot;OK&quot;)	1	
+1341	Two Button Dialog	3	message	1	
+1341	Two Button Dialog	out	T button?	1	
+1419	Build Path	1	name or relative path	10	
+1419	Build Path	2	base path	125	
+1419	Build Path	out	appended path	132	
+1420	Strip Path	1	stripped path	7	
+1420	Strip Path	2	name	1	
+1420	Strip Path	out	path	7	
+1425	VI Library	out	path	3	
+1426	Current VI's Path	out	path	33	
+1427	Default Directory	out	path	1	
+1435	Temporary Directory	out	path	2	
+1502	String Length	1	string	11	
+1502	String Length	out	length	10	
+1503	String Subset	1	length (rest)	2	
+1503	String Subset	3	string	3	
+1503	String Subset	out	substring	5	
+1506	Number To Fractional String	2	precision (6)	3	
+1506	Number To Fractional String	4	number	20	
+1506	Number To Fractional String	out	F-format string	22	
+1516	Select	1	f	32	
+1516	Select	2	s	76	
+1516	Select	3	t	16	
+1516	Select	out	s? t:f	69	
+1535	Match Pattern	1	regular expression	2	
+1535	Match Pattern	2	offset (0)	1	
+1535	Match Pattern	3	before substring	5	
+1535	Match Pattern	4	match substring	2	
+1535	Match Pattern	5	after substring	3	
+1535	Match Pattern	6	offset past match	1	
+1535	Match Pattern	out	string	7	
+1537	Reverse String	1	string	2	
+1537	Reverse String	out	reversed	2	
+1538	Search/Split String	1	match + rest of string	1	
+1538	Search/Split String	2	substring before match	1	
+1538	Search/Split String	3	offset (0)	1	
+1538	Search/Split String	5	string	1	
+1539	Spreadsheet String To Array	2	array type (2D Dbl)	1	
+1539	Spreadsheet String To Array	3	spreadsheet string	2	
+1539	Spreadsheet String To Array	out	array	1	
+1540	Array To Spreadsheet String	1	delimiter (Tab)	1	
+1540	Array To Spreadsheet String	2	array	2	
+1540	Array To Spreadsheet String	3	format string	1	
+1540	Array To Spreadsheet String	out	spreadsheet string	4	
+1609	Byte Array To String	1	unsigned byte array	4	
+1609	Byte Array To String	out	string	4	
+1710	IP To String	2	net address	1	
+1710	IP To String	out	name	1	
+1711	String To IP	1	name	1	
+1711	String To IP	out	net address	2	
+1712	TCP Wait On Listener	8	error in (no error)	1	
+1713	TCP Close Connection	8	error in (no error)	1	
+1714	TCP Write	10	data in	1	
+1714	TCP Write	out	error out	1	
+1715	TCP Open Connection	8	error in (no error)	1	
+1715	TCP Open Connection	10	remote port or service name	1	
+1715	TCP Open Connection	11	address	1	
+1716	TCP Read	2	data out	1	
+1716	TCP Read	10	bytes to read	1	
+1717	TCP Create Listener	2	port	1	
+1717	TCP Create Listener	7	net address	1	
+1717	TCP Create Listener	10	port	1	
+1717	TCP Create Listener	out	error out	1	
+1730	New TLS Configuration	8	error in (no error)	2	
+1733	Load Private Key Into Memory	3	private key	1	
+1733	Load Private Key Into Memory	8	error in (no error)	1	
+1733	Load Private Key Into Memory	11	path to private key	1	
+1733	Load Private Key Into Memory	out	error out	1	
+1734	Load Certificates Into Memory	3	certificates	1	
+1734	Load Certificates Into Memory	11	path to certificates	1	
+1734	Load Certificates Into Memory	out	error out	1	
+1735	Add Private Key To TLS Configuration	9	certificate chain	1	
+1735	Add Private Key To TLS Configuration	10	private key	1	
+1736	Add Trusted Certificate To TLS Configuration	10	certificate	1	
+1809	Array Size	1	array	48	
+1809	Array Size	out	size(s)	42	
+1815	Boolean Array To Number	1	Boolean array	1	
+1900	Reverse 1D Array	1	array	2	
+1900	Reverse 1D Array	out	reversed array	4	
+1901	Search 1D Array	2	element	13	
+1901	Search 1D Array	3	1D array	13	
+1901	Search 1D Array	out	index of element	1	
+1902	Transpose 2D Array	1	2D array	23	
+1902	Transpose 2D Array	out	transposed array	17	
+1903	Add Array Elements	1	numeric array	15	
+1903	Add Array Elements	out	sum	16	
+1904	Multiply Array Elements	1	numeric array	1	
+1904	Multiply Array Elements	out	product	2	
+1905	Interpolate 1D Array	1	fractional index or x	1	
+1905	Interpolate 1D Array	out	y value	1	
+1906	Rotate 1D Array	1	array	5	
+1906	Rotate 1D Array	2	n	1	
+1906	Rotate 1D Array	out	array (last n elements first)	4	
+1907	Array Max &amp; Min	1	max value	4	
+1907	Array Max &amp; Min	3	min value	5	
+1907	Array Max &amp; Min	4	min index (indices)	1	
+1907	Array Max &amp; Min	out	array	12	
+1909	Threshold 1D Array	2	threshold y	1	
+1909	Threshold 1D Array	3	array of numbers or points	1	
+1909	Threshold 1D Array	out	fractional index or x	1	
+1910	Or Array Elements	1	Boolean array	1	
+1910	Or Array Elements	out	logical OR	1	
+1911	And Array Elements	1	Boolean array	1	
+1911	And Array Elements	out	logical AND	1	
+1922	VISA Close	8	error in (no error)	2	
+1922	VISA Close	11	VISA resource name	2	
+1922	VISA Close	out	error out	16	
+1925	VISA Read	1	return count	1	
+1925	VISA Read	2	read buffer	9	
+1925	VISA Read	3	VISA resource name out	1	
+1925	VISA Read	8	error in (no error)	1	
+1925	VISA Read	10	byte count	4	
+1925	VISA Read	11	VISA resource name	1	
+1925	VISA Read	out	error out	1	
+1926	VISA Write	2	return count	1	
+1926	VISA Write	3	VISA resource name out	1	
+1926	VISA Write	8	error in (no error)	1	
+1926	VISA Write	10	write buffer	7	
+1926	VISA Write	11	VISA resource name	1	
+1926	VISA Write	out	error out	1	
+1940	VISA Disable Event	10	event type (all enabled)	1	
+1942	VISA Enable Event	10	event type	1	
+1943	VISA Wait on Event	7	timeout (0)	1	
+1943	VISA Wait on Event	11	VISA resource name	1	
+1943	VISA Wait on Event	out	error out	1	
+1950	GPIB Write	out	address string	1	
+1951	GPIB Read	5	data	1	
+1951	GPIB Read	7	error out	1	
+1951	GPIB Read	out	address string	1	
+1999	Call Chain	out	call chain	1	
+2010	TDMS Write	5	group name in (Untitled)	1	
+2010	TDMS Write	9	data	11	
+2010	TDMS Write	11	error in (no error)	5	
+2010	TDMS Write	15	error out	2	
+2010	TDMS Write	out	tdms file	6	
+2011	TDMS Read	5	group name in	1	
+2011	TDMS Read	10	data	5	
+2011	TDMS Read	11	error in (no error)	1	
+2011	TDMS Read	15	error out	1	
+2011	TDMS Read	out	tdms file	1	
+2012	TDMS Open	3	tdms file out	3	
+2012	TDMS Open	8	error in (no error)	2	
+2012	TDMS Open	11	file path	15	
+2012	TDMS Open	out	error out	2	
+2013	TDMS Close	3	file path out	3	
+2013	TDMS Close	11	tdms file	1	
+2013	TDMS Close	out	error out	10	
+2014	TDMS Set Properties	5	property values	1	
+2015	TDMS Get Properties	4	property value	4	
+2015	TDMS Get Properties	6	found	1	
+2015	TDMS Get Properties	8	error in (no error)	4	
+2015	TDMS Get Properties	11	tdms file	4	
+2015	TDMS Get Properties	out	error out	1	
+2016	TDMS List Contents	1	group/channel names	2	channel names
+2016	TDMS List Contents	2	group names	1	
+2016	TDMS List Contents	3	tdms file out	2	
+2016	TDMS List Contents	out	error out	2	
+2019	TDMS Defragment	4	error in (no error)	1	
+2019	TDMS Defragment	7	file path	1	
+2019	TDMS Defragment	out	error out	1	
+2021	TDMS Advanced Open	3	tdms file out	1	
+2021	TDMS Advanced Open	11	file path	14	
+2021	TDMS Advanced Open	out	error out	1	
+2022	TDMS Set Channel Information	4	samples per channel	4	
+2022	TDMS Set Channel Information	6	data type	3	
+2022	TDMS Set Channel Information	9	channel name(s)	4	
+2022	TDMS Set Channel Information	10	group name (Untitled)	1	
+2023	TDMS Reserve File Size	6	data type	1	
+2023	TDMS Reserve File Size	10	reserve size	4	
+2024	TDMS Configure Asynchronous Writes	5	max write size	4	
+2024	TDMS Configure Asynchronous Writes	6	data type	4	
+2025	TDMS Set Next Write Position	out	error out	1	
+2026	TDMS Advanced Synchronous Write	8	error in (no error)	1	
+2026	TDMS Advanced Synchronous Write	10	data	1	
+2026	TDMS Advanced Synchronous Write	11	tdms file	1	
+2027	TDMS Configure Asynchronous Reads	6	data type	2	
+2027	TDMS Configure Asynchronous Reads	9	buffer size	1	
+2028	TDMS Start Asynchronous Reads	6	data type	2	
+2029	TDMS Advanced Synchronous Read	2	data	1	
+2029	TDMS Advanced Synchronous Read	8	error in (no error)	1	
+2031	TDMS Get Asynchronous Write Status	2	number of pending writes	1	
+2031	TDMS Get Asynchronous Write Status	out	error out	1	
+2032	TDMS Advanced Close	8	error in (no error)	1	
+2032	TDMS Advanced Close	11	tdms file	1	
+2032	TDMS Advanced Close	out	error out	9	
+2034	TDMS Get Asynchronous Read Status	8	error in (no error)	2	
+2034	TDMS Get Asynchronous Read Status	11	tdms file	2	
+2035	TDMS Advanced Asynchronous Write	8	error in (no error)	3	
+2035	TDMS Advanced Asynchronous Write	10	data	2	
+2035	TDMS Advanced Asynchronous Write	11	tdms file	3	
+2036	TDMS Advanced Asynchronous Read	8	error in (no error)	4	
+2036	TDMS Advanced Asynchronous Read	11	tdms file	3	
+2073	Create User Event	3	error in	73	
+2073	Create User Event	8	user event	102	
+2073	Create User Event	11	error out	74	
+2073	Create User Event	out	user event datatype	1	
+2074	Generate User Event	1	event data cluster	46	
+2074	Generate User Event	3	error in	4	
+2074	Generate User Event	8	user event out	1	
+2074	Generate User Event	11	error out	43	
+2074	Generate User Event	out	user event	50	
+2075	Destroy User Event	3	error in	6	
+2075	Destroy User Event	7	error out	89	
+2075	Destroy User Event	out	user event	94	
+2076	Unregister For Events	3	error in	13	
+2076	Unregister For Events	7	error out	25	
+2076	Unregister For Events	out	event registration refnum	4	
+2086	VISA USB Control In	1	value (0)	1	
+2086	VISA USB Control In	2	index (0)	1	
+2086	VISA USB Control In	5	request type	1	
+2086	VISA USB Control In	6	read buffer	1	
+2086	VISA USB Control In	7	request	1	
+2086	VISA USB Control In	9	length (0)	1	
+2087	VISA USB Control Out	1	value (0)	1	
+2087	VISA USB Control Out	2	index (0)	1	
+2087	VISA USB Control Out	5	request type	1	
+2087	VISA USB Control Out	7	request	1	
+2087	VISA USB Control Out	9	length (0)	1	
+2156	TDMS In Memory Open	8	error in (no error)	1	
+2156	TDMS In Memory Open	11	byte array or file path	1	
+2157	TDMS In Memory Close	7	file path	1	
+2157	TDMS In Memory Close	out	error out	2	
+2158	TDMS In Memory Read Bytes	2	data	1	
+2308	VISA Open	8	error in (no error)	1	
+2308	VISA Open	11	VISA resource name	9	
+2401	Swap Values	1	 y'	1	
+2401	Swap Values	12	y	1	
+2452	Insert Into Set	10	element	2	
+2452	Insert Into Set	11	set in	2	
+2457	Remove From Map	11	map in	1	
+2458	Look In Map	10	key	1	
+2458	Look In Map	11	map	1	
+3913	Replace Substring	4	substring	1	
+3913	Replace Substring	5	string	2	
+3914	Search and Replace String	4	result string	2	
+3914	Search and Replace String	5	search string	2	
+3914	Search and Replace String	7	replace string	1	
+3914	Search and Replace String	out	input string	2	
+3915	Add with Error Terminals	1	y	7	
+3915	Add with Error Terminals	2	x	2	
+3915	Add with Error Terminals	3	error out	6	
+3915	Add with Error Terminals	out	x+y	9	
+5560	To Time Stamp	1	number	2	
+5560	To Time Stamp	out	Time Stamp	4	
+5566	Fixed-Point to Integer Cast	out	integer	2	
+5567	Integer to Fixed-Point Cast	out	integer	3	
+8000	Automation Open	3	Automation Refnum	1	
+8003	Variant To Data	3	error out	32	
+8003	Variant To Data	8	Variant	2	
+8003	Variant To Data	9	type	2	
+8003	Variant To Data	11	data	37	
+8003	Variant To Data	out	error in	4	
+8010	Open VI Reference	3	vi reference	5	
+8010	Open VI Reference	8	error in (no error)	7	
+8010	Open VI Reference	9	options	3	
+8010	Open VI Reference	10	vi path	9	
+8010	Open VI Reference	11	application reference (local)	2	
+8010	Open VI Reference	out	error out	1	
+8011	Close Reference	8	error in (no error)	52	
+8011	Close Reference	11	reference	48	
+8011	Close Reference	out	error out	119	
+8012	Open Application Reference	3	application reference	1	
+8012	Open Application Reference	8	error in (no error)	1	
+8012	Open Application Reference	11	machine name (&quot;&quot;:  open local reference)	1	
+8013	Open VI Object Reference	3	object refnum	5	
+8013	Open VI Object Reference	10	name/order	9	
+8013	Open VI Object Reference	11	owner refnum	3	
+8013	Open VI Object Reference	out	error out	4	
+8014	New VI	8	error in (no error)	1	
+8014	New VI	10	template	1	
+8015	New VI Object	3	object refnum	9	
+8015	New VI Object	8	error in (no error)	2	
+8015	New VI Object	9	position/next to	3	
+8015	New VI Object	11	owner refnum	17	
+8015	New VI Object	out	error out	3	
+8016	To More Specific Class	1	error out	6	
+8016	To More Specific Class	3	reference	26	
+8016	To More Specific Class	4	error in	15	
+8016	To More Specific Class	out	specific class reference	20	
+8050	Open/Create/Replace File	9	access (0:read/write)	1	
+8050	Open/Create/Replace File	11	file path (use dialog)	1	
+8050	Open/Create/Replace File	out	error out	1	
+8051	Read from Binary File	2	data	4	
+8051	Read from Binary File	10	count	4	
+8051	Read from Binary File	out	error out	4	
+8052	Close File	7	refnum	1	
+8052	Close File	out	error out	2	
+8055	Create Folder	3	created path	2	
+8055	Create Folder	11	path (use dialog)	2	
+8055	Create Folder	out	error out	1	
+8056	Delete	3	deleted path	3	
+8056	Delete	8	error in	1	
+8056	Delete	11	path (use dialog)	6	
+8056	Delete	out	error out	2	
+8058	File Dialog	6	pattern (all files)	1	
+8058	File Dialog	7	prompt	1	
+8058	File Dialog	9	default name	1	
+8058	File Dialog	11	start path	1	
+8058	File Dialog	out	error out	2	
+8063	Get File Size	2	size (in bytes)	6	
+8063	Get File Size	3	refnum out	1	
+8063	Get File Size	7	file	4	
+8063	Get File Size	out	error out	2	
+8070	Read from Text File	2	text	3	
+8070	Read from Text File	8	error in	1	
+8070	Read from Text File	10	count	1	
+8070	Read from Text File	11	file (use dialog)	2	
+8070	Read from Text File	out	error out	2	
+8078	Write to Binary File	10	data	2	
+8078	Write to Binary File	11	file (use dialog)	1	
+8080	Write to Text File	10	text	2	
+8080	Write to Text File	11	file (use dialog)	1	
+8082	File/Directory Info	11	path	2	
+8100	Format Date/Time String	out	date/time string	4	
+8101	Scan String For Tokens	1	token string	3	
+8101	Scan String For Tokens	2	offset past token	3	
+8101	Scan String For Tokens	4	use cached delim/oper data? (F)	4	
+8101	Scan String For Tokens	8	offset	4	
+8101	Scan String For Tokens	out	token index	1	
+8201	To Variant	1	anything	13	
+8201	To Variant	out	Variant	11	
+8204	Set Variant Attribute	5	value	1	
+8205	Get Variant Attribute	1	values	1	
+8205	Get Variant Attribute	2	names	2	
+8205	Get Variant Attribute	7	Variant	10	
+8206	Delete Variant Attribute	3	Variant out	1	
+8207	Set Waveform Attribute	3	waveform out	2	
+8207	Set Waveform Attribute	5	value	1	
+8207	Set Waveform Attribute	7	waveform	1	
+8207	Set Waveform Attribute	out	error out	1	
+8208	Get Waveform Attribute	1	values	2	
+8208	Get Waveform Attribute	3	duplicate waveform	1	
+8208	Get Waveform Attribute	7	waveform	2	
+8401	Unflatten From XML	1	value	1	
+8401	Unflatten From XML	5	type	1	
+8402	Flatten To XML	2	xml string	4	
+8507	Matrix Size	1	number of columns	4	
+8507	Matrix Size	2	matrix	1	
+8507	Matrix Size	out	number of rows	6	
+9000	Current VI's Menubar	out	menu reference	1	
+9003	Insert Menu Items	1	item tags out	3	
+9003	Insert Menu Items	3	menu reference out	1	
+9003	Insert Menu Items	5	menu tag	2	
+9003	Insert Menu Items	9	menu reference	2	
+9003	Insert Menu Items	out	error out	1	
+9004	Delete Menu Items	6	error in (no error)	1	
+9004	Delete Menu Items	9	menu reference	2	
+9101	Obtain Notifier	1	notification data type	1	
+9101	Obtain Notifier	3	error in (no error)	3	
+9101	Obtain Notifier	8	notifier out	7	
+9101	Obtain Notifier	10	created new?	1	
+9101	Obtain Notifier	11	error out	2	
+9102	Release Notifier	3	error in (no error)	3	
+9102	Release Notifier	11	error out	12	
+9102	Release Notifier	out	notifier	4	
+9104	Send Notification	1	notification	9	
+9104	Send Notification	3	error in (no error)	2	
+9104	Send Notification	11	error out	5	
+9104	Send Notification	out	notifier	9	
+9105	Wait on Notification	2	timeout in ms (-1)	5	
+9105	Wait on Notification	3	error in (no error)	1	
+9105	Wait on Notification	9	notification	8	
+9105	Wait on Notification	11	error out	3	
+9105	Wait on Notification	out	notifier	1	
+9106	Wait on Notification from Multiple	9	notifiers out	1	
+9108	Obtain Queue	1	element data type	1	
+9108	Obtain Queue	3	error in (no error)	1	
+9108	Obtain Queue	8	queue out	6	
+9108	Obtain Queue	11	error out	1	
+9109	Release Queue	3	error in (no error)	3	
+9109	Release Queue	11	error out	13	
+9109	Release Queue	out	queue	4	
+9110	Get Queue Status	7	# elements in queue	3	
+9110	Get Queue Status	11	error out	3	
+9111	Enqueue Element	1	element	10	
+9111	Enqueue Element	3	error in (no error)	1	
+9111	Enqueue Element	11	error out	2	
+9113	Dequeue Element	2	timeout in ms (-1)	1	
+9113	Dequeue Element	3	error in (no error)	3	
+9113	Dequeue Element	9	element	10	
+9113	Dequeue Element	11	error out	6	
+9113	Dequeue Element	out	queue	4	
+9129	Enqueue Element At Opposite End	1	element	5	
+9154	Get Drag Drop Data	3	data	3	
+9154	Get Drag Drop Data	out	error out	2	
+23059	Square	1	x	9	
+23059	Square	out	x^2	10	
+23060	Re/Im To Polar	1	r	1	
+23060	Re/Im To Polar	3	x	1	
+23063	Empty Array?	1	array	15	
+23063	Empty Array?	out	empty?	8	
+24201	Flatten To JSON	8	JSON string	3	
+24201	Flatten To JSON	out	anything	3	
+24202	Unflatten From JSON	8	value	5	
+24202	Unflatten From JSON	11	error out	6	
+24202	Unflatten From JSON	out	JSON string	5	
+24206	Open Python Session	out	python version	6	
+24207	Close Python Session	11	error out	2	
+24208	Open MATLAB Session	3	error in (no error)	1	
+24209	Close MATLAB Session	3	error in	1	
+24209	Close MATLAB Session	11	error out	1	
+24209	Close MATLAB Session	out	session in	1	
