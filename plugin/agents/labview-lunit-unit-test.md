@@ -36,9 +36,15 @@ tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labvie
    powershell -Command "Get-Process LabVIEW | Select-Object -ExpandProperty Path"
    ```
 
-   **The Bash tool's sandbox silently filters `C:\Program Files`** — `ls` there returns a truncated
-   listing with exit code 0 and `find` returns nothing, with no error. Use the PowerShell tool for
-   anything under `Program Files`. A clean empty answer from Bash there is not evidence.
+   **There is no 64-bit LabVIEW on this machine.** `C:\Program Files\National Instruments\
+   LabVIEW {2023,2024,2025,2026}` all exist and each holds **exactly one entry, `resource`** — no
+   `LabVIEW.exe`, no `vi.lib`, no `user.lib`. Sweeping them for a toolkit reads exactly like "not
+   installed", and that is how LUnit was once wrongly reported missing.
+
+   An earlier revision of this file blamed that empty listing on the Bash tool's sandbox filtering
+   `C:\Program Files`. **That was false and is retracted:** PowerShell returns the identical
+   one-entry listing, and Bash reads the whole 32-bit tree and `user.lib\LV_MCP\` correctly. Bash is
+   fine there. **Two tools agreeing is what settles a negative; one tool plus a hypothesis is not.**
 
 2. Confirm LUnit is present at `<root>\vi.lib\Astemes\LUnit\Test Case.lvclass`. If it is genuinely
    absent, return `CANNOT PROCEED` — do not improvise, and **do not substitute Caraya**; the

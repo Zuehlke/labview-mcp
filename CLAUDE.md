@@ -943,9 +943,21 @@ wrong one `Failed`, JUnit report written. `docs/labview-lunit-testing.md` is the
 paragraph said "LUnit is absent from `vi.lib\addons`, `user.lib` and `LVAddons` entirely" and that
 was measured against the **64-bit** tree while LUnit installs into
 `C:\Program Files (x86)\...\LabVIEW 2026` — the 32-bit build, which is the one hosting the gRPC
-service. **Resolve the install root from the running process, never from a guess**, and use the
-PowerShell tool for it: the Bash sandbox silently filters `C:\Program Files`, returning a truncated
-listing with exit code 0 and nothing from `find`, which reads exactly like "not installed".
+service. **Resolve the install root from the running process, never from a guess** —
+`Get-Process LabVIEW | Select-Object -ExpandProperty Path`. There is **no 64-bit LabVIEW on this
+machine**: `C:\Program Files\National Instruments\LabVIEW 2023`, `2024`, `2025` and `2026` all exist
+and each holds **exactly one entry, `resource`**, with no `LabVIEW.exe`, no `vi.lib` and no
+`user.lib`. They are leftover stubs, and sweeping them for a toolkit reads exactly like "not
+installed".
+
+This paragraph blamed that empty listing on **the Bash tool's sandbox filtering `C:\Program Files`**
+for a few hours on 2026-09-01, and that was wrong — retracted here because a false rule about a tool
+is worse than no rule. PowerShell returns the identical one-entry listing, and Bash reads the whole
+**32-bit** tree (22 entries at the root) and `user.lib\LV_MCP\` with correct sizes and timestamps.
+Bash does not lie under `Program Files`; those folders are simply empty. The lesson is the older one
+this file keeps relearning: **before concluding a tool is filtering your view, check whether the thing
+you are looking for is there at all** — two tools agreeing is what settles it, and PowerShell had
+already agreed in the same session.
 
 **VI Tester remains a scaffold** — it only *ships* files under `vi.lib\addons\_JKI Toolkits` with
 nothing about it ever measured here. It carries the framework-independent rules — which are

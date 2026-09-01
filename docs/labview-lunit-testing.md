@@ -22,10 +22,19 @@ installed". The running LabVIEW is the 32-bit build, because that is the one hos
 service (`lvai_ensure_labview` prefers it deliberately). **Resolve the install root from the running
 process, never from a guess:** `Get-Process LabVIEW | Select-Object Path`.
 
-A second trap sits on top of that one. The **Bash tool's sandbox silently filters `C:\Program
-Files`** — `ls` of the LabVIEW 2025 folder returned the single entry `resource` with exit code 0,
-and `find` returned nothing at all, with no error. Use the PowerShell tool for anything under
-`Program Files`; a clean empty answer from Bash there is not evidence.
+**Why that sweep found nothing: there is no 64-bit LabVIEW on this machine.** All four of
+`C:\Program Files\National Instruments\LabVIEW {2023,2024,2025,2026}` exist and each contains
+**exactly one entry, `resource`** — no `LabVIEW.exe`, no `vi.lib`, no `user.lib`. They are leftover
+stubs. So the empty answer was correct about those folders and said nothing about the machine.
+
+> **RETRACTION, same day.** This paragraph first blamed the empty listing on **the Bash tool's
+> sandbox filtering `C:\Program Files`**, and that claim was false. Re-measured with both tools:
+> PowerShell returns the identical one-entry listing for all four folders, and Bash reads the whole
+> **32-bit** tree — 22 entries at its root — and
+> `…\LabVIEW 2026\user.lib\LV_MCP\` with correct sizes and timestamps. Bash does not filter
+> `Program Files`. The evidence that would have prevented the wrong conclusion was already in the
+> same session: a PowerShell `Test-Path` on `…\LabVIEW 2025\vi.lib\addons` had *also* come back
+> false. **Two tools agreeing is what settles a negative; one tool plus a hypothesis is not.**
 
 | What | Where |
 |---|---|
@@ -291,6 +300,22 @@ error out   0
 The XML report carries `failures="1" tests="2"` and both the `Description` and the `Message` string
 inside `<failure>`, so both are worth filling in.
 
+**That is a `Pass If.vi` fact and does NOT generalise. `Pass If Equal.vim` has NO `Message`
+terminal.** Measured 2026-09-01 with `lvai_vi_terminals` on
+`vi.lib\Astemes\LUnit\Palette\Pass If Equal.vim`: the terminals are `LUnit Test Case In` (conIdx 11,
+required), `Expected` (10), `Actual` (9), `Delta` (6, optional), `Description` (7),
+`error in (no error)` (8), out `LUnit Test Case Out` (3) and `error out` (0). Fill in `Description`
+only — and the assertion then writes the comparison into the report itself:
+
+```xml
+<failure message="Expected:-1.250000(Double Float)&#xA;Actual:  0.000000(Double Float)"
+         type="Pass if Equal">
+```
+
+Note `type="Pass if Equal"` with a lower-case "if". **That makes `Pass If Equal.vim` the better
+assertion for a round trip than `Pass If.vi`**: there is no hand-written failure text to keep in step
+with the expected value, which is a class of stale-message bug the boolean form invites.
+
 The CLI works too, for CI:
 
 ```
@@ -333,10 +358,20 @@ directory and putting the file name in `projectName` — which is how the parame
 `Error 1`, *"An input parameter is invalid"*, from `Open project application ref.vi`. The full path
 in `projectPath` with the same `projectName` returns `No Error`.
 
-**`lvai_create_class` writes the LUnit base class into your `.lvproj`.** The demo project ended up
-listing `Test Case.lvclass` with a `URL` reaching into `Program Files (x86)`, alongside the real
-class. Harmless — LabVIEW would list it as a dependency anyway — but it is a real edit to the user's
-project file and it is not what a reader expects to find.
+**The LUnit base class ends up listed in your `.lvproj` — and the culprit is the project SAVE, not
+`lvai_create_class`.** The demo project ended up listing `Test Case.lvclass` with a `URL` reaching
+into `Program Files (x86)`, alongside the real class, and this paragraph blamed the class tool.
+Re-measured 2026-09-01 on the `Brille` run: `lvai_create_class` now works in a throwaway project
+(`steps[0].action: "scratch"`) and does **not** touch the user's file. The entry appears at
+`lvai_close_active_project`, which **saves** before closing, and LabVIEW writes it as
+
+```xml
+<Item Name="Test Case.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass"/>
+```
+
+Deleting that one line **while the project is closed** sticks: a later project-level LUnit run loaded
+the file and did not re-add it. So the trap moved from the tool to the IDE and the remedy is
+unchanged — edit a `.lvproj` only while it is closed.
 
 **The first test method's bundle carried `VICD` compiled-code blocks; the second's did not.** The
 difference is that the first VI had been loaded by LabVIEW (the failed helper run) before
@@ -344,15 +379,111 @@ difference is that the first VI had been loaded by LabVIEW (the failed helper ru
 blocks. Nothing went wrong here, but the safe order is the documented one: convert → `pylv_apply` →
 only then let LabVIEW load it.
 
-## 6. What is NOT established
+## 6. Calling the subject: MEASURED, and the socket must be hand-authored
 
-- **No `lvai_*` tool wraps any of this yet.** The two helper scripts exist
+This section said "the subject has not been called … expected to compose with this one and that has
+**not been measured**". It is measured now — 2026-09-01, on `C:\temp\brille`: a `Brille` class with
+four fields and eight dynamic-dispatch accessors, and a `Brille Test.lvclass` whose **six test
+methods call those accessors as ordinary static subVI calls**. `tests="6" failures="0"`, 10
+assertions, on three separate runs, with a negative control that failed exactly one case on demand.
+
+**`lvai_placeholder_subvi` does NOT work here.** Pointed at `Write Marke.vi` it answers
+`errorKind: stubRefused`, because cloning the subject's pane means authoring a class-typed terminal:
+`Error 53 … Control with type=UDClassInst is not supported`. `docs/labview-unit-testing.md` §3a
+predicts this. So the sockets are **hand-authored AIXML generated straight into
+`<LabVIEW>\user.lib\LV_MCP\`**, where a loose VI resolves by bare name — `lvai_generate_vis` did all
+eight in one call with `panePattern: 4815` and `paneViolations: 0` each.
+
+**Give the socket's data terminal the accessor's REAL type — not `variant`.**
+`docs/labview-unit-testing.md` §3d uses `variant` so that one socket serves every field, and that is
+wrong for LUnit: the assertion is `Pass If Equal.vim`, a **malleable** VI, so a data wire that changes
+type across the `Replace` forces the `.vim` instance to re-adapt. With the real type (`string`,
+`double`, `bool`) the assertion wire is byte-identical before and after the swap and only the two
+class wires change, `path` → the class. Measured: zero coercion dots on every terminal read.
+
+**Name each socket after the FIELD, not after the signature.** `lvai_swap_subvis` refuses duplicate
+VI names on one diagram — matching is by VI name — so a test that writes both `Dioptrien` fields and
+reads both back needs four distinct sockets even though two pairs share a signature. A
+hash-of-signature name would have collided; `LVMCP Brille WDioL.vi` / `WDioR.vi` / `RDioL.vi` /
+`RDioR.vi` gives uniqueness and self-documentation for free.
+
+**The finished tests do not reference the sockets at all.** LabVIEW's export of every test method
+names only `Brille.lvclass\3A…` and `Test Case.lvclass\3APass If Equal.vim`. So
+`user.lib\LV_MCP\LVMCP Brille *.vi` is a **build-time** dependency: the tests run on a station that
+does not have them, and uninstalling means deleting the files. They are needed only to *regenerate* a
+test method.
+
+**The order is convert → `pylv_apply` conpane 4815 → `lvai_swap_subvis` → `lvlu_add_test_method`.
+Membership goes LAST.** If a swap fails, a regeneration then costs only the first three steps —
+whereas a finished test method is a class member, and re-converting it from AIXML would write a VI
+with no owning-library link, the defect that marks the whole library broken (§4.4). It is also why
+the negative control below was injected by *swap* rather than by editing an expected constant: there
+is no safe way to re-convert a finished member.
+
+**`lvai_swap_subvis` works on a test method BOTH BEFORE AND AFTER it becomes a class member**, so the
+route stays re-editable. One caveat: after Phase 4 the diagram's node names are **class-qualified**,
+so the `socket` string for a later swap is `Brille.lvclass:Read Dioptrien Links.vi`, not the bare file
+name. Measured twice — injecting and reverting the negative control on a finished member, `errorCode
+0` both ways, class-typed pane intact.
+
+**The negative control is worth copying as a technique.** Rather than break an expected value, one
+`lvai_swap_subvis` call repointed `Test Dioptrien Links Round Trip.vi`'s read node from
+`Read Dioptrien Links.vi` to `Read Dioptrien Rechts.vi` — the exact fault the test exists to catch.
+That case went `Failed` with `Expected:-1.250000 … Actual: 0.000000`, the other five stayed `Passed`,
+and one more swap restored green. A per-field round trip alone cannot catch a Write accessor that
+stores into two fields, because the field it should not touch is never read afterwards; a test that
+writes both and reads both closes that hole.
+
+**A `.vim` instance is expensive and cannot be retargeted by name.** It appears in `SubVIs[]` as
+`<Caller>.vi:Instance:<GUID>.vi` — e.g.
+`Brille Test.lvclass:Test Dioptrien Links Round Trip.vi:Instance:fccbdfcf-…-d76e9acaf652.vi`. It can
+therefore never collide with a socket name, and it also cannot be named in a swap. Each stored
+instance costs about **66 kB in the caller**: one assertion → 66 kB, two → 138 kB, four → 280 kB.
+That is why `Test Field Defaults.vi` with four assertions is 280 kB.
+
+**Pointing `test path` at the `.lvclass` is 4x faster than at the `.lvproj` and finds the same
+tests**: 3.2 s against 12.2 s, `tests="6"` both ways.
+
+**`lvai_coercion_dots` reads a class-member test method only PARTIALLY, and its `ok: false` there is
+not about dots.** On `Test Dioptrien Independence.vi`: `subViCalls: 6`, `terminalsChecked: 23`,
+`coerced: 0` — but **two of the six nodes came back `subViFound: ""`** with the Error-1099 note
+(`Brille.lvclass:Write Dioptrien Rechts.vi` and one `.vim` instance), while nodes of the same *kinds*
+resolved fine. It opens the VI with no application instance on purpose, and a class member's siblings
+do not all resolve that way. The `subVi` names are all correct, so the call-target list is
+trustworthy; only the per-terminal read is partial.
+
+**`lvai_describe_project` does not leave the project active** — `lvai_close_active_project`
+immediately afterwards answered `1055 / nothingToClose: true`. So it is safe between `.lvproj` edits
+without risking a save.
+
+**`Unavailable` right after a LabVIEW restart means "still coming up", not "open Nigel".** The 1562
+restart cost one extra call, not a human: `lvai_ensure_labview` returned `state: "starting"` with
+`lastError: "The operation was canceled."` after 40 s, and `lvai_status` showed all 30 LabVIEW.exe
+listeners answering `Unavailable` — which both `lvai_status`'s own hint and the agent definition read
+as "the service has not started, ask someone to open Nigel". **A second `lvai_ensure_labview` with
+`waitSeconds: 90` answered `state: "ready"` in 224 ms with nobody involved.** Call again before
+asking anyone to do anything.
+
+## 7. What is still NOT established
+
+- **No `lvai_*` tool wraps any of this.** The two helper scripts exist
   (`scripts/lvlu_add_test_method.xml`, `scripts/lvlu_run_tests.xml`) and are driven by hand through
-  `lvai_run_vi_and_read_values`. A test method still costs five calls; a Caraya test costs one.
-- **The subject has not been called.** Both demo tests assert over primitives on their own diagram.
-  A real test calls the code under test, and for project-local code that means
-  `lvai_placeholder_subvi` plus `lvai_swap_subvis` — the route `docs/labview-unit-testing.md` §3a
-  already documents. It is expected to compose with this one and that has **not been measured**.
+  `lvai_run_vi_and_read_values`. The `Brille` run cost **85 tool calls** for six test methods, where
+  `lvai_generate_test` builds a Caraya test in one. Every step above is mechanical and the shape never
+  varies, which by this repository's own rule — *a step that is cheap for LabVIEW and expensive in
+  turns is a tool waiting to be written* — makes this the clearest candidate in the repo.
+- **`Setup.vi`/`Teardown.vi` overrides have not been scripted.** They are dynamic dispatch, needing
+  `SetWireRule(TermIdx, 4)` on top of §4.4. None of the `Brille` tests needed a fixture — each builds
+  its own object from a class constant — so this stayed untried.
+- **The LUnit project provider has not been driven.** `LUnit_Create New Test Case.vi` resolves as a
+  Call target and takes `Path` + `Application`; it would create the class from LUnit's own template,
+  bringing a correctly-typed `Test Method Template.vit` with it, and it may also avoid the 1562 lock.
+  Untried.
+- **Parameterized, inheriting and global-fixture test cases** have templates and examples on this
+  station and were not investigated at all.
+- **Test method icons.** `lvai_set_vi_icon` re-saves the VI, and the `Brille` run deliberately
+  skipped it rather than risk the owning-library link for cosmetics. Whether a re-save is actually
+  safe on a class member is unmeasured.
 - **`Setup.vi`/`Teardown.vi` overrides have not been scripted.** They are dynamic dispatch, which
   needs `SetWireRule(TermIdx, 4)` on top of everything in §4.4 — the §3 route, unmeasured for LUnit.
 - **The LUnit project provider has not been driven.** `LUnit_Create New Test Case.vi` resolves as a
