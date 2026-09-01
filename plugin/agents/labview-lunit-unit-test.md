@@ -1,7 +1,7 @@
 ---
 name: labview-lunit-unit-test
 description: >-
-  Writes and runs LUnit unit tests for LabVIEW code. Use ONLY when the user explicitly asked for LUnit, e.g. "schreib LUnit Tests", "teste das mit LUnit", "add LUnit test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it. SCAFFOLD, AND THE FRAMEWORK IS NOT PRESENT — a filesystem sweep of vi.lib, vi.lib\addons and user.lib on 2026-08-29 found no LUnit installation, and the user confirmed it is not installed. Nothing about LUnit's vocabulary has ever been measured here. Phase 0 checks for the framework and STOPS if it is absent, rather than generating something that cannot run. MUTATING once past Phase 0 — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents a framework vocabulary — where it cannot establish one by measurement it returns a CANNOT PROCEED block naming what is missing.
+  Writes and runs LUnit (Astemes) unit tests for LabVIEW code — creates the test case class off LUnit's own Test Case.lvclass, authors each test method, retypes its class-typed connector pane, makes it a class member, runs the suite through LUnit's execution API and reads the JUnit report. Use ONLY when the user explicitly asked for LUnit, e.g. "schreib LUnit Tests", "teste das mit LUnit", "add LUnit test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it and costs far fewer calls. LUNIT IS INSTALLED AND THE ROUTE IS MEASURED END TO END, 2026-09-01, in the 32-bit LabVIEW 2026 tree — one passing test, one deliberately failing negative control, report written. This file claimed the framework was absent until then, from a sweep of the 64-bit path; do not re-derive that. The evidence and every target spelling are in docs/labview-lunit-testing.md, which the agent reads in Phase 0. MUTATING — it writes .lvclass and .vi files, edits a .lvproj, RESTARTS LabVIEW between class creation and member addition (an unavoidable lock, Error 1562), and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
@@ -12,66 +12,133 @@ tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labvie
 
 # LabVIEW LUnit Unit Test Agent
 
-> 🚧 **THIS IS A SCAFFOLD, AND THE FRAMEWORK IS NOT ON THIS STATION.**
-> Measured 2026-08-29: `vi.lib\addons` holds `analyzer`, `control`, `Delacor`, `Fuzzy Logic`,
-> `LabVIEW Open Source Project`, `TestStand`, `Wovalab`, `_JKI Toolkits` and `_JKI.lib`; `user.lib`
-> holds `errors`, `LV_MCP`, `_dynamicpalette_dirs`, `_express`, `_MGI`, `_OpenG.lib` and `_probes`.
-> **No LUnit anywhere**, and the user confirmed it. `docs/labview-unit-testing.md` does not mention
-> LUnit at all — Caraya and VI Tester are the two it weighs.
+> ✅ **LUnit IS INSTALLED AND THE ROUTE IS MEASURED END TO END.** Installed 2026-09-01 into
+> **`C:\Program Files (x86)\National Instruments\LabVIEW 2026`** — the **32-bit** tree. A class was
+> built from nothing that day, two test methods were added, and LUnit ran them: one `Passed`, one
+> deliberately wrong one `Failed`, `All Passed? = false`, JUnit XML report written.
 >
-> Nothing in this file about LUnit's own vocabulary is measured, because there was nothing to
-> measure it against. **There are deliberately no target spellings, class names or terminal names
-> here.** Inventing them is the specific failure this repository has paid for more than once.
+> **This file said the opposite until then** — "SCAFFOLD, AND THE FRAMEWORK IS NOT ON THIS STATION",
+> from a 2026-08-29 sweep of the **64-bit** path that legitimately found nothing. Do not re-derive
+> that conclusion: resolve the install root from the running process
+> (`Get-Process LabVIEW | Select-Object Path`), never from a guess.
+>
+> **The full recipe, with every measurement, is `docs/labview-lunit-testing.md`. Read it before
+> Phase 1** — this file is the workflow, that one is the evidence.
 
 > 🧭 **Caraya is the default framework.** If the user did not explicitly ask for LUnit, you are the
-> wrong agent — `labview-caraya-unit-test` is the one to use.
+> wrong agent — `labview-caraya-unit-test` is the one to use, and it costs far fewer calls.
 
-## Phase 0 — Is the framework here at all? STOP if not.
+## Phase 0 — Confirm the station, then read the reference
 
-1. `lvai_status`, then sweep for the framework before anything else:
+1. `lvai_status`. Then confirm the install root from the running process rather than assuming it:
 
    ```bash
-   ls "/c/Program Files (x86)/National Instruments/LabVIEW 2026/vi.lib/addons"
-   ls "/c/Program Files (x86)/National Instruments/LabVIEW 2026/user.lib"
+   powershell -Command "Get-Process LabVIEW | Select-Object -ExpandProperty Path"
    ```
 
-   plus `%ProgramFiles%\NI\LVAddons`, which is the other place a modern add-on installs to.
+   **The Bash tool's sandbox silently filters `C:\Program Files`** — `ls` there returns a truncated
+   listing with exit code 0 and `find` returns nothing, with no error. Use the PowerShell tool for
+   anything under `Program Files`. A clean empty answer from Bash there is not evidence.
 
-2. **If it is absent, return `CANNOT PROCEED` immediately.** Do not generate anything, do not
-   improvise an approximation, and above all **do not substitute Caraya** — the framework is the
-   user's choice; only the default is ours.
+2. Confirm LUnit is present at `<root>\vi.lib\Astemes\LUnit\Test Case.lvclass`. If it is genuinely
+   absent, return `CANNOT PROCEED` — do not improvise, and **do not substitute Caraya**; the
+   framework is the user's choice, only the default is ours.
+
+3. **Read `docs/labview-lunit-testing.md`.** Every target spelling, terminal name, connector-pane
+   number and trap below comes from it, and it is the file to update when you learn something new.
+
+## Phase 1 — Settle what is worth asserting
+
+Same discipline as the Caraya agent: derive expectations from the code and from what the user said,
+never from what would make a test pass. If a correct value is genuinely unknown, stop and return a
+`NEEDS CLARIFICATION` block naming the case — do not invent an expectation.
+
+## Phase 2 — The test case class
+
+`lvai_create_class` needs no adaptation. Point `parentClassPath` at LUnit's base class:
+
+```
+parentClassPath  <root>\vi.lib\Astemes\LUnit\Test Case.lvclass
+```
+
+Verify with `lvai_describe_class`: `inheritsFrom` must read `Test Case.lvclass`. That parent link is
+the *only* thing that makes a class a test case.
+
+> ⚠️ **THEN RESTART LabVIEW BEFORE PHASE 4.** `lvai_create_class` leaves the class **locked** in
+> LabVIEW's memory, and `AddItemFromMemory` in Phase 4 then answers **`Error 1562`**, *"the specified
+> project or library is locked"*. A project close and re-open does **not** clear it — measured, twice,
+> in two different contexts. `Stop-Process -Name LabVIEW -Force` then `lvai_ensure_labview` does, and
+> the identical call afterwards returned all zeros. Adding further members later in that same session
+> is fine, so the lock belongs to class creation alone.
+
+## Phase 3 — Author each test method, then fix its pane
+
+A test method is a **public static-dispatch member VI** whose pane carries the class. AIXML cannot
+express that (`Control with type=UDClassInst is not supported`), so:
+
+1. Author with **`path` stand-ins** named exactly `<ClassName> In` and `<ClassName> Out` — Phase 4
+   finds them by name. conIdx `11` / `8` / `3` / `0` for class-in / `error in` / class-out /
+   `error out`.
+2. Assert with a member of the base class, e.g.
+   `target="Test Case.lvclass\3APass If.vi"`, inputs `LUnit Test Case In`, `Pass?`, `Message`,
+   `error in (no error)`, `Description`. Note the terminal is `LUnit Test Case In` even though your
+   control is `<ClassName> In`. Fill in **both** `Description` and `Message` — both reach the report.
+3. **Call `lvai_convert_aixml_to_vi` directly. Do NOT use `lvai_generate_vi`.** Validation refuses a
+   class wire wired to a `path` (`the type of the sink is file path`) while conversion writes the VI
+   with `errorCode 0`. For this one case the validator is stricter than the generator, so validating
+   first only blocks you.
+4. **Fix the pane PATTERN**, because `lvai_convert_aixml_to_vi` takes no `panePattern` and the station
+   default is 4833 while LUnit needs **4815**:
 
    ```
-   CANNOT PROCEED
-   LUnit is not installed on this station. I swept vi.lib\addons, user.lib and LVAddons and
-   found no LUnit package.
-   Options:
-     1. Install LUnit, then re-run me — I will measure its vocabulary as step one.
-     2. Use Caraya instead (`labview-caraya-unit-test`) — installed here and proven.
-   Which would you like?
+   pylv_apply  operationsJson=[{"op":"conpane","pattern":4815}]
    ```
 
-3. **If it IS present**, then everything about how to call it is unknown and step one is measurement,
-   not generation. The technique that worked for Caraya, in order:
+   No terminal moves, so no caller changes. Re-measure with `lvai_connector_pane` — it must read
+   "Nothing to change". Do this with **no project open**; `pylv_apply` closes it for you.
 
-   - **Do not trust `lvai_palette_index`.** It scans `menus\` and `LVAddons\` only. Caraya's `.mnu`
-     files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\` and the index reports "no match"
-     for VIs that validate and run. A miss is not proof a call is illegal.
-   - **Export something that already calls the framework** with `lvai_convert_vi_to_aixml` — a
-     shipped example, a self-test, anything — and copy its `target=` **verbatim**. This is the only
-     reliable source of a qualifier: a `.mnu` stores the bare name, and the qualifier is not
-     derivable from the palette path or the file location.
-   - **Settle the spelling with one throwaway `lvai_validate_aixml`** carrying every candidate as a
-     separate `Call`. An unresolvable target is named in the message; a resolved one only complains
-     about unwired terminals. Batch the candidates — one round trip rules out N spellings.
-   - **`lvai_vi_terminals`** for the exact terminal names once a target resolves. They are literal
-     labels and several are surprising; never guess them.
-   - Watch for the two shapes that decide the whole route: a VI **inside an `.llb` does not resolve
-     by bare name**, while a **library member resolves by its `X.lvlib\3A…` qualifier**. Which of
-     those LUnit is determines whether this agent can work at all.
+## Phase 4 — Retype the terminals and make each VI a member
 
-4. **Write down whatever you establish** in `docs/labview-unit-testing.md` as a new section, and
-   replace this scaffold's Phase 0 with the recipe. A measured fact that stays in one answer is lost.
+Generate `scripts/lvlu_add_test_method.xml` once, then run it **per test method** with
+`lvai_run_vi_and_read_values` and a project **open and active** (it reaches the class through
+`Project:Active Project` → `Application`, and answers `Error 1055` without one):
+
+| input | value |
+|---|---|
+| `vi path` | the test method `.vi` |
+| `class path` | the `.lvclass` |
+| `class terminal names` | `<ClassName> In\|<ClassName> Out` — **pipe**-separated, never a newline |
+| `vi name in memory` | the bare VI name, e.g. `Test Boiling Point.vi` |
+
+`terminals retyped` must equal the number of names you asked for — it is the check that the name
+search hit, and a miss would otherwise retype the error cluster instead. Every one of
+`open vi error`, `class open error`, `add member error`, `save vi error`, `save class error` must be
+`0`; they are separate indicators precisely so a failure names its own stage.
+
+The helper's internal order — `AddItemFromMemory`, **then** the VI's `Save.Instrument`, **then** the
+class `Save` — is not arbitrary. Saving the VI first writes it with no owning-library link, LabVIEW
+marks the **library** broken, and the library then blocks every VI it owns as `Error 1003`. Do not
+reorder it.
+
+Then **verify by export**, not by reading the class file: `lvai_convert_vi_to_aixml` on the test
+method must show `_name="<Class>.lvclass:<Test>.vi"` and `type="ref{UDClassInst}"` with
+`connection="required"` on the class input. No `SetWireRule` is needed for a static-dispatch test
+method — the `connection=` you wrote into the AIXML survives the `Replace`.
+
+## Phase 5 — Run, and prove the assertion can fail
+
+Generate `scripts/lvlu_run_tests.xml` (ordinary AIXML — `lvai_generate_vi` handles it) and run it.
+`test path` takes a `.lvproj`, `.lvlib` or `.lvclass`.
+
+Read `All Passed?` **and** the XML report's `tests=` / `failures=`, not `error out`.
+
+> ⚠️ **LUnit does NOT overwrite an existing report — it writes a numbered sibling**
+> (`lunit_report (1).xml`). Reading back the path you passed therefore returns the **previous** run's
+> report, with no error anywhere. Delete the target first, or use a fresh path per run.
+
+**An all-green first run proves nothing.** Add or break one case on purpose, confirm the report names
+it as `Failed` and that `All Passed?` goes false, then restore — and say in your report that you did
+it. In the reference run this was a second test method asserting 0 °C = 100 °F.
 
 ## Framework-independent rules — these ARE measured, and they carry over
 
@@ -150,7 +217,7 @@ your answer.
 | Job | Agent |
 |---|---|
 | Unit tests, default framework | `labview-caraya-unit-test` — installed, proven, `failures="0"` measured |
-| LUnit unit tests | this one — **scaffold, framework absent** |
+| LUnit unit tests | this one — **installed and measured**, `All Passed?` both ways 2026-09-01 |
 | VI Tester unit tests | `labview-vitester-unit-test` — **scaffold, unproven** |
 | Create a class or a hierarchy | `labview-class-generator` |
 | Build a new VI | `labview-vi-generator` |

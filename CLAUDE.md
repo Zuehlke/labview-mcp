@@ -297,6 +297,17 @@ terminal. But validation passing says nothing about behaviour, and `lvai_run_vi_
 reports `errorCode 91` whenever an output cannot be read back — *after the VI has run correctly*.
 Never report success from an empty answer.
 
+**AND VALIDATION IS NOT A SUBSET OF CONVERSION — for a class wire it is STRICTER.** Measured
+2026-09-01 on one file in one minute: `lvai_validate_aixml` refused it with `Error 53` and
+`the type of the source is Test Case.lvclass … the type of the sink is file path`, while
+`lvai_convert_aixml_to_vi` on the same file answered **`errorCode 0`** and wrote 9 058 bytes.
+`ValidateAIXML` type-checks subVI wiring; `ConvertAIXMLToVI` writes a broken diagram and lets you
+repair it. That is the only known way to author an LUnit test method, whose pane must be class-typed:
+author `path` stand-ins, **convert without validating**, then retype the terminals through
+`{LV.Control}` `Replace`. The practical consequence is that `lvai_generate_vi` — which validates
+first and stops there — cannot generate one, and reaching for it looks like the VI being impossible
+rather than the gate being in the way. `docs/labview-lunit-testing.md` §3.
+
 **Generate with `lvai_generate_vi`, not with validate-then-convert by hand.** It runs validate,
 convert and the pane measurement in one call, stops at the first failure and names it, and returns
 each sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would
@@ -860,6 +871,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
+| How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `scripts/lvlu_add_test_method.xml`, `scripts/lvlu_run_tests.xml` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
@@ -923,13 +935,23 @@ not installed — which is exactly how the Timed Loop slot pattern came to be re
 
 **The unit-test agent is per FRAMEWORK, and `labview-class-generator` always calls one.** Caraya is
 the default (`labview-caraya-unit-test`), and LUnit and VI Tester have their own agents —
-`labview-lunit-unit-test` and `labview-vitester-unit-test`, both added 2026-08-29. **Both are
-scaffolds, and deliberately so**: measured that day, LUnit is absent from `vi.lib\addons`, `user.lib`
-and `LVAddons` entirely, and VI Tester only *ships* files under `vi.lib\addons\_JKI Toolkits` with
-nothing about it ever measured here. So each carries the framework-independent rules — which are
+`labview-lunit-unit-test` and `labview-vitester-unit-test`, both added 2026-08-29 as scaffolds.
+**LUnit is no longer a scaffold: it was installed 2026-09-01 and the whole route is measured end to
+end** — a test case class off `Test Case.lvclass`, two test methods, one `Passed` and a deliberately
+wrong one `Failed`, JUnit report written. `docs/labview-lunit-testing.md` is the evidence and
+`scripts/lvlu_add_test_method.xml` plus `scripts/lvlu_run_tests.xml` are the two helpers. This
+paragraph said "LUnit is absent from `vi.lib\addons`, `user.lib` and `LVAddons` entirely" and that
+was measured against the **64-bit** tree while LUnit installs into
+`C:\Program Files (x86)\...\LabVIEW 2026` — the 32-bit build, which is the one hosting the gRPC
+service. **Resolve the install root from the running process, never from a guess**, and use the
+PowerShell tool for it: the Bash sandbox silently filters `C:\Program Files`, returning a truncated
+listing with exit code 0 and nothing from `find`, which reads exactly like "not installed".
+
+**VI Tester remains a scaffold** — it only *ships* files under `vi.lib\addons\_JKI Toolkits` with
+nothing about it ever measured here. It carries the framework-independent rules — which are
 toolchain properties and do transfer — and a Phase 0 that establishes a callable target and returns
 `CANNOT PROCEED` when it cannot. **Neither may substitute Caraya**, because the framework is the
-user's choice and only the default is ours. The two scaffolds contain almost no target spellings on
+user's choice and only the default is ours. A scaffold contains almost no target spellings on
 purpose: inventing a name is what preceded three LabVIEW crashes, and the way to get one is to export
 a VI that already calls the framework. The
 class agent's Phase 6 is the handoff and is not conditional on tests having been asked for. Carved out

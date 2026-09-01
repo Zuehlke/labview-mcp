@@ -1,0 +1,17 @@
+<VI _name="lvlu_run_tests.vi" description="Run an LUnit test suite and return the report, by calling LUnit's own execution API\3A LUnit Execution API.lvclass\3ALUnit Run Tests.vi.\0A\0AWHY THIS IS THE EASY HALF. An LUnit test METHOD needs a class-typed connector pane\2C which AIXML cannot express - see lvlu_add_test_method.xml. The RUNNER needs nothing of the kind\3A LUnit Run Tests.vi takes a PATH and returns a string report plus a single All Passed? boolean\2C so a runner is ordinary AIXML with no retyping\2C no membership step and no VI Server. Measured 2026-09-01\3A the target resolves from a bare AIXML Call\2C and its three required inputs are Project\2C Library\2C or Test Class Path\3B Report Output path\3B and Run Tests In Parallel? (T).\0A\0ATHE TARGET PATH MAY BE A .lvproj\2C A .lvlib OR A .lvclass. NI's own CLI Demo documents all three\3A a project finds every test in it\2C a class runs just that test case. Point it at the narrowest thing you want run.\0A\0APARALLEL IS OFF BY DEFAULT HERE\2C deliberately. The Parallel Test Runner groups tests into one suite per Test Case class and runs those in separate threads\2C which is faster and reorders the report\3B a single thread keeps the report deterministic\2C which is what a generated check wants. Pass parallel as the string true to turn it on.\0A\0AEVERY INPUT IS A STRING because a helper's controls are set as strings over VI Server - lvai_run_vi_and_read_values refuses anything else - so the paths and the boolean are converted on the diagram.\0A\0ATHE REPORT FORMAT FOLLOWS THE FILE EXTENSION\2C not a mode input\3A a .xml report path produces JUnit-style XML\2C a .txt path produces plain text. That is LUnit's rule\2C recorded in its own API Demo.">
+  <Control _name="test path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="report path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="parallel" type="string" uid="12" uid_parent="root" value="false" outputs="value:12.value"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:20.path" uid="20" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:21.path" uid="21" uid_parent="root"/>
+
+  <Constant _name="true text" outputs="value:25.value" type="string" uid="25" uid_parent="root" value="true"/>
+  <Node _name="Equal?" inputs="x:12.value,y:25.value" outputs="x = y?:26.x = y?" uid="26" uid_parent="root"/>
+
+  <Call inputs="Project\2C Library\2C or Test Class Path:20.path,Report Output path:21.path,error in (no error):,Run Tests In Parallel? (T):26.x = y?" outputs="Output:30.Output,All Passed?:30.All Passed?,error out:30.error out" target="LUnit Execution API.lvclass\3ALUnit Run Tests.vi" uid="30" uid_parent="root"/>
+
+  <Indicator _name="Output" inputs="value:30.Output" type="string" uid="40" uid_parent="root" value=""/>
+  <Indicator _name="All Passed?" inputs="value:30.All Passed?" type="bool" uid="41" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:30.error out" type="cluster{bool.status,int32.code,string.source}" uid="42" uid_parent="root" value="[false,0,]"/>
+</VI>
