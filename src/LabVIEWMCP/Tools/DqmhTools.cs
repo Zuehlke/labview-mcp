@@ -412,9 +412,9 @@ internal sealed class DqmhTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ the arguments carrier
 
-    private readonly record struct Argument(string Name, string Type);
+    internal readonly record struct Argument(string Name, string Type);
 
-    private static List<Argument>? ParseArguments(string? json)
+    internal static List<Argument>? ParseArguments(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return [];
         try
@@ -596,16 +596,26 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// both work, and never positionally: the ring's order depends on how the dialog was launched
     /// and its placeholder sits LAST, so a remembered index aims at the wrong module.
     /// </summary>
-    private static int MatchModule(List<string> entries, string wanted)
+    internal static int MatchModule(List<string> entries, string wanted)
     {
         var bare = BareName(wanted);
         for (var i = 0; i < entries.Count; i++)
+        {
+            // The placeholder is a real ring entry and must never be selectable. Matching it
+            // would hand back an index that selects no module while letting the run continue -
+            // caught later by the step-6 check, but only by luck of the wording.
+            if (IsPlaceholder(entries[i])) continue;
             if (string.Equals(BareName(entries[i]), bare, StringComparison.OrdinalIgnoreCase))
                 return i;
+        }
         return -1;
     }
 
-    private static string BareName(string name) =>
+    /// <summary>The ring's "&lt;Select a Module&gt;" row - angle-bracketed, and never a module.</summary>
+    private static bool IsPlaceholder(string entry) =>
+        entry.StartsWith('<') && entry.EndsWith('>');
+
+    internal static string BareName(string name) =>
         name.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase) ? name[..^6] : name;
 
     private static string Sanitise(string name) =>
@@ -622,7 +632,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// had value="0" on their numeric controls, so the rule was in the working examples - it just
     /// did not survive the move into C#.
     /// </summary>
-    private static string DefaultFor(string type) => type.ToLowerInvariant() switch
+    internal static string DefaultFor(string type) => type.ToLowerInvariant() switch
     {
         "string" or "path" => "",
         "bool" or "boolean" => "false",
@@ -630,7 +640,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     };
 
     /// <summary>AIXML attribute escaping - a colon and a backslash carry meaning in this dialect.</summary>
-    private static string Escape(string value) => value
+    internal static string Escape(string value) => value
         .Replace("\\", "\\5C").Replace(":", "\\3A")
         .Replace("&", "&amp;").Replace("\"", "&quot;")
         .Replace("<", "&lt;").Replace(">", "&gt;");
