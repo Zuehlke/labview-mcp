@@ -42,6 +42,25 @@ internal sealed class DqmhTools(LvaiConnection connection)
     private const int ModuleRingIndex = 0;
     private const int OkButtonIndex = 10;
 
+    /// <summary>
+    /// `Event Type`'s position in the dialog's Controls[], harvested 2026-09-01 with
+    /// lvdqmh_dlg_probe. The same probe confirmed ModuleRingIndex 0 and OkButtonIndex 10, so all
+    /// three are measured rather than assumed:
+    ///
+    ///   0 Module (Ring)   1 Event Type (Ring)   2 Add Tester Button   3 Enqueue Message VI
+    ///   4 Existing Request   5 Custom Enqueue VI   6 Broadcast Argument Source   7 Event Name
+    ///   8 Round Trip (Broadcast)   9 Event Description   10 OK   11 Cancel   12 Help
+    ///   13 Round Trip (Request)   14 Step 6   15 Context Help
+    /// </summary>
+    private const int EventTypeRingIndex = 1;
+
+    /// <summary>
+    /// The dialog's own label for the broadcast half of a Round Trip. Read off its front panel
+    /// (2026-09-01), where the pair shows as `Round Trip (Request)` and `Round Trip (Broadcast)`;
+    /// the second is what Script New Event.vi takes as its `Round Trip (Broadcast)` terminal.
+    /// </summary>
+    private const string RoundTripBroadcastControl = "Round Trip (Broadcast)";
+
     private static readonly string[] EventTypes =
         ["Request", "Broadcast", "Request and Wait for Reply", "Round Trip"];
 
@@ -80,6 +99,20 @@ internal sealed class DqmhTools(LvaiConnection connection)
         string argumentsJson,
         [Description("Event type: Request, Broadcast, Request and Wait for Reply, or Round Trip")]
         string eventType = "Request",
+        [Description("""
+            Reply data, same JSON shape as argumentsJson, for the two types that carry a reply -
+            Request and Wait for Reply, and Round Trip. These become the REPLY cluster, a second
+            Argument--cluster.ctl, and they are a different set from argumentsJson: those are what
+            the caller sends, these are what the module sends back. Leave empty for a reply that
+            carries only the error cluster. Refused on Request and Broadcast, which have no reply.
+            """)]
+        string replyArgumentsJson = "",
+        [Description("""
+            Round Trip only, and required for it: the name of the BROADCAST half of the pair. A
+            Round Trip is a request plus the broadcast that answers it, so it needs two names -
+            eventName is the request. Refused on the other three types.
+            """)]
+        string roundTripBroadcastName = "",
         [Description("Event description. Delacor writes it into the message-handling frame's " +
                      "label, where it documents the event on the module's block diagram.")]
         string description = "",
@@ -112,10 +145,43 @@ internal sealed class DqmhTools(LvaiConnection connection)
                 return Json.Error("badArguments",
                     $"Argument name '{broken.Name}' contains a line break.");
 
+            if (ParseArguments(replyArgumentsJson) is not { } replyArguments)
+                return Json.Error("badArguments",
+                    "replyArgumentsJson must be a JSON array of {\"name\":…,\"type\":…} objects.",
+                    new { replyArgumentsJson });
+
+            if (replyArguments.FirstOrDefault(a => a.Name.Contains('\n') || a.Name.Contains('\r'))
+                is { Name.Length: > 0 } brokenReply)
+                return Json.Error("badArguments",
+                    $"Reply argument name '{brokenReply.Name}' contains a line break.");
+
+            var isRoundTrip = IsRoundTrip(typeIndex);
+            var carriesReply = CarriesReply(typeIndex);
+            if (TypeRuleViolation(typeIndex, replyArguments.Count, roundTripBroadcastName)
+                is { } violation)
+                return Json.Error("badArguments", violation,
+                    new
+                    {
+                        eventType = EventTypes[typeIndex],
+                        replyArgumentsJson,
+                        roundTripBroadcastName,
+                    });
+
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("scriptsMissing",
                     "No scripts folder next to the exe - lvai_status reports it as " +
                     "scriptsDirectory. The DQMH helpers live there.");
+
+            // FAIL BEFORE DRIVING ANYTHING. The last step is a keystroke and a keystroke needs a
+            // desktop that can hold a foreground window; without one the whole chain runs, fills
+            // the dialog, and stops one step from the end with a message about Key Focus that
+            // points at LabVIEW instead of at the lock screen.
+            if (!Win32.DesktopIsInteractive())
+                return Json.Error("desktopNotInteractive",
+                    "No window holds the foreground, which means the desktop is locked, the " +
+                    "screensaver is up, or this session is disconnected. The last step of this " +
+                    "tool is a synthesised keystroke and it cannot reach a locked desktop, so " +
+                    "nothing was started. Unlock the workstation and call again.");
 
             if (DialogPath() is not { } dialogPath)
                 return Json.Error("dqmhMissing",
@@ -180,6 +246,21 @@ internal sealed class DqmhTools(LvaiConnection connection)
                 ["argumentCount"] = arguments.Count,
             });
 
+            string? replyCarrierVi = null;
+            if (replyArguments.Count > 0)
+            {
+                replyCarrierVi = Path.Combine(HelperDirectory(),
+                    $"dqmh_reply_{Sanitise(eventName)}_{Environment.ProcessId}.vi");
+                if (await BuildCarrierAsync(replyArguments, replyCarrierVi, timeoutSeconds, ct)
+                    is { } replyCarrierError) return replyCarrierError;
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "buildReplyCarrier",
+                    ["carrierViPath"] = replyCarrierVi,
+                    ["argumentCount"] = replyArguments.Count,
+                });
+            }
+
             // ---- 4. fill the dialog -------------------------------------------------------
             var fill = new Dictionary<string, string>
             {
@@ -213,32 +294,123 @@ internal sealed class DqmhTools(LvaiConnection connection)
                     $"\"{step6}\". Nothing was pressed.",
                     steps, stopwatch, new { moduleName, moduleIndex, entries, step6 });
 
-            // ---- 6. the arguments window, addressed by its TEMPORARY name -----------------
+            // ---- 5a. REVEAL the reply payload window --------------------------------------
+            // WITHOUT THIS THE REPLY FIELDS ARE SILENTLY DROPPED. Measured 2026-09-01: the reply
+            // window exists from the start but stays HIDDEN, a paste into it is accepted - the
+            // labels read back - and Delacor's scripting then ignores it. The event comes out with
+            // its third file, its third .lvlib member, its `wait for reply (T)` input and no
+            // `Reply Payload` output at all: five checks of six pass.
+            //
+            // `Ctrl Val.Set` on Event Type fires no event, and re-signalling the MODULE ring does
+            // not reveal it either (fill3 does that twice, the second time with Event Type already
+            // set). The dialog reveals the window from Event Type's OWN event case, so the write
+            // has to be Value (Signaling) on that control.
+            //
+            // Only for the types that carry a reply: Request and Broadcast are proven without this
+            // step, and there is nothing to gain by changing a path that works.
+            //
+            // BEFORE ANY PASTE, deliberately - the event case rebuilds both argument windows, so
+            // signalling afterwards would throw away everything pasted, and the window names must
+            // be looked up after it.
+            if (carriesReply)
+            {
+                if (await RunAsync(scripts, "lvdqmh_dlg_signal", new()
+                    {
+                        ["dialog vi path"] = dialogPath,
+                        ["control index"] = EventTypeRingIndex.ToString(),
+                        ["value"] = typeIndex.ToString(),
+                    }, timeoutSeconds, ct) is not { } signalled)
+                    return HelperMissing("lvdqmh_dlg_signal");
+                steps.Add(Step("revealReplyWindow", signalled));
+
+                if (Failed(signalled) is { } signalError)
+                    return Fail("replyWindowNotRevealed",
+                        "Signalling Event Type failed, so the reply payload window would stay " +
+                        "hidden and the reply fields would be dropped without an error. " +
+                        "Nothing was pressed.",
+                        steps, stopwatch, new { error = signalError });
+
+                // The helper reads the control's own label back, so a wrong index is caught here
+                // rather than by its consequences three steps later.
+                if (Scalar(signalled, "label") is { } signalLabel
+                    && !string.Equals(signalLabel, "Event Type", StringComparison.Ordinal))
+                    return Fail("replyWindowNotRevealed",
+                        $"Control {EventTypeRingIndex} of the dialog is labelled " +
+                        $"\"{signalLabel}\", not \"Event Type\". Controls[] order is not stable " +
+                        "across launches, so the index was not used. Nothing was pressed.",
+                        steps, stopwatch, new { index = EventTypeRingIndex, label = signalLabel });
+            }
+
+            // ---- 5b. the Round Trip's second name -----------------------------------------
+            // Ctrl Val.Set, deliberately NOT Value (Signaling): signalling a text field makes the
+            // dialog re-run its own event case and rebuild the argument windows, which would
+            // throw away anything already pasted.
+            if (isRoundTrip)
+            {
+                if (await RunAsync(scripts, "lvdqmh_dlg_setstring", new()
+                    {
+                        ["dialog vi path"] = dialogPath,
+                        ["control name"] = RoundTripBroadcastControl,
+                        ["value"] = roundTripBroadcastName,
+                    }, timeoutSeconds, ct) is not { } named)
+                    return HelperMissing("lvdqmh_dlg_setstring");
+                steps.Add(Step("setRoundTripBroadcastName", named));
+                if (Failed(named) is { } nameError)
+                    return Fail("roundTripNameNotSet",
+                        $"Writing '{RoundTripBroadcastControl}' failed, so the broadcast half of " +
+                        "the pair would be scripted unnamed. Nothing was pressed.",
+                        steps, stopwatch, new { error = nameError });
+
+                if (Scalar(named, "read back") is { } readBack
+                    && !string.Equals(readBack, roundTripBroadcastName, StringComparison.Ordinal))
+                    return Fail("roundTripNameNotSet",
+                        $"'{RoundTripBroadcastControl}' reads back as \"{readBack}\" rather than " +
+                        $"\"{roundTripBroadcastName}\". A write that reports no error is not " +
+                        "evidence the value landed. Nothing was pressed.",
+                        steps, stopwatch, new { wanted = roundTripBroadcastName, readBack });
+            }
+
+            // ---- 6. the REPLY payload window FIRST ----------------------------------------
+            // A DIFFERENT WINDOW, and usually a HIDDEN one: Show Arguments Window.vi creates both
+            // up front, and the dialog only reveals the reply one when its own event case runs -
+            // which it never does here, because Event Type is written with Ctrl Val.Set. Hidden
+            // makes no difference to VI Server; it only means the window must be found by an
+            // enumeration that does not filter on visibility.
+            //
+            // ORDER MATTERS, and it is the reply half that has to go first. Measured 2026-09-01:
+            // pasting into the hidden reply window LAST left OK unpressable - Key Focus on the OK
+            // button read back true and the SPACE did nothing, because key focus is a property of
+            // a control WITHIN A PANEL and the panel LabVIEW had made active was the hidden one.
+            // Every run that ever worked ended its pastes in the visible Arguments Window, so the
+            // reply paste is done first and the proven sequence is left intact.
+            string? replyWindow = null;
+            if (replyCarrierVi is not null)
+            {
+                if (ReplyWindowName() is not { } found)
+                    return Fail("replyWindowNotFound",
+                        "No 'DQMH Reply Payload Window [lvtemporary_*.vi]' window exists, so the " +
+                        "reply arguments have nowhere to go and the event would be scripted with " +
+                        "an empty reply. Nothing was pressed.",
+                        steps, stopwatch, new { eventType = EventTypes[typeIndex] });
+                replyWindow = found;
+
+                if (await PasteAsync(scripts, replyCarrierVi, replyWindow, replyArguments,
+                        "pasteReplyArguments", "the reply payload window",
+                        steps, stopwatch, timeoutSeconds, ct) is { } replyPasteError)
+                    return replyPasteError;
+            }
+
+            // ---- 6b. the arguments window, addressed by its TEMPORARY name ----------------
             if (ArgumentsWindowName() is not { } argumentsWindow)
                 return Fail("argumentsWindowNotFound",
                     "No 'DQMH Arguments Window [lvtemporary_*.vi]' window is open. The dialog " +
                     "opens it, so either the dialog did not start or it was closed.",
                     steps, stopwatch);
 
-            if (arguments.Count > 0)
-            {
-                if (await RunAsync(scripts, "lvdqmh_args_paste2", new()
-                {
-                    ["carrier vi path"] = carrierVi,
-                    ["arguments window vi name"] = argumentsWindow,
-                }, timeoutSeconds, ct) is not { } pasted) return HelperMissing("lvdqmh_args_paste2");
-                steps.Add(Step("pasteArguments", pasted));
-
-                var landed = Strings(pasted, "target labels");
-                var missing = arguments.Select(a => a.Name)
-                    .Where(n => !landed.Contains(n, StringComparer.Ordinal)).ToArray();
-                if (missing.Length > 0)
-                    return Fail("argumentsDidNotLand",
-                        "The arguments window does not carry every control that was pasted into " +
-                        "it, so the event would be scripted with the wrong contract. Nothing was " +
-                        "pressed.",
-                        steps, stopwatch, new { expected = arguments.Select(a => a.Name), landed, missing });
-            }
+            if (arguments.Count > 0
+                && await PasteAsync(scripts, carrierVi, argumentsWindow, arguments,
+                       "pasteArguments", "the arguments window", steps, stopwatch, timeoutSeconds, ct)
+                   is { } pasteError) return pasteError;
 
             // ---- 7. press OK --------------------------------------------------------------
             if (await PressOkAsync(scripts, dialogPath, timeoutSeconds, ct) is var (pressed, focusSteps))
@@ -268,8 +440,18 @@ internal sealed class DqmhTools(LvaiConnection connection)
                         ["name"] = a.Name,
                         ["type"] = a.Type,
                     }).ToArray()),
+                ["replyArguments"] = new JsonArray(replyArguments
+                    .Select(a => (JsonNode)new JsonObject
+                    {
+                        ["name"] = a.Name,
+                        ["type"] = a.Type,
+                    }).ToArray()),
+                ["roundTripBroadcastName"] =
+                    isRoundTrip ? roundTripBroadcastName : null,
                 ["argumentsWindow"] = argumentsWindow,
+                ["replyPayloadWindow"] = replyWindow,
                 ["carrierViPath"] = carrierVi,
+                ["replyCarrierViPath"] = replyCarrierVi,
                 ["steps"] = steps,
                 ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
                 ["note"] =
@@ -637,6 +819,51 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// had value="0" on their numeric controls, so the rule was in the working examples - it just
     /// did not survive the move into C#.
     /// </summary>
+    /// <summary>
+    /// Which of the four types carries a reply, and which needs a second NAME.
+    ///
+    /// Measured off Script New Event.vi's connector pane on 2026-09-01 rather than inferred from
+    /// DQMH's documentation: besides `Arguments VI` it takes `Reply Payload VI` and a separate
+    /// `Round Trip (Broadcast)` string, both `required`. Accepting either where it does not belong
+    /// - or ignoring it where it does - scripts without any error and produces an event whose
+    /// reply cluster is empty, or a Round Trip whose broadcast half is unnamed. Neither shows up
+    /// until someone reads the module weeks later, which is why these are refusals rather than
+    /// warnings.
+    /// </summary>
+    internal static bool CarriesReply(int typeIndex) => typeIndex is 2 or 3;
+
+    internal static bool IsRoundTrip(int typeIndex) => typeIndex is 3;
+
+    /// <summary>
+    /// Null when the combination is legal, otherwise the sentence to report. Pure, so the rules
+    /// are testable without a dialog, a project or LabVIEW.
+    /// </summary>
+    internal static string? TypeRuleViolation(
+        int typeIndex, int replyArgumentCount, string roundTripBroadcastName)
+    {
+        var type = typeIndex >= 0 && typeIndex < EventTypes.Length
+            ? EventTypes[typeIndex] : "?";
+        var named = !string.IsNullOrWhiteSpace(roundTripBroadcastName);
+
+        if (!CarriesReply(typeIndex) && replyArgumentCount > 0)
+            return $"'{type}' has no reply, so replyArgumentsJson does not apply. Only " +
+                   "'Request and Wait for Reply' and 'Round Trip' carry one.";
+
+        if (!IsRoundTrip(typeIndex) && named)
+            return $"roundTripBroadcastName applies to 'Round Trip' only, not '{type}'.";
+
+        if (IsRoundTrip(typeIndex) && !named)
+            return "A Round Trip is a request plus the broadcast that answers it, so it needs " +
+                   "two names: eventName is the request, roundTripBroadcastName the broadcast. " +
+                   "Delacor's Script New Event.vi takes them as separate required terminals.";
+
+        if (named && (roundTripBroadcastName.Contains('\n')
+                      || roundTripBroadcastName.Contains('\r')))
+            return "roundTripBroadcastName contains a line break.";
+
+        return null;
+    }
+
     internal static string DefaultFor(string type) => type.ToLowerInvariant() switch
     {
         "string" or "path" => "",
@@ -658,12 +885,55 @@ internal sealed class DqmhTools(LvaiConnection connection)
             .Select(i => Path.Combine(Path.GetDirectoryName(i.ExePath) ?? "", DialogRelativePath))
             .FirstOrDefault(File.Exists);
 
-    private static string? ArgumentsWindowName()
+    /// <summary>
+    /// Paste one carrier's controls into one of the dialog's temporary windows and VERIFY they
+    /// arrived. Shared by the request and the reply halves, which differ only in which window
+    /// they target - the check is the point of the routine, not the paste.
+    /// </summary>
+    private async Task<string?> PasteAsync(
+        string scripts, string carrierVi, string windowName, List<Argument> expected,
+        string stepName, string windowDescription, JsonArray steps, Stopwatch stopwatch,
+        int timeoutSeconds, CancellationToken ct)
     {
-        foreach (var title in Win32.VisibleTitles())
+        if (await RunAsync(scripts, "lvdqmh_args_paste2", new()
+            {
+                ["carrier vi path"] = carrierVi,
+                ["arguments window vi name"] = windowName,
+            }, timeoutSeconds, ct) is not { } pasted)
+            return HelperMissing("lvdqmh_args_paste2");
+        steps.Add(Step(stepName, pasted));
+
+        var landed = Strings(pasted, "target labels");
+        var missing = expected.Select(a => a.Name)
+            .Where(n => !landed.Contains(n, StringComparer.Ordinal)).ToArray();
+        if (missing.Length > 0)
+            return Fail("argumentsDidNotLand",
+                $"After the paste, {windowDescription} does not carry every control, so the " +
+                "event would be scripted with the wrong contract. Nothing was pressed.",
+                steps, stopwatch,
+                new { window = windowName, expected = expected.Select(a => a.Name), landed, missing });
+        return null;
+    }
+
+    private static string? ArgumentsWindowName() =>
+        TemporaryWindowNamed("Arguments Window");
+
+    /// <summary>
+    /// The reply half. Its title is "DQMH Reply Payload Window [lvtemporary_N.vi] ...", which
+    /// does NOT contain "Arguments Window" - so the two matchers cannot pick each other's window,
+    /// and that was checked rather than assumed.
+    /// </summary>
+    private static string? ReplyWindowName() =>
+        TemporaryWindowNamed("Reply Payload Window");
+
+    private static string? TemporaryWindowNamed(string marker)
+    {
+        // Hidden windows count: the reply one is created up front and only shown when the
+        // dialog's own event case runs. See Win32.AllTitles.
+        foreach (var title in Win32.AllTitles())
         {
             var at = title.IndexOf("lvtemporary_", StringComparison.OrdinalIgnoreCase);
-            if (at < 0 || !title.Contains("Arguments Window", StringComparison.OrdinalIgnoreCase))
+            if (at < 0 || !title.Contains(marker, StringComparison.OrdinalIgnoreCase))
                 continue;
             var end = title.IndexOf(".vi", at, StringComparison.OrdinalIgnoreCase);
             if (end > at) return title[at..(end + 3)];
@@ -726,17 +996,44 @@ internal sealed class DqmhTools(LvaiConnection connection)
         private const byte VkSpace = 0x20;
         private const uint KeyUp = 0x0002;
 
-        public static IEnumerable<string> VisibleTitles()
+        public static IEnumerable<string> VisibleTitles() => Titles(visibleOnly: true);
+
+        /// <summary>
+        /// Every top-level window, INCLUDING HIDDEN ONES.
+        ///
+        /// The Reply Payload Window needs this and the Arguments Window does not, which is the
+        /// whole reason the distinction exists. Measured 2026-09-01: Show Arguments Window.vi
+        /// creates both in one call, but the dialog only SHOWS the reply one when its own event
+        /// case runs - and the tool sets Event Type with Ctrl Val.Set, which fires no event. So
+        /// the window is there, addressable by VI Server, and invisible to an enumeration that
+        /// filters on IsWindowVisible.
+        /// </summary>
+        public static IEnumerable<string> AllTitles() => Titles(visibleOnly: false);
+
+        private static List<string> Titles(bool visibleOnly)
         {
             var titles = new List<string>();
             EnumWindows((window, _) =>
             {
-                if (IsWindowVisible(window) && Title(window) is { Length: > 0 } title)
+                if ((!visibleOnly || IsWindowVisible(window))
+                    && Title(window) is { Length: > 0 } title)
                     titles.Add(title);
                 return true;
             }, IntPtr.Zero);
             return titles;
         }
+
+        /// <summary>
+        /// Whether ANY window holds the foreground.
+        ///
+        /// GetForegroundWindow returns NULL when no window can - a locked desktop, a running
+        /// screensaver, a disconnected session. Measured 2026-09-01: with the workstation locked
+        /// every one of the five Key Focus attempts read back false and SetForegroundWindow
+        /// returned false, which the tool reported as "focus never settled" - true, useless, and
+        /// it sent the caller looking at LabVIEW. The keystroke route cannot work on a locked
+        /// desktop at all, so this is worth saying in one sentence up front.
+        /// </summary>
+        public static bool DesktopIsInteractive() => GetForegroundWindow() != IntPtr.Zero;
 
         public static IntPtr FindWindow(string exactTitle)
         {

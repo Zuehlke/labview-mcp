@@ -1,0 +1,27 @@
+<VI _name="lvdqmh_dlg_signal.vi" description="Writes a NUMERIC control of a running dialog through Value (Signaling)\2C so the dialog's own Event Structure sees the change and runs its case. Addressed by Controls[] INDEX\2C because Value (Signaling) is a control property and Ctrl Val.Set - which takes a name - fires no event.\0A\0AWHY THIS EXISTS. Delacor's Create New DQMH Event dialog does more than store the Event Type\3A its event case reconfigures the dialog for the chosen type\2C and for `Request and Wait for Reply` and `Round Trip` that includes bringing up the REPLY PAYLOAD WINDOW. Measured 2026-09-01\3A with the type set by Ctrl Val.Set the reply window stays hidden\2C controls pasted into it are accepted and reported back\2C and the event still scripts with an EMPTY reply cluster - the created VI has no `Reply Payload` output at all\2C where Delacor's own example event has one. Nothing reports this. The window is there\2C the paste succeeds\2C and the result is quietly wrong.\0A\0AORDER. Signal BEFORE any paste. The event case rebuilds the argument windows\2C so anything pasted first is discarded.\0A\0AThe value goes in as a string and is converted to U16 - the dialog's Event Type and Module are both U16 rings. Value (Signaling) is taken on {LV.Control}\2C the generic class Controls[] yields\2C so no downcast is needed.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control index" type="string" uid="11" uid_parent="root" value="1" outputs="value:11.value"/>
+  <Control _name="value" type="string" uid="12" uid_parent="root" value="0" outputs="value:12.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:31.Panel,reference out:31.reference out,error out:31.error out" type="{LV.VI}" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:31.Panel,error in (no error):31.error out" outputs="Controls[]:32.Controls,reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:35.number" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:32.Controls,index:35.number" outputs="element:36.element" uid="36" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label.Text" inputs="reference:36.element,error in (no error):32.error out" outputs="Label.Text:37.Label,reference out:37.reference out,error out:37.error out" type="{LV.Control}" uid="37" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:12.value" outputs="number:40.number" uid="40" uid_parent="root"/>
+  <Node _name="To Unsigned Word Integer" inputs="number:40.number" outputs="unsigned 16bit integer:41.unsigned 16bit integer" uid="41" uid_parent="root"/>
+  <Node _name="To Variant" inputs="anything:41.unsigned 16bit integer" outputs="Variant:42.Variant" uid="42" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:36.element,error in (no error):37.error out,Value (Signaling):42.Variant" outputs="reference out:43.reference out,error out:43.error out" type="{LV.Control}" uid="43" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):43.error out" outputs="error out:50.error out" uid="50" uid_parent="root"/>
+
+  <Indicator _name="label" inputs="value:37.Label" type="string" uid="80" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:43.error out" type="cluster{bool.status,int32.code,string.source}" uid="81" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:50.error out" type="cluster{bool.status,int32.code,string.source}" uid="82" uid_parent="root" value="[false,0,]"/>
+</VI>

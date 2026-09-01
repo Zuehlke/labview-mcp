@@ -1,0 +1,17 @@
+<VI _name="lvdqmh_dlg_getstring.vi" description="READS one control or indicator of a running dialog by NAME. The mirror of lvdqmh_dlg_setstring\2C and separate from it on purpose\3A that one writes\2C and pointing a write at an INDICATOR to read it back would clear the very message being diagnosed.\0A\0AWHAT IT IS FOR. Delacor's Create New DQMH Event dialog refuses to proceed without saying so in a modal - it puts the reason in its own `Context Help` indicator and stays open. From the outside that looks identical to a keystroke that never arrived\2C which is exactly the confusion this helper exists to end\3A read the indicator and the dialog tells you which of the two happened.\0A\0AThe value comes back as a variant\2C the way Ctrl Val.Get hands it over\2C and the caller renders it. No downcast and no Controls[] index is needed - Ctrl Val.Get takes a name.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control name" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:30.vi reference,error in (no error):30.error out,Control Name:11.value" outputs="reference out:52.reference out,error out:52.error out,Value:52.Value" uid="52" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):52.error out" outputs="error out:60.error out" uid="60" uid_parent="root"/>
+
+  <Indicator _name="value" inputs="value:52.Value" type="variant" uid="80" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:52.error out" type="cluster{bool.status,int32.code,string.source}" uid="81" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:60.error out" type="cluster{bool.status,int32.code,string.source}" uid="82" uid_parent="root" value="[false,0,]"/>
+</VI>

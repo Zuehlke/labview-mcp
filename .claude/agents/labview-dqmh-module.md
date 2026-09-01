@@ -319,6 +319,59 @@ AIXML node and does the downcast; its `target class` input takes a refnum consta
    `lvai_close_active_project` saves, and six then appeared in the file. Reading the file first and
    concluding "clean" leaves them in the user's project.
 
+### The four event types are not one chain with a different index
+
+`Script New Event.vi`'s pane has three type-dependent inputs, all `required` (measured 2026-09-01):
+`Arguments VI`, `Reply Payload VI` and `Round Trip (Broadcast)`. So:
+
+| type | what it needs beyond the request arguments |
+|---|---|
+| Request, Broadcast | nothing |
+| Request and Wait for Reply | `replyArgumentsJson` — the fields the module sends BACK |
+| Round Trip | `replyArgumentsJson` **and** `roundTripBroadcastName`, the name of the broadcast half |
+
+**Pass them through `lvai_dqmh_new_event`; it refuses the wrong combinations rather than warning.**
+Omitting them does not fail — Delacor scripts an event with an empty reply cluster, or a Round Trip
+whose broadcast half is unnamed, with no error anywhere. That is why they are refusals.
+
+Both reply-carrying types are **measured end to end** (2026-09-01). What each produces:
+
+| type | files | `.lvlib` | where the reply shows up |
+|---|---|---|---|
+| Request, Broadcast | 2 | +2 | — |
+| Request and Wait for Reply | 3 | +3 | in the reply cluster `.ctl`; the request VI shows **no** `Reply Payload` output, which is an open question rather than a known defect |
+| Round Trip | **4** | **+4** | as a `Reply Payload` **INPUT** on the broadcast half, which is named by `roundTripBroadcastName` |
+
+A Round Trip answers *through* its broadcast, so looking for the payload on the request VI finds
+nothing and means nothing. Check the broadcast half.
+
+Three things about the reply half worth knowing before driving the dialog by hand:
+
+- `Show Arguments Window.vi` is called ONCE and returns **two** windows. The reply one is titled
+  `DQMH Reply Payload Window [lvtemporary_*.vi]` and starts **HIDDEN**, so find it with an
+  enumeration that does not filter on visibility.
+- **`Value (Signaling)` on `Event Type` — `Controls[]` index 1 — reveals it**, and `Ctrl Val.Set`
+  does not. Do it BEFORE any paste, and check the control's own `Label.Text`: `Controls[]` order is
+  read, never assumed.
+- **Never signal a TEXT field.** That reruns the dialog's event case and rebuilds both argument
+  windows, discarding whatever was pasted.
+
+### If the desktop is locked, stop before starting
+
+`GetForegroundWindow()` returning **0** means no window can hold the foreground — a locked
+workstation, a screensaver, a disconnected session. The keystroke cannot reach it and retries do not
+help. `lvai_dqmh_new_event` checks this before it starts the dialog and answers
+`errorKind: desktopNotInteractive`. If you meet it, say plainly that the workstation must be
+unlocked; do not drive the dialog and leave it filled.
+
+### If `lvai_open_file` answers Error 7
+
+Measured 2026-09-01: `OpenFile.vi` answered `Error 7, File not found` for **every** path, including a
+freshly written minimal `.lvproj`, while `lvai_describe_project` read the same project with
+`errorCode 0` in the same second. The cause is not established. What works is the gesture a person
+would use — open the `.lvproj` through its file association (`Start-Process <path>.lvproj`), which
+hands it to the running LabVIEW and makes it active. Do not conclude the project is damaged.
+
 ### Verifying an event
 
 Not from the click — from the module:

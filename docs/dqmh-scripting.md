@@ -690,6 +690,198 @@ kind of path that is usually special-cased wrongly:
 So the `.ctl` is unconditional: two files and two members per event, whatever the argument list. A
 missing `.ctl` is a failure even for an event with no data.
 
+### 6.11 The other two event types need MORE than the dialog was being told
+
+`Request` and `Broadcast` were driven end to end (§6.5–§6.10). The other two were assumed to be the
+same chain with a different index, and they are not. **`Script New Event.vi`'s connector pane is the
+contract**, and read on 2026-09-01 it has three type-dependent inputs where the tool supplied one:
+
+| terminal | type | who needs it |
+|---|---|---|
+| `Arguments VI` | `ref{LV.VI}` | all four — the request/payload arguments |
+| **`Reply Payload VI`** | `ref{LV.VI}` | a **second** arguments VI, for the reply data |
+| **`Round Trip (Broadcast)`** | `string` | Round Trip — the name of the broadcast half |
+
+All three are `required`. So a Round Trip driven without the third gets an **unnamed broadcast half**,
+and either reply-carrying type driven without the second gets an **empty reply cluster** — and both
+script with no error from Delacor. Nothing reports it. That is why `lvai_dqmh_new_event` now *refuses*
+the combinations rather than warning: `replyArgumentsJson` on a Request or Broadcast, a
+`roundTripBroadcastName` on anything but a Round Trip, and a Round Trip without one.
+
+`Event Type` here is a **real enum** — `uint16{Request,Broadcast,Request and Wait for Reply,Round
+Trip}` — unlike `Module Type`, which is a bare `uint16` whose meaning comes from a runtime catalogue
+(§5). So for events the index order IS in the pane and matches the tool's list exactly. `Module Type`
+in the same pane shows only `{Singleton,Cloneable}` against the catalogue's four, which is the second
+reason never to carry a module-type index.
+
+**There are TWO argument windows, and the second one is HIDDEN.** The dialog calls
+`Show Arguments Window.vi` **once** and it returns both:
+
+```
+outputs="Arguments Window:498.Arguments Window,
+         Reply Payload Window:498.Reply Payload Window,
+         error out:498.error out"
+```
+
+Enumerated with a Request-and-Wait event set up and waiting:
+
+```
+visible  [Create New DQMH Event]
+visible  [DQMH Arguments Window [lvtemporary_419382.vi] Front Panel on firstDQMH.lvproj/My Computer]
+HIDDEN   [DQMH Reply Payload Window [lvtemporary_594745.vi] Front Panel on ...]
+```
+
+The reply window is hidden **because of how we drive the dialog, not because of the event type**:
+`lvdqmh_dlg_fill3` writes `Event Type` with `Ctrl Val.Set`, which fires no event, so the dialog's own
+event case — the thing that would reveal the window — never runs. Hidden makes no difference to VI
+Server; it only means the window has to be found by an enumeration that does **not** filter on
+`IsWindowVisible`, which is what `Win32.AllTitles` is for.
+
+And **do not signal the text fields to fix that**. `Value (Signaling)` on `Event Type` would run the
+dialog's event case and rebuild both argument windows, discarding anything already pasted. The ring
+is the one control that must be signalled, and it is signalled first, before any paste.
+
+The two titles cannot be confused — `DQMH Reply Payload Window` does not contain `Arguments Window` —
+but that was checked rather than assumed, because the request matcher would otherwise have pasted the
+request fields into the reply cluster and reported success.
+
+For completeness, the dialog's front panel as measured, which is the list to reach for when another
+type needs something new:
+
+```
+Round Trip (Request)   Round Trip (Broadcast)   Event Type   Event Name   Event Description
+Module   Existing Request   Broadcast Argument Source {New Argument,Existing Argument}
+Enqueue Message VI {Standard,Custom}   Custom Enqueue VI   Add Tester Button   OK   Cancel   Help
+```
+
+**Both reply-carrying types were then created end to end.** Two claims written into this file
+earlier the same day were wrong and are retracted below, because the way they were wrong is the
+useful part.
+
+**`Event Type` sits at `Controls[]` index 1, and signalling it reveals the reply window.** Harvested
+with `lvdqmh_dlg_probe`, which also confirmed the two indices the tool already carried:
+
+```
+ 0 Module (Ring)          1 Event Type (Ring)      2 Add Tester Button      3 Enqueue Message VI
+ 4 Existing Request       5 Custom Enqueue VI      6 Broadcast Arg Source   7 Event Name
+ 8 Round Trip (Broadcast) 9 Event Description     10 OK                    11 Cancel
+12 Help                  13 Round Trip (Request)  14 Step 6                15 Context Help
+```
+
+`Value (Signaling)` on index 1 turns the Reply Payload Window from `HIDDEN` to `visible` in one
+call. `Ctrl Val.Set` on the same control does not, and neither does re-signalling the module ring.
+The tool now does this for the two reply-carrying types only, before any paste, and checks the
+control's own `Label.Text` so a shifted `Controls[]` order is caught at the write rather than three
+steps later.
+
+**ROUND TRIP: four files, and the reply lands on the BROADCAST half.**
+
+| check | result |
+|---|---|
+| files | **four**: `RoundTripTest.vi`, `RoundTripTestDone.vi`, `… Argument--cluster.ctl`, `… (Reply Payload)--cluster.ctl` |
+| `.lvlib` members | 88 to **92**, so **+4** for this type |
+| the broadcast half | named exactly as `roundTripBroadcastName` was passed |
+| `RoundTripTest.vi` | `Auftrag` in, `wait for reply (T)` in, `error out` and `timed out?` out |
+| `RoundTripTestDone.vi` | **`Reply Payload [cluster{double.Ergebnis, cluster{…}.RoundTripTest_error}]`** as an INPUT |
+
+So the reply field is there. A Round Trip answers *through* the broadcast, so its payload is an input
+to the broadcast VI, not an output of the request VI — which is why looking only at the request VI
+made it seem lost.
+
+**RETRACTED: "a paste into the hidden reply window is accepted and then ignored".** It is not
+ignored. `ReplyTest3` was created with the window revealed and its request VI still shows no
+`Reply Payload` output, so revealing it changed nothing observable — but the cluster is correct.
+`pylv_extract` on `ReplyTest3 (Reply Payload)--cluster.ctl` gives:
+
+```
+<TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Istwert" />
+```
+
+with `Stabil` beside it. The reply fields reached the cluster in every run.
+
+**RETRACTED: the file-size argument.** "14 208 bytes for a one-field cluster, so my 14 164 must be
+empty" was reasoning from a quantity that does not track content:
+`RoundTripTest (Reply Payload)--cluster.ctl` is **13 939 bytes** — the smallest of all of them — and
+demonstrably carries `Ergebnis`. **A `.ctl`'s size says nothing about its fields**, any more than a
+raw byte search does: `Kanal` and `Sollwert` do not appear as ASCII in an argument cluster whose
+event plainly has both terminals. Read a `.ctl` with `pylv_extract` and look at `VCTP`, or read the
+VI that uses it with `lvai_vi_terminals`. Nothing cheaper is sound.
+
+**What is still open for Request and Wait for Reply**: its request VI carries no `Reply Payload`
+output, while DQMH's own `Do Something Else and Wait for Reply.vi` has one
+(`cluster{double.Value, error}`, conIdx 2). The cluster file is right, so this is about the connector
+pane, not the data. Whether a *scripted* R&W event is simply shaped that way — Delacor's example
+comes from the module template, not from the event scripter — is **not settled**. A run driven by
+hand through the same dialog produced the same shape, which points at DQMH rather than at this
+route, but the hand-driven run's reply fields were not recorded, so it is not proof.
+
+**The OK press needed a SECOND attempt in both runs**, and this is what makes the retry loop worth
+having rather than a nicety:
+
+```
+focusOk    attempt 1  label OK  focusSettled true
+pressSpace attempt 1  skipped: the dialog did not come to the foreground
+focusOk    attempt 2  label OK  focusSettled true
+pressSpace attempt 2  windowWasFrontmost true       <- scripted
+```
+
+Key focus settles on the first try; the *foreground* does not. Refusing to send the keystroke
+without a confirmed foreground, and trying again, is the whole difference between a run that works
+and one that types a space into whatever the user has in front of them.
+
+### 6.12 `GetForegroundWindow() == 0` means the desktop is locked
+
+The `ReplyTest` run filled the dialog correctly, confirmed the module by name, pasted both arguments —
+and then reported `Key Focus never settled` after five attempts. §6.8 already knew focus was flaky and
+prescribed a retry loop, so the message looked like that same flakiness and sent the next step at
+LabVIEW. It was not:
+
+| probe | result |
+|---|---|
+| `SetForegroundWindow` on the dialog, with `AttachThreadInput` | **false** |
+| `GetForegroundWindow()` | **0** |
+
+**A null foreground window means no window can hold the foreground** — a locked workstation, a running
+screensaver, a disconnected session. The keystroke route cannot work there at all, and no number of
+retries changes that. `lvai_dqmh_new_event` now checks this **before starting the dialog** and answers
+`errorKind: desktopNotInteractive` in one sentence, rather than driving six steps and stopping one
+short with a message about LabVIEW.
+
+This is the sharpest form of the limitation the tool has always reported: not "needs the dialog
+frontmost" but "needs a desktop that has a foreground at all".
+
+### 6.13 When `lvai_open_file` answers Error 7 for everything
+
+Getting a project active for the run above failed in a way worth writing down, because the error names
+the wrong cause:
+
+```
+Error 7 ... OpenFile.vi
+LabVIEW: (Hex 0x7) File not found. The file might be in a different location or deleted.
+```
+
+The file was there. Three things were established before believing anything:
+
+- It is **not the project**: a freshly written six-line minimal `.lvproj` in a scratch folder got the
+  same Error 7.
+- It is **not LabVIEW being unresponsive**: `lvai_describe_project` read the *same* project in the
+  same second with `errorCode 0` and `missingFiles: []`.
+- It is **not the line endings**. `sed -i` on the `.lvproj` while stripping adopted helpers had turned
+  every CRLF into LF — real, and worth repairing since every other `.lvproj` on the station is CRLF —
+  but restoring them changed nothing. Recorded because the theory was stated before it was tested.
+
+**What worked was the gesture a person would use: open the `.lvproj` through its file association**
+(`Start-Process 'C:\temp\...\x.lvproj'`). Windows hands the file to the already-running LabVIEW, which
+opens it and makes it active — after which the dialog started, the ring listed all three modules and
+every step ran. So a wedged `OpenFile.vi` is not a dead end.
+
+The cause of the Error 7 is **not established**. What is: it is universal while it lasts, it does not
+implicate the file, and there is a way around it.
+
+**And strip helpers from a `.lvproj` with a tool that preserves CRLF.** `sed -i` does not. Nothing
+broke that has been traced to it, but a project file whose every line differs from its last committed
+version hides the one line that was meant to change.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
@@ -705,5 +897,7 @@ and `_DQMH Validate Module\` exist as directories and are the place to look. Do 
 | List module types | `Get Module Type Info.vi` over VI Server | **measured**, 121 ms |
 | Create a module | `+ Script New Module.vi` | **measured end to end**, 30–43 s |
 | Find modules in a project | `Parse Project for DQMH Modules.vi` | **measured**, 506 ms |
-| Create an event | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs the dialog frontmost |
+| Create a **Request** or **Broadcast** event | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs a desktop with a foreground |
+| Create a **Request and Wait for Reply** event | same, plus the Reply Payload Window — §6.11 | **measured end to end**: three files, +3 members, `wait for reply (T)` in, and the reply cluster carries the pasted fields. Its request VI exposes no `Reply Payload` output — open, see §6.11 |
+| Create a **Round Trip** event | same, plus `roundTripBroadcastName` — §6.11 | **measured end to end**: four files, +4 members, the broadcast half named as passed, its `Reply Payload` input carrying the reply field |
 | Validate / rename / remove | menu VIs have no pane; look in `_DQMH *\` | **not investigated** |

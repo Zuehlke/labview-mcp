@@ -142,6 +142,62 @@ public class DqmhToolsTests
     public void The_default_does_not_depend_on_the_casing_of_the_type() =>
         Assert.Equal(DqmhTools.DefaultFor("Double"), DqmhTools.DefaultFor("double"));
 
+    // ---------------------------------------------------------------- the four event types
+
+    // Index order is Script New Event.vi's own enum, read off its pane on 2026-09-01:
+    // uint16{Request,Broadcast,Request and Wait for Reply,Round Trip}.
+    private const int Request = 0, Broadcast = 1, RequestAndWait = 2, RoundTrip = 3;
+
+    [Theory]
+    [InlineData(Request, false)]
+    [InlineData(Broadcast, false)]
+    [InlineData(RequestAndWait, true)]
+    [InlineData(RoundTrip, true)]
+    public void Only_two_of_the_four_types_carry_a_reply(int typeIndex, bool expected) =>
+        Assert.Equal(expected, DqmhTools.CarriesReply(typeIndex));
+
+    [Fact]
+    public void The_plain_combinations_are_legal()
+    {
+        Assert.Null(DqmhTools.TypeRuleViolation(Request, 0, ""));
+        Assert.Null(DqmhTools.TypeRuleViolation(Broadcast, 0, ""));
+        Assert.Null(DqmhTools.TypeRuleViolation(RequestAndWait, 2, ""));
+        Assert.Null(DqmhTools.TypeRuleViolation(RoundTrip, 2, "Measurement Done"));
+    }
+
+    /// <summary>
+    /// A reply that has NO fields is ordinary - the reply then carries only the error cluster -
+    /// so an empty list must not be mistaken for "the caller forgot".
+    /// </summary>
+    [Fact]
+    public void A_reply_carrying_no_fields_is_legal() =>
+        Assert.Null(DqmhTools.TypeRuleViolation(RequestAndWait, 0, ""));
+
+    /// <summary>
+    /// The two silent-wrong-result paths this guard exists for. Both script with no error from
+    /// Delacor and are wrong only where someone later reads the module: reply arguments handed to
+    /// a type with no reply are dropped, and a Round Trip with no broadcast name gets an unnamed
+    /// broadcast half.
+    /// </summary>
+    [Theory]
+    [InlineData(Request, 2, "", "has no reply")]
+    [InlineData(Broadcast, 1, "", "has no reply")]
+    [InlineData(RoundTrip, 0, "", "two names")]
+    [InlineData(Request, 0, "Some Broadcast", "Round Trip' only")]
+    [InlineData(RequestAndWait, 1, "Some Broadcast", "Round Trip' only")]
+    public void The_illegal_combinations_are_refused_by_name(
+        int typeIndex, int replyCount, string broadcastName, string expectedFragment)
+    {
+        var violation = DqmhTools.TypeRuleViolation(typeIndex, replyCount, broadcastName);
+        Assert.NotNull(violation);
+        Assert.Contains(expectedFragment, violation);
+    }
+
+    [Fact]
+    public void A_round_trip_broadcast_name_may_not_contain_a_line_break() =>
+        Assert.Contains("line break",
+            DqmhTools.TypeRuleViolation(RoundTrip, 0, "First\nSecond") ?? "");
+
     // ---------------------------------------------------------------- AIXML escaping
 
     /// <summary>
