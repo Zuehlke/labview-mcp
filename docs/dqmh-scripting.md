@@ -616,6 +616,38 @@ about the sequence differed. So the rule is not "foreground once, then focus" bu
 
 Without that loop the keystroke goes to whatever else holds focus, silently.
 
+### 6.8 Productised as `lvai_dqmh_new_event` — and what only in-process code hits
+
+The sequence above is fixed, so it became one tool: `lvai_dqmh_new_event` takes a module name, an
+event name, a JSON list of typed arguments, and runs the whole chain. Measured 2026-09-01 creating
+`FifthEvent` with three arguments: **3.0 s against roughly two minutes by hand**, and the saving is
+almost all model latency rather than LabVIEW time.
+
+**Three things broke that had never broken in the hand-driven route**, and each is worth knowing
+before automating anything else that drives a GUI:
+
+- **The waits that were free are gone.** The dialog parses the whole project before its module ring
+  has entries. Driven by hand that took no code, because a tool call's round trip is seconds — and
+  `lvdqmh_dlg_start.xml` says in its own description that it therefore needs no Wait node. In-process
+  the first read came back `[""]` and the tool reported the module missing. It now POLLS the ring,
+  because the parse takes as long as the project is big.
+- **An empty `value` is not a universal default.** The carrier generator emitted
+  `<Control type="double" … value=""/>` and got `Error 53, Unrecognized or unsupported attribute set
+  in Control with UID 11` — which names the control, not the attribute, and reads like a bad type.
+  Numerics need `0`, booleans `false`, only strings and paths take empty. The hand-written carriers
+  had `value="0"` all along; the rule was in the examples and did not survive the move into C#.
+- **`SetForegroundWindow` does nothing from a background process.** Windows grants the foreground
+  only to a process that already has it, and an MCP server never does. From PowerShell it had always
+  worked, because the terminal itself was frontmost. The tool's first run logged
+  `windowWasFrontmost: false`, sent SPACE anyway, **returned `ok: true` and created nothing**. Two
+  fixes: `AttachThreadInput` to the current foreground thread for the duration of the call, which is
+  the documented way around the restriction; and no keystroke at all unless the window is confirmed
+  frontmost — otherwise it types into whatever the user has in front of them.
+
+That third one is the important one, and it is a process failure rather than a Windows quirk: the
+tool had the evidence in hand and reported success anyway. `docs`-wide the rule already existed —
+never report success from an empty answer — and it has to hold for a tool's own self-report too.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
