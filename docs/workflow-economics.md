@@ -208,6 +208,37 @@ document prescribes.** Same for `lvai_lunit_add_test_method`'s `verify` step. Bo
    nothing" is about throughput *inside LabVIEW* and is not an argument against batching round
    trips — reading it that way costs a turn per VI.
 
+### Items 2 and 4 implemented, and item 4 turned out to be half wrong
+
+**Item 2 — `lvai_create_accessors` now does its own bookkeeping.** It already took `projectPath` but
+used it only for the tidy step, so every caller spent a turn on `lvai_open_file` first; it now opens
+the project on the way in. And it reports `memberNames` plus a `dispatchFlags` histogram off the class
+file, which is what the two closing turns (`lvai_describe_class` plus a shell grep for
+`NI.ClassItem.Flags`) existed to get. `describe_class` reports `dynamicDispatch: null` — the class file
+does not carry it under that name — so `0` versus `16777216` in the flags is what actually settles
+dispatch, and now the tool says it. A histogram rather than a boolean, because the flag word carries
+more than dispatch and what its low bits mean is not established.
+
+**Item 4 was NOT implementable as stated, and the reason is worth recording.** The proposal was an
+internal retry in `lvai_ensure_labview`, on the observation that the first call always spends its
+budget and the second answers at once. It cannot be done: `waitSeconds` is clamped to
+`Rpc.MaxToolWaitSeconds` = **45**, deliberately, because past roughly 60 s the MCP client stops
+waiting and the caller learns nothing at all. A retry inside one call is simply a longer wait, which
+is the thing the cap forbids — so **the ~45 s is irreducible within one call and the second call is
+the retry.**
+
+What was wrong was the *reporting*, and that is now fixed. `waitSeconds: 90` silently became 45, so
+four runs read `waitedMs: 45009` against a nominal 90 and took it for a fault; the answer now carries
+`waitSecondsRequested` and `waitSecondsUsed`. And the `next` text now says outright that this is the
+normal cold-start answer with the four measured second-call times (1.2 s, 12.1 s, 27.7 s, 1.2 s), that
+`lastError: "The operation was canceled."` is this call's own budget expiring rather than a failure,
+and that only a *second* `starting` means something is actually wrong.
+
+**The lesson for this document's own method: a step whose cost is a hard protocol limit is not a tool
+waiting to be written.** Wall-minus-tool time correctly identified 45 s of latency, and the right
+response was to make the answer honest, not to remove the wait. Check what enforces a cost before
+budgeting work to remove it.
+
 ### And one anti-pattern that is the orchestrator's, not the tooling's
 
 The Banane class phase came in at 10 calls against Weinglas's 34 for the same result. Part of that is

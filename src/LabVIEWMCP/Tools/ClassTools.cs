@@ -1656,6 +1656,22 @@ internal sealed class ClassTools(LvaiConnection connection)
                 resumedFrom = fromField;
             }
 
+            // OPEN THE PROJECT ON THE WAY IN, not only for the tidy step. NI's wizard reaches
+            // LabVIEW through `Project:Active Project` and answers Error 1055 without one, so every
+            // caller was spending a turn on lvai_open_file first. Measured 2026-09-01: the four
+            // bookkeeping calls around this one - open, close, describe_class and a grep for the
+            // dispatch flags - cost about 19 s of wall clock against essentially zero LabVIEW time,
+            // 23 % of a class build. projectPath was already a parameter here; it was just unused
+            // until the very end.
+            JsonNode? projectOpened = null;
+            if (projectPath is { Length: > 0 })
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
+                projectOpened = Parsed(opened);
+            }
+
             var slices = new JsonArray();
             var wall = Stopwatch.StartNew();
             var moreToDo = false;
@@ -1729,6 +1745,16 @@ internal sealed class ClassTools(LvaiConnection connection)
                 final["slices"] = slices;
                 final["moreToDo"] = moreToDo;
                 final["resumedFrom"] = resumedFrom < 0 ? null : resumedFrom;
+                final["projectOpened"] = projectOpened;
+
+                // THE DISPATCH EVIDENCE, so nobody has to grep the class file for it. Runs that
+                // used this tool all ended with `lvai_describe_class` plus a shell grep for
+                // `NI.ClassItem.Flags`, because describe_class reports dynamicDispatch as null -
+                // the class file does not carry it under that name - and 0 versus 16777216 in the
+                // flags is what actually settles it. Read off the file, so it says what was
+                // written rather than what was asked for.
+                final["memberNames"] = MemberNamesOnDisk(lvclassPath);
+                final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
                 if (moreToDo)
                     final["note"] = $"Stopped after {slices.Count} slice(s) with " +
                         $"{wall.Elapsed.TotalSeconds:F0} s spent, because the budget of " +
@@ -2061,6 +2087,54 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// How many member VIs the class file lists right now. Read from disk on purpose: it is the one
     /// number that is true whether or not the run's answer arrived.
     /// </summary>
+    /// <summary>
+    /// Every member's name, off the class file. Saves the caller a <c>lvai_describe_class</c> turn
+    /// whose only purpose was to confirm the wizard produced the names expected.
+    /// </summary>
+    private static JsonNode? MemberNamesOnDisk(string lvclassPath)
+    {
+        try
+        {
+            return new JsonArray([.. LvClass.Read(lvclassPath).Members
+                                          .Select(m => (JsonNode)m.Name!)]);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A histogram of <c>NI.ClassItem.Flags</c> across the class's members: <c>0</c> is dynamic
+    /// dispatch and <c>16777216</c> (<c>0x1000000</c>) is static, so <c>{"0": 8}</c> means eight
+    /// members and all of them dynamic.
+    ///
+    /// WHY A HISTOGRAM AND NOT A BOOLEAN. The flag word carries more than dispatch - values of 8
+    /// and 11 have both been seen on real members and what their low bits mean is NOT established
+    /// (docs/lvclass-interfaces.md 3.0.3). Reporting the raw counts says exactly what is on disk
+    /// without asserting a reading of it; the static bit is the only one this repository has
+    /// measured, and its absence is what "all dynamic" rests on.
+    /// </summary>
+    private static JsonNode? DispatchFlagsOnDisk(string lvclassPath)
+    {
+        try
+        {
+            var text = File.ReadAllText(lvclassPath);
+            var histogram = new JsonObject();
+            foreach (var group in System.Text.RegularExpressions.Regex
+                         .Matches(text, """NI\.ClassItem\.Flags" Type="Int">(-?\d+)""")
+                         .Select(m => m.Groups[1].Value)
+                         .GroupBy(v => v, StringComparer.Ordinal)
+                         .OrderBy(g => g.Key, StringComparer.Ordinal))
+                histogram[group.Key] = group.Count();
+            return histogram;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     private static int MembersOnDisk(string lvclassPath)
     {
         try { return LvClass.Read(lvclassPath).Members.Count; }
