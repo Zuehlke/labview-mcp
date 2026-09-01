@@ -10,7 +10,7 @@ Read together with [dqmh-patterns.md](dqmh-patterns.md), which describes what a 
 The short answer: **yes for modules, and yes for events** — both proven end to end. Modules go
 through `Script New Module.vi` directly (§5). Events cannot: §6 shows why driving
 `Script New Event.vi` from a helper is structurally impossible, and how the supported route is to
-drive Delacor's own dialog — which works, at the cost of one synthesised mouse click, because its
+drive Delacor's own dialog — which works, at the cost of one synthesised keystroke, because its
 OK button is a latched boolean that VI Server may not write.
 
 ## 1. The layout: menu VIs versus scripting VIs
@@ -494,6 +494,12 @@ Measured 2026-08-31: `PanelBounds = (172, 148, 782, 687)`, `Origin = (40, -10)`,
 `(373, 496)` sized `75 x 23` → click at **(542, 665)**, which falls inside the panel bounds as a
 sanity check. `SetForegroundWindow` on the dialog, `SetCursorPos`, then `mouse_event` down/up.
 
+> **SUPERSEDED — see §6.7.** This is how the button was first pressed, and it works, but the
+> coordinates are unnecessary: `Key Focus` plus one SPACE does the same thing with three fewer
+> properties and no arithmetic to get wrong. The helper that computed these coordinates has been
+> deleted. The paragraph is kept because the geometry, and the `Origin` term in particular, is the
+> reason the shortcut was not obvious.
+
 **And that completed it.** `SimpleEvent`, a Request on `DQMHdemo` with arguments `Name` (string) and
 `Gewicht` (double), was created with no human interaction beyond the initial instruction:
 
@@ -510,8 +516,9 @@ sanity check. `SetForegroundWindow` on the dialog, `SetCursorPos`, then `mouse_e
 | `lvai_describe_project` | `errorCode 0`, `missingItems []`, `missingFiles []` |
 
 **So events ARE scriptable — through the dialog, not through `Script New Event.vi`.** The honest
-caveat: one step of the chain is a synthesised mouse click, which depends on the dialog being on
-screen and unobscured. Everything before it is ordinary VI Server and verifies itself.
+caveat: one step of the chain is synthesised input, which depends on the dialog being frontmost.
+Everything before it is ordinary VI Server and verifies itself. (That step became a keystroke
+rather than a click — §6.7.)
 
 ### Why it still did not finish
 
@@ -546,6 +553,38 @@ Two things the second run established that the first could not:
 Result: `SecondEvent.vi` with `Name` [string] and `Gewicht` [double], the `.lvlib` from 65 to 67
 members, `Main.vi`'s export from 72 512 to 75 654 bytes carrying both the EHL case and an MHL frame
 labelled with the description, and `missingItems`/`missingFiles` empty.
+
+### 6.7 The click was unnecessary: Key Focus plus SPACE
+
+The OK button being Latch When Released was read as "VI Server cannot press it, so compute its
+screen position and click". The first half is right and the second was a detour. Measured
+2026-09-01 while creating `ThirdEvent`:
+
+| attempt | result |
+|---|---|
+| write `Mechanical Action` = 0 to disarm the latch, then signal | **`Error 1073`** — not allowed while the VI is running. `MechAction` is U32 and reads 4 |
+| write `Key Focus` = true with the dialog behind other windows | `error 0`, and the read-back says **false**. A silent no-op |
+| `SetForegroundWindow`, then `Key Focus` = true | read-back **true** |
+| focus in one call, SPACE from a *separate* PowerShell invocation | nothing happens — starting the process moved the foreground away |
+| foreground **and** SPACE in one invocation | **the event is scripted** |
+
+So the press is: `lvdqmh_dlg_keyfocus.xml` sets `Key Focus` on control index 10 and reads it back,
+then one PowerShell script foregrounds the window and sends `keybd_event` VK_SPACE down/up.
+
+**Two rules, both of which cost a failed attempt:**
+
+- **Always read `Key Focus` back.** It returns `error 0` when it did nothing, and a keystroke then
+  goes wherever the focus actually is.
+- **Foreground and keystroke belong in the same OS-level step.** Splitting them across two tool
+  calls loses the foreground to the new process.
+
+The coordinate route — `PanelBounds.Left + (Position.Left - Origin.Horizontal) + Width/2` and the
+same for y — is gone from `scripts/`. It worked, and it read three more properties, broke silently
+on a scrolled panel, and moved the user's mouse cursor. `lvdqmh_btnpos.xml` was deleted rather than
+kept as a fallback, because a fallback nobody exercises is a fallback nobody can trust.
+
+The keystroke is still synthesised input: the dialog must be frontmost, so this is no more
+unattended-safe than the click was. It is simply smaller and cannot be thrown off by scrolling.
 
 ## 7. What is not reachable this way
 

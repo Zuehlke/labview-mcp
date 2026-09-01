@@ -1,7 +1,7 @@
 ---
 name: labview-dqmh-module
 description: >-
-  Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS — requests and broadcasts with typed arguments — by driving Delacor's own Create New DQMH Event dialog over VI Server, which is the only route that works: `Script New Event.vi` cannot be driven from a helper because the thirteen refnums it needs die when the parse VI stops. That chain ends in ONE synthesised mouse click, because the dialog's OK button is a latched boolean VI Server may not write, so it needs the dialog visible and unobscured and is not suitable for an unattended run — say so when reporting. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+  Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS — requests and broadcasts with typed arguments — by driving Delacor's own Create New DQMH Event dialog over VI Server, which is the only route that works: `Script New Event.vi` cannot be driven from a helper because the thirteen refnums it needs die when the parse VI stops. That chain ends in ONE synthesised keystroke, because the dialog's OK button is a latched boolean VI Server may not write and whose Mechanical Action cannot be changed while the VI runs, so it needs the dialog frontmost and is not suitable for an unattended run — say so when reporting. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_list_labview_installations
 ---
 
@@ -23,9 +23,9 @@ driving Delacor's dialog (Phase 6). The reason is refnum lifetime, not preferenc
 > ⚠️ **This agent mutates.** A module run writes about sixty files, edits the user's `.lvproj`, and
 > saves the project. It needs a project **open and active** in the IDE.
 
-> 🖱️ **The event route ends in a synthesised mouse click** — the dialog must be on screen and
-> unobscured, and it will move the cursor. Never do this while the user has unrelated work in front
-> of them without saying so first, and always put the cursor back.
+> ⌨️ **The event route ends in a synthesised keystroke** — the dialog must be frontmost, so it takes
+> the focus for a moment. Never do this while the user has unrelated work in front of them without
+> saying so first.
 
 > 📄 **`docs/dqmh-scripting.md` is your reference** — it carries every measurement behind the rules
 > below. `docs/dqmh-patterns.md` (also served by `lvai_dqmh_reference`) describes what a finished
@@ -238,8 +238,8 @@ Helpers ship for each step. Do not re-derive them.
 | 3 | `scripts/lvdqmh_dlg_fill3.xml` | sets module (signaling), type, name, description, tester; reads `Step 6` back |
 | 4 | *(you author)* | arguments carrier VI — one control per argument, correctly named and typed |
 | 5 | `scripts/lvdqmh_args_paste2.xml` | copies those controls into the Arguments Window |
-| 6 | `scripts/lvdqmh_btnpos.xml` | computes OK's screen coordinates |
-| 7 | *(PowerShell)* | the click |
+| 6 | `scripts/lvdqmh_dlg_keyfocus.xml` | puts the key focus on OK |
+| 7 | *(PowerShell)* | foreground the window and send ONE SPACE |
 | — | `scripts/lvdqmh_dlg_probe.xml` | lists a panel's controls with labels, classes and indices |
 
 ### The six things that will otherwise cost you a session each
@@ -251,19 +251,29 @@ changes nothing the dialog reads. Address the copy **by name** — `Open VI Refe
 takes a string name for anything in memory. Never put a name through `String To Path`: that makes it
 relative and answers `Error 1445`. Get the name from the window title.
 
-**THE OK BUTTON IS A LATCHED BOOLEAN** — `Mechanical Action` = 4, Latch When Released. LabVIEW
-refuses `Value` and `Value (Signaling)` on those, which is `Error 1193`. This is not timing or
-ordering; **VI Server cannot press it.** An OS-level click can, and VI Server supplies the
-coordinates (helper 6):
+**THE OK BUTTON IS A LATCHED BOOLEAN, AND IT IS PRESSED WITH A KEYSTROKE — NOT A CLICK.**
+`Mechanical Action` = 4, Latch When Released. LabVIEW refuses `Value` and `Value (Signaling)` on
+those (`Error 1193`), and the latch cannot be switched off either: writing `Mechanical Action` on a
+**running** VI answers `Error 1073`, not allowed while the VI is running. So the press has to be
+synthesised input — but it does **not** have to be a mouse click.
 
-```
-x = PanelBounds.Left + (Position.Left - Origin.Horizontal) + Width  / 2
-y = PanelBounds.Top  + (Position.Top  - Origin.Vertical  ) + Height / 2
-```
+The route is helper 6 plus one SPACE:
 
-**The `Origin` term is not optional** — this dialog scrolls, and it measured `(40, -10)`. Sanity-check
-that the result lies inside `PanelBounds` before clicking. Then `SetForegroundWindow`,
-`SetCursorPos`, `mouse_event` down/up, and put the cursor back where it was.
+1. `lvdqmh_dlg_keyfocus.xml` writes `Key Focus` = true on control index 10 and **reads it back**.
+2. PowerShell brings the dialog forward and sends `keybd_event` VK_SPACE down/up.
+
+**Two things make or break it, both measured 2026-09-01:**
+
+- **`Key Focus` is a silent no-op when the window is not frontmost.** The write returns `error 0`
+  and the read-back returns **false**. After `SetForegroundWindow` the same write returns true.
+  Never skip the read-back — without it you fire a keystroke into whatever else has focus.
+- **Foreground and keystroke must be ONE PowerShell invocation.** Focusing in one call and pressing
+  SPACE in the next did nothing at all: starting the second process moved the foreground away.
+
+An earlier revision computed the button's screen position from `PanelBounds`, `Origin` and the
+control's own bounds and clicked it. That works and is strictly worse: three more properties, an
+arithmetic that breaks silently when the panel is scrolled, and a moved mouse cursor to restore.
+Do not reintroduce it.
 
 **THE MODULE RING PUTS THE PLACEHOLDER LAST.** Measured: `0` DQMHdemo, `1` FirstClone, `2` Korrekt,
 `3` `<Select a Module>`. Index 0 is a real module, and the order follows neither the project nor
@@ -293,7 +303,8 @@ AIXML node and does the downcast; its `target class` input takes a refnum consta
    name**. Do not continue if it names a different module.
 4. Author the carrier VI (4) and paste its controls into the `lvtemporary_*` window (5). Verify the
    window's `Controls[]` came back with your labels.
-5. Compute OK's position (6), sanity-check it against `PanelBounds`, click (7).
+5. Focus OK (6) and **confirm `focus after write` is true**, then foreground-and-SPACE in one
+   PowerShell call (7).
 6. Verify from the files (below). Then clean up — this route adopts **many** helper VIs; on the
    measured runs there were ten and then six.
 
@@ -317,9 +328,9 @@ Not from the click — from the module:
 
 ### Say this in your report
 
-The click is a **synthesised mouse event**: it needs the dialog on screen and unobscured, and it is
-not suitable for an unattended run. Everything before it is ordinary VI Server and verifies itself.
-Do not present the whole chain as robust automation.
+The final press is a **synthesised keystroke**: it needs the dialog frontmost, so it is not suitable
+for an unattended run and it steals focus for a moment. Everything before it is ordinary VI Server
+and verifies itself. Do not present the whole chain as robust automation.
 
 ## Reporting
 
@@ -341,8 +352,8 @@ For an **event**, additionally:
 - what changed in the module: the two new files, the `.lvlib` member count, and that **`Main.vi`
   changed** (the MHL frame) — that last one is what distinguishes a wired-in event from an orphaned
   `.ctl`;
-- **that one step was a synthesised mouse click**, and therefore that the run needed the dialog on
-  screen and is not unattended-safe. Do not let this pass silently: a reader who assumes the whole
-  chain is VI Server will try it headless and it will not work.
+- **that one step was a synthesised keystroke**, and therefore that the run needed the dialog
+  frontmost and briefly took the focus. Do not let this pass silently: a reader who assumes the
+  whole chain is VI Server will try it headless and it will not work.
 
 Text you write **into** LabVIEW code is English by default, whatever language the request was in.

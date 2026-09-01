@@ -1,0 +1,26 @@
+<VI _name="lvdqmh_dlg_keyfocus.vi" description="Gives a control the KEY FOCUS on a running panel\2C so a synthesised keystroke reaches it without any screen coordinates. This is how Delacor's OK button is pressed.\0A\0AWHY A KEYSTROKE AND NOT A CLICK. The OK button is Latch When Released\2C so VI Server may not write its Value or Value (Signaling) - Error 1193. Neither can the latch be switched off\3A writing Mechanical Action on a RUNNING VI answers Error 1073\2C not allowed while the VI is running (measured 2026-09-01\2C MechAction reads as U32 = 4). So the press has to be synthesised input. A mouse click needs the button's screen position - Panel Bounds\2C minus Origin\2C plus the control's own position - and that arithmetic breaks silently when the panel is scrolled. Key Focus plus one SPACE needs none of it\2C and is what this helper exists for.\0A\0AKey Focus IS A SILENT NO-OP WHEN THE WINDOW IS NOT FRONTMOST\2C which is why the value is read back. Measured\3A with the dialog behind other windows the write returned error 0 and the read-back returned FALSE\3B after SetForegroundWindow the same write returned TRUE. A caller that does not verify would send a keystroke into whatever is focused instead.\0A\0AAND THE KEYSTROKE MUST BE SENT IN THE SAME OS-LEVEL STEP AS THE FOREGROUND CALL. Measured\3A focusing here and sending SPACE from a separate PowerShell invocation did nothing at all\2C because starting that process moved the foreground away again. Bring the window forward and press the key in one script.\0A\0AKey Focus is taken on {LV.Control}\2C the generic class Controls[] yields\2C so no downcast is needed - unlike Strings [] or Mechanical Action\2C which are subclass properties and require To More Specific Class.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control index" type="string" uid="11" uid_parent="root" value="10" outputs="value:11.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:30.vi reference,error in (no error):30.error out" outputs="Front Panel:31.Panel,reference out:31.reference out,error out:31.error out" type="{LV.VI}" uid="31" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:31.Panel,error in (no error):31.error out" outputs="Controls[]:32.Controls,reference out:32.reference out,error out:32.error out" type="{LV.Panel}" uid="32" uid_parent="root"/>
+
+  <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:35.number" uid="35" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:32.Controls,index:35.number" outputs="element:36.element" uid="36" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Label.Text" inputs="reference:36.element,error in (no error):32.error out" outputs="Label.Text:37.Label,reference out:37.reference out,error out:37.error out" type="{LV.Control}" uid="37" uid_parent="root"/>
+
+  <Constant _name="focus on" outputs="value:40.value" type="bool" uid="40" uid_parent="root" value="true"/>
+  <Node _name="Property Node" fields="write+Key Focus" inputs="reference:36.element,error in (no error):37.error out,Key Focus:40.value" outputs="reference out:41.reference out,error out:41.error out" type="{LV.Control}" uid="41" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Key Focus" inputs="reference:36.element,error in (no error):41.error out" outputs="Key Focus:42.focus,reference out:42.reference out,error out:42.error out" type="{LV.Control}" uid="42" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):42.error out" outputs="error out:50.error out" uid="50" uid_parent="root"/>
+
+  <Indicator _name="label" inputs="value:37.Label" type="string" uid="60" uid_parent="root" value=""/>
+  <Indicator _name="focus after write" inputs="value:42.focus" type="bool" uid="61" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:42.error out" type="cluster{bool.status,int32.code,string.source}" uid="62" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:50.error out" type="cluster{bool.status,int32.code,string.source}" uid="63" uid_parent="root" value="[false,0,]"/>
+</VI>
