@@ -586,6 +586,36 @@ kept as a fallback, because a fallback nobody exercises is a fallback nobody can
 The keystroke is still synthesised input: the dialog must be frontmost, so this is no more
 unattended-safe than the click was. It is simply smaller and cannot be thrown off by scrolling.
 
+### 6.8 `Value (Signaling)` re-tested properly — and why the first test was inconclusive
+
+The claim "VI Server cannot press the button" rested on a run that wrote `Value (Signaling)` on
+**`{LV.Control}`**, whose value terminal is a variant. That returned `error 0` and the dialog did
+nothing — a silent no-op, which is weak evidence: it looks the same as a value that was accepted and
+ignored. Re-tested 2026-09-01 on `{LV.Boolean}` via `To More Specific Class`, with a real boolean:
+
+| class written | value | result |
+|---|---|---|
+| `{LV.Control}` | variant | `error 0`, no effect — **silent no-op** |
+| `{LV.Boolean}` | boolean | **`Error 1193`** on the write node, `Property Name: Value (Signaling)` |
+
+The cast itself succeeds (`cast error` 0), so this is LabVIEW refusing the property on a latched
+control, not a class mismatch. **The refusal is now measured rather than inferred**, and the generic
+route is exposed as the misleading one: a variant handed to `{LV.Control}` is dropped without
+complaint. When probing whether a property works, use the SPECIFIC class — a generic write that
+reports success may have done nothing.
+
+**Enter does not work either.** `VK_RETURN` to the focused dialog changed nothing; OK is not the
+panel's default button. Only SPACE on the focused control presses it.
+
+**And `Key Focus` is flakier than §6.7 suggested.** Across this run it took three attempts:
+foreground → focus wrote `false`; foreground again → `false`; foreground again → `true`. Nothing
+about the sequence differed. So the rule is not "foreground once, then focus" but:
+
+> Set `Key Focus`, **read it back, and if it is false, foreground the window and try again.** Only
+> send the keystroke once the read-back says true.
+
+Without that loop the keystroke goes to whatever else holds focus, silently.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are

@@ -252,10 +252,12 @@ takes a string name for anything in memory. Never put a name through `String To 
 relative and answers `Error 1445`. Get the name from the window title.
 
 **THE OK BUTTON IS A LATCHED BOOLEAN, AND IT IS PRESSED WITH A KEYSTROKE — NOT A CLICK.**
-`Mechanical Action` = 4, Latch When Released. LabVIEW refuses `Value` and `Value (Signaling)` on
-those (`Error 1193`), and the latch cannot be switched off either: writing `Mechanical Action` on a
-**running** VI answers `Error 1073`, not allowed while the VI is running. So the press has to be
-synthesised input — but it does **not** have to be a mouse click.
+`Mechanical Action` = 4, Latch When Released. LabVIEW refuses `Value (Signaling)` on those with
+**`Error 1193`** — measured on `{LV.Boolean}` after `To More Specific Class`. Do not test this on
+`{LV.Control}`: a variant written there returns `error 0` and is silently dropped, which reads as
+success and proves nothing. The latch cannot be switched off either: writing `Mechanical Action` on
+a **running** VI answers `Error 1073`. So the press has to be synthesised input — but it does
+**not** have to be a mouse click.
 
 The route is helper 6 plus one SPACE:
 
@@ -264,9 +266,12 @@ The route is helper 6 plus one SPACE:
 
 **Two things make or break it, both measured 2026-09-01:**
 
-- **`Key Focus` is a silent no-op when the window is not frontmost.** The write returns `error 0`
-  and the read-back returns **false**. After `SetForegroundWindow` the same write returns true.
-  Never skip the read-back — without it you fire a keystroke into whatever else has focus.
+- **`Key Focus` fails silently AND intermittently.** The write returns `error 0` while doing
+  nothing, and the read-back returns **false**. Foregrounding the window fixes it — but not always
+  on the first try: measured 2026-09-01, it took three foreground-then-focus attempts in a row
+  before the read-back said true, with nothing differing between them. **Loop:** set `Key Focus`,
+  read it back, and if false, foreground again and repeat. Only send SPACE once it reads true.
+- **SPACE, not ENTER.** `VK_RETURN` does nothing — OK is not the panel's default button.
 - **Foreground and keystroke must be ONE PowerShell invocation.** Focusing in one call and pressing
   SPACE in the next did nothing at all: starting the second process moved the foreground away.
 
