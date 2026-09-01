@@ -376,9 +376,11 @@ internal sealed class TestTools(LvaiConnection connection)
             }
 
             var swapped = await new SwapTools(connection).SwapSubVisAsync(
+                // verbose: false deliberately - this tool inlines the swap answer into its own
+                // `steps`, so the whole AIXML export would land inside a second composed answer.
                 testViPath, swaps.ToJsonString(), seeds.ToJsonString(), verify: true,
-                helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
-                ct);
+                verbose: false, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                timeoutSeconds, ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Read(swapped) });
 
             var swapAnswer = Read(swapped) as JsonObject;

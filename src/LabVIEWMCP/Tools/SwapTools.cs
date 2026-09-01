@@ -71,6 +71,14 @@ internal sealed class SwapTools(LvaiConnection connection)
         string? constantsJson = null,
         [Description("Re-export the VI afterwards and report what it now calls")]
         bool verify = true,
+        [Description("""
+            Keep every sub-answer whole. OFF by default because the full ones are large for no
+            benefit: measured 2026-09-01, six swaps in one message returned about 34 kB, most of it
+            LabVIEW's entire AIXML export inline plus a flattened per-node value dump. What a caller
+            reads - callTargets, nodesSwapped, socketsLeft - is lifted out already. A step that
+            FAILED is reported whole regardless of this flag.
+            """)]
+        bool verbose = false,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description($"The helper's AIXML source; defaults to {HelperAixmlFileName} in scriptsDirectory")]
         string? helperAixmlPath = null,
@@ -135,7 +143,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 var built = await new BulkTools(connection).GenerateViAsync(
                     aixml, helperVi, openVI: false, measurePane: false, panePattern: null,
                     timeoutSeconds, ct);
-                steps.Add(new JsonObject { ["step"] = "helper", ["answer"] = Parse(built) });
+                steps.Add(new JsonObject { ["step"] = "helper", ["answer"] = Json.Slim(Parse(built), verbose) });
                 if (!File.Exists(helperVi))
                     return Json.Document(new JsonObject
                     {
@@ -167,7 +175,7 @@ internal sealed class SwapTools(LvaiConnection connection)
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
-            steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Parse(answer) });
+            steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Json.Slim(Parse(answer), verbose) });
 
             var values = (Parse(answer) as JsonObject)?["values"] as JsonObject;
             var code = Scalar(values, "code");
@@ -191,7 +199,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 var exported = await new AixmlTools(connection).ConvertViToAixmlAsync(
                     viPath, exportPath, returnContent: true, maxContentChars: 0, timeoutSeconds,
                     refresh: true, ct);
-                steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = Parse(exported) });
+                steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = Json.Slim(Parse(exported), verbose) });
 
                 if ((Parse(exported) as JsonObject)?["xml"]?.GetValue<string>() is { } xml)
                 {

@@ -843,29 +843,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
     ///
     /// A FAILED step is never slimmed: that is exactly when the whole answer is what you need.
     /// </summary>
-    private static JsonNode? Slim(JsonNode? answer, bool keep)
-    {
-        if (keep || answer is not JsonObject o) return answer;
-
-        var failed = o["ok"]?.GetValue<bool>() is false
-                     || (o["errorCode"] is { } code && code.GetValue<int>() != 0)
-                     || o["errorKind"] is not null
-                     || o["failedAtStep"] is not null;
-        if (failed) return answer;
-
-        string[] worthKeeping =
-        [
-            "ok", "errorCode", "errorKind", "errorMessage", "errorSource", "failedAtStep",
-            "elapsedMs", "totalElapsedMs", "viBytes", "viExistsNow", "closed", "nothingToClose",
-        ];
-
-        var slim = new JsonObject();
-        foreach (var key in worthKeeping)
-            if (o[key] is { } value)
-                slim[key] = value.DeepClone();
-        slim["slimmed"] = true;
-        return slim;
-    }
+    private static JsonNode? Slim(JsonNode? answer, bool keep) => Json.Slim(answer, keep);
 
     private static int Code(string answer) =>
         (Read(answer) as JsonObject)?["errorCode"]?.GetValue<int>() ?? -1;

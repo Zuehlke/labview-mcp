@@ -744,3 +744,87 @@ one turn anyway, so there is nothing to gain from the heredoc.
 `lvai_create_class` ran earlier in the session: it closes its own scratch project, so nothing is left
 active for the phase-one close to do.
 
+
+## 11. A fifth run, `Apfel` cold from nothing — 2026-09-01
+
+LabVIEW killed first, the previous run archived, so both phases started genuinely cold. Six methods,
+12 assertions, `tests="6" failures="0"` on two green runs with a write-side negative control between
+them. §10's five prescriptions held; four things are new.
+
+| phase | Weinglas | Banane | Apfel warm | **Apfel cold** |
+|---|---|---|---|---|
+| class, calls | 34 | 10 | 8 | **7** |
+| tests, calls | 100 | 42 | 38 | **43** |
+
+The class phase reached 7 calls because `lvai_create_accessors` now opens the project itself and
+reports `memberNames` plus a `dispatchFlags` histogram — both verified this run
+(`projectOpened: {errorCode: 0}`, `dispatchFlags: {"0": 8}`, matching an independent grep). The test
+phase did **not** improve, and the reason is in the last item below.
+
+### LabVIEW's warmth dominates the class phase, and `budgetSeconds` is tuned for the wrong case
+
+| instance age at first slice | LabVIEW time for 8 accessors |
+|---|---|
+| 75 min | **21.4 s** |
+| 100 s | 56.3 s |
+| ~2 min, cold process | **80.0 s** (slice 1 45.8 s, slice 2 34.2 s) |
+
+Two things follow. **A wall-clock comparison between runs is only valid if LabVIEW's warmth matches**
+— call count is the robust metric. And **`budgetSeconds: 45` is exactly wrong on a cold instance**:
+the first slice took 45.8 s, overran, and the call therefore stopped after one slice and needed a
+second turn. Slice 2 then did the same two fields in 34.2 s *despite the library being twice as
+large*, so warm-up outweighs library growth. On a cold instance either raise the budget past ~90 s
+to fit both slices in one call, or accept two calls and set it low deliberately.
+
+### `lvai_swap_subvis` inherited the answer-size defect, and it is now fixed in a shared place
+
+Six swaps in one message returned about **34 kB** — three times the whole slimmed
+`lvai_lunit_add_test_method` answer for the same six VIs — because its verify step returns LabVIEW's
+entire AIXML export inline plus a flattened per-node value dump. `verify: false` avoids the payload
+and then nothing proves the swap landed, so that is not the answer.
+
+Fixed the same way as §10's, but the reducer moved to `Json.Slim` rather than being copied: **the
+defect is structural to composition, not particular to either tool.** A tool that composes N others
+inlines N whole answers, and the caller then spends turns grepping its own result — so the tool built
+to save round trips starts spending them. Both tools now slim their sub-answers unless a step
+**failed** (then the whole answer is kept, which is when it is needed) or `verbose: true`.
+
+### The socket name has TWO spellings in one run, and membership decides which
+
+The initial swaps take the **bare stub name** (`LVMCP Stub 57df820953.vi`); the negative control
+afterwards takes the **class-qualified** name (`Apfel.lvclass:Write Gewicht g.vi`), because by then
+the node calls a class member. Both appeared minutes apart on the same VI.
+
+### Three smaller measurements
+
+**The stub cache spans runs and LabVIEW restarts.** All eight placeholders answered `reused: true` in
+0.686 s total: the hash covers terminal names, types, `conIdx` and direction, so a re-created class
+with the same name and field types produces the same signatures. **A repeat build of an
+identically-shaped class pays nothing for sockets.**
+
+**A failed case carries TWO `<failure>` entries**, not one — the `Pass if Equal` one with
+`Expected`/`Actual`, and a second of type `Test Case` whose text is `Failed:` plus the Description.
+§4.5 showed only the first.
+
+**§5's `Test Case.lvclass` adoption did not recur**, second clean run in a row. So that trap is not
+deterministic: read the `.lvproj`, do not assume there is something to strip.
+
+### The remaining cost is orientation, not authoring — and that changes what the next tool is
+
+**Largest item by wall minus tool: 98.0 s of wall clock against 5.2 s inside tools over 9 turns,
+locating and reading §10, §4 and three earlier runs' AIXML templates** — about 82 s of it plain file
+reading. §10 named the next tool as an AIXML *generator*; this run says that is only half of it. Four
+of those nine turns went on **finding a template to copy**, and this run's authoring was fast only
+because the previous `Apfel` run's six files existed to transpose from — which also makes its
+authoring time incomparable with `Weinglas` or `Banane`.
+
+So the tool should **ship the skeleton, not merely emit it**: templates under `scripts/templates/`
+that need no searching, with the generator on top. That ordering was proposed and deferred once
+already; the second measurement is the argument for doing the cheap half first.
+
+### One process note on this run, kept because it cost the measurement something
+
+The run brief handed to the agent said the `typedefNote` suppression was **not** in the build. It
+was — committed earlier the same afternoon — and the agent correctly reported
+`typedefTerminals: 0` with `classTerminalsNotCountedAsTypedefs: 2`. **A stale brief is as expensive
+as a stale document**, and the fix is the same: check the commit, not the memory of having written it.
