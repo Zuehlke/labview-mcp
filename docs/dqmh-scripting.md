@@ -616,7 +616,7 @@ about the sequence differed. So the rule is not "foreground once, then focus" bu
 
 Without that loop the keystroke goes to whatever else holds focus, silently.
 
-### 6.8 Productised as `lvai_dqmh_new_event` — and what only in-process code hits
+### 6.9 Productised as `lvai_dqmh_new_event` — and what only in-process code hits
 
 The sequence above is fixed, so it became one tool: `lvai_dqmh_new_event` takes a module name, an
 event name, a JSON list of typed arguments, and runs the whole chain. Measured 2026-09-01 creating
@@ -648,6 +648,48 @@ That third one is the important one, and it is a process failure rather than a W
 tool had the evidence in hand and reported success anyway. `docs`-wide the rule already existed —
 never report success from an empty answer — and it has to hold for a tool's own self-report too.
 
+### 6.10 What the tool's own test runs settled: a BROADCAST gets no case frame at all
+
+Eight events now exist on `DQMHdemo`, five of them built by the tool. Three of the runs were made to
+probe edges rather than to be useful, and two of them corrected written rules.
+
+**The verification rule "`Main.vi` changed - that is the MHL frame" is a REQUEST rule.** It was
+written from five Requests and does not hold for a Broadcast. Counted 2026-09-01 in `Main.vi`'s AIXML
+export, one row per event, by the elements that name it:
+
+| event type | elements in `Main.vi` | what they are |
+|---|---|---|
+| **Request** (7 of them) | **6** | an EHL `CaseFrame` labelled `Another Module called the "<Event>" API Method.`; an MHL `CaseFrame` labelled with the **event description**; a `FreeLabel`; three argument-cluster `Constant`s |
+| **Broadcast** (`MessungFertig`) | **1** | one `Call` to `DQMHdemo.lvlib:MessungFertig.vi`, `uid_parent="root"`, **every input unwired** |
+
+The Broadcast's single node carries its own explanation:
+
+```
+comment="#CodeNeeded\0A1. Drop this VI wherever you need to broadcast the
+         &quot;MessungFertig&quot; message.\0A2. Delete or edit this label when done."
+```
+
+So **a Broadcast is not wired in by scripting, and cannot be**: nothing handles it, because a
+broadcast is fired *by* the module and only its author knows when. DQMH drops the call loose on the
+root diagram with a `#CodeNeeded` marker and leaves the placement to a person. `Main.vi` does change
+- so the check still passes - but what it gained is a stub, not a frame. Verify a Broadcast by
+finding that `Call`, and **say in the report that the module does not fire it yet**; a reader who
+takes "`Main.vi` changed" as "the event works" will look for a broadcast that never happens.
+
+`#CodeNeeded` is worth knowing as a convention in its own right: it is how DQMH marks code it
+scripted but could not finish. Grep an export for it before declaring a scripted module complete.
+
+**Two argument-count edges, both fine.** Neither had been exercised before, and the empty one is the
+kind of path that is usually special-cased wrongly:
+
+| event | arguments | result |
+|---|---|---|
+| `Abschlusstest` | `[]` | 1 input, 1 output - just `error in (no error)` and `error out`. **The `Argument--cluster.ctl` is still created**, empty, and the `.lvlib` still gains two members |
+| `Testchen` | one `string` | `hallo` [string] `required`; `.lvlib` 77 -> 79 |
+
+So the `.ctl` is unconditional: two files and two members per event, whatever the argument list. A
+missing `.ctl` is a failure even for an event with no data.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
@@ -663,5 +705,5 @@ and `_DQMH Validate Module\` exist as directories and are the place to look. Do 
 | List module types | `Get Module Type Info.vi` over VI Server | **measured**, 121 ms |
 | Create a module | `+ Script New Module.vi` | **measured end to end**, 30–43 s |
 | Find modules in a project | `Parse Project for DQMH Modules.vi` | **measured**, 506 ms |
-| Create an event | dialog only — see §6 | **not scriptable**; carrier VI proven, the rest stops |
+| Create an event | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs the dialog frontmost |
 | Validate / rename / remove | menu VIs have no pane; look in `_DQMH *\` | **not investigated** |

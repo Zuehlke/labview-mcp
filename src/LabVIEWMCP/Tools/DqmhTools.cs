@@ -277,8 +277,13 @@ internal sealed class DqmhTools(LvaiConnection connection)
                     "dialog frontmost and is not unattended-safe. Delacor's scripting continues " +
                     "in the background: VERIFY FROM THE FILES before reporting success - the " +
                     "event VI and its Argument--cluster.ctl in the module folder, two more " +
-                    "members in the .lvlib, and Main.vi changed (that last one is what tells a " +
-                    "wired-in event from an orphaned .ctl). Then close the project and strip any " +
+                    "members in the .lvlib (an event with NO arguments still gets its empty " +
+                    ".ctl), and Main.vi changed. WHAT Main.vi gained depends on the type: a " +
+                    "Request gets an EHL case frame and an MHL one labelled with the description, " +
+                    "and their absence means the event is not wired in; a BROADCAST gets only a " +
+                    "single unwired Call on the root diagram with a #CodeNeeded comment, because " +
+                    "a broadcast is fired BY the module and only its author knows when - so say " +
+                    "that the module does not fire it yet. Then close the project and strip any " +
                     "helper VIs LabVIEW adopted into the .lvproj - the file is not evidence of " +
                     "what was adopted until after the close.",
             }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });

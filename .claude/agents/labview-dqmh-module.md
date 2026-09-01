@@ -325,7 +325,20 @@ Not from the click — from the module:
 
 - `<Event>.vi` and `<Event> Argument--cluster.ctl` exist in the module folder.
 - The `.lvlib` gained **two** members and lists both.
-- **`Main.vi` changed** — that is the MHL frame. If it did not, the event is not wired in.
+- **`Main.vi` changed** — but WHAT it gained depends on the event type, and the check is not the
+  same for both (measured 2026-09-01, counting the elements that name the event in `Main.vi`'s
+  AIXML export):
+  - a **Request** gets **6** elements: an EHL `CaseFrame` labelled
+    `Another Module called the "<Event>" API Method.`, an MHL `CaseFrame` labelled with the event
+    **description**, a `FreeLabel` and three argument-cluster constants. If those case frames are
+    absent, the event is not wired in.
+  - a **Broadcast** gets **1**: a single unwired `Call` to the broadcast VI on the ROOT diagram,
+    carrying a `#CodeNeeded` comment telling a person to drop it where the module should fire it.
+    There is no case frame in either loop and there cannot be — a broadcast is fired *by* the
+    module. **Say in your report that the module does not fire it yet**, or a reader takes
+    "`Main.vi` changed" for "the event works".
+- Two files and **two** `.lvlib` members per event whatever the argument list: an event with NO
+  arguments still gets its `Argument--cluster.ctl`, empty. A missing `.ctl` is a failure even then.
 - `Test <Module> API.vi` changed (tester button) and `Request Events--cluster.ctl` changed.
 - `lvai_vi_terminals` on the new VI shows one terminal per argument, with the right types.
 - The AIXML export's `description=` carries the event description.
