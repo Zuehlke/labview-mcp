@@ -616,3 +616,84 @@ convert step failed. NI's log carried a bare stack with **no exception header**,
 `LV AI Core.lvlibp:VI generator.vi` ← `…:ConvertAIXMLToVI.vi`. **The rule: after any entry reporting
 `failedAtStep: "convert"` with the file present, treat the pane as unset and regenerate that entry
 alone.** `lvai_generate_vi` now says this in its own convert-failure note.
+
+## 10. A third class, `Banane` — the tools measured against the hand route
+
+Same shape as §9 on purpose: four fields of four types, six test methods, 12 assertions. What
+changed is that the two tools of §8 were available. Both green runs `tests="6" failures="0"`, with a
+write-side negative control between them naming exactly the case that was broken.
+
+### The numbers, which are the point
+
+| | Brille (hand) | Weinglas (hand) | **Banane (tools)** |
+|---|---|---|---|
+| class phase | 6.0 min · 29 calls | 8.7 min · 34 calls | **1.8 min · 10 calls** |
+| test phase | 21.0 min · 85 calls | 22.9 min · 100 calls | **10.1 min · 42 calls** |
+
+Inside the test phase: **528 s wall clock against 102.8 s inside tools — a ratio of 5.1 : 1**, worse
+than the repository's 3.6 : 1 baseline, and the reason is that what remains is almost entirely
+model authoring rather than tool work. `lvai_lunit_add_test_method` did all six methods in **one
+call, 24.9 s**, `methodsAdded: 6`, `failedAtStep: null`; `lvai_run_lunit_tests` returned each report
+parsed in 3.7–4.7 s against the `.lvclass`.
+
+**The largest remaining item is authoring the six test methods' AIXML: about 110 s of pure model
+latency over three turns, with essentially no tool time.** §8 leaves that to the model deliberately,
+and that is still right for the *choice* of values and the descriptions — but five of the six files
+were mechanical transpositions of the previous class's, with four field names and four values
+substituted. A generator taking `{class, fields, values, cases}` and emitting the four round trips
+plus defaults plus independence would remove most of it. That is the next tool.
+
+### `lvai_placeholder_subvi` on class code: VERIFIED, and §6 changes because of it
+
+All eight `Banane` accessors — Read and Write over a `string`, `double`, `int32` and `bool` field —
+answered `ok: true` with `classTerminals: 2` and `classTerminalNames: ["Banane in","Banane out"]`.
+`stubRefused` is gone, and the two-halves fix (type **and** wire rule) holds. **So §6's "the sockets
+have to be hand-authored" no longer applies**: eight `lvai_placeholder_subvi` calls issued in one
+message replaced writing eight socket AIXML files plus an `lvai_generate_vis` batch, at the cost of
+one turn.
+
+**But hash-named stubs are only safe when the field types are pairwise DISTINCT.** The tool names a
+stub by a hash of the signature, and §6 requires distinct names per node on one diagram. With four
+different field types the eight signatures differ, so the eight hashes do, and the write-all/read-all
+test swapped `nodesSwapped: 8, socketsLeft: 0`. **This is a property of the class, not of the tool**
+— two fields of the same type give two identical Read signatures, one hash, and `lvai_swap_subvis`
+refuses the duplicate. Such a class still needs sockets named per field, which is what §6 describes.
+
+### The `Error 1562` lock is per-class, and only the TEST class's lock is load-bearing
+
+Confirmed from the other side, which §5 could not do. `Banane.lvclass` was created by
+`lvai_create_class` in the same LabVIEW session that then linked all eight of its accessors into six
+test methods through `{LV.SubVI}` `Replace`, built a `Banane` class constant per method with
+`{LV.Constant}` `Replace`, and saved six times — **every one `errorCode 0`, no 1562 anywhere.**
+
+So a *subject* class being locked does not matter: **linking to a class is not editing it.** Only
+the class you call `AddItemFromMemory` on needs the restart, and that is the test case class. **A
+class-plus-tests run therefore needs ONE restart, not two** — after creating the test case class,
+never between the subject class and the tests. The orchestrator's restart between the two phases was
+unnecessary in the two earlier runs.
+
+### Issue per-VI `lvai_*` calls in ONE message, even though LabVIEW serialises them
+
+Six `lvai_swap_subvis` calls in one message took 1.2–8.3 s each, 16.4 s of tool time — LabVIEW
+serialised them as `CLAUDE.md` says it will, and the six *turns* became one, which is where the money
+is. Same for the eight `lvai_placeholder_subvi` calls. The existing rule that fanning out buys
+nothing is about *throughput inside LabVIEW*; it is not an argument against batching round trips, and
+reading it that way costs a turn per VI.
+
+### Two defects in `lvai_lunit_add_test_method` this run exposed
+
+**Its answer overflowed the client's token limit** — 85 968 characters over 1 173 lines, because each
+method carried LabVIEW's whole AIXML export plus `pylv_apply`'s extract file list and warnings.
+Recovering `methodsAdded` and `terminals retyped` from it cost **three extra grep turns**, so the tool
+built to save round trips was spending them. Fixed: sub-answers are slimmed to the fields that say
+whether the step worked, a failed step is still reported whole, and `verbose: true` restores the old
+behaviour.
+
+**Its answer misreported the phase order, and a careful reader drew the wrong conclusion.** The
+execution is right — close, convert+pane for every method, open, membership for every method — but
+the close and the open were both appended to one `prologue` array, so the answer *read* as though both
+happened before any method, and the run concluded "either the two-phase ordering is not what it
+implements, or adoption needs more than an open project". Neither: the reporting was misleading.
+Fixed — the array is now `projectPhases`, each entry carries `order` and a `thenWhat` saying which
+loop runs after it. **A tool whose answer implies the wrong sequence is a defect even when the
+sequence is right**, because the next reader reasons from the answer, not the source.

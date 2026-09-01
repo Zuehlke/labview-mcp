@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
@@ -125,6 +125,14 @@ internal sealed class LUnitTools(LvaiConnection connection)
         int panePattern = LUnitPanePattern,
         [Description("Re-export each finished VI and check the member link and terminal types")]
         bool verify = true,
+        [Description("""
+            Keep every sub-answer whole. OFF by default because the full ones overflow a client's
+            token limit: measured 2026-09-01, six methods produced 86 000 characters, almost all of
+            it LabVIEW's AIXML export per method plus the pylabview extract listing, and digging
+            `methodsAdded` back out of it cost three extra turns. A step that FAILED is always
+            reported whole regardless of this flag.
+            """)]
+        bool verbose = false,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description($"The helper's AIXML source; defaults to {AddMethodHelperFileName} in scriptsDirectory")]
         string? helperAixmlPath = null,
@@ -217,10 +225,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     timeoutSeconds, ct);
                 prologue.Add(new JsonObject
                 {
+                    ["order"] = 1,
                     ["step"] = "closeProject",
+                    ["thenWhat"] = "convert + pane repair for EVERY method run AFTER this, with " +
+                                   "the project closed",
                     ["note"] = "Error 1055 here means no project was active, which is the state " +
                                "this step is trying to reach.",
-                    ["answer"] = Read(closed),
+                    ["answer"] = Slim(Read(closed), verbose),
                 });
             }
 
@@ -235,7 +246,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 // 1. Convert, deliberately WITHOUT validating - see the class comment.
                 var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
                     method.Aixml, viPath, openVI: false, timeoutSeconds, ct);
-                perMethod.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
+                perMethod.Add(new JsonObject
+                {
+                    ["step"] = "convert",
+                    ["answer"] = Slim(Read(convert), verbose),
+                });
 
                 if (Code(convert) != 0 || !File.Exists(viPath))
                 {
@@ -252,7 +267,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     new JsonArray { new JsonObject { ["op"] = "conpane", ["pattern"] = panePattern } }
                         .ToJsonString(),
                     closeProject: false, verify: false, bundleDirectory: null, timeoutSeconds, ct);
-                perMethod.Add(new JsonObject { ["step"] = "conpane", ["answer"] = Read(pane) });
+                perMethod.Add(new JsonObject
+                {
+                    ["step"] = "conpane",
+                    ["answer"] = Slim(Read(pane), verbose),
+                });
 
                 if ((Read(pane) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 {
@@ -274,10 +293,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
                 prologue.Add(new JsonObject
                 {
+                    ["order"] = 2,
                     ["step"] = "openProject",
+                    ["thenWhat"] = "retype + membership + verify for EVERY method run AFTER this, " +
+                                   "with the project open and active",
                     ["note"] = "projectPath must carry the FILE NAME; passing only the directory " +
                                "answers Error 1, 'an input parameter is invalid'.",
-                    ["answer"] = Read(opened),
+                    ["answer"] = Slim(Read(opened), verbose),
                 });
             }
 
@@ -299,7 +321,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 var member = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                     helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
-                perMethod.Add(new JsonObject { ["step"] = "member", ["answer"] = Read(member) });
+                perMethod.Add(new JsonObject
+                {
+                    ["step"] = "member",
+                    ["answer"] = Slim(Read(member), verbose),
+                });
 
                 var values = (Read(member) as JsonObject)?["values"] as JsonObject;
                 var retyped = int.TryParse(Scalar(values, "terminals retyped"), out var r) ? r : -1;
@@ -337,7 +363,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     perMethod.Add(new JsonObject
                     {
                         ["step"] = "verify",
-                        ["answer"] = Strip(Read(exported)),
+                        ["answer"] = Slim(Strip(Read(exported)), verbose),
                     });
 
                     var xml = (Read(exported) as JsonObject)?["xml"]?.GetValue<string>();
@@ -367,7 +393,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 ["methodsAdded"] = added,
                 ["failedAtStep"] = stoppedAt,
                 ["helperGenerated"] = helperGenerated,
-                ["prologue"] = prologue.Count == 0 ? null : prologue,
+                ["projectPhases"] = prologue.Count == 0 ? null : prologue,
                 ["methods"] = results,
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = AddNote(ok, added, methods.Count, stoppedAt, verify),
@@ -798,6 +824,42 @@ internal sealed class LUnitTools(LvaiConnection connection)
     {
         if (answer is JsonObject o && o.ContainsKey("xml")) o.Remove("xml");
         return answer;
+    }
+
+    /// <summary>
+    /// A sub-answer reduced to the fields that say whether it worked, unless <paramref name="keep"/>.
+    ///
+    /// WHY THIS EXISTS. Measured 2026-09-01 on a six-method suite: the full answer came to 85 968
+    /// characters over 1 173 lines and overflowed the client's token limit, because each method
+    /// carried LabVIEW's whole AIXML export plus <c>pylv_apply</c>'s extract file list and warnings.
+    /// Recovering <c>methodsAdded</c>, <c>terminals retyped</c> and <c>add member error</c> from it
+    /// took three extra grep turns - so the tool that exists to save round trips was spending them.
+    /// Everything a caller acts on is already lifted into <c>detail</c> and <c>verification</c>.
+    ///
+    /// A FAILED step is never slimmed: that is exactly when the whole answer is what you need.
+    /// </summary>
+    private static JsonNode? Slim(JsonNode? answer, bool keep)
+    {
+        if (keep || answer is not JsonObject o) return answer;
+
+        var failed = o["ok"]?.GetValue<bool>() is false
+                     || (o["errorCode"] is { } code && code.GetValue<int>() != 0)
+                     || o["errorKind"] is not null
+                     || o["failedAtStep"] is not null;
+        if (failed) return answer;
+
+        string[] worthKeeping =
+        [
+            "ok", "errorCode", "errorKind", "errorMessage", "errorSource", "failedAtStep",
+            "elapsedMs", "totalElapsedMs", "viBytes", "viExistsNow", "closed", "nothingToClose",
+        ];
+
+        var slim = new JsonObject();
+        foreach (var key in worthKeeping)
+            if (o[key] is { } value)
+                slim[key] = value.DeepClone();
+        slim["slimmed"] = true;
+        return slim;
     }
 
     private static int Code(string answer) =>

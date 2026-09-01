@@ -70,12 +70,18 @@ parentClassPath  <root>\vi.lib\Astemes\LUnit\Test Case.lvclass
 Verify with `lvai_describe_class`: `inheritsFrom` must read `Test Case.lvclass`. That parent link is
 the *only* thing that makes a class a test case.
 
-> ⚠️ **THEN RESTART LabVIEW BEFORE PHASE 4.** `lvai_create_class` leaves the class **locked** in
-> LabVIEW's memory, and `AddItemFromMemory` in Phase 4 then answers **`Error 1562`**, *"the specified
-> project or library is locked"*. A project close and re-open does **not** clear it — measured, twice,
-> in two different contexts. `Stop-Process -Name LabVIEW -Force` then `lvai_ensure_labview` does, and
-> the identical call afterwards returned all zeros. Adding further members later in that same session
-> is fine, so the lock belongs to class creation alone.
+> ⚠️ **THEN RESTART LabVIEW BEFORE PHASE 4 — once, and only for THIS class.**
+> `lvai_create_class` leaves the class it just made **locked** in LabVIEW's memory, and
+> `AddItemFromMemory` in Phase 4 then answers **`Error 1562`**, *"the specified project or library is
+> locked"*. A project close and re-open does **not** clear it; `Stop-Process -Name LabVIEW -Force`
+> then `lvai_ensure_labview` does. Adding further members later in the same session is fine, so the
+> lock belongs to class creation alone.
+>
+> **The SUBJECT class's lock does not matter, so do not restart for it.** Measured 2026-09-01: a
+> subject class created by `lvai_create_class` in the same session had all eight of its accessors
+> linked into six test methods through `{LV.SubVI}` `Replace`, a class constant built per method, and
+> six saves — every one `errorCode 0`, no 1562. **Linking to a class is not editing it.** One restart
+> per run, not two; at 30–43 s each that is worth having right.
 
 ## Phase 3 — Author each test method's AIXML
 

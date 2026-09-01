@@ -123,6 +123,58 @@ This is the exception to §1: here the tool really is the cost, because
    comma-separated lists, 38.9 % fewer characters over one call instead of 18) and already cheap
    server-side at 0.01 s — the point is the 17 turns, worth about two minutes.
 
+## 3a. The LUnit route, measured three times over one afternoon (2026-09-01)
+
+The clearest before/after this document has, because the task was held constant: three classes of
+four fields, six test methods each, 12 assertions, same shape. Only the tooling changed.
+
+| | Brille (hand) | Weinglas (hand) | Banane (tools) |
+|---|---|---|---|
+| class phase | 6.0 min · 29 calls | 8.7 min · 34 calls | **1.8 min · 10 calls** |
+| test phase | 21.0 min · 85 calls | 22.9 min · 100 calls | **10.1 min · 42 calls** |
+| total calls | 114 | 134 | **52** |
+
+The hand route got **worse** between the first two runs — 85 to 100 calls for the same shape —
+because each run rediscovered a little more of the route. That is the cost of a measured-but-unbuilt
+capability, and it is not stable: it grows with what the session learns.
+
+`lvai_lunit_add_test_method` and `lvai_run_lunit_tests` took the test phase from 100 calls to 42.
+Inside those 42: **528 s wall clock against 102.8 s in tools, a ratio of 5.1 : 1** — *worse* than the
+3.6 : 1 baseline, and that is the expected direction. Removing tool-bound work raises the ratio; what
+is left is authoring.
+
+### What is left, in order
+
+1. **Authoring the six test methods' AIXML — ~110 s of the 528, three turns, no tool time.**
+   Five of the six files were mechanical transpositions of the previous class's with four names and
+   four values substituted. A generator taking `{class, fields, values, cases}` and emitting the
+   round trips plus defaults plus independence removes most of it. Only the *choice* of values and
+   the descriptions genuinely need a model. **This is now the largest single item in the route.**
+2. **`lvai_create_class` should CREATE the `.lvproj` when `projectPath` does not exist.** It already
+   edits the file in its `projectEntry` step. Hand-writing a 334-byte minimal project cost **14.8 s
+   of a 70.6 s class phase — 21 %** — two turns for boilerplate that never varies.
+3. **A `verifyOnly` mode on the class tools.** Closing, describing and grepping the dispatch flags
+   cost ~15 s wall and ~0 s tool over three turns. One answer carrying `memberCount`, `inheritsFrom`
+   and the `NI.ClassItem.Flags` histogram folds it to one.
+4. **Halve the restart budget — already done, by measurement rather than by code.** The `Error 1562`
+   lock is per-class and belongs only to the class you add members to, so a class-plus-tests run
+   needs ONE restart (after creating the test case class), not two. Confirmed by linking eight
+   accessors of a class created in the same session with no 1562 anywhere. At a 30–43 s
+   `lvai_ensure_labview` that is ~40 s per run for free. **Finding the leak that causes the lock at
+   all would remove the other one**; §4 already notes that the analogous fault was a one-line refnum
+   fix.
+5. **Batch per-VI `lvai_*` calls into one message.** Six `lvai_swap_subvis` calls in one message:
+   LabVIEW serialised them, 16.4 s of tool time, but six turns became one. §4's "fanning out buys
+   nothing" is about throughput *inside LabVIEW* and is not an argument against batching round
+   trips — reading it that way costs a turn per VI.
+
+### And one anti-pattern that is the orchestrator's, not the tooling's
+
+The Banane class phase came in at 10 calls against Weinglas's 34 for the same result. Part of that is
+tooling, but part is that the task prompt **fixed the data model and said not to improve it**. An
+underdetermined prompt is paid for in exploration turns. Before building a tool to remove turns, check
+whether the prompt is buying them.
+
 ## 4. What NOT to optimise
 
 - **Server-side lookup speed.** The embedded-document cache took the 18-term workload from 23.3 ms to
