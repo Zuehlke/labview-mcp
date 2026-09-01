@@ -239,6 +239,32 @@ waiting to be written.** Wall-minus-tool time correctly identified 45 s of laten
 response was to make the answer honest, not to remove the wait. Check what enforces a cost before
 budgeting work to remove it.
 
+### RETRACTED: "a cold LabVIEW makes the accessor wizard slower"
+
+§3a and the LUnit document both asserted this, from three data points that lined up. A fourth broke
+it, and the direction is the opposite of the claim:
+
+| LabVIEW age at first slice | 8 accessors, 4 fields, same class shape |
+|---|---|
+| 68 s | **31.6 s** |
+| 101 s | 57.2 s |
+| ~120 s | 80.0 s |
+| 75 min | 21.4 s |
+
+The 68-second-old instance was the second fastest of the four and beat both older ones. So instance
+age does not order these, the spread is 2.5x, and **what does explain it is not established.** The
+warm/cold story was a plausible reading of n=3 that a fourth point refuted.
+
+What survives, because it rests on the within-call comparison rather than between runs: **the first
+slice of a call is consistently more expensive than the second** — 45.8/34.2, 37.6/19.6, 18.8/12.9 —
+*even though the library is bigger by the second slice.* That is a one-off warm-up inside the wizard,
+and it is why `budgetSeconds: 45` is the wrong default: it stops after the expensive slice and pays a
+whole extra turn for the cheap one. `budgetSeconds: 100` fitted both slices in one call three times
+out of three. That recommendation stands; the explanation for the between-run spread does not.
+
+**The method lesson: a monotone-looking trend over three points is a hypothesis, not a finding.** The
+cost of getting this wrong was small here, but it was written into two documents as fact.
+
 ### And one anti-pattern that is the orchestrator's, not the tooling's
 
 The Banane class phase came in at 10 calls against Weinglas's 34 for the same result. Part of that is

@@ -18,16 +18,29 @@ fill it in.
 ## The route these fit into
 
 1. `lvai_create_class` — the test case class, parent `…\vi.lib\Astemes\LUnit\Test Case.lvclass`,
-   **no `projectPath`, no `fields`**. Write its `.lvproj` entry yourself while the project is closed.
+   **no `projectPath`, no `fields`**. Then write its `.lvproj` entry yourself, **while the project is
+   closed** — the close saves, so an edit made while LabVIEW holds the file is destroyed. The line,
+   literally, beside the subject class's own entry:
+
+   ```xml
+   <Item Name="Apfel Test.lvclass" Type="LVClass" URL="../Tests/Apfel Test.lvclass"/>
+   ```
+
+   `URL` is relative to the `.lvproj` file, so `../Tests/…` when the tests live in a subfolder.
 2. **Restart LabVIEW.** `lvai_create_class` locks the class it just made and `AddItemFromMemory`
    then answers `Error 1562`. Only the *test case* class needs this — never the subject class.
 3. `lvai_placeholder_subvi` once per accessor, **all of them in one message**. Each answer gives you
    a `placeholder` name — that is a `{{STUB_…}}` value. Expect `reused: true` on a rebuild.
 4. Fill in these templates, one file per method, written with the file tool — **not a shell
    heredoc**, which has failed at this twice with `unexpected EOF` against a line that was fine.
-5. `lvai_lunit_add_test_method` with `classPath`, `projectPath` and a `methodsJson` array.
+   Put them anywhere you will keep them; beside the test methods (`…\Tests\`) is the convention,
+   because they are the only way to rebuild a method later. **Issue all six writes in one message.**
+5. `lvai_lunit_add_test_method` with `classPath`, `projectPath` and a `methodsJson` array — one call
+   for every method.
 6. `lvai_swap_subvis` per method: point each stub at the real accessor **and** turn the seed constant
-   into a class constant.
+   into a class constant. **One call per method, but issue them ALL IN ONE MESSAGE** — LabVIEW
+   serialises the work anyway, so the six turns collapse into one. Measured: five turns saved, and
+   batching is the only lever left on this route.
 7. `lvai_run_lunit_tests`, then break one thing on purpose and run again.
 
 ## Placeholders
@@ -107,6 +120,17 @@ One entry per stub on the diagram, mapping it to the real accessor:
 **After the method is a class member the socket name changes spelling.** A later swap — injecting a
 negative control, say — takes the class-qualified name `Apfel.lvclass:Write Gewicht g.vi`, not the
 stub name. Both spellings are correct, minutes apart, on the same VI.
+
+**And the RESTORING swap names the accessor you injected, not the original.** This is the one
+counter-intuitive step: the socket is whatever the diagram currently calls, so after injecting
+`Write Erntejahr.vi` you undo it with
+
+```json
+[{"socket": "Apfel.lvclass:Write Erntejahr.vi", "target": "C:\\temp\\Apfel\\Write Gewicht g.vi"}]
+```
+
+Naming the original as the socket finds nothing on the diagram, and `lvai_swap_subvis` refuses a name
+it cannot see rather than silently swapping element 0.
 
 ## Verifying, and the one thing that proves nothing
 

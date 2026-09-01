@@ -946,3 +946,53 @@ of the remaining authoring cost.
 sections; four of those turns were finding files and are what this removes, the rest is reading §§10–12
 and cannot be deleted by a tool — only shortened by a brief that says where to look. The agent's
 Phase 3 now points at `README.md` instead of §§3–6 for exactly that reason.
+
+## 13. The templates measured — run 7, and orientation is solved
+
+`scripts/templates/lunit/` shipped between run 6 and run 7. Run 7 was briefed on the templates and
+their README and told **not** to read this document, so the comparison is clean. Same shape: six
+methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3 with a write-side negative control
+between them.
+
+| | Apfel #5 | Apfel #6 | **Apfel #7 (templates)** |
+|---|---|---|---|
+| test-phase calls | 43 | 39 | **38** |
+| orientation, wall | 98.0 s / 9 turns | 53.4 s / 8 turns | **~20-25 s / 1 turn** |
+
+The three template files cost no turn of their own — they were read in the same message as the eight
+`lvai_placeholder_subvi` calls. The document was never opened, no previous run's files were hunted
+for, and the palette and AIXML references were not needed.
+
+**The reported verdict, kept because it is the acceptance criterion:** nothing in the README was
+wrong; every placeholder mapped one-to-one onto the accessor panes the stub answers reported; and the
+two rules that would otherwise have been got wrong — the error chain, and seed-versus-`123.<Class>
+out` — are stated where you meet them. Asked whether the document would have been faster: *"No —
+clearly slower. The templates are the whole diagram shape as literal text; the document is prose
+about why the shape is what it is."*
+
+**Three gaps it found, all now closed in the README:** the literal `.lvproj` entry line; that the six
+`lvai_swap_subvis` calls should go **in one message** (five turns, ~35 s); and that the *restoring*
+swap names the accessor you injected as its socket, not the original.
+
+### What is now the largest item, and it is a different tool
+
+**Authoring the six AIXML files: roughly 60-90 s of wall clock against 1.7 s of tool time, in one
+turn.** That is the model writing ~19 kB of text. Orientation is gone; what remains is transcription,
+and it is now the dominant cost of the whole route.
+
+So the next tool is not a template — it is `lvai_lunit_scaffold_class_tests`: take a class path, a
+value per field and the case names, emit the six AIXML files server-side. The templates make that
+straightforward to write, because they *are* the emission target, verified line-for-line against six
+files that ran green.
+
+### Two things this run measured that are not about LUnit
+
+**LabVIEW crashed during the class phase**, at the `HeapObjMapImpl.cpp(226)` signature, on the most
+ordinary AIXML this server generates — which refutes the refnum hypothesis recorded against that
+signature. `docs/labview-crash-signatures.md` has it, including the more serious finding that
+`lvai_create_class` answered **`ok: true`** for the call during which LabVIEW died.
+
+**The claim that a cold LabVIEW makes the accessor wizard slower is retracted** — a fourth data point
+ordered the wrong way. `docs/workflow-economics.md` has the table. What survives is that the *first
+slice within a call* is always the expensive one, which is why `budgetSeconds: 100` beats the default
+45.
