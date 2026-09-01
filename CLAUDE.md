@@ -871,7 +871,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `scripts/lvlu_add_test_method.xml`, `scripts/lvlu_run_tests.xml` |
+| How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
@@ -938,8 +938,14 @@ the default (`labview-caraya-unit-test`), and LUnit and VI Tester have their own
 `labview-lunit-unit-test` and `labview-vitester-unit-test`, both added 2026-08-29 as scaffolds.
 **LUnit is no longer a scaffold: it was installed 2026-09-01 and the whole route is measured end to
 end** — a test case class off `Test Case.lvclass`, two test methods, one `Passed` and a deliberately
-wrong one `Failed`, JUnit report written. `docs/labview-lunit-testing.md` is the evidence and
-`scripts/lvlu_add_test_method.xml` plus `scripts/lvlu_run_tests.xml` are the two helpers. This
+wrong one `Failed`, JUnit report written. `docs/labview-lunit-testing.md` is the evidence, and
+**`lvai_lunit_add_test_method` plus `lvai_run_lunit_tests` are the two tools** — added after a
+six-method suite over a four-field class cost **85 calls** by hand, because every step below the
+AIXML authoring is mechanical and never varies. The first collapses convert-without-validating,
+the 4815 pane repair, the retype and the class-membership step into one call for many methods; the
+second runs a suite and returns the report parsed. `lvai_placeholder_subvi` was fixed in the same
+pass: it used to answer `stubRefused` for any class pane, and now writes those terminals as `path`
+stand-ins and says which. This
 paragraph said "LUnit is absent from `vi.lib\addons`, `user.lib` and `LVAddons` entirely" and that
 was measured against the **64-bit** tree while LUnit installs into
 `C:\Program Files (x86)\...\LabVIEW 2026` — the 32-bit build, which is the one hosting the gRPC

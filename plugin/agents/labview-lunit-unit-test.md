@@ -77,74 +77,76 @@ the *only* thing that makes a class a test case.
 > the identical call afterwards returned all zeros. Adding further members later in that same session
 > is fine, so the lock belongs to class creation alone.
 
-## Phase 3 — Author each test method, then fix its pane
+## Phase 3 — Author each test method's AIXML
 
-A test method is a **public static-dispatch member VI** whose pane carries the class. AIXML cannot
-express that (`Control with type=UDClassInst is not supported`), so:
+**This is the only part that is yours to write, and it is where a wrong guess hides.** Everything
+below it is two tools.
 
-1. Author with **`path` stand-ins** named exactly `<ClassName> In` and `<ClassName> Out` — Phase 4
-   finds them by name. conIdx `11` / `8` / `3` / `0` for class-in / `error in` / class-out /
-   `error out`.
-2. Assert with a member of the base class, e.g.
-   `target="Test Case.lvclass\3APass If.vi"`, inputs `LUnit Test Case In`, `Pass?`, `Message`,
-   `error in (no error)`, `Description`. Note the terminal is `LUnit Test Case In` even though your
-   control is `<ClassName> In`. Fill in **both** `Description` and `Message` — both reach the report.
-3. **Call `lvai_convert_aixml_to_vi` directly. Do NOT use `lvai_generate_vi`.** Validation refuses a
-   class wire wired to a `path` (`the type of the sink is file path`) while conversion writes the VI
-   with `errorCode 0`. For this one case the validator is stricter than the generator, so validating
-   first only blocks you.
-4. **Fix the pane PATTERN**, because `lvai_convert_aixml_to_vi` takes no `panePattern` and the station
-   default is 4833 while LUnit needs **4815**:
+A test method is a **public static-dispatch member VI** whose pane carries the test case class. AIXML
+cannot express that, so author it with **`path` stand-ins**:
 
-   ```
-   pylv_apply  operationsJson=[{"op":"conpane","pattern":4815}]
-   ```
+- Controls/indicators named exactly `<TestClassName> In` and `<TestClassName> Out`, `type="path"`,
+  at conIdx **11** and **3**; `error in (no error)` at **8** and `error out` at **0**.
+- Assert with a member of the base class — `target="Test Case.lvclass\3APass If Equal.vim"` for a
+  comparison, `Test Case.lvclass\3APass If.vi` for a boolean. The object terminal is called
+  `LUnit Test Case In` even though your control is `<TestClassName> In`.
+- **`Pass If Equal.vim` has NO `Message` terminal** — only `Description` — and it writes Expected and
+  Actual into the report itself. That makes it the better choice for a round trip: there is no
+  hand-written failure text to fall out of step with the expected value. `Pass If.vi` does take
+  `Message`, and then you own it.
+- To call the code under test, use `lvai_placeholder_subvi` per accessor. It works on class panes now:
+  it writes the class terminals as `path` stand-ins and reports them as `classTerminals`. Give each
+  socket a **distinct name per field** — `lvai_swap_subvis` matches by VI name and refuses duplicates,
+  so two accessors of the same signature still need two sockets.
+- Keep the socket's data terminal at the accessor's **real type**, never `variant`: the assertion is
+  malleable, and a data wire that changes type across the swap forces it to re-adapt.
 
-   No terminal moves, so no caller changes. Re-measure with `lvai_connector_pane` — it must read
-   "Nothing to change". Do this with **no project open**; `pylv_apply` closes it for you.
+Write the AIXML to a file directly — a shell eats `\3A` and `\2C` and the failure arrives disguised
+as an XML parse error. Keep the files: they are the only way to rebuild a test method later.
 
-## Phase 4 — Retype the terminals and make each VI a member
+## Phase 4 — `lvai_lunit_add_test_method`, then the swaps
 
-Generate `scripts/lvlu_add_test_method.xml` once, then run it **per test method** with
-`lvai_run_vi_and_read_values` and a project **open and active** (it reaches the class through
-`Project:Active Project` → `Application`, and answers `Error 1055` without one):
+One call finishes every method: it converts **without validating** (the validator refuses a class
+wire the generator accepts), forces the pane onto LUnit's 4815 pattern, retypes the class terminals,
+adds each VI as a class **member**, and verifies from LabVIEW's own export.
 
-| input | value |
-|---|---|
-| `vi path` | the test method `.vi` |
-| `class path` | the `.lvclass` |
-| `class terminal names` | `<ClassName> In\|<ClassName> Out` — **pipe**-separated, never a newline |
-| `vi name in memory` | the bare VI name, e.g. `Test Boiling Point.vi` |
+```
+classPath    C:\...\Tests\<TestClass>.lvclass
+methodsJson  [{"aixml":"...\\tm_marke.xml","vi":"...\\Tests\\Test Marke Round Trip.vi"}, …]
+```
 
-`terminals retyped` must equal the number of names you asked for — it is the check that the name
-search hit, and a miss would otherwise retype the error cluster instead. Every one of
-`open vi error`, `class open error`, `add member error`, `save vi error`, `save class error` must be
-`0`; they are separate indicators precisely so a failure names its own stage.
+The class terminal names are **derived** from the `.lvclass` file name, so do not pass
+`classTerminalNames` unless your pane deviates. A project must be **open and active**.
 
-The helper's internal order — `AddItemFromMemory`, **then** the VI's `Save.Instrument`, **then** the
-class `Save` — is not arbitrary. Saving the VI first writes it with no owning-library link, LabVIEW
-marks the **library** broken, and the library then blocks every VI it owns as `Error 1003`. Do not
-reorder it.
+`ok: false` → read `methods[].detail.hint`; it names the cause rather than leaving it to be looked
+up. The three that happen: **`1562`** the class lock (Phase 2 — restart LabVIEW), **`1055`** no
+active project, **`56002`** the VI was adopted as a loose project item because it was generated while
+the project was open.
 
-Then **verify by export**, not by reading the class file: `lvai_convert_vi_to_aixml` on the test
-method must show `_name="<Class>.lvclass:<Test>.vi"` and `type="ref{UDClassInst}"` with
-`connection="required"` on the class input. No `SetWireRule` is needed for a static-dispatch test
-method — the `connection=` you wrote into the AIXML survives the `Replace`.
+**Then `lvai_swap_subvis`** to point each socket at the real accessor. It works before *and* after
+membership — but after Phase 4 the diagram's node names are **class-qualified**, so the `socket`
+string is `Brille.lvclass:Read Marke.vi`, not the bare file name. A dynamic dispatch input is a
+REQUIRED terminal, so every chain needs a class value: author it as a **path constant named after the
+terminal it feeds** and convert it with `constantsJson` — nodes are swapped first and constants last,
+which is the order that works.
 
-## Phase 5 — Run, and prove the assertion can fail
+## Phase 5 — `lvai_run_lunit_tests`, and prove the assertion can fail
 
-Generate `scripts/lvlu_run_tests.xml` (ordinary AIXML — `lvai_generate_vi` handles it) and run it.
-`test path` takes a `.lvproj`, `.lvlib` or `.lvclass`.
+```
+testPath    the .lvclass  (4x faster than the .lvproj and finds the same tests)
+reportPath  a .xml path   (optional; it clears the path and its numbered siblings first)
+```
 
-Read `All Passed?` **and** the XML report's `tests=` / `failures=`, not `error out`.
+It returns `tests`, `failures`, `allPassed` and one entry per case with its failure message, so
+there is no report file to read. Judge the run on `failures` and `tests`, never on the error
+cluster — an error cluster carries the first failure only, so a partial run and one failing
+assertion look identical in it. `tests: 0` means LUnit found nothing: the methods must be PUBLIC
+members of a class deriving from `Test Case.lvclass`.
 
-> ⚠️ **LUnit does NOT overwrite an existing report — it writes a numbered sibling**
-> (`lunit_report (1).xml`). Reading back the path you passed therefore returns the **previous** run's
-> report, with no error anywhere. Delete the target first, or use a fresh path per run.
-
-**An all-green first run proves nothing.** Add or break one case on purpose, confirm the report names
-it as `Failed` and that `All Passed?` goes false, then restore — and say in your report that you did
-it. In the reference run this was a second test method asserting 0 °C = 100 °F.
+**An all-green run proves nothing.** The cheapest negative control needs no regeneration: one
+`lvai_swap_subvis` call repointing a read accessor at the wrong field — the exact fault the test
+exists to catch. Confirm the report names that case, restore with a second swap, re-run to green, and
+report both runs.
 
 ## Framework-independent rules — these ARE measured, and they carry over
 

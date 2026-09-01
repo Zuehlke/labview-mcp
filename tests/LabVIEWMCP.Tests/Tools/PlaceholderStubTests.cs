@@ -1,4 +1,4 @@
-using LabVIEWMcp.Infra;
+﻿using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -135,5 +135,69 @@ public sealed class PlaceholderStubTests
                       .Replace("value=\"1.8\"", "value=\"2.5\""))!;
 
         Assert.Equal(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(other));
+    }
+
+    /// <summary>
+    /// An ACCESSOR's pane, which is the case that mattered and did not work. Both class terminals
+    /// are `ref{UDClassInst}` - the one type the generator refuses outright - so an exact clone was
+    /// refused and lvai_placeholder_subvi answered `stubRefused` for every piece of class code.
+    /// </summary>
+    private const string AccessorXml = """
+        <VI _name="Write Marke.vi" description="Writes one field.">
+          <Control _name="Brille in" conIdx="11" connection="dynamic" outputs="value:20.value" type="ref{UDClassInst}" uid="20" uid_parent="root" value=""/>
+          <Control _name="Marke" conIdx="10" connection="required" outputs="value:25.value" type="string" uid="25" uid_parent="root" value=""/>
+          <Indicator _name="Brille out" conIdx="3" connection="dynamic" inputs="value:50.output cluster" type="ref{UDClassInst}" uid="70" uid_parent="root" value=""/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// A class terminal becomes a `path` stand-in instead of being cloned, and is REPORTED. Sound
+    /// only because lvai_swap_subvis retargets through {LV.SubVI} Replace, which re-types the
+    /// wires; a pylabview link retarget on such a socket answers Error 7, Bad Linkage.
+    /// </summary>
+    [Fact]
+    public void AClassTerminalBecomesAPathStandInAndIsNamed()
+    {
+        var terminals = PlaceholderTools.CloneTerminals(AccessorXml, out var classTerminals)
+                                        .ToList();
+
+        Assert.Equal(["Brille in", "Brille out"], classTerminals);
+        Assert.DoesNotContain("UDClassInst", string.Join("", terminals));
+        Assert.Contains(terminals, t => t.Contains("_name=\"Brille in\"") && t.Contains("type=\"path\""));
+        Assert.Contains(terminals, t => t.Contains("_name=\"Brille out\"") && t.Contains("type=\"path\""));
+    }
+
+    /// <summary>Everything that is NOT a class keeps its own type - the exact-clone rule still holds.</summary>
+    [Fact]
+    public void ANonClassTerminalKeepsItsTypeAndConIdx()
+    {
+        var terminals = PlaceholderTools.CloneTerminals(AccessorXml, out _).ToList();
+
+        var data = Assert.Single(terminals, t => t.Contains("_name=\"Marke\""));
+        Assert.Contains("type=\"string\"", data);
+        Assert.Contains("conIdx=\"10\"", data);
+    }
+
+    /// <summary>A pane with no class on it reports none, so the answer distinguishes the two cases.</summary>
+    [Fact]
+    public void APlainPaneReportsNoClassTerminals()
+    {
+        PlaceholderTools.CloneTerminals(SubjectXml, out var classTerminals);
+
+        Assert.Empty(classTerminals);
+    }
+
+    /// <summary>The stub AIXML for an accessor carries no class type anywhere.</summary>
+    [Fact]
+    public void AnAccessorStubCarriesNoClassType()
+    {
+        var subject = ViTerminals.Parse(AccessorXml)
+                      ?? throw new InvalidOperationException("fixture did not parse");
+
+        var xml = PlaceholderTools.StubAixml("LVMCP Brille WMarke.vi", subject, AccessorXml,
+                                             out var classTerminals);
+
+        Assert.DoesNotContain("UDClassInst", xml);
+        Assert.Equal(2, classTerminals.Count);
     }
 }

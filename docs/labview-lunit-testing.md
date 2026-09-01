@@ -466,12 +466,8 @@ asking anyone to do anything.
 
 ## 7. What is still NOT established
 
-- **No `lvai_*` tool wraps any of this.** The two helper scripts exist
-  (`scripts/lvlu_add_test_method.xml`, `scripts/lvlu_run_tests.xml`) and are driven by hand through
-  `lvai_run_vi_and_read_values`. The `Brille` run cost **85 tool calls** for six test methods, where
-  `lvai_generate_test` builds a Caraya test in one. Every step above is mechanical and the shape never
-  varies, which by this repository's own rule — *a step that is cheap for LabVIEW and expensive in
-  turns is a tool waiting to be written* — makes this the clearest candidate in the repo.
+- **The model still authors each test method's AIXML.** That is the part that genuinely varies, so
+  it stays a writing job. Everything downstream of it is now two tools — see §8.
 - **`Setup.vi`/`Teardown.vi` overrides have not been scripted.** They are dynamic dispatch, needing
   `SetWireRule(TermIdx, 4)` on top of §4.4. None of the `Brille` tests needed a fixture — each builds
   its own object from a class constant — so this stayed untried.
@@ -492,3 +488,39 @@ asking anyone to do anything.
   `lvai_create_class` — and it may also avoid the 1562 lock. Untried.
 - **Parameterized, inheriting and global-fixture test cases** have templates and examples on this
   station and were not investigated at all.
+
+## 8. The two tools, and what is left to the model
+
+Added 2026-09-01, after the `Brille` run cost **85 tool calls** for six test methods where
+`lvai_generate_test` builds a Caraya test in one. Both wrap the helper scripts rather than
+reimplementing them, and §§3-6 remain the evidence for what they do.
+
+| tool | replaces | notes |
+|---|---|---|
+| `lvai_lunit_add_test_method` | §4.3 + §4.4 per method, so 3N calls become 1 | takes `classPath` plus a `methodsJson` array of `{aixml, vi}`. Converts **without** validating, forces pane pattern 4815, retypes, adds the member, verifies from LabVIEW's own export |
+| `lvai_run_lunit_tests` | §4.5 plus reading and parsing the report | returns `tests`, `failures` and one entry per case with its failure message; deletes the report and its numbered siblings first |
+
+**Three things the first tool derives so they cannot be got wrong**, each of which was a real
+mistake in the manual runs: the class terminal names come from the `.lvclass` file name as
+`<Name> In` / `<Name> Out` (pass `classTerminalNames` only for a pane that deviates); the pane
+pattern defaults to 4815 rather than the station's 4833; and membership is always last, so a
+failure before it costs a regeneration instead of a repair.
+
+**`ok: false` still means read `methods[].detail.hint`.** The three errors that actually happen are
+named there rather than left to be looked up — `1562` the class lock (§5), `1055` no active project,
+`56002` the VI adopted as a loose project item. A count of retyped terminals below the number asked
+for prints the pane's real terminal names beside the ones wanted, because that failure is a
+misspelling and nothing else reports it.
+
+**`lvai_placeholder_subvi` now works on class code**, which is what made §6's socket step
+hand-authored. It used to answer `stubRefused` for any accessor, because an exact pane clone means
+authoring `type="ref{UDClassInst}"` and the generator refuses that outright. It now writes those
+terminals as `path` stand-ins and reports them as `classTerminals` / `classTerminalNames`, with the
+warning that the clone is therefore **not** exact — sound only because `lvai_swap_subvis` retargets
+through `{LV.SubVI}` `Replace`, which re-types the wires. A pylabview link retarget on such a socket
+still answers `Error 7, Bad Linkage`, and the exact-clone rule still holds for every other type.
+
+**What is NOT wrapped, deliberately:** authoring the test method's AIXML. That is the part that
+varies per case — the values, the arithmetic, which accessor to call — and the one place a wrong
+guess produces a test that passes while testing nothing. A tool that generated it would have to
+invent expectations.
