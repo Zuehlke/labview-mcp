@@ -397,6 +397,20 @@ Not from the click — from the module:
 - The AIXML export's `description=` carries the event description.
 - `lvai_describe_project` reports `missingItems: []` and `missingFiles: []`.
 
+### Never create a second event while a dialog is still open
+
+If a run comes back `okNotPressed`, **deal with that dialog before starting anything else**. It is
+still filled in, and its arguments window still holds the controls of the event that failed — a new
+run adopts both. Measured 2026-09-01: a Request whose OK press silently did nothing left its
+`Sollwert` behind, and the Broadcast created next came out carrying `Sollwert` AND `Status`.
+`lvai_dqmh_new_event` now refuses a window with surplus controls, and it verifies the press by
+waiting for the dialog to CLOSE rather than by trusting that the keystroke was delivered — but if you
+drive the dialog by hand, both checks are yours to make.
+
+**A press that reports every step as fine can still not fire.** `focusSettled` and
+`windowWasFrontmost` describe what you did; only the dialog disappearing describes what LabVIEW
+accepted. Retrying is normal — the measured runs needed a second attempt as often as not.
+
 ### Say this in your report
 
 The final press is a **synthesised keystroke**: it needs the dialog frontmost, so it is not suitable

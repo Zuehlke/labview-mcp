@@ -198,6 +198,57 @@ public class DqmhToolsTests
         Assert.Contains("line break",
             DqmhTools.TypeRuleViolation(RoundTrip, 0, "First\nSecond") ?? "");
 
+    // ---------------------------------------------------------------- the argument window
+
+    [Fact]
+    public void An_exactly_matching_window_has_nothing_missing_and_nothing_surplus()
+    {
+        var (missing, surplus) = DqmhTools.CompareLabels(
+            ["Kanal", "Sollwert"], ["Sollwert", "Kanal"]);
+        Assert.Empty(missing);
+        Assert.Empty(surplus);
+    }
+
+    [Fact]
+    public void A_control_that_did_not_arrive_is_reported_missing()
+    {
+        var (missing, surplus) = DqmhTools.CompareLabels(["Kanal", "Sollwert"], ["Kanal"]);
+        Assert.Equal(["Sollwert"], missing);
+        Assert.Empty(surplus);
+    }
+
+    /// <summary>
+    /// THE ONE THAT SHIPPED A WRONG EVENT. Measured 2026-09-01: a Broadcast created seconds after
+    /// a Request adopted the Request's still-open dialog, whose arguments window still held
+    /// `Sollwert`. Every label the Broadcast asked for was present, so a missing-only check passed
+    /// and the tool answered ok: true - and `KontrollBroadcast.vi` came out with `Sollwert` AND
+    /// `Status` on its connector pane. Surplus has to fail as hard as missing.
+    /// </summary>
+    [Fact]
+    public void A_control_left_over_from_a_previous_event_is_reported_surplus()
+    {
+        var (missing, surplus) = DqmhTools.CompareLabels(["Status"], ["Sollwert", "Status"]);
+        Assert.Empty(missing);
+        Assert.Equal(["Sollwert"], surplus);
+    }
+
+    /// <summary>An event with no arguments must find the window EMPTY, not merely sufficient.</summary>
+    [Fact]
+    public void An_event_with_no_arguments_still_refuses_a_dirty_window()
+    {
+        var (missing, surplus) = DqmhTools.CompareLabels([], ["Sollwert"]);
+        Assert.Empty(missing);
+        Assert.Equal(["Sollwert"], surplus);
+    }
+
+    [Fact]
+    public void Label_comparison_is_case_sensitive_because_LabVIEW_labels_are()
+    {
+        var (missing, surplus) = DqmhTools.CompareLabels(["Kanal"], ["kanal"]);
+        Assert.Equal(["Kanal"], missing);
+        Assert.Equal(["kanal"], surplus);
+    }
+
     // ---------------------------------------------------------------- AIXML escaping
 
     /// <summary>

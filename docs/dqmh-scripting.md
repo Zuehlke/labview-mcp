@@ -829,6 +829,48 @@ Key focus settles on the first try; the *foreground* does not. Refusing to send 
 without a confirmed foreground, and trying again, is the whole difference between a run that works
 and one that types a space into whatever the user has in front of them.
 
+### 6.11a The control run: one event of each type, and what it caught
+
+Four events, one per type, created in one session as a deliberate control. Two defects fell out of
+it that seven earlier successful runs had not shown, and both were of the worst kind — the tool
+answered `ok: true`.
+
+**A SYNTHESISED SPACE CAN BE DELIVERED AND THE BUTTON NOT FIRE.** The Request ran clean:
+`focusSettled: true`, `windowWasFrontmost: true`, `pressSpace` sent, `ok: true`. **No event was
+created.** The dialog simply stayed open. Every self-check the tool had passed, because all of them
+measured the *keystroke* and none the *outcome*.
+
+**And the miss then corrupted the NEXT event.** The Broadcast issued afterwards found that dialog
+still open, adopted it — and its arguments window still held the Request's `Sollwert`. So
+`KontrollBroadcast.vi` was scripted with `Sollwert` [double] **and** `Status` [string] on its pane: a
+wrong public contract, from a run whose every reported step was fine. One silent miss, two wrong
+outcomes, and the leaked argument looked like the primary bug until the missing Request explained it.
+
+Two checks were added, and each catches one half:
+
+| check | what it does |
+|---|---|
+| **the dialog must CLOSE** after the press | Delacor's dialog closes when OK is accepted, so its disappearance is the cheapest proof the button fired. `dialogClosed: false` now means retry, not success |
+| **surplus labels are refused** | `CompareLabels` compares the window's controls to the expected set **both ways**. Missing was always checked; surplus is what shipped the wrong event |
+
+The re-run proves the first one works: `pressSpace attempt 1  dialogClosed: false`, then
+`attempt 2  dialogClosed: true`. Same conditions, same reported foreground — so **the press failing
+is routine, not exceptional**, and every earlier run that "worked first time" was luck.
+
+**The lesson is the general one this file keeps relearning**: a self-check that measures the
+mechanism is not a check on the result. `focusSettled`, `windowWasFrontmost` and `target labels` all
+describe what the tool *did*; only the dialog closing describes what LabVIEW *accepted*.
+
+With both checks in place the full matrix came out exactly as predicted — 11 files and **+11**
+`.lvlib` members for the four events, 2 + 2 + 3 + 4:
+
+| event | type | files | members | pane |
+|---|---|---|---|---|
+| `KontrollRequest` | Request | 2 | +2 | `Sollwert` [double] required |
+| `KontrollBroadcast` | Broadcast | 2 | +2 | *(carries the leaked `Sollwert` — created before the fix)* |
+| `KontrollReply` | Request and Wait for Reply | 3 | +3 | `Kanal` in, `wait for reply (T)` in, `timed out?` out |
+| `KontrollRoundTrip` + `…Done` | Round Trip | 4 | +4 | broadcast half: `Reply Payload [cluster{double.Ergebnis, …KontrollRoundTrip_error}]` |
+
 ### 6.12 `GetForegroundWindow() == 0` means the desktop is locked
 
 The `ReplyTest` run filled the dialog correctly, confirmed the module by name, pasted both arguments —

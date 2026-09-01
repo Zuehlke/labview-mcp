@@ -196,6 +196,15 @@ internal sealed class DqmhTools(LvaiConnection connection)
             // REUSE one that is already up. Starting a second dialog leaves two on screen
             // competing for the foreground, and the keystroke at the end would reach whichever
             // won - so an existing one is adopted rather than duplicated.
+            //
+            // BUT WAIT FOR THE PREVIOUS RUN'S DIALOG TO GO FIRST. DQMH keeps the dialog on screen
+            // while it finishes scripting, and its arguments window still holds the last event's
+            // controls - so adopting it inherits them. Measured 2026-09-01: a Broadcast issued
+            // seconds after a Request came out carrying the Request's argument too. The window is
+            // gone within a few seconds once the scripting completes, so a short wait removes the
+            // race; PasteAsync's surplus check is the backstop for when it does not.
+            _ = await WaitForDialogToCloseAsync(ct);
+
             var alreadyOpen = Win32.FindWindow("Create New DQMH Event") != IntPtr.Zero;
             if (!alreadyOpen)
             {
@@ -418,10 +427,14 @@ internal sealed class DqmhTools(LvaiConnection connection)
                 foreach (var s in focusSteps) steps.Add(s);
                 if (!pressed)
                     return Fail("okNotPressed",
-                        "Key Focus never settled on the OK button, so no keystroke was sent - " +
-                        "sending one anyway would have typed into whatever else had focus. The " +
-                        "dialog is still open and still filled in; press OK by hand, or call " +
-                        "again once nothing else is competing for the foreground.",
+                        "OK did not fire. Either Key Focus never settled on it, or the dialog " +
+                        "never came to the foreground, or the keystroke was delivered and the " +
+                        "button did not react - the steps say which, and `dialogClosed: false` " +
+                        "is the last of the three. Nothing was scripted. The dialog is still " +
+                        "open and still filled in, so press OK by hand, or call again once " +
+                        "nothing else is competing for the foreground. Do NOT create a different " +
+                        "event before dealing with it: the next run would adopt this dialog and " +
+                        "inherit the controls already in its arguments window.",
                         steps, stopwatch);
             }
 
@@ -586,13 +599,28 @@ internal sealed class DqmhTools(LvaiConnection connection)
             }
 
             Win32.PressSpace();
+
+            // A KEYSTROKE THAT ARRIVED IS NOT A BUTTON THAT FIRED, and this is the check that
+            // separates them. Measured 2026-09-01 on a control run: focus settled, the dialog was
+            // confirmed frontmost, SPACE was sent, the tool reported ok: true - and no event was
+            // created. The dialog simply stayed open. The next call then adopted that dialog,
+            // whose arguments window still held the first event's control, and scripted a second
+            // event carrying both. One silent miss, two wrong outcomes.
+            //
+            // Delacor's dialog CLOSES when OK is accepted, so its disappearance is the cheapest
+            // available proof that the press took - cheaper than hunting for the module folder,
+            // and it needs nothing the tool does not already know.
+            var accepted = await WaitForDialogToCloseAsync(ct);
             steps.Add(new JsonObject
             {
                 ["step"] = "pressSpace",
                 ["attempt"] = attempt,
                 ["windowWasFrontmost"] = true,
+                ["dialogClosed"] = accepted,
             });
-            return (true, steps);
+            if (accepted) return (true, steps);
+
+            // Still on screen: the press did nothing. Try again rather than reporting success.
         }
         return (false, steps);
     }
@@ -830,6 +858,19 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// until someone reads the module weeks later, which is why these are refusals rather than
     /// warnings.
     /// </summary>
+    /// <summary>
+    /// What an argument window carries against what it should, BOTH WAYS.
+    ///
+    /// Checking only for what you expect cannot see what you did not expect, and that half is the
+    /// one that shipped a wrong event: a Broadcast issued seconds after a Request adopted the
+    /// Request's still-open dialog and inherited its control, so it was scripted with two argument
+    /// fields instead of one - every expected label present, ok: true, wrong public contract.
+    /// </summary>
+    internal static (string[] Missing, string[] Surplus) CompareLabels(
+        IReadOnlyCollection<string> wanted, IReadOnlyCollection<string> landed) =>
+        (wanted.Where(n => !landed.Contains(n, StringComparer.Ordinal)).ToArray(),
+         landed.Where(n => !wanted.Contains(n, StringComparer.Ordinal)).ToArray());
+
     internal static bool CarriesReply(int typeIndex) => typeIndex is 2 or 3;
 
     internal static bool IsRoundTrip(int typeIndex) => typeIndex is 3;
@@ -904,15 +945,52 @@ internal sealed class DqmhTools(LvaiConnection connection)
         steps.Add(Step(stepName, pasted));
 
         var landed = Strings(pasted, "target labels");
-        var missing = expected.Select(a => a.Name)
-            .Where(n => !landed.Contains(n, StringComparer.Ordinal)).ToArray();
+        var wanted = expected.Select(a => a.Name).ToArray();
+        var (missing, surplus) = CompareLabels(wanted, landed);
+
         if (missing.Length > 0)
             return Fail("argumentsDidNotLand",
                 $"After the paste, {windowDescription} does not carry every control, so the " +
                 "event would be scripted with the wrong contract. Nothing was pressed.",
                 steps, stopwatch,
-                new { window = windowName, expected = expected.Select(a => a.Name), landed, missing });
+                new { window = windowName, expected = wanted, landed, missing });
+
+        // SURPLUS IS AS WRONG AS MISSING, and it is the failure this check was added for.
+        // Measured 2026-09-01: a Broadcast created seconds after a Request adopted the Request's
+        // dialog - which DQMH keeps open while it finishes scripting - and its arguments window
+        // still held the Request's control. The Broadcast came out with `Sollwert` AND `Status`
+        // on its pane, a wrong public contract, and the tool answered ok: true because every
+        // control it asked for was present. Checking only for what you expect cannot see what
+        // you did not.
+        if (surplus.Length > 0)
+            return Fail("argumentsWindowNotEmpty",
+                $"{char.ToUpperInvariant(windowDescription[0])}{windowDescription[1..]} carries " +
+                $"control(s) that are not part of this event: {string.Join(", ", surplus)}. They " +
+                "are almost certainly left over from a previous event in the same dialog, and " +
+                "they would become fields of this event's public cluster. Nothing was pressed. " +
+                "Close the Create New DQMH Event dialog and call again.",
+                steps, stopwatch,
+                new { window = windowName, expected = wanted, landed, surplus });
+
         return null;
+    }
+
+    /// <summary>
+    /// Give a dialog left over from a previous run a few seconds to close on its own.
+    ///
+    /// Deliberately short and deliberately silent: a dialog that is STILL there afterwards is a
+    /// legitimate case - a previous run that could not press OK leaves one filled and waiting -
+    /// and that one is adopted, as it always was. This only removes the race against a run that
+    /// succeeded and whose dialog has not finished going away.
+    /// </summary>
+    private static async Task<bool> WaitForDialogToCloseAsync(CancellationToken ct)
+    {
+        for (var i = 0; i < 12; i++)
+        {
+            if (Win32.FindWindow("Create New DQMH Event") == IntPtr.Zero) return true;
+            await Task.Delay(500, ct);
+        }
+        return false;
     }
 
     private static string? ArgumentsWindowName() =>
