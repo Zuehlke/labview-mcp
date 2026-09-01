@@ -10,7 +10,7 @@ Read together with [dqmh-patterns.md](dqmh-patterns.md), which describes what a 
 The short answer: **yes for modules, and yes for events** — both proven end to end. Modules go
 through `Script New Module.vi` directly (§5). Events cannot: §6 shows why driving
 `Script New Event.vi` from a helper is structurally impossible, and how the supported route is to
-drive Delacor's own dialog — which works, at the cost of one synthesised mouse click, because its
+drive Delacor's own dialog — which works, at the cost of one synthesised keystroke, because its
 OK button is a latched boolean that VI Server may not write.
 
 ## 1. The layout: menu VIs versus scripting VIs
@@ -494,6 +494,12 @@ Measured 2026-08-31: `PanelBounds = (172, 148, 782, 687)`, `Origin = (40, -10)`,
 `(373, 496)` sized `75 x 23` → click at **(542, 665)**, which falls inside the panel bounds as a
 sanity check. `SetForegroundWindow` on the dialog, `SetCursorPos`, then `mouse_event` down/up.
 
+> **SUPERSEDED — see §6.7.** This is how the button was first pressed, and it works, but the
+> coordinates are unnecessary: `Key Focus` plus one SPACE does the same thing with three fewer
+> properties and no arithmetic to get wrong. The helper that computed these coordinates has been
+> deleted. The paragraph is kept because the geometry, and the `Origin` term in particular, is the
+> reason the shortcut was not obvious.
+
 **And that completed it.** `SimpleEvent`, a Request on `DQMHdemo` with arguments `Name` (string) and
 `Gewicht` (double), was created with no human interaction beyond the initial instruction:
 
@@ -510,8 +516,9 @@ sanity check. `SetForegroundWindow` on the dialog, `SetCursorPos`, then `mouse_e
 | `lvai_describe_project` | `errorCode 0`, `missingItems []`, `missingFiles []` |
 
 **So events ARE scriptable — through the dialog, not through `Script New Event.vi`.** The honest
-caveat: one step of the chain is a synthesised mouse click, which depends on the dialog being on
-screen and unobscured. Everything before it is ordinary VI Server and verifies itself.
+caveat: one step of the chain is synthesised input, which depends on the dialog being frontmost.
+Everything before it is ordinary VI Server and verifies itself. (That step became a keystroke
+rather than a click — §6.7.)
 
 ### Why it still did not finish
 
@@ -547,6 +554,376 @@ Result: `SecondEvent.vi` with `Name` [string] and `Gewicht` [double], the `.lvli
 members, `Main.vi`'s export from 72 512 to 75 654 bytes carrying both the EHL case and an MHL frame
 labelled with the description, and `missingItems`/`missingFiles` empty.
 
+### 6.7 The click was unnecessary: Key Focus plus SPACE
+
+The OK button being Latch When Released was read as "VI Server cannot press it, so compute its
+screen position and click". The first half is right and the second was a detour. Measured
+2026-09-01 while creating `ThirdEvent`:
+
+| attempt | result |
+|---|---|
+| write `Mechanical Action` = 0 to disarm the latch, then signal | **`Error 1073`** — not allowed while the VI is running. `MechAction` is U32 and reads 4 |
+| write `Key Focus` = true with the dialog behind other windows | `error 0`, and the read-back says **false**. A silent no-op |
+| `SetForegroundWindow`, then `Key Focus` = true | read-back **true** |
+| focus in one call, SPACE from a *separate* PowerShell invocation | nothing happens — starting the process moved the foreground away |
+| foreground **and** SPACE in one invocation | **the event is scripted** |
+
+So the press is: `lvdqmh_dlg_keyfocus.xml` sets `Key Focus` on control index 10 and reads it back,
+then one PowerShell script foregrounds the window and sends `keybd_event` VK_SPACE down/up.
+
+**Two rules, both of which cost a failed attempt:**
+
+- **Always read `Key Focus` back.** It returns `error 0` when it did nothing, and a keystroke then
+  goes wherever the focus actually is.
+- **Foreground and keystroke belong in the same OS-level step.** Splitting them across two tool
+  calls loses the foreground to the new process.
+
+The coordinate route — `PanelBounds.Left + (Position.Left - Origin.Horizontal) + Width/2` and the
+same for y — is gone from `scripts/`. It worked, and it read three more properties, broke silently
+on a scrolled panel, and moved the user's mouse cursor. `lvdqmh_btnpos.xml` was deleted rather than
+kept as a fallback, because a fallback nobody exercises is a fallback nobody can trust.
+
+The keystroke is still synthesised input: the dialog must be frontmost, so this is no more
+unattended-safe than the click was. It is simply smaller and cannot be thrown off by scrolling.
+
+### 6.8 `Value (Signaling)` re-tested properly — and why the first test was inconclusive
+
+The claim "VI Server cannot press the button" rested on a run that wrote `Value (Signaling)` on
+**`{LV.Control}`**, whose value terminal is a variant. That returned `error 0` and the dialog did
+nothing — a silent no-op, which is weak evidence: it looks the same as a value that was accepted and
+ignored. Re-tested 2026-09-01 on `{LV.Boolean}` via `To More Specific Class`, with a real boolean:
+
+| class written | value | result |
+|---|---|---|
+| `{LV.Control}` | variant | `error 0`, no effect — **silent no-op** |
+| `{LV.Boolean}` | boolean | **`Error 1193`** on the write node, `Property Name: Value (Signaling)` |
+
+The cast itself succeeds (`cast error` 0), so this is LabVIEW refusing the property on a latched
+control, not a class mismatch. **The refusal is now measured rather than inferred**, and the generic
+route is exposed as the misleading one: a variant handed to `{LV.Control}` is dropped without
+complaint. When probing whether a property works, use the SPECIFIC class — a generic write that
+reports success may have done nothing.
+
+**Enter does not work either.** `VK_RETURN` to the focused dialog changed nothing; OK is not the
+panel's default button. Only SPACE on the focused control presses it.
+
+**And `Key Focus` is flakier than §6.7 suggested.** Across this run it took three attempts:
+foreground → focus wrote `false`; foreground again → `false`; foreground again → `true`. Nothing
+about the sequence differed. So the rule is not "foreground once, then focus" but:
+
+> Set `Key Focus`, **read it back, and if it is false, foreground the window and try again.** Only
+> send the keystroke once the read-back says true.
+
+Without that loop the keystroke goes to whatever else holds focus, silently.
+
+### 6.9 Productised as `lvai_dqmh_new_event` — and what only in-process code hits
+
+The sequence above is fixed, so it became one tool: `lvai_dqmh_new_event` takes a module name, an
+event name, a JSON list of typed arguments, and runs the whole chain. Measured 2026-09-01 creating
+`FifthEvent` with three arguments: **3.0 s against roughly two minutes by hand**, and the saving is
+almost all model latency rather than LabVIEW time.
+
+**Three things broke that had never broken in the hand-driven route**, and each is worth knowing
+before automating anything else that drives a GUI:
+
+- **The waits that were free are gone.** The dialog parses the whole project before its module ring
+  has entries. Driven by hand that took no code, because a tool call's round trip is seconds — and
+  `lvdqmh_dlg_start.xml` says in its own description that it therefore needs no Wait node. In-process
+  the first read came back `[""]` and the tool reported the module missing. It now POLLS the ring,
+  because the parse takes as long as the project is big.
+- **An empty `value` is not a universal default.** The carrier generator emitted
+  `<Control type="double" … value=""/>` and got `Error 53, Unrecognized or unsupported attribute set
+  in Control with UID 11` — which names the control, not the attribute, and reads like a bad type.
+  Numerics need `0`, booleans `false`, only strings and paths take empty. The hand-written carriers
+  had `value="0"` all along; the rule was in the examples and did not survive the move into C#.
+- **`SetForegroundWindow` does nothing from a background process.** Windows grants the foreground
+  only to a process that already has it, and an MCP server never does. From PowerShell it had always
+  worked, because the terminal itself was frontmost. The tool's first run logged
+  `windowWasFrontmost: false`, sent SPACE anyway, **returned `ok: true` and created nothing**. Two
+  fixes: `AttachThreadInput` to the current foreground thread for the duration of the call, which is
+  the documented way around the restriction; and no keystroke at all unless the window is confirmed
+  frontmost — otherwise it types into whatever the user has in front of them.
+
+That third one is the important one, and it is a process failure rather than a Windows quirk: the
+tool had the evidence in hand and reported success anyway. `docs`-wide the rule already existed —
+never report success from an empty answer — and it has to hold for a tool's own self-report too.
+
+### 6.10 What the tool's own test runs settled: a BROADCAST gets no case frame at all
+
+Eight events now exist on `DQMHdemo`, five of them built by the tool. Three of the runs were made to
+probe edges rather than to be useful, and two of them corrected written rules.
+
+**The verification rule "`Main.vi` changed - that is the MHL frame" is a REQUEST rule.** It was
+written from five Requests and does not hold for a Broadcast. Counted 2026-09-01 in `Main.vi`'s AIXML
+export, one row per event, by the elements that name it:
+
+| event type | elements in `Main.vi` | what they are |
+|---|---|---|
+| **Request** (7 of them) | **6** | an EHL `CaseFrame` labelled `Another Module called the "<Event>" API Method.`; an MHL `CaseFrame` labelled with the **event description**; a `FreeLabel`; three argument-cluster `Constant`s |
+| **Broadcast** (`MessungFertig`) | **1** | one `Call` to `DQMHdemo.lvlib:MessungFertig.vi`, `uid_parent="root"`, **every input unwired** |
+
+The Broadcast's single node carries its own explanation:
+
+```
+comment="#CodeNeeded\0A1. Drop this VI wherever you need to broadcast the
+         &quot;MessungFertig&quot; message.\0A2. Delete or edit this label when done."
+```
+
+So **a Broadcast is not wired in by scripting, and cannot be**: nothing handles it, because a
+broadcast is fired *by* the module and only its author knows when. DQMH drops the call loose on the
+root diagram with a `#CodeNeeded` marker and leaves the placement to a person. `Main.vi` does change
+- so the check still passes - but what it gained is a stub, not a frame. Verify a Broadcast by
+finding that `Call`, and **say in the report that the module does not fire it yet**; a reader who
+takes "`Main.vi` changed" as "the event works" will look for a broadcast that never happens.
+
+`#CodeNeeded` is worth knowing as a convention in its own right: it is how DQMH marks code it
+scripted but could not finish. Grep an export for it before declaring a scripted module complete.
+
+**Two argument-count edges, both fine.** Neither had been exercised before, and the empty one is the
+kind of path that is usually special-cased wrongly:
+
+| event | arguments | result |
+|---|---|---|
+| `Abschlusstest` | `[]` | 1 input, 1 output - just `error in (no error)` and `error out`. **The `Argument--cluster.ctl` is still created**, empty, and the `.lvlib` still gains two members |
+| `Testchen` | one `string` | `hallo` [string] `required`; `.lvlib` 77 -> 79 |
+
+So the `.ctl` is unconditional: two files and two members per event, whatever the argument list. A
+missing `.ctl` is a failure even for an event with no data.
+
+### 6.11 The other two event types need MORE than the dialog was being told
+
+`Request` and `Broadcast` were driven end to end (§6.5–§6.10). The other two were assumed to be the
+same chain with a different index, and they are not. **`Script New Event.vi`'s connector pane is the
+contract**, and read on 2026-09-01 it has three type-dependent inputs where the tool supplied one:
+
+| terminal | type | who needs it |
+|---|---|---|
+| `Arguments VI` | `ref{LV.VI}` | all four — the request/payload arguments |
+| **`Reply Payload VI`** | `ref{LV.VI}` | a **second** arguments VI, for the reply data |
+| **`Round Trip (Broadcast)`** | `string` | Round Trip — the name of the broadcast half |
+
+All three are `required`. So a Round Trip driven without the third gets an **unnamed broadcast half**,
+and either reply-carrying type driven without the second gets an **empty reply cluster** — and both
+script with no error from Delacor. Nothing reports it. That is why `lvai_dqmh_new_event` now *refuses*
+the combinations rather than warning: `replyArgumentsJson` on a Request or Broadcast, a
+`roundTripBroadcastName` on anything but a Round Trip, and a Round Trip without one.
+
+`Event Type` here is a **real enum** — `uint16{Request,Broadcast,Request and Wait for Reply,Round
+Trip}` — unlike `Module Type`, which is a bare `uint16` whose meaning comes from a runtime catalogue
+(§5). So for events the index order IS in the pane and matches the tool's list exactly. `Module Type`
+in the same pane shows only `{Singleton,Cloneable}` against the catalogue's four, which is the second
+reason never to carry a module-type index.
+
+**There are TWO argument windows, and the second one is HIDDEN.** The dialog calls
+`Show Arguments Window.vi` **once** and it returns both:
+
+```
+outputs="Arguments Window:498.Arguments Window,
+         Reply Payload Window:498.Reply Payload Window,
+         error out:498.error out"
+```
+
+Enumerated with a Request-and-Wait event set up and waiting:
+
+```
+visible  [Create New DQMH Event]
+visible  [DQMH Arguments Window [lvtemporary_419382.vi] Front Panel on firstDQMH.lvproj/My Computer]
+HIDDEN   [DQMH Reply Payload Window [lvtemporary_594745.vi] Front Panel on ...]
+```
+
+The reply window is hidden **because of how we drive the dialog, not because of the event type**:
+`lvdqmh_dlg_fill3` writes `Event Type` with `Ctrl Val.Set`, which fires no event, so the dialog's own
+event case — the thing that would reveal the window — never runs. Hidden makes no difference to VI
+Server; it only means the window has to be found by an enumeration that does **not** filter on
+`IsWindowVisible`, which is what `Win32.AllTitles` is for.
+
+And **do not signal the text fields to fix that**. `Value (Signaling)` on `Event Type` would run the
+dialog's event case and rebuild both argument windows, discarding anything already pasted. The ring
+is the one control that must be signalled, and it is signalled first, before any paste.
+
+The two titles cannot be confused — `DQMH Reply Payload Window` does not contain `Arguments Window` —
+but that was checked rather than assumed, because the request matcher would otherwise have pasted the
+request fields into the reply cluster and reported success.
+
+For completeness, the dialog's front panel as measured, which is the list to reach for when another
+type needs something new:
+
+```
+Round Trip (Request)   Round Trip (Broadcast)   Event Type   Event Name   Event Description
+Module   Existing Request   Broadcast Argument Source {New Argument,Existing Argument}
+Enqueue Message VI {Standard,Custom}   Custom Enqueue VI   Add Tester Button   OK   Cancel   Help
+```
+
+**Both reply-carrying types were then created end to end.** Two claims written into this file
+earlier the same day were wrong and are retracted below, because the way they were wrong is the
+useful part.
+
+**`Event Type` sits at `Controls[]` index 1, and signalling it reveals the reply window.** Harvested
+with `lvdqmh_dlg_probe`, which also confirmed the two indices the tool already carried:
+
+```
+ 0 Module (Ring)          1 Event Type (Ring)      2 Add Tester Button      3 Enqueue Message VI
+ 4 Existing Request       5 Custom Enqueue VI      6 Broadcast Arg Source   7 Event Name
+ 8 Round Trip (Broadcast) 9 Event Description     10 OK                    11 Cancel
+12 Help                  13 Round Trip (Request)  14 Step 6                15 Context Help
+```
+
+`Value (Signaling)` on index 1 turns the Reply Payload Window from `HIDDEN` to `visible` in one
+call. `Ctrl Val.Set` on the same control does not, and neither does re-signalling the module ring.
+The tool now does this for the two reply-carrying types only, before any paste, and checks the
+control's own `Label.Text` so a shifted `Controls[]` order is caught at the write rather than three
+steps later.
+
+**ROUND TRIP: four files, and the reply lands on the BROADCAST half.**
+
+| check | result |
+|---|---|
+| files | **four**: `RoundTripTest.vi`, `RoundTripTestDone.vi`, `… Argument--cluster.ctl`, `… (Reply Payload)--cluster.ctl` |
+| `.lvlib` members | 88 to **92**, so **+4** for this type |
+| the broadcast half | named exactly as `roundTripBroadcastName` was passed |
+| `RoundTripTest.vi` | `Auftrag` in, `wait for reply (T)` in, `error out` and `timed out?` out |
+| `RoundTripTestDone.vi` | **`Reply Payload [cluster{double.Ergebnis, cluster{…}.RoundTripTest_error}]`** as an INPUT |
+
+So the reply field is there. A Round Trip answers *through* the broadcast, so its payload is an input
+to the broadcast VI, not an output of the request VI — which is why looking only at the request VI
+made it seem lost.
+
+**RETRACTED: "a paste into the hidden reply window is accepted and then ignored".** It is not
+ignored. `ReplyTest3` was created with the window revealed and its request VI still shows no
+`Reply Payload` output, so revealing it changed nothing observable — but the cluster is correct.
+`pylv_extract` on `ReplyTest3 (Reply Payload)--cluster.ctl` gives:
+
+```
+<TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Istwert" />
+```
+
+with `Stabil` beside it. The reply fields reached the cluster in every run.
+
+**RETRACTED: the file-size argument.** "14 208 bytes for a one-field cluster, so my 14 164 must be
+empty" was reasoning from a quantity that does not track content:
+`RoundTripTest (Reply Payload)--cluster.ctl` is **13 939 bytes** — the smallest of all of them — and
+demonstrably carries `Ergebnis`. **A `.ctl`'s size says nothing about its fields**, any more than a
+raw byte search does: `Kanal` and `Sollwert` do not appear as ASCII in an argument cluster whose
+event plainly has both terminals. Read a `.ctl` with `pylv_extract` and look at `VCTP`, or read the
+VI that uses it with `lvai_vi_terminals`. Nothing cheaper is sound.
+
+**What is still open for Request and Wait for Reply**: its request VI carries no `Reply Payload`
+output, while DQMH's own `Do Something Else and Wait for Reply.vi` has one
+(`cluster{double.Value, error}`, conIdx 2). The cluster file is right, so this is about the connector
+pane, not the data. Whether a *scripted* R&W event is simply shaped that way — Delacor's example
+comes from the module template, not from the event scripter — is **not settled**. A run driven by
+hand through the same dialog produced the same shape, which points at DQMH rather than at this
+route, but the hand-driven run's reply fields were not recorded, so it is not proof.
+
+**The OK press needed a SECOND attempt in both runs**, and this is what makes the retry loop worth
+having rather than a nicety:
+
+```
+focusOk    attempt 1  label OK  focusSettled true
+pressSpace attempt 1  skipped: the dialog did not come to the foreground
+focusOk    attempt 2  label OK  focusSettled true
+pressSpace attempt 2  windowWasFrontmost true       <- scripted
+```
+
+Key focus settles on the first try; the *foreground* does not. Refusing to send the keystroke
+without a confirmed foreground, and trying again, is the whole difference between a run that works
+and one that types a space into whatever the user has in front of them.
+
+### 6.11a The control run: one event of each type, and what it caught
+
+Four events, one per type, created in one session as a deliberate control. Two defects fell out of
+it that seven earlier successful runs had not shown, and both were of the worst kind — the tool
+answered `ok: true`.
+
+**A SYNTHESISED SPACE CAN BE DELIVERED AND THE BUTTON NOT FIRE.** The Request ran clean:
+`focusSettled: true`, `windowWasFrontmost: true`, `pressSpace` sent, `ok: true`. **No event was
+created.** The dialog simply stayed open. Every self-check the tool had passed, because all of them
+measured the *keystroke* and none the *outcome*.
+
+**And the miss then corrupted the NEXT event.** The Broadcast issued afterwards found that dialog
+still open, adopted it — and its arguments window still held the Request's `Sollwert`. So
+`KontrollBroadcast.vi` was scripted with `Sollwert` [double] **and** `Status` [string] on its pane: a
+wrong public contract, from a run whose every reported step was fine. One silent miss, two wrong
+outcomes, and the leaked argument looked like the primary bug until the missing Request explained it.
+
+Two checks were added, and each catches one half:
+
+| check | what it does |
+|---|---|
+| **the dialog must CLOSE** after the press | Delacor's dialog closes when OK is accepted, so its disappearance is the cheapest proof the button fired. `dialogClosed: false` now means retry, not success |
+| **surplus labels are refused** | `CompareLabels` compares the window's controls to the expected set **both ways**. Missing was always checked; surplus is what shipped the wrong event |
+
+The re-run proves the first one works: `pressSpace attempt 1  dialogClosed: false`, then
+`attempt 2  dialogClosed: true`. Same conditions, same reported foreground — so **the press failing
+is routine, not exceptional**, and every earlier run that "worked first time" was luck.
+
+**The lesson is the general one this file keeps relearning**: a self-check that measures the
+mechanism is not a check on the result. `focusSettled`, `windowWasFrontmost` and `target labels` all
+describe what the tool *did*; only the dialog closing describes what LabVIEW *accepted*.
+
+With both checks in place the full matrix came out exactly as predicted — 11 files and **+11**
+`.lvlib` members for the four events, 2 + 2 + 3 + 4:
+
+| event | type | files | members | pane |
+|---|---|---|---|---|
+| `KontrollRequest` | Request | 2 | +2 | `Sollwert` [double] required |
+| `KontrollBroadcast` | Broadcast | 2 | +2 | *(carries the leaked `Sollwert` — created before the fix)* |
+| `KontrollReply` | Request and Wait for Reply | 3 | +3 | `Kanal` in, `wait for reply (T)` in, `timed out?` out |
+| `KontrollRoundTrip` + `…Done` | Round Trip | 4 | +4 | broadcast half: `Reply Payload [cluster{double.Ergebnis, …KontrollRoundTrip_error}]` |
+
+### 6.12 `GetForegroundWindow() == 0` means the desktop is locked
+
+The `ReplyTest` run filled the dialog correctly, confirmed the module by name, pasted both arguments —
+and then reported `Key Focus never settled` after five attempts. §6.8 already knew focus was flaky and
+prescribed a retry loop, so the message looked like that same flakiness and sent the next step at
+LabVIEW. It was not:
+
+| probe | result |
+|---|---|
+| `SetForegroundWindow` on the dialog, with `AttachThreadInput` | **false** |
+| `GetForegroundWindow()` | **0** |
+
+**A null foreground window means no window can hold the foreground** — a locked workstation, a running
+screensaver, a disconnected session. The keystroke route cannot work there at all, and no number of
+retries changes that. `lvai_dqmh_new_event` now checks this **before starting the dialog** and answers
+`errorKind: desktopNotInteractive` in one sentence, rather than driving six steps and stopping one
+short with a message about LabVIEW.
+
+This is the sharpest form of the limitation the tool has always reported: not "needs the dialog
+frontmost" but "needs a desktop that has a foreground at all".
+
+### 6.13 When `lvai_open_file` answers Error 7 for everything
+
+Getting a project active for the run above failed in a way worth writing down, because the error names
+the wrong cause:
+
+```
+Error 7 ... OpenFile.vi
+LabVIEW: (Hex 0x7) File not found. The file might be in a different location or deleted.
+```
+
+The file was there. Three things were established before believing anything:
+
+- It is **not the project**: a freshly written six-line minimal `.lvproj` in a scratch folder got the
+  same Error 7.
+- It is **not LabVIEW being unresponsive**: `lvai_describe_project` read the *same* project in the
+  same second with `errorCode 0` and `missingFiles: []`.
+- It is **not the line endings**. `sed -i` on the `.lvproj` while stripping adopted helpers had turned
+  every CRLF into LF — real, and worth repairing since every other `.lvproj` on the station is CRLF —
+  but restoring them changed nothing. Recorded because the theory was stated before it was tested.
+
+**What worked was the gesture a person would use: open the `.lvproj` through its file association**
+(`Start-Process 'C:\temp\...\x.lvproj'`). Windows hands the file to the already-running LabVIEW, which
+opens it and makes it active — after which the dialog started, the ring listed all three modules and
+every step ran. So a wedged `OpenFile.vi` is not a dead end.
+
+The cause of the Error 7 is **not established**. What is: it is universal while it lasts, it does not
+implicate the file, and there is a way around it.
+
+**And strip helpers from a `.lvproj` with a tool that preserves CRLF.** `sed -i` does not. Nothing
+broke that has been traced to it, but a project file whose every line differs from its last committed
+version hides the one line that was meant to change.
+
 ## 7. What is not reachable this way
 
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
@@ -562,5 +939,7 @@ and `_DQMH Validate Module\` exist as directories and are the place to look. Do 
 | List module types | `Get Module Type Info.vi` over VI Server | **measured**, 121 ms |
 | Create a module | `+ Script New Module.vi` | **measured end to end**, 30–43 s |
 | Find modules in a project | `Parse Project for DQMH Modules.vi` | **measured**, 506 ms |
-| Create an event | dialog only — see §6 | **not scriptable**; carrier VI proven, the rest stops |
+| Create a **Request** or **Broadcast** event | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs a desktop with a foreground |
+| Create a **Request and Wait for Reply** event | same, plus the Reply Payload Window — §6.11 | **measured end to end**: three files, +3 members, `wait for reply (T)` in, and the reply cluster carries the pasted fields. Its request VI exposes no `Reply Payload` output — open, see §6.11 |
+| Create a **Round Trip** event | same, plus `roundTripBroadcastName` — §6.11 | **measured end to end**: four files, +4 members, the broadcast half named as passed, its `Reply Payload` input carrying the reply field |
 | Validate / rename / remove | menu VIs have no pane; look in `_DQMH *\` | **not investigated** |

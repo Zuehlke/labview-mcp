@@ -1,0 +1,20 @@
+<VI _name="lvdqmh_dlg_setstring.vi" description="Writes one STRING control of a running dialog by NAME\2C then reads it back. Written for the two Delacor event types whose extra fields lvdqmh_dlg_fill3 does not cover - Round Trip needs `Round Trip (Broadcast)`\2C the name of the broadcast half of the pair.\0A\0AWHY A SEPARATE HELPER. fill3 writes a FIXED set of controls\3A event name\2C description\2C type\2C tester button and the module ring. Adding a sixth to it would make every caller pay for a field only one event type has\2C and the ring write there is Value (Signaling)\2C which this must NOT be - signalling a text field makes the dialog re-run its own event case and rebuild the arguments windows.\0A\0ACtrl Val.Set TAKES A NAME\2C so no control reference and no Controls[] index is needed - which matters because Controls[] order is read\2C never assumed\2C and an index carried from one dialog launch to another aims at the wrong control.\0A\0AThe read-back is typed `variant` on purpose\3A Ctrl Val.Get hands back a variant and the caller renders it. A write that reports error 0 is not evidence the value landed - the same lesson as Key Focus\2C where a silent no-op looked exactly like success.">
+  <Control _name="dialog vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="control name" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="value" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:25.path" uid="25" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:25.path,error in (no error):22.error out" outputs="vi reference:30.vi reference,error out:30.error out" uid="30" uid_parent="root"/>
+
+  <Node _name="To Variant" inputs="anything:12.value" outputs="Variant:40.Variant" uid="40" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:30.vi reference,error in (no error):30.error out,Control Name:11.value,Value:40.Variant" outputs="reference out:50.reference out,error out:50.error out" uid="50" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:50.reference out,error in (no error):50.error out,Control Name:11.value" outputs="reference out:52.reference out,error out:52.error out,Value:52.Value" uid="52" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:30.vi reference,error in (no error):52.error out" outputs="error out:60.error out" uid="60" uid_parent="root"/>
+
+  <Indicator _name="read back" inputs="value:52.Value" type="variant" uid="80" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:52.error out" type="cluster{bool.status,int32.code,string.source}" uid="81" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleanup error out" inputs="value:60.error out" type="cluster{bool.status,int32.code,string.source}" uid="82" uid_parent="root" value="[false,0,]"/>
+</VI>

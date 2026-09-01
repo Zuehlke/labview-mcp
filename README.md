@@ -741,11 +741,11 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**59 tools over 23 RPCs.** Thirty-three map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**60 tools over 23 RPCs.** Thirty-four map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
 rather than wrapping one — `lvai_describe_class`, which reads a `.lvclass` file and needs no
 LabVIEW at all, the knowledge tools below, and the five `pylv_*` tools. 33 carry `readOnlyHint`,
-22 carry `destructiveHint`, so a client can gate the writes.
+23 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -807,6 +807,7 @@ resources rather than call tools.
 | `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **creates a `.lvclass`**, its parent link and its private data — by driving LabVIEW's own project provider, because a private data control is compiler output and cannot be built from outside. Needs a project, and opens one |
 | `lvai_create_interface` | — (same composition, driving `Add Interface.lvlib:Add Interface to Project (path).vi`) | **creates a LabVIEW interface** — a `.lvclass` with no private data control, which is what enables multiple inheritance. `lvai_create_class`'s `parentInterfaces` links a class to the ones it implements, and only at creation time. Interface *methods* have **no tool of their own**: the route is scriptable and execution-verified, but it is a hand-driven composition written up in `docs/lvclass-interfaces.md` §3 |
 | `lvai_create_accessors` | — (same composition, driving NI's own accessor wizard body) | **creates Read/Write VIs** and registers them in the `.lvclass`, saving the library once per field |
+| `lvai_dqmh_new_event` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`, and drives Delacor's own `Create New DQMH Event.vi`) | **creates a DQMH request or broadcast** with typed arguments, in one call instead of about fifteen. It drives the DIALOG because `Script New Event.vi` cannot be called from a helper — its `Module Info` holds thirteen refnums and LabVIEW releases them when the parse VI stops, while the dialog runs parse and script as subVIs of one live VI. The module is matched by NAME and confirmed against the dialog's own step-6 text before anything is pressed. **Not unattended-safe**: the OK button is a latched boolean VI Server may not write, so the last step foregrounds the dialog and sends a SPACE |
 | `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 
 ### Without LabVIEW — the pylabview route
