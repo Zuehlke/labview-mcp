@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using System.Xml.Linq;
@@ -354,6 +354,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 var verifiedOk = true;
                 if (verify)
                 {
+                    var verifyElapsed = Stopwatch.StartNew();
                     var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
                         Path.ChangeExtension(Path.GetFileName(viPath), ".lunit-verify.xml"));
                     Directory.CreateDirectory(Path.GetDirectoryName(exportPath)!);
@@ -363,6 +364,10 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     perMethod.Add(new JsonObject
                     {
                         ["step"] = "verify",
+                        // Its own duration, because the export is the slowest part of a method and
+                        // the sub-answer does not always carry one - and a step with no elapsedMs
+                        // vanishes from the wall-minus-tool sum that picks the next tool.
+                        ["elapsedMs"] = verifyElapsed.ElapsedMilliseconds,
                         ["answer"] = Slim(Strip(Read(exported)), verbose),
                     });
 

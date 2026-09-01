@@ -143,6 +143,46 @@ Inside those 42: **528 s wall clock against 102.8 s in tools, a ratio of 5.1 : 1
 3.6 : 1 baseline, and that is the expected direction. Removing tool-bound work raises the ratio; what
 is left is authoring.
 
+### A fourth class, `Apfel`, with the fixes in (2026-09-01)
+
+| | Brille (hand) | Weinglas (hand) | Banane (tools) | Apfel (tools + fixes) |
+|---|---|---|---|---|
+| class phase | 29 calls | 34 calls | 10 calls | **8 calls** |
+| test phase | 85 calls | 100 calls | 42 calls | **40 calls** |
+| **total calls** | **114** | **134** | **52** | **48** |
+
+Test phase wall clock: 21.0 → 22.9 → 10.1 → **8.0 min**. Ratio wall : tool held at **5.5 : 1**
+against Banane's 5.1 — as expected, removing tool-bound work raises the ratio.
+
+**WALL CLOCK IS NOT COMPARABLE BETWEEN RUNS UNLESS LabVIEW'S WARMTH IS.** The `Apfel` class phase
+took *longer* in wall clock than `Banane`'s while using two fewer calls, and the whole difference is
+one tool: `lvai_create_accessors` cost **56.3 s against 21.4 s** for an identical four-field class.
+LabVIEW had been up 100 s for `Apfel` and 75 minutes for `Banane`. Within the run the second slice
+cost 37.2 s against the first slice's 19.1 s, because `Save All This Library` re-checks the growing
+library per field. **Use the call count as the primary metric and treat wall clock as valid only
+within a run**, or a cold start reads as a regression.
+
+### What the fixes bought, measured rather than assumed
+
+Three changes shipped between `Banane` and `Apfel`, and the run checked all three:
+
+- **Slimmed tool answers.** `lvai_lunit_add_test_method`'s answer had been 86 000 characters and cost
+  three grep turns to read. It now arrives in one response with nothing missing — `methodsAdded`,
+  `failedAtStep`, and per method `isClassMember`, `classTypedTerminals`, `pathStandInsLeftOnPane`.
+  **A tool that saves round trips can spend them again in its own answer**, and that is not visible
+  from the tool's design — only from a run that had to grep it.
+- **Ordered `projectPhases`.** The `order` field alone would still have read as a prologue; it is the
+  `thenWhat` string naming which loop runs after each entry that removed the ambiguity.
+- **`lvai_placeholder_subvi` on class panes.** Eight accessors, one message, one turn — replacing
+  eight hand-authored socket AIXML files.
+
+### Two measurement gaps this run exposed, both now fixed
+
+**`lvai_placeholder_subvi` reported no duration at all**, so a batch of eight was invisible in the
+run's tool-time sum: the batch looked free, and the analysis could not see it either way. **A tool
+with no `elapsedMs` cannot be chosen against, which makes it invisible to exactly the method this
+document prescribes.** Same for `lvai_lunit_add_test_method`'s `verify` step. Both now report one.
+
 ### What is left, in order
 
 1. **Authoring the six test methods' AIXML — ~110 s of the 528, three turns, no tool time.**

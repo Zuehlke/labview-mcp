@@ -697,3 +697,50 @@ implements, or adoption needs more than an open project". Neither: the reporting
 Fixed — the array is now `projectPhases`, each entry carries `order` and a `thenWhat` saying which
 loop runs after it. **A tool whose answer implies the wrong sequence is a defect even when the
 sequence is right**, because the next reader reasons from the answer, not the source.
+
+## 11. A fourth class, `Apfel` — the fixes checked, and three smaller ones found
+
+Same shape again: four fields of four distinct types, six methods, 12 assertions. **394 s, 38 calls,
+one restart**, two green runs with a write-side negative control between them
+(`Write Gewicht g` → `Write Erntejahr`, `Expected:182.250000 … Actual:  0.000000`, exactly one case
+named). §10's five prescriptions all held with nothing to correct.
+
+**Both §10 fixes verified.** The slimmed answer needed no grep turns and carried everything needed to
+judge each step. `projectPhases` makes the close → convert → open → membership order unambiguous —
+and the useful detail is that `order` alone would not have: it is the `thenWhat` string naming which
+loop follows each entry that does the work.
+
+**`typedefNote` is a FALSE ALARM on a class pane, and it prescribed the wrong repair.** All eight
+`Apfel` stubs answered `typedefTerminals: 2` with
+`typedefPath: …\Apfel.lvclass\Apfel.ctl` and the standard advice to fix coercion dots with
+`lvai_bind_typedef_constants` — on the very two terminals `classTerminalNote` already explains. The
+cause: a `.lvclass` presents its private data control as the terminal's type, so the typedef detector
+sees a `.ctl`. The advice does not apply, because `{LV.SubVI}` `Replace` re-types those wires and no
+constant is ever bound to them; the run was green with `bind_typedef_constants` never called. Fixed —
+terminals already counted in `classTerminals` are excluded from the typedef count, and any that were
+excluded are reported as `classTerminalsNotCountedAsTypedefs`. **Reporting a repair that must not
+happen reads as a skipped step**, which is the same class of defect as §10's phase-order mix-up: the
+answer was misleading while the behaviour was right.
+
+**`Pass If Equal.vim` gains an unwired `Delta:` terminal in the post-swap export.** Every verified
+export reads `…,Description:113.value,Delta:` where the authored AIXML had none. The malleable
+instance re-adapts when the class wires are re-typed and exposes the numeric-tolerance terminal; it
+is unwired and harmless, and it appears on the string and boolean assertions too. Not a diff worth
+chasing.
+
+**Two measurement gaps, now closed.** `lvai_placeholder_subvi` reported no duration at all, so a
+batch of eight was invisible in the run's tool-time sum — and `lvai_lunit_add_test_method`'s `verify`
+step carried none either. That matters more than it sounds: **wall clock minus tool time is how the
+next tool gets chosen, so a step with no `elapsedMs` cannot be chosen against.** Both now report one,
+and the placeholder's stopwatch starts before its export rather than after it.
+
+**A `bash` heredoc is not a safe way to write several AIXML files**, and the failure names the wrong
+place: six `cat > … <<'EOF'` blocks came back `unexpected EOF while looking for matching '''` with a
+line number inside the third file and nothing wrong in any of them. `CLAUDE.md` already says to write
+AIXML directly, for the `A` escaping; this is a second reason. Six file writes in one message is
+one turn anyway, so there is nothing to gain from the heredoc.
+
+**`closeProject` answering `1055 / nothingToClose: true` is correct, not a failure**, when
+`lvai_create_class` ran earlier in the session: it closes its own scratch project, so nothing is left
+active for the phase-one close to do.
+

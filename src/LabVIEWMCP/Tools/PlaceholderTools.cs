@@ -77,6 +77,10 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
 
+            // Started before the export, which is the slowest thing this call does - a stopwatch
+            // begun after it would report a misleadingly small number.
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+
             if (UserLibFolder() is not { } folder)
                 return Json.Error("noInstallation",
                     "No LabVIEW installation was found, so there is no user.lib to put a " +
@@ -126,6 +130,27 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             var typedefs = await new TypedefTools(connection)
                 .PaneTypedefsAsync(viPath, timeoutSeconds, ct);
 
+            // A CLASS TERMINAL IS NOT A TYPEDEF ANYONE BINDS, and it looks like one to the probe.
+            // A `.lvclass` presents its private data control as the terminal's type, so the typedef
+            // detector reports `<Class>.lvclass\<Class>.ctl` for the class in/out - and the note
+            // below then prescribes lvai_bind_typedef_constants, which is the wrong action: those
+            // wires are re-typed by {LV.SubVI} Replace and no constant is ever bound to them.
+            // Measured 2026-09-01 on eight `Apfel` accessors: every stub answered
+            // `typedefTerminals: 2` alongside `classTerminals: 2` for the same two terminals, and
+            // the run was green with bind_typedef_constants never called. Reporting a repair that
+            // must not happen reads as a skipped step, so those terminals are removed here and
+            // counted separately.
+            _ = CloneTerminals(subjectXml, out var classTerminals);
+            var classTerminalSet = new HashSet<string>(classTerminals, StringComparer.OrdinalIgnoreCase);
+            var suppressedTypedefs = 0;
+            if (typedefs is not null && classTerminalSet.Count > 0)
+            {
+                var kept = typedefs.Where(t => !classTerminalSet.Contains(t.Key))
+                                   .ToDictionary(t => t.Key, t => t.Value, StringComparer.OrdinalIgnoreCase);
+                suppressedTypedefs = typedefs.Count - kept.Count;
+                typedefs = kept;
+            }
+
             var answer = new JsonObject
             {
                 ["ok"] = true,
@@ -165,10 +190,17 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 answer["typedefTerminals"] = 0;
             }
 
-            // Derived from the subject's export, so it is reported for a CACHED stub too - the
-            // caller needs it either way, and it is what makes the difference between a socket
-            // that may be link-retargeted and one that must go through Replace.
-            _ = CloneTerminals(subjectXml, out var classTerminals);
+            if (suppressedTypedefs > 0)
+                answer["classTerminalsNotCountedAsTypedefs"] = suppressedTypedefs;
+
+            // Reported for a CACHED stub too - the caller needs it either way, and it is what makes
+            // the difference between a socket that may be link-retargeted and one that must go
+            // through Replace.
+            // REPORTED BECAUSE "WALL CLOCK MINUS TOOL TIME" IS HOW THE NEXT TOOL GETS CHOSEN.
+            // Measured 2026-09-01: a batch of eight placeholder calls was invisible in a run's
+            // tool-time sum because this answer carried no duration at all, so the batch looked
+            // free and the analysis could not see it either way.
+            answer["elapsedMs"] = elapsed.ElapsedMilliseconds;
             answer["classTerminals"] = classTerminals.Count;
             if (classTerminals.Count > 0)
             {
