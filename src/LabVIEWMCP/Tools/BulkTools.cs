@@ -107,7 +107,25 @@ internal sealed class BulkTools(LvaiConnection connection)
             steps.Add(Step("convert", convert));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
-                    "Validation passed but generation did not. The two errors that get here are " +
+                    // A DROPPED RPC CAN LEAVE THE FILE BEHIND, and then the pane is a trap rather
+                    // than a missing file. Measured 2026-09-01 in an eight-entry lvai_generate_vis
+                    // batch: one entry answered `Unavailable: An existing connection was forcibly
+                    // closed by the remote host` with viExistsNow true and 5 959 bytes on disk,
+                    // LabVIEW alive and the other seven fine. Because panePattern is applied AFTER
+                    // convert, that file kept the station default - measured at 4833 with three
+                    // style violations - and nothing anywhere said so: the file exists, is the
+                    // right size, and the answer only mentions convert.
+                    (File.Exists(viPath)
+                        ? "THE .vi FILE EXISTS ANYWAY, and its connector pane is NOT the one you " +
+                          "asked for: panePattern is applied after this step, so the file is on " +
+                          "the station default from LabVIEW.ini. Treat the pane as unset - " +
+                          "regenerate this VI, or repair it with pylv_apply " +
+                          "[{\"op\":\"conpane\",\"pattern\":N}] and measure with " +
+                          "lvai_connector_pane. A transport error here (Unavailable, \"connection " +
+                          "forcibly closed\") is usually one dropped call rather than a LabVIEW " +
+                          "death - check the process before concluding anything worse. "
+                        : "Nothing was written. ") +
+                    "The two errors that otherwise get here are " +
                     "different and the wording is the tell. Error 1357, \"from that path\": " +
                     "LabVIEW holds THIS path in memory - close the project " +
                     "(lvai_close_active_project) rather than opening it. Error 1051, \"of that " +

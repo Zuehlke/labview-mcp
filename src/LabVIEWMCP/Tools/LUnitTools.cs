@@ -81,9 +81,15 @@ internal sealed class LUnitTools(LvaiConnection connection)
         cannot misspell them; pass classTerminalNames only for a pane that deviates.
         methodsJson is a JSON ARRAY, one entry per test method:
           [{"aixml":"C:\\t\\tm_marke.xml","vi":"C:\\t\\Tests\\Test Marke Round Trip.vi"}]
-        A PROJECT MUST BE OPEN AND ACTIVE: the helper reaches the class through Project:Active
-        Project -> Application, so it sees the class the project holds rather than a second copy,
-        and answers Error 1055 with no project open.
+        PASS projectPath AND IT MANAGES THE PROJECT FOR YOU, which it has to, because the two halves
+        of this job want OPPOSITE states. Converting and repairing a pane need the project CLOSED - a
+        VI generated while it is open is adopted as a loose project item and the membership step then
+        answers `Error 56002` - while the membership step needs it OPEN AND ACTIVE, because the
+        helper reaches the class through Project:Active Project -> Application so it edits the copy
+        the project holds rather than a second one beside it, and answers `Error 1055` otherwise.
+        So the run is two phases: close, then convert+pane for EVERY method, then open, then
+        retype+member+verify for every method. Without projectPath both phases run in whatever state
+        you left the IDE in, and 56002 or 1055 is then yours to interpret.
         AND THE CLASS MUST NOT HAVE BEEN CREATED IN THIS LabVIEW SESSION. lvai_create_class leaves
         it LOCKED and this answers `Error 1562`, "the specified project or library is locked". A
         project close and reopen does NOT clear it - only a LabVIEW restart does. Create the class,
@@ -109,6 +115,12 @@ internal sealed class LUnitTools(LvaiConnection connection)
             documentation prescribes.
             """)]
         string? classTerminalNames = null,
+        [Description("""
+            Absolute path to the .lvproj, FILE NAME INCLUDED. Pass it and the tool closes the
+            project for the convert-and-pane phase and reopens it for the membership phase, which
+            is the only order that works. Omit only if you are managing that yourself.
+            """)]
+        string? projectPath = null,
         [Description("Connector pane pattern to force; LUnit needs 4815, the 4-2-2-4 pattern")]
         int panePattern = LUnitPanePattern,
         [Description("Re-export each finished VI and check the member link and terminal types")]
@@ -190,10 +202,33 @@ internal sealed class LUnitTools(LvaiConnection connection)
             var added = 0;
             string? stoppedAt = null;
 
+            // PHASE ONE, PROJECT CLOSED. Converting or repairing a pane while the project is open
+            // gets the VI adopted as a loose project item, and the membership step then answers
+            // Error 56002 - so every method is converted and paned BEFORE the project comes back.
+            // The two phases are separate loops for exactly that reason; doing both per method
+            // would need the project to change state 2N times.
+            var perMethodSteps = new Dictionary<string, JsonArray>(StringComparer.OrdinalIgnoreCase);
+            var ready = new List<TestMethod>();
+
+            if (projectPath is not null)
+            {
+                var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                    helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                    timeoutSeconds, ct);
+                prologue.Add(new JsonObject
+                {
+                    ["step"] = "closeProject",
+                    ["note"] = "Error 1055 here means no project was active, which is the state " +
+                               "this step is trying to reach.",
+                    ["answer"] = Read(closed),
+                });
+            }
+
             foreach (var method in methods)
             {
                 var perMethod = new JsonArray();
                 var viPath = Path.GetFullPath(method.Vi);
+                perMethodSteps[viPath] = perMethod;
                 if (Path.GetDirectoryName(viPath) is { Length: > 0 } viFolder)
                     Directory.CreateDirectory(viFolder);
 
@@ -209,7 +244,9 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     continue;
                 }
 
-                // 2. The pane PATTERN. No terminal moves, so no caller changes.
+                // 2. The pane PATTERN. No terminal moves, so no caller changes. closeProject is
+                //    false because this phase has already closed it once, and closing per method
+                //    would reopen the adoption window.
                 var pane = await new BulkTools(connection).PyApplyAsync(
                     viPath,
                     new JsonArray { new JsonObject { ["op"] = "conpane", ["pattern"] = panePattern } }
@@ -223,6 +260,31 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     stoppedAt ??= "conpane";
                     continue;
                 }
+
+                ready.Add(method);
+            }
+
+            // PHASE TWO, PROJECT OPEN AND ACTIVE. The helper reaches the class through
+            // Project:Active Project -> Application, so without this it edits a second copy of the
+            // class beside the one the project holds - or answers Error 1055.
+            if (projectPath is not null && ready.Count > 0)
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
+                prologue.Add(new JsonObject
+                {
+                    ["step"] = "openProject",
+                    ["note"] = "projectPath must carry the FILE NAME; passing only the directory " +
+                               "answers Error 1, 'an input parameter is invalid'.",
+                    ["answer"] = Read(opened),
+                });
+            }
+
+            foreach (var method in ready)
+            {
+                var viPath = Path.GetFullPath(method.Vi);
+                var perMethod = perMethodSteps[viPath];
 
                 // 3. Retype the class terminals and make the VI a member - membership FIRST inside
                 //    the helper, then the VI's save, then the class's. That order is the fix for
@@ -576,7 +638,12 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 }
             }
 
-            var ok = runError == 0 && allPassed && failures == 0 && siblings.Count == 0;
+            // `failures` is -1 when there was no JUnit report to parse - a .txt report path, or a
+            // report that did not appear. Requiring failures == 0 there made a perfectly green .txt
+            // run answer ok: false, so an unparsed report falls back to the runner's own verdict
+            // rather than counting as a failure.
+            var reportAgrees = failures < 0 ? allPassed : failures == 0;
+            var ok = runError == 0 && allPassed && reportAgrees && siblings.Count == 0;
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,

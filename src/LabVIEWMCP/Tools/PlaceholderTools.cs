@@ -339,6 +339,20 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             {
                 clone.SetAttributeValue("type", "path");
                 clone.SetAttributeValue("value", "");
+
+                // AND THE WIRE RULE, which is the half this fix first forgot. An accessor's class
+                // terminals are `connection="dynamic"`, and a socket is a LOOSE VI in
+                // user.lib\LV_MCP - not a class member - so keeping the rule made LabVIEW refuse
+                // the stub with a message that names neither the placeholder nor the type:
+                // "Only VIs owned by a LabVIEW class may use dynamic terminals in the connector
+                // pane." Measured 2026-09-01 on four accessors of `Weinglas`, all still
+                // `stubRefused` after the type half alone. Dynamic dispatch is also meaningless
+                // here: the socket is never executed, and the swap re-types the wires anyway.
+                if (clone.Attribute("connection")?.Value is "dynamic")
+                    clone.SetAttributeValue(
+                        "connection",
+                        element.Name.LocalName == "Control" ? "required" : "recommended");
+
                 classTerminals.Add(clone.Attribute("_name")?.Value ?? "(unnamed)");
             }
 

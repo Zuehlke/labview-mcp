@@ -512,15 +512,107 @@ named there rather than left to be looked up — `1562` the class lock (§5), `1
 for prints the pane's real terminal names beside the ones wanted, because that failure is a
 misspelling and nothing else reports it.
 
-**`lvai_placeholder_subvi` now works on class code**, which is what made §6's socket step
-hand-authored. It used to answer `stubRefused` for any accessor, because an exact pane clone means
-authoring `type="ref{UDClassInst}"` and the generator refuses that outright. It now writes those
-terminals as `path` stand-ins and reports them as `classTerminals` / `classTerminalNames`, with the
-warning that the clone is therefore **not** exact — sound only because `lvai_swap_subvis` retargets
-through `{LV.SubVI}` `Replace`, which re-types the wires. A pylabview link retarget on such a socket
-still answers `Error 7, Bad Linkage`, and the exact-clone rule still holds for every other type.
+**`lvai_placeholder_subvi` on class code: the fix needed TWO halves and shipped with one.** This
+paragraph claimed it "now works on class code" on 2026-09-01 and that was wrong the same day.
+Measured on four accessors of `Weinglas`, all still `errorKind: stubRefused` — but with a completely
+different validate message:
+
+```
+Only VIs owned by a LabVIEW class may use dynamic terminals in the connector pane.
+Dynamic dispatch terminals are only allowed on VIs that are members of LabVIEW classes.
+```
+
+The **type** half had landed (`ref{UDClassInst}` → `path`) and the **wire rule** half had not: an
+accessor's class terminals are `connection="dynamic"`, the clone kept that, and a socket is a *loose*
+VI in `user.lib\LV_MCP\` — not a class member, so it may not carry a dynamic terminal. Both halves
+have to be downgraded at the same moment, and the tool now sets `required` on the input and
+`recommended` on the output alongside the type. Dynamic dispatch is meaningless on a socket anyway:
+it is never executed, and the swap re-types the wires.
+
+**The message is misleading twice over** and is worth recognising: it names dynamic dispatch and
+class membership rather than the placeholder, so it reads as though the *subject accessor* were at
+fault. It is not — the accessor is a perfectly good class member; the clone is not.
+
+The clone is therefore **not** exact for class terminals, which is sound only because
+`lvai_swap_subvis` retargets through `{LV.SubVI}` `Replace` and that re-types the wires. A pylabview
+link retarget on such a socket still answers `Error 7, Bad Linkage`, and the exact-clone rule still
+holds for every other type. `classTerminals` / `classTerminalNames` in the answer say which terminals
+were substituted.
 
 **What is NOT wrapped, deliberately:** authoring the test method's AIXML. That is the part that
 varies per case — the values, the arithmetic, which accessor to call — and the one place a wrong
 guess produces a test that passes while testing nothing. A tool that generated it would have to
 invent expectations.
+
+## 9. A second class through the route, 2026-09-01 — `Weinglas`
+
+Four fields of four **different** types (`string`, `double`, `int32`, `bool`) against `Brille`'s
+string/double/double/bool. Six test methods, 12 assertions, `tests="6" failures="0"` on two green
+runs with a negative control between them. What the second class changed:
+
+**`int32` needs no special handling, and neither does anything else in §6's "real type, never
+`variant`" rule.** A socket authored `type="int32"` with `Expected` as `type="int32" value="6"` gave
+`coerced: 0` on all five terminals of both the Read and the Write node after the swap, and
+`Pass If Equal.vim` adapted without complaint. `type="bool" value="true"` survived as `true` — the
+lower-case rule in `CLAUDE.md` holds — and `type="double" value="620.5"` as `620.5`. So string,
+double, int32 and bool are all covered with no exceptions.
+
+**But four distinct types make the independence test WEAKER, not stronger, and only one pair still
+needs it.** The type system already rules out most cross-field writes; the exception is
+`double` ↔ `int32`, which coerce into each other silently. And a single write-all-then-read-all test
+only detects a `Write` that disturbs a field written **earlier** — 6 of the 12 ordered pairs — because
+a later write repairs the damage. Say that limitation in the VI description rather than letting the
+test look stronger than it is.
+
+**§6's negative-control technique does NOT transfer to a class whose fields all differ in type.**
+`Brille` had two `double` fields, so `Read Dioptrien Links` → `Read Dioptrien Rechts` was a
+like-for-like read swap. Where every field has its own type there is no such swap, and repointing a
+read at a differently-typed field changes the type of the wire feeding `Pass If Equal.vim`, forcing
+the malleable instance to re-adapt — untested, and the plausible outcome is
+`7101, At least one test is not in a executable state` rather than a clean `Failed`.
+
+**Inject on the WRITE side instead.** Repointing `Write Volumen ml.vi` → `Write Anzahl im Set.vi`
+puts the DBL constant on an I32 *input*, which is an ordinary coercion; the assertion's wire stays
+DBL and byte-identical, and the result is exactly one clean failure with
+`Expected:620.500000 … Actual:  0.000000` — the zero being the proof the double field was never
+written. Two constraints decide which test you may inject into:
+
+- **the replacement must not already be on that diagram**, or the restoring swap meets
+  `lvai_swap_subvis`'s duplicate-name refusal. That rules out a write-all/read-all test entirely;
+  pick a single-field round trip.
+- after membership the socket string is class-qualified — `Weinglas.lvclass:Write Volumen ml.vi`.
+
+**A swap-and-restore does not shrink the VI back, so file size is not an "unchanged" check.** The
+membership save compacts a converted test method sharply — the four round trips went 77.9–78.3 kB
+after `pylv_apply` to 65.6–65.9 kB after `Save.Instrument`. The one that took two extra `Replace`
+operations for the negative control sits at **79 766 bytes**, ~21 % larger than its identically
+shaped siblings while being functionally identical. Judge a restore by the export's `target=` and by
+a re-run, never by bytes.
+
+**`lvai_coercion_dots` reads a finished class member fully when the sweep is SCOPED.** §6 records two
+of six nodes returning `subViFound: ""` with the Error-1099 note on a whole-diagram sweep. Passing
+`subViName` to restrict it to one node on a finished member gave `subViFound` populated,
+`terminalsChecked: 5`, `coerced: 0`. Not a contradiction — different scope — but a scoped sweep is
+the way to get a trustworthy per-terminal answer on a class member.
+
+**`lvai_create_class` with NO `projectPath` and NO `fields` is the right call for a test case class.**
+A test case needs no private data when each test builds its subject from a class constant, and
+omitting `projectPath` is what keeps the user's `.lvproj` clean: `fieldsAsked: 0`, `fieldsAdded: 0`,
+`privateDataBytes: 4718`, `parent opened: true`. §5's trap — the LUnit base class getting promoted to
+a top-level `.lvproj` item by the project save — **did not reproduce** on this run, where the test
+class's entry was hand-written into the `.lvproj` while it was closed and before LabVIEW had ever
+opened it. After six `AddItemFromMemory` calls, three LUnit runs and a close, the file still held
+exactly the two entries put there. One clean run is not proof the promotion never happens, so keep
+checking the file — but the cleanup step may not be required.
+
+**A `lvai_generate_vis` entry that fails at `convert` may still have WRITTEN the `.vi` — on the wrong
+pane pattern, silently.** One entry of an eight-socket batch answered
+`Unavailable: An existing connection was forcibly closed by the remote host` with
+`viExistsNow: true` and 5 959 bytes on disk; LabVIEW was alive (same PID, unchanged start time) and
+the other seven succeeded, so it was one dropped call rather than a death. But `panePattern` is
+applied **after** convert, so that file kept the station default — measured at 4833 with three style
+violations. Nothing else sees it: the file exists, is the right size, and the answer only says the
+convert step failed. NI's log carried a bare stack with **no exception header**, ending at
+`LV AI Core.lvlibp:VI generator.vi` ← `…:ConvertAIXMLToVI.vi`. **The rule: after any entry reporting
+`failedAtStep: "convert"` with the file present, treat the pane as unset and regenerate that entry
+alone.** `lvai_generate_vi` now says this in its own convert-failure note.

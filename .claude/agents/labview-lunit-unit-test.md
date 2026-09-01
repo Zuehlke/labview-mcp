@@ -122,11 +122,19 @@ adds each VI as a class **member**, and verifies from LabVIEW's own export.
 
 ```
 classPath    C:\...\Tests\<TestClass>.lvclass
+projectPath  C:\...\<Project>.lvproj        ← FILE NAME included, or Error 1
 methodsJson  [{"aixml":"...\\tm_marke.xml","vi":"...\\Tests\\Test Marke Round Trip.vi"}, …]
 ```
 
 The class terminal names are **derived** from the `.lvclass` file name, so do not pass
-`classTerminalNames` unless your pane deviates. A project must be **open and active**.
+`classTerminalNames` unless your pane deviates.
+
+**Pass `projectPath` and it manages the project state, which it has to** — the two halves of the job
+want opposite states. Converting and repairing a pane need the project **closed**, or LabVIEW adopts
+the new VI as a loose project item and the membership step answers `Error 56002`; the membership step
+needs it **open and active**, or `Error 1055`. With `projectPath` the run is: close → convert+pane for
+every method → open → retype+member+verify for every method. Without it, both phases run in whatever
+state you left the IDE in.
 
 `ok: false` → read `methods[].detail.hint`; it names the cause rather than leaving it to be looked
 up. The three that happen: **`1562`** the class lock (Phase 2 — restart LabVIEW), **`1055`** no
