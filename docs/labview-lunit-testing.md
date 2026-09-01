@@ -828,3 +828,82 @@ The run brief handed to the agent said the `typedefNote` suppression was **not**
 was — committed earlier the same afternoon — and the agent correctly reported
 `typedefTerminals: 0` with `classTerminalsNotCountedAsTypedefs: 2`. **A stale brief is as expensive
 as a stale document**, and the fix is the same: check the commit, not the memory of having written it.
+
+## 12. A sixth run, `Apfel` cold again — the variance run, 2026-09-01
+
+A deliberate repeat of §11 with nothing changed but `Json.Slim` on `lvai_swap_subvis`, to separate
+improvement from noise. Six methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3 with a
+write-side negative control between them.
+
+| | Weinglas | Banane | Apfel #5 | **Apfel #6** |
+|---|---|---|---|---|
+| class phase, calls | 34 | 10 | 7 | **6** |
+| test phase, calls | 100 | 42 | 43 | **39** |
+| test phase, wall | 1375 s | 609 s | 492 s | **364 s** |
+
+### READ THE AUTHORING NUMBERS WITH CARE — three of them measure different things
+
+This is the most important caveat on this page for anyone using these figures to justify work.
+
+| run | how the six AIXML files were produced |
+|---|---|
+| `Weinglas`, `Banane` | **authored** from the reference in §§3–6 |
+| `Apfel` #5 | **transposed** from `Banane`'s six files — names and values substituted |
+| `Apfel` #6 | **copied verbatim** — same class name, field names and types, so even the embedded stub hashes still resolved |
+
+So only the first pair measures authoring at all, and §12's apparent improvement over §11 is partly
+that artefact rather than tooling. **The honest reading is that the shipped-skeleton half of the
+proposed generator would reproduce run #6's near-zero authoring cost by design** — which is the
+strongest argument yet for building the templates before the generator.
+
+### `budgetSeconds: 100` is right and 45 is wrong, on a cold instance
+
+Eight accessors in **one** call, 57.2 s, against 80.0 s in **two** calls at `budgetSeconds: 45`. The
+cold penalty sits almost entirely in the FIRST slice — 37.6 s against 19.6 s — so it is a one-off
+wizard warm-up, not per-field growth. A budget of 45 stops right after the expensive slice and pays a
+whole extra turn for the cheap one.
+
+> **AND `slices[].elapsedMs` IS CUMULATIVE, which was read as per-slice and produced a wrong figure
+> in this document's own history.** One `Stopwatch` is started before the loop and every slice records
+> `wall.ElapsedMilliseconds`, so the values must not be summed — a run summed two of them to 94.8 s
+> inside a call that lasted 104 s, then spent two turns in the source finding out why. An earlier
+> report of "slice 1 45.8 s, slice 2 34.2 s" was also mislabelled: those were two separate *calls*.
+> Fixed — the answer now carries `sliceMs` per slice alongside the cumulative `elapsedMs`, plus
+> `elapsedMsIsCumulative: true`, a `totalElapsedMs` for the whole call including the project open, and
+> **`labviewAgeSeconds`**.
+
+### Instance warmth dominates the LUnit RUN too, not just the class phase
+
+Three `lvai_run_lunit_tests` calls over the same six tests, minutes apart on a LabVIEW started 70 s
+before the first: **11.8 s → 8.1 s → 4.9 s**, monotone. §10's "3.7–4.7 s against the `.lvclass`" is
+the **warm** figure only, and a first run on a fresh instance is about 2.5× that. Same rule as for
+`budgetSeconds`: **compare call counts across runs, not wall clock, unless the warmth matches.**
+`labviewAgeSeconds` now makes that checkable.
+
+### The slimming works, and the composer must time its own steps
+
+Six swaps came back at about **6.3 kB against §11's ~34 kB**, with `callTargets`, `nodesSwapped`,
+`socketsLeft` and `constantsSwapped` all intact and top-level — no grep turns, no truncation. One gap
+found and fixed: the `verify` sub-answer carried no `elapsedMs`, because the callee does not report
+one on that path, so the export half of each swap was recoverable only by subtraction. **A composing
+tool always knows how long its own step took and now reports it** rather than hoping the callee did —
+by §11's own argument that an untimed step cannot be chosen against.
+
+### Two smaller measurements
+
+**`lvai_ensure_labview`'s second call reached 55 ms.** Eight cold starts on record; the second-call
+spread is now 0.055 / 0.69 / 1.2 / 1.2 / 12.1 / 27.7 s. The first call still spends its whole budget
+and answers `starting` with `lastError: "The operation was canceled."` — that remains normal.
+
+**`lvai_create_class`'s verify step reported `inheritsFrom: null` for a root class**, and its note read
+`inherits from ''`, where `lvai_describe_class` correctly falls back to `LabVIEW Object`. Nothing was
+wrong with the class; a reader checking inheritance simply could not tell a healthy root class from a
+parent link that failed to take. Fixed to use the same fallback.
+
+### Orientation is still the largest item, and a better brief halves it
+
+**53.4 s of wall clock against ~1 s inside tools, over 8 turns** — against §11's 98.0 s over 9. The
+difference is that the brief named the sections and listed the prescriptions, so the agent went
+straight to them. The residue is reading §10 and §11 themselves plus four turns finding the archived
+AIXML, and **only the second half is something a tool can remove**. That is what
+`scripts/templates/` is for; a brief can shorten the reading but never delete it.

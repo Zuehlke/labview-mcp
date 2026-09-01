@@ -196,10 +196,21 @@ internal sealed class SwapTools(LvaiConnection connection)
                 var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
                     Path.ChangeExtension(Path.GetFileName(viPath), ".swap-verify.xml"));
                 Directory.CreateDirectory(Path.GetDirectoryName(exportPath)!);
+                // TIMED HERE, BY THE COMPOSER. The callee does not always carry an elapsedMs on
+                // this path, so the slimmed sub-answer had none - and a step with no duration
+                // cannot be chosen against when picking the next thing to optimise, which is the
+                // whole method this repository uses. A composing tool always knows how long its
+                // own step took, so it reports it rather than hoping the callee did.
+                var verifyWall = Stopwatch.StartNew();
                 var exported = await new AixmlTools(connection).ConvertViToAixmlAsync(
                     viPath, exportPath, returnContent: true, maxContentChars: 0, timeoutSeconds,
                     refresh: true, ct);
-                steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = Json.Slim(Parse(exported), verbose) });
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "verify",
+                    ["elapsedMs"] = verifyWall.ElapsedMilliseconds,
+                    ["answer"] = Json.Slim(Parse(exported), verbose),
+                });
 
                 if ((Parse(exported) as JsonObject)?["xml"]?.GetValue<string>() is { } xml)
                 {

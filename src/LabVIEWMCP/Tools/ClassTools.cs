@@ -397,7 +397,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                 {
                     ["step"] = "verify",
                     ["privateDataBytes"] = info.PrivateDataBytes,
-                    ["inheritsFrom"] = inherits,
+                    // A ROOT CLASS READS `LabVIEW Object`, NOT null - the same fallback
+                    // lvai_describe_class applies. This reported null and the note read
+                    // "inherits from ''", so a reader checking inheritance on a perfectly good root
+                    // class saw nothing where the documented behaviour promises a name, and could
+                    // not tell it apart from a parent link that failed to take. Nothing about the
+                    // class was ever wrong; only this rendering was.
+                    ["inheritsFrom"] = string.IsNullOrEmpty(inherits) ? "LabVIEW Object" : inherits,
                     ["fieldsAsked"] = parsed.Count,
                     ["fieldsAdded"] = provider.FieldsAdded,
                     ["interfacesAsked"] = interfacePaths.Count,
@@ -1663,6 +1669,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             // dispatch flags - cost about 19 s of wall clock against essentially zero LabVIEW time,
             // 23 % of a class build. projectPath was already a parameter here; it was just unused
             // until the very end.
+            var callWall = Stopwatch.StartNew();
             JsonNode? projectOpened = null;
             if (projectPath is { Length: > 0 })
             {
@@ -1674,6 +1681,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
             var slices = new JsonArray();
             var wall = Stopwatch.StartNew();
+            var sliceStartMs = 0L;
             var moreToDo = false;
             string verdict;
 
@@ -1719,8 +1727,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["membersBefore"] = membersBefore,
                     ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex),
                     ["membersAfter"] = MembersOnDisk(lvclassPath),
+                    // BOTH, because one of them was read as the other. `elapsedMs` is the stopwatch
+                    // that gates the budget, so it is CUMULATIVE across slices - and a run comparing
+                    // two builds summed two slices to 94.8 s inside a call that lasted 104 s, then
+                    // spent two turns in the source finding out why. `sliceMs` is this slice alone.
                     ["elapsedMs"] = wall.ElapsedMilliseconds,
+                    ["elapsedMsIsCumulative"] = true,
+                    ["sliceMs"] = wall.ElapsedMilliseconds - sliceStartMs,
                 });
+                sliceStartMs = wall.ElapsedMilliseconds;
 
                 if (!Succeeded(verdict)) break;
 
@@ -1746,6 +1761,18 @@ internal sealed class ClassTools(LvaiConnection connection)
                 final["moreToDo"] = moreToDo;
                 final["resumedFrom"] = resumedFrom < 0 ? null : resumedFrom;
                 final["projectOpened"] = projectOpened;
+                // The whole call, not just the slicing loop - the project open and the helper load
+                // sit outside `wall` and were invisible, so no reported figure accounted for the
+                // call's real cost.
+                final["totalElapsedMs"] = callWall.ElapsedMilliseconds;
+                // HOW WARM LabVIEW WAS, because it dominates this tool and nothing reported it.
+                // Measured over three builds of an identically shaped four-field class: 21.4 s for
+                // eight accessors on a 75-minute-old instance, 57.2 s at 1 min 41 s, 80.0 s cold in
+                // two calls. `Save All This Library` re-checks the library per field, but the
+                // warm-up is the bigger term and it is a ONE-OFF on the first slice - which is why
+                // budgetSeconds must be large enough to carry that slice plus the cheap ones after
+                // it. A wall-clock comparison between runs is meaningless without this number.
+                final["labviewAgeSeconds"] = LabViewAgeSeconds();
 
                 // THE DISPATCH EVIDENCE, so nobody has to grep the class file for it. Runs that
                 // used this tool all ended with `lvai_describe_class` plus a shell grep for
@@ -2133,6 +2160,27 @@ internal sealed class ClassTools(LvaiConnection connection)
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// How many seconds the LabVIEW hosting the service has been up, or <c>null</c> when that cannot
+    /// be read. Reported beside this tool's timings because instance warmth dominates them and its
+    /// absence made three runs' figures incomparable - see the note at the call site.
+    /// </summary>
+    private static JsonNode? LabViewAgeSeconds()
+    {
+        try
+        {
+            var youngest = System.Diagnostics.Process.GetProcessesByName("LabVIEW")
+                .Select(p => { try { return (DateTime?)p.StartTime; } catch { return null; } })
+                .Where(t => t is not null)
+                .Max();
+            return youngest is null ? null : (int)(DateTime.Now - youngest.Value).TotalSeconds;
+        }
+        // A process that exits between the enumeration and the read, or a platform that refuses
+        // StartTime, is not a reason to fail an otherwise good accessor run.
+        catch (Exception failure) when (failure is InvalidOperationException
+                                        or System.ComponentModel.Win32Exception) { return null; }
     }
 
     private static int MembersOnDisk(string lvclassPath)
