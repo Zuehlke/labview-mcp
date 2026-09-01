@@ -83,10 +83,27 @@ the *only* thing that makes a class a test case.
 > six saves — every one `errorCode 0`, no 1562. **Linking to a class is not editing it.** One restart
 > per run, not two; at 30–43 s each that is worth having right.
 
-## Phase 3 — Author each test method's AIXML
+## Phase 3 — Fill in the shipped skeletons
 
-**This is the only part that is yours to write, and it is where a wrong guess hides.** Everything
-below it is two tools.
+> 📄 **START FROM `scripts/templates/lunit/`, DO NOT AUTHOR FROM SCRATCH AND DO NOT GO LOOKING FOR A
+> PREVIOUS RUN'S FILES.** Three skeletons — `round-trip.xml`, `defaults.xml`, `independence.xml` —
+> lifted from six files that were generated, run and verified, with the names and values replaced by
+> `{{PLACEHOLDER}}`. `README.md` beside them is the recipe: the placeholder table, the swap and
+> constant JSON shapes, and the four wiring rules that are easy to get wrong. Read that README, not
+> §§3–6, unless something does not fit.
+>
+> This exists because **finding something to copy was measured as the single largest cost of the
+> whole route** — 98 s of wall clock against 5 s inside tools in one run, four of nine turns spent
+> hunting a `c:\temp` folder. `docs/labview-lunit-testing.md` §12 has the numbers.
+>
+> Get the `{{STUB_…}}` values from Phase 4's `lvai_placeholder_subvi` answers, so run that first if
+> you have not.
+
+**What is still yours: the VALUES and the DESCRIPTIONS.** Those are where a wrong guess hides, and no
+template can supply them — pick values distinct per field, none of them a type default, and say in
+each `Description` what the assertion would catch. The rest of this phase is filling in blanks.
+
+The shape, if you need to check a template against it or a case the skeletons do not cover:
 
 A test method is a **public static-dispatch member VI** whose pane carries the test case class. AIXML
 cannot express that, so author it with **`path` stand-ins**:

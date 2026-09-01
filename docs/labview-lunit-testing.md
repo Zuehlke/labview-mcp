@@ -907,3 +907,42 @@ difference is that the brief named the sections and listed the prescriptions, so
 straight to them. The residue is reading §10 and §11 themselves plus four turns finding the archived
 AIXML, and **only the second half is something a tool can remove**. That is what
 `scripts/templates/` is for; a brief can shorten the reading but never delete it.
+
+## 13. The templates are shipped — `scripts/templates/lunit/`
+
+The cheap half of §12's "next tool", built 2026-09-01. Three skeletons plus a README:
+
+| file | shape |
+|---|---|
+| `round-trip.xml` | one field: write, read back, assert equal — fully parameterised |
+| `defaults.xml` | four fields read off a FRESH class constant, four assertions |
+| `independence.xml` | write all four on one object, read all four back, four assertions |
+| `README.md` | the placeholder table, the `swapsJson` / `constantsJson` shapes, and four wiring rules |
+
+**They are the verified files, not a rewrite, and that is checked mechanically.** Each was produced
+by taking the corresponding file from the run in §12 — generated, run, `tests="6" failures="0"` with a
+negative control — and replacing names and values with `{{PLACEHOLDER}}`. Filling the placeholders
+back in reproduces all three originals **line for line**, which was confirmed before shipping.
+
+`LUnitTemplateTests` pins what matters and deliberately not the prose: every placeholder fillable and
+the result valid XML; the 4-2-2-4 pane with the class terminals at conIdx 11 and 3 as `path`
+stand-ins and the error terminals at 8 and 0; the `Test Case.lvclassAPass If Equal.vim` target with
+its escape intact; the seed constant a `path` named `<Class> seed`; the unbroken error chain; and the
+one difference that decides whether the two four-field templates test anything —
+**`defaults.xml` reads the untouched seed four times, `independence.xml` reads the object all four
+writes ran on.** Swapping those two produces tests that pass and prove nothing, and nothing else
+would catch it.
+
+`scripts/**/*` already ships with `RecursiveDir`, so the folder needs no `.csproj` change and reaches
+a binary-only install with the rest of `scripts\`.
+
+**What this does NOT remove.** The *values* and the *descriptions* still have to be chosen, and that
+is the half where a wrong guess produces a green test that checks nothing — so the agent's Phase 3
+now says the skeletons are the starting point and the values are the job. §12's other half, a
+generator emitting these from `{class, fields, values, cases}`, is still unbuilt and is now the whole
+of the remaining authoring cost.
+
+**And the reading cost stays.** §12 measured orientation at 53 s even with a brief that named the
+sections; four of those turns were finding files and are what this removes, the rest is reading §§10–12
+and cannot be deleted by a tool — only shortened by a brief that says where to look. The agent's
+Phase 3 now points at `README.md` instead of §§3–6 for exactly that reason.
