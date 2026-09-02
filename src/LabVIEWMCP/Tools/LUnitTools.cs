@@ -562,6 +562,12 @@ internal sealed class LUnitTools(LvaiConnection connection)
             AIXML will carry. Every field of the class must appear.
             """)]
         string valuesJson,
+        [Description("""
+            Where the test method .vi files will go, which is what the returned methodsJson names.
+            Defaults to the folder holding testClassPath - a member VI belongs beside its class -
+            so the answer is paste-ready. Pass it only for a layout that separates them.
+            """)]
+        string? testMethodDirectory = null,
         [Description("Local budget in seconds, per placeholder")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -657,6 +663,17 @@ internal sealed class LUnitTools(LvaiConnection connection)
             }
 
             Directory.CreateDirectory(outputDirectory);
+
+            // THE .vi PATHS FOLLOW THE TEST CLASS, NOT THE AIXML. Both came from outputDirectory in
+            // the first version, so with the documented layout - AIXML in a subfolder, methods
+            // beside their class - the six `vi` paths in methodsJson had to be rewritten by hand,
+            // which is exactly the transcription this tool exists to abolish. Measured on its first
+            // real use, 2026-09-01, and it was the only manual edit left in the pipeline.
+            var methodFolder = string.IsNullOrWhiteSpace(testMethodDirectory)
+                ? Path.GetDirectoryName(Path.GetFullPath(testClassPath))!
+                : Path.GetFullPath(testMethodDirectory);
+            Directory.CreateDirectory(methodFolder);
+
             var written = new JsonArray();
             var methods = new JsonArray();
 
@@ -668,7 +685,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 methods.Add(new JsonObject
                 {
                     ["aixml"] = path,
-                    ["vi"] = Path.Combine(outputDirectory, viName),
+                    ["vi"] = Path.Combine(methodFolder, viName),
                 });
             }
 
@@ -704,10 +721,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 return list;
             }
 
+            // JSON STRINGS, not parsed arrays - the same shape as methodsJson and constantsJson, so
+            // all three can be copied into the next call without re-serialising. The first version
+            // mixed the two formats and only two of the three were paste-ready.
             foreach (var f in fields)
-                swaps[$"Test {f.Name} Round Trip.vi"] = Pairs([f], true, true);
-            swaps["Test Field Defaults.vi"] = Pairs(fields, false, true);
-            swaps["Test Write Independence.vi"] = Pairs(fields, true, true);
+                swaps[$"Test {f.Name} Round Trip.vi"] = Pairs([f], true, true).ToJsonString();
+            swaps["Test Field Defaults.vi"] = Pairs(fields, false, true).ToJsonString();
+            swaps["Test Write Independence.vi"] = Pairs(fields, true, true).ToJsonString();
 
             return Json.Document(new JsonObject
             {
@@ -734,8 +754,10 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 }.ToJsonString(),
                 ["placeholders"] = steps,
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
+                ["testMethodDirectory"] = methodFolder,
                 ["note"] =
-                    $"{written.Count} AIXML file(s) for {fields.Count} field(s). Next: pass " +
+                    $"{written.Count} AIXML file(s) for {fields.Count} field(s), with the test " +
+                    $"method .vi paths under '{methodFolder}'. Next: pass " +
                     "`methodsJson` to lvai_lunit_add_test_method with this test class and the " +
                     ".lvproj, then one lvai_swap_subvis per method - ALL IN ONE MESSAGE - using " +
                     "`swapsJsonPerMethod` and the same `constantsJson` each time. THE VALUES ARE " +

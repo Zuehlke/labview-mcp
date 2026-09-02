@@ -1041,3 +1041,60 @@ templates and the tool compiles and is served, but no suite has been built with 
 run, and until then this section describes a tool that is verified in its authoring and unverified in
 its plumbing — the same state `lvai_lunit_add_test_method` was in before its first real run, which
 found two defects.
+
+## 15. The scaffold's first real use — run 8
+
+Cold from nothing, six methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3 with a
+write-side negative control between them. **The class phase reached 5 tool calls**, the lowest of the
+series, and `budgetSeconds: 100` fitted both accessor slices in one call for the fourth consecutive
+time (35.1 s then 18.3 s — a 45 s budget would have stopped after the expensive one).
+
+### All three suspected failure modes held
+
+The emission was pinned offline; the plumbing was not, and the three things most likely to break all
+worked on the first run:
+
+| suspected | measured |
+|---|---|
+| field extraction from `Read <Field>.vi` member names | correct on all four, space in `Gewicht g` included |
+| type detection from the placeholder's terminal list | correct on all four — `bool`, `int32`, `double`, `string`, with the right defaults |
+| eight internal placeholder calls in one tool call | **`totalElapsedMs: 3555`**, of which the placeholders were 3 528 ms, every stub cache-cold. Nowhere near a client timeout |
+
+Field order in the output is `OrdinalIgnoreCase`-sorted, not declaration order — harmless, but worth
+knowing when diffing two runs.
+
+**The authoring step that cost 60-90 s of wall clock now costs 3.6 s of tool time in one call.**
+
+### Two defects it found, both fixed
+
+**`methodsJson` put the `.vi` paths in `outputDirectory`.** With the documented layout — AIXML in a
+subfolder, methods beside their class — all six paths had to be rewritten by hand, which is exactly
+the transcription the tool exists to abolish. It now takes an optional `testMethodDirectory` and
+defaults to the folder holding `testClassPath`, because a member VI belongs beside its class. The
+answer reports `testMethodDirectory` so the choice is visible.
+
+**`swapsJsonPerMethod` was a parsed object while its two siblings were JSON strings**, so only two of
+the three could be pasted without re-serialising. All three are strings now.
+
+Everything else was usable verbatim: the six files were the shape a careful author would have
+written, `swapsJsonPerMethod` gave `socketsLeft: 0` on all six, and `constantsJson` gave
+`constantsSwapped: 1` on all six.
+
+### The largest remaining item was not the route at all
+
+**About 46 s of wall clock against no tool time went on the new tool being unreachable** — it was
+absent from the agent's frontmatter `tools:` list, so the agent diagnosed the roster and then drove
+the built server over raw stdio to measure it rather than falling back and leaving the plumbing
+untested. That was the right call and it is why this section has numbers.
+
+**The omission was the third of its kind in one afternoon** — `lvai_placeholder_subvi`, then the two
+LUnit tools, then the scaffold, each written into an agent's job and left out of its roster. It is now
+a test. `AgentToolRosterTests` asserts that every served tool whose name contains `lunit`, `dqmh` or
+`caraya` is granted to that framework's agent, and that every tool an agent claims is actually served.
+It found the scaffold omission and a pre-existing one nobody had noticed —
+`lvai_dqmh_new_event`, missing from the DQMH agent since it was built.
+
+The rule is deliberately narrower than "every tool the prose mentions", which has twelve hits across
+the eight agents and is mostly legitimate: an agent may discuss a tool it must not use, and the
+doc-generator explains six it never calls. A rule with that many exceptions needs an allowlist, and an
+allowlist is where a real omission goes to hide.
