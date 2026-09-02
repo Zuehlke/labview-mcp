@@ -350,7 +350,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // away with it only because a restart was due anyway; without one the next step would
                 // have run against a stale active project, and `Project:Active Project` would have
                 // handed it the wrong one.
-                var scratchLeftOpen = !Succeeded(closed);
+                // Judged by the close answer's OWN keys, not by `ok`: lvai_close_active_project
+                // answers `closed` / `nothingToClose` / `errorCode` and carries no `ok` at all, so
+                // `Succeeded(closed)` was false on EVERY call and this warning fired
+                // unconditionally - measured 2026-09-02, run 12, twice in one run against a close
+                // that reported `closed: true, errorCode: 0`, costing a wasted
+                // lvai_close_active_project (Error 1055) each time.
+                var scratchLeftOpen = !ScratchCloseSucceeded(closed);
                 if (scratchLeftOpen)
                     steps.Add(new JsonObject
                     {
@@ -1447,6 +1453,19 @@ internal sealed class ClassTools(LvaiConnection connection)
     private static int? ErrorCode(string answer) =>
         Parsed(answer) is JsonObject o && o.TryGetPropertyValue("errorCode", out var code)
             ? code?.GetValue<int>() : null;
+
+    /// <summary>
+    /// Did the scratch-project close leave nothing active? True for a real close (`closed: true`)
+    /// and for `nothingToClose` (Error 1055, the project was already gone) - both mean the next
+    /// `Project:Active Project` lookup cannot land on the throwaway project. A guarded exception
+    /// (`ok: false`), a raised chain, or an unparseable answer all read as "still open".
+    /// </summary>
+    internal static bool ScratchCloseSucceeded(string answer)
+    {
+        if (Parsed(answer) is not JsonObject o) return false;
+        if (o.TryGetPropertyValue("ok", out var ok) && ok?.GetValue<bool>() == false) return false;
+        return o["closed"]?.GetValue<bool>() == true || o["nothingToClose"]?.GetValue<bool>() == true;
+    }
 
     private static bool Succeeded(string answer) =>
         Parsed(answer) is JsonObject o && o["ok"]?.GetValue<bool>() == true;

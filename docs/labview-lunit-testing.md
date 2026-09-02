@@ -1255,3 +1255,48 @@ class creation. `ok` deliberately stays true — the class really was created.
 Six `lvai_swap_subvis` calls in one message: **16.9 s of summed tool time against ~17 s of wall
 clock.** LabVIEW serialises them, exactly as `CLAUDE.md` says; the saving is round trips and nothing
 else. Not a defect — just the measurement, so nobody looks for concurrency that is not there.
+
+## 18. Run 12 — cold, timed per call, and the warning that always fired
+
+Six methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3, a write-side negative control
+between them (`Write Erntejahr.vi` swapped in for `Write Gewicht g.vi`: exactly one `Failed`,
+`Expected:182.500000 / Actual: 0.000000`), verified from the three report files. LabVIEW was killed
+first and the previous run archived, so both phases started cold. This run was asked to log **every
+tool call with a timestamp** into `timing-run12.log` beside the class, so the table below is the
+first per-phase breakdown of this route measured inside the run rather than reconstructed from a
+transcript. Wall clock from the first `lvai_ensure_labview` to the final project close: **816 s**.
+
+| phase | wall (s) | calls | tool time (s) | what the gap is |
+|---|---|---|---|---|
+| 0 LabVIEW cold start + `.lvproj` | 96 | 6 | 61.6 | the 45 s `ensure_labview` budget expiring while LabVIEW boots, then a second call |
+| 2 `lvai_create_class` | 43 | 4 | 15.2 | one wasted `lvai_close_active_project` (Error 1055) — see below |
+| 3 accessors, two slices | 114 | 5 | 70.6 | LabVIEW-bound: 39.0 s + 31.6 s for four fields on a cold instance |
+| 4–5 verify, close | 53 | 6 | 8.8 | turn latency |
+| 6 LUnit agent | 480 | 33 | 104.3 | **338 s of agent latency**; single item a 63 s restart after the test-class `create_class` |
+| 7 final close | 30 | 3 | 0.6 | one turn |
+| **total** | **816** | **58** | **~261** | |
+
+Inside the test phase, the tool-bound steps were `lvai_lunit_add_test_method` 24.0 s for six methods,
+`lvai_lunit_scaffold_class_tests` 3.1 s, six `lvai_swap_subvis` 11.3 s summed in one message, and three
+`lvai_run_lunit_tests` at 4.0–5.7 s each. The negative control cost the agent 72 s of wall clock for
+10.6 s inside tools — four turns.
+
+**Where the next second is.** Ranked by wall minus tool: the agent's turn latency (338 s), the
+restart the LUnit route still needs between class creation and `AddItemFromMemory` (63 s, Error 1562,
+unchanged), the cold-start double call (about 35 s of budget expiry that a longer first budget would
+absorb), and the wasted close below (about 14 s, one turn). The class build itself is where
+`docs/workflow-economics.md` §3 said it is: LabVIEW-bound, not latency-bound.
+
+### `closeScratchProjectWarning` fired unconditionally — fixed
+
+Both `lvai_create_class` calls in this run (subject class and test-case class) emitted
+`closeScratchProjectWarning` although their own `closeScratchProject` step answered
+`closed: true, errorCode: 0`; the follow-up `lvai_close_active_project` it prescribes answered
+`Error 1055`, nothing open. The gate was `Succeeded(closed)`, which looks for `ok: true` — and the
+close answer carries `closed`, `nothingToClose` and `errorCode` but **no `ok` key at all**, so the
+predicate was false on every call. §17 recorded the warning as a fix without a run to check it; this
+is that run. Now gated on `ScratchCloseSucceeded`: a real close or `nothingToClose` is quiet, a raised
+chain or a guarded `ok: false` (the port-moved case §17 measured) still warns. `ClassToolsScratchCloseTests`
+pins the four answers. The general shape is the one §10 met with the answer-size defect: **a step that
+composes another tool's answer must read that answer's own keys**, and the only thing that checks it
+is a run.
