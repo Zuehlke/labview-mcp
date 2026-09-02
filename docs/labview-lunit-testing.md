@@ -1194,3 +1194,64 @@ structural reason the `100` recommendation stays retracted.
 LabVIEW; by the time the resume ran the class file had all eight members, and the resume detected the
 field pair already existed and rebuilt nothing — `accessorsCreated: 0`, no `Read Bio 2.vi`. Verified
 independently: 8 members, 8 files, zero occurrences of a mangled name.
+
+## 17. Run 11 — a spin, and what the budget fix does and does not prove
+
+Six methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3 with a write-side negative
+control between them, verified from the report files. The scaffold was paste-ready unedited in all
+three fields again, 2.3 s. **Nothing on the settled route departed** — which the run was explicitly
+asked to say if true, rather than manufacture a finding.
+
+### The budget fix: both answers returned, but this run does not prove the fix
+
+The class phase ran `lvai_create_accessors` twice at the **default** budget and **both calls
+returned** — `sliceMs` 46 867 then 33 405, `moreToDo` true then false. The previous two class phases
+each lost an answer, so the phase completing is real progress.
+
+**What it does not establish, against the run report's own reading.** The report says a second slice
+would have started at 47 s under the old comparison. It would not: the old condition was
+`elapsed >= budget`, and 47 ≥ 45 stops too. Slice 1 alone exceeded the budget, so old and new decide
+identically here. The discriminating band — `elapsed` under budget while `elapsed + nextSlice` is
+over it — is where every production overrun lived, and it is pinned by `AccessorSliceBudgetTests`
+offline. **So: the logic is proven by test, the phase is observed to complete, and the causal
+attribution for this particular run does not hold.** Slice cost varies by more than a factor of two
+across this series, which is enough on its own to explain a different outcome.
+
+### A SPIN in `lvai_create_class`, and it cost 450 s of a 722 s run
+
+The interesting failure. `lvai_create_class` was called against a LabVIEW that had just completed a
+`lvai_create_accessors` run for the subject class, and it **never returned**: `Responding = False`, a
+steady ~21 % of one core for seven minutes, target directory empty. Kill, `lvai_ensure_labview`, the
+identical call — `ok: true` in 15.4 s.
+
+**It is not the documented `classIndex: -1` false alarm.** A UI thread merely busy with
+`Save All This Library` still answers. This answered nothing and wrote nothing.
+`docs/labview-crash-signatures.md` records it as a sixth mechanism, with the log's pages of
+`RTSetCleanupProc: leaf and root VIs in different contexts` ending in `CLSUIP_CreateNewAccessor.vi`.
+
+**The rule taken from it, with its limits:** a *lock* after `lvai_create_class` costs nothing on a
+subject class — that stands — but the accessor **run's** leftovers are not free, and a restart after a
+long accessor run is ~30 s of insurance against a seven-minute spin. One observation; the mechanism
+is not established.
+
+**And the diagnostic is the transferable part.** A spin and a long library save both show rising CPU,
+so a single CPU sample reads a spin as progress. Sample CPU **twice** *and* watch the target
+directory: zero bytes after minutes is what discriminates.
+
+### `lvai_create_class` reported `ok: true` while leaving a project open — now surfaced
+
+Its `closeScratchProject` step failed because the **service port moved** between the provider call
+and the close, so it answered "Could not find a port serving lvai.LVAI". The class file was complete
+and correct and `ok` was true — but the throwaway `…-loadcheck.lvproj` was left **open and active**,
+and anything reaching LabVIEW through `Project:Active Project` next would have found it instead of
+the user's project. The run got away with it only because a restart was due anyway.
+
+Fixed: a failed close now adds a `closeScratchProjectWarning` step naming the project and the
+consequence, and saying that the usual cause is the port moving mid-call rather than a failure of the
+class creation. `ok` deliberately stays true — the class really was created.
+
+### One number worth attaching
+
+Six `lvai_swap_subvis` calls in one message: **16.9 s of summed tool time against ~17 s of wall
+clock.** LabVIEW serialises them, exactly as `CLAUDE.md` says; the saving is round trips and nothing
+else. Not a defect — just the measurement, so nobody looks for concurrency that is not there.

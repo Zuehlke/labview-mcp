@@ -77,6 +77,20 @@ the *only* thing that makes a class a test case.
 > then `lvai_ensure_labview` does. Adding further members later in the same session is fine, so the
 > lock belongs to class creation alone.
 >
+> **BUT A LONG ACCESSOR RUN IS DIFFERENT FROM A LOCK, and it is worth ~30 s of insurance.** Measured
+> 2026-09-02: `lvai_create_class` was called against a LabVIEW that had just completed a
+> `lvai_create_accessors` run, and it **never returned** — `Responding = False`, a steady ~21 % of one
+> core for seven minutes, nothing on disk. Kill plus `lvai_ensure_labview` plus the identical call:
+> `ok: true` in 15.4 s. **That spin cost 450 s of a 722 s run.** The log carried pages of
+> `RTSetCleanupProc: leaf and root VIs in different contexts` ending in
+> `CLSUIP_CreateNewAccessor.vi`, so the wizard's leftovers are implicated — one observation, mechanism
+> not established. `docs/labview-crash-signatures.md` has it as the sixth mechanism.
+>
+> **The diagnostic, because one CPU sample misleads:** a spin and a long `Save All This Library` both
+> show rising CPU. Sample CPU **twice** *and* watch the target directory — **zero bytes after minutes
+> is what makes it a spin.** A merely-busy UI thread still ANSWERS, with `classIndex: -1` and
+> `DeadlineExceeded`; a spin answers nothing at all.
+>
 > **The SUBJECT class's lock does not matter, so do not restart for it.** Measured 2026-09-01: a
 > subject class created by `lvai_create_class` in the same session had all eight of its accessors
 > linked into six test methods through `{LV.SubVI}` `Replace`, a class constant built per method, and

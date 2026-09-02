@@ -342,6 +342,30 @@ internal sealed class ClassTools(LvaiConnection connection)
                     timeoutSeconds: timeoutSeconds, ct: ct);
                 steps.Add(Step("closeScratchProject", closed));
 
+                // A FAILED CLOSE IS A CONSEQUENCE FOR THE NEXT CALL, so it must not stay buried in
+                // `steps` while `ok` reads true. Measured 2026-09-02: the service PORT MOVED between
+                // the provider step and the close, so the close answered "Could not find a port
+                // serving lvai.LVAI" - the class file was complete and correct, `ok` was true, and
+                // the throwaway project was left OPEN AND ACTIVE in LabVIEW. The run that hit it got
+                // away with it only because a restart was due anyway; without one the next step would
+                // have run against a stale active project, and `Project:Active Project` would have
+                // handed it the wrong one.
+                var scratchLeftOpen = !Succeeded(closed);
+                if (scratchLeftOpen)
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "closeScratchProjectWarning",
+                        ["scratchProject"] = projectUsed,
+                        ["note"] = "THE THROWAWAY PROJECT IS PROBABLY STILL OPEN AND ACTIVE in " +
+                                   "LabVIEW. The class itself is unaffected - it is verified from " +
+                                   "the file below - but anything reaching LabVIEW through " +
+                                   "Project:Active Project next will find THIS project rather than " +
+                                   "yours. Call lvai_close_active_project before continuing, or " +
+                                   "restart LabVIEW. The commonest cause is the service port " +
+                                   "moving mid-call, which reads as 'Could not find a port serving " +
+                                   "lvai.LVAI' and is not a failure of the class creation.",
+                    });
+
                 steps.Add(userProject is { Length: > 0 }
                     ? AddClassToProject(userProject, classPath, className, listedBefore)
                     : new JsonObject

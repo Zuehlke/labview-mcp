@@ -542,6 +542,42 @@ The practical rule is unchanged and now better founded: a crash mid-session cost
 the class. Restarting and calling `lvai_create_accessors` again resumed from `fromField: 0` and
 finished all eight in one call — nothing had to be rebuilt.
 
+## A SIXTH mechanism: a SPIN, not a crash — and the accessor run's leftovers are implicated
+
+Measured 2026-09-02. `lvai_create_class` was called against a LabVIEW that had started four minutes
+earlier and had already completed a `lvai_create_accessors` run for another class. **The call never
+returned.** LabVIEW went `Responding = False` and held a steady **~21 % of one core for seven
+minutes** while the target directory stayed empty. Killing it and repeating the identical call after
+`lvai_ensure_labview` answered `ok: true` in **15.4 s**.
+
+**This is NOT the documented false alarm, and the difference is what to check.** A call made while
+the UI thread is merely busy with `Save All This Library` still *answers*, with `ok: false`,
+`classIndex: -1` and a port sweep full of `DeadlineExceeded`. This produced **no answer at all and
+no file**. `lvai_status` reported the port `DeadlineExceeded`, which its own message reads as "hung,
+kill it", and that reading was right.
+
+**The diagnostic that settles it, and the reason a single CPU sample misleads:** sample CPU **twice**
+*and* watch the target directory. Rising CPU reads exactly like progress — it is what a long
+`Save All This Library` looks like. **Zero bytes on disk after seven minutes is what makes it a
+spin.** Neither signal alone is enough.
+
+**What the log implicates, short of a mechanism.** That one instance's `_cur.txt` had grown to 10 820
+lines and carried, besides two `minidump id` lines and six of the `HeapObjMapImpl.cpp(226)` DWarns
+recorded above, **page after page of `RTSetCleanupProc: leaf and root VIs in different contexts`**
+with call chains ending in `MemberVICreation.lvlib:CLSUIP_CreateNewAccessor.vi` and
+`lvai_create_accessors.vi`. So the instance was carrying leftover state from the accessor wizard when
+the next generation spun.
+
+**The practical rule this yields, and its limits.** `docs/labview-lunit-testing.md` records that a
+*subject* class's `Error 1562` lock costs nothing, and that stands — a lock is not this. But **the
+accessor RUN's leftovers are not free**, and on this evidence a restart after `lvai_create_accessors`
+would have saved **450 s of a 722 s run**. One observation, and the mechanism is not established; the
+`RTSetCleanupProc` correlation is suggestive and no more. Treat it as: **after a long accessor run,
+a restart before the next generation is cheap insurance at ~30 s against a seven-minute spin.**
+
+That is also the first time in this series that the restart budget went to two rather than one, and
+the second one was recovery rather than the mandated `1562` restart.
+
 ## What it means for working here
 
 **Validation is not free of risk, and that is new.** `lvai_validate_aixml` has been treated
