@@ -1098,3 +1098,55 @@ The rule is deliberately narrower than "every tool the prose mentions", which ha
 the eight agents and is mostly legitimate: an agent may discuss a tool it must not use, and the
 doc-generator explains six it never calls. A rule with that many exceptions needs an allowlist, and an
 allowlist is where a real omission goes to hide.
+
+## 16. Run 9 — a real defect in the accessor resume, and the doc that promised otherwise
+
+The suite was built and is green, but the class phase needed a hand repair, and the cause is worth
+more than the timing.
+
+`lvai_create_accessors` **timed out at the client** with `budgetSeconds: 100` — the work had in fact
+completed. The retry then reported `resumedFrom: 3` and rebuilt a field that already existed, and
+**NI's wizard appended a number rather than refusing the collision**: `Read Bio 2.vi` /
+`Write Bio 2.vi`, `membersAfter: 10`, `ok: true`, `moreToDo: false`. A corrupted class reported as a
+success.
+
+### The mechanism, established rather than guessed
+
+The reconciling fact is that **the private data control is itself a member**. A complete four-field
+class has 9 `<Item>` entries: 8 accessors plus `Apfel.ctl`. So the retry's `membersBefore: 8` was
+**7 accessors plus the control** — the first call had died mid-pair.
+
+`FieldsWithAccessors` then counted matching members and divided by two, and **integer division
+truncated the half-built field away**: 7 → 3. The resume restarted at field 3, whose `Read` already
+existed.
+
+### Fixed in three places
+
+- **The count is now of COMPLETE fields**, grouped by field name, rather than `matching / 2`.
+- **A resume onto a half-built field is REFUSED**, with `halfBuiltAccessors` naming it and telling
+  you to delete the orphan with the project closed. Re-running such a field is what causes the
+  mangle, so the safe answer is to stop.
+- **A run that leaves duplicates answers `ok: false`** with `mangledAccessors`. This is the net that
+  works whatever the cause: LabVIEW does not treat the duplication as an error, every per-step
+  `errorCode` stays 0, and nothing else in the chain would ever mention it.
+
+Nine regression tests pin the arithmetic, including the case the fix got wrong first time — in a
+Write-only run a field with only a Read is *not built yet*, not *half built*, and reporting it as
+incomplete would refuse a perfectly good resume. Also recorded there: a field whose own name ends in
+a digit (`Read Kanal 2.vi`) is indistinguishable from a mangled one, so the check is a warning to
+look, not proof of corruption, and the message says so.
+
+### The claim that was wrong
+
+The tool's own description said a timed-out call leaves the class consistent, "measured repeatedly:
+6 VIs and 6 members, 12 and 12, 4 and 4, never a mismatch". Those measurements were real; the
+conclusion drawn from them was not. **They all happened to land between fields.** Corrected in place.
+
+### Timing, such as it is
+
+~175 s and 7 calls for the class phase, against 5 calls when nothing goes wrong. The two extra are
+the timeout and its cleanup, and the largest wall-minus-tool item was the timed-out call itself:
+~60 s that returned no answer at all, followed by ~35 s of repair across four calls with under a
+second of tool time between them. `lvai_ensure_labview` answered `ready` on the **first** call
+(30.4 s) — the second cold start in a row to need no retry, against a 0.055-27.7 s spread on the
+second call in the seven before.

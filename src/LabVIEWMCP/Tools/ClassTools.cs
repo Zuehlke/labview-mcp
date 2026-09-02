@@ -1481,11 +1481,18 @@ internal sealed class ClassTools(LvaiConnection connection)
         `slicesRun` and `slices` say what one call actually did. The library is saved after EVERY
         field, so an interrupted call leaves a consistent partial class rather than orphan VIs the
         class file does not mention.
-        A TIMED-OUT CALL HAS USUALLY DONE ITS WORK. The client gives up near 60 s while the helper
-        keeps going, and because the library is saved after every field the class is left consistent -
-        measured repeatedly: 6 VIs and 6 members, 12 and 12, 4 and 4, never a mismatch. So on
-        "Request timed out", just call again: the default -1 reads the class file and continues from
-        exactly where the lost answer got to. Every successful answer also carries membersBefore,
+        A TIMED-OUT CALL HAS USUALLY DONE ITS WORK, and "usually" is now the honest word. The client
+        gives up near 60 s while the helper keeps going, and the library is saved after every field.
+        This paragraph claimed the class is therefore "left consistent - never a mismatch"; that is
+        true only when the timeout lands BETWEEN fields. Measured 2026-09-02: one landed inside a
+        pair, leaving SEVEN accessor members, and the resume then rebuilt that field and NI's wizard
+        appended a number rather than refusing - `Read Bio 2.vi` - while every step reported
+        errorCode 0. So on "Request timed out", call again: the default -1 reads the class file and
+        continues. If it finds a half-built field it now REFUSES with `halfBuiltAccessors` and names
+        it, instead of resuming onto it; delete that orphaned accessor and its <Item> block with the
+        project closed, then call again. And any run that ends with duplicate accessors on disk
+        answers `ok: false` with `mangledAccessors`, because LabVIEW does not consider the
+        duplication an error and nothing else would report it. Every successful answer also carries membersBefore,
         membersAfter and nextFromField, all read off the class file rather than from the run.
         VERIFY IMMEDIATELY - lvai_describe_class reads the .lvclass file and needs no LabVIEW, so
         the check survives whatever the IDE does next. This used to read "expect LabVIEW to go down
@@ -1658,6 +1665,28 @@ internal sealed class ClassTools(LvaiConnection connection)
             var resumedFrom = -1;
             if (fromField < 0)
             {
+                // A RESUME MUST NOT LAND ON A HALF-BUILT FIELD. If a previous call died mid-pair -
+                // a client timeout inside the wizard does exactly that - one accessor of a field
+                // exists and the other does not. Re-running that field makes NI's wizard NAME-MANGLE
+                // around the collision (`Read Bio 2.vi`) instead of refusing, and the run then
+                // reports success over a corrupted class. Measured 2026-09-02.
+                var halfBuilt = HalfBuiltOnDisk(lvclassPath, accessIndex);
+                if (halfBuilt.Count > 0)
+                    return Json.Error("halfBuiltAccessors",
+                        "Cannot resume: " + string.Join(", ", halfBuilt.Select(f => $"'{f}'")) +
+                        " has some of its accessors but not all, so a previous call died inside " +
+                        "that field. Resuming would restart it, and NI's wizard appends a number " +
+                        "rather than refusing - you would get `Read <field> 2.vi` and a class that " +
+                        "reads back as if nothing were wrong. DELETE the orphaned accessor .vi and " +
+                        "its <Item> block from the .lvclass, with the project CLOSED, then call " +
+                        "again. Or pass an explicit fromField to rebuild that field deliberately.",
+                        new JsonObject
+                        {
+                            ["halfBuiltFields"] =
+                                new JsonArray([.. halfBuilt.Select(f => (JsonNode)f!)]),
+                            ["classPath"] = Path.GetFullPath(lvclassPath),
+                        });
+
                 fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex));
                 resumedFrom = fromField;
             }
@@ -1782,6 +1811,25 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // written rather than what was asked for.
                 final["memberNames"] = MemberNamesOnDisk(lvclassPath);
                 final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
+
+                // THE SAFETY NET, whatever the cause. NI's wizard renames around a collision rather
+                // than failing, so a class can come out with `Read Bio 2.vi` in it while every
+                // per-step errorCode is 0. One run did exactly that and answered ok: true with
+                // moreToDo: false. A tool that leaves duplicates behind must not call it success.
+                var mangled = MangledOnDisk(lvclassPath);
+                if (mangled.Count > 0)
+                {
+                    final["ok"] = false;
+                    final["mangledAccessors"] =
+                        new JsonArray([.. mangled.Select(m => (JsonNode)m!)]);
+                    final["note"] =
+                        "THE CLASS HAS DUPLICATE ACCESSORS: " + string.Join(", ", mangled) +
+                        ". NI's wizard appends a number instead of refusing a name that already " +
+                        "exists, so this is what a field built twice looks like. Every step still " +
+                        "reported errorCode 0 - the duplication is not an error to LabVIEW. Delete " +
+                        "those .vi files AND their <Item> blocks from the .lvclass with the project " +
+                        "CLOSED, then verify with lvai_describe_class.";
+                }
                 if (moreToDo)
                     final["note"] = $"Stopped after {slices.Count} slice(s) with " +
                         $"{wall.Elapsed.TotalSeconds:F0} s spent, because the budget of " +
@@ -2181,6 +2229,20 @@ internal sealed class ClassTools(LvaiConnection connection)
         // StartTime, is not a reason to fail an otherwise good accessor run.
         catch (Exception failure) when (failure is InvalidOperationException
                                         or System.ComponentModel.Win32Exception) { return null; }
+    }
+
+    /// <summary>Fields with only part of their accessor set, off the class file.</summary>
+    private static IReadOnlyList<string> HalfBuiltOnDisk(string lvclassPath, int accessIndex)
+    {
+        try { return LvClass.IncompleteAccessorFields(LvClass.Read(lvclassPath).Members, accessIndex); }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
+    }
+
+    /// <summary>Accessors NI's wizard renamed around a collision, off the class file.</summary>
+    private static IReadOnlyList<string> MangledOnDisk(string lvclassPath)
+    {
+        try { return LvClass.MangledAccessorNames(LvClass.Read(lvclassPath).Members); }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
     }
 
     private static int MembersOnDisk(string lvclassPath)
