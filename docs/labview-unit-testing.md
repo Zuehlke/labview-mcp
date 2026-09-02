@@ -42,6 +42,18 @@ both for reasons worth recognising rather than working around blindly.
 | what | symptom | what it actually was |
 |---|---|---|
 | **`Error 1562`** at `AddVIToClass.vi`, first accessor slice | `membersAfter: 0`, nothing written, `classIndex` correct | *"The specified project or library is locked"* — the class LabVIEW holds after `lvai_create_class` is locked for editing. **A project close and re-open does NOT clear it**; only a restart did. The `.lvclass` on disk is not read-only and carries no lock property, so the file tells you nothing |
+
+**`Error 1562` REPRODUCED IN A SECOND CONTEXT, 2026-09-01**, which promotes the row above from one
+observation to two and narrows what it blames. Building an LUnit test case, `{LV.LVClassLibrary}`
+`AddItemFromMemory` — a different method, on a class made minutes earlier by `lvai_create_class` —
+answered 1562 with every earlier stage of the same helper reporting `0`. `Stop-Process LabVIEW` plus
+`lvai_ensure_labview` plus reopening the project made the **identical call return all zeros**, and
+adding a *second* member later in that same session also returned all zeros. So the lock is created
+by **class creation**, not by adding members, and it survives everything short of a restart. The
+working rule is therefore: **do not create a class and add member VIs to it in one LabVIEW session.**
+Per `CLAUDE.md`, "only a restart fixes it" is a symptom rather than a diagnosis — the analogous fault
+in `lvai_create_class` was a leaked refnum — so the leak is worth finding. It is not found yet.
+Details in `docs/labview-lunit-testing.md` §5.
 | **`Error 1051`** at the socket's `Save:Instrument` | validation passes, generation does not | the socket name is **poisoned by its own earlier failed validation** and stays so until LabVIEW restarts. A retry after fixing the authoring bug therefore still fails, on the same names, for a different reason |
 
 Three authoring facts came out of the same run, each of which validated for one type and not another —

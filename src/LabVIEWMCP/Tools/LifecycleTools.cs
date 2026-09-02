@@ -171,6 +171,14 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                     ["autoSaveCleared"] = autoSave?.Describe(),
                 ["runningProcesses"] = stillRunning,
                 ["waitedMs"] = stopwatch.ElapsedMilliseconds,
+                // THE BUDGET IS CLAMPED AND SAYING SO IS THE POINT. waitSeconds is capped at
+                // Rpc.MaxToolWaitSeconds, so asking for 90 waits 45 - and four runs on 2026-09-01
+                // read `waitedMs: 45009` against a nominal 90 and took it for a fault. The cap is
+                // deliberate: past roughly 60 s the MCP client stops waiting and the caller learns
+                // nothing at all, so waiting longer inside ONE call is not available. That is also
+                // why this tool cannot retry internally, which was proposed and does not work.
+                ["waitSecondsRequested"] = waitSeconds,
+                ["waitSecondsUsed"] = (int)budget.TotalSeconds,
                 ["lastError"] = last?.Message,
                 // "LabVIEW is up" was asserted unconditionally here, and it was wrong exactly when
                 // it mattered: with runningProcesses 0 the advice sent the reader after the AI
@@ -179,8 +187,15 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                     ? "No LabVIEW process is running any more - it was started and did not stay up. " +
                       "Start LabVIEW by hand and call this tool again; the README's Troubleshooting " +
                       "table has the measurement behind this."
-                    : "LabVIEW is up but its AI gRPC service is not answering yet. " +
-                      "Call this tool again, or use the CLI --ensure-labview for a long wait.",
+                    : "LabVIEW is up but its AI gRPC service is not answering yet. THIS IS THE " +
+                      "NORMAL COLD-START ANSWER, not a fault - CALL THIS TOOL AGAIN and it will " +
+                      "almost certainly answer `ready` at once. Measured four times on 2026-09-01: " +
+                      "the first call spent its whole 45 s budget and the second answered ready in " +
+                      "1.2 s, 12.1 s, 27.7 s and 1.2 s. Do NOT read `lastError: \"The operation " +
+                      "was canceled.\"` as a failure; it is this call's own budget expiring. Only " +
+                      "if a SECOND call also comes back `starting` is something wrong - then the " +
+                      "service may be waiting on Nigel, which starts it, or use the CLI " +
+                      "--ensure-labview for an unattended long wait.",
             }.ToJsonString(Indented);
         });
 

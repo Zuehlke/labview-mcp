@@ -84,6 +84,47 @@ internal static class Json
     public static string Document(JsonNode node) => Indent(node);
 
     /// <summary>
+    /// A composing tool's sub-answer reduced to the fields that say whether it worked, unless
+    /// <paramref name="keep"/>. A step that FAILED is never reduced — that is exactly when the whole
+    /// answer is what you need.
+    ///
+    /// WHY THIS IS SHARED RATHER THAN PER-TOOL. A tool that composes N others inlines N whole
+    /// answers, and past a few hundred lines that overflows the client's token limit and the caller
+    /// spends turns grepping its own result — so the tool built to save round trips starts spending
+    /// them. Measured twice on the same afternoon: <c>lvai_lunit_add_test_method</c> at 85 968
+    /// characters for six methods (three wasted turns), and then <c>lvai_swap_subvis</c> at about
+    /// 34 kB for six swaps, because its verify step returns LabVIEW's entire AIXML export inline
+    /// plus a flattened value dump. The second one is why this moved out of one tool and into here:
+    /// the defect is structural to composition, not particular to either tool.
+    ///
+    /// The kept fields are deliberately few. Everything a caller acts on should be LIFTED by the
+    /// composing tool into its own top-level answer; the sub-answers are evidence, not interface.
+    /// </summary>
+    public static JsonNode? Slim(JsonNode? answer, bool keep)
+    {
+        if (keep || answer is not JsonObject o) return answer;
+
+        var failed = o["ok"]?.GetValue<bool>() is false
+                     || (o["errorCode"] is { } code && code.GetValue<int>() != 0)
+                     || o["errorKind"] is not null
+                     || o["failedAtStep"] is not null;
+        if (failed) return answer;
+
+        string[] worthKeeping =
+        [
+            "ok", "errorCode", "errorKind", "errorMessage", "errorSource", "failedAtStep",
+            "elapsedMs", "totalElapsedMs", "viBytes", "viExistsNow", "closed", "nothingToClose",
+        ];
+
+        var slim = new JsonObject();
+        foreach (var key in worthKeeping)
+            if (o[key] is { } value)
+                slim[key] = value.DeepClone();
+        slim["slimmed"] = true;
+        return slim;
+    }
+
+    /// <summary>
     /// A failure rendered as data rather than thrown. The MCP client sees a result it
     /// can reason about instead of an opaque transport error.
     /// </summary>

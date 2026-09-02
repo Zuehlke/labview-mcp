@@ -77,6 +77,10 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
 
+            // Started before the export, which is the slowest thing this call does - a stopwatch
+            // begun after it would report a misleadingly small number.
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+
             if (UserLibFolder() is not { } folder)
                 return Json.Error("noInstallation",
                     "No LabVIEW installation was found, so there is no user.lib to put a " +
@@ -126,6 +130,27 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             var typedefs = await new TypedefTools(connection)
                 .PaneTypedefsAsync(viPath, timeoutSeconds, ct);
 
+            // A CLASS TERMINAL IS NOT A TYPEDEF ANYONE BINDS, and it looks like one to the probe.
+            // A `.lvclass` presents its private data control as the terminal's type, so the typedef
+            // detector reports `<Class>.lvclass\<Class>.ctl` for the class in/out - and the note
+            // below then prescribes lvai_bind_typedef_constants, which is the wrong action: those
+            // wires are re-typed by {LV.SubVI} Replace and no constant is ever bound to them.
+            // Measured 2026-09-01 on eight `Apfel` accessors: every stub answered
+            // `typedefTerminals: 2` alongside `classTerminals: 2` for the same two terminals, and
+            // the run was green with bind_typedef_constants never called. Reporting a repair that
+            // must not happen reads as a skipped step, so those terminals are removed here and
+            // counted separately.
+            _ = CloneTerminals(subjectXml, out var classTerminals);
+            var classTerminalSet = new HashSet<string>(classTerminals, StringComparer.OrdinalIgnoreCase);
+            var suppressedTypedefs = 0;
+            if (typedefs is not null && classTerminalSet.Count > 0)
+            {
+                var kept = typedefs.Where(t => !classTerminalSet.Contains(t.Key))
+                                   .ToDictionary(t => t.Key, t => t.Value, StringComparer.OrdinalIgnoreCase);
+                suppressedTypedefs = typedefs.Count - kept.Count;
+                typedefs = kept;
+            }
+
             var answer = new JsonObject
             {
                 ["ok"] = true,
@@ -163,6 +188,33 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             else
             {
                 answer["typedefTerminals"] = 0;
+            }
+
+            if (suppressedTypedefs > 0)
+                answer["classTerminalsNotCountedAsTypedefs"] = suppressedTypedefs;
+
+            // Reported for a CACHED stub too - the caller needs it either way, and it is what makes
+            // the difference between a socket that may be link-retargeted and one that must go
+            // through Replace.
+            // REPORTED BECAUSE "WALL CLOCK MINUS TOOL TIME" IS HOW THE NEXT TOOL GETS CHOSEN.
+            // Measured 2026-09-01: a batch of eight placeholder calls was invisible in a run's
+            // tool-time sum because this answer carried no duration at all, so the batch looked
+            // free and the analysis could not see it either way.
+            answer["elapsedMs"] = elapsed.ElapsedMilliseconds;
+            answer["classTerminals"] = classTerminals.Count;
+            if (classTerminals.Count > 0)
+            {
+                answer["classTerminalNames"] =
+                    new JsonArray([.. classTerminals.Select(n => (JsonNode)n!)]);
+                answer["classTerminalNote"] =
+                    $"{classTerminals.Count} terminal(s) on the subject carry a LabVIEW class and " +
+                    "are `path` stand-ins in this socket, because the generator refuses " +
+                    "type=UDClassInst outright - which is why this tool used to answer stubRefused " +
+                    "for all class code. So the pane is NOT an exact clone of the subject. That is " +
+                    "sound ONLY because lvai_swap_subvis retargets through {LV.SubVI} Replace, " +
+                    "which RE-TYPES THE WIRES; a pylabview link retarget on this socket would " +
+                    "answer Error 7, Bad Linkage. Wire the stand-in like any other terminal and " +
+                    "let the swap correct the type.";
             }
 
             if (!existed || refresh)
@@ -239,6 +291,14 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// never runs, and an empty one keeps the file small and the generation instant.
     /// </summary>
     internal static string StubAixml(string stubName, ViTerminals.Result subject, string subjectXml)
+        => StubAixml(stubName, subject, subjectXml, out _);
+
+    /// <inheritdoc cref="StubAixml(string, ViTerminals.Result, string)"/>
+    /// <param name="classTerminals">
+    /// Names of the terminals whose class type became a <c>path</c> stand-in, in pane order.
+    /// </param>
+    internal static string StubAixml(string stubName, ViTerminals.Result subject, string subjectXml,
+                                     out List<string> classTerminals)
     {
         var sb = new StringBuilder();
         sb.Append($"<VI _name=\"{Escape(stubName)}\" description=\"")
@@ -252,7 +312,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
           .Append("Variant placeholder retargeted onto a double VI gives Error 7\\2C Bad Linkage.")
           .AppendLine("\">");
 
-        foreach (var terminal in CloneTerminals(subjectXml))
+        foreach (var terminal in CloneTerminals(subjectXml, out classTerminals))
             sb.AppendLine("  " + terminal);
 
         sb.AppendLine("</VI>");
@@ -272,9 +332,32 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// Only the wiring is changed. A terminal's net points into the subject's diagram, which the
     /// stub does not have, so each is emptied - the `name:` form an export uses for a terminal
     /// that is connected to nothing.
+    ///
+    /// THE ONE TYPE THAT IS NOT COPIED IS A CLASS. `ref{UDClassInst}` is the one thing the
+    /// generator will not take back - `Control with type=UDClassInst is not supported` - so an exact
+    /// clone of an ACCESSOR's pane was refused outright and this tool answered `stubRefused` for
+    /// every piece of class code, which is most of what anybody wants to test. Such a terminal is
+    /// written as `path` instead, which is the same stand-in the hand-authored route uses, and the
+    /// substituted names are reported so the caller knows the clone is not exact there.
+    ///
+    /// That is sound for one specific reason and would be unsound without it: the socket is
+    /// retargeted with <c>lvai_swap_subvis</c>, whose <c>{LV.SubVI}</c> <c>Replace</c> RE-TYPES THE
+    /// WIRES, so the two panes need not match. A pylabview link retarget would answer
+    /// <c>Error 7, Bad Linkage</c> here, and the "clone must be EXACT" rule in the class comment
+    /// above still holds for every other type - it was measured on a Variant-versus-double pair.
     /// </summary>
-    internal static IEnumerable<string> CloneTerminals(string subjectXml)
+    internal static IEnumerable<string> CloneTerminals(string subjectXml) =>
+        CloneTerminals(subjectXml, out _);
+
+    /// <inheritdoc cref="CloneTerminals(string)"/>
+    /// <param name="classTerminals">
+    /// The names of the terminals whose class type was replaced by <c>path</c>, in pane order.
+    /// </param>
+    internal static IEnumerable<string> CloneTerminals(string subjectXml,
+                                                       out List<string> classTerminals)
     {
+        classTerminals = [];
+        var cloned = new List<string>();
         var root = System.Xml.Linq.XElement.Parse(subjectXml);
         foreach (var element in root.Elements()
                      .Where(e => e.Name.LocalName is "Control" or "Indicator"))
@@ -283,9 +366,40 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             foreach (var net in new[] { "inputs", "outputs" })
                 if (clone.Attribute(net) is not null)
                     clone.SetAttributeValue(net, "value:");
-            yield return clone.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+
+            if (IsClassType(clone.Attribute("type")?.Value))
+            {
+                clone.SetAttributeValue("type", "path");
+                clone.SetAttributeValue("value", "");
+
+                // AND THE WIRE RULE, which is the half this fix first forgot. An accessor's class
+                // terminals are `connection="dynamic"`, and a socket is a LOOSE VI in
+                // user.lib\LV_MCP - not a class member - so keeping the rule made LabVIEW refuse
+                // the stub with a message that names neither the placeholder nor the type:
+                // "Only VIs owned by a LabVIEW class may use dynamic terminals in the connector
+                // pane." Measured 2026-09-01 on four accessors of `Weinglas`, all still
+                // `stubRefused` after the type half alone. Dynamic dispatch is also meaningless
+                // here: the socket is never executed, and the swap re-types the wires anyway.
+                if (clone.Attribute("connection")?.Value is "dynamic")
+                    clone.SetAttributeValue(
+                        "connection",
+                        element.Name.LocalName == "Control" ? "required" : "recommended");
+
+                classTerminals.Add(clone.Attribute("_name")?.Value ?? "(unnamed)");
+            }
+
+            cloned.Add(clone.ToString(System.Xml.Linq.SaveOptions.DisableFormatting));
         }
+        return cloned;
     }
+
+    /// <summary>
+    /// Whether an AIXML type string names a LabVIEW class instance. Matched as a substring rather
+    /// than for equality because a refnum type can carry a payload, and the whole family is refused
+    /// by the generator the same way.
+    /// </summary>
+    internal static bool IsClassType(string? type) =>
+        type is not null && type.Contains("UDClassInst", StringComparison.Ordinal);
 
     /// <summary>A `Call` to the placeholder, carrying the SUBJECT's terminal names.</summary>
     private static string CallElement(string stubName, ViTerminals.Result subject)

@@ -508,6 +508,76 @@ What to take from it, pending a controlled test:
 - The restarted LabVIEW comes back **without the gRPC service** — it starts with Nigel, not the
   IDE — so a crash mid-session costs a manual step before any `lvai_*` call works again.
 
+### The fifth signature again, 2026-09-01 — and it REFUTES the refnum half of the hypothesis above
+
+Same site, same DWarn, in a run that had nothing unusual in it. LabVIEW died during the second
+`lvai_create_class` of a plain four-field class — `string`, `double`, `int32`, `bool` — whose carrier
+VI is the most ordinary AIXML this server generates. **No `ref{LV.*}` anywhere.** So the section
+above offers two candidates, "our own low uids" and "AIXML naming VI Server classes", and this run
+rules the second one out as *necessary*: the crash happens without it.
+
+What the log adds, all read back from the preserved copy rather than from the agent's report:
+
+- **Twelve occurrences of the DWarn in one session, escalating monotonically**:
+  `request: 11 res: 0 max: 55` → `request: 12 … max: 69` → `request: 13 … max: 83`. `request`
+  increments by one and `max` by **fourteen** each time. Something accumulates per generation inside
+  one LabVIEW session, and the request value climbs with it — which fits "our uid numbering collides
+  with a reserved range that grows" better than anything about the input.
+- **`OMAutoClasses` appears ZERO times** in that 10 657-line log, so this is cleanly a different
+  mechanism from the settled `ValidateAIXML` signature and not a second face of it.
+- **The fatal site is `ConvertAIXMLToVI`, not `ValidateAIXML`** — as in the 2026-08-31 measurement.
+  Nine seconds earlier the *first* `lvai_create_class` had failed with `Error 1018 (0x3FA)
+  Unspecified error … Method Name: Get Errors` inside `ValidateAIXML.vi`, and an identical retry
+  succeeded. Plausibly the same heap damage one stage earlier; not established.
+
+**AND THE TOOL REPORTED `ok: true` FOR THE CALL DURING WHICH LabVIEW DIED.** That is the part to
+carry away. `lvai_create_class` wrote the class file, verified it from disk, and answered `ok: true`
+with a real `classPath`; only its final `closeScratchProject` step noticed the service had gone. The
+class was genuinely written — `memberCount: 0`, four fields, sound — so the answer was not false. But
+**a successful answer is not evidence that LabVIEW survived the call**, and a caller that reads `ok`
+and moves on will make its next call into a dead service and see a port-discovery error with no
+connection to the cause. Check the process, not the answer, when anything downstream misbehaves.
+
+The practical rule is unchanged and now better founded: a crash mid-session costs the accessors, not
+the class. Restarting and calling `lvai_create_accessors` again resumed from `fromField: 0` and
+finished all eight in one call — nothing had to be rebuilt.
+
+## A SIXTH mechanism: a SPIN, not a crash — and the accessor run's leftovers are implicated
+
+Measured 2026-09-02. `lvai_create_class` was called against a LabVIEW that had started four minutes
+earlier and had already completed a `lvai_create_accessors` run for another class. **The call never
+returned.** LabVIEW went `Responding = False` and held a steady **~21 % of one core for seven
+minutes** while the target directory stayed empty. Killing it and repeating the identical call after
+`lvai_ensure_labview` answered `ok: true` in **15.4 s**.
+
+**This is NOT the documented false alarm, and the difference is what to check.** A call made while
+the UI thread is merely busy with `Save All This Library` still *answers*, with `ok: false`,
+`classIndex: -1` and a port sweep full of `DeadlineExceeded`. This produced **no answer at all and
+no file**. `lvai_status` reported the port `DeadlineExceeded`, which its own message reads as "hung,
+kill it", and that reading was right.
+
+**The diagnostic that settles it, and the reason a single CPU sample misleads:** sample CPU **twice**
+*and* watch the target directory. Rising CPU reads exactly like progress — it is what a long
+`Save All This Library` looks like. **Zero bytes on disk after seven minutes is what makes it a
+spin.** Neither signal alone is enough.
+
+**What the log implicates, short of a mechanism.** That one instance's `_cur.txt` had grown to 10 820
+lines and carried, besides two `minidump id` lines and six of the `HeapObjMapImpl.cpp(226)` DWarns
+recorded above, **page after page of `RTSetCleanupProc: leaf and root VIs in different contexts`**
+with call chains ending in `MemberVICreation.lvlib:CLSUIP_CreateNewAccessor.vi` and
+`lvai_create_accessors.vi`. So the instance was carrying leftover state from the accessor wizard when
+the next generation spun.
+
+**The practical rule this yields, and its limits.** `docs/labview-lunit-testing.md` records that a
+*subject* class's `Error 1562` lock costs nothing, and that stands — a lock is not this. But **the
+accessor RUN's leftovers are not free**, and on this evidence a restart after `lvai_create_accessors`
+would have saved **450 s of a 722 s run**. One observation, and the mechanism is not established; the
+`RTSetCleanupProc` correlation is suggestive and no more. Treat it as: **after a long accessor run,
+a restart before the next generation is cheap insurance at ~30 s against a seven-minute spin.**
+
+That is also the first time in this series that the restart budget went to two rather than one, and
+the second one was recovery rather than the mandated `1562` restart.
+
 ## What it means for working here
 
 **Validation is not free of risk, and that is new.** `lvai_validate_aixml` has been treated

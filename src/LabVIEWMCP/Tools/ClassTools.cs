@@ -342,6 +342,36 @@ internal sealed class ClassTools(LvaiConnection connection)
                     timeoutSeconds: timeoutSeconds, ct: ct);
                 steps.Add(Step("closeScratchProject", closed));
 
+                // A FAILED CLOSE IS A CONSEQUENCE FOR THE NEXT CALL, so it must not stay buried in
+                // `steps` while `ok` reads true. Measured 2026-09-02: the service PORT MOVED between
+                // the provider step and the close, so the close answered "Could not find a port
+                // serving lvai.LVAI" - the class file was complete and correct, `ok` was true, and
+                // the throwaway project was left OPEN AND ACTIVE in LabVIEW. The run that hit it got
+                // away with it only because a restart was due anyway; without one the next step would
+                // have run against a stale active project, and `Project:Active Project` would have
+                // handed it the wrong one.
+                // Judged by the close answer's OWN keys, not by `ok`: lvai_close_active_project
+                // answers `closed` / `nothingToClose` / `errorCode` and carries no `ok` at all, so
+                // `Succeeded(closed)` was false on EVERY call and this warning fired
+                // unconditionally - measured 2026-09-02, run 12, twice in one run against a close
+                // that reported `closed: true, errorCode: 0`, costing a wasted
+                // lvai_close_active_project (Error 1055) each time.
+                var scratchLeftOpen = !ScratchCloseSucceeded(closed);
+                if (scratchLeftOpen)
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "closeScratchProjectWarning",
+                        ["scratchProject"] = projectUsed,
+                        ["note"] = "THE THROWAWAY PROJECT IS PROBABLY STILL OPEN AND ACTIVE in " +
+                                   "LabVIEW. The class itself is unaffected - it is verified from " +
+                                   "the file below - but anything reaching LabVIEW through " +
+                                   "Project:Active Project next will find THIS project rather than " +
+                                   "yours. Call lvai_close_active_project before continuing, or " +
+                                   "restart LabVIEW. The commonest cause is the service port " +
+                                   "moving mid-call, which reads as 'Could not find a port serving " +
+                                   "lvai.LVAI' and is not a failure of the class creation.",
+                    });
+
                 steps.Add(userProject is { Length: > 0 }
                     ? AddClassToProject(userProject, classPath, className, listedBefore)
                     : new JsonObject
@@ -397,7 +427,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                 {
                     ["step"] = "verify",
                     ["privateDataBytes"] = info.PrivateDataBytes,
-                    ["inheritsFrom"] = inherits,
+                    // A ROOT CLASS READS `LabVIEW Object`, NOT null - the same fallback
+                    // lvai_describe_class applies. This reported null and the note read
+                    // "inherits from ''", so a reader checking inheritance on a perfectly good root
+                    // class saw nothing where the documented behaviour promises a name, and could
+                    // not tell it apart from a parent link that failed to take. Nothing about the
+                    // class was ever wrong; only this rendering was.
+                    ["inheritsFrom"] = string.IsNullOrEmpty(inherits) ? "LabVIEW Object" : inherits,
                     ["fieldsAsked"] = parsed.Count,
                     ["fieldsAdded"] = provider.FieldsAdded,
                     ["interfacesAsked"] = interfacePaths.Count,
@@ -1418,6 +1454,19 @@ internal sealed class ClassTools(LvaiConnection connection)
         Parsed(answer) is JsonObject o && o.TryGetPropertyValue("errorCode", out var code)
             ? code?.GetValue<int>() : null;
 
+    /// <summary>
+    /// Did the scratch-project close leave nothing active? True for a real close (`closed: true`)
+    /// and for `nothingToClose` (Error 1055, the project was already gone) - both mean the next
+    /// `Project:Active Project` lookup cannot land on the throwaway project. A guarded exception
+    /// (`ok: false`), a raised chain, or an unparseable answer all read as "still open".
+    /// </summary>
+    internal static bool ScratchCloseSucceeded(string answer)
+    {
+        if (Parsed(answer) is not JsonObject o) return false;
+        if (o.TryGetPropertyValue("ok", out var ok) && ok?.GetValue<bool>() == false) return false;
+        return o["closed"]?.GetValue<bool>() == true || o["nothingToClose"]?.GetValue<bool>() == true;
+    }
+
     private static bool Succeeded(string answer) =>
         Parsed(answer) is JsonObject o && o["ok"]?.GetValue<bool>() == true;
 
@@ -1475,11 +1524,18 @@ internal sealed class ClassTools(LvaiConnection connection)
         `slicesRun` and `slices` say what one call actually did. The library is saved after EVERY
         field, so an interrupted call leaves a consistent partial class rather than orphan VIs the
         class file does not mention.
-        A TIMED-OUT CALL HAS USUALLY DONE ITS WORK. The client gives up near 60 s while the helper
-        keeps going, and because the library is saved after every field the class is left consistent -
-        measured repeatedly: 6 VIs and 6 members, 12 and 12, 4 and 4, never a mismatch. So on
-        "Request timed out", just call again: the default -1 reads the class file and continues from
-        exactly where the lost answer got to. Every successful answer also carries membersBefore,
+        A TIMED-OUT CALL HAS USUALLY DONE ITS WORK, and "usually" is now the honest word. The client
+        gives up near 60 s while the helper keeps going, and the library is saved after every field.
+        This paragraph claimed the class is therefore "left consistent - never a mismatch"; that is
+        true only when the timeout lands BETWEEN fields. Measured 2026-09-02: one landed inside a
+        pair, leaving SEVEN accessor members, and the resume then rebuilt that field and NI's wizard
+        appended a number rather than refusing - `Read Bio 2.vi` - while every step reported
+        errorCode 0. So on "Request timed out", call again: the default -1 reads the class file and
+        continues. If it finds a half-built field it now REFUSES with `halfBuiltAccessors` and names
+        it, instead of resuming onto it; delete that orphaned accessor and its <Item> block with the
+        project closed, then call again. And any run that ends with duplicate accessors on disk
+        answers `ok: false` with `mangledAccessors`, because LabVIEW does not consider the
+        duplication an error and nothing else would report it. Every successful answer also carries membersBefore,
         membersAfter and nextFromField, all read off the class file rather than from the run.
         VERIFY IMMEDIATELY - lvai_describe_class reads the .lvclass file and needs no LabVIEW, so
         the check survives whatever the IDE does next. This used to read "expect LabVIEW to go down
@@ -1652,12 +1708,52 @@ internal sealed class ClassTools(LvaiConnection connection)
             var resumedFrom = -1;
             if (fromField < 0)
             {
+                // A RESUME MUST NOT LAND ON A HALF-BUILT FIELD. If a previous call died mid-pair -
+                // a client timeout inside the wizard does exactly that - one accessor of a field
+                // exists and the other does not. Re-running that field makes NI's wizard NAME-MANGLE
+                // around the collision (`Read Bio 2.vi`) instead of refusing, and the run then
+                // reports success over a corrupted class. Measured 2026-09-02.
+                var halfBuilt = HalfBuiltOnDisk(lvclassPath, accessIndex);
+                if (halfBuilt.Count > 0)
+                    return Json.Error("halfBuiltAccessors",
+                        "Cannot resume: " + string.Join(", ", halfBuilt.Select(f => $"'{f}'")) +
+                        " has some of its accessors but not all, so a previous call died inside " +
+                        "that field. Resuming would restart it, and NI's wizard appends a number " +
+                        "rather than refusing - you would get `Read <field> 2.vi` and a class that " +
+                        "reads back as if nothing were wrong. DELETE the orphaned accessor .vi and " +
+                        "its <Item> block from the .lvclass, with the project CLOSED, then call " +
+                        "again. Or pass an explicit fromField to rebuild that field deliberately.",
+                        new JsonObject
+                        {
+                            ["halfBuiltFields"] =
+                                new JsonArray([.. halfBuilt.Select(f => (JsonNode)f!)]),
+                            ["classPath"] = Path.GetFullPath(lvclassPath),
+                        });
+
                 fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex));
                 resumedFrom = fromField;
             }
 
+            // OPEN THE PROJECT ON THE WAY IN, not only for the tidy step. NI's wizard reaches
+            // LabVIEW through `Project:Active Project` and answers Error 1055 without one, so every
+            // caller was spending a turn on lvai_open_file first. Measured 2026-09-01: the four
+            // bookkeeping calls around this one - open, close, describe_class and a grep for the
+            // dispatch flags - cost about 19 s of wall clock against essentially zero LabVIEW time,
+            // 23 % of a class build. projectPath was already a parameter here; it was just unused
+            // until the very end.
+            var callWall = Stopwatch.StartNew();
+            JsonNode? projectOpened = null;
+            if (projectPath is { Length: > 0 })
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
+                projectOpened = Parsed(opened);
+            }
+
             var slices = new JsonArray();
             var wall = Stopwatch.StartNew();
+            var sliceStartMs = 0L;
             var moreToDo = false;
             string verdict;
 
@@ -1696,6 +1792,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
                     fromField, membersBefore, helperGenerated);
+                var thisSliceMs = wall.ElapsedMilliseconds - sliceStartMs;
                 slices.Add(new JsonObject
                 {
                     ["fromField"] = fromField,
@@ -1703,8 +1800,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["membersBefore"] = membersBefore,
                     ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex),
                     ["membersAfter"] = MembersOnDisk(lvclassPath),
+                    // BOTH, because one of them was read as the other. `elapsedMs` is the stopwatch
+                    // that gates the budget, so it is CUMULATIVE across slices - and a run comparing
+                    // two builds summed two slices to 94.8 s inside a call that lasted 104 s, then
+                    // spent two turns in the source finding out why. `sliceMs` is this slice alone.
                     ["elapsedMs"] = wall.ElapsedMilliseconds,
+                    ["elapsedMsIsCumulative"] = true,
+                    ["sliceMs"] = thisSliceMs,
                 });
+                sliceStartMs = wall.ElapsedMilliseconds;
 
                 if (!Succeeded(verdict)) break;
 
@@ -1715,7 +1819,26 @@ internal sealed class ClassTools(LvaiConnection connection)
                 var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex);
 
                 if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
-                if (wall.Elapsed.TotalSeconds >= budgetSeconds) { moreToDo = true; break; }
+
+                // STOP IF THE NEXT SLICE WOULD NOT FIT, not merely if this one has already used the
+                // budget. Checking `elapsed >= budget` between slices lets a slice that starts at
+                // 44 s run 20 s more and carry the whole call to 64 s - past the point where the
+                // MCP client stops waiting and the answer is lost. Both constants have now produced
+                // that: `budgetSeconds: 100` timed out on one run, and the DEFAULT 45 timed out on
+                // the next. So the budget is a ceiling on the CALL, and the estimate for the next
+                // slice is the one just measured - slices of the same fieldCount are comparable,
+                // and later ones are usually cheaper, which makes this conservative in the safe
+                // direction.
+                //
+                // And a lost answer is not a lost slice: the work keeps running inside LabVIEW
+                // after the client gives up, so the caller cannot tell how far it got except by
+                // reading the class file. That is the damage this avoids - the resume after a
+                // timeout is what once rebuilt a field and let NI's wizard name-mangle it.
+                if (NextSliceWouldOverrun(wall.ElapsedMilliseconds, thisSliceMs, budgetSeconds))
+                {
+                    moreToDo = true;
+                    break;
+                }
 
                 fromField = next;
                 helperGenerated = false;   // it was generated at most once, on the first slice
@@ -1729,6 +1852,47 @@ internal sealed class ClassTools(LvaiConnection connection)
                 final["slices"] = slices;
                 final["moreToDo"] = moreToDo;
                 final["resumedFrom"] = resumedFrom < 0 ? null : resumedFrom;
+                final["projectOpened"] = projectOpened;
+                // The whole call, not just the slicing loop - the project open and the helper load
+                // sit outside `wall` and were invisible, so no reported figure accounted for the
+                // call's real cost.
+                final["totalElapsedMs"] = callWall.ElapsedMilliseconds;
+                // HOW WARM LabVIEW WAS, because it dominates this tool and nothing reported it.
+                // Measured over three builds of an identically shaped four-field class: 21.4 s for
+                // eight accessors on a 75-minute-old instance, 57.2 s at 1 min 41 s, 80.0 s cold in
+                // two calls. `Save All This Library` re-checks the library per field, but the
+                // warm-up is the bigger term and it is a ONE-OFF on the first slice - which is why
+                // budgetSeconds must be large enough to carry that slice plus the cheap ones after
+                // it. A wall-clock comparison between runs is meaningless without this number.
+                final["labviewAgeSeconds"] = LabViewAgeSeconds();
+
+                // THE DISPATCH EVIDENCE, so nobody has to grep the class file for it. Runs that
+                // used this tool all ended with `lvai_describe_class` plus a shell grep for
+                // `NI.ClassItem.Flags`, because describe_class reports dynamicDispatch as null -
+                // the class file does not carry it under that name - and 0 versus 16777216 in the
+                // flags is what actually settles it. Read off the file, so it says what was
+                // written rather than what was asked for.
+                final["memberNames"] = MemberNamesOnDisk(lvclassPath);
+                final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
+
+                // THE SAFETY NET, whatever the cause. NI's wizard renames around a collision rather
+                // than failing, so a class can come out with `Read Bio 2.vi` in it while every
+                // per-step errorCode is 0. One run did exactly that and answered ok: true with
+                // moreToDo: false. A tool that leaves duplicates behind must not call it success.
+                var mangled = MangledOnDisk(lvclassPath);
+                if (mangled.Count > 0)
+                {
+                    final["ok"] = false;
+                    final["mangledAccessors"] =
+                        new JsonArray([.. mangled.Select(m => (JsonNode)m!)]);
+                    final["note"] =
+                        "THE CLASS HAS DUPLICATE ACCESSORS: " + string.Join(", ", mangled) +
+                        ". NI's wizard appends a number instead of refusing a name that already " +
+                        "exists, so this is what a field built twice looks like. Every step still " +
+                        "reported errorCode 0 - the duplication is not an error to LabVIEW. Delete " +
+                        "those .vi files AND their <Item> blocks from the .lvclass with the project " +
+                        "CLOSED, then verify with lvai_describe_class.";
+                }
                 if (moreToDo)
                     final["note"] = $"Stopped after {slices.Count} slice(s) with " +
                         $"{wall.Elapsed.TotalSeconds:F0} s spent, because the budget of " +
@@ -2061,6 +2225,103 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// How many member VIs the class file lists right now. Read from disk on purpose: it is the one
     /// number that is true whether or not the run's answer arrived.
     /// </summary>
+    /// <summary>
+    /// Every member's name, off the class file. Saves the caller a <c>lvai_describe_class</c> turn
+    /// whose only purpose was to confirm the wizard produced the names expected.
+    /// </summary>
+    private static JsonNode? MemberNamesOnDisk(string lvclassPath)
+    {
+        try
+        {
+            return new JsonArray([.. LvClass.Read(lvclassPath).Members
+                                          .Select(m => (JsonNode)m.Name!)]);
+        }
+        catch (Exception failure) when (failure is IOException or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A histogram of <c>NI.ClassItem.Flags</c> across the class's members: <c>0</c> is dynamic
+    /// dispatch and <c>16777216</c> (<c>0x1000000</c>) is static, so <c>{"0": 8}</c> means eight
+    /// members and all of them dynamic.
+    ///
+    /// WHY A HISTOGRAM AND NOT A BOOLEAN. The flag word carries more than dispatch - values of 8
+    /// and 11 have both been seen on real members and what their low bits mean is NOT established
+    /// (docs/lvclass-interfaces.md 3.0.3). Reporting the raw counts says exactly what is on disk
+    /// without asserting a reading of it; the static bit is the only one this repository has
+    /// measured, and its absence is what "all dynamic" rests on.
+    /// </summary>
+    private static JsonNode? DispatchFlagsOnDisk(string lvclassPath)
+    {
+        try
+        {
+            var text = File.ReadAllText(lvclassPath);
+            var histogram = new JsonObject();
+            foreach (var group in System.Text.RegularExpressions.Regex
+                         .Matches(text, """NI\.ClassItem\.Flags" Type="Int">(-?\d+)""")
+                         .Select(m => m.Groups[1].Value)
+                         .GroupBy(v => v, StringComparer.Ordinal)
+                         .OrderBy(g => g.Key, StringComparer.Ordinal))
+                histogram[group.Key] = group.Count();
+            return histogram;
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// How many seconds the LabVIEW hosting the service has been up, or <c>null</c> when that cannot
+    /// be read. Reported beside this tool's timings because instance warmth dominates them and its
+    /// absence made three runs' figures incomparable - see the note at the call site.
+    /// </summary>
+    private static JsonNode? LabViewAgeSeconds()
+    {
+        try
+        {
+            var youngest = System.Diagnostics.Process.GetProcessesByName("LabVIEW")
+                .Select(p => { try { return (DateTime?)p.StartTime; } catch { return null; } })
+                .Where(t => t is not null)
+                .Max();
+            return youngest is null ? null : (int)(DateTime.Now - youngest.Value).TotalSeconds;
+        }
+        // A process that exits between the enumeration and the read, or a platform that refuses
+        // StartTime, is not a reason to fail an otherwise good accessor run.
+        catch (Exception failure) when (failure is InvalidOperationException
+                                        or System.ComponentModel.Win32Exception) { return null; }
+    }
+
+    /// <summary>Fields with only part of their accessor set, off the class file.</summary>
+    private static IReadOnlyList<string> HalfBuiltOnDisk(string lvclassPath, int accessIndex)
+    {
+        try { return LvClass.IncompleteAccessorFields(LvClass.Read(lvclassPath).Members, accessIndex); }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
+    }
+
+    /// <summary>Accessors NI's wizard renamed around a collision, off the class file.</summary>
+    private static IReadOnlyList<string> MangledOnDisk(string lvclassPath)
+    {
+        try { return LvClass.MangledAccessorNames(LvClass.Read(lvclassPath).Members); }
+        catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
+    }
+
+    /// <summary>
+    /// Whether another slice should be started, given how long the call has already run and what the
+    /// slice just finished cost. Extracted so it can be tested: the equivalent inline condition was
+    /// wrong twice in production, once with <c>budgetSeconds: 100</c> and once with the default 45,
+    /// and each failure cost a lost answer plus - in one case - a corrupted class.
+    ///
+    /// The estimate for the next slice is the LAST one's duration. Slices of the same
+    /// <c>fieldCount</c> are comparable and later ones are usually cheaper, so this errs towards
+    /// stopping, which is the safe direction: an extra call costs a turn, an overrun costs the
+    /// answer and leaves the work running invisibly inside LabVIEW.
+    /// </summary>
+    internal static bool NextSliceWouldOverrun(long elapsedMs, long lastSliceMs, int budgetSeconds)
+        => elapsedMs + lastSliceMs >= budgetSeconds * 1000L;
+
     private static int MembersOnDisk(string lvclassPath)
     {
         try { return LvClass.Read(lvclassPath).Members.Count; }

@@ -1,0 +1,13 @@
+<VI _name="Test {{FIELD}} Round Trip.vi" description="{{VI_DESCRIPTION}}">
+  <Control _name="{{TESTCLASS}} In" conIdx="11" connection="required" outputs="value:100.value" type="path" uid="100" uid_parent="root" value=""/>
+  <Control _name="error in (no error)" conIdx="8" connection="recommended" outputs="value:101.value" type="cluster{bool.status,int32.code,string.source}" uid="101" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="{{CLASS}} seed" outputs="value:110.value" type="path" uid="110" uid_parent="root" value=""/>
+  <Constant _name="{{FIELD}}" outputs="value:111.value" type="{{TYPE}}" uid="111" uid_parent="root" value="{{VALUE}}"/>
+  <Constant _name="Expected" outputs="value:112.value" type="{{TYPE}}" uid="112" uid_parent="root" value="{{VALUE}}"/>
+  <Constant _name="Description" outputs="value:113.value" type="string" uid="113" uid_parent="root" value="{{DESCRIPTION}}"/>
+  <Call target="{{STUB_WRITE}}" inputs="{{CLASS}} in:110.value,{{FIELD}}:111.value,error in (no error):101.value" outputs="{{CLASS}} out:120.{{CLASS}} out,error out:120.error out" uid="120" uid_parent="root"/>
+  <Call target="{{STUB_READ}}" inputs="{{CLASS}} in:120.{{CLASS}} out,error in (no error):120.error out" outputs="{{CLASS}} out:,{{FIELD}}:121.{{FIELD}},error out:121.error out" uid="121" uid_parent="root"/>
+  <Call target="Test Case.lvclass\3APass If Equal.vim" inputs="LUnit Test Case In:100.value,Expected:112.value,Actual:121.{{FIELD}},error in (no error):121.error out,Description:113.value" outputs="LUnit Test Case Out:130.LUnit Test Case Out,error out:130.error out" uid="130" uid_parent="root"/>
+  <Indicator _name="{{TESTCLASS}} Out" conIdx="3" connection="recommended" inputs="value:130.LUnit Test Case Out" type="path" uid="140" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" inputs="value:130.error out" type="cluster{bool.status,int32.code,string.source}" uid="141" uid_parent="root" value="[false,0,]"/>
+</VI>

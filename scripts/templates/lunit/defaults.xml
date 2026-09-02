@@ -1,0 +1,23 @@
+<VI _name="Test Field Defaults.vi" description="{{VI_DESCRIPTION}}">
+  <Control _name="{{TESTCLASS}} In" conIdx="11" connection="required" outputs="value:100.value" type="path" uid="100" uid_parent="root" value=""/>
+  <Control _name="error in (no error)" conIdx="8" connection="recommended" outputs="value:101.value" type="cluster{bool.status,int32.code,string.source}" uid="101" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="{{CLASS}} seed" outputs="value:110.value" type="path" uid="110" uid_parent="root" value=""/>
+  <Constant _name="Expected {{FIELD1}}" outputs="value:111.value" type="{{TYPE1}}" uid="111" uid_parent="root" value="{{DEFAULT1}}"/>
+  <Constant _name="Expected {{FIELD2}}" outputs="value:112.value" type="{{TYPE2}}" uid="112" uid_parent="root" value="{{DEFAULT2}}"/>
+  <Constant _name="Expected {{FIELD3}}" outputs="value:113.value" type="{{TYPE3}}" uid="113" uid_parent="root" value="{{DEFAULT3}}"/>
+  <Constant _name="Expected {{FIELD4}}" outputs="value:114.value" type="{{TYPE4}}" uid="114" uid_parent="root" value="{{DEFAULT4}}"/>
+  <Constant _name="Description {{FIELD1}}" outputs="value:115.value" type="string" uid="115" uid_parent="root" value="{{DESC1}}"/>
+  <Constant _name="Description {{FIELD2}}" outputs="value:116.value" type="string" uid="116" uid_parent="root" value="{{DESC2}}"/>
+  <Constant _name="Description {{FIELD3}}" outputs="value:117.value" type="string" uid="117" uid_parent="root" value="{{DESC3}}"/>
+  <Constant _name="Description {{FIELD4}}" outputs="value:118.value" type="string" uid="118" uid_parent="root" value="{{DESC4}}"/>
+  <Call target="{{STUB_READ1}}" inputs="{{CLASS}} in:110.value,error in (no error):101.value" outputs="{{CLASS}} out:,{{FIELD1}}:120.{{FIELD1}},error out:120.error out" uid="120" uid_parent="root"/>
+  <Call target="{{STUB_READ2}}" inputs="{{CLASS}} in:110.value,error in (no error):120.error out" outputs="{{CLASS}} out:,{{FIELD2}}:121.{{FIELD2}},error out:121.error out" uid="121" uid_parent="root"/>
+  <Call target="{{STUB_READ3}}" inputs="{{CLASS}} in:110.value,error in (no error):121.error out" outputs="{{CLASS}} out:,{{FIELD3}}:122.{{FIELD3}},error out:122.error out" uid="122" uid_parent="root"/>
+  <Call target="{{STUB_READ4}}" inputs="{{CLASS}} in:110.value,error in (no error):122.error out" outputs="{{CLASS}} out:,{{FIELD4}}:123.{{FIELD4}},error out:123.error out" uid="123" uid_parent="root"/>
+  <Call target="Test Case.lvclass\3APass If Equal.vim" inputs="LUnit Test Case In:100.value,Expected:111.value,Actual:120.{{FIELD1}},error in (no error):123.error out,Description:115.value" outputs="LUnit Test Case Out:130.LUnit Test Case Out,error out:130.error out" uid="130" uid_parent="root"/>
+  <Call target="Test Case.lvclass\3APass If Equal.vim" inputs="LUnit Test Case In:130.LUnit Test Case Out,Expected:112.value,Actual:121.{{FIELD2}},error in (no error):130.error out,Description:116.value" outputs="LUnit Test Case Out:131.LUnit Test Case Out,error out:131.error out" uid="131" uid_parent="root"/>
+  <Call target="Test Case.lvclass\3APass If Equal.vim" inputs="LUnit Test Case In:131.LUnit Test Case Out,Expected:113.value,Actual:122.{{FIELD3}},error in (no error):131.error out,Description:117.value" outputs="LUnit Test Case Out:132.LUnit Test Case Out,error out:132.error out" uid="132" uid_parent="root"/>
+  <Call target="Test Case.lvclass\3APass If Equal.vim" inputs="LUnit Test Case In:132.LUnit Test Case Out,Expected:114.value,Actual:123.{{FIELD4}},error in (no error):132.error out,Description:118.value" outputs="LUnit Test Case Out:133.LUnit Test Case Out,error out:133.error out" uid="133" uid_parent="root"/>
+  <Indicator _name="{{TESTCLASS}} Out" conIdx="3" connection="recommended" inputs="value:133.LUnit Test Case Out" type="path" uid="140" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" inputs="value:133.error out" type="cluster{bool.status,int32.code,string.source}" uid="141" uid_parent="root" value="[false,0,]"/>
+</VI>

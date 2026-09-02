@@ -350,21 +350,80 @@ internal static class LvClass
     /// order, so this is exact under that contract. It cannot tell a hand-written `Read something.vi`
     /// for a non-field `something` from a real accessor - far narrower than the defect it replaces.
     /// </summary>
-    public static int FieldsWithAccessors(IEnumerable<Member> members, int accessIndex)
+    public static int FieldsWithAccessors(IEnumerable<Member> members, int accessIndex) =>
+        AccessorFields(members, accessIndex).Complete.Count;
+
+    /// <summary>
+    /// The names of fields whose accessor set is only PARTLY there - a `Read X.vi` with no
+    /// `Write X.vi`, or the reverse.
+    ///
+    /// WHY THIS MATTERS, and it cost a corrupted class to learn. <see cref="FieldsWithAccessors"/>
+    /// used to count matching members and divide by two, and integer division silently truncated a
+    /// half-built field away: seven accessor members answered THREE. A resume then restarted at the
+    /// field whose `Read` already existed, NI's wizard name-mangled the collision into
+    /// `Read Bio 2.vi` / `Write Bio 2.vi`, and the tool reported `ok: true, moreToDo: false`.
+    /// Measured 2026-09-02 after a client timeout landed mid-pair.
+    ///
+    /// The tool documentation asserted the opposite - "the library is saved after every field so the
+    /// class is left consistent … never a mismatch". That holds when the timeout lands BETWEEN
+    /// fields and not when it lands inside one, which is a coin toss rather than a guarantee.
+    /// A caller resuming must therefore be told, not silently rounded.
+    /// </summary>
+    public static IReadOnlyList<string> IncompleteAccessorFields(
+        IEnumerable<Member> members, int accessIndex) =>
+        AccessorFields(members, accessIndex).Incomplete;
+
+    /// <summary>
+    /// Accessor members grouped by the field they belong to. `Read Top Speed.vi` and
+    /// `Write Top Speed.vi` are one field; anything not shaped like an accessor is ignored, which is
+    /// what keeps the private data control and ordinary methods out of the count.
+    /// </summary>
+    private static (List<string> Complete, List<string> Incomplete) AccessorFields(
+        IEnumerable<Member> members, int accessIndex)
     {
-        string[] prefixes = accessIndex switch
+        string[] wanted = accessIndex switch
         {
             0 => ["Read "],
             1 => ["Write "],
             _ => ["Read ", "Write "],
         };
 
-        var matching = members.Count(
-            m => m.Name.EndsWith(".vi", StringComparison.OrdinalIgnoreCase) &&
-                 prefixes.Any(p => m.Name.StartsWith(p, StringComparison.Ordinal)));
+        var byField = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var member in members)
+        {
+            if (!member.Name.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)) continue;
+            // Only the prefixes this accessUi ASKS for. Grouping on both would make a Write-only
+            // run call a field that has just a Read "half-built", when it is simply not built yet -
+            // incompleteness can only mean "some of the wanted set, but not all", which for a
+            // single-sided set is impossible by construction.
+            foreach (var prefix in wanted)
+            {
+                if (!member.Name.StartsWith(prefix, StringComparison.Ordinal)) continue;
+                var field = member.Name[prefix.Length..^3];
+                if (!byField.TryGetValue(field, out var have))
+                    byField[field] = have = new HashSet<string>(StringComparer.Ordinal);
+                have.Add(prefix);
+                break;
+            }
+        }
 
-        return matching / (accessIndex == 2 ? 2 : 1);
+        var complete = new List<string>();
+        var incomplete = new List<string>();
+        foreach (var (field, have) in byField.OrderBy(p => p.Key, StringComparer.Ordinal))
+            (wanted.All(have.Contains) ? complete : incomplete).Add(field);
+        return (complete, incomplete);
     }
+
+    /// <summary>
+    /// Members whose name looks like NI's wizard renamed around a collision - `Read Bio 2.vi`. The
+    /// wizard does not refuse a duplicate, it appends a number, so a class can be corrupted by a
+    /// resume and still read back as if nothing were wrong. Anything reporting success must check.
+    /// </summary>
+    public static IReadOnlyList<string> MangledAccessorNames(IEnumerable<Member> members) =>
+        [.. members.Select(m => m.Name)
+                   .Where(n => System.Text.RegularExpressions.Regex.IsMatch(
+                       n, @"^(Read|Write) .+ \d+\.vi$"))
+                   .OrderBy(n => n, StringComparer.Ordinal)];
 
     public sealed record ClassInfo(
         string Path, string ClassName, string? ContainingLibrary, string QualifiedName,
