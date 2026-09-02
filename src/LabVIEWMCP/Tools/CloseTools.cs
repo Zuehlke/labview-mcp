@@ -183,11 +183,13 @@ internal sealed class CloseTools(LvaiConnection connection)
                 helperGenerated = true;
             }
 
+            var wall = System.Diagnostics.Stopwatch.StartNew();
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
 
-            return DescribeProjectClose(answer, helperVi, aixml, helperGenerated);
+            return DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
+                                        wall.ElapsedMilliseconds);
         });
 
     /// <summary>
@@ -197,7 +199,8 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// is verified, by calling again.
     /// </summary>
     internal static string DescribeProjectClose(
-        string runnerAnswer, string helperVi, string aixml, bool helperGenerated)
+        string runnerAnswer, string helperVi, string aixml, bool helperGenerated,
+        long? elapsedMs = null)
     {
         if (Verdict(runnerAnswer) is not { } verdict) return runnerAnswer;
         var (status, code, source) = verdict;
@@ -215,6 +218,14 @@ internal sealed class CloseTools(LvaiConnection connection)
             ["helperGenerated"] = helperGenerated,
             ["errorCode"] = int.TryParse(code, out var parsed) ? parsed : 0,
             ["errorSource"] = source,
+            // MEASURED BECAUSE IT WAS THE ONE UNATTRIBUTABLE STEP. This tool reported no duration
+            // at all, and two separate runs named it as the largest gap between a phase's wall
+            // clock and the tool time anyone could account for - one of them could only say "the
+            // ~17 s gap is model latency across five turns PLUS the whole unmeasured close". A step
+            // with no duration cannot be chosen against when picking what to optimise next, which
+            // is the method this repository uses, so an untimed step is a blind spot rather than a
+            // free one.
+            ["elapsedMs"] = elapsedMs,
             ["note"] = closed
                 ? "The active project was SAVED and closed. Calling again now answers Error 1055, " +
                   "which is how you can confirm it."

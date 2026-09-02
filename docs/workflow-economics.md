@@ -256,11 +256,29 @@ age does not order these, the spread is 2.5x, and **what does explain it is not 
 warm/cold story was a plausible reading of n=3 that a fourth point refuted.
 
 What survives, because it rests on the within-call comparison rather than between runs: **the first
-slice of a call is consistently more expensive than the second** — 45.8/34.2, 37.6/19.6, 18.8/12.9 —
-*even though the library is bigger by the second slice.* That is a one-off warm-up inside the wizard,
-and it is why `budgetSeconds: 45` is the wrong default: it stops after the expensive slice and pays a
-whole extra turn for the cheap one. `budgetSeconds: 100` fitted both slices in one call three times
-out of three. That recommendation stands; the explanation for the between-run spread does not.
+slice of a call is usually the more expensive** — 45.8/34.2, 37.6/19.6, 18.8/12.9 — *even though the
+library is bigger by the second slice.* That is a one-off warm-up inside the wizard.
+
+> ### RETRACTED, 2026-09-02: `budgetSeconds: 100` is NOT the right default. 45 is.
+>
+> This section recommended raising it, on the grounds that 45 stops after the expensive slice and
+> pays an extra turn for the cheap one, and that 100 "fitted both slices in one call three times out
+> of three". **Run 9 collected the bill.** Two slices of a four-field class have totalled **53-80 s**
+> in this series, and the client gives up near **60 s** — so a budget of 100 lets the loop run past
+> the point where the answer can still be delivered. Three runs came in at 53-57 s and got away with
+> it; one ran 80 s; run 9 timed out.
+>
+> And the timeout is not merely a lost turn. It landed inside a Read/Write pair, and the resume then
+> rebuilt that field and NI's wizard appended a number rather than refusing — a corrupted class
+> reported as `ok: true`. `docs/labview-lunit-testing.md` §16 has the mechanism; the resume is now
+> guarded, but the repair still costs more than the turn the higher budget was meant to save.
+>
+> **So 45 is correct: it guarantees the call returns while it still can.** The extra turn is the
+> price of an answer that arrives. What would genuinely beat both constants is a budget that stops
+> when the NEXT slice would not fit before the client's limit — not attempted, and not a constant.
+>
+> The method lesson, again: **three successes in a row is not a safety margin.** All three were
+> within 7 s of the limit and nobody checked the distance.
 
 **The method lesson: a monotone-looking trend over three points is a hypothesis, not a finding.** The
 cost of getting this wrong was small here, but it was written into two documents as fact.

@@ -129,6 +129,14 @@ as an XML parse error. Keep the files: they are the only way to rebuild a test m
 
 ## Phase 4 — `lvai_lunit_add_test_method`, then the swaps
 
+> **If `lvai_lunit_scaffold_class_tests` is not in your roster, the same staleness applies and it has
+> NO CLI substitute.** Two routes, in order of preference. First, drive the built server over raw
+> stdio — a throwaway MCP client doing `initialize`, `notifications/initialized`, `tools/call`
+> against `src/LabVIEWMCP/bin/Debug/net8.0/LabVIEWMCP.exe`. That exercises the real tool against the
+> real LabVIEW and is strictly better than avoiding it, because it MEASURES the tool instead of
+> routing around it; one run did exactly that and it is how the scaffold's plumbing got verified.
+> Second, fall back to `scripts/templates/lunit/` and say so. Either way, report which.
+>
 > **If `lvai_lunit_add_test_method` or `lvai_run_lunit_tests` is not in your tool roster, the
 > definition you are reading is newer than the session that spawned you** — agent definitions are
 > loaded at session start, and a tool added afterwards is not granted until the client restarts. Do
