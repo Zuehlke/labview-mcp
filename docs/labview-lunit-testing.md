@@ -1150,3 +1150,47 @@ the timeout and its cleanup, and the largest wall-minus-tool item was the timed-
 second of tool time between them. `lvai_ensure_labview` answered `ready` on the **first** call
 (30.4 s) — the second cold start in a row to need no retry, against a 0.055-27.7 s spread on the
 second call in the seven before.
+
+## 16. Run 10 — the scaffold from the roster, and the paste-through pipeline closed
+
+Cold from nothing. Six methods, 12 assertions, `tests="6" failures="0"` on runs 1 and 3 with a
+write-side negative control between them, verified from the report files.
+
+**The scaffold was callable directly this time** — one call, `totalElapsedMs: 4364`, six files, four
+placeholder pairs resolved internally, and `lvai_placeholder_subvi` called zero times by the agent.
+Last run's largest single item — about 46 s of raw-stdio plumbing to reach a tool missing from the
+roster — is gone entirely, replaced by a 4.4 s call.
+
+**Both fixes from its first use are confirmed, and the answer is now paste-ready whole.**
+`methodsJson` went verbatim into `lvai_lunit_add_test_method` for `methodsAdded: 6` — zero of six
+paths rewritten, against six last time — and `swapsJsonPerMethod` pasted straight into six
+`lvai_swap_subvis` calls with `socketsLeft: 0` and `constantsSwapped: 1` on every one. Nothing needed
+editing.
+
+Measured ratio for the phase: **276.9 s wall against 140.3 s inside tools, 1.97 : 1** — better than
+this repository's 3.6 : 1 median, because the scaffold and `lvai_lunit_add_test_method` each collapse
+a dozen turns. The largest remaining single item is the **LabVIEW restart**, 66 s wall of which 45 s
+is a budget expiring rather than work, and it is mandated by the `Error 1562` lock.
+
+### A socket-naming asymmetry worth having straight
+
+§10 says the socket name becomes class-qualified after membership. That is true of the **subject's
+accessors** once they are on the diagram, and **not** of the sockets. The scaffold's
+`swapsJsonPerMethod` uses bare stub names (`LVMCP Stub 6038bd4ca0.vi`) and those still match after
+`lvai_lunit_add_test_method` has made the VIs class members — so the scaffold JSON is correct at the
+point the recipe uses it. It is the **negative control**, swapping one accessor for another, that
+needs the qualified form.
+
+### The class phase timed out at the DEFAULT budget, and the fix is now in code
+
+`lvai_create_accessors` overran the client at `budgetSeconds: 45`, which the previous day's
+retraction had called safe. It is not: the budget was checked between slices, so a slice starting at
+44 s could carry the call past 60 s. `ClassTools.NextSliceWouldOverrun` now starts a slice only if
+the projection fits. `docs/workflow-economics.md` has the reasoning and the limit of the fix — a
+budget set above the client's patience is unreachable by any between-slices check, which is the
+structural reason the `100` recommendation stays retracted.
+
+**The resume guard held without being provoked.** The timed-out slice was still running inside
+LabVIEW; by the time the resume ran the class file had all eight members, and the resume detected the
+field pair already existed and rebuilt nothing — `accessorsCreated: 0`, no `Read Bio 2.vi`. Verified
+independently: 8 members, 8 files, zero occurrences of a mangled name.

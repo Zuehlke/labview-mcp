@@ -1749,6 +1749,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
                     fromField, membersBefore, helperGenerated);
+                var thisSliceMs = wall.ElapsedMilliseconds - sliceStartMs;
                 slices.Add(new JsonObject
                 {
                     ["fromField"] = fromField,
@@ -1762,7 +1763,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     // spent two turns in the source finding out why. `sliceMs` is this slice alone.
                     ["elapsedMs"] = wall.ElapsedMilliseconds,
                     ["elapsedMsIsCumulative"] = true,
-                    ["sliceMs"] = wall.ElapsedMilliseconds - sliceStartMs,
+                    ["sliceMs"] = thisSliceMs,
                 });
                 sliceStartMs = wall.ElapsedMilliseconds;
 
@@ -1775,7 +1776,26 @@ internal sealed class ClassTools(LvaiConnection connection)
                 var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex);
 
                 if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
-                if (wall.Elapsed.TotalSeconds >= budgetSeconds) { moreToDo = true; break; }
+
+                // STOP IF THE NEXT SLICE WOULD NOT FIT, not merely if this one has already used the
+                // budget. Checking `elapsed >= budget` between slices lets a slice that starts at
+                // 44 s run 20 s more and carry the whole call to 64 s - past the point where the
+                // MCP client stops waiting and the answer is lost. Both constants have now produced
+                // that: `budgetSeconds: 100` timed out on one run, and the DEFAULT 45 timed out on
+                // the next. So the budget is a ceiling on the CALL, and the estimate for the next
+                // slice is the one just measured - slices of the same fieldCount are comparable,
+                // and later ones are usually cheaper, which makes this conservative in the safe
+                // direction.
+                //
+                // And a lost answer is not a lost slice: the work keeps running inside LabVIEW
+                // after the client gives up, so the caller cannot tell how far it got except by
+                // reading the class file. That is the damage this avoids - the resume after a
+                // timeout is what once rebuilt a field and let NI's wizard name-mangle it.
+                if (NextSliceWouldOverrun(wall.ElapsedMilliseconds, thisSliceMs, budgetSeconds))
+                {
+                    moreToDo = true;
+                    break;
+                }
 
                 fromField = next;
                 helperGenerated = false;   // it was generated at most once, on the first slice
@@ -2244,6 +2264,20 @@ internal sealed class ClassTools(LvaiConnection connection)
         try { return LvClass.MangledAccessorNames(LvClass.Read(lvclassPath).Members); }
         catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
     }
+
+    /// <summary>
+    /// Whether another slice should be started, given how long the call has already run and what the
+    /// slice just finished cost. Extracted so it can be tested: the equivalent inline condition was
+    /// wrong twice in production, once with <c>budgetSeconds: 100</c> and once with the default 45,
+    /// and each failure cost a lost answer plus - in one case - a corrupted class.
+    ///
+    /// The estimate for the next slice is the LAST one's duration. Slices of the same
+    /// <c>fieldCount</c> are comparable and later ones are usually cheaper, so this errs towards
+    /// stopping, which is the safe direction: an extra call costs a turn, an overrun costs the
+    /// answer and leaves the work running invisibly inside LabVIEW.
+    /// </summary>
+    internal static bool NextSliceWouldOverrun(long elapsedMs, long lastSliceMs, int budgetSeconds)
+        => elapsedMs + lastSliceMs >= budgetSeconds * 1000L;
 
     private static int MembersOnDisk(string lvclassPath)
     {

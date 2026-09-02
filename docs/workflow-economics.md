@@ -279,6 +279,35 @@ library is bigger by the second slice.* That is a one-off warm-up inside the wiz
 >
 > The method lesson, again: **three successes in a row is not a safety margin.** All three were
 > within 7 s of the limit and nobody checked the distance.
+>
+> ### AND THE RETRACTION WAS ITSELF TOO GENEROUS, 2026-09-02
+>
+> It said 45 "guarantees the call returns while it still can". It does not. The very next run timed
+> out **at the default 45**, because the budget was checked BETWEEN slices: a slice starting at 44 s
+> and running 20 s carries the call to 64 s. Neither constant was ever safe, and the fault was never
+> the number — it was comparing elapsed time against the budget while ignoring how long the next
+> slice would take.
+>
+> **Fixed in code rather than in advice.** `ClassTools.NextSliceWouldOverrun(elapsed, lastSlice,
+> budget)` starts another slice only if the projection fits, estimating the next slice by the one
+> just measured. At ~19 s slices it runs two and returns at 38 s; at 35 s it returns after one.
+> Extracted as a predicate and pinned by `AccessorSliceBudgetTests`, including the band where the old
+> condition said "go" and the projection was already over — every production overrun lived there.
+>
+> **The limit of the fix, pinned by its own test:** the predicate keeps a call inside
+> `budgetSeconds`; it cannot keep it inside the client's patience if the budget is set above that.
+> At 100 a call 53 s in with a 30 s slice behind it projects to 83 s, which is under budget and over
+> the client. **So a budget above the client's limit is unreachable by any between-slices check**, and
+> the default 45 is what makes the predicate protective. That is why the `100` recommendation stays
+> retracted, now for a structural reason rather than an empirical one.
+>
+> **Two more findings from that timeout, both about what a lost answer means.** The work **keeps
+> running inside LabVIEW** after the client gives up — a `lvai_describe_class` taken straight
+> afterwards showed 6 members and the slice then completed the 7th and 8th behind the reader's back.
+> And a call issued while LabVIEW's UI thread is still blocked by the previous slice's
+> `Save All This Library` answers `ok: false` with `classIndex: -1` and a port sweep full of
+> `DeadlineExceeded`; that is a **false alarm**, not a hang. Check the files and the process before
+> concluding either way.
 
 **The method lesson: a monotone-looking trend over three points is a hypothesis, not a finding.** The
 cost of getting this wrong was small here, but it was written into two documents as fact.
