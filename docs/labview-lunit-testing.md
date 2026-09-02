@@ -996,3 +996,48 @@ signature. `docs/labview-crash-signatures.md` has it, including the more serious
 ordered the wrong way. `docs/workflow-economics.md` has the table. What survives is that the *first
 slice within a call* is always the expensive one, which is why `budgetSeconds: 100` beats the default
 45.
+
+## 14. The scaffold tool — the transcription half, closed
+
+`lvai_lunit_scaffold_class_tests`, built 2026-09-01 after §13 measured it as the largest item left:
+authoring the six AIXML files was 60-90 s of wall clock against 1.7 s inside tools, in one turn,
+about 19 kB of text whose shape never varies.
+
+It takes the subject `.lvclass`, the test case `.lvclass`, an output directory and **one value per
+field**, and writes the six files. Everything else it derives: **fields and their types come from the
+class's own Read/Write accessor pairs**, and the socket names from `lvai_placeholder_subvi`, which it
+calls per accessor. So no field name, type, terminal name or stub hash is ever typed by the caller,
+and none can be misspelled. It hands back the `methodsJson` for `lvai_lunit_add_test_method` and a
+`swapsJsonPerMethod` plus `constantsJson` for `lvai_swap_subvis`, ready to paste.
+
+**The values stay the caller's, deliberately.** A generator that invented them would make six green
+tests that pin nothing trivially easy, and that is the one failure this route must not make easy.
+The tool refuses a `valuesJson` missing any field and says so; it does **not** check that the values
+are distinct or non-default, and its own note says so rather than implying a guarantee it has not
+made.
+
+**The shipped templates are its specification, and the tie is enforced by a test.**
+`LUnitScaffoldTests` emits a four-field suite and compares it against
+`scripts/templates/lunit/*.xml` filled with the same data. The comparison is **uid-normalised**: a
+uid names a wire, so what must match is the graph, and holding the numbers identical would only pin
+an accident of how the first files happened to be written. That freedom was needed — the templates
+grew organically and their independence test would have overlapped its read and assert uid bands at
+six fields, which a test pins separately.
+
+### What the route now costs
+
+| | authored by hand | with templates | **with the scaffold** |
+|---|---|---|---|
+| orientation | 98 s / 9 turns | ~20-25 s / 1 turn | one call |
+| authoring the six files | 60-90 s / 1 turn | 60-90 s / 1 turn | inside the call |
+| socket calls | 8 | 8 | inside the call |
+
+The remaining shape of a suite build is: `lvai_create_class` → restart → **scaffold** → the `.lvproj`
+entry → `lvai_lunit_add_test_method` → `lvai_swap_subvis` (all methods in one message) →
+`lvai_run_lunit_tests` ×3 for the run plus its negative control.
+
+**Not measured end to end against LabVIEW yet.** The emission is pinned offline against the verified
+templates and the tool compiles and is served, but no suite has been built with it. That is the next
+run, and until then this section describes a tool that is verified in its authoring and unverified in
+its plumbing — the same state `lvai_lunit_add_test_method` was in before its first real run, which
+found two defects.

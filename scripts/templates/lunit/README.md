@@ -12,6 +12,13 @@ folder. `docs/labview-lunit-testing.md` §12 has the numbers. The last run's aut
 effectively zero *because* an identical set happened to be lying around; these files make that the
 normal case instead of an accident.
 
+**There is now a tool that fills these in for you.** `lvai_lunit_scaffold_class_tests` takes the
+subject class, the test case class, an output directory and one value per field, and writes all six
+files — deriving the field names, types and socket names from the class's own accessors. Reach for
+these templates directly when you want a shape the tool does not emit, when you are debugging what it
+produced, or when LabVIEW is not available. **The tool's output is compared against these files by
+`LUnitScaffoldTests`, so they remain the specification either way.**
+
 Read `docs/labview-lunit-testing.md` §§3–6 for why the shape is what it is. This file is only how to
 fill it in.
 

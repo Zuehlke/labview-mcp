@@ -522,6 +522,274 @@ internal sealed class LUnitTools(LvaiConnection connection)
                "verify may need the IDE's Update dialog.";
     }
 
+    // ---------------------------------------------------------------- scaffold
+
+    [McpServerTool(Name = "lvai_lunit_scaffold_class_tests", Destructive = true, OpenWorld = true,
+                   Title = "Emit the AIXML for a class's LUnit test methods")]
+    [Description("""
+        MUTATING (it writes .xml files and may install socket VIs into the LabVIEW installation):
+        emits the AIXML for a whole LUnit suite over a class - one round-trip test per private data
+        field, one all-defaults test and one write-all/read-all independence test - and hands back
+        the `methodsJson` for lvai_lunit_add_test_method and the `swapsJson`/`constantsJson` for
+        lvai_swap_subvis, ready to paste.
+        THIS IS THE TRANSCRIPTION HALF OF THE ROUTE, and it was the largest item left in it: measured
+        over seven builds, authoring these six files cost 60-90 s of wall clock against 1.7 s inside
+        tools, in one turn, writing about 19 kB of text whose shape never varies.
+        IT DERIVES EVERYTHING IT CAN. Fields and their types come from the class's own Read/Write
+        accessors; the sockets come from lvai_placeholder_subvi, which it calls per accessor and
+        which caches, so a rebuild of the same class costs nothing. You do not pass field names,
+        types, terminal names or stub hashes, and so cannot misspell them.
+        YOU SUPPLY THE VALUES, and that is deliberate. valuesJson gives one value per field:
+          [{"field":"Sorte","value":"Boskoop"},{"field":"Gewicht g","value":"182.5"}]
+        A generator that invented them would produce six green tests that pin nothing, which is the
+        one failure this route must not make easy. Every value must be NON-DEFAULT and distinct, or a
+        Write that stores nothing - or into the wrong field - passes.
+        WHAT IT DOES NOT DO: create the test case class, add the methods, swap the sockets or run
+        anything. The order is lvai_create_class -> RESTART LabVIEW -> this -> the .lvproj entry ->
+        lvai_lunit_add_test_method -> lvai_swap_subvis (all methods in ONE message) ->
+        lvai_run_lunit_tests. scripts/templates/lunit/README.md is that recipe in full, and the
+        templates there are this tool's specification - LUnitScaffoldTests compares the two.
+        """)]
+    public async Task<string> ScaffoldClassTestsAsync(
+        [Description(@"Absolute path to the SUBJECT .lvclass - the code under test")]
+        string classPath,
+        [Description(@"Absolute path to the test case .lvclass the methods will belong to")]
+        string testClassPath,
+        [Description(@"Directory to write the .xml files into; created if absent")]
+        string outputDirectory,
+        [Description("""
+            JSON array of {field, value} - one NON-DEFAULT, distinct value per field, as the string
+            AIXML will carry. Every field of the class must appear.
+            """)]
+        string valuesJson,
+        [Description("Local budget in seconds, per placeholder")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(classPath))
+                return Json.Error("badArguments", $"No file at classPath '{classPath}'.");
+            if (!File.Exists(testClassPath))
+                return Json.Error("badArguments", $"No file at testClassPath '{testClassPath}'.");
+
+            var subject = Path.GetFileNameWithoutExtension(classPath);
+            var testClass = Path.GetFileNameWithoutExtension(testClassPath);
+
+            Dictionary<string, string> values;
+            try { values = ParseValues(valuesJson); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+
+            // The FIELDS come from the accessors, not from the private data control - the control is
+            // a flattened blob this server does not decode, while `Read <Field>.vi` names the field
+            // in plain text and its terminal carries the type.
+            LvClass.ClassInfo klass;
+            try { klass = LvClass.Read(classPath); }
+            catch (Exception bad) when (bad is IOException or InvalidDataException)
+            {
+                return Json.Error("classUnreadable", $"'{classPath}' did not parse: {bad.Message}");
+            }
+
+            var members = klass.Members.Select(m => m.Name)
+                               .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var fieldNames = members
+                .Where(n => n.StartsWith("Read ", StringComparison.OrdinalIgnoreCase)
+                            && n.EndsWith(".vi", StringComparison.OrdinalIgnoreCase))
+                .Select(n => n[5..^3])
+                .Where(f => members.Contains($"Write {f}.vi"))
+                .OrderBy(f => f, StringComparer.Ordinal)
+                .ToList();
+
+            if (fieldNames.Count == 0)
+                return Json.Error("noAccessors",
+                    $"'{subject}' has no Read/Write accessor PAIRS among its {klass.Members.Count} " +
+                    "members, so there is nothing to test and no way to learn the field types. " +
+                    "Create the accessors first with lvai_create_accessors.");
+
+            var missing = fieldNames.Where(f => !values.ContainsKey(f)).ToList();
+            if (missing.Count > 0)
+                return Json.Error("badArguments",
+                    "valuesJson has no value for " +
+                    string.Join(", ", missing.Select(m => $"'{m}'")) +
+                    $". Every one of the {fieldNames.Count} fields needs one, and it must be " +
+                    "non-default and distinct - a test whose value is the type default passes even " +
+                    "when the Write stores nothing.");
+
+            var total = Stopwatch.StartNew();
+            var steps = new JsonArray();
+            var fields = new List<LUnitScaffold.Field>();
+            var folder = Path.GetDirectoryName(Path.GetFullPath(classPath))!;
+            var placeholders = new PlaceholderTools(connection);
+
+            foreach (var field in fieldNames)
+            {
+                var write = await placeholders.PlaceholderSubViAsync(
+                    Path.Combine(folder, $"Write {field}.vi"), false, timeoutSeconds, ct);
+                var read = await placeholders.PlaceholderSubViAsync(
+                    Path.Combine(folder, $"Read {field}.vi"), false, timeoutSeconds, ct);
+                steps.Add(new JsonObject
+                {
+                    ["field"] = field,
+                    ["write"] = Json.Slim(Read(write), false),
+                    ["read"] = Json.Slim(Read(read), false),
+                });
+
+                var writeStub = (Read(write) as JsonObject)?["placeholder"]?.GetValue<string>();
+                var readStub = (Read(read) as JsonObject)?["placeholder"]?.GetValue<string>();
+                if (writeStub is null || readStub is null)
+                    return Json.Document(new JsonObject
+                    {
+                        ["ok"] = false,
+                        ["failedAtStep"] = "placeholder",
+                        ["field"] = field,
+                        ["steps"] = steps,
+                        ["note"] = "A socket could not be made for this field's accessors, so the " +
+                                   "AIXML cannot name one. The two answers are under `steps`; a " +
+                                   "`stubRefused` there is the pane the generator would not clone.",
+                    });
+
+                var type = TerminalType(Read(read), field) ?? TerminalType(Read(write), field);
+                if (type is null)
+                    return Json.Error("typeUnknown",
+                        $"Neither accessor of '{field}' reports a terminal called '{field}', so " +
+                        "its type cannot be read. The accessors may have been renamed away from " +
+                        "the field.");
+
+                fields.Add(new LUnitScaffold.Field(field, type, writeStub, readStub, values[field]));
+            }
+
+            Directory.CreateDirectory(outputDirectory);
+            var written = new JsonArray();
+            var methods = new JsonArray();
+
+            void Emit(string fileStem, string viName, string aixml)
+            {
+                var path = Path.Combine(outputDirectory, fileStem + ".xml");
+                File.WriteAllText(path, aixml);
+                written.Add(path);
+                methods.Add(new JsonObject
+                {
+                    ["aixml"] = path,
+                    ["vi"] = Path.Combine(outputDirectory, viName),
+                });
+            }
+
+            foreach (var field in fields)
+                Emit($"tm_{Slug(field.Name)}", $"Test {field.Name} Round Trip.vi",
+                     LUnitScaffold.RoundTrip(testClass, subject, field));
+            Emit("tm_defaults", "Test Field Defaults.vi",
+                 LUnitScaffold.Defaults(testClass, subject, fields));
+            Emit("tm_independence", "Test Write Independence.vi",
+                 LUnitScaffold.Independence(testClass, subject, fields));
+
+            // The swap map, per method, so the caller pastes rather than derives. A round trip calls
+            // two accessors; the two whole-class tests call every one.
+            var swaps = new JsonObject();
+            JsonArray Pairs(IEnumerable<LUnitScaffold.Field> some, bool write, bool read)
+            {
+                var list = new JsonArray();
+                foreach (var f in some)
+                {
+                    if (write)
+                        list.Add(new JsonObject
+                        {
+                            ["socket"] = f.WriteStub,
+                            ["target"] = Path.Combine(folder, $"Write {f.Name}.vi"),
+                        });
+                    if (read)
+                        list.Add(new JsonObject
+                        {
+                            ["socket"] = f.ReadStub,
+                            ["target"] = Path.Combine(folder, $"Read {f.Name}.vi"),
+                        });
+                }
+                return list;
+            }
+
+            foreach (var f in fields)
+                swaps[$"Test {f.Name} Round Trip.vi"] = Pairs([f], true, true);
+            swaps["Test Field Defaults.vi"] = Pairs(fields, false, true);
+            swaps["Test Write Independence.vi"] = Pairs(fields, true, true);
+
+            return Json.Document(new JsonObject
+            {
+                ["ok"] = true,
+                ["subjectClass"] = subject,
+                ["testClass"] = testClass,
+                ["fields"] = new JsonArray([.. fields.Select(f => (JsonNode)new JsonObject
+                {
+                    ["name"] = f.Name,
+                    ["type"] = f.Type,
+                    ["value"] = f.Value,
+                    ["default"] = LUnitScaffold.DefaultFor(f.Type),
+                })]),
+                ["filesWritten"] = written,
+                ["methodsJson"] = methods.ToJsonString(),
+                ["swapsJsonPerMethod"] = swaps,
+                ["constantsJson"] = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["label"] = $"{subject} seed",
+                        ["class"] = Path.GetFullPath(classPath),
+                    },
+                }.ToJsonString(),
+                ["placeholders"] = steps,
+                ["totalElapsedMs"] = total.ElapsedMilliseconds,
+                ["note"] =
+                    $"{written.Count} AIXML file(s) for {fields.Count} field(s). Next: pass " +
+                    "`methodsJson` to lvai_lunit_add_test_method with this test class and the " +
+                    ".lvproj, then one lvai_swap_subvis per method - ALL IN ONE MESSAGE - using " +
+                    "`swapsJsonPerMethod` and the same `constantsJson` each time. THE VALUES ARE " +
+                    "YOURS: nothing here checks that they are distinct or non-default, and a suite " +
+                    "of six green tests over default values pins nothing.",
+            });
+        });
+
+    /// <summary>`{field, value}` pairs, refusing the shapes that would silently test nothing.</summary>
+    private static Dictionary<string, string> ParseValues(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new ArgumentException("valuesJson is empty; every field needs a value.");
+
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(json); }
+        catch (System.Text.Json.JsonException bad)
+        {
+            throw new ArgumentException($"valuesJson is not valid JSON: {bad.Message}");
+        }
+        if (parsed is not JsonArray array)
+            throw new ArgumentException("valuesJson must be a JSON ARRAY of {field, value}.");
+
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in array)
+        {
+            if (entry is not JsonObject o)
+                throw new ArgumentException("Every valuesJson entry must be an object.");
+            var field = o["field"]?.GetValue<string>();
+            var value = o["value"] is { } v
+                ? v.GetValueKind() == System.Text.Json.JsonValueKind.String
+                    ? v.GetValue<string>()
+                    : v.ToJsonString()
+                : null;
+            if (string.IsNullOrWhiteSpace(field) || value is null)
+                throw new ArgumentException("Every valuesJson entry needs `field` and `value`.");
+            values[field] = value;
+        }
+        return values;
+    }
+
+    /// <summary>The AIXML type of the terminal named after the field, from a placeholder answer.</summary>
+    private static string? TerminalType(JsonNode? answer, string field) =>
+        (answer as JsonObject)?["terminals"] is JsonArray terminals
+            ? terminals.OfType<JsonObject>()
+                       .FirstOrDefault(t => string.Equals(t["name"]?.GetValue<string>(), field,
+                                                          StringComparison.OrdinalIgnoreCase))
+                       ?["type"]?.GetValue<string>()
+            : null;
+
+    /// <summary>A file-name-safe stem for a field, so `Gewicht g` does not become two words.</summary>
+    private static string Slug(string field) =>
+        new([.. field.ToLowerInvariant().Where(char.IsLetterOrDigit)]);
+
     // ---------------------------------------------------------------- run the tests
 
     [McpServerTool(Name = "lvai_run_lunit_tests", Destructive = true, OpenWorld = true,
@@ -882,7 +1150,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
             {
                 throw new ArgumentException(
                     $"methodsJson is not valid JSON: {bad.Message}. It is an array of " +
-                    "{\"aixml\":\"…\",\"vi\":\"…\"} objects.");
+                    "{\"aixml\":\"â€¦\",\"vi\":\"â€¦\"} objects.");
             }
 
             if (parsed is not JsonArray array)
