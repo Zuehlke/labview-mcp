@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates every accessor on dynamic dispatch, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_bind_class_fields, mcp__labview__lvai_add_class_method, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_vi_terminals, Agent, SendMessage
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_bind_class_fields, mcp__labview__lvai_add_class_method, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_run_vi_and_read_values, Agent, SendMessage
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -492,6 +492,27 @@ tests is half a deliverable, and you are not the agent that writes them.
      fields and each reported the other's files as foreign. An empty directory is NOT evidence that
      an agent has failed — a Caraya suite takes minutes before it writes anything. WAIT, or resume
      that same agent with `SendMessage`. Never start a second one;
+
+3b. **AND DO NOT SIT IN A WAIT LOOP.** This is the other half of the rule above, and leaving it out
+    cost three of the five measured runs. **The absence of a result is not evidence that the agent is
+    alive**, any more than an empty directory is evidence that it is dead. A run polled for a
+    notification through about six turns while its agent was in fact working; another stopped twice
+    reporting only "I'll wait", which is not a report and forces the orchestrator to unblock you.
+
+    So when a handoff's result has not arrived and you have nothing else to do:
+
+    - **Read the FILESYSTEM.** `<test dir>\*.vi`, the runner, the `*-TestReport.xml`, and their
+      timestamps. That is the state; everything else is inference.
+    - **A file written in the last minute or two means it is working.** Say what you can see and stop
+      there rather than describing your own waiting.
+    - **Nothing new for several minutes means finish it yourself.** You hold
+      `lvai_generate_class_test`, `lvai_generate_method_test` and
+      `lvai_generate_caraya_test_runner` for exactly this: generate the suites, generate the runner,
+      run it, read the JUnit report, and say in your report that you completed the test work
+      directly and why.
+    - **Never report "waiting" as an outcome.** A report that names what is on disk and what is
+      missing is useful; one that says you are waiting is not, and it ends your turn without
+      advancing anything;
    - the `.lvproj` path;
    - the field table from Phase 1, so it does not have to re-derive the data model;
    - anything the user said about values or cases, verbatim.

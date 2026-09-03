@@ -25,11 +25,14 @@ internal sealed class StatusTools(LvaiConnection connection)
         this server's exe. Use it instead of a relative path - it works from any working
         directory, and from a binary-only install with no repository checkout.
         `labviewHealth` counts the `DWarn` entries in NI's OWN crash log, which is where
-        LabVIEW records faults - its crash handler means Windows Error Reporting never sees
-        them, so an empty event log is not an alibi. A high count is a PRIOR, not a diagnosis:
-        measured 2026-09-03, an instance carrying 200 of them answered every RPC normally while
-        refusing class work with Error 1073 and Error 1562, and a restart cured both. Check it
-        when a call fails in a way its arguments do not explain.
+        LabVIEW records faults - its crash handler means Windows Error Reporting never sees them,
+        so an empty event log is not an alibi. USE IT AFTER A FAILURE, NEVER AS A GATE BEFORE
+        WORK: measured 2026-09-03 over two runs, it was wrong in BOTH directions - an instance at
+        200 completed a whole cold class build without incident, and an instance reading 0
+        crashed inside ConvertAIXMLToVI minutes later. What it is good for is the retrospective
+        question: a class-editing call has failed for no reason the project state explains, so did
+        the count move, and does a restart cure it? The log is reset at start, so the count covers
+        this instance only.
         """)]
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -91,8 +94,17 @@ internal sealed class StatusTools(LvaiConnection connection)
     /// Windows Error Reporting never sees these - an empty Application log is not an alibi.
     ///
     /// COUNTED, NOT DIAGNOSED, and the difference matters: a `DWarn` is not proof of anything
-    /// and a high count is not a verdict. It is a cheap prior. `_cur.txt` is overwritten on the
-    /// next start, so the count is for THIS instance's lifetime plus whatever it inherited.
+    /// and a high count is not a verdict. `_cur.txt` is overwritten at start - it carries ONE
+    /// `#Date:` header - so the count is for this instance's lifetime and nothing earlier.
+    ///
+    /// IT HAS BEEN WRONG IN BOTH DIRECTIONS, measured 2026-09-03 over two runs: 200 was followed by
+    /// a flawless cold build, and 0 - a log reset minutes before - was followed by a crash inside
+    /// `ConvertAIXMLToVI`. Treat it as a record of what has already happened, useful AFTER an
+    /// unexplained failure, and never as a gate before starting work.
+    ///
+    /// A caution for anyone reading the file directly: comparing two SIZES across a restart looks
+    /// like evidence of appending and is not - the second reading is a different, fast-growing
+    /// file. Count the `#Date:` headers instead. An agent drew exactly that wrong conclusion here.
     /// </summary>
     internal static JsonObject Health()
     {
@@ -156,15 +168,26 @@ internal sealed class StatusTools(LvaiConnection connection)
             ["logBytes"] = text.Length,
             ["lastDwarn"] = lastSignature,
             ["looksDegraded"] = warnings >= 50,
+            // `looksDegraded` HAS NOW BEEN WRONG IN BOTH DIRECTIONS, and saying so is the
+            // point of this field rather than a caveat on it. Measured 2026-09-03 over two runs:
+            // an instance at 200 completed a full cold class build, a typedef binding, ten
+            // accessors and five suite runs without incident; an instance at 0 - a log reset
+            // minutes earlier - CRASHED during lvai_create_class. So the count records trouble
+            // that HAS happened; it does not predict trouble that WILL. Keep using it the way
+            // the note says - as something to check AFTER an unexplained failure - and do not
+            // gate work on it.
             ["note"] = warnings == 0
-                ? "No DWarn entries. Nothing here suggests a degraded instance."
+                ? "No DWarn entries in this instance's log. That is NOT a promise of health: an "
+                  + "instance reading 0 has been measured crashing minutes later, because the log "
+                  + "is reset at start and records only what has already gone wrong."
                 : warnings >= 50
-                    ? $"{warnings} DWarn entries. THIS IS A PRIOR, NOT A DIAGNOSIS - but an "
-                      + "instance in this state has been measured refusing work while still "
-                      + "answering every RPC: Error 1073 on a private-data export with no "
-                      + "project holding the class, and Error 1562 from the accessor wizard, "
-                      + "both cured by a restart. If a class-editing call fails for no reason "
-                      + "the project state explains, restart LabVIEW before hunting further."
+                    ? $"{warnings} DWarn entries. A RECORD OF WHAT HAS ALREADY GONE WRONG, "
+                      + "not a prediction - an instance at this level has also been measured "
+                      + "completing a whole cold class build without incident. Its use is "
+                      + "RETROSPECTIVE: when a class-editing call fails for no reason the project "
+                      + "state explains - Error 1073 on a private-data export, Error 1562 from the "
+                      + "accessor wizard - check whether the count moved and restart LabVIEW "
+                      + "before hunting further. Do not gate work on this number."
                     : $"{warnings} DWarn entries. Low enough to be ordinary; read the log if a "
                       + "call fails in a way the arguments do not explain.",
         };

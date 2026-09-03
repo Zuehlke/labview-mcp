@@ -88,6 +88,16 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var subjectName = Path.GetFileNameWithoutExtension(viPath);
             testViPath ??= Path.Combine(Path.GetDirectoryName(viPath)!, $"Test {subjectName}.vi");
+            // CREATE THE TARGET DIRECTORY. ConvertAIXMLToVI does not, and its failure names
+            // the wrong cause: `Error 7, File not found ... Method Name: Save:Instrument`,
+            // whose own note then discusses Error 1357 and 1051 - a memory conflict - for a
+            // folder that simply is not there. Measured twice on 2026-09-03: once by hand,
+            // then AGAIN by a test agent after the fix went into lvai_generate_method_test
+            // ONLY. Fixing one of three tools that write a VI to a caller-named path just
+            // moves which one bites.
+            if (Path.GetDirectoryName(Path.GetFullPath(testViPath)) is { Length: > 0 } folderToMake)
+                Directory.CreateDirectory(folderToMake);
+
 
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
@@ -257,6 +267,16 @@ internal sealed class TestTools(LvaiConnection connection)
             var folder = Path.GetDirectoryName(Path.GetFullPath(lvclassPath))!;
             var className = Path.GetFileNameWithoutExtension(lvclassPath);
             testViPath ??= Path.Combine(folder, $"Test {className}.vi");
+            // CREATE THE TARGET DIRECTORY. ConvertAIXMLToVI does not, and its failure names
+            // the wrong cause: `Error 7, File not found ... Method Name: Save:Instrument`,
+            // whose own note then discusses Error 1357 and 1051 - a memory conflict - for a
+            // folder that simply is not there. Measured twice on 2026-09-03: once by hand,
+            // then AGAIN by a test agent after the fix went into lvai_generate_method_test
+            // ONLY. Fixing one of three tools that write a VI to a caller-named path just
+            // moves which one bites.
+            if (Path.GetDirectoryName(Path.GetFullPath(testViPath)) is { Length: > 0 } folderToMake)
+                Directory.CreateDirectory(folderToMake);
+
 
             List<ClassCaseRequest> requested;
             try { requested = ClassCaseRequest.ParseAll(casesJson); }
@@ -473,6 +493,11 @@ internal sealed class TestTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            // The third tool that writes a VI where the caller says. Same reason as the other
+            // two: ConvertAIXMLToVI does not create the folder and blames a memory conflict.
+            if (Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) is { Length: > 0 } runnerFolder)
+                Directory.CreateDirectory(runnerFolder);
+
             if (PathListFault(testViPaths, nameof(testViPaths)) is { } listFault)
                 return Json.Error("badArguments", listFault,
                     new { parameter = nameof(testViPaths), arrived = testViPaths });

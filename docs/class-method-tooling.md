@@ -554,6 +554,79 @@ typedef — from the saved file with no LabVIEW. Verified against the class that
 That is also the check that separates a successful typedef bind from one that installed the type and
 no link, which is why it belongs in the describe tool rather than only inside the binding one.
 
+## 4h. The fifth run: the batch paths under load, and what the health prior is actually worth
+
+The child class was built with the socket route — nine placeholders, four swaps — which is the load
+the batch parameters were added for.
+
+| change | verdict |
+|---|---|
+| `lvai_placeholder_subvi` with `viPaths` ALONE | **works.** Nine accessors, nine distinct stubs, `failed: 0`, 6.1 s wall against 3.4 s of summed per-VI time — against nine round trips at ~7 s that is about a minute |
+| `lvai_swap_subvis` with `editsJson` | **works.** Four method VIs in one call, 13 nodes, `socketsLeft: 0` each, 5.5 s |
+| `lvai_describe_class` `fields` | **works and was sufficient** — it supplied the parent's `Task Reference` type, which is what let the child's `Write Task Reference` be wired without guessing |
+| directory creation | **incomplete — see below** |
+
+**The wiring hazard did NOT recur.** An independent read of the export confirmed per method that each
+value comes from its own terminal: `physical channels <- Physical Channel`, `rate <- Sample Rate`,
+`task/channels in <- Task Reference`, and `Write Task Reference <- task out` rather than the class
+wire. So the §4g defect is real but not universal; on this shape `Replace` got it right. The check
+still has to be made by hand, because `verify` does not look.
+
+**A method-socket collision was observed, which confirms the corrected §4d rule.** `Initialize`,
+`Start` and `Close` have panes identical NAME FOR NAME — class wire plus error cluster — and
+collapsed onto one stub, `f7c12667e7`. Harmless here because they never share a diagram, and it is
+exactly what the rule now predicts: field names cannot collide, method panes can.
+
+**And a swap target must be CLASS-QUALIFIED once the VI is a member.** `"Start.vi"` came back
+`socketsNotOnDiagram` with `errorCode 1055` and the VI unsaved; `"DAQmxAnalogInput.lvclass:Start.vi"`
+worked.
+
+### The directory fix was incomplete, and the incompleteness hid itself
+
+`lvai_generate_method_test` created its folder, so the parent agent reported the change verified. The
+TEST agent had hit `Error 7 ... Save:Instrument` minutes earlier with **`lvai_generate_class_test`**
+and created the directory by hand to get past it — after which the method tool's own creation had
+nothing left to do. THREE tools write a VI to a caller-named path; fixing one just moves which one
+bites. All three create it now.
+
+### What `labviewHealth` is worth: less than its first wording claimed
+
+It has now been **wrong in both directions**:
+
+| reading | what followed |
+|---|---|
+| `dwarnCount: 200`, `looksDegraded: true` | a flawless cold build — class, binding, ten accessors, five suite runs |
+| `dwarnCount: 0`, `looksDegraded: false` | LabVIEW **crashed** inside `ConvertAIXMLToVI` minutes later, `HeapObjMapImpl.cpp(226)` |
+
+So the count records trouble that HAS happened and does not predict trouble that WILL. Its use is
+retrospective — *a call failed for no reason the project state explains; did the count move, and does
+a restart cure it?* — and the tool now says exactly that instead of implying a gate.
+
+**One inference to avoid, because it was drawn here and is wrong.** An agent compared the log's size
+before a restart (1 553 107) with a reading after it (1 662 552), concluded the file is appended
+across sessions, and reported the counter as cumulative. It is not: the file carries exactly ONE
+`#Date:` header and is reset at start. The second reading was of a different, fast-growing file — the
+new session reached 1.8 MB within half an hour, most of it `UpdateHierarchy: In the middle of out of
+order close : Skip`. **Count the headers, do not difference the sizes.**
+
+### The orchestration rule was half a rule
+
+"Spawn the test agent exactly once, an empty directory is not evidence of failure" prevented the
+collision of §4c and then caused a new failure: three of five runs ended with the class agent
+**waiting** for a child, twice reporting nothing but that it was waiting. The missing half is that
+the absence of a result is equally not evidence the agent is alive. The definition now says: read the
+filesystem, act on timestamps, and finish the test work yourself when nothing new appears — for which
+the class agent has been given `lvai_generate_class_test`, `lvai_generate_method_test`,
+`lvai_generate_caraya_test_runner` and `lvai_run_vi_and_read_values`, which it did not have.
+
+### Result
+
+22 tests green across both classes — 4 + 2 on the parent, 4 + 4 + 8 on the child — 12 members all
+dynamic dispatch, parent link `Parent Libraries items (plain text)`. The four method error codes
+(`-200099`, `-200088` ×3) were OBSERVED by running each VI before any case was written. **No negative
+control was run on the child suites**, so their ability to fail is undemonstrated; and one LabVIEW
+crash occurred, expected zero.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
