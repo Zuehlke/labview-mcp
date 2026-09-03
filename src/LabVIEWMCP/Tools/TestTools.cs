@@ -900,7 +900,7 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             // The data OUTPUT needs a source of its own type; a path cannot feed it.
             sb.AppendLine(
-                $"  <Constant _name=\"leer\" outputs=\"value:11.value\" " +
+                $"  <Constant _name=\"empty\" outputs=\"value:11.value\" " +
                 $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
                 $"value=\"{Escape(empty)}\"/>");
             sb.AppendLine(
@@ -987,7 +987,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var written = uid++;
             sb.AppendLine(Constant(written, test.DataType, ValueFor(test.DataType, test.Value),
-                                   $"wert {test.Slot}"));
+                                   $"written {test.Slot}"));
 
             var write = uid++;
             sb.AppendLine($"  <Call target=\"{Escape(test.WriteSocket)}\" " +
@@ -1193,7 +1193,7 @@ internal sealed class TestTools(LvaiConnection connection)
     {
         public string WriteSocket => $"LVMCP ClsW{Slot}.vi";
         public string ReadSocket => $"LVMCP ClsR{Slot}.vi";
-        public string SeedLabel => $"objekt {Slot}";
+        public string SeedLabel => $"object {Slot}";
     }
 
     // ------------------------------------------------------------------ authoring

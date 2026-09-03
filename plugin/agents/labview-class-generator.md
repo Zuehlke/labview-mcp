@@ -487,6 +487,11 @@ tests is half a deliverable, and you are not the agent that writes them.
      2026-09-02: two agents given `…\Tests\` overwrote each other's suite inside two minutes, and
      one then reported `4/4 failed` for what was only the other's half-written file. Say in the
      prompt that the directory is theirs and that they must not write outside it;
+   - **SPAWN IT EXACTLY ONCE.** Measured 2026-09-03: a run re-spawned its own test agent after the
+     directory still looked empty while the first one was working, and the two then covered the same
+     fields and each reported the other's files as foreign. An empty directory is NOT evidence that
+     an agent has failed — a Caraya suite takes minutes before it writes anything. WAIT, or resume
+     that same agent with `SendMessage`. Never start a second one;
    - the `.lvproj` path;
    - the field table from Phase 1, so it does not have to re-derive the data model;
    - anything the user said about values or cases, verbatim.
@@ -653,12 +658,16 @@ what a DAQmx wrapper does anyway — or it reaches its accessors through the SOC
 `lvai_placeholder_subvi` to clone each accessor's pane, then `lvai_swap_subvis` to point the call at
 the real one. Both tools are in your list for that purpose.
 
-**But the socket route has a limit that bites on exactly the classes you build.** Placeholders are
-cached by SIGNATURE and `lvai_swap_subvis` takes the FIRST match on duplicates — so a class whose
-fields share a type (`Minimum Value`, `Maximum Value`, `Timeout` and an inherited `Sample Rate` are
-all class + double) gives several accessors one indistinguishable socket, and the calls cannot be
-told apart. Measured on a four-field DAQmx class where twelve accessor calls collapsed that way.
+**The socket route works for accessors, and an earlier version of this paragraph said it did not.**
+That claim — that placeholders cached "by signature" collapse when fields share a type — was written
+from reasoning and is false. Measured 2026-09-03: `PlaceholderTools.Signature` includes the terminal
+NAME (`o:Minimum Value:double:2:recommended`), so a class's four class+double accessors produced four
+distinct stubs and nine accessors produced nine. **Field names are unique within a class, so accessor
+sockets cannot collide.** The collapse threatens only panes identical NAME INCLUDED.
 
-So: **decide the signature deliberately, and say which you chose and why.** Pane parameters for a
-class with repeated field types; the socket route only where the signatures are distinct. Never
-report "the method stores it in the object" when it returns it on a terminal instead.
+So prefer the socket route and build a real HAL: four DAQmx methods taking nothing but the class wire
+and the error cluster, each reading its own configuration out of the object, `socketsLeft: 0` on all
+four. Pane parameters are the fallback, not the default.
+
+Either way: **say which you chose and why**, and never report "the method stores it in the object"
+when it returns it on a terminal instead.

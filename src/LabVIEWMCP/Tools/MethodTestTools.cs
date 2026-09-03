@@ -461,7 +461,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 written = uid++;
                 sb.AppendLine(TestTools.Constant(written, type,
-                    TestTools.ValueFor(type, test.Value!), $"wert {test.Slot}"));
+                    TestTools.ValueFor(type, test.Value!), $"written {test.Slot}"));
 
                 var write = uid++;
                 sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.WriteSocket!)}\" " +

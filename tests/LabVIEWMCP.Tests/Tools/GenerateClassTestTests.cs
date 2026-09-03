@@ -289,7 +289,11 @@ public sealed class GenerateClassTestTests
         // lvai_swap_subvis finds a constant by its block diagram label, and AIXML's _name IS that
         // label. A seed the swap cannot find stays a path, and the dynamic dispatch input - a
         // REQUIRED terminal - is then wired with the wrong type.
-        Assert.Equal(["objekt 1", "objekt 2"], seeds);
+        // ENGLISH, since 2026-09-03: these labels are written into the USER's VI, and this
+        // repository's rule is that everything authored into a VI is English whatever language
+        // the request was in. A test agent reading a generated suite spotted `objekt`/`wert`
+        // and was right to flag them.
+        Assert.Equal(["object 1", "object 2"], seeds);
     }
 
     [Fact]

@@ -376,14 +376,91 @@ Measured 2026-09-03, and it decides a method's whole signature:
 So a generated method either takes its parameters **on the connector pane**, or reaches its accessors
 through the socket route (`lvai_placeholder_subvi` + `lvai_swap_subvis`).
 
-**And the socket route has a limit that bites on exactly these classes.** Placeholders are cached by
-SIGNATURE and `lvai_swap_subvis` takes the FIRST match on duplicates, so a class whose fields share a
-type — `Minimum Value`, `Maximum Value`, `Timeout` and an inherited `Sample Rate` are all class +
-double — gives several accessors one indistinguishable socket. Twelve accessor calls collapsed that
-way on the DAQmx child class.
+**And the socket route WORKS for accessors — this section claimed it collapsed, and that was wrong.**
+The claim was written 2026-09-03 from an agent's reasoning, not from a measurement: placeholders are
+cached "by signature", so four fields of type class + double were said to give one indistinguishable
+socket. Measured the same day, and the code agrees:
+
+```csharp
+// PlaceholderTools.Signature
+subject.Inputs.Select(t => $"i:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")
+```
+
+The terminal **NAME** is in the hash — `o:Minimum Value:double:2:recommended` versus
+`o:Timeout:double:2:recommended` — so `Minimum Value`, `Maximum Value`, `Timeout` and an inherited
+`Sample Rate` produced four *distinct* stubs, and nine accessors produced nine distinct names.
+**Field names are unique within a class by construction, so accessor sockets cannot collide.** The
+collapse is real only for panes identical NAME INCLUDED: two methods sharing terminal names, not two
+fields sharing a type.
+
+So a generated method *can* read its own fields, and the result is a real HAL rather than parameters
+on a pane. Measured over four DAQmx methods that take nothing but the class wire and the error
+cluster — `Initialize` alone with six read sockets, two DAQmx polymorphic calls and one write —
+`socketsLeft: 0` on all four, and the suite over them runs.
 
 Decide the signature deliberately and say which was chosen. Never report that a method stores a value
 in the object when it returns it on a terminal instead.
+
+### The lesson, which is the older one this repository keeps relearning
+
+Three of the wrong rules in this document were written from an agent's *reasoning* about a tool rather
+than from a run of it: the socket collapse, `Error 1073` meaning project state (§4e), and the
+original claim that class methods were not scriptable at all. Each was plausible, each was written
+down as measured, and each cost a session. **A rule about a tool's behaviour needs a run or a reading
+of its source, not an inference from its description.**
+
+## 4e. The verification run, 2026-09-03: what held and what did not
+
+Both fixes were exercised cold on a third build of the same task.
+
+| tool | verdict |
+|---|---|
+| `lvai_bind_class_fields`, field reader | **confirmed fixed.** All five field names resolved in cluster order with correct `fieldIndex`; no `Cluster of class private data`. With `force` both chains ran `export`/`bind`/`import` at `errorCode 0`, and the tool correctly answered `ok: false` because no typedef link resulted |
+| `lvai_generate_method_test` | **confirmed fixed for the defect that shipped.** The suite is executable and RAN first try — 5 tests, 0 failures, runner `error out = 0`, no `7101` anywhere |
+| `lvai_describe_ctl` | confirmed again, 0.5 s for two verdicts, both borne out downstream |
+| `lvai_add_class_method` | second clean outing: four methods, `terminalsRetyped: 2` each, `pathStandInsLeft: 0`, and `Close.vi` proved executable by running it |
+| `lvai_open_file`'s `projectBecameActive` | **positive branch only.** `true` on every call across three runs; the `false` branch has never fired |
+
+Two partial verifications worth naming rather than glossing:
+
+- The new `requiredInputs` step ran and reported `wired: []` for all five cases — correct, because
+  those panes carry only `error in` (recommended) and the dynamic-dispatch class input. So **neither
+  interesting branch was exercised**: not "wire a constant", not "refuse a case by name". Closing
+  that out needs a method with a required scalar and a required IO-name tag on its pane.
+- `projectBecameActive` has only ever answered `true`. And one assumption is already weaker than it
+  was: LabVIEW never had the foreground during that run and the check passed every time, so
+  foreground focus is not a blanket precondition — it was the trigger of the original failure, not a
+  general requirement.
+
+### `Error 1073` from `lvpdc_export` is a degraded instance, not project state
+
+The tool's own note said `Error 1073` on `Move` means "the class is held by a project the helper did
+not reach". Measured 2026-09-03, three configurations, all before a LabVIEW restart:
+
+| project state | result |
+|---|---|
+| the project open, active, listing the class | `Error 1073` at `Move` |
+| no project open | `Error 1055` at the first property node |
+| a DECOY project open that does not list the class | `Error 1073` at `Move` |
+
+The third row falsifies the note: no project held the class. After restarting LabVIEW the identical
+call succeeded. That instance was already unhealthy — NI's own log carried **200 `DWarn` entries**
+timestamped before the session, all `RTSetCleanupProc: leaf and root VIs in different contexts` under
+`CLSUIP_InitializeClassIcon.vi` -> `AddVIToClass.vi`. The same run also hit `Error 1562` from the
+accessor wizard and needed the restart.
+
+So `1073` here is a symptom of a sick LabVIEW as often as of project state, and the note now says so.
+
+### Two smaller findings
+
+**Re-spawning the SAME test agent collides with itself.** The "one agent, one output directory" rule
+covers two *different* agents; it did not cover a class generator that re-spawned its own test agent
+after the directory looked empty while the first was still working. Two suites then covered the same
+fields and each reported the other's files as foreign. The rule now says: spawn it once, and wait or
+resume rather than starting a second.
+
+**`lvai_generate_class_test` wrote GERMAN constant labels** into the user's VIs — `objekt 1`, `wert 1`
+— against this repository's English-by-default rule. Pre-existing, spotted by a test agent, fixed.
 
 ## 5. What is NOT measured yet
 

@@ -250,8 +250,15 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             if (StageFailed(export, "error out") is { } exportCode)
                 return Stop(steps, "export", exportCode, total,
                     "The private data control was not exported, so the class is untouched. " +
-                    "Error 1055 means no project is active; Error 1073 on Move means the class is " +
-                    "held by a project the helper did not reach.");
+                    "Error 1055 means no project is active. ERROR 1073 ON `Move` IS AMBIGUOUS and " +
+                    "this note used to name only one cause: it can mean the class is held by a " +
+                    "project the helper did not reach, OR that this LabVIEW instance is degraded. " +
+                    "Measured 2026-09-03 - 1073 reproduced with a DECOY project open that did not " +
+                    "list the class at all, and the identical call succeeded after a LabVIEW " +
+                    "restart. That instance's log carried 200 DWarn entries predating the session " +
+                    "(RTSetCleanupProc, leaf and root VIs in different contexts) and the accessor " +
+                    "wizard was also answering Error 1562. So check the project first, and if it " +
+                    "is right, read LabVIEW_32_*_cur.txt in %TEMP% and restart LabVIEW.");
 
             var perField = new JsonArray();
             foreach (var binding in bindings)

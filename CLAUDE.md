@@ -678,11 +678,20 @@ from the other side. **Read the `.lvproj` after every close.**
 **A GENERATED METHOD CANNOT READ ITS OWN FIELDS THROUGH AN AIXML `Call`** — `Error 53, Unsupported
 SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured. So a generated method either takes
 its parameters on the connector pane, or reaches its accessors through `lvai_placeholder_subvi` plus
-`lvai_swap_subvis`. **That socket route collapses on a class whose fields share a type**: placeholders
-are cached by signature and the swap takes the first match, so `Minimum Value`, `Maximum Value`,
-`Timeout` and an inherited `Sample Rate` — all class + double — give twelve accessor calls one
-indistinguishable socket. Choose the signature deliberately and say which, and never report that a
-method stores a value in the object when it returns it on a terminal.
+`lvai_swap_subvis`, **and that route works for accessors — this clause said it collapsed and that was
+wrong.** Written 2026-09-03 from an agent's reasoning rather than a measurement, it claimed
+placeholders cached "by signature" would give `Minimum Value`, `Maximum Value`, `Timeout` and an
+inherited `Sample Rate` — all class + double — one indistinguishable socket. Measured the same day:
+`PlaceholderTools.Signature` puts the terminal NAME in the hash
+(`o:Minimum Value:double:2:recommended`), so those four produced four distinct stubs, and nine
+accessors produced nine. **Field names are unique within a class by construction, so accessor sockets
+cannot collide.** The collapse is real only for panes that are identical NAME INCLUDED — two methods
+with the same terminal names, not two fields with the same type.
+
+So a generated method CAN read its own fields, and a real HAL is reachable: measured over four DAQmx
+methods that take only the class wire and the error cluster, `socketsLeft: 0` on all four. Choose the
+signature deliberately and say which — but never report that a method stores a value in the object
+when it returns it on a terminal instead.
 
 **A TOOL TESTED AGAINST A PLAUSIBLE FIXTURE IS NOT TESTED.** Both tools that failed on their first
 real use, 2026-09-03, failed this way and nothing else. `lvai_bind_class_fields` read
