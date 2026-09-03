@@ -633,7 +633,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// lists them, so a project that could not be edited must not turn a green suite into a failed
     /// call. It comes back as its own step with `ok: false` and says what to do by hand.
     /// </summary>
-    private async Task<JsonObject> ListInProjectAsync(
+    internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct)
     {
@@ -751,7 +751,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// would be a guess: the accessor's data control carries exactly the type the private data
     /// cluster declares, including the int width.
     /// </summary>
-    private async Task<(string? Type, string Note)> FieldTypeAsync(
+    internal async Task<(string? Type, string Note)> FieldTypeAsync(
         string writeAccessor, string field, int timeoutSeconds, CancellationToken ct)
     {
         var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classtest",
@@ -782,7 +782,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
     /// <summary>Where a socket has to live to resolve as a Call target by its bare name: a plain
     /// folder under a LabVIEW symbolic root. Same folder lvai_placeholder_subvi uses.</summary>
-    private static string? SocketDirectory()
+    internal static string? SocketDirectory()
     {
         try
         {
@@ -1071,14 +1071,120 @@ internal sealed class TestTools(LvaiConnection connection)
         };
     }
 
-    internal static string DefaultFor(string type) => type switch
+    /// <summary>
+    /// An empty value literal for any AIXML type, COMPOUND TYPES INCLUDED.
+    ///
+    /// THIS USED TO END <c>_ =&gt; "0"</c> AND THAT ONE LINE COST A WHOLE SUITE. Measured
+    /// 2026-09-02 building a HAL class whose first field was the standard error cluster: the
+    /// socket came out as <c>type="cluster{bool.status,int32.code,string.source}" value="0"</c>,
+    /// which <c>ValidateAIXML</c> refuses with <c>Error 53 - Unrecognized or unsupported attribute
+    /// set in Constant</c>. So <c>lvai_generate_class_test</c> - the call that is supposed to
+    /// replace about forty - refused EVERY non-scalar field, and the agent that hit it rebuilt two
+    /// suites by hand at roughly 240 s of wall clock for 24 s of LabVIEW time.
+    ///
+    /// The catch-all was right for exactly the types it was written against (every int width,
+    /// single, double, extended) and silently wrong for everything else. A cluster wants
+    /// <c>[false,0,]</c>, an array <c>[]</c>, a refnum an empty literal - and a cluster's own
+    /// literal is its fields' literals, which is why this recurses rather than growing three more
+    /// cases.
+    ///
+    /// COMMAS HERE ARE STRUCTURE, NOT CONTENT, so they are NEVER escaped as <c>C</c> -
+    /// <c>docs/aixml-reference.md</c> section 5 counted 51 raw separators against one escaped byte
+    /// inside a picture payload. A cluster whose last field is a string ends in a trailing comma
+    /// because an empty string literal is empty: <c>[false,0,]</c> is what NI's own exports carry,
+    /// and it is not a typo.
+    /// </summary>
+    internal static string DefaultFor(string type)
     {
-        var t when t.StartsWith("string", StringComparison.Ordinal) => "",
-        var t when t.StartsWith("path", StringComparison.Ordinal) => "",
-        var t when t.StartsWith("bool", StringComparison.Ordinal) => "false",
-        var t when t.StartsWith("timestamp", StringComparison.Ordinal) => "0",
-        _ => "0",   // every int width, single, double, extended
-    };
+        var t = type.Trim();
+
+        // A refnum has no meaningful literal - `ref{...}` and the IO name controls take an empty
+        // one, which is how a DAQmx task constant is authored.
+        if (t.StartsWith("ref{", StringComparison.Ordinal) ||
+            t.StartsWith("tag{", StringComparison.Ordinal) ||
+            t.StartsWith("{LV.", StringComparison.Ordinal) ||
+            t.StartsWith("variant", StringComparison.Ordinal) ||
+            t.StartsWith("string", StringComparison.Ordinal) ||
+            t.StartsWith("path", StringComparison.Ordinal))
+            return "";
+
+        if (t.StartsWith("bool", StringComparison.Ordinal)) return "false";
+
+        // `array{X}` and `array.N{X}` alike: an empty array is empty at every rank, so the element
+        // type never has to be walked.
+        if (t.StartsWith("array{", StringComparison.Ordinal) ||
+            t.StartsWith("array.", StringComparison.Ordinal))
+            return "[]";
+
+        if (t.StartsWith("cluster{", StringComparison.Ordinal))
+        {
+            var inner = Braced(t);
+            if (inner is null) return "[]";
+            return "[" + string.Join(",",
+                SplitTopLevel(inner).Select(f => DefaultFor(FieldType(f)))) + "]";
+        }
+
+        // Every int width, single, double, extended, timestamp - and an enum, whose braces carry
+        // item strings rather than types and whose base is numeric.
+        return "0";
+    }
+
+    /// <summary>The text inside the type's outermost braces, or null when they are unbalanced.</summary>
+    private static string? Braced(string type)
+    {
+        var open = type.IndexOf('{');
+        if (open < 0) return null;
+        var depth = 0;
+        for (var i = open; i < type.Length; i++)
+        {
+            if (type[i] == '{') depth++;
+            else if (type[i] == '}' && --depth == 0) return type[(open + 1)..i];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Split a cluster's member list on the commas that are SEPARATORS - the ones at brace depth
+    /// zero. A nested cluster carries its own commas and must not be torn apart by them.
+    /// </summary>
+    private static List<string> SplitTopLevel(string inner)
+    {
+        var parts = new List<string>();
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < inner.Length; i++)
+        {
+            if (inner[i] == '{') depth++;
+            else if (inner[i] == '}') depth--;
+            else if (inner[i] == ',' && depth == 0)
+            {
+                parts.Add(inner[start..i]);
+                start = i + 1;
+            }
+        }
+        parts.Add(inner[start..]);
+        return parts;
+    }
+
+    /// <summary>
+    /// The TYPE half of a cluster member, dropping the <c>.FieldName</c> that names the instance.
+    ///
+    /// THE SEPARATOR IS THE FIRST DOT AFTER THE LAST CLOSING BRACE, not the last dot: a field name
+    /// may itself contain one (<c>double.Max. Spannung</c>) and <c>array.2{double}</c> carries a
+    /// dot in the TYPE. Both spellings are attested in NI's own exports.
+    /// </summary>
+    private static string FieldType(string member)
+    {
+        var depth = 0;
+        var lastClose = -1;
+        for (var i = 0; i < member.Length; i++)
+        {
+            if (member[i] == '{') depth++;
+            else if (member[i] == '}' && --depth == 0) lastClose = i;
+        }
+        var dot = member.IndexOf('.', lastClose + 1);
+        return dot < 0 ? member : member[..dot];
+    }
 
     /// <summary>One field round trip: which accessors, which sockets, and the value to write.</summary>
     internal sealed record ClassCase(int Slot, string Field, string DataType, string Value,
@@ -1212,7 +1318,7 @@ internal sealed class TestTools(LvaiConnection connection)
         return sb.ToString();
     }
 
-    private static string Constant(int uid, string type, string value, string? name = null)
+    internal static string Constant(int uid, string type, string value, string? name = null)
     {
         var named = name is null ? "" : $" _name=\"{Escape(name)}\"";
         return $"  <Constant{named} outputs=\"value:{uid}.value\" type=\"{Escape(type)}\" " +
@@ -1436,6 +1542,6 @@ internal sealed class TestTools(LvaiConnection connection)
         catch (System.Text.Json.JsonException) { return null; }
     }
 
-    private static string Escape(string text) =>
+    internal static string Escape(string text) =>
         text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
 }

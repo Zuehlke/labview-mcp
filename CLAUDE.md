@@ -604,6 +604,61 @@ The one thing the route does NOT do: it leaves the class's **accessors carrying 
 IDE gesture rewrites them; this does not, and a project open/close does not either. Regenerate them
 when the accessor must show the typedef.
 
+**`lvai_bind_class_fields` drives that whole chain in one call, and `lvai_describe_ctl` tells you
+first whether there is anything to bind to.** Do not hand-drive the three `lvpdc_*.xml` helpers:
+measured 2026-09-02, export -> bind x2 -> verify -> import cost **116 s of wall clock for 0.8 s
+inside LabVIEW**, the worst ratio of that run.
+
+**AND ASK WHETHER THE SOURCE IS A TYPEDEF AT ALL, because a bind against one that is not SUCCEEDS
+AND BINDS NOTHING.** This is the trap the tools were built around. Measured on two of NI's own
+controls - `vi.lib\silver_ctls\IO\DAQmx Task Name NI_Silver.ctl` and
+`vi.lib\errclust.llb\Error Cluster.ctl` - both `Replace` calls answered `error out = 0`, both
+installed the correct type, and neither produced a typedef link, because both files are
+`TypeDefVI="0"`: NI ships them as ordinary controls. A successful bind and a bind against a
+non-typedef are **indistinguishable from the calling side**. The check is three attributes in the
+saved file, needs no LabVIEW, and took ~90 s of hand archaeology before there was a tool for it.
+
+The fallback is not a defeat: the field then carries the real wrapped type - a genuine
+`Refnum RefType="UsrDefndTag" Ident="Task" TypeName="NIDAQ"`, not a de-linked copy. Report it as
+information.
+
+**A CLASS METHOD IS SCRIPTABLE, and `lvai_add_class_method` does it.** This file has said in several
+places that a class-typed terminal is the end of the road; that is true of AIXML and false as a
+conclusion. Author the method with `path` stand-ins, **convert WITHOUT validating**, then in ONE
+helper run: `Replace` the terminals by name -> `AddItemFromMemory` -> `SetWireRule(rule 4)` ->
+`Save.Instrument` -> `{LV.LVClassLibrary}` `Save`. Measured 2026-09-02: four DAQmx methods built and
+run that way, where doing it as separate helpers cost **~105 s of wall clock for 3.3 s inside
+LabVIEW** plus 70 s more on a misdiagnosis.
+
+Two halves of that order are each a defect if dropped. **`Save.Instrument` alone does not persist a
+`Replace` on a class member** - the owning class must be saved in the same run, and a run that saved
+only the VI reported success and left the file unretyped. And **`{LV.Control}` `Replace` is a silent
+no-op outside the IDE's own application instance**, reporting `terminals retyped: 2` with every
+error cluster zero while changing nothing.
+
+**`Execution:State = 1` IS NOT EVIDENCE THAT A REPAIR REACHED DISK.** Four methods were reported
+working on the strength of it, plus a describe answering `errorCode 0` and an AIXML export that
+looked right - and all three were reading a correctly retyped **in-memory copy that had never been
+written**. The only check that saw it was `pylv_extract` on the saved file: `class="udClassDDO"` once
+per class-typed terminal and `class="stdPath"` at zero. That check costs **no LabVIEW time at all**,
+and it is the third time this repository has been caught by a session-level reading that passes
+while the file disagrees. Ask the file, not the session. `docs/class-method-tooling.md` section 1d.
+
+**`lvai_generate_class_test` refused every non-scalar field until 2026-09-02, and the cause was one
+line.** Its socket default ended `_ => "0"`, so a cluster, array or refnum field was authored as
+`value="0"` against a compound type and `ValidateAIXML` answered `Error 53`. The catch-all was right
+for the numeric types it was written against and silently wrong for the rest, so the call that
+replaces about forty refused any class with an error cluster in it - and two suites were rebuilt by
+hand at ~240 s of wall clock for 24 s of LabVIEW. The default is now recursive: a cluster's literal
+is its fields' literals (`[false,0,]`), an array is `[]` at every rank, a refnum is empty, and an
+enum is its numeric base. **Commas inside a `value` are structure and are never escaped.**
+
+**ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents were handed the same `Tests\` folder and overwrote
+each other's suite inside two minutes; one then ran it and reported `4/4 failed` for what was only
+the other's half-written file. A failure report that names the wrong culprit is worse than no report.
+Give each test agent `<project>\Tests\<ClassName>\` and say in the prompt that it is theirs;
+`labview-class-generator` Phase 6 and `labview-caraya-unit-test` both carry the rule now.
+
 Pylabview cannot compose a typedef heap object where none exists; and re-pointing one that ALREADY
 exists is **not** the cheap label substitution it looks like — measured 2026-08-28, the typedef's file
 name sits 12 times in `VCTP` and 3 more in `VITS`, a block pylabview cannot parse and copies through
@@ -871,6 +926,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
@@ -888,6 +944,9 @@ literally it argued away 600 usable palette VIs.
 | How do I create an INTERFACE, and why can't I script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
+| How do I turn a generated VI into a class METHOD? | `docs/class-method-tooling.md` §3c | `lvai_add_class_method` |
+| Is this `.ctl` a typedef, and what does it wrap? | `docs/class-method-tooling.md` §1a | `lvai_describe_ctl` |
+| How do I bind typedefs onto a class's private data fields? | `docs/class-method-tooling.md` §3b | `lvai_bind_class_fields` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
 | Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |

@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates every accessor on dynamic dispatch, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, Agent, SendMessage
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_bind_class_fields, mcp__labview__lvai_add_class_method, Agent, SendMessage
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -348,14 +348,31 @@ type and is not refreshed by anything later.
 
 Add the field first — it lands with the typedef's own control label as its name and the wrapped type
 as its type, but **de-linked**: NI's provider copies the type and drops the binding, measured on an
-enum, a `double` and a boolean alike. Then bind it with the three helpers in `scripts/`:
+enum, a `double` and a boolean alike.
 
-1. `lvpdc_export.xml` → writes the class's private data cluster out as an ordinary `.ctl`.
-2. `lvpdc_bind_typedef.xml` → `{LV.Control}` `Replace` on the field, with the typedef's path.
-3. `lvpdc_import.xml` → moves the edited cluster back into the class and saves it in place.
+**Then bind it with `lvai_bind_class_fields`, in ONE call.** It exports the private data cluster,
+`Replace`s each field, moves the cluster back, and verifies each field from the SAVED class file:
 
-Generate each with `lvai_generate_vi` (`measurePane: false`) and run with
-`lvai_run_vi_and_read_values`. `scripts/lvpdc_README.md` has the inputs and the reasoning.
+```
+lvai_bind_class_fields(lvclassPath, bindingsJson, projectPath)
+  bindingsJson: [{"field":"Task Reference","ctlPath":"C:\ctl\Task.ctl"}]
+```
+
+Name the field or pass `fieldIndex`; a misspelled name comes back with the real list. Hand-driving
+the three `lvpdc_*.xml` helpers still works and `scripts/lvpdc_README.md` documents them, but it
+cost **116 s of wall clock for 0.8 s inside LabVIEW** when measured on 2026-09-02 — five round trips
+whose shape never varies.
+
+**FIRST, ASK WHETHER THE SOURCE IS A TYPEDEF AT ALL — `lvai_describe_ctl`.** This is the failure the
+binding chain cannot report: a `.ctl` that is not a typedef binds with `error out = 0`, installs the
+right type, and produces **no typedef link**. Measured 2026-09-02 on two of NI's own controls —
+`DAQmx Task Name NI_Silver.ctl` and `errclust.llb\Error Cluster.ctl` are both `TypeDefVI="0"`, so
+there was nothing to bind to and both `Replace` calls "succeeded". `lvai_bind_class_fields` runs this
+check itself and refuses such a source by name, but call it directly when the user asks for a field
+to be a typedef: it needs no LabVIEW and answers in one call what took ~90 s of file archaeology.
+
+If the source is genuinely not a typedef, **say so and use the wrapped type** — that is not a
+failure, it is NI shipping an ordinary control, and the field still carries the real type.
 
 **The three rules that are not optional here:**
 
@@ -457,15 +474,19 @@ tests is half a deliverable, and you are not the agent that writes them.
 1. **Pick the framework.** **Caraya is the default** — `labview-caraya-unit-test`. Use a different
    agent only where the user named a different framework; LUnit and VI Tester are the other two that
    exist in this world and both have an agent — `labview-lunit-unit-test` and
-   `labview-vitester-unit-test` — but both are **scaffolds over frameworks that are not installed
-   here**, and each stops at its own Phase 0 with `CANNOT PROCEED` rather than generating something
-   that cannot run. That is the correct outcome, not a failure of yours: relay it and let the user
+   `labview-vitester-unit-test` — **LUnit IS installed here and its route is measured end to end**
+   (2026-09-01, in the 32-bit LabVIEW 2026 tree); VI Tester remains a scaffold and stops at its own
+   Phase 0 with `CANNOT PROCEED` rather than generating something that cannot run. That is the correct outcome, not a failure of yours: relay it and let the user
    choose. **Never substitute Caraya quietly** — the framework is the user's choice, only the
    default is yours.
 
 2. **Spawn it with the Agent tool** and give it, in the task prompt:
    - the `.lvclass` path or paths you created;
-   - the directory the test VIs should go in — normally the same folder;
+   - **a test directory that belongs to that agent ALONE** — `<project folder>\Tests\<ClassName>\`,
+     created by you before you spawn it. **Never hand two agents the same directory.** Measured
+     2026-09-02: two agents given `…\Tests\` overwrote each other's suite inside two minutes, and
+     one then reported `4/4 failed` for what was only the other's half-written file. Say in the
+     prompt that the directory is theirs and that they must not write outside it;
    - the `.lvproj` path;
    - the field table from Phase 1, so it does not have to re-derive the data model;
    - anything the user said about values or cases, verbatim.
@@ -603,11 +624,18 @@ Everything here was verified before this agent was written. Treat it as fact.
 |---|---|
 | Create a class or a hierarchy | this one |
 | **Unit-test what you created — Phase 6, always** | **`labview-caraya-unit-test`** (the default framework) |
-| Unit tests in LUnit / VI Tester | `labview-lunit-unit-test` / `labview-vitester-unit-test` *(scaffolds — neither framework is installed here; each stops at Phase 0. Do not substitute Caraya)* |
+| Unit tests in LUnit / VI Tester | `labview-lunit-unit-test` *(installed and measured)* / `labview-vitester-unit-test` *(scaffold — not installed here, stops at Phase 0)*. Do not substitute Caraya for either |
 | Build a new VI | `labview-vi-generator` |
 | Change an existing VI | `labview-vi-editor` |
 | Document a library, class or project | `labview-doc-generator` |
 
-A class's *methods* beyond accessors are not this agent's job and are not currently generatable:
-AIXML refuses the class-typed terminal a method would need. Say so plainly rather than producing
-a method VI that does not take the class.
+A class's *methods* beyond accessors are **not this agent's job, but they ARE generatable** — this
+paragraph said they were not until 2026-09-02, on the grounds that AIXML refuses the class-typed
+terminal a method needs. That is true of AIXML and false as a conclusion: author the method with
+`path` stand-ins, convert WITHOUT validating, and repair it with **`lvai_add_class_method`**, which
+retypes the terminals through `{LV.Control}` `Replace`, sets dynamic dispatch, adds the member and
+saves the class — in one call. Four DAQmx methods were built that way and run.
+
+Hand a method request to `labview-vi-generator` for the diagram and name `lvai_add_class_method` as
+the step that makes it a member. What you must NOT do is produce a method VI that does not take the
+class wire and call it done.

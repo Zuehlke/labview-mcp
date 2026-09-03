@@ -1,0 +1,101 @@
+<VI _name="lvai_add_class_method.vi" description="Make an AIXML-generated VI a MEMBER of a LabVIEW class\2C retype its class-typed connector pane terminals\2C and set the ones that should dispatch to DYNAMIC DISPATCH - all in ONE run.\0A\0AWHY ONE RUN. Measured 2026-09-02 over a four-method DAQmx class\3A driving the retype\2C the membership and the wire rules as separate helpers cost about 105 s of wall clock for 3.3 s inside LabVIEW\2C and a misdiagnosis on top of that cost 70 s more. The sequence never varies\2C which is the signature of a step that should be a tool.\0A\0AORDER MATTERS AND IS NOT THE OBVIOUS ONE. Replace the terminals\2C then AddItemFromMemory\2C then SetWireRule\2C then the VI's own Save.Instrument\2C then the class Save. Saving the VI before it is a member writes it with no owning-library link\2C LabVIEW then sees library and VI disagree\2C marks the LIBRARY broken\2C and the library blocks EVERY VI it owns - which reads as Error 1003 on unrelated members.\0A\0ASAVE.INSTRUMENT ALONE DOES NOT PERSIST A REPLACE ON A CLASS MEMBER. The owning class must be saved in the SAME run\3B measured 2026-09-02\2C a run that saved only the VI reported success and left the on-disk file unretyped\2C which then read back as a healthy VI through every file-level check.\0A\0AAND THE REPLACE IS A SILENT NO-OP OUTSIDE THE IDE'S OWN APPLICATION INSTANCE. Run from the addon's local instance it answers 'terminals retyped' with every error cluster zero and changes nothing. That is why this opens everything through Project\3AActive Project -> Application\2C and why A PROJECT MUST BE OPEN AND ACTIVE\3A with none open that hop answers Error 1055.\0A\0ATERMINALS ARE FOUND BY NAME\2C NEVER BY INDEX. Controls[] order is front-panel creation order for a generated VI and error-clusters-first for a template-built one\2C so an index is not portable. The Case Structure is there because Search 1D Array answers -1 for a miss and Index Array then CLAMPS TO ELEMENT 0 - which would silently retype the error cluster instead. 'terminals retyped' is the check\3A it must equal the number of names asked for.\0A\0AEVERY REFNUM IS CLOSED. Leaking the refnum a class open returns keeps the class in LabVIEW's memory past a project close\2C so the next run binds to a stale copy.\0A\0APER-STAGE ERROR INDICATORS ARE DELIBERATE\3A a merged error chain names only the invoke node\2C and this diagram has many.">
+  <Control _name="vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="class path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="class terminal names" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
+  <Control _name="vi name in memory" type="string" uid="13" uid_parent="root" value="" outputs="value:13.value"/>
+  <Control _name="dispatch terminal indices" type="string" uid="14" uid_parent="root" value="" outputs="value:14.value"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
+
+  <Constant _name="empty format" outputs="value:29.value" type="string" uid="29" uid_parent="root" value=""/>
+  <Constant _name="pipe delimiter" outputs="value:30.value" type="string" uid="30" uid_parent="root" value="|"/>
+  <Constant _name="string array type" outputs="value:31.value" type="array{string}" uid="31" uid_parent="root" value="[]"/>
+  <Constant _name="int array type" outputs="value:26.value" type="array{int32}" uid="26" uid_parent="root" value="[]"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:29.value,spreadsheet string:12.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:32.array" uid="32" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:29.value,spreadsheet string:14.value,array type (2D Dbl):26.value,delimiter (Tab):30.value" outputs="array:33.array" uid="33" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:34.path" uid="34" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:35.path" uid="35" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="application reference (local):22.app,vi path:34.path,options:,error in (no error):22.error out,type specifier VI Refnum (for type only):,password (&quot;&quot;):" outputs="vi reference:36.vi reference,error out:36.error out" uid="36" uid_parent="root"/>
+  <Indicator _name="open vi error" inputs="value:36.error out" type="cluster{bool.status,int32.code,string.source}" uid="37" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:36.vi reference,error in (no error):36.error out" outputs="Front Panel:38.panel,reference out:38.reference out,error out:38.error out" uid="38" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:38.panel,error in (no error):38.error out" outputs="Controls[]:39.controls,reference out:39.reference out,error out:39.error out" uid="39" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="40" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:39.controls" mode="index" outputs="value:41.value" uid="41" uid_parent="40"/>
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:41.value" outputs="Terminal:42.term,reference out:42.reference out,error out:42.error out" uid="42" uid_parent="40"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:42.term" outputs="Name:43.name,reference out:43.reference out,error out:43.error out" uid="43" uid_parent="40"/>
+    <Tunnel _id="Out1" inputs="value:43.name" mode="index" outputs="value:44.value" uid="44" uid_parent="40"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="50" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:51.value" uid="51" uid_parent="50"/>
+    <Tunnel _id="In2" inputs="value:44.value" outputs="value:52.value" uid="52" uid_parent="50"/>
+    <Tunnel _id="In3" inputs="value:39.controls" outputs="value:53.value" uid="53" uid_parent="50"/>
+    <Tunnel _id="In4" inputs="value:35.path" outputs="value:54.value" uid="54" uid_parent="50"/>
+    <Node _name="Search 1D Array" inputs="1D array:52.value,element:51.value,start index (0):" outputs="index of element:55.index of element" uid="55" uid_parent="50"/>
+    <Constant _name="zero" outputs="value:56.value" type="int32" uid="56" uid_parent="50" value="0"/>
+    <Node _name="Greater Or Equal?" inputs="x:55.index of element,y:56.value" outputs="x &gt;= y?:57.x &gt;= y?" uid="57" uid_parent="50"/>
+    <Structure _name="Case Structure" selectin="57.x &gt;= y?" uid="60" uid_parent="50">
+      <Tunnel _id="In1" inputs="value:53.value" uid="61" uid_parent="60"/>
+      <Tunnel _id="In2" inputs="value:55.index of element" uid="62" uid_parent="60"/>
+      <Tunnel _id="In3" inputs="value:54.value" uid="63" uid_parent="60"/>
+      <CaseFrame selector="False" selectout="" uid="64" uid_parent="60">
+        <Constant _name="none" outputs="value:65.value" type="int32" uid="65" uid_parent="64" value="0"/>
+        <Tunnel _id="Out1" inputs="value:65.value" uid="66" uid_parent="64"/>
+      </CaseFrame>
+      <CaseFrame selector="True" selectout="" uid="70" uid_parent="60">
+        <Tunnel _id="In1" outputs="value:71.value" uid="71" uid_parent="70"/>
+        <Tunnel _id="In2" outputs="value:72.value" uid="72" uid_parent="70"/>
+        <Tunnel _id="In3" outputs="value:73.value" uid="73" uid_parent="70"/>
+        <Node _name="Index Array" inputs="array:71.value,index:72.value" outputs="element:74.element" uid="74" uid_parent="70"/>
+        <Node _name="Invoke Node" target="Replace" type="{LV.Control}" inputs="reference:74.element,Path:73.value" outputs="reference out:,error out:," uid="75" uid_parent="70"/>
+        <Constant _name="one" outputs="value:76.value" type="int32" uid="76" uid_parent="70" value="1"/>
+        <Tunnel _id="Out1" inputs="value:76.value" uid="77" uid_parent="70"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:78.value" uid="78" uid_parent="60"/>
+    </Structure>
+    <Tunnel _id="Out1" inputs="value:78.value" mode="index" outputs="value:79.value" uid="79" uid_parent="50"/>
+  </Structure>
+
+  <Node _name="Add Array Elements" inputs="numeric array:79.value" outputs="sum:80.sum" uid="80" uid_parent="root"/>
+  <Indicator _name="terminals retyped" inputs="value:80.sum" type="int32" uid="81" uid_parent="root" value="0"/>
+  <Indicator _name="terminal names seen" inputs="value:44.value" type="array{string}" uid="82" uid_parent="root" value="[]"/>
+
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:22.app,Path:35.path,error in (no error):39.error out" outputs="reference out:,error out:85.error out,LVClass.Open:85.LVClass.Open" uid="85" uid_parent="root"/>
+  <Indicator _name="class open error" inputs="value:85.error out" type="cluster{bool.status,int32.code,string.source}" uid="86" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Invoke Node" target="AddItemFromMemory" type="{LV.LVClassLibrary}" inputs="reference:85.LVClass.Open,Name:13.value,error in (no error):85.error out" outputs="reference out:,error out:90.error out" uid="90" uid_parent="root"/>
+  <Indicator _name="add member error" inputs="value:90.error out" type="cluster{bool.status,int32.code,string.source}" uid="91" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:36.vi reference,error in (no error):90.error out" outputs="Connector Pane\3AReference:92.pane,reference out:92.reference out,error out:92.error out" uid="92" uid_parent="root"/>
+  <Constant _name="dynamic dispatch rule" outputs="value:95.value" type="int32" uid="95" uid_parent="root" value="4"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:33.array" mode="index" outputs="value:201.value" uid="201" uid_parent="200"/>
+    <Tunnel _id="In2" inputs="value:92.pane" outputs="value:202.value" uid="202" uid_parent="200"/>
+    <Tunnel _id="In3" inputs="value:95.value" outputs="value:203.value" uid="203" uid_parent="200"/>
+    <ShiftReg uid="205" uid_parent="200">
+      <Left inputs="value:92.error out" outputs="value:206.err" uid="207" uid_parent="205"/>
+      <Right inputs="value:210.error out" outputs="value:220.error out" uid="208" uid_parent="205"/>
+    </ShiftReg>
+    <Node _name="Invoke Node" target="SetWireRule" type="{LV.ConnectorPane}" inputs="reference:202.value,error in (no error):206.err,TermIdx:201.value,Rule:203.value" outputs="reference out:,error out:210.error out" uid="210" uid_parent="200"/>
+  </Structure>
+  <Indicator _name="wire rule error" inputs="value:220.error out" type="cluster{bool.status,int32.code,string.source}" uid="221" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:36.vi reference,error in (no error):220.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:93.error out" uid="93" uid_parent="root"/>
+  <Indicator _name="save vi error" inputs="value:93.error out" type="cluster{bool.status,int32.code,string.source}" uid="94" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:85.LVClass.Open,error in (no error):93.error out" outputs="reference out:,error out:96.error out" uid="96" uid_parent="root"/>
+  <Indicator _name="save class error" inputs="value:96.error out" type="cluster{bool.status,int32.code,string.source}" uid="97" uid_parent="root" value="[false,0,]"/>
+
+  <Node _name="Close Reference" inputs="reference:85.LVClass.Open,error in (no error):96.error out" outputs="error out:100.error out" uid="100" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:36.vi reference,error in (no error):100.error out" outputs="error out:101.error out" uid="101" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:22.app,error in (no error):101.error out" outputs="error out:102.error out" uid="102" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.proj,error in (no error):102.error out" outputs="error out:103.error out" uid="103" uid_parent="root"/>
+
+  <Indicator _name="error out" inputs="value:103.error out" type="cluster{bool.status,int32.code,string.source}" uid="105" uid_parent="root" value="[false,0,]"/>
+</VI>
