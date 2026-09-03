@@ -619,6 +619,19 @@ filesystem, act on timestamps, and finish the test work yourself when nothing ne
 the class agent has been given `lvai_generate_class_test`, `lvai_generate_method_test`,
 `lvai_generate_caraya_test_runner` and `lvai_run_vi_and_read_values`, which it did not have.
 
+### The largest row was a tool that cannot read the files in question
+
+**`lvai_vi_terminals` cannot see inside an `.llb`**, and every DAQmx VI lives in one. Both
+`...\create\channels.llb\DAQmx Create Virtual Channel.vi` and the `timing.llb` equivalent answered
+`FileNotFoundException`. Hunting for a spelling the tool can never produce cost **240 s of wall clock
+against 10 s inside LabVIEW** — the worst row of the run, and it was spent on a question that has a
+cheap answer.
+
+The cheap answer is the one this repository already knows: **export an NI example that calls the VI
+and copy its `Call` element.** `Voltage - Finite Input.vi` yielded every terminal name and both
+polymorphic instance names at once. `lvai_vi_terminals` now says this in its own description, which
+is where it is read at the moment it is needed.
+
 ### Result
 
 22 tests green across both classes — 4 + 2 on the parent, 4 + 4 + 8 on the child — 12 members all

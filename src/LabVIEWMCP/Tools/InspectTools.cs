@@ -74,6 +74,17 @@ internal sealed class InspectTools(LvaiConnection connection)
         The last line of the answer says whether the export came from the disk cache or from
         LabVIEW, the same way lvai_convert_vi_to_aixml reports it; pass refresh to force a
         re-export when you suspect a stale entry.
+        IT CANNOT SEE INSIDE AN `.llb`, AND THAT RULES OUT MOST DRIVER APIs. A path through an
+        `.llb` answers `FileNotFoundException` - measured 2026-09-03 on
+        `...\create\channels.llb\DAQmx Create Virtual Channel.vi` and the `timing.llb`
+        equivalent. EVERY DAQmx VI lives in an `.llb`, so this tool cannot give you their terminal
+        names at all, and hunting for a spelling it will never produce cost 240 s of wall clock
+        against 10 s inside LabVIEW - the worst row of that run.
+        WHAT WORKS INSTEAD: export an NI EXAMPLE that already calls the VI and copy its `Call`
+        element. `lvai_example_index` finds one, `lvai_convert_vi_to_aixml` reads it, and a single
+        example - `Voltage - Finite Input.vi` - yielded every terminal name AND both polymorphic
+        instance names at once. That is the documented route for any library-owned VI, not a
+        workaround.
         """)]
     public async Task<string> ViTerminalsAsync(
         [Description(@"Absolute path to the .vi whose terminals you need")] string viPath,
