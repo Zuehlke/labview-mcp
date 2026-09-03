@@ -239,6 +239,113 @@ public sealed class ClassToolingLeverTests
         Assert.Equal(["Error Cluster"], fields.Labels);
     }
 
+    // ------------------------------------- the bound shape, and the 2026-09-03 positional defect
+
+    /// <summary>
+    /// A class in which a bind has SUCCEEDED, measured 2026-09-03 by unwrapping the real file.
+    /// Binding re-emits the type pool: `TopLevel` index 1 becomes the newly bound typedef and the
+    /// class's own cluster moves to index 2.
+    ///
+    /// <code>
+    /// TopLevel[1] -> flat 0  TypeDef ['NI_XNodeSupport.lvlib','XNodeErrorCluster.ctl'], 3 children
+    /// TopLevel[2] -> flat 1  TypeDef ['AnalogInput.lvclass','AnalogInput.ctl'],         5 children
+    /// </code>
+    /// </summary>
+    private static XElement PrivateDataAfterABind() =>
+        new("RSRC",
+            new XElement("VCTP",
+                new XElement("Section",
+                    // flat 0 - the typedef that was just bound onto a field. Index 1 now.
+                    new XElement("TypeDesc",
+                        new XAttribute("Type", "TypeDef"),
+                        new XElement("TypeDesc",
+                            new XAttribute("Type", "Cluster"),
+                            new XAttribute("Label", "Error Cluster"),
+                            new XElement("TypeDesc", new XAttribute("Type", "Boolean"),
+                                         new XAttribute("Label", "status")),
+                            new XElement("TypeDesc", new XAttribute("Type", "NumInt32"),
+                                         new XAttribute("Label", "code")),
+                            new XElement("TypeDesc", new XAttribute("Type", "String"),
+                                         new XAttribute("Label", "source"))),
+                        new XElement("Label", new XAttribute("Text", "NI_XNodeSupport.lvlib")),
+                        new XElement("Label", new XAttribute("Text", "XNodeErrorCluster.ctl"))),
+                    // flat 1 - the class's own private data. Index 2 now.
+                    new XElement("TypeDesc",
+                        new XAttribute("Type", "TypeDef"),
+                        new XElement("TypeDesc",
+                            new XAttribute("Type", "Cluster"),
+                            new XAttribute("Label", "Cluster of class private data"),
+                            new XElement("TypeDesc", new XAttribute("Type", "Refnum"),
+                                         new XAttribute("Label", "Task Reference")),
+                            // A BOUND field is a TypeID REFERENCE to the flat typedef, not an
+                            // inline copy of it - measured. That is where both the field's name
+                            // (on the typedef's inner cluster) and the .ctl's name (in the
+                            // typedef's Label children) live. The inline shape is the easy one to
+                            // write and does not occur; writing it is how this fixture missed a
+                            // real defect for the fourth time.
+                            new XElement("TypeDesc", new XAttribute("TypeID", "0")),
+                            new XElement("TypeDesc", new XAttribute("Type", "String"),
+                                         new XAttribute("Label", "Physical Channel")),
+                            new XElement("TypeDesc", new XAttribute("Type", "NumFloat64"),
+                                         new XAttribute("Label", "Sample Rate")),
+                            new XElement("TypeDesc", new XAttribute("Type", "NumInt32"),
+                                         new XAttribute("Label", "Samples Per Channel"))),
+                        new XElement("Label", new XAttribute("Text", "AnalogInput.lvclass")),
+                        new XElement("Label", new XAttribute("Text", "AnalogInput.ctl"))),
+                    new XElement("TopLevel",
+                        new XElement("TypeDesc",
+                            new XAttribute("Index", "1"), new XAttribute("FlatTypeID", "0")),
+                        new XElement("TypeDesc",
+                            new XAttribute("Index", "2"), new XAttribute("FlatTypeID", "1"))))));
+
+    [Fact]
+    public void ASUCCESSFULBindDoesNotMakeTheReaderPointAtTheBoundTypedef()
+    {
+        // THE DEFECT THIS TEST EXISTS FOR, and it is the sharpest of the three this parser has had:
+        // the tool was correct ONLY UNTIL IT WORKED. Every bind had failed until 2026-09-03, so
+        // TopLevel index 1 kept agreeing with the right answer by accident. The first successful
+        // bind moved the class's cluster to index 2, and both lvai_bind_class_fields and
+        // lvai_describe_class then reported the class as having three fields: status, code, source.
+        var fields = ClassBindTools.PrivateDataFields.Parse(
+            PrivateDataAfterABind(), "AnalogInput.ctl");
+
+        Assert.Null(fields.Unavailable);
+        Assert.Equal(["Task Reference", "Error Cluster", "Physical Channel",
+                      "Sample Rate", "Samples Per Channel"], fields.Labels);
+        Assert.DoesNotContain("status", fields.Labels);
+    }
+
+    [Fact]
+    public void TheClassOwnCtlLabelIsPreferredOverEveryOtherAnchor()
+    {
+        // The `.ctl` name is the only anchor that is both exact and language-independent. Given it,
+        // the reader must not depend on TopLevel order OR on the English cluster label.
+        var fields = ClassBindTools.PrivateDataFields.Parse(
+            PrivateDataAfterABind(), "AnalogInput.ctl");
+
+        Assert.Equal(5, fields.Labels.Count);
+        // Field 1 is itself a bound typedef and must be reported as one.
+        Assert.Contains(1, fields.BoundTypedefs);
+
+        // AND ITS NAME, which is the assertion this test was missing. The flag alone passed while
+        // the name came back as the empty string, because pylabview writes it in a `Text`
+        // ATTRIBUTE and the shipped reader took the element's text. Measured 2026-09-03 on a bind
+        // that was complete in the file: `isTypedef: true`, `typedef: ""`. Asserting the flag and
+        // not the value is how a fixture that was RIGHT still failed to catch a real defect.
+        Assert.Equal("XNodeErrorCluster.ctl", fields.TypedefName(1));
+    }
+
+    [Fact]
+    public void WithoutTheCtlNameTheClusterLabelStillFindsIt()
+    {
+        // A caller that does not know the class name - or a localised file where the .ctl label
+        // does not match - falls back to the cluster's own label rather than to a position.
+        var fields = ClassBindTools.PrivateDataFields.Parse(PrivateDataAfterABind());
+
+        Assert.Equal(5, fields.Labels.Count);
+        Assert.Equal("Task Reference", fields.Labels[0]);
+    }
+
     [Fact]
     public void ThePrivateDataFieldsAreReadInFieldOrderWithTheirLabels()
     {

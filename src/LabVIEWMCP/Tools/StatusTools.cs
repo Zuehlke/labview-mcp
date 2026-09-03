@@ -154,12 +154,23 @@ internal sealed class StatusTools(LvaiConnection connection)
         var lastSignature = text.Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
             .LastOrDefault(line => line.Contains("DWarn", StringComparison.Ordinal))?.Trim();
 
+        // SATURATED AT 200, so the number is a FLOOR once it gets there. Measured 2026-09-03
+        // across four captures of this log: three read exactly 200 at three different file sizes
+        // (1.94, 1.98 and 2.00 MB) while others read 16 and 146. A count that stops dead at a
+        // round number while the file keeps growing is a cap, not a coincidence - and reporting
+        // "200" as a magnitude invites the reader to compare two saturated logs and conclude
+        // nothing changed. NI documents no such limit; this is inferred from the four readings and
+        // is labelled as inference rather than fact.
+        const int knownCap = 200;
+        var saturated = warnings >= knownCap;
+
         return new JsonObject
         {
             ["logFound"] = true,
             ["logPath"] = log,
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
             ["dwarnCount"] = warnings,
+            ["dwarnCountSaturated"] = saturated,
             // COUNT AND SIZE BOTH, because the count alone was ambiguous: measured 2026-09-03, the
             // log was rewritten during a run - logWrittenUtc moved by an hour - while dwarnCount
             // stayed at exactly 200 and the last signature was byte-identical. Whether LabVIEW
@@ -167,7 +178,13 @@ internal sealed class StatusTools(LvaiConnection connection)
             // instead of leaving it to be reconstructed afterwards.
             ["logBytes"] = text.Length,
             ["lastDwarn"] = lastSignature,
-            ["looksDegraded"] = warnings >= 50,
+            // SIGNATURE, NOT JUST COUNT. `0xECE53844 DestroyPlatformEvent` is LabVIEW
+            // failing to release an OS event handle during its own housekeeping, and it is
+            // measured harmless: runs 10, 11 and 12 produced 17, 26 and 18 of them with no
+            // crash, no restart and every artefact correct. Counting them made this field
+            // read `true` through a completely clean run, which is worse than not having it.
+            // A log carrying ONLY that signature is not degraded however many there are.
+            ["looksDegraded"] = warnings >= 50 && HasSignatureOtherThanBenignTeardown(text),
             // `looksDegraded` HAS NOW BEEN WRONG IN BOTH DIRECTIONS, and saying so is the
             // point of this field rather than a caveat on it. Measured 2026-09-03 over two runs:
             // an instance at 200 completed a full cold class build, a typedef binding, ten
@@ -180,6 +197,21 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ? "No DWarn entries in this instance's log. That is NOT a promise of health: an "
                   + "instance reading 0 has been measured crashing minutes later, because the log "
                   + "is reset at start and records only what has already gone wrong."
+                : saturated
+                    ? $"AT LEAST {knownCap} DWarn entries - the count is SATURATED and is a "
+                      + "FLOOR, not a magnitude. Measured 2026-09-03: three captures read "
+                      + "exactly 200 at three different file sizes (1.94, 1.98, 2.00 MB) "
+                      + "while others read 16 and 146. So two saturated logs cannot be "
+                      + "compared with each other, and a count that is NOT RISING is no "
+                      + "evidence that nothing new went wrong - read `lastDwarn` instead. "
+                      + "NI documents no such limit; this is inferred from four readings. "
+                      + "A RECORD OF WHAT HAS ALREADY GONE WRONG, not a prediction - an "
+                      + "instance at this level has also been measured completing a whole "
+                      + "cold class build without incident. Its use is RETROSPECTIVE: when "
+                      + "a class-editing call fails for no reason the project state "
+                      + "explains - Error 1073 on a private-data export, Error 1562 from "
+                      + "the accessor wizard - restart LabVIEW before hunting further. Do "
+                      + "not gate work on this number."
                 : warnings >= 50
                     ? $"{warnings} DWarn entries. A RECORD OF WHAT HAS ALREADY GONE WRONG, "
                       + "not a prediction - an instance at this level has also been measured "
@@ -339,4 +371,30 @@ internal sealed class StatusTools(LvaiConnection connection)
         return blobs;
     }
 
+
+    /// <summary>
+    /// True when the log carries any DWarn signature OTHER than the benign event-handle teardown.
+    ///
+    /// WHY THIS EXISTS. `0xECE53844 DestroyPlatformEvent failed with MgErr 42` is LabVIEW failing
+    /// to release an OS event handle during housekeeping, marked `NOT InExec` - not our code, and
+    /// measured harmless across three full cold class builds (17, 26 and 18 events; no crash, no
+    /// restart, every artefact correct). Before this, `looksDegraded` counted them and read `true`
+    /// through an entirely clean run, which teaches a reader to ignore the field.
+    ///
+    /// It is deliberately a DENY-LIST OF ONE. The signatures that have preceded real deaths -
+    /// `OMAutoClasses`, `BadLinkerObjs`, `HeapObjMapImpl` - keep counting, and so does anything
+    /// new, because an unrecognised signature is the case where a warning is worth most.
+    /// </summary>
+    internal static bool HasSignatureOtherThanBenignTeardown(string text)
+    {
+        const string benign = "0xECE53844";
+        // LF spelled numerically, because an escape in this position has now been eaten in
+        // transit twice by the shell that wrote the patch.
+        foreach (var line in text.Split((char)10))
+        {
+            if (!line.Contains("DWarn", StringComparison.Ordinal)) continue;
+            if (!line.Contains(benign, StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
 }

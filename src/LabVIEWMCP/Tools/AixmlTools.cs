@@ -285,6 +285,160 @@ internal sealed class AixmlTools(LvaiConnection connection)
     /// </summary>
     private static bool TooLong(string path) => path.Length > 250;
 
+    [McpServerTool(Name = "lvai_check_aixml", ReadOnly = true,
+                   Title = "Pre-check an AIXML file without LabVIEW")]
+    [Description("""
+        Checks an AIXML file for the three faults ValidateAIXML was MEASURED not to catch. Needs no
+        LabVIEW, no gRPC and no licence - it is pure text analysis, so it costs milliseconds and
+        works in CI. Run it before lvai_validate_aixml, not instead of it.
+        WHAT IT CATCHES, all measured 2026-09-03 by putting one small VI per case through the real
+        validator: a `uid_parent` naming no element - an ERROR, because LabVIEW silently reparents
+        that element to the TOP-LEVEL diagram, which moves a node out of the loop it belonged in and
+        reports nothing at validate, convert or run; a duplicate `uid`, which LabVIEW silently
+        renumbers so the export stops matching your file; and a Ring whose default `value` is not
+        among its `values`. It also reports, as INFO only, uids inside LabVIEW's reserved range.
+        WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
+        are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
+        failures off the round trip; lvai_validate_aixml is still required.
+        """)]
+    public Task<string> CheckAixmlAsync(
+        [Description(@"Absolute path to the .xml file to check")] string aiXmlFilePath,
+        [Description("Also REPAIR what can be repaired unambiguously - a duplicate uid nothing is "
+                   + "nested inside, and a uid in LabVIEW's reserved range. A dangling uid_parent "
+                   + "and a bad Ring default are never repaired: the author's intent is unknown, "
+                   + "and for the parent, putting it on root IS the damage LabVIEW already does")]
+        bool fix = false,
+        [Description("Where to write the repaired XML. Omit to overwrite aiXmlFilePath in place")]
+        string? fixedPath = null,
+        CancellationToken ct = default)
+    {
+        _ = ct;
+        if (!File.Exists(aiXmlFilePath))
+            return Task.FromResult(Json.Error("badArguments", $"No file at '{aiXmlFilePath}'."));
+
+        string text;
+        try { text = File.ReadAllText(aiXmlFilePath); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException)
+        {
+            return Task.FromResult(Json.Error("unreadable",
+                $"'{aiXmlFilePath}' could not be read as text."));
+        }
+
+        if (!fix)
+        {
+            var plain = AixmlCheck.Summarise(AixmlCheck.Check(text));
+            plain["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+            return Task.FromResult(Json.Document(plain));
+        }
+
+        var repaired = AixmlCheck.Fix(text);
+        var answer = AixmlCheck.Summarise(repaired.Remaining);
+        answer["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+        answer["repairs"] =
+            new JsonArray([.. repaired.Repairs.Select(r => (JsonNode)r.ToJson())]);
+
+        // NOTHING IS WRITTEN WHEN NOTHING WAS REPAIRED, so a clean file is never rewritten - and
+        // therefore never reformatted - by asking for a repair that turned out unnecessary.
+        if (repaired.Repairs.Count == 0)
+        {
+            answer["written"] = false;
+            answer["writeNote"] = "Nothing was repairable, so no file was written.";
+            return Task.FromResult(Json.Document(answer));
+        }
+
+        var target = fixedPath ?? aiXmlFilePath;
+        try { File.WriteAllText(target, repaired.Xml); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException
+                                        or DirectoryNotFoundException)
+        {
+            answer["written"] = false;
+            answer["writeNote"] = $"Repaired in memory but could not write '{target}': "
+                                  + failure.Message;
+            return Task.FromResult(Json.Document(answer));
+        }
+
+        answer["written"] = true;
+        answer["writtenTo"] = Path.GetFullPath(target);
+        answer["writeNote"] = "Re-read the file before editing it further: repairing renumbers "
+                            + "elements, so uids in your notes may be stale. No wire name changed - "
+                            + "a wire name is a token, not a reference to a uid.";
+        return Task.FromResult(Json.Document(answer));
+    }
+
+    /// <summary>
+    /// The path to hand to LabVIEW, repaired if it needed and could be repaired. A repair goes to a
+    /// COPY in TEMP and never touches the caller's file - the same discipline
+    /// <see cref="SymbolicUids"/> uses, and for the same reason: this sits between an author and
+    /// code generation, where a surprise edit is worse than a reported fault.
+    /// </summary>
+    internal static (string Path, JsonObject? Report) Repaired(string aixmlPath)
+    {
+        string text;
+        try { text = File.ReadAllText(aixmlPath); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException)
+        {
+            return (aixmlPath, null);
+        }
+
+        var fixedUp = AixmlCheck.Fix(text);
+        if (fixedUp.Repairs.Count == 0) return (aixmlPath, null);
+
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "repaired");
+        var target = Path.Combine(directory, Path.GetFileName(aixmlPath));
+        try
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(target, fixedUp.Xml);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException)
+        {
+            return (aixmlPath, null);   // generate from the original rather than not at all
+        }
+
+        return (target, new JsonObject
+        {
+            ["repaired"] = true,
+            ["repairs"] = new JsonArray([.. fixedUp.Repairs.Select(r => (JsonNode)r.ToJson())]),
+            ["generatedFrom"] = target,
+            ["note"] = "Your file was NOT modified. The faults above are ones LabVIEW accepts "
+                     + "silently, so they were repaired into a copy and the VI was generated from "
+                     + "that. Apply them to your source with lvai_check_aixml fix:true if you want "
+                     + "the two to match.",
+        });
+    }
+
+    /// <summary>
+    /// The pre-check as a sub-answer for the RPC tools. Returns null when the file cannot be read,
+    /// which is deliberately NOT an error here: the RPC below will report a missing or unreadable
+    /// file in the vocabulary the caller already knows.
+    /// </summary>
+    internal static JsonObject? PreCheck(string aixmlPath)
+    {
+        string text;
+        try { text = File.ReadAllText(aixmlPath); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException) { return null; }
+
+        return AixmlCheck.Summarise(AixmlCheck.Check(text));
+    }
+
+    /// <summary>
+    /// The pre-check reduced to what belongs in another tool's answer: nothing at all when the file
+    /// is clean, so a passing call is not made noisier by a check that found nothing.
+    /// </summary>
+    internal static JsonNode? PreCheckIfInteresting(string aixmlPath)
+    {
+        var answer = PreCheck(aixmlPath);
+        if (answer is null) return null;
+        var interesting = answer["errors"]?.GetValue<int>() > 0
+                          || answer["warnings"]?.GetValue<int>() > 0;
+        return interesting ? answer : null;
+    }
+
     [McpServerTool(Name = "lvai_validate_aixml", ReadOnly = true, Title = "Validate an AIXML file")]
     [Description("""
         RPC ValidateAIXML. Asks LabVIEW whether an AIXML file is well-formed and semantically
@@ -317,6 +471,10 @@ internal sealed class AixmlTools(LvaiConnection connection)
             response.ErrorMessage = SymbolicUids.Annotate(response.ErrorMessage, symbolic.Map);
             return Json.Message(response,
                 [.. SymbolicFacts(symbolic),
+                 // Reported, never blocking: these are faults LabVIEW accepts, so a caller who
+                 // wants them accepted is not stopped. It is here because `errorCode 0` from this
+                 // RPC reads as "the file is fine", and for a dangling uid_parent it is not.
+                 ("preCheck", PreCheckIfInteresting(aiXmlFilePath)),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 
@@ -367,6 +525,10 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ("viExisted", JsonValue.Create(existedBefore)),
                  ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
                  ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+                 // THIS PATH MATTERS MOST for the check: it is the documented route for a class
+                 // method - convert WITHOUT validating, because ValidateAIXML is stricter than the
+                 // converter for a class wire - so nothing else looks at the file at all.
+                 ("preCheck", PreCheckIfInteresting(aiXmlFilePath)),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 

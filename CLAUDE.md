@@ -426,6 +426,24 @@ embedded but never served. Twelve German comments and sixteen German description
 user asked for English. Control NAMES are a different question: they are the VI's public interface,
 so they stay as the caller specified them.
 
+**VALIDATION ACCEPTS THREE FAULTS, and one of them silently changes the diagram.** Measured
+2026-09-03 by running one small VI per case: of nine checks an author would assume `ValidateAIXML`
+makes, six it makes and three it does not. A **`uid_parent` naming no element** is the damaging
+one - LabVIEW places that element on the TOP-LEVEL diagram and reports nothing, so a node meant to
+sit inside a For Loop ends up outside it, through validate, convert and a run alike; only a
+re-export shows it. A **duplicate `uid`** is silently renumbered, so the export stops matching your
+file. A **Ring `value` outside its `values`** passes with `errorCode 0`. `lvai_check_aixml` catches
+all three without LabVIEW, `lvai_generate_vi` blocks on the first, and the two raw RPCs report it
+as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
+and a second implementation would drift.
+
+**And `uid="0"` is a SENTINEL, not a number.** The schema's minimum is 0 (a negative uid is refused,
+`minInclusive facet value '0'`), it may be REUSED within one file, and LabVIEW assigns the element
+its own id. Use it for anything no net and no `uid_parent` references. A uid LabVIEW keeps verbatim
+is one above its reserved ceiling; a low one is replaced and logged. What a `uid` is NOT is a wire:
+**a wire name is an arbitrary token** - `banana.value` validated and ran - and `<uid>.<terminal>` is
+convention only, which is why renumbering a uid need not touch a single net.
+
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
@@ -693,6 +711,26 @@ methods that take only the class wire and the error cluster, `socketsLeft: 0` on
 signature deliberately and say which — but never report that a method stores a value in the object
 when it returns it on a terminal instead.
 
+**A SWAP CAN LOSE A WIRE WITHOUT LOSING A LINK, and `lvai_swap_subvis` used to call that a clean
+restore.** Measured 2026-09-03: retargeting one accessor onto another whose pane differs in TYPE
+left the value wire attached to the CLASS terminal - both are refnums, so LabVIEW's `Replace`
+re-attached it there - and `Sample Rate:` came out unwired. The diagram linked, compiled, ran and
+asserted against the wrong terminal, so the suite went GREEN. `verify` saw nothing because it
+compared call TARGETS only. It now compares wiring too: `wiringChecked` says the check ran,
+`wiringLost` names any node that came out with fewer wired nets, and `ok` is false when that list
+is not empty. One extra export, 140 ms, an RPC rather than a model turn.
+
+**AND THAT CHECK MAY NOT DECIDE ANYTHING - retracted 2026-09-04 after three false negatives.**
+`wiringLost` gated `ok` for one day and was wrong every time it fired in production. Two reasons,
+each fatal on its own: a **uid is not stable across `Replace`** when several nodes move (five Write
+nodes measured jumping to 1070/273/269/230/124, so a before/after pairing by uid compares unrelated
+nodes - one finding named `LVMCP ClsW5.vi` before and `Read Error Cluster.vi` after), and **a drop
+in wired terminals is the intended shape**, because a real accessor's error terminals are fed a
+fresh `no error` constant where the socket's were chained. No counting scheme separates the defect
+from the tool's own output. `ok: false` also suppressed the caller's `projectEntry` step, costing
+two agents ~135 s each on a correct diagram. It is REPORTING ONLY now; `callTargets` and
+`socketsLeft` are the verdict. `docs/class-method-tooling.md` section 4m and its retraction.
+
 **A TOOL TESTED AGAINST A PLAUSIBLE FIXTURE IS NOT TESTED.** Both tools that failed on their first
 real use, 2026-09-03, failed this way and nothing else. `lvai_bind_class_fields` read
 `VCTP/TopLevel` index 1 as the field cluster, which is right for an EXPORTED `.ctl` and one level too
@@ -953,6 +991,7 @@ literally it argued away 600 usable palette VIs.
 | Question | Document | Tool |
 |---|---|---|
 | How do I read or write AIXML? | `docs/aixml-reference.md` | `lvai_aixml_reference` |
+| What does `ValidateAIXML` NOT catch? | `docs/aixml-reference.md` | `lvai_check_aixml` |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
 | How is a `.lvproj` structured? | `docs/lvproj-structure.md` | `lvai_lvproj_reference` |

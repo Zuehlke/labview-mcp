@@ -122,6 +122,31 @@ green run can be meaningless.
 | optional | specific cases, values or edge cases the user named — use them verbatim |
 | optional | a different framework — if named, stop and hand back (see the banner above) |
 
+### FIRST ACTION: WRITE A HEARTBEAT. Before anything else.
+
+Write `.agent-heartbeat.md` into your output directory as your very FIRST tool call, and append one
+line to it whenever you finish a phase. **Every line carries a full timestamp with the CLOCK
+TIME** - `date +"%Y-%m-%dT%H:%M:%S"`, not just the date. Measured 2026-09-03 on the first real
+use: lines stamped with the date alone left the reader's decisive question - is this stale by
+more than five minutes? - answerable only from the file's mtime, which is the very thing the
+heartbeat exists to replace:
+
+```
+2026-09-03T14:03:11  started - Caraya suite for DAQmxAnalogInput
+2026-09-03T14:06:40  phase 1 - cases settled, 6 of them
+2026-09-03T14:12:02  phase 3b - accessor suite generated
+2026-09-03T14:20:37  FINISHED - 14 tests, 0 failures
+```
+
+**WHY, and it is not bookkeeping.** An orchestrator watching your directory cannot tell "still
+working" from "died" — both look like an empty folder, and a Caraya suite writes nothing for
+several minutes. Measured 2026-09-03: an orchestrator read an empty directory, concluded the test
+agent was dead, told the class agent to finish the work itself, and produced TWO WRITERS in one
+directory. The result was a false defect report against a healthy tool, and a plausible contributor
+to three LabVIEW crashes. The heartbeat is what makes that judgement possible instead of guessed.
+
+Keep the file when you finish. Its last line is the answer to "did this agent get there".
+
 ### THE DIRECTORY YOU ARE GIVEN IS YOURS ALONE. Do not write outside it.
 
 **Measured 2026-09-02.** Two agents were run against the same class family and both were given
