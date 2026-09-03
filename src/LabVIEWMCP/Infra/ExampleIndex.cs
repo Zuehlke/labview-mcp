@@ -216,7 +216,15 @@ internal static class ExampleIndex
             // first-one-wins, and the order EnumerateFilesSafely produces is the filesystem's,
             // which is stable in practice and promised nowhere. Fixing it here means the scan
             // answers the same way twice whatever the readers do.
+            // `"*.vi"` IS NOT AN EXACT EXTENSION MATCH ON WINDOWS. The pattern also matches every
+            // extension that BEGINS with `vi` - `.vit` templates above all - because the file
+            // system still matches against 8.3 short names. Latent from the start and harmless
+            // until something dropped such a file into an examples tree: installing LUnit put five
+            // `Test Method Template.vit` files under `examples\Astemes\LUnit\`, and they turned
+            // up in the index as examples on 2026-09-02. A `.vit` is a template, not a diagram to
+            // read, and feeding one to lvai_convert_vi_to_aixml is not what the caller asked for.
             var files = EnumerateFilesSafely(source.ExamplesFolder, "*.vi")
+                .Where(IsListable)
                 .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -271,6 +279,13 @@ internal static class ExampleIndex
                     var path = Path.Combine(source.ExamplesFolder, entry.RelativePath);
                     if (!File.Exists(path)) continue;      // a registration for an absent example
 
+                    // AN EXTERNAL INDEX MAY REGISTER SOMETHING THAT IS NOT AN EXAMPLE TO READ.
+                    // LUnit's does: five `Test Method Template.vit` entries under
+                    // examples\Astemes\LUnit\, found 2026-09-02. A `.vit` is a template - there
+                    // is no diagram to adapt and lvai_convert_vi_to_aixml is not the follow-up - so
+                    // listing one answers a search with something the caller cannot use.
+                    if (!IsListable(path)) continue;
+
                     if (found.TryAdd(entry.RelativePath, new ExampleVi(
                             Path.GetFileName(path), path,
                             Path.GetDirectoryName(entry.RelativePath) ?? "", source.Label,
@@ -295,6 +310,22 @@ internal static class ExampleIndex
     /// EnumerateFiles(..., AllDirectories) throws part-way through and loses everything already
     /// found, which on a Program Files tree is a real risk rather than a theoretical one.
     /// </summary>
+    /// <summary>
+    /// Whether a path is something this index should LIST: a `.vi` to read, or a `.lvproj` that is
+    /// a whole example application.
+    ///
+    /// TWO WAYS A NON-EXAMPLE GETS IN, and this closes both. The scan's pattern `"*.vi"` is not an
+    /// exact extension match on Windows - it also matches every extension BEGINNING with `vi`,
+    /// because the file system still matches 8.3 short names - and an external exbins index can
+    /// simply register one, which is what LUnit does with five `.vit` templates.
+    /// </summary>
+    private static bool IsListable(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".vi", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".lvproj", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IEnumerable<string> EnumerateFilesSafely(string folder, string pattern)
     {
         var stack = new Stack<string>();

@@ -108,12 +108,27 @@ internal sealed class ActionTools(LvaiConnection connection)
         that plainly exists. Measured 2026-08-27: three identical Error 7 answers, while
         lvai_describe_project read the very same path with errorCode 0. A .lvproj goes in
         `projectPath` WITH `projectName`; that pair returned No Error immediately.
+        `No Error` DOES NOT MEAN A PROJECT BECAME ACTIVE, and that is not a quibble - almost
+        everything that edits a class needs the project ACTIVE, not merely open. Measured
+        2026-09-03: three opens in a row answered `No Error` and left no active project, so every
+        following call answered `Error 1055`; what fixed it was giving the LabVIEW WINDOW the
+        foreground, because Chrome had focus. Diagnosing that cost 270 s of wall clock for 2.9 s
+        inside LabVIEW. So a project open now reads `Project:Active Project` back and reports
+        `projectBecameActive`, with `errorKind: projectDidNotBecomeActive` and the cause named when
+        it did not. Pass `checkActive: false` to skip the check, which costs one short helper run.
         """)]
     public async Task<string> OpenFileAsync(
         [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,
         [Description("VI name, or empty")] string? viName = null,
         [Description(@"Absolute path to the .lvproj, or empty")] string? projectPath = null,
         [Description("Project name, or empty")] string? projectName = null,
+        [Description("""
+            After opening a PROJECT, read Project:Active Project back and report whether one
+            actually became active. On by default: `No Error` alone has been measured leaving no
+            active project, and every class-editing call then fails with Error 1055 pointing
+            nowhere useful. Ignored when no projectPath is given.
+            """)]
+        bool checkActive = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -141,8 +156,75 @@ internal sealed class ActionTools(LvaiConnection connection)
                     ProjectPath = projectPath ?? "",
                     ProjectName = projectName ?? "",
                 }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            return Json.Message(response);
+
+            if (projectPath is not { Length: > 0 } || !checkActive)
+                return Json.Message(response);
+
+            var (active, note) = await ProjectIsActiveAsync(timeoutSeconds, ct);
+            return Json.Message(response,
+                ("projectBecameActive", JsonValue.Create(active)),
+                ("activeProjectCheck", JsonValue.Create(note)),
+                ("errorKind", active is false
+                    ? JsonValue.Create("projectDidNotBecomeActive") : null),
+                ("hint", active is false
+                    ? JsonValue.Create(
+                        "The open itself reported no error and NO PROJECT IS ACTIVE, which is a " +
+                        "different failure - every call that reaches the class through " +
+                        "Project:Active Project will now answer Error 1055. This is NOT a path " +
+                        "problem. Measured cause: LabVIEW did not have the foreground. Bring its " +
+                        "window to the front and call this again; the very next open took. Checked " +
+                        "with scripts/lvai_active_project.xml, which only reads.")
+                    : null));
         });
+
+    /// <summary>
+    /// Whether a project is active, by reading <c>Project:Active Project</c> and closing the
+    /// reference again. <c>Error 1055</c> is the ANSWER - no project active - and not a fault.
+    ///
+    /// Returns null when the check itself could not run, which must never be reported as "no
+    /// project": a missing helper is not evidence about the IDE's state.
+    /// </summary>
+    private async Task<(bool? Active, string Note)> ProjectIsActiveAsync(
+        int timeoutSeconds, CancellationToken ct)
+    {
+        var source = StatusTools.ScriptsDirectory() is { } scripts
+            ? Path.Combine(scripts, "lvai_active_project.xml") : null;
+        if (source is null || !File.Exists(source))
+            return (null, "not checked - lvai_active_project.xml was not found beside the exe.");
+
+        var helper = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+                                  "lvai_active_project.vi");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(helper)!);
+            if (!File.Exists(helper))
+            {
+                await new BulkTools(connection).GenerateViAsync(
+                    source, helper, openVI: false, measurePane: false, panePattern: null,
+                    timeoutSeconds, ct);
+                if (!File.Exists(helper))
+                    return (null, "not checked - the read-only helper could not be generated.");
+            }
+
+            var run = await new RunTools(connection).RunViAndReadValuesAsync(
+                helper, "{}", includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+                regenerateHelper: false, timeoutSeconds, ct);
+
+            var values = (JsonNode.Parse(run) as JsonObject)?["values"] as JsonObject;
+            var code = (values?["code"] as JsonObject)?["value"]?.GetValue<string>();
+            if (!int.TryParse(code, out var errorCode))
+                return (null, "not checked - the helper returned no error code.");
+
+            return errorCode == 0
+                ? (true, "a project is active (Project:Active Project answered with a reference).")
+                : (false, $"NO project is active - Project:Active Project answered {errorCode}. " +
+                          "1055 is the expected code for that state.");
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return (null, $"not checked - {failure.Message}");
+        }
+    }
 
     [McpServerTool(Name = "lvai_find_palette_item", Destructive = true,
                    Title = "Highlight a palette item in the IDE")]

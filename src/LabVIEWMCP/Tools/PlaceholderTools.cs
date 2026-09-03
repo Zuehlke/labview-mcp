@@ -66,12 +66,94 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         instance you mean to call.
         """)]
     public async Task<string> PlaceholderSubViAsync(
-        [Description(@"Absolute path to the VI whose connector pane the placeholder must match")]
-        string viPath,
+        [Description("""
+            Absolute path to the VI whose connector pane the placeholder must match. OPTIONAL only
+            in the sense that `viPaths` replaces it - one of the two must be given, and that is
+            checked here rather than by the schema. It was declared REQUIRED until 2026-09-03,
+            which made the documented batch call impossible: passing `viPaths` alone was refused by
+            the CLIENT with `MCP error -32602 ... expected string, received undefined`, before the
+            server saw it, so this tool's own "viPath is ignored" was unreachable text.
+            """)]
+        string? viPath = null,
         [Description("Regenerate the stub even when one for this signature already exists")]
         bool refresh = false,
+        [Description("""
+            SEVERAL VIs AT ONCE, one absolute path per line, plain text and NOT JSON. Given this,
+            `viPath` is ignored and the answer carries one entry per VI under `placeholders`.
+            THE SAVING IS ROUND TRIPS, NOT LABVIEW TIME - LabVIEW serialises the export either way,
+            so this is the same trade `lvai_generate_vis` makes. Measured 2026-09-03 on the socket
+            route over one class: nine placeholders cost 25 s of wall clock against 2.5 s inside
+            LabVIEW, because they went out as four separate calls and a round trip is a model turn.
+            """)]
+        string? viPaths = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default)
+    {
+        if (viPaths is { Length: > 0 })
+            return await ManyAsync(viPaths, refresh, timeoutSeconds, ct);
+
+        if (viPath is not { Length: > 0 })
+            return Json.Error("badArguments",
+                "Give either `viPath` (one VI) or `viPaths` (several, one absolute path per line). " +
+                "Neither was set.");
+
+        return await OneAsync(viPath, refresh, timeoutSeconds, ct);
+    }
+
+    /// <summary>
+    /// One placeholder per VI, in order, each through the single-VI path so nothing about the
+    /// stub's own logic is duplicated - the same composition <c>lvai_generate_vis</c> uses.
+    ///
+    /// SEQUENTIAL ON PURPOSE. Measured over six generate calls issued together: 559 ms against
+    /// 543 ms one after another, because LabVIEW serialises the work. Fanning out gains nothing and
+    /// risks one slow VI blocking the rest.
+    /// </summary>
+    /// <summary>Line separators for the newline-delimited path list.</summary>
+    private static readonly char[] SplitChars = [(char)13, (char)10];
+
+    private async Task<string> ManyAsync(string viPaths, bool refresh, int timeoutSeconds,
+                                         CancellationToken ct)
+    {
+        var paths = viPaths
+            .Split(SplitChars,
+                   StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        if (paths.Count == 0)
+            return Json.Error("badArguments", "viPaths named no VIs.");
+
+        var missing = paths.Where(p => !File.Exists(p)).ToList();
+        if (missing.Count > 0)
+            return Json.Error("badArguments",
+                "These VIs do not exist, so nothing was generated: " + string.Join(", ", missing),
+                new { missing });
+
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        var answers = new JsonArray();
+        var failed = 0;
+        foreach (var path in paths)
+        {
+            var one = await OneAsync(path, refresh, timeoutSeconds, ct);
+            var node = Read(one);
+            if ((node as JsonObject)?["ok"]?.GetValue<bool>() is not true) failed++;
+            answers.Add(new JsonObject { ["viPath"] = path, ["answer"] = node });
+        }
+
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = failed == 0,
+            ["requested"] = paths.Count,
+            ["failed"] = failed,
+            ["placeholders"] = answers,
+            ["elapsedMs"] = elapsed.ElapsedMilliseconds,
+            ["note"] = failed == 0
+                ? "Every placeholder exists. Author the Call against each `callTarget`, generate, " +
+                  "then repoint with lvai_swap_subvis - which also takes several VIs in one call."
+                : $"{failed} of {paths.Count} failed; each VI's own answer is under `placeholders`.",
+        });
+    }
+
+    private async Task<string> OneAsync(string viPath, bool refresh, int timeoutSeconds,
+                                        CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))

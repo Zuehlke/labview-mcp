@@ -136,6 +136,73 @@ public sealed class GenerateClassTestTests
         Assert.Equal("0", TestTools.DefaultFor("uint64"));
     }
 
+    // ---------------------------------------------------------- compound fields, the 2026-09-02 bug
+
+    // DefaultFor used to end `_ => "0"`, so EVERY non-scalar field authored `value="0"` against a
+    // compound type and ValidateAIXML refused the socket with Error 53. A class whose first field
+    // is the standard error cluster could not be tested by this tool at all - which is what sent an
+    // agent building two suites by hand for ~240 s of wall clock against 24 s of LabVIEW time.
+
+    [Fact]
+    public void AnErrorClusterGetsTheLiteralNIsOwnExportsCarry()
+    {
+        Assert.Equal("[false,0,]",
+            TestTools.DefaultFor("cluster{bool.status,int32.code,string.source}"));
+    }
+
+    [Theory]
+    [InlineData("array{double}")]
+    [InlineData("array{string}")]
+    [InlineData("array.2{double.Numeric}")]      // a 2D array is array.N{}, never array{array{}}
+    public void AnArrayIsEmptyAtEveryRank(string type) =>
+        Assert.Equal("[]", TestTools.DefaultFor(type));
+
+    [Theory]
+    [InlineData("ref{Queue}{string}")]
+    [InlineData("ref{UDClassInst}")]
+    [InlineData("tag{14}")]                      // an IO name control - a DAQmx physical channel
+    [InlineData("{LV.VI}")]
+    [InlineData("variant")]
+    public void ARefnumTakesAnEmptyLiteral(string type) =>
+        Assert.Equal("", TestTools.DefaultFor(type));
+
+    [Fact]
+    public void AnEnumIsItsNumericBase() =>
+        // The braces carry item strings, not member types - so this must not read as a cluster.
+        Assert.Equal("0", TestTools.DefaultFor("uint8{Differential,RSE,NRSE}"));
+
+    [Fact]
+    public void ANestedClusterKeepsItsOwnCommasOutOfTheSplit()
+    {
+        // The inner cluster's two commas are structure BELONGING TO IT. Splitting on them would
+        // produce five fields where there are three, and a literal LabVIEW cannot read.
+        var type = "cluster{bool.enabled,cluster{double.min,double.max}.Range,string.name}";
+        Assert.Equal("[false,[0,0],]", TestTools.DefaultFor(type));
+    }
+
+    [Fact]
+    public void AFieldNameContainingADotDoesNotEatTheType()
+    {
+        // The separator is the FIRST dot after the last closing brace. Read as the LAST dot, the
+        // type here becomes `double.Max` and only reaches the right answer by luck.
+        Assert.Equal("[0,]", TestTools.DefaultFor("cluster{double.Max. Spannung,string.Einheit}"));
+    }
+
+    [Fact]
+    public void AClusterSocketIsAuthoredWithACompoundLiteral()
+    {
+        // The end-to-end property: the socket for an error-cluster field must carry a literal the
+        // validator accepts, in BOTH the write and the read shape.
+        const string cluster = "cluster{bool.status,int32.code,string.source}";
+        foreach (var write in new[] { true, false })
+        {
+            var xml = XElement.Parse(TestTools.SocketAixml("LVMCP Cls9.vi", cluster, write));
+            foreach (var element in xml.Elements()
+                         .Where(e => (string?)e.Attribute("type") == cluster))
+                Assert.Equal("[false,0,]", (string?)element.Attribute("value"));
+        }
+    }
+
     [Theory]
     [InlineData("TRUE", "true")]
     [InlineData("True", "true")]
@@ -222,7 +289,11 @@ public sealed class GenerateClassTestTests
         // lvai_swap_subvis finds a constant by its block diagram label, and AIXML's _name IS that
         // label. A seed the swap cannot find stays a path, and the dynamic dispatch input - a
         // REQUIRED terminal - is then wired with the wrong type.
-        Assert.Equal(["objekt 1", "objekt 2"], seeds);
+        // ENGLISH, since 2026-09-03: these labels are written into the USER's VI, and this
+        // repository's rule is that everything authored into a VI is English whatever language
+        // the request was in. A test agent reading a generated suite spotted `objekt`/`wert`
+        // and was right to flag them.
+        Assert.Equal(["object 1", "object 2"], seeds);
     }
 
     [Fact]

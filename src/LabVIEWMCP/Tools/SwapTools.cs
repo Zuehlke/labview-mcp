@@ -84,8 +84,119 @@ internal sealed class SwapTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
+        [Description("""
+            SEVERAL VIs IN ONE CALL, as a JSON array - given this, `viPath`, `swapsJson` and
+            `constantsJson` are ignored and the answer carries one entry per VI under `edits`:
+              [{"vi":"C:\\t\\A.vi","swaps":[{"socket":"LVMCP Mth1.vi","target":"C:\\c\\M.vi"}],
+                "constants":[{"label":"Seed1","class":"C:\\c\\Daq.lvclass"}]}]
+            THE SAVING IS ROUND TRIPS, NOT LABVIEW TIME. LabVIEW serialises the work either
+            way, so this makes the same trade `lvai_generate_vis` does. Measured 2026-09-03
+            over a four-method class: four swap calls cost 30 s of wall clock against 4.4 s
+            inside LabVIEW, because each was its own model turn.
+            EVERY VI IS STILL SAVED IN PLACE, and a failure STOPS the batch at that VI - the
+            ones before it are already written, and the answer says how many.
+            """)]
+        string? editsJson = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default)
+    {
+        if (editsJson is { Length: > 0 })
+            return await ManyAsync(editsJson, verify, verbose, helperViPath, helperAixmlPath,
+                                   regenerateHelper, timeoutSeconds, ct);
+
+        return await OneAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
+                              helperAixmlPath, regenerateHelper, timeoutSeconds, ct);
+    }
+
+    /// <summary>
+    /// One VI at a time, each through the single-VI path, stopping at the first failure.
+    ///
+    /// SEQUENTIAL AND STOPPING ARE BOTH DELIBERATE. LabVIEW serialises the work, so fanning
+    /// out gains nothing; and a swap SAVES THE VI IN PLACE, so carrying on after one has
+    /// failed would leave a half-swapped suite whose green run means nothing. The answer names
+    /// how many were written before the stop.
+    /// </summary>
+    private async Task<string> ManyAsync(string editsJson, bool verify, bool verbose,
+                                         string? helperViPath, string? helperAixmlPath,
+                                         bool regenerateHelper, int timeoutSeconds,
+                                         CancellationToken ct)
+    {
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(editsJson); }
+        catch (System.Text.Json.JsonException bad)
+        {
+            return Json.Error("badArguments",
+                $"editsJson is not JSON: {bad.Message}. It is a JSON ARRAY of " +
+                "{vi, swaps, constants} objects.");
+        }
+
+        if (parsed is not JsonArray array || array.Count == 0)
+            return Json.Error("badArguments", "editsJson must be a non-empty JSON array.");
+
+        var edits = new List<(string Vi, string? Swaps, string? Constants)>();
+        foreach (var element in array)
+        {
+            if (element is not JsonObject o)
+                return Json.Error("badArguments", "Every entry in editsJson must be an object.");
+
+            var vi = o["vi"]?.GetValue<string>();
+            if (string.IsNullOrWhiteSpace(vi))
+                return Json.Error("badArguments", "Every entry needs a \"vi\" path.");
+            if (!File.Exists(vi))
+                return Json.Error("badArguments",
+                    $"No file at '{vi}'. Nothing was swapped - a bad path costs a message " +
+                    "here rather than a half-edited suite.");
+
+            edits.Add((Path.GetFullPath(vi),
+                       o["swaps"]?.ToJsonString(), o["constants"]?.ToJsonString()));
+        }
+
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        var answers = new JsonArray();
+        var written = 0;
+        string? stoppedAt = null;
+        foreach (var edit in edits)
+        {
+            var one = await OneAsync(edit.Vi, edit.Swaps, edit.Constants, verify, verbose,
+                                     helperViPath, helperAixmlPath, regenerateHelper,
+                                     timeoutSeconds, ct);
+            var node = Read(one);
+            answers.Add(new JsonObject { ["vi"] = edit.Vi, ["answer"] = node });
+
+            if ((node as JsonObject)?["ok"]?.GetValue<bool>() is not true)
+            {
+                stoppedAt = edit.Vi;
+                break;
+            }
+            written++;
+        }
+
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = stoppedAt is null,
+            ["requested"] = edits.Count,
+            ["swapped"] = written,
+            ["stoppedAt"] = stoppedAt,
+            ["edits"] = answers,
+            ["elapsedMs"] = elapsed.ElapsedMilliseconds,
+            ["note"] = stoppedAt is null
+                ? "Every VI was swapped and verified against LabVIEW's own export."
+                : $"Stopped at '{Path.GetFileName(stoppedAt)}'. The {written} VI(s) before " +
+                  "it are already SAVED - they were swapped successfully. That one and " +
+                  "everything after it still call their sockets, so the suite tests nothing.",
+        });
+    }
+
+    private static JsonNode? Read(string answer)
+    {
+        try { return JsonNode.Parse(answer); }
+        catch (System.Text.Json.JsonException) { return JsonValue.Create(answer); }
+    }
+
+    private async Task<string> OneAsync(string viPath, string? swapsJson, string? constantsJson,
+                                        bool verify, bool verbose, string? helperViPath,
+                                        string? helperAixmlPath, bool regenerateHelper,
+                                        int timeoutSeconds, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
@@ -259,7 +370,13 @@ internal sealed class SwapTools(LvaiConnection connection)
             return $"{socketsLeft} socket name(s) are STILL in LabVIEW's own export of the VI, so " +
                    "that many swaps did not land. The export is the only proof; read `callTargets`.";
         return verify
-            ? "Swapped and verified against LabVIEW's own export - no socket name survives in it, " +
+            ? "Swapped, and the CALL TARGETS verified against LabVIEW's own export - no socket "
+              + "name survives in it. THAT IS NOT A CHECK OF THE WIRING, and the difference has "
+              + "bitten: measured 2026-09-03, a swap between accessors of DIFFERENT types left the "
+              + "value wire attached to the CLASS terminal - both are refnums, so LabVIEW's "
+              + "Replace re-attached it there - and this step still reported a correct restore. If "
+              + "the two panes differ in type, read the export and check the terminal the value "
+              + "actually comes from. " +
               "and `callTargets` is what the diagram now calls."
             : "Swapped and saved. NOTHING HERE PROVES IT LANDED: verify was false, and a Replace " +
               "cannot be read back from the object it replaced. Export the VI and read target=.";

@@ -741,10 +741,11 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**63 tools over 23 RPCs.** Thirty-four map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**67 tools over 23 RPCs.** Thirty-six map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
-rather than wrapping one — `lvai_describe_class`, which reads a `.lvclass` file and needs no
-LabVIEW at all, the knowledge tools below, and the five `pylv_*` tools. 33 carry `readOnlyHint`,
+rather than wrapping one — `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
+and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
+tools. 33 carry `readOnlyHint`,
 23 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
@@ -757,6 +758,7 @@ resources rather than call tools.
 | Tool | RPC |
 |---|---|
 | `lvai_status` | — (discovery + health + reflection) |
+| `lvai_describe_ctl` | — (reads the `.ctl` with pylabview; no LabVIEW) |
 | `lvai_dump_schema` | — (server reflection) |
 | `lvai_aixml_reference` | — (embedded [AIXML reference](docs/aixml-reference.md)) |
 | `lvai_dqmh_reference` | — (embedded [DQMH reference](docs/dqmh-patterns.md)) |
@@ -810,6 +812,9 @@ resources rather than call tools.
 | `lvai_create_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **creates a `.lvclass`**, its parent link and its private data — by driving LabVIEW's own project provider, because a private data control is compiler output and cannot be built from outside. Needs a project, and opens one |
 | `lvai_create_interface` | — (same composition, driving `Add Interface.lvlib:Add Interface to Project (path).vi`) | **creates a LabVIEW interface** — a `.lvclass` with no private data control, which is what enables multiple inheritance. `lvai_create_class`'s `parentInterfaces` links a class to the ones it implements, and only at creation time. Interface *methods* have **no tool of their own**: the route is scriptable and execution-verified, but it is a hand-driven composition written up in `docs/lvclass-interfaces.md` §3 |
 | `lvai_create_accessors` | — (same composition, driving NI's own accessor wizard body) | **creates Read/Write VIs** and registers them in the `.lvclass`, saving the library once per field |
+| `lvai_add_class_method` | — (composes `ConvertAIXMLToVI` + `pylv_apply` + `RunVIAsTopLevel`) | **turns generated VIs into real class METHODS** — class-typed connector pane, DYNAMIC DISPATCH and class membership — many in one call. This is the step AIXML cannot do at all: a class-typed terminal is `Control with type=UDClassInst is not supported`, so the method is authored with `path` stand-ins, converted *without* validating, and repaired here. It also saves the OWNING CLASS in the same run, without which `Save.Instrument` does not persist the retype, and it verifies from the SAVED FILE with pylabview — because `Execution:State = 1` was measured reporting four healthy methods that had never reached disk |
+| `lvai_bind_class_fields` | — (composes `ConvertAIXMLToVI` + `OpenFile` + `RunVIAsTopLevel`) | **binds `.ctl` typedefs onto a class's private data fields** — export the cluster, `Replace` each field, move it back — in one call instead of five round trips. Every source is VETTED first and a non-typedef is refused by name: measured on two of NI's own controls, a bind against a non-typedef answers `error out = 0`, installs the right type and binds nothing. Each field is confirmed from the saved class file, not from the helper's answer |
+| `lvai_generate_method_test` | — (composes `lvai_generate_vis` + `lvai_generate_vi` + `lvai_swap_subvis`) | **generates a Caraya suite over a class's METHODS**, the companion to `lvai_generate_class_test`'s accessors. Two case shapes: assert the error code a method returns, or write a field, call the method and read it back OFF THE RETURNED OBJECT — which is what proves the class wire threads the method. The method's own error is fed a constant and never chained into Caraya's chain, because a method under test is expected to fail without hardware |
 | `lvai_dqmh_new_event` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`, and drives Delacor's own `Create New DQMH Event.vi`) | **creates a DQMH request or broadcast** with typed arguments, in one call instead of about fifteen. It drives the DIALOG because `Script New Event.vi` cannot be called from a helper — its `Module Info` holds thirteen refnums and LabVIEW releases them when the parse VI stops, while the dialog runs parse and script as subVIs of one live VI. The module is matched by NAME and confirmed against the dialog's own step-6 text before anything is pressed. **Not unattended-safe**: the OK button is a latched boolean VI Server may not write, so the last step foregrounds the dialog and sends a SPACE |
 | `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 

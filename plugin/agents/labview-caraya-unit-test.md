@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_generate_test, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_generate_test, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -117,10 +117,33 @@ green run can be meaningless.
 | | |
 |---|---|
 | **required** | what to test — `.vi` paths, or a `.lvclass` whose accessors and methods are the subject |
-| **required** | the directory the test VIs go in |
+| **required** | the directory the test VIs go in — **yours alone, see below** |
 | optional | the `.lvproj`; otherwise the tests are generated loose and you say so |
 | optional | specific cases, values or edge cases the user named — use them verbatim |
 | optional | a different framework — if named, stop and hand back (see the banner above) |
+
+### THE DIRECTORY YOU ARE GIVEN IS YOURS ALONE. Do not write outside it.
+
+**Measured 2026-09-02.** Two agents were run against the same class family and both were given
+`C:	emp\HAL_Daq\Tests\`. They overwrote each other's `Test DAQmxAnalogInput Methods.vi` inside
+two minutes, and one of them then ran the suite and reported **`4/4 failed`** — which was not a
+defect in the code under test at all, it was the other agent's file caught half-written. A failure
+report that names the wrong culprit is worse than no report.
+
+So:
+
+- **Write only inside the directory named in your task prompt.** Test VIs, the runner, the JUnit
+  report, scratch AIXML — all of it.
+- **Before writing a test VI, check whether that exact path already exists.** If it does and you did
+  not create it in THIS run, do not overwrite it. Rename yours (`… 2.vi`, or a name that says what
+  it covers) and **say in your report that you found a file you did not write**.
+- **If a suite you did not build fails, do not report it as a defect.** Re-run it once on its own
+  first. A file being written while you read it looks exactly like a broken test.
+- **Name every path you hold in your final report**, so an orchestrator running several agents can
+  keep them apart.
+
+The orchestrator is supposed to give each agent its own directory. When two prompts name the same
+one, that is the mistake — say so rather than working around it silently.
 
 ## Workflow
 
@@ -161,7 +184,8 @@ NEEDS CLARIFICATION
 | the subject | route |
 |---|---|
 | a plain VI, no class terminal on its pane | **Phase 3a** — `lvai_generate_test` does the whole thing |
-| a class member — accessor, method, anything with a class terminal | **Phase 3b** — `lvai_generate_class_test` does the whole thing |
+| a class ACCESSOR, or any member whose test is a write-then-read round trip | **Phase 3b** — `lvai_generate_class_test` does the whole thing |
+| a class METHOD — `Initialize`, `Start`, `Read`, `Close`, anything that acts rather than stores | **Phase 3c** — `lvai_generate_method_test` does the whole thing |
 
 `lvai_placeholder_subvi` answering `stubRefused` with `UDClassInst` is how you find out you are in
 the second row, if the pane did not already tell you.
@@ -229,6 +253,36 @@ Measured 2026-08-29.
 `lvai_swap_subvis` is also the tool for a **single** node swap, which is how the negative control in
 Phase 5 is done. It matches by VI Name, so after the tool has run the names are the accessors' own
 (`Netzteil.lvclass:Read Modell.vi`), not the socket names.
+
+### Phase 3c — Class METHODS: `lvai_generate_method_test`, one call
+
+**Do not hand-build this either.** A method is not a round trip, so it needs its own two case
+shapes — and both came out of a measured run rather than a design:
+
+```json
+[{"method":"Initialize","expectErrorCode":-200099,
+  "label":"Initialize with no device reports an invalid physical channel"},
+ {"method":"Start","writeField":"Timeout","value":"10.0","label":"Timeout survives Start"}]
+```
+
+- **`expectErrorCode`** asserts the `code` the method's own error cluster carries. **Observe it
+  first, never guess it**: call the method once through `lvai_run_vi_and_read_values` and read the
+  number off the cluster. With no hardware a DAQmx `Initialize` answered `-200099` and a `Close` on
+  an object that never had a task answered `-200088`, measured 2026-09-02.
+- **`writeField` + `value`** writes a field, calls the method, and reads the field back **off the
+  object the METHOD returned**. That is what proves the class wire threads the method instead of
+  being dropped and rebuilt, and it is the assertion a dispatch mistake fails.
+
+**A method that errors is not a failing test.** The tool feeds the method's `error in` a `no error`
+constant and never chains its `error out` into Caraya's chain, because a method under test is
+expected to fail without hardware and chaining it would fail every assertion after it.
+
+**An error-code case will FAIL BY DESIGN the day the hardware appears.** Say so in your report —
+that is the correct signal, not a defect, and someone reading a red suite six months from now will
+not know it unless you wrote it down.
+
+Every method must already be a class member with a class-typed pane. If one is not, that is
+`lvai_add_class_method`'s job, not yours — name it and hand back.
 
 ### Phase 4 — The runner: `lvai_generate_caraya_test_runner`, one call
 

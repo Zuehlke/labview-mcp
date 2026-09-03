@@ -497,7 +497,13 @@ public class ExampleToolsTests : IDisposable
     public void RealInstallationYieldsExamplesWithDescriptions()
     {
         ExampleIndex.Result index;
-        try { index = ExampleIndex.Build(); }
+        // REFRESH, because this test is about the INSTALLATION and not about a snapshot of it.
+        // Build() prefers the machine-wide cache, which never expires on its own - so after LUnit
+        // dropped five `.vit` templates into the examples tree on 2026-09-01 this test kept
+        // failing against a cached index that predated the fix, with the fix compiled in and the
+        // real scan clean. Measured 2026-09-02: a warm refresh is about 5 s, which is worth paying
+        // once for a test whose whole subject is what is on disk right now.
+        try { index = ExampleIndex.Build(refresh: true); }
         catch { return; }        // no LabVIEW here; the suite must not require one
 
         Assert.True(index.Examples.Count > 300, $"only {index.Examples.Count} examples found");
