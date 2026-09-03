@@ -66,6 +66,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         THE METHOD'S ERROR IS NEVER CHAINED INTO THE ASSERTIONS. A method under test is expected to
         fail with no hardware; chaining it would poison every later assertion and report failures
         the test itself caused. It is fed `no error` and its `error out` is only unbundled.
+        EVERY REQUIRED INPUT OF THE METHOD IS WIRED, and that is not optional. A `required` input
+        left empty makes the whole suite NOT EXECUTABLE - Caraya answers `7101, At least one test is
+        not in a executable state` - and nothing upstream sees it: measured 2026-09-03, this call
+        answered `ok: true` for exactly such a suite. The method's own export is read for them, and
+        a type with no honest default (a refnum, an IO-name tag, a variant) is REFUSED BY NAME
+        rather than guessed. Supply those per case:
+          [{"method":"Initialize","expectErrorCode":-200099,
+            "inputs":{"Physical Channel":"Dev1/ai0"}}]
+        `inputs` overrides the default for any terminal, required or not named here.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
         READ THE JUNIT REPORT, NOT `error out`, and PROVE IT CAN FAIL once: change one
@@ -155,11 +164,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     }
                 }
 
+                // THE METHOD'S OWN REQUIRED INPUTS, read off its export. Anything `required` and
+                // left unwired makes the generated caller NOT EXECUTABLE, and neither this tool's
+                // validation nor its verify can see that - measured 2026-09-03, `ok: true` for a
+                // suite LabVIEW refused with 7101.
+                var (required, fault) = await RequiredInputsAsync(
+                    methodVi, request.Inputs, timeoutSeconds, ct);
+                if (fault is not null)
+                    return Json.Error(fault.Kind, fault.Message, fault.Detail);
+
                 cases.Add(new MethodCase(i + 1, request.Label ?? DefaultLabel(request),
                                          request.Method, methodVi,
                                          request.WriteField, writeAccessor,
                                          readField, readAccessor, dataType, request.Value,
-                                         request.ExpectErrorCode, seed));
+                                         request.ExpectErrorCode, seed, required!));
             }
 
             // ---- 1. the sockets: one per method call, plus an accessor pair per wire-survival case
@@ -175,7 +193,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             foreach (var test in cases)
             {
                 Author(pairs, scratch, socketRoot, test.MethodSocket,
-                       MethodSocketAixml(test.MethodSocket));
+                       MethodSocketAixml(test.MethodSocket, test.Required));
                 if (test.DataType is { } type)
                 {
                     Author(pairs, scratch, socketRoot, test.WriteSocket!,
@@ -251,6 +269,24 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var errorCases = cases.Count(c => c.ExpectErrorCode is not null);
             var wireCases = cases.Count(c => c.DataType is not null);
+            steps.Add(new JsonObject
+            {
+                ["step"] = "requiredInputs",
+                ["cases"] = new JsonArray([.. cases.Select(c => (JsonNode)new JsonObject
+                {
+                    ["method"] = c.Method,
+                    ["wired"] = new JsonArray([.. c.Required.Select(r => (JsonNode)new JsonObject
+                    {
+                        ["terminal"] = r.Name,
+                        ["type"] = r.Type,
+                        ["value"] = r.Value,
+                        ["source"] = r.FromCaller ? "the case's inputs" : "this tool's default",
+                    })]),
+                })]),
+                ["note"] = "A required input left unwired is what makes a suite not executable. " +
+                           "Values marked as this tool's default are 0 or empty - if one of them " +
+                           "matters to what the case proves, pass it in the case's `inputs`.",
+            });
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {errorCases} error-code assertion(s) and {wireCases} wire-survival " +
                 "assertion(s), every method called as an ordinary static subVI. Run it through " +
@@ -293,7 +329,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// THE ERROR PAIR IS REAL, not a stand-in: it is what the error-code assertion reads, and a
     /// method's pane carries one whatever else it has.
     /// </summary>
-    internal static string MethodSocketAixml(string socketName)
+    internal static string MethodSocketAixml(string socketName,
+                                             IReadOnlyList<RequiredInput>? required = null)
     {
         var geometry = ConnectorPanePatterns.Find(TestTools.AccessorPanePattern)?.Geometry;
         var sb = new StringBuilder();
@@ -322,8 +359,47 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             $"inputs=\"value:11.value\" type=\"{ErrorCluster}\" uid=\"13\" uid_parent=\"root\" " +
             "value=\"[false,0,]\"/>");
 
+        // EVERY REQUIRED INPUT OF THE METHOD GETS A TERMINAL HERE, or the test cannot wire it and
+        // the suite comes out NOT EXECUTABLE. Measured 2026-09-03 on this tool's first real use:
+        // `Initialize` has `Physical Channel` as a required input, the generated call left it
+        // empty, and the whole suite died with `7101, At least one test is not in a executable
+        // state` - while this tool answered `ok: true`, because AIXML validation enforces
+        // `required` on a CALL only when the callee declares it, and the socket did not.
+        //
+        // The panes need NOT otherwise match: {LV.SubVI} Replace RE-TYPES the wires, which is how a
+        // four-terminal socket swapped cleanly onto an eleven-terminal method in that same run. So
+        // this mirrors what the test must WIRE, not the method's whole pane.
+        var uid = 20;
+        foreach (var input in required ?? [])
+        {
+            sb.AppendLine(
+                $"  <Control _name=\"{TestTools.Escape(input.Name)}\" conIdx=\"{input.ConIdx}\" " +
+                "connection=\"required\" description=\"Stands in for a required input of the " +
+                $"method.\" outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
+                $"uid=\"{uid}\" uid_parent=\"root\" " +
+                $"value=\"{TestTools.Escape(input.Value)}\"/>");
+            uid++;
+        }
+
         sb.AppendLine("</VI>");
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Free <c>conIdx</c> slots on the socket pane, after the four the class and error terminals
+    /// take. 4815 has twelve, so there is room for several required inputs; a method needing more
+    /// than this is refused by name rather than silently losing one.
+    /// </summary>
+    internal static IReadOnlyList<int> FreeSocketSlots()
+    {
+        var geometry = ConnectorPanePatterns.Find(TestTools.AccessorPanePattern)?.Geometry;
+        var taken = new HashSet<int> { 11, 3 };
+        if (geometry?.ErrorIn is { } errorIn) taken.Add(errorIn);
+        if (geometry?.ErrorOut is { } errorOut) taken.Add(errorOut);
+        // Inputs live on the LEFT edge of the pane, and on 4815 that is 8..11 plus the two
+        // middle-left columns. Only left-edge slots are offered, so a required INPUT never lands
+        // on an output edge - the defect docs/aixml-reference.md records as shipping twice.
+        return [.. new[] { 10, 9, 8, 7, 6 }.Where(slot => !taken.Contains(slot))];
     }
 
     // ------------------------------------------------------------------ the suite
@@ -400,9 +476,23 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             sb.AppendLine(TestTools.Constant(noError, ErrorCluster, "[false,0,]",
                                                     $"no error {test.Slot}"));
 
+            // A constant per required input. Leaving one out is what made this tool's first real
+            // suite generate cleanly and then refuse to run.
+            var wired = new List<string>();
+            foreach (var input in test.Required)
+            {
+                var constant = uid++;
+                sb.AppendLine(TestTools.Constant(constant, input.Type,
+                    TestTools.ValueFor(input.Type, input.Value),
+                    $"{input.Name} {test.Slot}"));
+                wired.Add($"{input.Name}:{constant}.value");
+            }
+
             var call = uid++;
+            var inputs = string.Join(",",
+                [$"obj in:{objectIn}", $"error in (no error):{noError}.value", .. wired]);
             sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.MethodSocket)}\" " +
-                          $"inputs=\"obj in:{objectIn},error in (no error):{noError}.value\" " +
+                          $"inputs=\"{inputs}\" " +
                           $"outputs=\"obj out:{call}.obj out,error out:{call}.error out\" " +
                           $"uid=\"{call}\" uid_parent=\"root\"/>");
 
@@ -475,6 +565,94 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         return assertion;
     }
 
+    // ------------------------------------------------------------------ required inputs
+
+    private sealed record Fault(string Kind, string Message, object? Detail);
+
+    /// <summary>
+    /// The method's <c>required</c> inputs, each with the literal to wire into it.
+    ///
+    /// WHY THIS EXISTS AT ALL. A `required` input left unwired makes the generated caller NOT
+    /// EXECUTABLE - `7101, At least one test is not in a executable state` from Caraya's runner -
+    /// and NOTHING upstream reports it: the AIXML validates, the swap verifies, and this tool used
+    /// to answer <c>ok: true</c> for a suite LabVIEW refused to run. Measured 2026-09-03 on the
+    /// tool's first real use, against a DAQmx `Initialize` whose `Physical Channel` is required.
+    ///
+    /// THE CLASS TERMINAL IS NOT REQUIRED, IT IS `dynamic`, and the error cluster is normally only
+    /// `recommended` - so neither turns up here. That is worth knowing because the class input IS
+    /// effectively mandatory (an unwired dynamic dispatch input is `Error 1003`), and it is wired
+    /// by the diagram rather than by this list.
+    ///
+    /// AND A TYPE WITH NO HONEST DEFAULT IS REFUSED BY NAME. A DAQmx task refnum or an IO-name tag
+    /// has no literal this tool can invent that means anything - what a "no task" constant asserts
+    /// is a decision about the test, not a detail - so the case is refused with the terminal, its
+    /// type, and the JSON to add. Inventing one would put the tool straight back into answering
+    /// <c>ok</c> for a test that pins nothing.
+    /// </summary>
+    private async Task<(IReadOnlyList<RequiredInput>? Inputs, Fault? Fault)>
+        RequiredInputsAsync(string methodVi, IReadOnlyDictionary<string, string>? supplied,
+                            int timeoutSeconds, CancellationToken ct)
+    {
+        var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+            Path.ChangeExtension(Path.GetFileName(methodVi), ".terminals.xml"));
+        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
+
+        var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
+            methodVi, export, returnContent: true, maxContentChars: 200000,
+            timeoutSeconds: timeoutSeconds, refresh: true, ct: ct);
+
+        var xml = (Read(answer) as JsonObject)?["xml"]?.GetValue<string>();
+        if (ViTerminals.Parse(xml) is not { } terminals)
+            return (null, new Fault("methodNotReadable",
+                $"'{Path.GetFileName(methodVi)}' could not be exported, so its required inputs " +
+                "are unknown. A required input left unwired makes the suite not executable, so " +
+                "this call stops rather than generating one that cannot run.",
+                new { methodVi }));
+
+        var slots = FreeSocketSlots();
+        var resolved = new List<RequiredInput>();
+        foreach (var terminal in terminals.Inputs)
+        {
+            if (terminal.Connection != "required") continue;
+            if (terminal.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)) continue;
+            if (ConnectorPane.IsErrorIn(terminal.Name)) continue;
+
+            if (resolved.Count >= slots.Count)
+                return (null, new Fault("tooManyRequiredInputs",
+                    $"'{Path.GetFileName(methodVi)}' has more required inputs than the socket " +
+                    $"pane has free slots ({slots.Count}). Wire fewer of them by making the " +
+                    "surplus `recommended` on the method, or test it through a wrapper.",
+                    new { methodVi, freeSlots = slots.Count }));
+
+            var given = supplied is not null && supplied.TryGetValue(terminal.Name, out var v);
+            if (!given && !HasHonestDefault(terminal.Type))
+                return (null, new Fault("requiredInputNeedsAValue",
+                    $"'{terminal.Name}' on '{Path.GetFileName(methodVi)}' is a REQUIRED input of " +
+                    $"type `{terminal.Type}`, and there is no default this call can invent that " +
+                    "means anything. Leaving it unwired would generate a suite LabVIEW refuses to " +
+                    $"run. Add it to the case: \"inputs\":{{\"{terminal.Name}\":\"…\"}}.",
+                    new { methodVi, terminal = terminal.Name, type = terminal.Type }));
+
+            resolved.Add(new RequiredInput(
+                terminal.Name, terminal.Type,
+                given ? supplied![terminal.Name] : TestTools.DefaultFor(terminal.Type),
+                slots[resolved.Count], given));
+        }
+
+        return (resolved, null);
+    }
+
+    /// <summary>
+    /// Whether a type has a default literal that MEANS something. A number is 0 and a string is
+    /// empty; a refnum, an IO-name tag or a variant has no such value, and guessing one is how a
+    /// green test comes to assert nothing.
+    /// </summary>
+    internal static bool HasHonestDefault(string type) =>
+        !(type.StartsWith("ref{", StringComparison.Ordinal)
+          || type.StartsWith("tag{", StringComparison.Ordinal)
+          || type.StartsWith("{LV.", StringComparison.Ordinal)
+          || type.StartsWith("variant", StringComparison.Ordinal));
+
     private static string ConIdx(int? slot) => slot is { } idx ? $" conIdx=\"{idx}\"" : "";
 
     private static string DefaultLabel(MethodCaseRequest request) =>
@@ -506,11 +684,16 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ the cases
 
+    /// <summary>One required input of the method under test, and the literal wired into it.</summary>
+    internal sealed record RequiredInput(string Name, string Type, string Value, int ConIdx,
+                                         bool FromCaller);
+
     internal sealed record MethodCase(int Slot, string Label, string Method, string MethodVi,
                                       string? WriteField, string? WriteAccessor,
                                       string? ReadField, string? ReadAccessor,
                                       string? DataType, string? Value, int? ExpectErrorCode,
-                                      string SeedClassPath)
+                                      string SeedClassPath,
+                                      IReadOnlyList<RequiredInput> Required)
     {
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
@@ -523,7 +706,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     internal sealed record MethodCaseRequest(string Method, string? WriteField, string? ReadField,
                                              string? Value, string? Type, int? ExpectErrorCode,
-                                             string? Label)
+                                             string? Label,
+                                             IReadOnlyDictionary<string, string>? Inputs)
     {
         public static List<MethodCaseRequest> ParseAll(string json)
         {
@@ -565,10 +749,18 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                         $"Case for '{method}' names writeField '{writeField}' with no \"value\". " +
                         "The value written is also the value asserted, so it is not optional.");
 
+                Dictionary<string, string>? inputs = null;
+                if (o["inputs"] is JsonObject given)
+                {
+                    inputs = [];
+                    foreach (var pair in given)
+                        inputs[pair.Key] = pair.Value?.GetValue<string>() ?? "";
+                }
+
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
-                                              o["label"]?.GetValue<string>()));
+                                              o["label"]?.GetValue<string>(), inputs));
             }
 
             return all;

@@ -226,7 +226,8 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             {
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
-                    projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
+                    projectName: Path.GetFileName(projectPath),
+                    checkActive: true, timeoutSeconds, ct);
                 steps.Add(new JsonObject
                 {
                     ["step"] = "openProject",
@@ -480,11 +481,31 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             }
         }
 
+        /// <summary>The label LabVIEW gives the cluster holding a class's fields.</summary>
+        internal const string FieldClusterLabel = "Cluster of class private data";
+
         /// <summary>
-        /// The cluster at <c>VCTP/TopLevel</c> index 1 is the private data cluster; its children
-        /// are the fields, in field order. A bound field resolves to a
+        /// The class's fields, in field order. A bound field resolves to a
         /// <c>&lt;TypeDesc Type="TypeDef"&gt;</c> whose <c>Label</c> children name the owning
         /// library and the `.ctl`.
+        ///
+        /// THIS USED TO START AT <c>VCTP/TopLevel</c> INDEX 1 AND STOP THERE, WHICH IS ONE LEVEL
+        /// TOO HIGH. Measured 2026-09-03 on the first real use of this tool, against a class made
+        /// by <c>lvai_create_class</c>: index 1 resolves to a <c>Type="TypeDef"</c> WRAPPER whose
+        /// single inline child is the cluster labelled <c>Cluster of class private data</c>, and
+        /// the five fields sit inside THAT. So every binding was refused with <c>'Task Reference'
+        /// is not a field of this class's private data</c> and a field list of exactly one entry -
+        /// the wrapper's own label - which reads like a name-matching problem and is not one. It
+        /// cost that run 153 s for 3.3 s of LabVIEW, hand-driving the very helpers this tool wraps.
+        ///
+        /// THE DESCENT IS THROUGH <c>TypeDef</c> ONLY, and that is the whole subtlety. Descending
+        /// "while there is a single child that is a Cluster" would look equivalent and would break
+        /// a class whose ONE field happens to be a cluster - an error cluster, say - by reporting
+        /// that cluster's three members as the class's fields. A <c>TypeDef</c> wrapper is what
+        /// makes this a class private data control (<c>Control VI Type</c> = 3), it is
+        /// language-independent, and an ordinary exported `.ctl` does not have one: there index 1
+        /// IS the field cluster, which is why <see cref="CtlTools"/> read the same bytes correctly
+        /// and this did not.
         /// </summary>
         internal static PrivateDataFields Parse(XElement rsrc)
         {
@@ -498,14 +519,15 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 || id < 0 || id >= flat.Count)
                 return new PrivateDataFields([], [], [], "The private data cluster was not found.");
 
+            var cluster = FieldCluster(flat, flat[id]);
+
             var labels = new List<string>();
             var bound = new HashSet<int>();
             var names = new List<string?>();
             var position = 0;
-            foreach (var child in flat[id].Elements("TypeDesc"))
+            foreach (var child in cluster.Elements("TypeDesc"))
             {
-                var resolved = int.TryParse((string?)child.Attribute("TypeID"), out var cid)
-                               && cid >= 0 && cid < flat.Count ? flat[cid] : child;
+                var resolved = Resolve(flat, child);
                 labels.Add((string?)resolved.Attribute("Label")
                            ?? (string?)child.Attribute("Label") ?? $"field {position}");
 
@@ -522,6 +544,33 @@ internal sealed class ClassBindTools(LvaiConnection connection)
 
             return new PrivateDataFields(labels, bound, names, null);
         }
+
+        /// <summary>
+        /// Step through <c>TypeDef</c> wrappers to the cluster whose children are the fields.
+        /// See <see cref="Parse"/> for why the descent is through that type and nothing else.
+        /// </summary>
+        internal static XElement FieldCluster(List<XElement> flat, XElement descriptor)
+        {
+            // A depth bound rather than an open loop: a malformed VCTP that referred to itself
+            // would otherwise spin, and no real control nests more than a level or two.
+            for (var depth = 0; depth < 4; depth++)
+            {
+                if ((string?)descriptor.Attribute("Type") != "TypeDef") return descriptor;
+
+                var children = descriptor.Elements("TypeDesc").ToList();
+                if (children.Count != 1) return descriptor;
+                descriptor = Resolve(flat, children[0]);
+            }
+            return descriptor;
+        }
+
+        /// <summary>
+        /// A child descriptor as its real type: an entry carrying <c>TypeID</c> is a REFERENCE into
+        /// the flat list, and one without it is inline and already the type.
+        /// </summary>
+        internal static XElement Resolve(List<XElement> flat, XElement child) =>
+            int.TryParse((string?)child.Attribute("TypeID"), out var id)
+            && id >= 0 && id < flat.Count ? flat[id] : child;
     }
 
     // ------------------------------------------------------------------ the request

@@ -266,7 +266,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 }
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
-                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed),
+                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
                     timeoutSeconds, ct);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
@@ -644,7 +644,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 }
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
-                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed),
+                    viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
                     timeoutSeconds, ct);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
@@ -1747,7 +1747,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             {
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
-                    projectName: Path.GetFileName(projectPath), timeoutSeconds, ct);
+                    projectName: Path.GetFileName(projectPath),
+                    checkActive: true, timeoutSeconds, ct);
                 projectOpened = Parsed(opened);
             }
 

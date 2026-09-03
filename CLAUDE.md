@@ -659,6 +659,42 @@ the other's half-written file. A failure report that names the wrong culprit is 
 Give each test agent `<project>\Tests\<ClassName>\` and say in the prompt that it is theirs;
 `labview-class-generator` Phase 6 and `labview-caraya-unit-test` both carry the rule now.
 
+**`No Error` FROM `lvai_open_file` DOES NOT MEAN A PROJECT BECAME ACTIVE.** Measured 2026-09-03:
+three opens in a row answered `No Error` for a `.lvproj` that plainly exists and left no active
+project, so `lvai_close_active_project` answered `Error 1055, nothing to close` after each and
+`lvai_create_accessors` answered 1055 with `classPathsSeen: []`. **The cause was the foreground
+window** — Chrome had focus, and the very next open took once LabVIEW was fronted. Diagnosing it
+cost **270 s of wall clock for 2.9 s inside LabVIEW**, the worst row of that run, because nothing in
+the chain reported the state and the tool's hint pointed at path spelling. `lvai_open_file` now reads
+`Project:Active Project` back and reports `projectBecameActive`; a false there is
+`errorKind: projectDidNotBecomeActive` with the cause named.
+
+**AND LabVIEW's SAVE-ON-CLOSE CAN WRITE A STALE IN-MEMORY PROJECT OVER THE FILE.** Same run: once a
+project was active, `classPathsSeen` did not list a class created ten minutes earlier, because
+LabVIEW had held the `.lvproj` since before the edit — and the close then saved that copy, deleting
+the class's entry from disk. This is the `classEntriesRestored` guard in `lvai_create_class` seen
+from the other side. **Read the `.lvproj` after every close.**
+
+**A GENERATED METHOD CANNOT READ ITS OWN FIELDS THROUGH AN AIXML `Call`** — `Error 53, Unsupported
+SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured. So a generated method either takes
+its parameters on the connector pane, or reaches its accessors through `lvai_placeholder_subvi` plus
+`lvai_swap_subvis`. **That socket route collapses on a class whose fields share a type**: placeholders
+are cached by signature and the swap takes the first match, so `Minimum Value`, `Maximum Value`,
+`Timeout` and an inherited `Sample Rate` — all class + double — give twelve accessor calls one
+indistinguishable socket. Choose the signature deliberately and say which, and never report that a
+method stores a value in the object when it returns it on a terminal.
+
+**A TOOL TESTED AGAINST A PLAUSIBLE FIXTURE IS NOT TESTED.** Both tools that failed on their first
+real use, 2026-09-03, failed this way and nothing else. `lvai_bind_class_fields` read
+`VCTP/TopLevel` index 1 as the field cluster, which is right for an EXPORTED `.ctl` and one level too
+high for the class private data control it exists for — index 1 there is a `TypeDef` wrapper holding
+the cluster labelled `Cluster of class private data`. Its unit tests passed because they were written
+against the exported shape. `lvai_generate_method_test` left the method's `required` inputs unwired
+and answered `ok: true` for a suite Caraya refused with `7101, not in an executable state`, because
+AIXML enforces `required` against what the CALLEE declares and the socket declared no such terminal.
+**Build the fixture by unwrapping the real artefact** — `docs/class-method-tooling.md` §4b has both,
+including why the descent must be through `TypeDef` and not through "a single cluster child".
+
 Pylabview cannot compose a typedef heap object where none exists; and re-pointing one that ALREADY
 exists is **not** the cheap label substitution it looks like — measured 2026-08-28, the typedef's file
 name sits 12 times in `VCTP` and 3 more in `VITS`, a block pylabview cannot parse and copies through

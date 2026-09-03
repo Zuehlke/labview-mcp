@@ -692,7 +692,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 .ToList();
 
             var reopened = await new ActionTools(connection).OpenFileAsync(
-                null, null, projectPath, Path.GetFileName(projectPath), timeoutSeconds, ct);
+                null, null, projectPath, Path.GetFileName(projectPath), true, timeoutSeconds, ct);
 
             step["ok"] = notOnDisk.Count == 0 && notListed.Count == 0;
             step["added"] = added;

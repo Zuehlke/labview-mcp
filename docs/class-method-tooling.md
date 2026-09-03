@@ -248,14 +248,157 @@ A failure report that names the wrong culprit is worse than no report, so:
 Both agent definitions carry this now — `labview-class-generator` Phase 6 and
 `labview-caraya-unit-test`'s inputs section.
 
+## 4a. The second run: what the tools actually bought
+
+The same build was repeated cold on **2026-09-03**, same task, same prompts, with the folder emptied
+and the 150 accumulated socket VIs moved out of `user.lib\LV_MCP` so it was genuinely cold.
+
+| | run 1, 2026-09-02 | run 2, 2026-09-03 |
+|---|---|---|
+| base class + tests | 1 214 s | **593 s** |
+| child class + methods + tests | 2 220 s | **1 194 s** |
+| **wall clock** | **3 434 s** | **1 787 s** (−48 %) |
+| inside LabVIEW | 353 s | 362 s |
+| **ratio** | **9.7 : 1** | **4.9 : 1** |
+
+LabVIEW's own time did not move, which is the point: what was removed is round trips. The largest
+single gain was the §3e fix — the base class's test phase went from **761 s to 162 s**, because two
+suites no longer had to be hand-built around a socket the tool refused to author.
+
+And that is with two of the five tools broken on first use. Both defects are below; without the
+~250 s they cost, the saving would be nearer 55 %.
+
+## 4b. Two tools were wrong on their first real use
+
+Neither had ever been run end to end when it shipped. Both failures were found by the agents using
+them, and both are the same species of mistake: **a tool tested against a plausible fixture rather
+than against the one artefact it exists for.**
+
+### `lvai_bind_class_fields` read the private data control one level too high
+
+Every binding was refused with `'Task Reference' is not a field of this class's private data` and a
+field list of exactly one entry, `Cluster of class private data`. That reads like a name-matching
+problem and is not one.
+
+Measured by unwrapping `NI.LVClass.FlattenedPrivateDataCTL` out of a real class and extracting it:
+
+```
+VCTP/TopLevel index 1 -> flat 9:  <TypeDesc Type="TypeDef">          <- the wrapper
+                                    <TypeDesc Type="Cluster" Label="Cluster of class private data">
+                                      Refnum      "Task Reference"
+                                      Cluster     "Error Cluster"
+                                      String      "Physical Channel"
+                                      NumFloat64  "Sample Rate"
+                                      NumInt32    "Samples Per Channel"
+```
+
+So index 1 is a **`TypeDef` wrapper**, and the fields are one level inside it. An *exported* `.ctl`
+has no wrapper — there index 1 IS the field cluster — which is why `lvai_describe_ctl` read the same
+bytes correctly and the binding tool did not, and why the unit tests passed: they were written
+against the exported shape.
+
+**The descent is through `TypeDef` and nothing else.** "Descend while there is a single child that is
+a Cluster" looks equivalent and breaks a class whose one field happens to be a cluster — an error
+cluster, say — by reporting `status`, `code` and `source` as the class's three fields. The `TypeDef`
+wrapper is what makes this a class private data control (`Control VI Type` = 3) and is
+language-independent. Both readings are covered by tests now.
+
+Cost while broken: **153 s of that run for 3.3 s of LabVIEW** — the failed attempt plus hand-driving
+the very `lvpdc_*` helpers the tool wraps. Those helpers ran first time, in the documented order,
+with `error out = 0` throughout; only the C# field resolution was wrong.
+
+### `lvai_generate_method_test` answered `ok: true` for a suite LabVIEW refuses to run
+
+The generated suite came out `7101, At least one test is not in a executable state`, and the tool
+reported success. The cause: it wired only the class terminal and the error cluster, leaving the
+method's **`required` inputs empty**.
+
+`lvai_vi_terminals` on the subject makes it plain — and corrects the guess that the class input is
+what is required:
+
+```
+obj in                  [ref{UDClassInst}]  conIdx 0,  dynamic
+Physical Channel        [tag{14}]           conIdx 5,  required     <- unwired, and fatal
+Terminal Configuration  [int32]             conIdx 7,  recommended
+error in                [cluster{...}]      conIdx 11, recommended
+```
+
+Nothing upstream can see this. AIXML enforces `required` against what the **callee declares**, and
+the socket declared no such terminal — so validation passed, the swap verified, and the defect only
+appeared when Caraya tried to run the VI.
+
+The fix is in the tool: read the method's own export, give the socket a terminal for each `required`
+input, and wire a constant into every one. **And where the type has no default that means anything —
+a refnum, an IO-name tag, a variant — refuse the case by name** rather than inventing one:
+
+```json
+[{"method":"Initialize","expectErrorCode":-200099,
+  "inputs":{"Physical Channel":"Dev1/ai0"}}]
+```
+
+A "no task" refnum constant is a decision about what the test asserts, not a detail, and guessing it
+is how a green suite comes to pin nothing. The answer now lists every wired input with its value and
+whether it came from the caller or from the tool.
+
+Note the panes need NOT otherwise match: `{LV.SubVI}` `Replace` **re-types the wires**, which is how
+a four-terminal socket swapped cleanly onto an eleven-terminal method in that same run. So the socket
+mirrors what the test must *wire*, not the method's whole pane.
+
+## 4c. Two findings about existing tools, from the same run
+
+**`lvai_open_file` can answer `No Error` and leave no project active.** Three opens in a row all
+reported success; `lvai_close_active_project` answered `Error 1055, nothing to close` after each, and
+`lvai_create_accessors` answered 1055 with `classPathsSeen: []`. What fixed it was **bringing the
+LabVIEW window to the foreground** — Chrome had focus. Cost: **270 s of wall clock for 2.9 s inside
+LabVIEW**, the worst row of that run.
+
+The tool now checks for itself: after opening a project it reads `Project:Active Project` back and
+reports `projectBecameActive`, with `errorKind: projectDidNotBecomeActive` and the foreground cause
+named when it did not. Its old hint sent the reader to check the path spelling, which is never the
+problem here.
+
+**LabVIEW's save-on-close wrote a stale in-memory project over the file.** Once a project *was*
+active, `classPathsSeen` did not list a class created ten minutes earlier — LabVIEW had held the
+`.lvproj` since before the edit. `lvai_close_active_project` then saved that stale copy and the
+class's entry vanished from the file on disk. This is the `classEntriesRestored` behaviour
+`lvai_create_class` already guards against, seen from the other side. **Read the `.lvproj` after
+every close.**
+
+## 4d. A generated method cannot read its own fields
+
+Measured 2026-09-03, and it decides a method's whole signature:
+
+```
+<Call target="AnalogInput.lvclass\3ARead Physical Channel.vi" .../>
+-> Error 53 ... Unsupported SubVI: AnalogInput.lvclass:Read Physical Channel.vi
+```
+
+So a generated method either takes its parameters **on the connector pane**, or reaches its accessors
+through the socket route (`lvai_placeholder_subvi` + `lvai_swap_subvis`).
+
+**And the socket route has a limit that bites on exactly these classes.** Placeholders are cached by
+SIGNATURE and `lvai_swap_subvis` takes the FIRST match on duplicates, so a class whose fields share a
+type — `Minimum Value`, `Maximum Value`, `Timeout` and an inherited `Sample Rate` are all class +
+double — gives several accessors one indistinguishable socket. Twelve accessor calls collapsed that
+way on the DAQmx child class.
+
+Decide the signature deliberately and say which was chosen. Never report that a method stores a value
+in the object when it returns it on a terminal instead.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
 
-- **The five tools were built from the run, not proven by a second one.** The four findings are
-  measurements; the tools that encode them are verified by unit tests over their offline logic
-  (`tests/LabVIEWMCP.Tests/Tools/ClassToolingLeverTests.cs`) and by compiling against the same
-  helper AIXML that ran. A cold end-to-end run through the new tools has not happened.
+- **Three of the five tools are now proven end to end; two were proven wrong and fixed.** The
+  2026-09-03 run exercised `lvai_describe_ctl` (worked), `lvai_add_class_method` (worked, first use,
+  four methods, no retry) and `lvai_generate_class_test` (worked, non-scalar field included).
+  `lvai_bind_class_fields` and `lvai_generate_method_test` failed as §4b describes; **their fixes
+  are covered by tests but have NOT themselves been run against LabVIEW yet**, and neither has
+  `lvai_open_file`'s new active-project check.
+- **The recursive default's refnum branch is still unproven.** The one field that would have
+  exercised it — a DAQmx task reference — was legitimately skipped by the test agent, which declined
+  to invent a literal for a hardware handle. That was the right call and it leaves the branch
+  untested.
 - **`lvai_add_class_method`'s combined order** is composed from two helpers that were each measured
   separately — `scripts/lvlu_add_test_method.xml` (retype + membership) and the DAQmx run's
   `daq_member.vi` (membership + wire rules). Their constraints do not conflict, but the combination

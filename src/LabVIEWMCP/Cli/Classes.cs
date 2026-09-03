@@ -155,7 +155,8 @@ internal static class Classes
             await using var _ = connection;
             await new ActionTools(connection).OpenFileAsync(
                 viPath: null, viName: null, projectPath: projectPath,
-                projectName: Path.GetFileName(projectPath), timeoutSeconds);
+                projectName: Path.GetFileName(projectPath), checkActive: true,
+                timeoutSeconds: timeoutSeconds);
         }
 
         stopwatch.Stop();

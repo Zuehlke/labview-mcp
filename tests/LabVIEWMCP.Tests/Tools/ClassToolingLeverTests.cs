@@ -124,8 +124,34 @@ public sealed class ClassToolingLeverTests
 
     // ================================================================== lvai_bind_class_fields
 
-    /// <summary>A private data cluster as pylabview renders it: field 1 bound, the others bare.</summary>
-    private static XElement PrivateData() =>
+    /// <summary>
+    /// A private data cluster as pylabview renders it: field 1 bound, the others bare.
+    ///
+    /// <paramref name="wrapped"/> is the shape of a REAL class private data control, measured
+    /// 2026-09-03 by unwrapping `NI.LVClass.FlattenedPrivateDataCTL` out of a class built by
+    /// `lvai_create_class`: `VCTP/TopLevel` index 1 resolves to a `Type="TypeDef"` wrapper whose
+    /// single INLINE child is the cluster labelled `Cluster of class private data`. The false
+    /// shape - index 1 being the field cluster directly - is what an EXPORTED `.ctl` looks like,
+    /// and testing only that is how the parser shipped broken.
+    /// </summary>
+    private static XElement PrivateData(bool wrapped = false)
+    {
+        var document = PrivateDataUnwrapped();
+        if (!wrapped) return document;
+
+        var section = document.Element("VCTP")!.Element("Section")!;
+        var cluster = section.Elements("TypeDesc").First();
+        cluster.Remove();
+        section.AddFirst(new XElement("TypeDesc",
+            new XAttribute("Type", "TypeDef"),
+            new XElement("TypeDesc",
+                new XAttribute("Type", "Cluster"),
+                new XAttribute("Label", "Cluster of class private data"),
+                cluster.Elements("TypeDesc"))));
+        return document;
+    }
+
+    private static XElement PrivateDataUnwrapped() =>
         new("RSRC",
             new XElement("VCTP",
                 new XElement("Section",
@@ -150,6 +176,68 @@ public sealed class ClassToolingLeverTests
                         new XElement("TypeDesc",
                             new XAttribute("Index", "1"),
                             new XAttribute("FlatTypeID", "0"))))));
+
+    // ---------------------------------------------- the wrapper, and the 2026-09-03 parser defect
+
+    [Fact]
+    public void ARealClassPrivateDataControlIsReadThroughItsTypeDefWrapper()
+    {
+        // THE DEFECT THIS TEST EXISTS FOR. The parser stopped at TopLevel index 1, which in a real
+        // class control is the TypeDef wrapper - so every binding was refused with a field list of
+        // one entry, `Cluster of class private data`, which reads like a name-matching problem and
+        // is not one. It cost the 2026-09-03 run 153 s for 3.3 s of LabVIEW.
+        var fields = ClassBindTools.PrivateDataFields.Parse(PrivateData(wrapped: true));
+
+        Assert.Null(fields.Unavailable);
+        Assert.Equal(["Physical Channel", "Task Reference", "Sample Rate"], fields.Labels);
+        Assert.DoesNotContain(ClassBindTools.PrivateDataFields.FieldClusterLabel, fields.Labels);
+    }
+
+    [Fact]
+    public void TheWrapperAndTheExportedFormReadIdentically()
+    {
+        // An exported `.ctl` has no wrapper and index 1 IS the field cluster. Both forms must give
+        // the same answer, because the tool reads the class file and verifies against the export.
+        var wrapped = ClassBindTools.PrivateDataFields.Parse(PrivateData(wrapped: true));
+        var plain = ClassBindTools.PrivateDataFields.Parse(PrivateData());
+
+        Assert.Equal(plain.Labels, wrapped.Labels);
+        Assert.Equal(plain.BoundTypedefs, wrapped.BoundTypedefs);
+    }
+
+    [Fact]
+    public void AClassWhoseONLYFieldIsAClusterIsNotDescendedInto()
+    {
+        // THE TRAP IN THE FIX ITSELF. Descending "while there is a single child that is a Cluster"
+        // looks equivalent to descending through TypeDef and is not: this class has one field, an
+        // error cluster, and the shape-based rule would report `status`, `code` and `source` as the
+        // class's three fields. The descent is through TypeDef and nothing else for this reason.
+        var document = new XElement("RSRC",
+            new XElement("VCTP",
+                new XElement("Section",
+                    new XElement("TypeDesc",
+                        new XAttribute("Type", "TypeDef"),
+                        new XElement("TypeDesc",
+                            new XAttribute("Type", "Cluster"),
+                            new XAttribute("Label", "Cluster of class private data"),
+                            new XElement("TypeDesc",
+                                new XAttribute("Type", "Cluster"),
+                                new XAttribute("Label", "Error Cluster"),
+                                new XElement("TypeDesc", new XAttribute("Type", "Boolean"),
+                                             new XAttribute("Label", "status")),
+                                new XElement("TypeDesc", new XAttribute("Type", "NumInt32"),
+                                             new XAttribute("Label", "code")),
+                                new XElement("TypeDesc", new XAttribute("Type", "String"),
+                                             new XAttribute("Label", "source"))))),
+                    new XElement("TopLevel",
+                        new XElement("TypeDesc",
+                            new XAttribute("Index", "1"),
+                            new XAttribute("FlatTypeID", "0"))))));
+
+        var fields = ClassBindTools.PrivateDataFields.Parse(document);
+
+        Assert.Equal(["Error Cluster"], fields.Labels);
+    }
 
     [Fact]
     public void ThePrivateDataFieldsAreReadInFieldOrderWithTheirLabels()
@@ -272,14 +360,16 @@ public sealed class ClassToolingLeverTests
 
     // ================================================================== lvai_generate_method_test
 
-    private static MethodTestTools.MethodCase ErrorCase(int slot, string method, int code) =>
+    private static MethodTestTools.MethodCase ErrorCase(
+        int slot, string method, int code,
+        params MethodTestTools.RequiredInput[] required) =>
         new(slot, $"{method} reports {code}", method, $@"C:\cls\{method}.vi",
-            null, null, null, null, null, null, code, @"C:\cls\Daq.lvclass");
+            null, null, null, null, null, null, code, @"C:\cls\Daq.lvclass", required);
 
     private static MethodTestTools.MethodCase WireCase(int slot, string method, string field) =>
         new(slot, $"{field} survives {method}", method, $@"C:\cls\{method}.vi",
             field, $@"C:\cls\Write {field}.vi", field, $@"C:\cls\Read {field}.vi",
-            "double", "10.0", null, @"C:\cls\Daq.lvclass");
+            "double", "10.0", null, @"C:\cls\Daq.lvclass", []);
 
     private static XElement Suite(params MethodTestTools.MethodCase[] cases) =>
         XElement.Parse(MethodTestTools.MethodTestAixml(@"C:\cls\Test Daq Methods.vi", "Daq", cases));
@@ -408,7 +498,7 @@ public sealed class ClassToolingLeverTests
         var both = new MethodTestTools.MethodCase(
             1, "Close clears the task and reports invalid task", "Close", @"C:\cls\Close.vi",
             "Timeout", @"C:\cls\Write Timeout.vi", "Timeout", @"C:\cls\Read Timeout.vi",
-            "double", "10.0", -200088, @"C:\cls\Daq.lvclass");
+            "double", "10.0", -200088, @"C:\cls\Daq.lvclass", []);
 
         var xml = Suite(both);
         var assertions = xml.Elements("Call")
@@ -440,6 +530,85 @@ public sealed class ClassToolingLeverTests
         Assert.Contains(xml.Elements("Constant"),
             c => (string?)c.Attribute("_name") == "Label (VI Title)"
                  && (string?)c.Attribute("value") == "Test Daq Methods");
+    }
+
+    // ------------------------------------------- required inputs, the 2026-09-03 executability bug
+
+    [Fact]
+    public void ARequiredInputIsWiredFromAConstantOnBothSocketAndCall()
+    {
+        // THE DEFECT THIS TEST EXISTS FOR. The generated call left `Physical Channel:` empty, the
+        // suite came out `7101, not in an executable state`, and the tool still answered ok: true.
+        var required = new MethodTestTools.RequiredInput(
+            "Physical Channel", "string", "Dev1/ai0", 10, FromCaller: true);
+        var xml = Suite(ErrorCase(1, "Initialize", -200099, required));
+
+        var call = xml.Elements("Call")
+            .First(e => ((string?)e.Attribute("target"))!.Contains("Mth1"));
+        var inputs = (string)call.Attribute("inputs")!;
+        var wired = inputs.Split(',')
+            .First(p => p.StartsWith("Physical Channel:", StringComparison.Ordinal));
+
+        // It must be fed by a real net, not left as `Physical Channel:`.
+        var sourceUid = wired.Split(':')[1].Split('.')[0];
+        Assert.NotEqual("", sourceUid);
+        var source = xml.Elements().First(e => (string?)e.Attribute("uid") == sourceUid);
+        Assert.Equal("Constant", source.Name.LocalName);
+        Assert.Equal("Dev1/ai0", (string?)source.Attribute("value"));
+    }
+
+    [Fact]
+    public void TheSocketDeclaresEveryRequiredInputAsRequired()
+    {
+        // Without the terminal on the SOCKET there is nothing for the call to wire to - and AIXML
+        // enforces `required` against what the callee declares, so a socket that omits it is
+        // exactly why validation passed on an unrunnable suite.
+        var required = new MethodTestTools.RequiredInput(
+            "Physical Channel", "string", "Dev1/ai0", 10, FromCaller: true);
+        var xml = XElement.Parse(MethodTestTools.MethodSocketAixml("LVMCP Mth1.vi", [required]));
+
+        var terminal = xml.Elements("Control")
+            .Single(e => (string?)e.Attribute("_name") == "Physical Channel");
+        Assert.Equal("required", (string?)terminal.Attribute("connection"));
+        Assert.Equal("string", (string?)terminal.Attribute("type"));
+        Assert.Equal("10", (string?)terminal.Attribute("conIdx"));
+    }
+
+    [Fact]
+    public void ARequiredInputNeverLandsOnASlotTheClassOrErrorTerminalsHold()
+    {
+        // 11 and 3 are the class terminals and the error pair sits at the pane's two bottom slots.
+        // A required input landing on one of those would move a wire the swap depends on.
+        var slots = MethodTestTools.FreeSocketSlots();
+
+        Assert.DoesNotContain(11, slots);
+        Assert.DoesNotContain(3, slots);
+        Assert.NotEmpty(slots);
+    }
+
+    [Theory]
+    [InlineData("ref{GenClassTag.Task.NIDAQ}", false)]   // a DAQmx task handle
+    [InlineData("tag{14}", false)]                       // an IO name control
+    [InlineData("variant", false)]
+    [InlineData("{LV.VI}", false)]
+    [InlineData("string", true)]
+    [InlineData("double", true)]
+    [InlineData("cluster{bool.status,int32.code,string.source}", true)]
+    public void OnlyATypeWithAMEANINGFULDefaultMayBeGuessed(string type, bool honest) =>
+        // A refnum's "empty" literal asserts nothing, and inventing one is how a green test comes
+        // to pin nothing at all. Those are refused by name so the caller supplies a real value.
+        Assert.Equal(honest, MethodTestTools.HasHonestDefault(type));
+
+    [Fact]
+    public void ACaseMayCarryExplicitInputsForAnyTerminal()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll("""
+            [{"method":"Initialize","expectErrorCode":-200099,
+              "inputs":{"Physical Channel":"Dev1/ai0","task in":""}}]
+            """);
+
+        Assert.Equal("Dev1/ai0", parsed[0].Inputs!["Physical Channel"]);
+        Assert.Equal("", parsed[0].Inputs!["task in"]);
     }
 
     [Theory]
