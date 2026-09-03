@@ -24,6 +24,12 @@ internal sealed class StatusTools(LvaiConnection connection)
         Also reports scriptsDirectory: the absolute path of the helper scripts shipped next to
         this server's exe. Use it instead of a relative path - it works from any working
         directory, and from a binary-only install with no repository checkout.
+        `labviewHealth` counts the `DWarn` entries in NI's OWN crash log, which is where
+        LabVIEW records faults - its crash handler means Windows Error Reporting never sees
+        them, so an empty event log is not an alibi. A high count is a PRIOR, not a diagnosis:
+        measured 2026-09-03, an instance carrying 200 of them answered every RPC normally while
+        refusing class work with Error 1073 and Error 1562, and a restart cured both. Check it
+        when a call fails in a way its arguments do not explain.
         """)]
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -65,8 +71,110 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["aiAddonRecorded"] = LvaiVersion.Recorded(),
                 ["services"] = services,
                 ["reflectionError"] = reflectionError,
+                // A LabVIEW that is running and answering can still be too sick to work.
+                ["labviewHealth"] = Health(),
             }.ToJsonString(Indented);
         });
+
+    /// <summary>
+    /// What NI's own crash log says about this LabVIEW instance, counted rather than parsed.
+    ///
+    /// WHY THIS IS IN `lvai_status`. Measured 2026-09-03: a LabVIEW that answered every RPC
+    /// normally was nevertheless refusing work - `lvai_bind_class_fields` failed 4/4 with
+    /// `Error 1073` on `Move` in three different project configurations, INCLUDING one where no
+    /// project held the class at all, and the accessor wizard answered `Error 1562`. After a
+    /// restart the identical calls succeeded. The instance had arrived unhealthy: NI's log
+    /// already carried 200 `DWarn` entries timestamped before the session began. Diagnosing
+    /// that cost about 240 s of wall clock for 2.9 s inside LabVIEW.
+    ///
+    /// READ NI'S LOG, NOT THE WINDOWS EVENT LOG. LabVIEW installs its own crash handler, so
+    /// Windows Error Reporting never sees these - an empty Application log is not an alibi.
+    ///
+    /// COUNTED, NOT DIAGNOSED, and the difference matters: a `DWarn` is not proof of anything
+    /// and a high count is not a verdict. It is a cheap prior. `_cur.txt` is overwritten on the
+    /// next start, so the count is for THIS instance's lifetime plus whatever it inherited.
+    /// </summary>
+    internal static JsonObject Health()
+    {
+        var temp = Path.GetTempPath();
+        string? log = null;
+        try
+        {
+            log = Directory.EnumerateFiles(temp, "LabVIEW_*_cur.txt")
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+        }
+
+        if (log is null)
+            return new JsonObject
+            {
+                ["logFound"] = false,
+                ["note"] = "No LabVIEW_*_cur.txt in %TEMP%. That is the normal state for an "
+                           + "instance that has never had a fault worth logging.",
+            };
+
+        string text;
+        try
+        {
+            // SHARED, because LabVIEW HOLDS THIS FILE OPEN. `_cur.txt` is the log of the running
+            // instance and it is written to as faults happen, so File.ReadAllText answers
+            // "being used by another process" on exactly the station this check exists for -
+            // caught by its own unit test on 2026-09-03, before it ever shipped.
+            using var stream = new FileStream(log, FileMode.Open, FileAccess.Read,
+                                              FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            text = reader.ReadToEnd();
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            return new JsonObject
+            {
+                ["logFound"] = true,
+                ["logPath"] = log,
+                ["note"] = "The log could not be read: " + failure.Message,
+            };
+        }
+
+        var warnings = Count(text, "DWarn");
+        var lastSignature = text.Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault(line => line.Contains("DWarn", StringComparison.Ordinal))?.Trim();
+
+        return new JsonObject
+        {
+            ["logFound"] = true,
+            ["logPath"] = log,
+            ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
+            ["dwarnCount"] = warnings,
+            ["lastDwarn"] = lastSignature,
+            ["looksDegraded"] = warnings >= 50,
+            ["note"] = warnings == 0
+                ? "No DWarn entries. Nothing here suggests a degraded instance."
+                : warnings >= 50
+                    ? $"{warnings} DWarn entries. THIS IS A PRIOR, NOT A DIAGNOSIS - but an "
+                      + "instance in this state has been measured refusing work while still "
+                      + "answering every RPC: Error 1073 on a private-data export with no "
+                      + "project holding the class, and Error 1562 from the accessor wizard, "
+                      + "both cured by a restart. If a class-editing call fails for no reason "
+                      + "the project state explains, restart LabVIEW before hunting further."
+                    : $"{warnings} DWarn entries. Low enough to be ordinary; read the log if a "
+                      + "call fails in a way the arguments do not explain.",
+        };
+    }
+
+    private static int Count(string text, string needle)
+    {
+        var count = 0;
+        var at = 0;
+        while ((at = text.IndexOf(needle, at, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            at += needle.Length;
+        }
+        return count;
+    }
 
     /// <summary>
     /// Absolute path of the scripts/ folder copied next to the exe at build time, or null when

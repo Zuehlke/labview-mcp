@@ -462,6 +462,34 @@ resume rather than starting a second.
 **`lvai_generate_class_test` wrote GERMAN constant labels** into the user's VIs — `objekt 1`, `wert 1`
 — against this repository's English-by-default rule. Pre-existing, spotted by a test agent, fixed.
 
+## 4f. Closing the two unverified branches, 2026-09-03
+
+Both were closed with a purpose-built fixture rather than by waiting for a real class to happen to
+have the right pane: `C:	emp\lvmcp_fixture\Probe.lvclass` with one method, `Configure.vi`, whose
+pane carries `Rate` [double, required] and `Channel Name` [tag{14}, required].
+
+| branch | result |
+|---|---|
+| refuse a case by name | `errorKind: requiredInputNeedsAValue`, naming the terminal, its type, and the JSON to add. **Nothing was generated.** |
+| wire a constant | `Rate` wired as `0`, `source: "this tool's default"`; `Channel Name` wired as `Dev1/ai0`, `source: "the case's inputs"` |
+| the suite runs | 1 test, 0 failures, runner `error out = 0`, **no `7101`** |
+
+So `lvai_generate_method_test` is now verified on all three paths. The fixture cost about 90 s end to
+end, most of it authoring one AIXML file, and it is worth keeping for the next change to that tool.
+
+Two things fell out of building it:
+
+**`ConvertAIXMLToVI` does not create the target directory**, and its failure lies about why:
+`Error 7, File not found ... Method Name: Save:Instrument`, whose accompanying note then discusses
+`Error 1357` and `Error 1051` — a memory conflict — for a folder that simply is not there. Found by
+passing a `testViPath` into a `Tests\` folder that did not exist yet. `lvai_generate_method_test`
+now creates it.
+
+**The class terminals are `dynamic`, not `required`.** `lvai_vi_terminals` on the fixture reads
+`obj in [ref{UDClassInst}] conIdx 0, dynamic` while `error in` is only `recommended`. That is why the
+required-input list is usually empty on an accessor-style method, and why the branch went unexercised
+for so long: it takes a method with real parameters on its pane.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
@@ -469,9 +497,9 @@ Honest limits, so nobody reads this document as a warranty:
 - **Three of the five tools are now proven end to end; two were proven wrong and fixed.** The
   2026-09-03 run exercised `lvai_describe_ctl` (worked), `lvai_add_class_method` (worked, first use,
   four methods, no retry) and `lvai_generate_class_test` (worked, non-scalar field included).
-  `lvai_bind_class_fields` and `lvai_generate_method_test` failed as §4b describes; **their fixes
-  are covered by tests but have NOT themselves been run against LabVIEW yet**, and neither has
-  `lvai_open_file`'s new active-project check.
+  `lvai_bind_class_fields` and `lvai_generate_method_test` failed as §4b describes, were fixed, and
+  **both fixes are now verified against LabVIEW** — §4e for the field reader, §4f for all three
+  required-input paths.
 - **The recursive default's refnum branch is still unproven.** The one field that would have
   exercised it — a DAQmx task reference — was legitimately skipped by the test agent, which declined
   to invent a literal for a hardware handle. That was the right call and it leaves the branch

@@ -94,7 +94,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
-                .PlaceholderSubViAsync(viPath, refresh: false, timeoutSeconds, ct);
+                .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null, timeoutSeconds, ct);
             steps.Add(new JsonObject { ["step"] = "placeholder", ["answer"] = Read(placeholder) });
 
             if (Read(placeholder) is not JsonObject stub || stub["ok"]?.GetValue<bool>() is not true)
@@ -379,7 +379,8 @@ internal sealed class TestTools(LvaiConnection connection)
                 // verbose: false deliberately - this tool inlines the swap answer into its own
                 // `steps`, so the whole AIXML export would land inside a second composed answer.
                 testViPath, swaps.ToJsonString(), seeds.ToJsonString(), verify: true,
-                verbose: false, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                verbose: false, helperViPath: null, helperAixmlPath: null,
+                regenerateHelper: false, editsJson: null,
                 timeoutSeconds, ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Read(swapped) });
 

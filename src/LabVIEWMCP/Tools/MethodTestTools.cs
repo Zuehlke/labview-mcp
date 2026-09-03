@@ -123,6 +123,13 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
 
+            // CREATE THE TARGET DIRECTORY. ConvertAIXMLToVI does not, and its failure is
+            // Error 7, "File not found", on Save:Instrument - a message whose own note
+            // discusses Error 1357 and 1051 instead, so the reader hunts a memory conflict
+            // for a folder that simply is not there. Measured 2026-09-03.
+            if (Path.GetDirectoryName(Path.GetFullPath(testViPath)) is { Length: > 0 } target)
+                Directory.CreateDirectory(target);
+
             // Resolve each case against the FILES. A method that is not there is a class whose
             // methods were never added, and saying so beats failing at validation.
             var cases = new List<MethodCase>();
@@ -244,7 +251,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var swapped = await new SwapTools(connection).SwapSubVisAsync(
                 testViPath, swaps.ToJsonString(), seeds.ToJsonString(), verify: true,
-                verbose: false, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                verbose: false, helperViPath: null, helperAixmlPath: null,
+                regenerateHelper: false, editsJson: null,
                 timeoutSeconds, ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Read(swapped) });
 
