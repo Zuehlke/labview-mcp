@@ -148,6 +148,12 @@ internal sealed class StatusTools(LvaiConnection connection)
             ["logPath"] = log,
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
             ["dwarnCount"] = warnings,
+            // COUNT AND SIZE BOTH, because the count alone was ambiguous: measured 2026-09-03, the
+            // log was rewritten during a run - logWrittenUtc moved by an hour - while dwarnCount
+            // stayed at exactly 200 and the last signature was byte-identical. Whether LabVIEW
+            // rotates, caps or rewrites in place is unknown; a length makes the movement visible
+            // instead of leaving it to be reconstructed afterwards.
+            ["logBytes"] = text.Length,
             ["lastDwarn"] = lastSignature,
             ["looksDegraded"] = warnings >= 50,
             ["note"] = warnings == 0

@@ -370,7 +370,13 @@ internal sealed class SwapTools(LvaiConnection connection)
             return $"{socketsLeft} socket name(s) are STILL in LabVIEW's own export of the VI, so " +
                    "that many swaps did not land. The export is the only proof; read `callTargets`.";
         return verify
-            ? "Swapped and verified against LabVIEW's own export - no socket name survives in it, " +
+            ? "Swapped, and the CALL TARGETS verified against LabVIEW's own export - no socket "
+              + "name survives in it. THAT IS NOT A CHECK OF THE WIRING, and the difference has "
+              + "bitten: measured 2026-09-03, a swap between accessors of DIFFERENT types left the "
+              + "value wire attached to the CLASS terminal - both are refnums, so LabVIEW's "
+              + "Replace re-attached it there - and this step still reported a correct restore. If "
+              + "the two panes differ in type, read the export and check the terminal the value "
+              + "actually comes from. " +
               "and `callTargets` is what the diagram now calls."
             : "Swapped and saved. NOTHING HERE PROVES IT LANDED: verify was false, and a Replace " +
               "cannot be read back from the object it replaced. Export the VI and read target=.";

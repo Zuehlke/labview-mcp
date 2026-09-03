@@ -490,6 +490,70 @@ now creates it.
 required-input list is usually empty on an accessor-style method, and why the branch went unexercised
 for so long: it takes a method with real parameters on its pane.
 
+## 4g. The fourth run, 2026-09-03: three changes verified, two defects in them found
+
+The batch parameters and the health prior were exercised on a cold base-class build.
+
+**`lvai_status`'s `labviewHealth` read correctly** — `dwarnCount: 200`, `looksDegraded: true` — and
+then the linkage it exists for **was never exercised**, because nothing failed in a way its arguments
+did not explain. A 200-DWarn instance completed a full cold class build, a typedef binding, ten
+accessors and five suite runs without incident. That is worth recording as it stands: the prior is
+read, its consequence is not yet demonstrated, and a high count is evidently NOT sufficient for the
+failures of §4e.
+
+One anomaly: `logWrittenUtc` moved by an hour DURING the run while `dwarnCount` stayed at exactly 200
+and the last signature was byte-identical. Whether LabVIEW rotates, caps or rewrites in place is
+unknown. `labviewHealth` now also reports `logBytes`, so the next occurrence is one number away from
+being settled instead of reconstructed afterwards.
+
+**`lvai_placeholder_subvi`'s `viPaths` was unusable as documented.** `viPath` was still declared
+required, so the documented call — `viPaths` alone — was refused by the CLIENT before the server saw
+it:
+
+```
+MCP error -32602: Invalid arguments ... path: ["viPath"],
+  message: "Invalid input: expected string, received undefined"
+```
+
+The tool's own "given this, `viPath` is ignored" was unreachable text. With both passed it worked
+well: ten placeholders, `failed: 0`, one call, 3.9 s, all ten stubs distinct. `viPath` is optional
+now and the pair is checked server-side.
+
+**`lvai_swap_subvis`'s `editsJson` works — and exposed a real defect in its VERIFY step.** Two VIs per
+call, twice, `stoppedAt: null`, `socketsLeft: 0` throughout. But a swap between accessors of
+DIFFERENT types left the diagram silently broken and was still reported as a correct restore:
+
+```xml
+<Call inputs="AnalogInput in:265.AnalogInput out,error in (no error):"
+      outputs="AnalogInput out:796.AnalogInput out,Sample Rate:,error out:"
+      target="AnalogInput.lvclassARead Sample Rate.vi" uid="796"/>
+```
+
+`Sample Rate` is unwired and the assertion's `Actual` is bound to the CLASS wire — LabVIEW's
+`Replace` re-attached the value wire to `AnalogInput out` because both are refnums. **`verify`
+re-reads CALL TARGETS, not wiring**, so it saw nothing. The parallel swap between `string` and
+`int32` restored correctly.
+
+This is §1d's shape again: a check that passes while the diagram disagrees. The tool's note now says
+what `verify` does and does not cover, and names the condition — panes differing in type — under
+which the export has to be read by hand.
+
+**And the largest single row of that run was a missing reader.** 154 s of wall clock for 4.2 s of
+LabVIEW went on establishing what types the class's fields carry, because nothing reported them:
+`lvai_describe_class` gave names and byte counts but not types, and `lvai_describe_ctl` on the
+unwrapped private data stops one level up at `Cluster of class private data`. It took reading
+`LvClass.cs` for the 6-bit codec and hand-writing the unwrap. `lvai_describe_class` now reports
+`fields` — label, type descriptor, distinguishing attributes, and whether the field is a bound
+typedef — from the saved file with no LabVIEW. Verified against the class that run produced:
+
+```json
+{"label": "Task Reference", "type": "Refnum",
+ "detail": "RefType=UsrDefndTag Ident=Task TypeName=NIDAQ", "isTypedef": false}
+```
+
+That is also the check that separates a successful typedef bind from one that installed the type and
+no link, which is why it belongs in the describe tool rather than only inside the binding one.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:

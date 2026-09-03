@@ -442,8 +442,12 @@ internal sealed class ClassBindTools(LvaiConnection connection)
     /// encoded property <c>NI.LVClass.FlattenedPrivateDataCTL</c>, so it has to be unwrapped to a
     /// scratch `.ctl` before anything can read it.
     /// </summary>
+    /// <summary>One private data field as the saved class file describes it.</summary>
+    internal sealed record FieldType(string Label, string? Type, string? Detail);
+
     internal sealed record PrivateDataFields(List<string> Labels, HashSet<int> BoundTypedefs,
-                                             List<string?> TypedefNames, string? Unavailable)
+                                             List<string?> TypedefNames, string? Unavailable,
+                                             List<FieldType>? Types = null)
     {
         public string? TypedefName(int index) =>
             index >= 0 && index < TypedefNames.Count ? TypedefNames[index] : null;
@@ -531,6 +535,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             var labels = new List<string>();
             var bound = new HashSet<int>();
             var names = new List<string?>();
+            var types = new List<FieldType>();
             var position = 0;
             foreach (var child in cluster.Elements("TypeDesc"))
             {
@@ -546,10 +551,27 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 }
                 else names.Add(null);
 
+                types.Add(new FieldType(labels[position], (string?)resolved.Attribute("Type"),
+                                        Distinguishing(resolved)));
                 position++;
             }
 
-            return new PrivateDataFields(labels, bound, names, null);
+            return new PrivateDataFields(labels, bound, names, null, types);
+        }
+
+        /// <summary>
+        /// The attributes that say WHICH refnum or tag a descriptor is - <c>Type="Refnum"</c> alone
+        /// does not distinguish a DAQmx task handle from a queue, and that distinction is the whole
+        /// answer when someone asks what a field carries.
+        /// </summary>
+        private static string? Distinguishing(XElement descriptor)
+        {
+            var parts = new[] { "RefType", "Ident", "TypeName", "TagType" }
+                .Select(a => (Name: a, Value: (string?)descriptor.Attribute(a)))
+                .Where(p => p.Value is { Length: > 0 })
+                .Select(p => $"{p.Name}={p.Value}")
+                .ToArray();
+            return parts.Length == 0 ? null : string.Join(" ", parts);
         }
 
         /// <summary>

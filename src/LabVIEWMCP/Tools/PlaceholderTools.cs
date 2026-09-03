@@ -66,8 +66,15 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         instance you mean to call.
         """)]
     public async Task<string> PlaceholderSubViAsync(
-        [Description(@"Absolute path to the VI whose connector pane the placeholder must match")]
-        string viPath,
+        [Description("""
+            Absolute path to the VI whose connector pane the placeholder must match. OPTIONAL only
+            in the sense that `viPaths` replaces it - one of the two must be given, and that is
+            checked here rather than by the schema. It was declared REQUIRED until 2026-09-03,
+            which made the documented batch call impossible: passing `viPaths` alone was refused by
+            the CLIENT with `MCP error -32602 ... expected string, received undefined`, before the
+            server saw it, so this tool's own "viPath is ignored" was unreachable text.
+            """)]
+        string? viPath = null,
         [Description("Regenerate the stub even when one for this signature already exists")]
         bool refresh = false,
         [Description("""
@@ -84,6 +91,11 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     {
         if (viPaths is { Length: > 0 })
             return await ManyAsync(viPaths, refresh, timeoutSeconds, ct);
+
+        if (viPath is not { Length: > 0 })
+            return Json.Error("badArguments",
+                "Give either `viPath` (one VI) or `viPaths` (several, one absolute path per line). " +
+                "Neither was set.");
 
         return await OneAsync(viPath, refresh, timeoutSeconds, ct);
     }

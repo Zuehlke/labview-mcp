@@ -824,24 +824,80 @@ internal sealed class ClassTools(LvaiConnection connection)
         Members come back with their effective scope from `NI.ClassItem.MethodScope` - per member,
         no propagation, unlike a `.lvlib` where the scope sits on the folder. Folder names are
         ignored on purpose: the census found folders called `private` whose members were all public.
+        `fields` REPORTS EACH PRIVATE DATA FIELD with its label, its type descriptor and whether it
+        is a bound typedef. Nothing else reported this: measured 2026-09-03, establishing what types
+        a class's fields carry by hand cost 154 s of wall clock for 4.2 s inside LabVIEW - reading
+        the 6-bit codec out of the source, unwrapping the flattened control, and extracting it. It
+        is also the check that distinguishes a successful typedef bind from one that installed the
+        type and no link. Costs one pylabview read, no LabVIEW; `includeFields: false` skips it.
         `privateDataBytes` is the size of the control inside the class file. `-1` means the
         flattened property is there but does not decode, which is what a corrupt or wrongly wrapped
         blob looks like - and the state in which LabVIEW reports the class with every field blank.
         """)]
     public Task<string> DescribeClassAsync(
         [Description("Absolute path to the .lvclass to read")] string lvclassPath,
+        [Description("""
+            Also report each private data FIELD with its label and type descriptor. On by default.
+            It costs one pylabview read of the class's own private data control - no LabVIEW, about
+            300 ms - and it is the only way to see what a field actually carries: `lvai_describe_ctl`
+            on the unwrapped control stops one level up at `Cluster of class private data`, and
+            nothing else reports it at all. Pass false to skip it on a class you only want the
+            member list for.
+            """)]
+        bool includeFields = true,
+        [Description("Local budget in seconds")] int timeoutSeconds = 45,
         CancellationToken ct = default) =>
-        Rpc.GuardAsync(() =>
+        Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(lvclassPath))
-                return Task.FromResult(Json.Error("badArguments",
-                    $"No file at lvclassPath '{lvclassPath}'."));
+                return Json.Error("badArguments", $"No file at lvclassPath '{lvclassPath}'.");
 
             LvClass.ClassInfo info;
             try { info = LvClass.Read(lvclassPath); }
             catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException)
             {
-                return Task.FromResult(Json.Error("notAClassFile", e.Message));
+                return Json.Error("notAClassFile", e.Message);
+            }
+
+            // THE FIELD TYPES, read off the saved file. Best effort on purpose: a class whose
+            // private data cannot be parsed is still worth describing, and a null `fields` says
+            // so without taking the rest of the answer down with it.
+            var fields = new JsonArray();
+            string? fieldsNote = null;
+            if (!includeFields || info.PrivateDataBytes <= 0)
+            {
+                fieldsNote = !includeFields
+                    ? "Not read - includeFields was false."
+                    : "No private data to read, so there are no fields.";
+            }
+            else
+            {
+                try
+                {
+                    var read = await ClassBindTools.PrivateDataFields.ReadAsync(
+                        info.Path, timeoutSeconds, ct);
+                    if (read.Unavailable is { } why) fieldsNote = why;
+                    else
+                    {
+                        foreach (var field in read.Types ?? [])
+                            fields.Add(new JsonObject
+                            {
+                                ["label"] = field.Label,
+                                ["type"] = field.Type,
+                                ["detail"] = field.Detail,
+                                ["isTypedef"] = read.BoundTypedefs.Contains(fields.Count),
+                                ["typedef"] = read.TypedefName(fields.Count),
+                            });
+                        fieldsNote = "Read from the saved class file with pylabview - no LabVIEW " +
+                                     "was involved. `isTypedef` false with a correct `type` is the " +
+                                     "normal outcome of binding a .ctl that is not itself a " +
+                                     "typedef: the type is installed, the link is not.";
+                    }
+                }
+                catch (Exception failure) when (failure is InvalidDataException or IOException)
+                {
+                    fieldsNote = "The private data control could not be read: " + failure.Message;
+                }
             }
 
             var members = new JsonArray();
@@ -858,7 +914,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             var ancestors = new JsonArray();
             foreach (var ancestor in info.Ancestors) ancestors.Add(ancestor);
 
-            return Task.FromResult(new JsonObject
+            return new JsonObject
             {
                 ["ok"] = true,
                 ["classPath"] = info.Path,
@@ -886,6 +942,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                                    ?? "LabVIEW Object",
                 ["privateDataItem"] = info.PrivateDataName,
                 ["privateDataBytes"] = info.PrivateDataBytes,
+                // THE FIELDS THEMSELVES, and this used to be the one thing missing. Measured
+                // 2026-09-03: an agent spent 154 s of wall clock for 4.2 s of LabVIEW establishing
+                // what types a class's fields carry, because nothing reported them - it had to
+                // read LvClass.cs for the 6-bit codec, hand-write the unwrap, and fall into a
+                // PowerShell trap on the way. It is also the check that tells a successful typedef
+                // bind from one that installed nothing, which is why it belongs here rather than
+                // only inside lvai_bind_class_fields.
+                ["fields"] = fields,
+                ["fieldsNote"] = fieldsNote,
                 ["memberCount"] = info.Members.Count,
                 ["members"] = members,
                 ["note"] = info.PrivateDataBytes switch
@@ -897,7 +962,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     _ => "Read from the file, not from LabVIEW - so it reflects what is on disk " +
                          "even if the IDE holds a different copy in memory.",
                 },
-            }.ToJsonString(Indented));
+            }.ToJsonString(Indented);
         });
 
     // ---------------------------------------------------------------- plumbing
