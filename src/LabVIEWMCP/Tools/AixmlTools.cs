@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using LabVIEWMcp.Grpc;
@@ -288,7 +288,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_check_aixml", ReadOnly = true,
                    Title = "Pre-check an AIXML file without LabVIEW")]
     [Description("""
-        Checks an AIXML file for the three faults ValidateAIXML was MEASURED not to catch. Needs no
+        Checks an AIXML file for the faults ValidateAIXML was MEASURED not to catch. Needs no
         LabVIEW, no gRPC and no licence - it is pure text analysis, so it costs milliseconds and
         works in CI. Run it before lvai_validate_aixml, not instead of it.
         WHAT IT CATCHES, all measured 2026-09-03 by putting one small VI per case through the real
@@ -297,6 +297,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
         reports nothing at validate, convert or run; a duplicate `uid`, which LabVIEW silently
         renumbers so the export stops matching your file; and a Ring whose default `value` is not
         among its `values`. It also reports, as INFO only, uids inside LabVIEW's reserved range.
+        THREE MORE, measured 2026-09-04 the same way: an ENUM `value` that is one of its LABELS
+        rather than an index - LabVIEW discards it and writes 0 - and an enum index past the last
+        item, which LabVIEW CLAMPS (9 became 4 on a five-item enum); plus a connector-pane terminal
+        with NO `connection` attribute, which LabVIEW reads as REQUIRED rather than as unspecified.
+        A required OUTPUT is the damaging one: it makes every CALLER non-executable with Error 1003
+        while the VI itself validates, converts, runs and exports perfectly.
         WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
         are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
         failures off the round trip; lvai_validate_aixml is still required.
@@ -304,9 +310,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
     public Task<string> CheckAixmlAsync(
         [Description(@"Absolute path to the .xml file to check")] string aiXmlFilePath,
         [Description("Also REPAIR what can be repaired unambiguously - a duplicate uid nothing is "
-                   + "nested inside, and a uid in LabVIEW's reserved range. A dangling uid_parent "
-                   + "and a bad Ring default are never repaired: the author's intent is unknown, "
-                   + "and for the parent, putting it on root IS the damage LabVIEW already does")]
+                   + "nested inside, a uid in LabVIEW's reserved range, an enum value given as a "
+                   + "LABEL (set to that label's index), and an output terminal with no "
+                   + "`connection` (set to recommended, because a required output is never right). "
+                   + "A dangling uid_parent, a bad Ring default, an enum index out of range and a "
+                   + "required INPUT are never repaired: the author's intent is unknown, and for "
+                   + "the parent, putting it on root IS the damage LabVIEW already does")]
         bool fix = false,
         [Description("Where to write the repaired XML. Omit to overwrite aiXmlFilePath in place")]
         string? fixedPath = null,

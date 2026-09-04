@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -72,7 +72,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         `parent index`: a boolean, false when a parent was asked for and did not open.
         FIELDS are `<type>.<name>`, comma separated, the same spelling AIXML's cluster grammar uses:
         `string.Manufacturer,int32.Year Of Manufacture,double.Top Speed kmh`. Scalars only - string,
-        bool, double, single, timestamp and the int/uint widths. A cluster, array or enum field is
+        path, bool, double, single, timestamp and the int/uint widths. A cluster, array or enum field is
         not supported and is refused by name. Omit `fields` for a class with empty private data.
         INHERITANCE: pass parentClassPath. The parent must already be LISTED IN THE PROJECT - NI's
         provider finds it by searching the active project's classes and, finding nothing, silently

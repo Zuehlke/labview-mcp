@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using Grpc.Core;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
@@ -689,5 +689,110 @@ public class AixmlApplyToViTests
 
         Assert.Equal(42, Res.Int(result, "errorCode"));
         Assert.Equal("cannot apply", Res.Str(result, "errorMessage"));
+    }
+}
+
+/// <summary>
+/// <c>lvai_check_aixml</c> at the TOOL boundary — reading the file, writing the repaired one, and
+/// the answer a caller reads. The checks themselves are covered in <c>AixmlCheckTests</c>; what is
+/// exercised here is everything between those and the client, which is where the 2026-09-04
+/// additions could still be wired up wrong while every unit test passes.
+///
+/// No LabVIEW: this tool never touches gRPC, which is the point of it existing.
+/// </summary>
+public sealed class AixmlCheckToolTests : IDisposable
+{
+    private readonly string _dir =
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), Path.GetRandomFileName())).FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    private string Write(string name, string xml)
+    {
+        var path = Path.Combine(_dir, name);
+        File.WriteAllText(path, xml);
+        return path;
+    }
+
+    /// <summary>Both 2026-09-04 faults in one file, plus a terminal that is already correct.</summary>
+    private const string Faulty = """
+        <VI _name="Probe.vi" description="d">
+          <Constant _name="mode" type="uint32{open,open or create,create or replace}" value="open or create" outputs="value:4300.value" uid="4300" uid_parent="root"/>
+          <Control _name="in" conIdx="1" connection="recommended" outputs="value:4310.value" type="double" uid="4310" uid_parent="root" value="0"/>
+          <Indicator _name="out" conIdx="2" inputs="value:4310.value" type="double" uid="4320" uid_parent="root" value="0"/>
+        </VI>
+        """;
+
+    [Fact]
+    public async Task Reports_the_enum_label_and_the_required_output_without_touching_the_file()
+    {
+        var path = Write("probe.xml", Faulty);
+
+        var result = await new AixmlTools(null!).CheckAixmlAsync(path);
+        var findings = JsonNode.Parse(result)!["findings"]!.AsArray()
+                               .Select(f => (string)f!["code"]!).ToList();
+
+        Assert.Contains("enumValueIsALabel", findings);
+        Assert.Contains("outputTerminalDefaultsToRequired", findings);
+        // Read-only unless fix was asked for - a check that rewrites by default would be a trap.
+        Assert.Equal(Faulty, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public async Task Fix_writes_the_repaired_file_in_place()
+    {
+        var path = Write("probe.xml", Faulty);
+
+        await new AixmlTools(null!).CheckAixmlAsync(path, fix: true);
+
+        var repaired = File.ReadAllText(path);
+        Assert.Contains("value=\"1\"", repaired, StringComparison.Ordinal);          // the enum index
+        Assert.Contains("connection=\"recommended\"", repaired, StringComparison.Ordinal);
+        Assert.DoesNotContain("value=\"open or create\"", repaired, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Fix_can_write_to_a_separate_path_and_leave_the_source_alone()
+    {
+        var path = Write("probe.xml", Faulty);
+        var target = Path.Combine(_dir, "repaired.xml");
+
+        await new AixmlTools(null!).CheckAixmlAsync(path, fix: true, fixedPath: target);
+
+        Assert.Equal(Faulty, File.ReadAllText(path));
+        Assert.Contains("value=\"1\"", File.ReadAllText(target), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// What <c>lvai_generate_vi</c> consumes. The repairs have to reach the COPY it generates from,
+    /// or the tool reports a repair it never applied - the failure mode this pair guards.
+    /// </summary>
+    [Fact]
+    public void The_generate_path_gets_a_repaired_copy_and_leaves_the_original()
+    {
+        var path = Write("probe.xml", Faulty);
+
+        var (source, report) = AixmlTools.Repaired(path);
+
+        Assert.NotNull(report);
+        Assert.NotEqual(path, source);
+        Assert.Equal(Faulty, File.ReadAllText(path));
+        Assert.Contains("value=\"1\"", File.ReadAllText(source), StringComparison.Ordinal);
+        Assert.Contains("connection=\"recommended\"", File.ReadAllText(source), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_clean_file_is_generated_from_ITSELF_rather_than_from_a_copy()
+    {
+        // Same reasoning as ACleanFileIsNotREWRITTENByARepair: a caller comparing the two paths
+        // must be able to tell "nothing to do" from "rewritten".
+        var path = Write("clean.xml", """
+            <VI _name="X.vi" description="d"><Indicator _name="out" conIdx="2" connection="recommended" inputs="value:4300.value" type="double" uid="4320" uid_parent="root" value="0"/></VI>
+            """);
+
+        var (source, report) = AixmlTools.Repaired(path);
+
+        Assert.Null(report);
+        Assert.Equal(path, source);
     }
 }

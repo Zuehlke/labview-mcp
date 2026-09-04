@@ -1,4 +1,4 @@
-using LabVIEWMcp.Infra;
+﻿using LabVIEWMcp.Infra;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Infra;
@@ -346,5 +346,213 @@ public sealed class AixmlCheckTests
         Assert.Equal(0, summary["errors"]!.GetValue<int>());
         // A clean answer that did not say what it left alone would be read as "this file is valid".
         Assert.Contains("lvai_validate_aixml", summary["note"]!.GetValue<string>());
+    }
+
+    // ------------------------------------------------------------------ the wire rule
+
+    /// <summary>
+    /// THE MEASUREMENT BEHIND THESE, 2026-09-04: one probe VI with three pane terminals - one
+    /// Control carrying connection="recommended", one Control without the attribute, one Indicator
+    /// without it. lvai_vi_terminals read them back as recommended / required / required. So an
+    /// omitted `connection` is not "unspecified", it is `required`.
+    /// </summary>
+    private const string NoConnectionAttribute = """
+        <VI _name="Probe.vi" description="d">
+          <Control _name="with attr" conIdx="0" connection="recommended" outputs="value:4300.value" type="double" uid="4300" uid_parent="root" value="0"/>
+          <Control _name="no attr" conIdx="1" outputs="value:4310.value" type="double" uid="4310" uid_parent="root" value="0"/>
+          <Indicator _name="out no attr" conIdx="2" inputs="value:4310.value" type="double" uid="4320" uid_parent="root" value="0"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnOutputWithNoConnectionIsAWARNING_becauseItSilentlyBecomesRequired()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(NoConnectionAttribute),
+                                    f => f.Code == "outputTerminalDefaultsToRequired");
+
+        Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
+        Assert.Equal("4320", finding.Uid);
+        // The consequence lands in the CALLER, so the message has to name it - a reader looking at
+        // this VI alone sees nothing wrong with it.
+        Assert.Contains("1003", finding.Message);
+    }
+
+    [Fact]
+    public void AnInputWithNoConnectionIsINFO_becauseARequiredInputMayBeIntended()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(NoConnectionAttribute),
+                                    f => f.Code == "inputTerminalDefaultsToRequired");
+
+        Assert.Equal(AixmlCheck.Severity.Info, finding.Severity);
+        Assert.Equal("4310", finding.Uid);
+    }
+
+    [Fact]
+    public void ATerminalThatSAYSWhatItWantsIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(NoConnectionAttribute),
+                              f => f.Uid == "4300");
+
+    [Fact]
+    public void AControlOFFTheConnectorPaneHasNoWireRuleToGetWrong() =>
+        // `connection` without a conIdx is dropped on export anyway, so a diagram-only control
+        // must not be nagged about one.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Indicator _name="v" inputs="value:9010.value" type="double" uid="9020" uid_parent="root" value="0"/></VI>
+            """), f => f.Code.EndsWith("DefaultsToRequired", StringComparison.Ordinal));
+
+    [Fact]
+    public void AnOutputWithNoConnectionIsREPAIRED_toRecommended()
+    {
+        var fixedUp = AixmlCheck.Fix(NoConnectionAttribute);
+
+        var repair = Assert.Single(fixedUp.Repairs,
+            r => r.Code == "outputTerminalDefaultsToRequired");
+        Assert.Equal("4320", repair.Uid);
+        Assert.Contains("connection=\"recommended\"", fixedUp.Xml, StringComparison.Ordinal);
+        // Repaired means gone from what is left, or the caller sees the same fault twice.
+        Assert.DoesNotContain(fixedUp.Remaining,
+                              f => f.Code == "outputTerminalDefaultsToRequired");
+    }
+
+    [Fact]
+    public void ARequiredINPUTIsNotRepairedAway()
+    {
+        var fixedUp = AixmlCheck.Fix(NoConnectionAttribute);
+
+        // Only the author knows whether a required input was meant, so the Info survives the fix.
+        Assert.DoesNotContain(fixedUp.Repairs,
+                              r => r.Code == "inputTerminalDefaultsToRequired");
+        Assert.Contains(fixedUp.Remaining, f => f.Code == "inputTerminalDefaultsToRequired");
+    }
+
+    // ------------------------------------------------------------------ enums
+
+    /// <summary>
+    /// MEASURED 2026-09-04 by generating this exact document and exporting the VI back. LabVIEW
+    /// answered errorCode 0 for all three constants and then wrote 1, **0** and **4**: the label
+    /// was discarded, and the out-of-range index was clamped to the last item.
+    /// </summary>
+    private const string EnumProbe = """
+        <VI _name="EnumProbe.vi" description="d">
+          <Constant _name="by index" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="1" outputs="value:4300.value" uid="4300" uid_parent="root"/>
+          <Constant _name="by label" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="open or create" outputs="value:4310.value" uid="4310" uid_parent="root"/>
+          <Constant _name="out of range" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="9" outputs="value:4320.value" uid="4320" uid_parent="root"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnEnumValueThatIsALabelIsReported_becauseLabVIEWWritesZero()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(EnumProbe), f => f.Code == "enumValueIsALabel");
+
+        Assert.Equal("4310", finding.Uid);
+        // The message has to carry the index to write, or the reader has to count the labels.
+        Assert.Contains("value=\"1\"", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEnumIndexPastTheEndIsReportedSeparately_becauseLabVIEWClampsIt()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(EnumProbe),
+                                    f => f.Code == "enumValueOutOfRange");
+
+        Assert.Equal("4320", finding.Uid);
+        Assert.Contains("CLAMPS", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AValidEnumIndexIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(EnumProbe), f => f.Uid == "4300");
+
+    [Fact]
+    public void ANUMERICValueIsAlwaysAnIndex_evenWhereALabelLooksLikeOne() =>
+        // `uint16{0,1,2}` is legal, and "they must have meant the label" would break the ordinary
+        // case to rescue an exotic one. A number is an index, full stop.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Constant _name="n" type="uint16{0,1,2}" value="1" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """), f => f.Code.StartsWith("enumValue", StringComparison.Ordinal));
+
+    [Fact]
+    public void ARingIsLeftToTheRingCheck() =>
+        // A Ring lists its labels in items/values beside a plain type. Both checks firing on one
+        // element would report the same fault twice under two names.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Control _name="r" style="Ring" type="int32" items="a,b" values="[-1,10]" value="-1" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """), f => f.Code.StartsWith("enumValue", StringComparison.Ordinal));
+
+    [Fact]
+    public void AnEnumLabelIsREPAIRED_toItsIndex()
+    {
+        var fixedUp = AixmlCheck.Fix(EnumProbe);
+
+        var repair = Assert.Single(fixedUp.Repairs, r => r.Code == "enumValueIsALabel");
+        Assert.Equal("4310", repair.Uid);
+        Assert.Contains("value=\"1\"", fixedUp.Xml, StringComparison.Ordinal);
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "enumValueIsALabel");
+    }
+
+    [Fact]
+    public void AnOutOfRangeEnumIndexIsNotRepairedAway()
+    {
+        var fixedUp = AixmlCheck.Fix(EnumProbe);
+
+        // Clamping here would hide exactly what LabVIEW already does silently.
+        Assert.DoesNotContain(fixedUp.Repairs, r => r.Code == "enumValueOutOfRange");
+        Assert.Contains(fixedUp.Remaining, f => f.Code == "enumValueOutOfRange");
+        Assert.Contains("value=\"9\"", fixedUp.Xml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AValueMatchingNoLabelIsReportedButNotRepaired()
+    {
+        const string xml = """
+            <VI _name="X.vi" description="d"><Constant _name="m" type="uint8{a,b}" value="zzz" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """;
+
+        Assert.Contains(AixmlCheck.Check(xml), f => f.Code == "enumValueIsALabel");
+        // Nothing says which item was meant - a label with a comma in it lands here too, which is
+        // the safe way for the comma split to degrade.
+        Assert.Empty(AixmlCheck.Fix(xml).Repairs);
+    }
+}
+
+/// <summary>
+/// THE SHIPPED HELPERS MUST BE CLEAN UNDER OUR OWN CHECK. Every `scripts\*.xml` in this repository
+/// is AIXML we author and hand to LabVIEW, so a check that fires on them is either a false positive
+/// we would inflict on every user, or a real defect in a helper. Added 2026-09-04 with the enum and
+/// wire-rule checks, because both are the kind that can be noisy.
+/// </summary>
+public sealed class ShippedHelperAixmlTests
+{
+    public static TheoryData<string> Helpers
+    {
+        get
+        {
+            var data = new TheoryData<string>();
+            foreach (var f in Directory.GetFiles(RepoRoot("scripts"), "*.xml", SearchOption.AllDirectories))
+                data.Add(f);
+            return data;
+        }
+    }
+
+    private static string RepoRoot(string leaf)
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null && !Directory.Exists(Path.Combine(dir, ".git")))
+            dir = Path.GetDirectoryName(dir);
+        return Path.Combine(dir ?? ".", leaf);
+    }
+
+    [Theory]
+    [MemberData(nameof(Helpers))]
+    public void AShippedHelperHasNoErrorsOrWarnings(string path)
+    {
+        var findings = AixmlCheck.Check(File.ReadAllText(path))
+                                 .Where(f => f.Severity != AixmlCheck.Severity.Info)
+                                 .ToList();
+
+        Assert.True(findings.Count == 0,
+            $"{Path.GetFileName(path)}: " +
+            string.Join(" | ", findings.Select(f => $"{f.Severity} {f.Code} uid={f.Uid}")));
     }
 }

@@ -85,7 +85,18 @@ scope property at all. Trust the property; the name is what someone typed years 
 ### Dynamic dispatch
 
 Class members also carry `NI.ClassItem.IsStaticMethod` — `false` means the VI is **dynamic
-dispatch**, i.e. overridable. Measured: 604 dynamic, 410 static. The same items carry
+dispatch**, i.e. overridable. Measured: 604 dynamic, 410 static.
+
+**BUT THE ATTRIBUTE IS OFTEN ABSENT, AND ABSENT DOES NOT MEAN STATIC.** Every member NI's accessor
+wizard writes omits it — so a class built with `lvai_create_accessors` carries it on nothing, and a
+reader that treats "missing" as `true` reports a fully dynamic class as fully static. Measured twice:
+`docs/lvclass-creation.md` records `dynamicDispatch: null` for all ten accessors of one class, and
+2026-09-04 a documentation run over a two-class hierarchy found it on **none** of ten members whose
+terminals were all dynamic. The 604/410 tally above counts only the members that HAVE it.
+
+**The certain source is the AIXML export**: a dispatch terminal carries `connection="dynamic"`, and
+that is present whenever the terminal is. `docs/aixml-reference.md`, "`connection="dynamic"` is the
+fourth value". The same items carry
 `NI.ClassItem.ConnectorPane` as an opaque `Bin` blob; it is not the connector pane in any readable
 form (use `lvai_describe_vi` for that, see `aixml-reference.md`).
 

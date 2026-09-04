@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -199,6 +199,15 @@ internal static class LvClass
         // type "this tool has no default literal for" and read as though AIXML could not express
         // one. AIXML can; only the table could not.
         ["timestamp"] = "",
+        // A path's default is the empty literal too - counted across the cached example exports,
+        // every `type="path"` control and indicator carrying `value=""`. Left out until 2026-09-04,
+        // which refused `path.File Path` and read as though a class could not hold a path at all;
+        // a HAL class shipped with its file path as a `string` and a String To Path in every method
+        // because of it. AIXML could always express one: measured the same day, a carrier VI with a
+        // `type="path"` control validated and generated in 165 ms. NI's provider half of the route
+        // is ASSUMED, the same standing as the int widths below: the tool validates before it
+        // writes, so LabVIEW refuses a type it cannot make a field of, by name.
+        ["path"] = "",
         ["bool"] = "false",
         ["double"] = "0",
         ["single"] = "0",

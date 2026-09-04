@@ -1,3 +1,4 @@
+﻿using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
@@ -12,6 +13,11 @@ namespace LabVIEWMcp.Infra;
 /// of nine checks an author would assume are made, six are, and these are the ones that are not.
 /// Two of the three are identity checks - uid uniqueness and parent resolvability - which is the
 /// unlucky pattern, because they are exactly what a careful author assumes is enforced.
+///
+/// A FOURTH was added 2026-09-04 and is not a uid problem at all: a <c>Control</c> or
+/// <c>Indicator</c> on the connector pane with no <c>connection</c> attribute comes out
+/// <b>required</b>, not "unspecified". For an output that is never intended and the damage lands in
+/// the CALLER - Error 1003 - so it is repaired here; for an input it is reported and left alone.
 ///
 /// THE ONE THAT DOES REAL DAMAGE is a dangling <c>uid_parent</c>. A node authored with a parent uid
 /// that exists nowhere validated, generated, and came back from LabVIEW's own export reparented to
@@ -83,6 +89,8 @@ internal static class AixmlCheck
         CheckDuplicateUids(elements, findings);
         CheckParents(root, elements, findings);
         CheckRings(root, findings);
+        CheckEnums(root, findings);
+        CheckTerminalWireRules(root, findings);
         CheckReservedRange(elements, findings);
 
         return findings;
@@ -156,6 +164,138 @@ internal static class AixmlCheck
                 $"\"{element.Attribute("_name")?.Value ?? element.Name.LocalName}\" has value="
                 + $"\"{value}\" which is not among values=\"{values}\". LabVIEW accepts this "
                 + "without complaint.", (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// An enum whose <c>value</c> is one of its LABELS instead of the label's index, and an index
+    /// past the end of the list. MEASURED 2026-09-04 by generating one probe VI and exporting it
+    /// back, on a five-item enum:
+    ///
+    /// <code>
+    ///   authored value="1"                 -> exported 1   correct
+    ///   authored value="open or create"    -> exported 0   the label is DISCARDED
+    ///   authored value="9"                 -> exported 4   CLAMPED to the last item
+    /// </code>
+    ///
+    /// <c>ValidateAIXML</c> answered <c>errorCode 0</c> for all three. Neither fault is visible
+    /// anywhere downstream: the VI generates, compiles and runs, with the wrong constant.
+    ///
+    /// What it cost in the field: a <c>TDMS Open</c> authored as <c>value="open or create"</c> ran
+    /// as "open", so the write failed on a file that did not exist yet - and the symptom was
+    /// <c>Error 7, file not found</c>, which points at the PATH. 2.5 minutes to find on a diagram
+    /// of nine nodes.
+    ///
+    /// THE LABEL CASE IS REPAIRED, the out-of-range one is not: an index the author typed is a
+    /// number they meant, and clamping it here would only hide what LabVIEW already does silently.
+    /// Same line the Ring check draws, for the same reason.
+    /// </summary>
+    private static void CheckEnums(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            // A Ring lists its labels in `items`/`values` beside a plain `type`, and CheckRings
+            // owns that shape. An enum carries them INSIDE the type, which is the only case here.
+            if (element.Attribute("values") is not null) continue;
+            if (EnumLabels(element) is not { Count: > 0 } labels) continue;
+            if ((string?)element.Attribute("value") is not { Length: > 0 } value) continue;
+
+            var name = element.Attribute("_name")?.Value ?? element.Name.LocalName;
+            var uid = (string?)element.Attribute("uid");
+
+            if (int.TryParse(value, out var index))
+            {
+                // A NUMBER IS ALWAYS AN INDEX, even where a label happens to look like one -
+                // `uint16{0,1,2}` is legal, and guessing "they meant the label" would break the
+                // ordinary case to rescue an exotic one.
+                if (index >= 0 && index < labels.Count) continue;
+
+                findings.Add(new Finding(Severity.Warning, "enumValueOutOfRange",
+                    $"\"{name}\" has value=\"{value}\" but its type lists {labels.Count} item(s), "
+                    + $"so the valid range is 0..{labels.Count - 1}. LabVIEW accepts this and CLAMPS "
+                    + "it - measured: 9 became 4 on a five-item enum, with errorCode 0. Not repaired "
+                    + "here, because which item you meant is not knowable.", uid));
+                continue;
+            }
+
+            var match = labels.IndexOf(value);
+            findings.Add(new Finding(Severity.Warning, "enumValueIsALabel",
+                match >= 0
+                    ? $"\"{name}\" has value=\"{value}\", which is the LABEL of item {match}, not "
+                      + $"an index. LabVIEW discards it and writes 0 - measured, with errorCode 0 "
+                      + $"from ValidateAIXML. Write value=\"{match}\"."
+                    : $"\"{name}\" has value=\"{value}\", which is neither an index nor one of its "
+                      + $"item labels ({string.Join(", ", labels)}). LabVIEW writes 0. Not repaired "
+                      + "here: nothing says which item was meant.", uid));
+        }
+    }
+
+    /// <summary>
+    /// The item labels of an enum <c>type</c> - <c>uint8{Label A,Label B}</c>, §5 of
+    /// aixml-reference.md. Null for anything else.
+    ///
+    /// THE SPLIT IS ON COMMAS AND A LABEL CONTAINING ONE IS INDISTINGUISHABLE. That is a property
+    /// of the format rather than of this parser, and it degrades safely: such a label simply fails
+    /// to match, which produces the un-repairable warning instead of a wrong repair.
+    /// </summary>
+    private static List<string>? EnumLabels(XElement element)
+    {
+        if ((string?)element.Attribute("type") is not { Length: > 0 } type) return null;
+
+        var open = type.IndexOf('{', StringComparison.Ordinal);
+        if (open <= 0 || !type.EndsWith("}", StringComparison.Ordinal)) return null;
+
+        var baseType = type[..open];
+        if (!baseType.StartsWith("int", StringComparison.Ordinal)
+            && !baseType.StartsWith("uint", StringComparison.Ordinal)) return null;
+
+        var inner = type[(open + 1)..^1];
+        return inner.Length == 0 ? null : [.. inner.Split(',')];
+    }
+
+    /// <summary>
+    /// A <c>Control</c> or <c>Indicator</c> that is ON the connector pane and carries no
+    /// <c>connection</c> attribute. MEASURED 2026-09-04 on a three-terminal probe: the omitted
+    /// attribute does not mean "let LabVIEW decide", it means <b>required</b> - for an input and
+    /// an output alike. `with attr` came back recommended, `no attr` and `out no attr` required.
+    ///
+    /// FOR AN OUTPUT THAT IS ALWAYS WRONG, and the damage lands somewhere else: NI's style guide
+    /// has no required output, and LabVIEW enforces the flag at the CALL SITE, so every caller
+    /// that leaves the terminal unwired is not executable - `Error 1003`. The VI itself looks
+    /// perfect. Found the hard way on a generated class method whose `data` output was required:
+    /// a whole Caraya suite answered `7101, At least one test is not in a executable state`, and
+    /// AIXML validation, ConvertAIXMLToVI, the subVI swap and LabVIEW's own export had all passed.
+    ///
+    /// FOR AN INPUT it is merely a choice made by accident, so this is Info rather than Warning:
+    /// a required input is legitimate, and only the author knows whether it was meant.
+    /// </summary>
+    private static void CheckTerminalWireRules(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            var kind = element.Name.LocalName;
+            if (kind is not ("Control" or "Indicator")) continue;
+
+            // No conIdx, no terminal: `connection` without one is dropped on export anyway, so an
+            // off-pane control has no wire rule to get wrong.
+            if ((string?)element.Attribute("conIdx") is not { Length: > 0 }) continue;
+            if ((string?)element.Attribute("connection") is { Length: > 0 }) continue;
+
+            var name = element.Attribute("_name")?.Value ?? kind;
+            var uid = (string?)element.Attribute("uid");
+
+            if (kind == "Indicator")
+                findings.Add(new Finding(Severity.Warning, "outputTerminalDefaultsToRequired",
+                    $"Output \"{name}\" is on the connector pane with no `connection`, which "
+                    + "LabVIEW reads as REQUIRED. An output must never be required: every caller "
+                    + "that leaves it unwired becomes non-executable (Error 1003), and nothing "
+                    + "reports it in THIS VI. Write connection=\"recommended\".", uid));
+            else
+                findings.Add(new Finding(Severity.Info, "inputTerminalDefaultsToRequired",
+                    $"Input \"{name}\" is on the connector pane with no `connection`, which "
+                    + "LabVIEW reads as REQUIRED - not as \"unspecified\". Say which you mean: "
+                    + "`required`, `recommended` or `optional`. Left alone here because a "
+                    + "required input is a legitimate choice.", uid));
         }
     }
 
@@ -286,6 +426,47 @@ internal static class AixmlCheck
                 replacement));
         }
 
+        // AN ENUM VALUE THAT IS A LABEL is repairable because the label names exactly one item -
+        // there is nothing to guess. LabVIEW discards it and writes 0 (measured), so leaving it
+        // alone means shipping the wrong constant with no error anywhere. An index OUT OF RANGE is
+        // left alone: that is a number the author chose, and clamping it here would hide what
+        // LabVIEW already does silently.
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Attribute("values") is not null) continue;
+            if (EnumLabels(element) is not { Count: > 0 } labels) continue;
+            if ((string?)element.Attribute("value") is not { Length: > 0 } value) continue;
+            if (int.TryParse(value, out _)) continue;
+
+            var match = labels.IndexOf(value);
+            if (match < 0) continue;
+
+            element.SetAttributeValue("value", match.ToString(CultureInfo.InvariantCulture));
+            repairs.Add(new Repair("enumValueIsALabel",
+                $"\"{element.Attribute("_name")?.Value ?? element.Name.LocalName}\" had "
+                + $"value=\"{value}\", the LABEL of item {match}; set to \"{match}\". LabVIEW "
+                + "discards a label and writes 0, with no error at validate, convert or run.",
+                (string?)element.Attribute("uid")));
+        }
+
+        // A REQUIRED OUTPUT IS ALWAYS A MISTAKE, so this one is repairable where the input side is
+        // not. An output terminal with no `connection` comes out required (measured), which makes
+        // every CALLER that leaves it unwired non-executable - Error 1003, reported nowhere near
+        // the VI that caused it. There is no intent to guess at: NI's style guide has no required
+        // output, and `recommended` is what the rest of the toolchain writes.
+        foreach (var indicator in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName == "Indicator")
+                     .Where(e => (string?)e.Attribute("conIdx") is { Length: > 0 })
+                     .Where(e => (string?)e.Attribute("connection") is not { Length: > 0 }))
+        {
+            indicator.SetAttributeValue("connection", "recommended");
+            repairs.Add(new Repair("outputTerminalDefaultsToRequired",
+                $"Output \"{indicator.Attribute("_name")?.Value ?? "Indicator"}\" had no "
+                + "`connection`, which LabVIEW reads as REQUIRED; set to \"recommended\". A "
+                + "required output makes every caller that leaves it unwired non-executable.",
+                (string?)indicator.Attribute("uid")));
+        }
+
         // NOTHING REPAIRED MEANS NOTHING RESERIALISED. Handing back a re-rendered document would
         // reformat a file that had no fault, and a caller comparing the two could not tell "clean"
         // from "rewritten". Caught by its own test rather than reasoned about.
@@ -309,9 +490,11 @@ internal static class AixmlCheck
             ["findings"] = new JsonArray([.. findings.Select(f => (JsonNode)f.ToJson())]),
             ["note"] = errors == 0 && warnings == 0
                 ? "Nothing found. This checks ONLY what ValidateAIXML was measured not to check - "
-                  + "duplicate uids, a uid_parent naming no element, and a Ring default outside its "
-                  + "values. Wiring, terminal names, types, cycles and case completeness are "
-                  + "LabVIEW's job and still need lvai_validate_aixml."
+                  + "duplicate uids, a uid_parent naming no element, a Ring default outside its "
+                  + "values, an enum value that is a label or out of range, and a connector-pane "
+                  + "terminal with no `connection` (which LabVIEW "
+                  + "reads as required). Wiring, terminal names, types, cycles and case "
+                  + "completeness are LabVIEW's job and still need lvai_validate_aixml."
                 : "These are the gaps ValidateAIXML does not cover; it still has to run for "
                   + "wiring, terminal names, types and structure completeness.",
         };

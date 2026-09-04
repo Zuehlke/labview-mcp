@@ -428,7 +428,8 @@ consistency matters. Widely spaced values leave room to insert elements later.
 
 Enumerated values observed:
 
-- `connection`: `required` · `recommended` · `optional`
+- `connection`: `required` · `recommended` · `optional` · `dynamic` — the fourth one is dynamic dispatch
+  and appears only on a class terminal; see below
 - `Tunnel._id`: `In1`…`InN`, `Out1`…`OutN` — numbering is per structure and matters only
   for pairing input to output side
 - `Tunnel.mode`: `index` (auto-indexing on a loop border); absent means plain tunnel
@@ -1642,6 +1643,104 @@ by a signature that includes `connection`, so a flag change does invalidate it �
 by an older build of this server does not carry that in its key, and the symptom of a stale one is
 an error blaming YOUR document: `required input 'X' is not wired`. `refresh` settles it.
 
+### An omitted `connection` means REQUIRED — and on an OUTPUT that breaks every caller
+
+**A `Control` or `Indicator` that has a `conIdx` and no `connection` attribute comes out
+`required`.** Not "unspecified", not "whatever LabVIEW likes" — required, for an input and an
+output alike. Measured 2026-09-04 on one three-terminal probe:
+
+```xml
+<Control   _name="with attr"   conIdx="0" connection="recommended" type="double" .../>
+<Control   _name="no attr"     conIdx="1"                          type="double" .../>
+<Indicator _name="out no attr" conIdx="2"                          type="double" .../>
+```
+
+`lvai_vi_terminals` on the generated VI reads them back as `recommended`, `required`, `required`.
+
+**A required OUTPUT is never what anyone means, and the damage lands somewhere else.** LabVIEW
+enforces the flag at the **call site**: a caller that leaves the terminal unwired is not executable,
+`Error 1003`. The VI itself is perfect — it opens, it compiles, it runs, and its own export reads
+correctly. Nothing between authoring and the caller sees it: `lvai_validate_aixml` answered
+`errorCode 0`, `ConvertAIXMLToVI` wrote the file, `lvai_swap_subvis` verified `socketsLeft: 0` with
+the right call targets, and `lvai_connector_pane` called the pane style-compliant.
+
+It shipped that way in a generated class method whose `data` output was required, and the first
+thing that noticed was a Caraya suite refusing to run at all — `7101, At least one test is not in a
+executable state` — which reads as a broken test rather than a broken subject.
+
+Since 2026-09-04 the toolchain covers it:
+
+| where | what it does |
+|---|---|
+| `lvai_check_aixml` | `outputTerminalDefaultsToRequired`, a **warning** on an output; `inputTerminalDefaultsToRequired`, **info** on an input |
+| `lvai_check_aixml fix:true`, and `lvai_generate_vi`'s repair step | writes `connection="recommended"` onto the output and reports the repair |
+| an existing `.vi` | `{LV.ConnectorPane}` `SetWireRule(TermIdx, Rule)` — `TermIdx` is the `conIdx`, rule `2` is recommended, `4` is dynamic dispatch. See `docs/vi-server-reference.md` |
+
+The input side is reported and **not** repaired: a required input is a legitimate choice and only
+the author knows whether it was meant. Say which you mean rather than leaving the attribute off.
+
+### `connection="dynamic"` is the fourth value, and it marks DYNAMIC DISPATCH
+
+A class member's dispatch terminal carries `connection="dynamic"` where an ordinary terminal
+carries one of the three wire rules. Counted 2026-09-04 by parsing the cached exports: **21
+occurrences across 16 distinct VIs**, and the shape never varies —
+
+| element | `type` | `conIdx` | count |
+|---|---|---|---|
+| `Control` | `ref{UDClassInst}` | 11 | 16 |
+| `Indicator` | `ref{UDClassInst}` | 3 | 5 |
+
+so it appears **only** on a class-typed terminal, never on an ordinary one. `{LV.ConnectorPane}`
+`SetWireRule` writes the same thing as rule **4** (`docs/vi-server-reference.md`), which is what
+`lvai_add_class_method` sets after retyping a pane.
+
+**This is the reliable way to tell a dynamic member from a static one, and the obvious way is not.**
+The intuitive route is `NI.ClassItem.IsStaticMethod` in the `.lvclass` — but that attribute is
+**absent from every member NI's accessor wizard creates**, which is every accessor
+`lvai_create_accessors` makes (`docs/lvclass-creation.md`, "dynamicDispatch reads null for all of
+them"). A reader that trusts it concludes "not dynamic" for a class where everything is. The AIXML
+export answers it for certain, one terminal at a time.
+
+Two consequences for authoring:
+
+- **Do not write `connection="dynamic"` by hand.** AIXML refuses a class-typed terminal outright
+  (`Control with type=UDClassInst is not supported`), so the attribute can only be *read* back after
+  the terminal has been retyped through `{LV.Control}` `Replace`. It is an export fact, not an
+  authoring one.
+- `lvai_check_aixml` leaves it alone. Its terminal check only fires where `connection` is **absent**,
+  so a `dynamic` terminal is neither warned about nor repaired.
+
+### An enum `value` must be an INDEX — a label is discarded, an overshoot is clamped
+
+Both faults pass `ValidateAIXML` with `errorCode 0`, and neither is visible in the generated VI.
+Measured 2026-09-04 by generating one probe with three constants on the same five-item enum and
+exporting the VI straight back:
+
+| authored | exported | what LabVIEW did |
+|---|---|---|
+| `value="1"` | `1` | correct — an index is an index |
+| `value="open or create"` | **`0`** | the label was **discarded**; item 0 is what the diagram gets |
+| `value="9"` (items 0..4) | **`4`** | **clamped** to the last item |
+
+**What it costs in the field is a symptom pointing at the wrong thing.** A `TDMS Open` authored as
+`value="open or create"` ran as `open`, so writing to a file that did not exist yet failed with
+`Error 7, file not found` — which reads as a path problem. Nine nodes on the diagram, 2.5 minutes
+to find.
+
+`lvai_check_aixml` reports both (`enumValueIsALabel`, `enumValueOutOfRange`) and **repairs the
+label case** to its index, so `lvai_generate_vi` fixes it in passing. The out-of-range case is
+reported and left alone: an index the author typed is a number they meant, and clamping it here
+would only hide what LabVIEW already does silently.
+
+Two limits worth knowing. **A number is always read as an index**, even where a label happens to
+look like one — `uint16{0,1,2}` is legal, and treating `value="1"` as the label `"1"` would break
+the ordinary case to rescue an exotic one. And **the label list splits on commas**, so a label
+containing one cannot be matched; that degrades safely to the un-repairable warning rather than to
+a wrong repair.
+
+A `Ring` is a different shape — labels in `items`/`values` beside a plain `type` — and is covered
+by `ringValueNotInValues` instead. Neither check fires on the other's element.
+
 ### Polymorphic subVI calls
 
 A `Call` to a **polymorphic** VI names the concrete instance in a separate attribute:
@@ -1828,6 +1927,10 @@ Built 2026-09-04 out of the negative-test matrix above. It covers ONLY the three
 | `danglingParent` — a `uid_parent` naming no element | **error** | LabVIEW silently reparents the element to the TOP-LEVEL diagram. A node meant to sit inside a For Loop ends up outside it, changing what the diagram does, with nothing reported at validate, convert or run |
 | `duplicateUid` | warning | LabVIEW renumbers one of them silently, so the export stops matching the file. `uid="0"` is exempt - it asks for no number and was measured reusable |
 | `ringValueNotInValues` | warning | accepted with `errorCode 0` |
+| `enumValueIsALabel` — `value="open or create"` where the type lists that label | warning, **repaired** to the index | LabVIEW DISCARDS the label and writes `0`, `errorCode 0`. Repairable because a label names exactly one item |
+| `enumValueOutOfRange` — an index past the last item | warning, not repaired | LabVIEW CLAMPS it — measured, 9 became 4 on a five-item enum. Which item was meant is not knowable |
+| `outputTerminalDefaultsToRequired` | warning, **repaired** to `recommended` | an omitted `connection` means required, and a required output makes every caller `Error 1003` |
+| `inputTerminalDefaultsToRequired` | **info only** | same cause, but a required input is a legitimate choice |
 | `uidInReservedRange` | **info only** | the rule is measured AND incomplete: a three-object probe with `uid` 10 logs twelve entries, two shipped helpers with controls at 10 and 11 log none. A prompt to measure, never a defect claim |
 | `notWellFormedXml`, `rootIsNotVI` | error | LabVIEW's parse failure arrives as `Error -2628 ... error parsing the document`, which reads as an AIXML fault rather than an unclosed tag - and is what a shell heredoc produces when it eats an escape |
 
@@ -1873,6 +1976,14 @@ the same discipline `SymbolicUids` uses, because a surprise edit between an auth
 generation is worse than a reported fault. `lvai_check_aixml fix:true` is the explicit way to apply
 them to the source, and it writes NOTHING when nothing was repairable, so a clean file is never
 reformatted by a repair that turned out unnecessary.
+
+### A FOURTH check, added 2026-09-04: the terminal wire rule
+
+Not a uid problem and not one of the nine below — it came from a defect in the field rather than
+from a probe sweep. A pane terminal with no `connection` attribute is `required`; on an output that
+makes every caller non-executable. Full measurement above, under "An omitted `connection` means
+REQUIRED". The output case is **repaired** (there is no intent to guess at: NI's style guide has no
+required output), the input case is reported and left alone.
 
 ### The nine negative tests, run: SIX are caught, TWO pass silently, ONE lies about the cause
 

@@ -664,6 +664,27 @@ cannot call the tool, which is the same failure the plugin tool-prefix drift pro
 The runner was unreleased, so it cost nothing to name properly. Rename the other two only as a
 deliberate, announced change.
 
+### 4b. The FIRST run after a rebuild answers `Error 1` and writes no report
+
+Measured 2026-09-04 on a four-suite run: immediately after the test VIs were rebuilt, the runner
+returned `Error 1` at `Generate User Event` inside
+`Caraya.lvlib:Basic Test Manager.lvclass:Send Test Event.vi` and produced no report file. Running it
+a second time, changing nothing, was clean — four suites, `failures="0"`.
+
+`Error 1` from `Generate User Event` is an invalid refnum: Caraya's test manager is holding a user
+event that belonged to the copies of the test VIs LabVIEW had in memory before the rebuild replaced
+them on disk.
+
+Two practical consequences:
+
+- **A run-once-after-rebuild CI job reports a failure that is not one.** Either run the suite twice
+  and take the second, or close the project between the rebuild and the run.
+- **Do not diagnose it as a broken test.** It names Caraya's own VI, not yours, and no report is
+  written at all — which looks like the suite never executed, because it did not.
+
+Related, same cause, and the reason a green suite should not be tidied afterwards: `lvai_set_vi_icon`
+re-saves every VI it touches, which re-arms this on the next run.
+
 ## 5. Why Caraya rather than JKI VI Tester
 
 Both ship in `vi.lib\addons\_JKI Toolkits`. A Caraya test is a plain VI calling library VIs, which

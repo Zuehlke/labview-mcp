@@ -164,6 +164,22 @@ re-reading the flags, and was correct only because the terminal was still `requi
 to `recommended` produced no error anywhere and the mirrored constant became surplus. Surplus is
 not free on a typedef pane: it has to be bound and kept in step with the `.ctl` as well.
 
+**AND WRITE `connection=` ON EVERY TERMINAL YOU GIVE A `conIdx` — an omitted one means REQUIRED.**
+Not "unspecified": measured 2026-09-04 on one three-terminal probe, a Control and an Indicator that
+carried no `connection` both came back `required`, beside one that said `recommended` and got it. A
+required **output** is never right, and the damage lands in the CALLER: LabVIEW enforces the flag at
+the call site, so anyone who leaves the terminal unwired is `Error 1003` while the VI itself opens,
+compiles, runs and exports perfectly. It shipped in a generated class method and the first thing that
+noticed was a Caraya suite refusing to start — `7101, not in a executable state` — after validation,
+conversion, the subVI swap and `lvai_connector_pane` had all passed it. `lvai_check_aixml` now warns
+(`outputTerminalDefaultsToRequired`) and repairs the output case to `recommended`, so
+`lvai_generate_vi` fixes it in passing; the input case is reported and left alone, because a required
+input is a legitimate choice. **On a VI that already exists the fix is `{LV.ConnectorPane}`
+`SetWireRule(conIdx, 2)`, not a regeneration** — it moves no terminal, so no caller changes, and it
+is the only route for a class member that has since been retyped. Do it in the IDE's application
+instance and save the VI *and* its class, or it is a silent no-op. `docs/aixml-reference.md`,
+`docs/vi-server-reference.md`.
+
 The one thing the repair does NOT reach is an **output** terminal: nothing is wired into it, so
 there is no dot and no constant — the bare type travels into whatever consumes the wire.
 `docs/typedef-constants.md` has the measurements, including why `Create Constant` alone is not the
@@ -432,9 +448,17 @@ makes, six it makes and three it does not. A **`uid_parent` naming no element** 
 one - LabVIEW places that element on the TOP-LEVEL diagram and reports nothing, so a node meant to
 sit inside a For Loop ends up outside it, through validate, convert and a run alike; only a
 re-export shows it. A **duplicate `uid`** is silently renumbered, so the export stops matching your
-file. A **Ring `value` outside its `values`** passes with `errorCode 0`. `lvai_check_aixml` catches
-all three without LabVIEW, `lvai_generate_vi` blocks on the first, and the two raw RPCs report it
-as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
+file. A **Ring `value` outside its `values`** passes with `errorCode 0`.
+
+**Two more joined the list on 2026-09-04, both about an enum, both measured on one probe VI.** An
+enum `value` that is a **LABEL** (`value="open or create"`) is DISCARDED and written as `0`; an
+index **past the last item** is CLAMPED (9 became 4 on a five-item enum). Both answered
+`errorCode 0`. The field cost was a `TDMS Open` running as `open` instead of `open or create`,
+whose symptom was `Error 7, file not found` - pointing at the path, not the enum. `lvai_check_aixml`
+repairs the label case to its index and reports the overshoot without touching it.
+
+`lvai_check_aixml` catches all of these without LabVIEW, `lvai_generate_vi` blocks on the dangling
+parent and repairs the rest, and the two raw RPCs report them as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
 and a second implementation would drift.
 
 **And `uid="0"` is a SENTINEL, not a number.** The schema's minimum is 0 (a negative uid is refused,
@@ -639,6 +663,14 @@ saved file, needs no LabVIEW, and took ~90 s of hand archaeology before there wa
 The fallback is not a defeat: the field then carries the real wrapped type - a genuine
 `Refnum RefType="UsrDefndTag" Ident="Task" TypeName="NIDAQ"`, not a de-linked copy. Report it as
 information.
+
+**A CLASS FIELD MAY BE A `path` — and the tool refusing one was an ALLOWLIST GAP, not a format
+limit.** `lvai_create_class` needs a `value` literal per type, and a type missing from that table is
+refused by name; twice now that has read as "AIXML cannot express this". `timestamp` was the first,
+`path` the second, fixed 2026-09-04 after a HAL class shipped with its file path as a **`string`**
+and a `String To Path` in every method. A path's literal is the empty one, like a string's. **When a
+tool refuses a field type, probe whether AIXML refuses it too before designing around it** — a
+three-line carrier VI answers it in 165 ms. `docs/lvclass-creation.md` §0.
 
 **A CLASS METHOD IS SCRIPTABLE, and `lvai_add_class_method` does it.** This file has said in several
 places that a class-typed terminal is the end of the road; that is true of AIXML and false as a

@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using LabVIEWMcp.Infra;
 using Xunit;
 
@@ -208,6 +208,20 @@ public class LvClassTests : IDisposable
 
         Assert.Contains("type=\"timestamp\" uid=\"10\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
         Assert.Contains("type=\"double\" uid=\"11\" uid_parent=\"root\" value=\"0\"", aixml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void APathFieldIsAcceptedAndCarriesTheEmptyLiteral()
+    {
+        // Same omission as the timestamp above, found the same way and one class later: `path` was
+        // missing from the table, so a HAL class meant to hold a file path was built with a
+        // `string` field and a String To Path in every method that used it. Measured 2026-09-04 -
+        // a carrier VI with a `type="path"` control validated and generated in 165 ms, and every
+        // cached export writes a path control as value="".
+        var aixml = LvClass.CarrierAixml("X", LvClass.ParseFields("path.File Path,string.Group"));
+
+        Assert.Contains("type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"string\" uid=\"11\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------- the document

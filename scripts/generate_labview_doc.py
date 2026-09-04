@@ -677,7 +677,7 @@ def build_uml_boxes(data, labels):
     return boxes, truncated
 
 
-def layout_uml(boxes):
+def layout_uml(boxes, labels):
     """Tidy forest: leaves get consecutive slots, parents are centered."""
     roots = [b for b in boxes.values() if b.parent is None]
 
@@ -713,7 +713,19 @@ def layout_uml(boxes):
     for r in sorted(roots, key=lambda b: b.name.lower()):
         place(r)
 
-    W = max((b.x + b.w for b in boxes.values()), default=200.0) + MARGIN
+    # A parent centred over a narrower subtree can land left of the margin, and
+    # the width below is measured from right edges only - so the overhang used to
+    # be clipped away. Shift the whole forest back into the canvas instead.
+    min_x = min((b.x for b in boxes.values()), default=MARGIN)
+    if min_x < MARGIN:
+        for b in boxes.values():
+            b.x += MARGIN - min_x
+
+    legend_w = MARGIN * 2 + sum(
+        text_w(f"{mark} {labels[key]}", 10.5) + 22
+        for mark, key in (("+", "scope_public"), ("#", "scope_protected"),
+                          ("-", "scope_private"), ("~", "scope_community")))
+    W = max(max((b.x + b.w for b in boxes.values()), default=200.0) + MARGIN, legend_w)
     H = max((b.y + b.h for b in boxes.values()), default=200.0) + MARGIN + 26
     return W, H
 
@@ -1291,7 +1303,7 @@ def main(argv):
     truncated = []
     if data.get("classes"):
         boxes, truncated = build_uml_boxes(data, labels)
-        uw, uh = layout_uml(boxes)
+        uw, uh = layout_uml(boxes, labels)
         u_orient, _, u_factor = choose_placement(lambda _n: (uw, uh), (1,))
         usvg = make_uml_svg(boxes, labels, uw, uh)
         uml_png = os.path.abspath(opt("--uml-out") or os.path.join(
