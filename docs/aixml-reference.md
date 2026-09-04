@@ -428,7 +428,8 @@ consistency matters. Widely spaced values leave room to insert elements later.
 
 Enumerated values observed:
 
-- `connection`: `required` · `recommended` · `optional`
+- `connection`: `required` · `recommended` · `optional` · `dynamic` — the fourth one is dynamic dispatch
+  and appears only on a class terminal; see below
 - `Tunnel._id`: `In1`…`InN`, `Out1`…`OutN` — numbering is per structure and matters only
   for pairing input to output side
 - `Tunnel.mode`: `index` (auto-indexing on a loop border); absent means plain tunnel
@@ -1677,6 +1678,37 @@ Since 2026-09-04 the toolchain covers it:
 
 The input side is reported and **not** repaired: a required input is a legitimate choice and only
 the author knows whether it was meant. Say which you mean rather than leaving the attribute off.
+
+### `connection="dynamic"` is the fourth value, and it marks DYNAMIC DISPATCH
+
+A class member's dispatch terminal carries `connection="dynamic"` where an ordinary terminal
+carries one of the three wire rules. Counted 2026-09-04 by parsing the cached exports: **21
+occurrences across 16 distinct VIs**, and the shape never varies —
+
+| element | `type` | `conIdx` | count |
+|---|---|---|---|
+| `Control` | `ref{UDClassInst}` | 11 | 16 |
+| `Indicator` | `ref{UDClassInst}` | 3 | 5 |
+
+so it appears **only** on a class-typed terminal, never on an ordinary one. `{LV.ConnectorPane}`
+`SetWireRule` writes the same thing as rule **4** (`docs/vi-server-reference.md`), which is what
+`lvai_add_class_method` sets after retyping a pane.
+
+**This is the reliable way to tell a dynamic member from a static one, and the obvious way is not.**
+The intuitive route is `NI.ClassItem.IsStaticMethod` in the `.lvclass` — but that attribute is
+**absent from every member NI's accessor wizard creates**, which is every accessor
+`lvai_create_accessors` makes (`docs/lvclass-creation.md`, "dynamicDispatch reads null for all of
+them"). A reader that trusts it concludes "not dynamic" for a class where everything is. The AIXML
+export answers it for certain, one terminal at a time.
+
+Two consequences for authoring:
+
+- **Do not write `connection="dynamic"` by hand.** AIXML refuses a class-typed terminal outright
+  (`Control with type=UDClassInst is not supported`), so the attribute can only be *read* back after
+  the terminal has been retyped through `{LV.Control}` `Replace`. It is an export fact, not an
+  authoring one.
+- `lvai_check_aixml` leaves it alone. Its terminal check only fires where `connection` is **absent**,
+  so a `dynamic` terminal is neither warned about nor repaired.
 
 ### Polymorphic subVI calls
 

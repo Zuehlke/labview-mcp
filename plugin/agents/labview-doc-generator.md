@@ -112,8 +112,13 @@ Parse the target XML yourself (`Read`, or a small Python one-liner via `Bash` fo
   items in the corpus carry their own `NI.LibItem.Scope`, and **an item's own value wins**.
   Propagate downward, then let an explicit item value override.
 - **`.lvclass`: every member VI carries its own effective scope** in `NI.ClassItem.MethodScope`.
-  Read it per item; no propagation needed. The same items carry `NI.ClassItem.IsStaticMethod` —
-  `false` means **dynamic dispatch**, which the UML diagram marks as overridable.
+  Read it per item; no propagation needed.
+- **Read dynamic dispatch from the AIXML EXPORT, not from `NI.ClassItem.IsStaticMethod`.** That
+  attribute is **absent from every member NI's accessor wizard creates**, so on a class built with
+  `lvai_create_accessors` it is missing everywhere and "missing" is not "static" — measured
+  2026-09-04, ten members, all dynamic, the attribute on none of them. The export is certain: a
+  dispatch terminal reads `connection="dynamic"` on `type="ref{UDClassInst}"`. Mark those italic in
+  the UML. `docs/aixml-reference.md`.
 
 Build a tree: library → folders (name + effective scope) → items (name, kind, effective
 scope, resolved absolute path). Record files that the XML references but that are missing on
