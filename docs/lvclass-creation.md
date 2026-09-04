@@ -27,6 +27,29 @@ classes that project has loaded; the tool opens one for you. pylabview is no lon
 Section 1 below is the route this replaced — a private data control built from a converted VI. It
 is kept because every step of it is a thing that does *not* work, and §2a says exactly why.
 
+### The field types are an ALLOWLIST, and a missing entry reads as "AIXML cannot do this"
+
+A field is `<type>.<name>`, and the type has to be one the tool holds a `value` literal for —
+AIXML requires `value` on every Control and the literal is per-type, so an unknown type would need
+a guessed one and a wrong literal generates without complaint.
+
+**Twice now the allowlist has been mistaken for a limit of the format.** `timestamp` was missing
+first, and `timestamp.When` came back as a type "this tool has no default literal for", which reads
+as though AIXML could not express one; it always could. `path` was missing until 2026-09-04, and
+that one reached a user: a HAL class meant to hold a file path was built with a **`string` field
+and a `String To Path` in every method that touched it**, because `path.File Path` was refused and
+the refusal looked like a property of the format.
+
+Both were one table entry. The literal for `path` is the **empty** one, same as a string and a
+timestamp — counted across the cached example exports, where every `type="path"` control and
+indicator carries `value=""` — and a carrier VI holding a `path` control validated and generated in
+165 ms.
+
+The lesson for the next one: **when the tool refuses a field type, check whether AIXML refuses it
+too before designing around it.** A three-line probe answers that. The whitelist is
+`LvClass.Literals`, and NI's provider makes a field out of whatever front-panel control it is
+handed.
+
 ### A LEAKED CLASS REFERENCE is why a parent went missing — not a stale project
 
 **A parent created moments ago was invisible to its child's run.** Measured 2026-08-28 building

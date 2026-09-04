@@ -1,4 +1,4 @@
-using LabVIEWMcp.Infra;
+﻿using LabVIEWMcp.Infra;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Infra;
@@ -346,5 +346,82 @@ public sealed class AixmlCheckTests
         Assert.Equal(0, summary["errors"]!.GetValue<int>());
         // A clean answer that did not say what it left alone would be read as "this file is valid".
         Assert.Contains("lvai_validate_aixml", summary["note"]!.GetValue<string>());
+    }
+
+    // ------------------------------------------------------------------ the wire rule
+
+    /// <summary>
+    /// THE MEASUREMENT BEHIND THESE, 2026-09-04: one probe VI with three pane terminals - one
+    /// Control carrying connection="recommended", one Control without the attribute, one Indicator
+    /// without it. lvai_vi_terminals read them back as recommended / required / required. So an
+    /// omitted `connection` is not "unspecified", it is `required`.
+    /// </summary>
+    private const string NoConnectionAttribute = """
+        <VI _name="Probe.vi" description="d">
+          <Control _name="with attr" conIdx="0" connection="recommended" outputs="value:4300.value" type="double" uid="4300" uid_parent="root" value="0"/>
+          <Control _name="no attr" conIdx="1" outputs="value:4310.value" type="double" uid="4310" uid_parent="root" value="0"/>
+          <Indicator _name="out no attr" conIdx="2" inputs="value:4310.value" type="double" uid="4320" uid_parent="root" value="0"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnOutputWithNoConnectionIsAWARNING_becauseItSilentlyBecomesRequired()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(NoConnectionAttribute),
+                                    f => f.Code == "outputTerminalDefaultsToRequired");
+
+        Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
+        Assert.Equal("4320", finding.Uid);
+        // The consequence lands in the CALLER, so the message has to name it - a reader looking at
+        // this VI alone sees nothing wrong with it.
+        Assert.Contains("1003", finding.Message);
+    }
+
+    [Fact]
+    public void AnInputWithNoConnectionIsINFO_becauseARequiredInputMayBeIntended()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(NoConnectionAttribute),
+                                    f => f.Code == "inputTerminalDefaultsToRequired");
+
+        Assert.Equal(AixmlCheck.Severity.Info, finding.Severity);
+        Assert.Equal("4310", finding.Uid);
+    }
+
+    [Fact]
+    public void ATerminalThatSAYSWhatItWantsIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(NoConnectionAttribute),
+                              f => f.Uid == "4300");
+
+    [Fact]
+    public void AControlOFFTheConnectorPaneHasNoWireRuleToGetWrong() =>
+        // `connection` without a conIdx is dropped on export anyway, so a diagram-only control
+        // must not be nagged about one.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Indicator _name="v" inputs="value:9010.value" type="double" uid="9020" uid_parent="root" value="0"/></VI>
+            """), f => f.Code.EndsWith("DefaultsToRequired", StringComparison.Ordinal));
+
+    [Fact]
+    public void AnOutputWithNoConnectionIsREPAIRED_toRecommended()
+    {
+        var fixedUp = AixmlCheck.Fix(NoConnectionAttribute);
+
+        var repair = Assert.Single(fixedUp.Repairs,
+            r => r.Code == "outputTerminalDefaultsToRequired");
+        Assert.Equal("4320", repair.Uid);
+        Assert.Contains("connection=\"recommended\"", fixedUp.Xml, StringComparison.Ordinal);
+        // Repaired means gone from what is left, or the caller sees the same fault twice.
+        Assert.DoesNotContain(fixedUp.Remaining,
+                              f => f.Code == "outputTerminalDefaultsToRequired");
+    }
+
+    [Fact]
+    public void ARequiredINPUTIsNotRepairedAway()
+    {
+        var fixedUp = AixmlCheck.Fix(NoConnectionAttribute);
+
+        // Only the author knows whether a required input was meant, so the Info survives the fix.
+        Assert.DoesNotContain(fixedUp.Repairs,
+                              r => r.Code == "inputTerminalDefaultsToRequired");
+        Assert.Contains(fixedUp.Remaining, f => f.Code == "inputTerminalDefaultsToRequired");
     }
 }

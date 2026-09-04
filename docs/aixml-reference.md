@@ -1642,6 +1642,42 @@ by a signature that includes `connection`, so a flag change does invalidate it �
 by an older build of this server does not carry that in its key, and the symptom of a stale one is
 an error blaming YOUR document: `required input 'X' is not wired`. `refresh` settles it.
 
+### An omitted `connection` means REQUIRED — and on an OUTPUT that breaks every caller
+
+**A `Control` or `Indicator` that has a `conIdx` and no `connection` attribute comes out
+`required`.** Not "unspecified", not "whatever LabVIEW likes" — required, for an input and an
+output alike. Measured 2026-09-04 on one three-terminal probe:
+
+```xml
+<Control   _name="with attr"   conIdx="0" connection="recommended" type="double" .../>
+<Control   _name="no attr"     conIdx="1"                          type="double" .../>
+<Indicator _name="out no attr" conIdx="2"                          type="double" .../>
+```
+
+`lvai_vi_terminals` on the generated VI reads them back as `recommended`, `required`, `required`.
+
+**A required OUTPUT is never what anyone means, and the damage lands somewhere else.** LabVIEW
+enforces the flag at the **call site**: a caller that leaves the terminal unwired is not executable,
+`Error 1003`. The VI itself is perfect — it opens, it compiles, it runs, and its own export reads
+correctly. Nothing between authoring and the caller sees it: `lvai_validate_aixml` answered
+`errorCode 0`, `ConvertAIXMLToVI` wrote the file, `lvai_swap_subvis` verified `socketsLeft: 0` with
+the right call targets, and `lvai_connector_pane` called the pane style-compliant.
+
+It shipped that way in a generated class method whose `data` output was required, and the first
+thing that noticed was a Caraya suite refusing to run at all — `7101, At least one test is not in a
+executable state` — which reads as a broken test rather than a broken subject.
+
+Since 2026-09-04 the toolchain covers it:
+
+| where | what it does |
+|---|---|
+| `lvai_check_aixml` | `outputTerminalDefaultsToRequired`, a **warning** on an output; `inputTerminalDefaultsToRequired`, **info** on an input |
+| `lvai_check_aixml fix:true`, and `lvai_generate_vi`'s repair step | writes `connection="recommended"` onto the output and reports the repair |
+| an existing `.vi` | `{LV.ConnectorPane}` `SetWireRule(TermIdx, Rule)` — `TermIdx` is the `conIdx`, rule `2` is recommended, `4` is dynamic dispatch. See `docs/vi-server-reference.md` |
+
+The input side is reported and **not** repaired: a required input is a legitimate choice and only
+the author knows whether it was meant. Say which you mean rather than leaving the attribute off.
+
 ### Polymorphic subVI calls
 
 A `Call` to a **polymorphic** VI names the concrete instance in a separate attribute:
@@ -1873,6 +1909,14 @@ the same discipline `SymbolicUids` uses, because a surprise edit between an auth
 generation is worse than a reported fault. `lvai_check_aixml fix:true` is the explicit way to apply
 them to the source, and it writes NOTHING when nothing was repairable, so a clean file is never
 reformatted by a repair that turned out unnecessary.
+
+### A FOURTH check, added 2026-09-04: the terminal wire rule
+
+Not a uid problem and not one of the nine below — it came from a defect in the field rather than
+from a probe sweep. A pane terminal with no `connection` attribute is `required`; on an output that
+makes every caller non-executable. Full measurement above, under "An omitted `connection` means
+REQUIRED". The output case is **repaired** (there is no intent to guess at: NI's style guide has no
+required output), the input case is reported and left alone.
 
 ### The nine negative tests, run: SIX are caught, TWO pass silently, ONE lies about the cause
 

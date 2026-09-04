@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -12,6 +12,11 @@ namespace LabVIEWMcp.Infra;
 /// of nine checks an author would assume are made, six are, and these are the ones that are not.
 /// Two of the three are identity checks - uid uniqueness and parent resolvability - which is the
 /// unlucky pattern, because they are exactly what a careful author assumes is enforced.
+///
+/// A FOURTH was added 2026-09-04 and is not a uid problem at all: a <c>Control</c> or
+/// <c>Indicator</c> on the connector pane with no <c>connection</c> attribute comes out
+/// <b>required</b>, not "unspecified". For an output that is never intended and the damage lands in
+/// the CALLER - Error 1003 - so it is repaired here; for an input it is reported and left alone.
 ///
 /// THE ONE THAT DOES REAL DAMAGE is a dangling <c>uid_parent</c>. A node authored with a parent uid
 /// that exists nowhere validated, generated, and came back from LabVIEW's own export reparented to
@@ -83,6 +88,7 @@ internal static class AixmlCheck
         CheckDuplicateUids(elements, findings);
         CheckParents(root, elements, findings);
         CheckRings(root, findings);
+        CheckTerminalWireRules(root, findings);
         CheckReservedRange(elements, findings);
 
         return findings;
@@ -156,6 +162,52 @@ internal static class AixmlCheck
                 $"\"{element.Attribute("_name")?.Value ?? element.Name.LocalName}\" has value="
                 + $"\"{value}\" which is not among values=\"{values}\". LabVIEW accepts this "
                 + "without complaint.", (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// A <c>Control</c> or <c>Indicator</c> that is ON the connector pane and carries no
+    /// <c>connection</c> attribute. MEASURED 2026-09-04 on a three-terminal probe: the omitted
+    /// attribute does not mean "let LabVIEW decide", it means <b>required</b> - for an input and
+    /// an output alike. `with attr` came back recommended, `no attr` and `out no attr` required.
+    ///
+    /// FOR AN OUTPUT THAT IS ALWAYS WRONG, and the damage lands somewhere else: NI's style guide
+    /// has no required output, and LabVIEW enforces the flag at the CALL SITE, so every caller
+    /// that leaves the terminal unwired is not executable - `Error 1003`. The VI itself looks
+    /// perfect. Found the hard way on a generated class method whose `data` output was required:
+    /// a whole Caraya suite answered `7101, At least one test is not in a executable state`, and
+    /// AIXML validation, ConvertAIXMLToVI, the subVI swap and LabVIEW's own export had all passed.
+    ///
+    /// FOR AN INPUT it is merely a choice made by accident, so this is Info rather than Warning:
+    /// a required input is legitimate, and only the author knows whether it was meant.
+    /// </summary>
+    private static void CheckTerminalWireRules(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            var kind = element.Name.LocalName;
+            if (kind is not ("Control" or "Indicator")) continue;
+
+            // No conIdx, no terminal: `connection` without one is dropped on export anyway, so an
+            // off-pane control has no wire rule to get wrong.
+            if ((string?)element.Attribute("conIdx") is not { Length: > 0 }) continue;
+            if ((string?)element.Attribute("connection") is { Length: > 0 }) continue;
+
+            var name = element.Attribute("_name")?.Value ?? kind;
+            var uid = (string?)element.Attribute("uid");
+
+            if (kind == "Indicator")
+                findings.Add(new Finding(Severity.Warning, "outputTerminalDefaultsToRequired",
+                    $"Output \"{name}\" is on the connector pane with no `connection`, which "
+                    + "LabVIEW reads as REQUIRED. An output must never be required: every caller "
+                    + "that leaves it unwired becomes non-executable (Error 1003), and nothing "
+                    + "reports it in THIS VI. Write connection=\"recommended\".", uid));
+            else
+                findings.Add(new Finding(Severity.Info, "inputTerminalDefaultsToRequired",
+                    $"Input \"{name}\" is on the connector pane with no `connection`, which "
+                    + "LabVIEW reads as REQUIRED - not as \"unspecified\". Say which you mean: "
+                    + "`required`, `recommended` or `optional`. Left alone here because a "
+                    + "required input is a legitimate choice.", uid));
         }
     }
 
@@ -286,6 +338,24 @@ internal static class AixmlCheck
                 replacement));
         }
 
+        // A REQUIRED OUTPUT IS ALWAYS A MISTAKE, so this one is repairable where the input side is
+        // not. An output terminal with no `connection` comes out required (measured), which makes
+        // every CALLER that leaves it unwired non-executable - Error 1003, reported nowhere near
+        // the VI that caused it. There is no intent to guess at: NI's style guide has no required
+        // output, and `recommended` is what the rest of the toolchain writes.
+        foreach (var indicator in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName == "Indicator")
+                     .Where(e => (string?)e.Attribute("conIdx") is { Length: > 0 })
+                     .Where(e => (string?)e.Attribute("connection") is not { Length: > 0 }))
+        {
+            indicator.SetAttributeValue("connection", "recommended");
+            repairs.Add(new Repair("outputTerminalDefaultsToRequired",
+                $"Output \"{indicator.Attribute("_name")?.Value ?? "Indicator"}\" had no "
+                + "`connection`, which LabVIEW reads as REQUIRED; set to \"recommended\". A "
+                + "required output makes every caller that leaves it unwired non-executable.",
+                (string?)indicator.Attribute("uid")));
+        }
+
         // NOTHING REPAIRED MEANS NOTHING RESERIALISED. Handing back a re-rendered document would
         // reformat a file that had no fault, and a caller comparing the two could not tell "clean"
         // from "rewritten". Caught by its own test rather than reasoned about.
@@ -309,9 +379,10 @@ internal static class AixmlCheck
             ["findings"] = new JsonArray([.. findings.Select(f => (JsonNode)f.ToJson())]),
             ["note"] = errors == 0 && warnings == 0
                 ? "Nothing found. This checks ONLY what ValidateAIXML was measured not to check - "
-                  + "duplicate uids, a uid_parent naming no element, and a Ring default outside its "
-                  + "values. Wiring, terminal names, types, cycles and case completeness are "
-                  + "LabVIEW's job and still need lvai_validate_aixml."
+                  + "duplicate uids, a uid_parent naming no element, a Ring default outside its "
+                  + "values, and a connector-pane terminal with no `connection` (which LabVIEW "
+                  + "reads as required). Wiring, terminal names, types, cycles and case "
+                  + "completeness are LabVIEW's job and still need lvai_validate_aixml."
                 : "These are the gaps ValidateAIXML does not cover; it still has to run for "
                   + "wiring, terminal names, types and structure completeness.",
         };

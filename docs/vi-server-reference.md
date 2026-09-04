@@ -481,6 +481,40 @@ is not a member of it, so the second precondition fails too. Worse, succeeding w
 opening a reference in the IDE instance *loads* the VI there as well. Small batches remain the only
 mitigation.
 
+## Writing a terminal's wire rule: `SetWireRule`, the only repair for a required output
+
+The pane section above reads; this one writes, and it is the fix for a defect the reading side
+cannot see. **A terminal's required / recommended / optional flag is `{LV.ConnectorPane}`
+`SetWireRule(TermIdx, Rule)`** — an Invoke Node, not a property, which is why searching the
+catalogue for "Required" or "Terminal" finds nothing and the operation looks unavailable.
+
+| what | value |
+|---|---|
+| `TermIdx` | the AIXML `conIdx` — the same number, no translation |
+| `Rule = 2` | recommended. Measured: write it, read it back with `lvai_vi_terminals`, get `recommended` |
+| `Rule = 4` | dynamic dispatch. Already used by `lvai_add_class_method`, `docs/class-method-tooling.md` |
+
+There is no `GetWireRule` in the catalogue, so read the current state with `lvai_vi_terminals`
+rather than looking for one.
+
+**Why you need it: an AIXML terminal with no `connection` attribute is generated as `required`**
+(measured, `aixml-reference.md`), and a required *output* makes every caller non-executable with
+`Error 1003` while the VI itself looks perfect. Regenerating from corrected AIXML is the other fix
+and it is usually the wrong one for a class member, because the VI has since been retyped and made
+a member — `SetWireRule` moves no terminal, so no caller has to change.
+
+Two things about the call, both measured 2026-09-04 while repairing four class methods:
+
+- **Do it in the IDE's application instance** — `Project:Active Project` → `Application` →
+  `Open VI Reference`. This is the same rule `{LV.Control}` `Replace` obeys: outside it, a scripting
+  write on a class member can report success and change nothing.
+- **Save the VI *and* the owning class**: `Save.Instrument` then `{LV.LVClassLibrary}` `Save`. A
+  VI-only save does not persist a change to a class member. Same pairing as `lvai_add_class_method`.
+
+Verify from the saved file rather than from the session — `pylv_extract` plus
+`scripts/pylv-conpane.py --show` prints each terminal's rule with no LabVIEW involved, and an
+in-memory copy that was never written reads correctly right up until someone reopens the file.
+
 ## Closing a VI's window
 
 No RPC closes a VI — `OpenFile` has no counterpart — so this is the same generated-helper route.
