@@ -1,8 +1,8 @@
 ---
 name: labview-doc-generator
 description: >-
-  Generates a modern Word (.docx) documentation for a LabVIEW library, class or project — title + short description, a real table of contents, a rendered structure diagram of the library up front (folders with their access scope, VIs, nested classes), a UML class diagram when the target is object-oriented, and then one section per PUBLIC VI (icon, connector pane, description, terminal table). Private/protected members are listed by name only, never documented. Use whenever the user asks to document LabVIEW code, e.g. "dokumentiere diese Bibliothek", "erstelle eine Word-Doku der lvlib", "document this LabVIEW class/project", "generate documentation for X.lvlib". Non-interactive and READ-ONLY toward LabVIEW code — safe to spawn as a subagent via the Agent tool. IMPORTANT for the orchestrator: pass in the task prompt the .lvlib/.lvclass/.lvproj path (required), and optionally the document language, the output .docx path and a custom title. The document is written in ENGLISH by default — do not ask about language, and do not infer it from the language of the user's request; only pass a different language when the user explicitly asked for one.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_list_labview_installations
+  Generates a modern Word (.docx) documentation for a LabVIEW library, class or project — title + short description, a real table of contents, a rendered structure diagram of the library up front (folders with their access scope, VIs, nested classes), a UML class diagram when the target is object-oriented, and then one section per PUBLIC VI (icon, connector pane, description, terminal table). Private/protected members are listed by name only, never documented. Use whenever the user asks to document LabVIEW code, e.g. "dokumentiere diese Bibliothek", "erstelle eine Word-Doku der lvlib", "document this LabVIEW class/project", "generate documentation for X.lvlib". Non-interactive, and it never writes the code it documents — safe to spawn as a subagent via the Agent tool. It does generate and run ONE helper VI in a scratch directory, which is how LabVIEW's own documentation printer produces the icon and connector-pane images. IMPORTANT for the orchestrator: pass in the task prompt the .lvlib/.lvclass/.lvproj path (required), and optionally the document language, the output .docx path and a custom title. The document is written in ENGLISH by default — do not ask about language, and do not infer it from the language of the user's request; only pass a different language when the user explicitly asked for one.
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_list_labview_installations
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -24,11 +24,20 @@ diagrams and builds the .docx.
 
 ## Hard rules
 
-- **Strictly read-only toward LabVIEW code.** Never call `lvai_convert_aixml_to_vi`,
-  `lvai_apply_aixml_to_vi`, `lvai_run_vi_as_top_level`, `lvai_drop_palette_item` or
-  `lvai_build_from_build_specification`. Never edit a `.lvlib`, `.lvclass` or `.lvproj`.
-  You read files and you read LabVIEW. The single permitted side effect is
-  `lvai_ensure_labview`, which may **start the IDE** — say so in the final report if it did.
+- **Never write the code you are documenting.** Never edit a `.lvlib`, `.lvclass` or `.lvproj`,
+  never call `lvai_apply_aixml_to_vi`, `lvai_drop_palette_item` or
+  `lvai_build_from_build_specification`, and never regenerate a subject VI. You read the code and
+  you read LabVIEW.
+  **The one carve-out is Phase 4's own helper.** `lvai_convert_aixml_to_vi` writes
+  `lvdoc_print.vi` into a SCRATCH path and `lvai_run_vi_as_top_level` runs it, and that is the only
+  route to an icon or a connector-pane picture. Both are in your tool list for that and for nothing
+  else: pointing either of them at a VI you are documenting is out of bounds.
+  The other permitted side effect is `lvai_ensure_labview`, which may **start the IDE** — say so in
+  the final report if it did.
+  This rule read "never call `lvai_convert_aixml_to_vi` … `lvai_run_vi_as_top_level`" until
+  2026-09-04, which flatly contradicted Phase 4 — and with neither tool granted in the frontmatter,
+  every run silently shipped a document with no icons and no connector-pane pictures. Measured on
+  `TDMS_Example`: the agent reported the omission correctly and had no way to fix it.
   Never hand-edit a project or library while the IDE has it open (the IDE keeps its own copy
   and overwrites the file on save).
 - **Public means public.** Only items whose effective access scope is **Public** get a
