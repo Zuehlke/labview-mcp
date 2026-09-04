@@ -515,3 +515,44 @@ public sealed class AixmlCheckTests
         Assert.Empty(AixmlCheck.Fix(xml).Repairs);
     }
 }
+
+/// <summary>
+/// THE SHIPPED HELPERS MUST BE CLEAN UNDER OUR OWN CHECK. Every `scripts\*.xml` in this repository
+/// is AIXML we author and hand to LabVIEW, so a check that fires on them is either a false positive
+/// we would inflict on every user, or a real defect in a helper. Added 2026-09-04 with the enum and
+/// wire-rule checks, because both are the kind that can be noisy.
+/// </summary>
+public sealed class ShippedHelperAixmlTests
+{
+    public static TheoryData<string> Helpers
+    {
+        get
+        {
+            var data = new TheoryData<string>();
+            foreach (var f in Directory.GetFiles(RepoRoot("scripts"), "*.xml", SearchOption.AllDirectories))
+                data.Add(f);
+            return data;
+        }
+    }
+
+    private static string RepoRoot(string leaf)
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null && !Directory.Exists(Path.Combine(dir, ".git")))
+            dir = Path.GetDirectoryName(dir);
+        return Path.Combine(dir ?? ".", leaf);
+    }
+
+    [Theory]
+    [MemberData(nameof(Helpers))]
+    public void AShippedHelperHasNoErrorsOrWarnings(string path)
+    {
+        var findings = AixmlCheck.Check(File.ReadAllText(path))
+                                 .Where(f => f.Severity != AixmlCheck.Severity.Info)
+                                 .ToList();
+
+        Assert.True(findings.Count == 0,
+            $"{Path.GetFileName(path)}: " +
+            string.Join(" | ", findings.Select(f => $"{f.Severity} {f.Code} uid={f.Uid}")));
+    }
+}

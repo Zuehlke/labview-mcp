@@ -53,9 +53,9 @@
   <Node _name="Decimal String To Number" inputs="string:12.value,offset:,default (0L):" outputs="offset past number:,number:91.number" uid="91" uid_parent="root"/>
   <Node _name="Decimal String To Number" inputs="string:13.value,offset:,default (0L):" outputs="offset past number:,number:92.number" uid="92" uid_parent="root"/>
   <Node _name="Decimal String To Number" inputs="string:14.value,offset:,default (0L):" outputs="offset past number:,number:93.number" uid="93" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:93.number" outputs="x != 0?:94.flag" uid="94" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:93.number" outputs="x != 0?:94.flag" uid="10219" uid_parent="root"/>
   <Node _name="Decimal String To Number" inputs="string:15.value,offset:,default (0L):" outputs="offset past number:,number:95.number" uid="95" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:95.number" outputs="x != 0?:96.flag" uid="96" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:95.number" outputs="x != 0?:96.flag" uid="10229" uid_parent="root"/>
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
     <Tunnel _id="In1" inputs="value:99.subarray" mode="index" outputs="value:1001.value" uid="1001" uid_parent="100"/>
