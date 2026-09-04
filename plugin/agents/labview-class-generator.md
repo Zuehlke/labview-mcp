@@ -493,6 +493,26 @@ tests is half a deliverable, and you are not the agent that writes them.
      an agent has failed — a Caraya suite takes minutes before it writes anything. WAIT, or resume
      that same agent with `SendMessage`. Never start a second one;
 
+   - **HOW TO TELL "STILL WORKING" FROM "DIED": read `.agent-heartbeat.md` in its directory.** The
+     test agent writes it as its first action and appends a line per phase, precisely so this is a
+     reading rather than a guess. Then:
+
+     | what you see | what it means | what to do |
+     |---|---|---|
+     | no heartbeat, < 2 min since spawn | it has not started yet | wait |
+     | heartbeat, last line within ~5 min | alive and working | wait |
+     | heartbeat whose last line is `FINISHED` | done | read its files and report |
+     | heartbeat stale by more than ~5 min | probably dead | resume it with `SendMessage` ONCE; if that yields nothing, finish the work yourself |
+     | no heartbeat, > 5 min since spawn | it never started | finish the work yourself |
+
+     **Do not POLL.** Once every minute or two is enough; a run on 2026-09-03 over-corrected into a
+     filesystem poll loop and burnt many turns for nothing.
+
+     **You can finish it yourself** — `lvai_generate_class_test`, `lvai_generate_method_test` and
+     `lvai_generate_caraya_test_runner` are in your toolset for exactly this case. They were added
+     on 2026-09-03 after a run where the handoff failed and the class agent could do nothing about
+     it. Say plainly in your report which suites you built rather than the test agent;
+
 3b. **AND DO NOT SIT IN A WAIT LOOP.** This is the other half of the rule above, and leaving it out
     cost three of the five measured runs. **The absence of a result is not evidence that the agent is
     alive**, any more than an empty directory is evidence that it is dead. A run polled for a

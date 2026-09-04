@@ -144,10 +144,15 @@ internal sealed class LvaiConnection : IAsyncDisposable
             "THE STATUS CODE ABOVE SAYS WHICH OF TWO VERY DIFFERENT PROBLEMS THIS IS, and reading " +
             "it saves restarting LabVIEW for nothing: LabVIEW.exe listeners answering " +
             "**Unavailable** mean the IDE is up and the service has not started - open Nigel. " +
-            "Listeners answering **DeadlineExceeded** mean the service is there and LabVIEW is " +
-            "HUNG - the process still answers the OS while its UI thread is blocked, which " +
-            "PowerShell confirms as (Get-Process LabVIEW).Responding = False and the title bar as " +
-            "'LabVIEW (Not Responding)'. Nigel will not help; the process has to be killed. " +
+            "Listeners answering **DeadlineExceeded** mean the service is there but did not answer " +
+            "in time, and that is TWO different situations - CHECK WHICH BEFORE KILLING " +
+            "ANYTHING. (Get-Process LabVIEW).Responding decides it: **False** with a title " +
+            "bar of 'LabVIEW (Not Responding)' is a genuinely hung UI thread, Nigel will not " +
+            "help, and the process has to be killed. **True** means LabVIEW is merely BUSY - " +
+            "measured 2026-09-04 with two agents sharing one instance, where a " +
+            "DeadlineExceeded was followed by normal service 40 s later. Killing on that " +
+            "reading destroys the other agent's work, which is why Responding is the check " +
+            "and not a corroboration. " +
             "Measured 2026-08-26, where it was reproducibly caused by firing several " +
             "lvai_create_class calls back to back - spacing them apart avoided it entirely. " +
             "You can pin the port with --port <n> or LABVIEW_GRPC_PORT=<n>.");

@@ -760,6 +760,29 @@ validated, generated and round-tripped, and NI's own example exports carry the s
 of them is the whole accumulate-per-channel idiom: index two `In` tunnels, index the `Out` tunnel
 back out.
 
+**There is a THIRD tunnel mode this section did not name: `mode="concat"`.** It appends each
+iteration's value to the one before instead of collecting them into a new dimension — the difference
+between an `Out` tunnel that turns N strings into an array of N strings (`index`) and one that turns
+them into a single joined string (`concat`). For arrays it joins rather than nesting.
+
+Measured 2026-09-03 against the export cache rather than authored: **11 occurrences across 8 of NI's
+own exports**, against 706 for `mode="index"` — so it is rare but genuine, and those two are the only
+tunnel `mode` values in 1 326 cached exports. Verbatim:
+
+```xml
+<Tunnel _id="Out1" inputs="value:170.appended array" mode="concat" outputs="value:2937.value"
+        uid="2937" uid_parent="235"/>
+```
+
+The VIs to read for it are `Loop Tunnel Modes.vi` — NI's own demonstration of exactly this question —
+plus `TDMS Advanced Prefetched Asynchronous Read.vi` and `Sum of 3 Gaussians with offset fit.vi`.
+
+This document already carried `concat` in its generated attribute list and described it **only** as
+`Build Array`'s concatenating-mode flag (`concat="true"`), so grepping for the word found the wrong
+construct and the tunnel mode read as absent. The gap surfaced when a user brought an outside summary
+of the format and it named a mode we did not: the summary was worth checking rather than dismissing,
+and checking it took one grep of the cache.
+
 Measured from OpenG's
 `Filter 1D Array (String)__ogtk.vi`, which is also a compact model of the accumulate-in-a-loop
 idiom:
@@ -1794,6 +1817,219 @@ LabVIEW 2026 through the DBL instance:
 
 The dangerous one is not here but in §11: its `file path (dialog if empty)` input opens a modal
 dialog on an empty path and stops the whole gRPC session.
+
+### `lvai_check_aixml`: the pre-flight check, and where it is wired in
+
+Built 2026-09-04 out of the negative-test matrix above. It covers ONLY the three faults
+`ValidateAIXML` was measured to accept, needs no LabVIEW, and is pure text analysis:
+
+| finding | severity | why |
+|---|---|---|
+| `danglingParent` — a `uid_parent` naming no element | **error** | LabVIEW silently reparents the element to the TOP-LEVEL diagram. A node meant to sit inside a For Loop ends up outside it, changing what the diagram does, with nothing reported at validate, convert or run |
+| `duplicateUid` | warning | LabVIEW renumbers one of them silently, so the export stops matching the file. `uid="0"` is exempt - it asks for no number and was measured reusable |
+| `ringValueNotInValues` | warning | accepted with `errorCode 0` |
+| `uidInReservedRange` | **info only** | the rule is measured AND incomplete: a three-object probe with `uid` 10 logs twelve entries, two shipped helpers with controls at 10 and 11 log none. A prompt to measure, never a defect claim |
+| `notWellFormedXml`, `rootIsNotVI` | error | LabVIEW's parse failure arrives as `Error -2628 ... error parsing the document`, which reads as an AIXML fault rather than an unclosed tag - and is what a shell heredoc produces when it eats an escape |
+
+**What it deliberately does NOT check:** terminal names, types, wiring, cycles, case completeness.
+LabVIEW checks all of those and checks them well; a second implementation would become a source of
+truth that drifts. The tool says so in its own clean answer, so "nothing found" cannot be read as
+"this file is valid".
+
+### Where it runs, and where it deliberately does not
+
+| path | behaviour |
+|---|---|
+| `lvai_check_aixml` | the tool itself |
+| `lvai_generate_vi` / `lvai_generate_vis` | **blocks** on an error, as `step: check`, before LabVIEW is asked. Consistent with that tool's existing contract of stopping at the first failure and naming it |
+| `lvai_validate_aixml` | reports as `preCheck`, never blocks - `errorCode 0` there reads as "the file is fine", and for a dangling parent it is not |
+| `lvai_convert_aixml_to_vi` | reports as `preCheck`. **The most valuable of the three**, because this is the documented convert-WITHOUT-validating route for a class method, so nothing else looks at the file at all |
+| `lvai_placeholder_subvi`, `lvai_add_class_method`, `lvai_lunit_add_test_method` | inherit it - they go through the two methods above rather than the RPC |
+| the seven `GenerateHelperAsync` callers (`RunTools`, `IconTools`, `PaneTools`, `ClassTools`, `CloseTools`, `DqmhTools`, `TypedefTools`) | **not wired, on purpose.** They generate this repository's OWN helpers from `scripts/*.xml` - files shipped with the build, never authored at run time, and measured silent. Checking them on every helper call is cost with no finding |
+
+The answer is omitted entirely when a file is clean, so a passing call is not made noisier by a check
+that found nothing.
+
+### The repair, and the line it will not cross
+
+`lvai_check_aixml` takes `fix:true`, and `lvai_generate_vi` repairs BEFORE asking LabVIEW and fails
+only on what cannot be repaired. The line between the two is *do we know what the author meant*:
+
+| fault | repaired? | why |
+|---|---|---|
+| a `uid` in the reserved range | **yes** - raised, and every `uid_parent` naming it carried along | the number is ours to choose and no wire refers to it |
+| a duplicate `uid` **nothing is nested inside** | **yes** - one gets a free number | with no `uid_parent` pointing at it there is nothing to disambiguate |
+| a duplicate `uid` something IS nested inside | no | two candidates carry the same number, so which one the child belongs to is unknowable; renumbering either would silently move it |
+| a **dangling `uid_parent`** | **never** | we do not know which structure was meant, and putting the element on `root` is EXACTLY what LabVIEW already does silently. Repairing it that way would convert a reported fault into a hidden one |
+| a Ring default outside its `values` | never | which value was intended is the author's intent; clamping to the first is a guess dressed as a fix |
+| malformed XML, wrong root | never | nothing to repair against |
+
+**A repair never touches a wire name.** Measured: a wire name is an arbitrary token, so `10.value`
+keeps working after uid 10 becomes 4200. Rewriting nets as well would be extra risk for no gain.
+
+**And it never edits your file.** `lvai_generate_vi` repairs into a copy under
+`%TEMP%\LabVIEWMCPepaired\` and generates from that, reporting each change as `step: repair` -
+the same discipline `SymbolicUids` uses, because a surprise edit between an author and code
+generation is worse than a reported fault. `lvai_check_aixml fix:true` is the explicit way to apply
+them to the source, and it writes NOTHING when nothing was repairable, so a clean file is never
+reformatted by a repair that turned out unnecessary.
+
+### The nine negative tests, run: SIX are caught, TWO pass silently, ONE lies about the cause
+
+An outside reference proposed nine checks "a validator" should make, and separately a 21-step ordered
+checklist. Both were answered by running one small VI per row against `ValidateAIXML`, 2026-09-03,
+rather than by reasoning about them.
+
+| the claim | what actually happens |
+|---|---|
+| duplicate `uid` -> error | **PASSES.** Never mentioned at any layer; the generator renumbers one silently |
+| `uid_parent` resolves to nothing -> error | **PASSES.** `errorCode 0`, and see below |
+| two outputs on one wire -> error | caught: `This wire connects more than one data source` |
+| an input wire with no source -> error | caught: `Contains unwired or bad terminal` |
+| wrong terminal name -> error | caught: `Object terminal not found for input: a:1.value on Add`, naming node and terminal |
+| a Case `Out1` unsupplied in one frame -> error | caught: `Tunnel: Missing assignment to tunnel`, with the Use Default If Unwired hint |
+| feedback without a shift register -> error | caught: `Is a member of a cycle` |
+| a Ring `value` outside its `values` -> error | **PASSES.** `value="7"` against `values="[0,1]"`, `errorCode 0` |
+| `value` incompatible with `type` -> error | caught, but as `Error 53: Unrecognized or unsupported ATTRIBUTE set in Control with UID 9010` for `type="double" value="hello"` — the cause is the literal, and the message says attribute |
+
+**THE `uid_parent` ONE IS A SILENT MISPLACEMENT, not merely an unchecked field.** A node authored
+with `uid_parent="7777"`, a uid present nowhere in the file, validated, generated, and **came back
+from LabVIEW's own export as `uid_parent="root"`**. It landed on the top-level diagram. In the probe
+that is harmless because the VI has no structure; for a node meant to sit INSIDE a For Loop it moves
+the computation out of the loop, changes what the diagram does, and reports nothing at any stage. A
+mistyped parent uid is therefore in the same family as this repository's other silent losses - it
+survives validate, convert, a run, and only a re-export shows it.
+
+**The two that pass are both IDENTITY checks**, which is the unlucky pattern: uid uniqueness and
+parent resolvability are exactly what an author assumes a validator enforces, because they are
+cheap and mechanical. They are the two it does not do.
+
+**So the practical rule for authoring AIXML by hand or by tool:** validate catches wiring, terminal
+names, structure completeness and cycles. It does NOT check that your uids are unique or that your
+`uid_parent` exists. Check those yourself before generating - both are a few lines over the file and
+need no LabVIEW - and re-export afterwards when a node was meant to be inside a structure.
+
+### What `ValidateAIXML` ACTUALLY catches — a negative example, run rather than reasoned
+
+An outside reference offered a deliberately broken VI with nine numbered defects and a table of what
+"a validator" should reject. Running it against the real one, 2026-09-03, peeling one layer at a
+time, is worth more than the table: it shows the ORDER of the gates and, more usefully, the ONE
+defect that passes.
+
+**The gates fire in this order**, each hiding the next:
+
+| gate | what it said |
+|---|---|
+| 1. XML schema | `missing required attribute 'description'` — see §above; the outside model lists `description` as OPTIONAL on `<VI>` and it is REQUIRED |
+| 2. terminal names | `Object terminal not found for input: a:1.value on Add` — three at once, naming node and terminal |
+| 3. diagram semantics | six errors together: `This wire connects more than one data source`, `Contains unwired or bad terminal` (x2), `Wire connected to an undirected tunnel`, `N is not wired, and there are no indexing inputs`, `connected an input of For Loop to an Indicator` |
+
+**THE ONE THAT IS NEVER MENTIONED IS THE DUPLICATE `uid`.** The file carries `uid="1"` on two
+different controls and no gate says so, at any layer — consistent with the direct measurement in
+`docs/labview-crash-signatures.md`: the generator silently renumbers one of them. So "duplicate uid"
+is the outside table's first expected error and it is not an error at all. An author who trusts the
+validator to enforce uniqueness gets a VI whose exported uids differ from the ones written, with
+nothing reported.
+
+**And the claim that a root wire may not enter a loop without a tunnel is too general.** §7 of this
+document measured the opposite for the case that matters: a shift register's border crossing is
+IMPLICIT, its initialiser comes straight from a root-level constant with no `In` tunnel, and adding
+the explicit tunnel produces `Structure: Is a member of a cycle`. Both worked examples in that
+outside reference put the initialising constant INSIDE the loop and both fail with exactly that
+cycle error.
+
+**The reusable lesson is about how to read a reference at all.** Two complete, confident examples
+were offered; the positive one failed with nine errors (`Array Size` authored as a `Call` when it is
+a primitive, a shift register initialised from an inner wire, a Case with no `Default`, four type
+mismatches), and the negative one failed first on a rule its own schema had marked optional. Neither
+was wrong out of carelessness — they are prose about a format rather than artefacts run through it.
+**Check an outside reference by executing it. It costs one validate call per claim, and validate is
+the cheap failure path this repository already relies on.**
+
+### A WIRE NAME IS AN ARBITRARY TOKEN — `uid.terminal` is convention, not requirement
+
+Measured 2026-09-03. A VI whose wire names are `banana.value` and `kaffee.x+1`, matching no `uid` in
+the file, **validated and generated with `errorCode 0`** and added no DWarn:
+
+```xml
+<Control   _name="value"     outputs="value:banana.value" uid="9010" .../>
+<Node      _name="Increment" inputs="x:banana.value" outputs="x+1:kaffee.x+1" uid="9020" .../>
+<Indicator _name="result"    inputs="value:kaffee.x+1" uid="0" .../>
+```
+
+The only requirement is **referential consistency**: the token a producer writes is the token its
+consumers read, and each token has exactly one producer. NI's own exports and every helper in
+`scripts/` use `<uid>.<terminal>` — **2 598 of 2 598 wire references, 100 %** — which makes the two
+look coupled when nothing couples them. The same thing shows in an outside reference's own worked
+example, where an `Add` node with `uid="41"` produces the wire `39.x+y` and nothing objects.
+
+**Why this matters for the uid renumbering:** it does not have to touch wire names at all. Changing
+`uid="10"` to `uid="9010"` while the nets still say `10.value` is legal, because `10.value` is just a
+string. The renumbering is therefore a change to ONE attribute per element, not a coordinated rewrite
+of every net that mentions it — which is what made it look like a risky sweep across 39 files.
+Keeping the two in step is still worth doing for readability; it is no longer a correctness
+requirement, so it cannot silently break a helper.
+
+### `FixedConst` is a BUILT-IN CONSTANT, not a fixed terminal — correcting this file
+
+The element table above described `FixedConst` as a *"fixed terminal (e.g. loop iteration)"*. That is
+wrong, and it was the file's only mention. Measured 2026-09-03 over 663 cached exports — every
+`_name` that actually occurs:
+
+| `_name` | count | what it is |
+|---|---:|---|
+| `0STR` | 55 | the empty string |
+| `2PI` | 12 | 2 pi |
+| `0PTH` | 8 | the empty path |
+| `NREF` | 4 | not-a-refnum |
+| `CRTN` | 4 | carriage return |
+| `PI`, `EOL` | 3 each | pi; the platform end-of-line |
+| `TAB`, `+INF` | 2 each | tab; positive infinity |
+| `MEPS` | 1 | machine epsilon |
+
+So it is the palette's **built-in constant** — the things on `Numeric > Math Constants` and
+`String > String Constants` — carrying no `type` and no `value`, only a `_name` and one `value`
+output:
+
+```xml
+<FixedConst _name="0STR" outputs="value:1133.value" uid="1133" uid_parent="137"/>
+```
+
+The practical consequence for authoring: an empty string or an empty path does NOT need a
+`<Constant type="string" value=""/>`; `0STR` and `0PTH` exist and are what NI's own diagrams use. The
+loop iteration terminal, which the old text confused this with, is the `count` attribute on the
+`Structure` instead.
+
+### Conditional tunnels: `cond=`, on 450 tunnels, and this file showed one without explaining it
+
+`cond` appears on **450 tunnels across the corpus** — 291 on `Out`, 159 on `In` — against a single
+unexplained example in this document. Two forms occur:
+
+| form | count | |
+|---|---:|---|
+| `cond="true"` | 443 | the overwhelming majority |
+| a wire or inline expression — `cond="973.value"`, `cond="529..not. x?"`, `cond="51.x > 0?"` | 7 | a condition computed on the diagram |
+
+```xml
+<Tunnel _id="Out1" cond="421..not. x?" inputs="value:365.value" mode="index"
+        outputs="value:383.value" uid="383" uid_parent="358"/>
+```
+
+A conditional output tunnel adds an element only on the iterations where the condition holds, which
+is how a loop filters while it collects — the idiom otherwise written with a Case structure inside
+the loop.
+
+**What `cond="true"` means is NOT established here.** It is consistent with a flag that marks the
+tunnel conditional while the condition arrives on a wire named elsewhere, and it is also consistent
+with a literal always-true. 443 against 7 is too lopsided to guess from, and nothing was authored to
+test it. Do not write either reading down as fact.
+
+**How both of these were found.** A user brought an outside summary of the format and it named
+constructs this file did not. Checking it cost one grep of the export cache per claim, and it found
+one description that was wrong and one attribute used 450 times with no explanation. It also
+disagreed with measurement on two points — it calls `uid` uniqueness a hard rule when the generator
+silently repairs a duplicate, and it says `uid` is not used for wiring when the wire NAME embeds it.
+An outside reference is worth checking against the corpus, in both directions.
 
 ### Ring and enum controls
 

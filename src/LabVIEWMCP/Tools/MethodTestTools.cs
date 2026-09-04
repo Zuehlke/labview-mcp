@@ -77,8 +77,22 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         `inputs` overrides the default for any terminal, required or not named here.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
+        A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
+        run: the MCP client answered `Request timed out` / `Connection closed` while the server
+        kept going and completed correctly - the .vi on disk, its mtime and a fresh AIXML export
+        all confirmed the full generate, the swaps and the project entry had landed. VERIFY
+        BEFORE RETRYING: check the file, or you generate the same suite twice and the second
+        attempt fights the first for the sockets.
         READ THE JUNIT REPORT, NOT `error out`, and PROVE IT CAN FAIL once: change one
         expectErrorCode by a digit, confirm exactly one failure, put it back.
+        A COLD EXPORT OF A DRIVER-DEPENDENT METHOD HAS KILLED LabVIEW. Measured 2026-09-03: three
+        deaths in one session, every one while this call pulled a DAQmx class member's hierarchy in
+        for the first time; the log tail was hundreds of `DSToExtFuncLinkRef::UnFlatten` lines for
+        DAQmx channel variants. Exporting one method FIRST, on its own, made the call succeed. This
+        tool now does that warm-up itself and reports it as its own step, so a death there is
+        attributed to the warm-up rather than to a case - but it is a mitigation, not a fix, and
+        the crash is in NI's code. If it happens anyway, restart LabVIEW and call again: the second
+        attempt has always succeeded.
         """)]
     public async Task<string> GenerateMethodTestAsync(
         [Description(@"Absolute path to the .lvclass whose methods are the subject")]
@@ -129,6 +143,35 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             // for a folder that simply is not there. Measured 2026-09-03.
             if (Path.GetDirectoryName(Path.GetFullPath(testViPath)) is { Length: > 0 } target)
                 Directory.CreateDirectory(target);
+
+            // WARM THE HIERARCHY ONCE, BEFORE ANYTHING ELSE. Measured 2026-09-03: LabVIEW died
+            // three times pulling a DAQmx class member's dependencies in for the first time, and
+            // exporting one method on its own beforehand made the call succeed. Doing it here
+            // rather than inside the first case's resolution means a death is attributed to THIS
+            // step - which is the difference between "the driver hierarchy is expensive to load"
+            // and "case 1 is broken". Best effort: a failure here is not fatal, because the
+            // per-case export that follows reports properly.
+            var firstMethod = Path.Combine(folder, $"{requested[0].Method}.vi");
+            if (File.Exists(firstMethod))
+            {
+                var warm = Stopwatch.StartNew();
+                var warmExport = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                    Path.ChangeExtension(Path.GetFileName(firstMethod), ".warm.xml"));
+                Directory.CreateDirectory(Path.GetDirectoryName(warmExport)!);
+                await new AixmlTools(connection).ConvertViToAixmlAsync(
+                    firstMethod, warmExport, returnContent: false, maxContentChars: 1000,
+                    timeoutSeconds: timeoutSeconds, refresh: true, ct: ct);
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "warmHierarchy",
+                    ["method"] = requested[0].Method,
+                    ["elapsedMs"] = warm.ElapsedMilliseconds,
+                    ["note"] = "One export before the real work, so the driver hierarchy is loaded " +
+                               "once and a failure here is attributed to the load rather than to a " +
+                               "case. LabVIEW has died at this point three times; a restart and a " +
+                               "second call have always got past it.",
+                });
+            }
 
             // Resolve each case against the FILES. A method that is not there is a class whose
             // methods were never added, and saying so beats failing at validation.
@@ -515,7 +558,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 var wanted = uid++;
                 sb.AppendLine(TestTools.Constant(wanted, "int32",
                     expected.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    $"erwarteter code {test.Slot}"));
+                    $"expected code {test.Slot}"));
 
                 assertions.Add(Assert(sb, ref uid, define, wanted, $"{unbundle}.code",
                                       $"{test.Label} (error code)"));

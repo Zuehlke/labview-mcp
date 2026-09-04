@@ -94,6 +94,40 @@ internal sealed class BulkTools(LvaiConnection connection)
             var steps = new JsonArray();
             var aixml = new AixmlTools(connection);
 
+            // THE CHECK GOES FIRST BECAUSE IT COSTS NOTHING AND LabVIEW CANNOT DO IT. It covers the
+            // three faults ValidateAIXML was measured to accept, of which a dangling `uid_parent`
+            // is the damaging one: LabVIEW silently reparents that element to the top-level
+            // diagram, so a node meant to sit inside a loop ends up outside it with nothing
+            // reported at validate, convert or run. Blocking here is consistent with this tool's
+            // existing contract - it stops at the first failure and names it - and the raw RPCs
+            // stay open for a caller who wants LabVIEW's own tolerance.
+            if (File.Exists(aiXmlFilePath))
+            {
+                // REPAIR FIRST, INTO A COPY, and fail only on what cannot be repaired. A duplicate
+                // uid nothing is nested inside, and a uid in the reserved range, are both mechanical
+                // - the numbers are ours to choose and no wire refers to them. What is left is
+                // exactly the set where the author's intent is unknowable, and guessing there would
+                // turn a reported fault into a hidden one.
+                var (source, repairReport) = AixmlTools.Repaired(aiXmlFilePath);
+                if (repairReport is not null) steps.Add(Step("repair", repairReport));
+                aiXmlFilePath = source;
+
+                if (AixmlTools.PreCheck(aiXmlFilePath) is { } check
+                    && check["errors"]?.GetValue<int>() > 0)
+                {
+                    steps.Add(Step("check", check));
+                    return Outcome(false, "check", steps, total, viPath, null,
+                        "The AIXML has a fault LabVIEW would ACCEPT silently and that cannot be " +
+                        "repaired without guessing, so nothing was written. `danglingParent` is " +
+                        "the one that changes the diagram: LabVIEW places that element on the " +
+                        "top-level diagram instead of inside the structure you named, and reports " +
+                        "nothing anywhere - which is why setting it to root here would hide the " +
+                        "fault rather than fix it. Name the structure's real uid. " +
+                        "lvai_convert_aixml_to_vi still generates it if you want LabVIEW's own " +
+                        "behaviour.");
+                }
+            }
+
             var validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds, ct);
             steps.Add(Step("validate", validate));
             if (Failed(validate))
@@ -191,6 +225,17 @@ internal sealed class BulkTools(LvaiConnection connection)
         ["step"] = name,
         ["errorCode"] = ErrorCode(answer),
         ["answer"] = Parsed(answer),
+    };
+
+    /// <summary>
+    /// A step whose answer was produced here rather than by LabVIEW, so there is no RPC error code
+    /// to report - the pre-check is the only one so far.
+    /// </summary>
+    private static JsonObject Step(string name, JsonObject answer) => new()
+    {
+        ["step"] = name,
+        ["errorCode"] = answer["errors"]?.GetValue<int>() > 0 ? 1 : 0,
+        ["answer"] = answer.DeepClone(),
     };
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,

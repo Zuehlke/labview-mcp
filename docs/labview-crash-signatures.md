@@ -600,3 +600,612 @@ Practical consequences:
   which happened first time round.
 - **An empty Windows event log is not an alibi.** Neither for LabVIEW nor for anything else that
   installs its own crash handler.
+
+## A pylabview edit produces NO DWarn entries — and that is not the same as being safe
+
+Measured 2026-09-03, prompted by the question "do we get these DWarns when we change files with
+pylabview too?".
+
+**The measurement.** LabVIEW restarted so the counter began at zero (it saturates at 200, so a delta
+cannot be read from a session that already flooded). Baseline `dwarnCount: 0`. Then a full
+`pylv_apply` cycle on one VI — close active project, extract, `conpane` 4833 -> 4815, rebuild, and
+the verify step in which **LabVIEW itself loads and exports the rebuilt file**. Afterwards, read from
+the log file rather than from the tool: **0 DWarn lines, 0 minidump ids**, new log started 19:06:00.
+
+| route | what it touches | DWarn in one run |
+|---|---|---|
+| `lvai_swap_subvis` -> `{LV.SubVI}` `Replace` | LabVIEW's LIVE object heap, in memory | **>= 200**, all `HeapObjMapImpl.cpp(226)` |
+| `pylv_apply` -> rebuild -> LabVIEW opens the file | a FILE on disk, LabVIEW not watching | **0** |
+
+**Why that shape is expected.** `HeapObjMapImpl` is the map of objects in a loaded VI's heap, and the
+signature is `trying to override with non-reserved UID` — a UID handed out that the map had not
+reserved. Scripting deletes and recreates heap objects in a running process, which is exactly where
+that bookkeeping can drift. pylabview never enters that path: it writes bytes while LabVIEW is not
+looking, and LabVIEW then performs an ordinary file open. This explains the measurement; it does not
+prove it, and the mechanism is in NI's source.
+
+**THE COUNTER IS NOT A WARNING SYSTEM FOR THE PYLABVIEW ROUTE, and reading it as one would be worse
+than not reading it.** `docs/connector-pane-repair.md` records `--reindex` and `--follow` **killing
+LabVIEW on load, twice** — `LabVIEW.exe` gone from the process table, with dozens of `--pattern`
+changes, retargets and comment placements passing untouched in between. So the two routes appear to
+fail in different shapes:
+
+- **LabVIEW scripting degrades gradually** — DWarns accumulate, the process keeps answering, and a
+  crash may follow. The count is a real signal, and `dwarnCountSaturated` says when it is a floor.
+- **A pylabview file fails all-or-nothing** — it loads correctly, or the process is gone. There is
+  nothing to count and no warning to read.
+
+**Scope of this measurement, stated so it is not over-quoted:** ONE operation (`conpane`) on ONE
+small VI. The two operations known to kill are now refused by the script, so they cannot be
+re-measured, and re-deriving them would mean more crashes on a working station to learn nothing new.
+
+## NARROWED, 2026-09-03: the DWarn is emitted PER AIXML OBJECT, and a high `uid` avoids it entirely
+
+Prompted by "can you narrow down when these DWarns occur?". Measured in one fresh LabVIEW, reading
+the log file after each step rather than the tool's count.
+
+| step | DWarn lines | delta |
+|---|---|---|
+| fresh LabVIEW, baseline | 0 | — |
+| full `pylv_apply` cycle **incl. LabVIEW loading the rebuilt file** | 0 | **+0** |
+| `lvai_generate_vi`, AIXML with `uid` 10 / 20 / 30 | 12 | **+12** |
+| `lvai_validate_aixml` alone, same file | 18 | **+6** |
+| `lvai_validate_aixml` alone, `uid` 9010 / 9020 / 9030 | 18 | **+0** |
+| `lvai_generate_vi`, `uid` 9010 / 9020 / 9030 | 18 | **+0** |
+
+**The law: two DWarns per uid-bearing AIXML object, per pass.** Three objects gave 6 in validate and
+6 in convert. `lvai_generate_vi` runs both, so it costs **four per object**.
+
+**`request:` IS THE `uid` FROM THE FILE, literally.** The three entries read `request: 10`,
+`request: 20`, `request: 30` — the exact `uid` values in that AIXML — against `max: 42`, `56`, `67`.
+LabVIEW reserves a UID range in the panel heap and our numbers sit inside it. Raising them above the
+ceiling produced **zero** entries in both validate and convert.
+
+This confirms the "our own low uids" hypothesis from the fifth-signature section with a direct
+dose-response, and it settles the alternative: no unusual input is needed, only a low `uid`.
+
+### Two things this corrects
+
+**The count is not a health signal — it is a measure of how much AIXML was generated.** Saturating at
+200 needs about **50 objects**, i.e. two or three generated test VIs. So `looksDegraded` derived from
+`dwarnCount` will fire on any real run and means nothing about health. `dwarnCountSaturated` at least
+stops the number being quoted as a magnitude.
+
+**"The flood came at the failing swap" was WRONG**, and it was written here from an agent's report
+plus a coincidence in timing. Run 9's 36 -> 200 happened across a `lvai_generate_class_test` call
+that generates eight socket VIs plus a test VI from AIXML — 36+ objects, hundreds of DWarns by the
+law above. The failing `Replace` was concurrent, not causal. `lvai_swap_subvis` drives `Replace`,
+which is not an AIXML path at all.
+
+### Why the pylabview route reads zero
+
+It never converts AIXML. `pylv_apply`'s verify step goes the other way — `ConvertVIToAIXML` — and
+LabVIEW opening a rebuilt file is an ordinary file load. Nothing asks the panel heap for a UID.
+
+### The fix that is implied, and why it is not applied here
+
+Renumbering generated AIXML to a high base (thousands) would remove the entries entirely. That is a
+real change and touches more than one place: every helper in `scripts/`, the uids the tools emit, and
+anything that READS a uid — `pylv-place-labels.py` anchors comments by uid, and
+`lvai_placeholder_subvi` hands back `uid="NN"` for the caller to fill in. Whether removing the
+collision also removes the CRASHES is unknown: the fifth-signature sections record correlation only,
+and the same low uids have produced hundreds of working VIs.
+
+Scope: one small VI, one station, ceiling observed at 42-67 and known to grow with object count
+(55 / 69 / 83 in an earlier log). Values in the thousands cleared it here; that is not a proof that
+any particular base is always safe.
+
+### The control that settles it: LabVIEW's OWN AIXML is silent
+
+Asked directly — "do these only happen with OUR XML? run VI -> XML -> VI unchanged and see." Measured
+2026-09-03, same session, continuing the table above from 18.
+
+| step | DWarn lines | delta |
+|---|---|---|
+| `lvai_convert_vi_to_aixml` on `Probe Subject.vi` (VI -> XML) | 18 | **+0** |
+| `lvai_convert_aixml_to_vi` on that export, unmodified (XML -> VI) | 18 | **+0** |
+
+**Zero. The round trip is completely silent**, and the VI is the same three objects that produced 12
+entries when built from hand-authored AIXML. So the trigger is NOT "AIXML is being processed" and not
+the generator as such — it is the `uid` VALUES in the file.
+
+**LabVIEW numbers one above its own ceiling, every time.** Its export of that VI reads:
+
+```xml
+<Control _name="value"  ... uid="43"/>
+<Node    _name="Increment" ... uid="57"/>
+<Indicator _name="result"  ... uid="68"/>
+```
+
+against the ceilings the DWarn reported for the same three objects — `max: 42`, `56`, `67`. That is
+43 = 42+1, 57 = 56+1, 68 = 67+1. LabVIEW allocates immediately above the reserved range; our
+`10 / 20 / 30` sit inside it, which is exactly what `trying to override with non-reserved UID` says.
+
+**The practical rule this gives us, and it needs no guessing at a safe base:** number generated AIXML
+the way LabVIEW's own export does. Every helper in `scripts/` currently starts at `uid="10"`, so every
+helper run emits these entries — which is why an ordinary session accumulates them steadily and
+saturates at 200 after about fifty objects.
+
+**What it still does not establish** is whether the collision has anything to do with the crashes.
+That remains correlation: the fatal stacks are in the same `VI generator.vi`, and these same low uids
+have produced hundreds of working VIs.
+
+### `uid="0"` IS the sentinel: reusable, silent, and LabVIEW numbers the object itself
+
+Asked next — "what happens with uid 0 or -1? does LabVIEW assign a new one?" Measured 2026-09-03,
+same session, continuing from 18.
+
+| AIXML `uid` values | result | DWarn delta |
+|---|---|---|
+| `0 / 1 / 2` | generated | **+8** — four each from 1 and 2, **NONE from 0** |
+| `-1 / -2 / -3` | **refused at validate** | — |
+| `0 / 1 / 0` (0 reused) | generated, correct | **+4** — only from 1 |
+
+**Negative is refused by the schema, and the message names the floor:**
+
+```
+value '-1' must be greater than or equal to minInclusive facet value '0'
+```
+
+So `0` is the schema's documented minimum, not an accident.
+
+**`uid="0"` produces no DWarn, may be REUSED, and the object still gets a proper id.** The VI built
+from `0 / 1 / 0` exports as:
+
+```xml
+<Control   _name="value"     ... outputs="value:43.value" uid="43"/>
+<Node      _name="Increment" ... outputs="x+1:57.x+1"     uid="57"/>
+<Indicator _name="result"    ... inputs="value:57.x+1"    uid="68"/>
+```
+
+— the same `43 / 57 / 68` LabVIEW assigns in its own export of the equivalent VI, with the wiring
+intact and the two zero-uid objects given distinct numbers. So an AIXML `uid` is only a
+**file-internal wiring reference**; LabVIEW allocates its own regardless, and `0` means "I am not
+referenced, number me yourself".
+
+**The rule this gives:**
+
+- an object that **no net references** -> `uid="0"`, always silent whatever the heap ceiling is
+- an object a net **must reference** -> a value above LabVIEW's reserved ceiling; `9010` was silent
+  where `10` was not
+
+`uid="0"` is the more robust half, because it skips the reservation check rather than trying to clear
+a ceiling that GROWS with object count (42-67 here, 55-83 in an earlier log). A number chosen to be
+"high enough" is a guess; zero is not.
+
+**Not established:** whether removing the collision removes the CRASHES. Still correlation.
+
+**An unrelated observation from the same probes, recorded so it is not lost:**
+`lvai_run_vi_and_read_values` answered `Error 91` at `Control Value:Set` for a `double` input passed
+as the string `"41"` — and did so **identically on a known-good VI**, so it is not about uids. Not
+investigated further here.
+
+### Does the fix hold on a REAL-SIZED VI? Yes — 42 objects, zero UID DWarns
+
+The three-object probes above leave one doubt: the reserved ceiling GROWS with the object count
+(42, 56, 67 for objects 1, 2, 3 — about +13 each), so a uid that clears it at three objects might not
+at forty. Measured directly rather than extrapolated.
+
+A generated 42-object VI — one control, forty chained `Increment` nodes, one indicator — with every
+referenced object numbered from 9010 in steps of 10 (highest 9410) and the unreferenced sink at
+`uid="0"`:
+
+| | |
+|---|---|
+| `0xBB613420` (non-reserved UID) before | 30 |
+| after generating the 42-object VI | **30** — **zero added** |
+| extrapolated ceiling at object 42 | ~575, against a lowest uid of 9010 |
+
+**So the answer to "will we still get these when we generate VIs ourselves?" is no, provided every
+REFERENCED object is numbered high.** The sentinel alone is not enough: counted across all 39 helpers
+in `scripts/`, **853 of 1 089 objects (78 %) are referenced by a net** and need a real uid; only 22 %
+can take `uid="0"`.
+
+**Pick the step with the ceiling's growth in mind.** Ours grows ~13 per object while a step of 10
+grows slower, so the two converge — at about 3 000 objects on this arithmetic. No helper here comes
+close (the largest, `lvai_create_accessors.xml`, has 99), but a step of 20 or a base of 100 000
+removes the question rather than bounding it.
+
+**A DIFFERENT signature appeared in the same window and is NOT this one:** two entries of
+`ThEvent.cpp(213) : DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42`, marked
+`[ExecSys:0; NOT InExec]`. That is the second failure mode already described in this document, it is
+not a UID collision, and nothing here addresses it. It is named so the "zero" above is not read as
+"the log went quiet".
+
+### CORRECTION and the full model: a HIGH uid is KEPT, a low one is replaced
+
+The section above states that "an AIXML `uid` is only a file-internal wiring reference; LabVIEW
+allocates its own regardless". **That is true only BELOW the reserved ceiling.** Measured
+2026-09-03 after Nigel's description of the schema prompted a duplicate-uid probe.
+
+A VI authored with `9010 / 9020 / 9010` — the last a deliberate duplicate — generated with
+`errorCode 0` and exported as:
+
+```xml
+<Control   _name="value"     ... outputs="value:9045.value" uid="9045"/>
+<Node      _name="Increment" ... outputs="x+1:9020.x+1"     uid="9020"/>
+<Indicator _name="result"    ... inputs="value:9020.x+1"    uid="9010"/>
+```
+
+**`9020` and `9010` came back verbatim.** Only the colliding one was renumbered, to `9045`. Compare
+the low-uid and zero-uid probes, which came back as LabVIEW's own `43 / 57 / 68` every time.
+
+**The model that fits all six probes:**
+
+| what you write | what LabVIEW does | DWarn |
+|---|---|---|
+| `uid` **above** the reserved ceiling | **keeps it verbatim** | none |
+| `uid` **inside** the ceiling, non-zero | warns, then reassigns to its own number | **2 per object per pass** |
+| `uid="0"` | treats it as "unspecified", assigns silently; **may be reused** | none |
+| a **duplicate** of any value | renumbers one of them, no error | per the rows above |
+| **negative** | refused at validate, `minInclusive facet value '0'` | — |
+
+So `trying to override with non-reserved UID` is literally what it says: we asked for a number inside
+LabVIEW's reserved range, it declined, and it substituted its own. Nothing is lost — which is why
+hundreds of VIs have been generated correctly while emitting these.
+
+**A bonus of numbering high that was not the goal:** the export then carries the SAME uids as the
+source AIXML, so a generated VI round-trips stably. Today every generated VI comes back renumbered,
+which makes an AIXML diff across a regeneration noisier than it needs to be.
+
+**On uniqueness.** The schema does not enforce it and the generator repairs a collision silently, so
+a duplicate is not an error — but it IS a bad idea in authored AIXML: which of the two gets renumbered
+is the generator's choice, so the file you wrote and the file you get back disagree in a way nothing
+reports. Treat uniqueness as a rule we keep, not one that is checked. `uid="0"` is the deliberate
+exception, because it asks for no number at all.
+
+### There are TWO kinds of these DWarns, and only one of them is ours
+
+Twelve VIs built and measured in one LabVIEW session, 2026-09-03, to answer "can we get them to
+zero?". The running total, each step read from the log file:
+
+| step | total | delta |
+|---|---|---|
+| fresh LabVIEW | 0 | — |
+| full pylabview cycle incl. LabVIEW loading the file | 0 | +0 |
+| generate, `uid` 10 / 20 / 30 | 12 | **+12** |
+| validate only, same low uids | 18 | **+6** |
+| validate and generate, `uid` 9010+ | 18 | +0 |
+| generate, `uid` 0 / 1 / 2 | 26 | **+8** (none from `0`) |
+| generate, `uid` 0 reused twice | 30 | **+4** (only from `1`) |
+| 42-object VI, high uids, sink at `0` | 30 | +0 |
+| duplicate-uid probe, arbitrary wire names | 30 | +0 |
+| **first structured VI** — For Loop + indexing tunnel + shift register | 54 | **+24** |
+| bare For Loop / tunnels only / shift register only | 54 | +0 |
+| LabVIEW's own export of that VI, fed back | 54 | +0 |
+| the same VI with every wire renamed | 54 | +0 |
+| **the very file that produced the 24, re-run** | 54 | **+0** |
+
+**Class 1 — ours, repeatable, avoidable.** A `uid` inside LabVIEW's reserved range costs two entries
+per object per pass, on every generation. `request:` is our number literally. Numbering above the
+ceiling, or `uid="0"`, removes it. This is the class the rest of this document is about.
+
+**Class 2 — LabVIEW's own, one-off per session, NOT avoidable.** The 24 from the first structured VI
+carried `request: 1, 1, 3, 10, 11, 20` — numbers that appear **nowhere in the AIXML**, whose uids were
+all 9010-9100. They did not reappear when the identical file was generated again, nor for the
+isolated parts. It is a first-use cost paid when a construct is first instantiated in a session, in
+LabVIEW's own low-numbered internal objects.
+
+**The wrong turn, recorded because it was two measurements away from being written down as fact.**
+The first structured VI differed from the silent probes in its wire names, so "non-canonical wire
+names cost DWarns" fitted every observation available at that moment. Two controls killed it:
+renaming every wire in a silent VI added nothing, and re-running the guilty file added nothing. The
+difference was WHEN it ran, not WHAT was in it. A single measurement of a stateful system cannot
+distinguish a property of the input from a property of the session — re-run the same input before
+believing either.
+
+### What LabVIEW changes when it re-exports a VI you authored
+
+Asked directly: does LabVIEW correct our uids? Measured on the structured VI, every uid high:
+
+**It corrected none of them.** All nine came back verbatim - 9010, 9020, 9030, 9040, 9060, 9070,
+9080, 9090, 9100, `uid_parent` relationships intact. What it rewrote was the **wire names**:
+
+| authored | came back as |
+|---|---|
+| `9040.elem` | `9040.value` |
+| `9060.sum` | `9060.x+y` |
+| `9050.acc` | `9060.x` |
+| `9090.total` | `9090.value` |
+
+So LabVIEW's own convention is `<uid>.<terminal name>` using an endpoint's REAL terminal name - and
+not always the producer's: the shift register's `Left` output became `9060.x`, named after the
+CONSUMING node's uid and input terminal. Nothing depends on this (a wire name is an arbitrary token),
+but it is what an export will look like, so a diff of authored-versus-exported AIXML shows wire-name
+churn that means nothing.
+
+### CORRECTION: there is no "first-use cost" class, and generation CAN be silent
+
+The section above concluded from the 24 entries that a second, unavoidable class exists — a one-off
+cost when a construct is first instantiated. **That is wrong, and the reasoning behind it was
+unsound: the +24 spanned a stretch in which SEVEN operations ran, and it was attributed to the one
+at the end because that one was interesting.** Nothing was measured in between.
+
+Re-run properly on 2026-09-04, LabVIEW restarted so the counter began at zero, every input replayed
+with a measurement after each:
+
+| operation, in order, in one fresh session | `0xBB613420` |
+|---|---|
+| baseline, nothing generated | 0 |
+| **structured VI** — For Loop + indexing tunnel + shift register, all uids 9010+ | **0** |
+| tunnel VI, uids 9010+ | 0 |
+| 42-object chain, uids 9010+ with the sink at `uid="0"` | 0 |
+| a Case-structure file that FAILS validation | 0 |
+| `uid_parent="7777"`, resolving to nothing | 0 |
+| a Ring whose `value` is outside its `values` | 0 |
+| a `double` control with `value="hello"`, `Error 53` | 0 |
+
+**Zero throughout, including the exact file that "produced" the 24.** So the answer to "can we
+generate our own VIs without adding DWarn entries?" is **yes**, and it is now demonstrated rather
+than inferred: eight operations, four of them generations, one of them structured, none silent by
+luck.
+
+**The condition is the one this document already establishes:** every `uid` above LabVIEW's reserved
+ceiling, or `uid="0"` where nothing references the element. A low `uid` remains reliably costly —
+twelve entries for a three-object VI, reproducible on demand.
+
+**What produced the 24 is NOT established.** It required session state that the fresh replay does not
+have, and the only structural difference is that the earlier session had generated several LOW-uid
+VIs first. That is a hypothesis, not a measurement, and it is recorded as such. The `request:` values
+there — 1, 1, 3, 10, 11, 20 against ceilings climbing 42 to 130 — belong to no element of the AIXML
+being generated.
+
+**The process lesson, which is the same one three times now.** A delta between two measurements is
+evidence about the WHOLE interval, not about the operation you happened to be interested in. Both
+wrong turns in this investigation had that shape: "non-canonical wire names cost DWarns", killed by
+two controls, and "there is an unavoidable first-use class", killed by a restart and a replay. In a
+stateful system, measure after every step or claim nothing about which step did it.
+
+### OPEN: the uid rule does NOT hold for our own shipped helpers, and that is unexplained
+
+Measured 2026-09-04 in one fresh session, counting after every step, while deciding whether
+`scripts/*.xml` needs renumbering:
+
+| what was generated or validated | uids | `0xBB613420` added |
+|---|---|---|
+| `subject.xml`, three objects | 10 / 20 / 30 | **12** |
+| the same file with uids raised | 9010 / 9020 / 9030 | 0 |
+| `lvai_run_and_read.xml` **regenerated by force** (27 objects) | from 10, controls at 10 and 11 | **0** |
+| `lvai_run_and_read.xml` validated directly | same | **0** |
+| `lvai_swap_subvis.xml` validated (65 objects) | from 10, `conIdx="0"` | **0** |
+
+**So a low `uid` is not sufficient on its own.** Two of our shipped helpers carry front-panel controls
+at `uid="10"` and `uid="11"` - exactly the values the earlier sections identify - and cost nothing,
+while a three-element probe with `uid="10"` costs twelve, reproducibly, in the same session minutes
+apart. `conIdx` is not the difference (both use `0`), nor object count (65 vs 3, the larger is the
+silent one).
+
+**What this changes practically:** nothing about the helpers under `scripts/`. They were measured
+directly and they are silent, forced regeneration included, so renumbering 39 files buys nothing that
+has been demonstrated. What still costs is the AIXML the TOOLS emit for VIs they generate on every
+run - `PlaceholderTools`, `TestTools`, `MethodTestTools`, `DqmhTools` all write `uid="10".."13"` -
+and those are small generated VIs of the same shape as the probe. Run 9's saturation appeared during
+exactly such a call.
+
+**What it changes about the RULE:** "a uid inside the reserved range costs two entries per object per
+pass" is true of every probe measured here and false of two shipped helpers. The mechanism is not
+established, so the rule should be applied as "measure the file you care about", not as a law. Do not
+renumber anything on the strength of the rule alone; renumber, then measure the same file before and
+after.
+
+### Run 10, 2026-09-04: the uid DWarn is GONE from a real build, and what is left is a different fault
+
+The first cold class build after `lvai_check_aixml` and its repair went in, instrumented with a
+`dwarnCount` reading at EVERY phase boundary rather than at the ends - the fix for the reasoning
+error that produced the retracted "first-use" claim.
+
+**The headline, verified from the log file rather than from a tool:**
+
+```
+DWarn 0xBB613420  (trying to override with non-reserved UID):   0
+DWarn 0xECE53844  (DestroyPlatformEvent failed with MgErr 42): 34
+```
+
+**Zero.** Two `lvai_create_class` calls, each converting a carrier VI from AIXML, 18 accessors, four
+generated Caraya suites - and the signature this document spent two days characterising did not
+appear once. The repair fired on every generation and reported exactly what it raised: 6 uids
+(10-15 -> 4200-4250) for the base carrier, 3 for the child, 3 for each Caraya runner (10, 11, 40).
+
+**So the answer to "when do they occur, and can we fix them" is: the uid ones occurred at AIXML->VI
+conversion, and they are fixed.** Not mitigated - absent.
+
+**What is left is NOT the same fault.** All 34 lines are `source\ThEvent.cpp(213)`, and
+`dwarnCount` counts LINES while each event writes two, so 34 lines are **17 events**. Attribution
+from the per-phase readings:
+
+| phase | Δ events |
+|---|---|
+| project creation, both `lvai_create_class`, `lvai_bind_class_fields` | **0** |
+| all five `lvai_create_accessors` slices | **0** |
+| verify + `lvai_close_active_project` | **0** |
+| a whole Caraya run of 7 tests | **0** |
+| the two test agents' `lvai_generate_class_test` calls | 17 |
+
+Fourteen of the seventeen carry **no VI attribution at all** (`[ExecSys:0; NOT InExec]`, no call
+stack) and name `nierclient`/`sentry` frames - NI's own error-reporting client. They cluster around
+`lvai_generate_class_test` at about +8 per call and do NOT scale with the number of test cases.
+
+**Best current reading: `0xECE53844` is event-handle teardown in the helper machinery, roughly
+proportional to how many distinct helper VIs a tool spins up and tears down.** It is not AIXML
+conversion, not execution, and not the project close - the close in this run produced zero, and a
+`lvai_describe_project` with no close anywhere near it produced +4 on its own.
+
+**A mid-run hypothesis was formed and discarded**, which is worth recording because it is the same
+trap: two events landed next to `lvai_close_active_project.vi` and were briefly read as caused by the
+close. The later `describe_project` reading falsified it.
+
+### The remaining source-side finding
+
+**Our own shipped template AIXML carries reserved-range uids** - the class carrier and the Caraya
+runner both - so the repair renumbers them on every single generation. It works, but the template and
+the export disagree by construction. Renumbering the templates at source would make the repair a
+no-op there. Note this is cosmetic rather than a DWarn fix: measured separately, our shipped HELPER
+AIXML uses low uids and logs nothing, and why the two differ is still unexplained.
+
+### Timing, and why it must not be read as a regression
+
+| | run 1 | run 2 | run 9 | **run 10** |
+|---|---|---|---|---|
+| wall clock | 3 434 s | 1 787 s | 1 091 s | **1 441 s** |
+| inside LabVIEW | 353 s | 362 s | 429 s | **~292 s** |
+| ratio | 9.7 : 1 | 4.9 : 1 | 2.5 : 1 | **4.9 : 1** |
+| calls | - | - | 67 | ~110 |
+| tests delivered | - | - | 11 | **13** |
+
+Run 10 is slower than run 9 and **two deliberate differences account for it**, so it is not evidence
+that anything regressed:
+
+- **The test agents ran SEQUENTIALLY** (955 s of the 1 441). In run 9 they ran in parallel and
+  finished together. That is orchestration, not tooling.
+- **The instrumentation cost about 60 s of pure turn latency for 0 s of LabVIEW** - eight
+  `lvai_status` calls purely to read a counter. If this benchmark repeats, the honest fix is for
+  mutating tools to return `dwarnBefore`/`dwarnAfter` themselves and delete the phase-boundary dance
+  entirely.
+
+### Run 12 settles the attribution: it is NI's OWN code, and generation is innocent
+
+Run 12 measured every phase individually, icons included, in a LabVIEW started at zero. 36 new
+lines = 18 events, every one `ThEvent.cpp(213) 0xECE53844`, **zero uid entries for the third run
+running**.
+
+| phase | VIs touched | Δ events |
+|---|---|---|
+| project file creation | — | 0 |
+| `lvai_create_class` x2 (AIXML carrier + NI provider) | 2 | 2 |
+| `lvai_bind_class_fields` | — | 1 |
+| **`lvai_create_accessors`, 5 slices** | **18 created** | **12** |
+| method authoring: close + 8 placeholders + 7 validates | 8 | 1 |
+| `lvai_add_class_method` x2 | 4 | **0** |
+| `lvai_swap_subvis`, 4 VIs | 4 | 1 |
+| **icons, `lvai_set_vi_icon`** | **22 RE-SAVED** | **0** |
+| `lvai_generate_class_test` x3, `generate_method_test`, runner | ~8 created | 1 |
+| project edits, test runs, JUnit | — | 0 |
+| **running the class's DAQmx methods top-level, no device** | — | **1** |
+
+**ICONS ARE REFUTED, and they were the strongest remaining hypothesis.** A `lvai_set_vi_icon` call
+draws a bitmap and does `Save.Instrument`; 22 of them in the class build and 6 more across the two
+test agents re-saved 28 VIs and produced **nothing**. So it is not saving, not writing, not touching
+a VI on disk.
+
+**Generation is innocent too.** AIXML -> VI, placeholders, swaps, project edits, running a Caraya
+suite: all zero. `lvai_add_class_method`, which converts four VIs and retypes their panes, produced
+zero.
+
+**What is left are two things, and both are NI's own code running, not ours:**
+
+- **`lvai_create_accessors`** - 12 events for 18 accessor VIs, about 0.67 per VI, by far the largest
+  single row. It drives `CLSUIP_CreateNewAccessor.vi`, NI's provider wizard, which loads and releases
+  the whole class library per field.
+- **Executing DAQmx with no device** - the only two events in run 12's second test agent came from
+  running `Initialize`/`Start`/`Read`/`Close` top-level to observe their error codes. Not from
+  generating them.
+
+That fits the signature exactly: `DestroyPlatformEvent failed with MgErr 42` with
+`[ExecSys:0; NOT InExec]` is LabVIEW failing to release an OS event handle during housekeeping, and
+the two rows above are the phases where NI's own code churns the most handles.
+
+**Can we fix it? No, and it does not need fixing.** Both producers are inside NI's code, reached
+through the only route that exists for the job. LabVIEW never died in runs 10, 11 or 12, no restart
+was needed, and `dwarnCountSaturated` stayed false in every one - the counter never approached its
+200 floor. It is housekeeping noise.
+
+**The one thing that IS ours: `looksDegraded` reacts to the count regardless of signature**, and read
+`true` during run 11 purely because the number rose. A harmless `ThEvent` teardown and the
+`OMAutoClasses` signature that precedes real deaths are not the same event, and the health answer
+should not treat them alike.
+
+### Two naming traps this run turned up
+
+- **A class method called `Read.vi` hit `Error 1051`** - "a LabVIEW file of that name already exists
+  in memory". Renaming it `Read Samples.vi` cleared it. Short generic member names - `Read`, `Write`,
+  `Open`, `Close` - are risky in an environment that resolves by NAME; note that `Close.vi` in the
+  same class did NOT collide, so this is about what happens to be loaded, not about a fixed list.
+- **`lvai_status`'s `DeadlineExceeded` text says "LabVIEW is HUNG ... the process has to be killed".
+  Under two concurrent agents that is wrong and dangerous**: `Responding` was `True` and the service
+  answered normally 40 s later. `DeadlineExceeded` means BUSY when another agent holds the instance,
+  and following the advice would kill the other agent's work.
+
+### RETRACTED again: `lvai_create_accessors` is NOT the source either
+
+The section above names `create_accessors` as the dominant producer, at about 0.67 events per
+accessor VI, from run 12's per-phase reading of `dwarn=8 -> 32`. That reading was correctly isolated
+and is not in doubt. **The conclusion drawn from it is wrong**, because the operation was never
+tested on its own:
+
+| probe, each in a quiet LabVIEW, counted immediately before and after | Δ |
+|---|---|
+| `lvai_create_class`, 4 fields, scratch project opened and closed | **0** |
+| a second `lvai_create_class` in the same instance | **0** |
+| **`lvai_create_accessors`, 8 accessor VIs in 2 slices, 31.8 s inside LabVIEW** | **0** |
+| `lvai_generate_vi`, a helper run, a cached and a fresh placeholder | 0 |
+| `lvai_describe_project`, `lvai_close_active_project` | 0 |
+| icons: 28 VIs re-saved across a whole run | 0 |
+
+**Nine operations, all zero.** So no single call produces these entries, `create_accessors`
+included. What is established is only that they appear during long multi-step runs and not during
+isolated probes; WHY is not established, and this document should stop naming a culprit until it is.
+
+**The process failure is the same one three times, and it is worth naming precisely.** In each case
+a delta was measured across an interval, the most interesting operation in that interval was named
+as the cause, and the operation was never run on its own. A per-phase measurement is better than a
+per-run one and it is still not an isolation - a phase contains everything else the session was
+carrying. **The only thing that isolates is running the operation alone against a counter read
+immediately before and after.** It costs two extra calls and it has now overturned three
+conclusions.
+
+What survives from all of it: the **uid** signature is genuinely fixed and has not reappeared in
+three runs, and the remaining `ThEvent` signature is harmless - LabVIEW never died, no restart was
+needed, and the counter never approached its floor in any of them.
+
+### Run 13, and the end of the hunt: TEN operations isolated, all zero
+
+Run 13 was measured per phase, with the largest-delta phase then re-run ALONE against a counter read
+immediately before and after - the discipline that has now overturned every attribution this document
+made.
+
+| run 13 phase | Δ |
+|---|---|
+| Phase 0, both `create_class`, typedef bind | 0 |
+| **18 accessors** | **0** |
+| methods built (4) — *a test agent was spawned into the same instance mid-phase* | **32** |
+| error codes observed | 0 |
+| **22 icons** | **0** |
+
+Then, with both test agents finished and nothing else touching LabVIEW:
+
+| isolated call | Δ |
+|---|---|
+| `lvai_create_class`, 1 field | **0** |
+| **`lvai_add_class_method`, full success, 2 terminals retyped, verified on disk** | **0** |
+
+**The complete isolation table now stands at ten operations, every one zero:** `generate_vi`, a
+helper run, a cached placeholder, a fresh placeholder written into `user.lib`, `describe_project`,
+`close_active_project`, `create_class` (twice, with and without fields), `create_accessors` (8 VIs,
+31.8 s inside LabVIEW), and `add_class_method`. Icons add a further 28 VI re-saves across two runs at
+zero.
+
+**So no operation this server performs produces these entries on its own.** Every phase attribution -
+`generate_class_test`, `create_accessors`, `add_class_method` - has failed when the same call was run
+alone. Three retractions, one method.
+
+**What is NOT explained.** Run 12's accessor phase produced +24 with no other agent running, and run
+13's identically-shaped accessor phase produced 0. Concurrency fits run 13's methods phase and fails
+on run 12. No variable has been found that predicts which phases produce entries. That is the honest
+state, and this document should carry it as an open question rather than a fourth culprit.
+
+**What IS settled, and it is the part that matters:**
+
+- The **uid** signature - the one that was ours, and the one that scaled with the AIXML we wrote - is
+  **fixed**. Zero occurrences across runs 10, 11, 12 and 13.
+- The remaining `ThEvent 0xECE53844 DestroyPlatformEvent` signature is **harmless**: `NOT InExec`, no
+  VI call stack, NI's own frames. LabVIEW did not die once in four runs, no restart was needed, and
+  the counter never approached its 200 floor.
+- `looksDegraded` no longer counts it, so a clean run no longer reads as degraded. Confirmed in run
+  13: 32 entries, all `ThEvent`, `looksDegraded: false`.
+
+**The method, stated once for the next investigation.** A delta measured across an interval is
+evidence about the interval, not about the operation you find interesting inside it. A per-phase
+measurement is finer than a per-run one and is still an interval. The only thing that isolates is
+running the operation alone, with a counter read immediately before and after. It costs two calls.
+It has been decisive four times.
+

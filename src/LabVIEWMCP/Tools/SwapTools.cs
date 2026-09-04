@@ -69,7 +69,19 @@ internal sealed class SwapTools(LvaiConnection connection)
         string? swapsJson = null,
         [Description(@"JSON array of {label, class} constant swaps. Omit to swap no constants.")]
         string? constantsJson = null,
-        [Description("Re-export the VI afterwards and report what it now calls")]
+        [Description("""
+            Export the VI BEFORE and AFTER, and report what it now calls plus a wiring comparison.
+            On by default; the before-export is the whole added cost - one RPC, not a model turn.
+            `callTargets` and `socketsLeft` are the verdict. `wiringLost` is REPORTING ONLY.
+            IT IS NOT A VERDICT, AND THAT IS MEASURED. It gated `ok` for one day and produced false
+            negatives on three separate runs, for two reasons that together make the comparison
+            undecidable: a uid is NOT stable across `Replace` when several nodes move - five Write
+            nodes were measured jumping to 1070/273/269/230/124, so a before/after pairing by uid
+            compares unrelated nodes - and a correct swap onto a real accessor legitimately ends
+            with FEWER wired terminals than the socket had, because the accessor's error terminals
+            are fed a fresh `no error` constant instead of being chained. Read `wiringLost` against
+            the export when a diagram looks wrong; never branch on it.
+            """)]
         bool verify = true,
         [Description("""
             Keep every sub-answer whole. OFF by default because the full ones are large for no
@@ -283,6 +295,29 @@ internal sealed class SwapTools(LvaiConnection connection)
                 inputs["constant paths"] = string.Join("|", constants.Select(c => c.ClassPath));
             }
 
+            // THE WIRING BEFORE THE SWAP, so afterwards we can tell a net that MOVED from a net
+            // that was never there. Measured 2026-09-03: a swap between accessors of different
+            // types left the value wire attached to the CLASS terminal - both are refnums, so
+            // LabVIEW's Replace re-attached it there - `Sample Rate:` came out unwired, and this
+            // tool reported a clean restore because it only ever compared CALL TARGETS. One export
+            // is the whole cost, and it is an RPC rather than a model turn.
+            Dictionary<string, NodeWiring>? wiringBefore = null;
+            if (verify)
+            {
+                var beforePath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                    Path.ChangeExtension(Path.GetFileName(viPath), ".swap-before.xml"));
+                Directory.CreateDirectory(Path.GetDirectoryName(beforePath)!);
+                var beforeExport = await new AixmlTools(connection).ConvertViToAixmlAsync(
+                    viPath, beforePath, returnContent: true, maxContentChars: 0, timeoutSeconds,
+                    refresh: true, ct);
+                if ((Parse(beforeExport) as JsonObject)?["xml"]?.GetValue<string>() is { } beforeXml)
+                    wiringBefore = WiringByUid(beforeXml);
+
+                try { File.Delete(beforePath); }
+                catch (Exception failure) when (failure is IOException
+                                                or UnauthorizedAccessException) { }
+            }
+
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
@@ -302,6 +337,8 @@ internal sealed class SwapTools(LvaiConnection connection)
 
             JsonNode? targets = null;
             var socketsLeft = -1;
+            JsonArray? wiringLost = null;
+            var wiringChecked = false;
             if (swapped && verify)
             {
                 var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -327,6 +364,12 @@ internal sealed class SwapTools(LvaiConnection connection)
                 {
                     socketsLeft = swaps.Count(s => xml.Contains(s.Socket, StringComparison.Ordinal));
                     targets = new JsonArray([.. Targets(xml).Select(t => (JsonNode)t!)]);
+
+                    if (wiringBefore is not null)
+                    {
+                        wiringLost = LostWiring(wiringBefore, WiringByUid(xml));
+                        wiringChecked = true;
+                    }
                 }
 
                 try { File.Delete(exportPath); }
@@ -334,11 +377,38 @@ internal sealed class SwapTools(LvaiConnection connection)
                                                 or UnauthorizedAccessException) { }
             }
 
+            // A LOST NET MAKES THIS NOT OK, even though the retarget itself succeeded. The
+            // measured failure produced a diagram that linked, compiled and ran, and asserted
+            // against the wrong terminal - which is worse than a hard error, because the suite
+            // went green.
+            // WIRING IS REPORTED, NEVER A VERDICT. It gated `ok` from 2026-09-03 to 2026-09-04 and
+            // produced false negatives on three separate runs, for two independent reasons that
+            // together make the comparison undecidable rather than merely buggy:
+            //
+            //   1. A uid is NOT stable across `Replace` when several nodes are swapped. Measured on
+            //      a ten-node class suite: five Write nodes moved to 1070/273/269/230/124, so
+            //      pairing before/after BY UID compares unrelated nodes - the entry read
+            //      `targetBefore: LVMCP ClsW5.vi, targetAfter: ...Read Error Cluster.vi`. The single
+            //      controlled pair this was designed against kept its uid, which is exactly why one
+            //      measurement was not enough.
+            //   2. A DROP IN NET COUNT IS THE INTENDED SHAPE HERE. A socket carries obj in / value /
+            //      obj out; the real accessor carries a class wire plus error terminals that
+            //      `lvai_generate_method_test` deliberately leaves unwired, feeding each method a
+            //      fresh `no error` constant instead. So a correct swap legitimately ends with fewer
+            //      wired terminals, and an aggregate comparison fails the same way a per-node one
+            //      does.
+            //
+            // The damage was not cosmetic: `ok: false` suppressed the caller's own `projectEntry`
+            // step, so two agents had to list their test VIs in the .lvproj by hand - about 135 s
+            // of wall clock each. `wiringLost` stays in the answer because reading it against the
+            // export is occasionally useful, but nothing may branch on it.
             var ok = swapped && missing.Count == 0 && socketsLeft <= 0;
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
                 ["viPath"] = Path.GetFullPath(viPath),
+                ["wiringChecked"] = wiringChecked,
+                ["wiringLost"] = wiringLost,
                 ["nodesSwapped"] = swaps.Count,
                 ["constantsSwapped"] = constants.Count,
                 ["socketsLeft"] = socketsLeft < 0 ? null : socketsLeft,
@@ -370,19 +440,113 @@ internal sealed class SwapTools(LvaiConnection connection)
             return $"{socketsLeft} socket name(s) are STILL in LabVIEW's own export of the VI, so " +
                    "that many swaps did not land. The export is the only proof; read `callTargets`.";
         return verify
-            ? "Swapped, and the CALL TARGETS verified against LabVIEW's own export - no socket "
-              + "name survives in it. THAT IS NOT A CHECK OF THE WIRING, and the difference has "
-              + "bitten: measured 2026-09-03, a swap between accessors of DIFFERENT types left the "
-              + "value wire attached to the CLASS terminal - both are refnums, so LabVIEW's "
-              + "Replace re-attached it there - and this step still reported a correct restore. If "
-              + "the two panes differ in type, read the export and check the terminal the value "
-              + "actually comes from. " +
-              "and `callTargets` is what the diagram now calls."
+            ? "Swapped, and verified against LabVIEW's own export: no socket name survives in "
+              + "it, and `callTargets` is what the diagram now calls. `wiringLost` is REPORTING "
+              + "ONLY and nothing branches on it - it gated `ok` for one day and produced false "
+              + "negatives on three runs, because a uid is not stable across `Replace` when "
+              + "several nodes move, and because a correct swap onto a real accessor "
+              + "legitimately ends with FEWER wired terminals than the socket had. Read it "
+              + "against the export if a diagram looks wrong; never treat it as a verdict."
             : "Swapped and saved. NOTHING HERE PROVES IT LANDED: verify was false, and a Replace " +
               "cannot be read back from the object it replaced. Export the VI and read target=.";
     }
 
     /// <summary>Every <c>target="…"</c> in an AIXML export, which is what the diagram now calls.</summary>
+    /// <summary>What one `Call` node had wired, keyed so it survives a retarget.</summary>
+    internal sealed record NodeWiring(string Target, List<string> WiredInputs,
+                                      List<string> WiredOutputs)
+    {
+        public int Count => WiredInputs.Count + WiredOutputs.Count;
+    }
+
+    /// <summary>
+    /// Every `Call` node's wired terminals, by `uid`.
+    ///
+    /// THE UID IS THE IDENTITY AND THE NAMES ARE NOT. <c>{LV.SubVI}</c> <c>Replace</c> swaps which
+    /// VI sits in an existing node, so the uid survives while every terminal may be renamed - a
+    /// socket's `value` becomes the accessor's `Sample Rate`. So the comparison counts nets rather
+    /// than matching names, which is the only thing that means the same before and after.
+    ///
+    /// A terminal is WIRED when its entry carries a net: <c>obj in:265.AnalogInput out</c> is
+    /// wired, <c>Sample Rate:</c> is not. That is exactly the distinction the measured defect
+    /// turned on.
+    /// </summary>
+    internal static Dictionary<string, NodeWiring> WiringByUid(string xml)
+    {
+        var byUid = new Dictionary<string, NodeWiring>(StringComparer.Ordinal);
+
+        System.Xml.Linq.XElement root;
+        try { root = System.Xml.Linq.XElement.Parse(xml); }
+        catch (System.Xml.XmlException) { return byUid; }
+
+        foreach (var call in root.Descendants("Call"))
+        {
+            if ((string?)call.Attribute("uid") is not { Length: > 0 } uid) continue;
+            byUid[uid] = new NodeWiring(
+                (string?)call.Attribute("target") ?? "",
+                Wired((string?)call.Attribute("inputs")),
+                Wired((string?)call.Attribute("outputs")));
+        }
+        return byUid;
+    }
+
+    /// <summary>The names in a `name:net,name:net` list whose net is not empty.</summary>
+    private static List<string> Wired(string? attribute)
+    {
+        if (attribute is not { Length: > 0 }) return [];
+
+        var wired = new List<string>();
+        foreach (var entry in attribute.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var colon = entry.LastIndexOf(':');
+            if (colon < 0) continue;
+            if (entry[(colon + 1)..].Trim() is { Length: > 0 })
+                wired.Add(entry[..colon].Trim());
+        }
+        return wired;
+    }
+
+    /// <summary>
+    /// The nodes that came out of the swap carrying FEWER wired terminals than they went in with.
+    ///
+    /// A DROP IS THE SIGNAL, not a changed name. Renaming is normal and expected; losing a net is
+    /// the defect. Measured 2026-09-03 on the case this exists for: a node went from two wired
+    /// outputs (`AnalogInput out`, `Maximum Value`) to one, because Replace re-attached the value
+    /// wire onto the class output - and the assertion downstream then compared the class wire.
+    ///
+    /// Only nodes present BEFORE AND AFTER are compared, so a node the swap legitimately removed
+    /// is not reported as a loss.
+    /// </summary>
+    internal static JsonArray LostWiring(Dictionary<string, NodeWiring> before,
+                                         Dictionary<string, NodeWiring> after)
+    {
+        var lost = new JsonArray();
+        foreach (var (uid, was) in before)
+        {
+            if (!after.TryGetValue(uid, out var now)) continue;
+            if (now.Count >= was.Count) continue;
+
+            lost.Add(new JsonObject
+            {
+                ["uid"] = uid,
+                ["targetBefore"] = was.Target,
+                ["targetAfter"] = now.Target,
+                ["wiredBefore"] = was.Count,
+                ["wiredAfter"] = now.Count,
+                ["wiredNamesBefore"] = new JsonArray(
+                    [.. was.WiredInputs.Concat(was.WiredOutputs).Select(n => (JsonNode)n)]),
+                ["wiredNamesAfter"] = new JsonArray(
+                    [.. now.WiredInputs.Concat(now.WiredOutputs).Select(n => (JsonNode)n)]),
+                ["note"] = "This node lost a net across the swap. The measured cause is Replace "
+                           + "re-attaching a value wire onto a terminal of the same TYPE - two "
+                           + "refnums, typically the class wire - which links, compiles and runs "
+                           + "while asserting against the wrong terminal. Read the export and put "
+                           + "the wire back, or regenerate the VI rather than swapping again.",
+            });
+        }
+        return lost;
+    }
+
     internal static List<string> Targets(string xml) =>
         [.. System.Text.RegularExpressions.Regex
             .Matches(xml, "target=\"([^\"]+)\"")

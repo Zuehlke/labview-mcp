@@ -192,6 +192,12 @@ internal sealed class TestTools(LvaiConnection connection)
         equality is EXACT - choose values that are exact in IEEE754.
         seedClassPath tests INHERITANCE: leave it out and each chain starts from lvclassPath's own
         constant, or point it at a CHILD class to run the parent's accessors on a child object.
+        A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
+        run: the MCP client answered `Request timed out` / `Connection closed` while the server
+        kept going and completed correctly - the .vi on disk, its mtime and a fresh AIXML export
+        all confirmed the full generate, the swaps and the project entry had landed. VERIFY
+        BEFORE RETRYING: check the file, or you generate the same suite twice and the second
+        attempt fights the first for the sockets.
         READ THE JUNIT REPORT, NOT `error out` - the cluster carries the first failed assertion only.
         AND PROVE IT CAN FAIL before believing a green run: point one Read socket at a different
         field's accessor, confirm exactly one failure, put it back.
@@ -240,6 +246,15 @@ internal sealed class TestTools(LvaiConnection connection)
         string? alsoListInProject = null,
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
+        [Description("""
+            Keep every sub-answer whole. OFF by default, and that default is a measurement: this
+            call answered 72 818 characters for a five-field class on 2026-09-03, over the MCP
+            output limit, so it spilled to a file and cost the caller two extra reads to get at
+            three numbers. It nests a complete lvai_generate_vi answer PER SOCKET - ten of them for
+            five fields, each with its own validate, convert and pane sub-answers. A step that
+            FAILED is reported whole regardless of this flag, so nothing diagnostic is lost.
+            """)]
+        bool verbose = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -361,7 +376,8 @@ internal sealed class TestTools(LvaiConnection connection)
             var sockets = await new BulkTools(connection).GenerateVisAsync(
                 pairs.ToJsonString(), openVI: false, measurePane: false, keepAixml, timeoutSeconds,
                 ct);
-            steps.Add(new JsonObject { ["step"] = "sockets", ["answer"] = Read(sockets) });
+            steps.Add(new JsonObject
+            { ["step"] = "sockets", ["answer"] = Json.Slim(Read(sockets), verbose) });
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return Outcome(false, "sockets", steps, total, testViPath, null,
                     "The sockets could not all be generated, so the test was not authored. Each " +
@@ -376,7 +392,8 @@ internal sealed class TestTools(LvaiConnection connection)
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
                 timeoutSeconds, ct);
-            steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
+            steps.Add(new JsonObject
+            { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
                     "The test VI was not written. The generate step carries LabVIEW's own message.");
@@ -791,12 +808,32 @@ internal sealed class TestTools(LvaiConnection connection)
             if (Read(answer) is not JsonObject o || o["xml"]?.GetValue<string>() is not { } xml)
                 return (null, "The accessor could not be exported.");
 
-            var match = System.Text.RegularExpressions.Regex.Match(
-                xml, $"<Control[^>]*_name=\"{System.Text.RegularExpressions.Regex.Escape(field)}\"" +
-                     "[^>]*type=\"([^\"]+)\"");
-            return match.Success
-                ? (match.Groups[1].Value, "")
-                : (null, $"Its export has no Control named '{field}'.");
+            // PARSED, NOT MATCHED. This was a regex requiring `type=` to follow `_name=` with
+            // no `>` between them, and it broke on the first class whose field was itself an
+            // error cluster: measured 2026-09-03, `fieldTypeUnknown` for a Control that was
+            // plainly in the export under exactly that name. Attribute order is not promised and
+            // a `description` may legitimately contain `>`, so the shape of the answer was never
+            // safe to assume. An XML document has none of those hazards.
+            System.Xml.Linq.XElement root;
+            try { root = System.Xml.Linq.XElement.Parse(xml); }
+            catch (System.Xml.XmlException bad)
+            {
+                return (null, $"Its export did not parse: {bad.Message}.");
+            }
+
+            var control = root.Elements()
+                .FirstOrDefault(e => (e.Name.LocalName is "Control" or "Indicator")
+                                     && string.Equals((string?)e.Attribute("_name"), field,
+                                                      StringComparison.Ordinal));
+            if (control?.Attribute("type") is { } type)
+                return (type.Value, "");
+
+            var present = string.Join(", ", root.Elements()
+                .Where(e => e.Name.LocalName is "Control" or "Indicator")
+                .Select(e => (string?)e.Attribute("_name")));
+            return (null, control is null
+                ? $"Its export has no Control named '{field}'. It carries: {present}."
+                : $"'{field}' is in the export but has no `type` attribute.");
         }
         finally
         {

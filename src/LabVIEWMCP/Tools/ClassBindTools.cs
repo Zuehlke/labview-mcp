@@ -484,7 +484,8 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                         $"pylabview exited {run.ExitCode} reading the unwrapped private data " +
                         "control.");
 
-                return Parse(XDocument.Load(xml).Root!);
+                return Parse(XDocument.Load(xml).Root!,
+                             Path.GetFileNameWithoutExtension(classPath) + ".ctl");
             }
             finally
             {
@@ -518,19 +519,15 @@ internal sealed class ClassBindTools(LvaiConnection connection)
         /// IS the field cluster, which is why <see cref="CtlTools"/> read the same bytes correctly
         /// and this did not.
         /// </summary>
-        internal static PrivateDataFields Parse(XElement rsrc)
+        internal static PrivateDataFields Parse(XElement rsrc, string? ownCtlName = null)
         {
             var vctp = rsrc.Element("VCTP")?.Element("Section");
             if (vctp is null) return new PrivateDataFields([], [], [], "No VCTP in the control.");
 
             var flat = vctp.Elements("TypeDesc").ToList();
-            var top = vctp.Element("TopLevel")?.Elements("TypeDesc")
-                .FirstOrDefault(e => (string?)e.Attribute("Index") == "1");
-            if (top is null || !int.TryParse((string?)top.Attribute("FlatTypeID"), out var id)
-                || id < 0 || id >= flat.Count)
+            var cluster = LocateFieldCluster(flat, vctp, ownCtlName);
+            if (cluster is null)
                 return new PrivateDataFields([], [], [], "The private data cluster was not found.");
-
-            var cluster = FieldCluster(flat, flat[id]);
 
             var labels = new List<string>();
             var bound = new HashSet<int>();
@@ -540,14 +537,12 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             foreach (var child in cluster.Elements("TypeDesc"))
             {
                 var resolved = Resolve(flat, child);
-                labels.Add((string?)resolved.Attribute("Label")
-                           ?? (string?)child.Attribute("Label") ?? $"field {position}");
+                labels.Add(FieldLabel(resolved, child) ?? $"field {position}");
 
                 if ((string?)resolved.Attribute("Type") == "TypeDef")
                 {
                     bound.Add(position);
-                    names.Add(resolved.Elements("Label").LastOrDefault()?.Value
-                              ?? (string?)resolved.Attribute("Label"));
+                    names.Add(TypedefName(resolved));
                 }
                 else names.Add(null);
 
@@ -572,6 +567,116 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 .Select(p => $"{p.Name}={p.Value}")
                 .ToArray();
             return parts.Length == 0 ? null : string.Join(" ", parts);
+        }
+
+        /// <summary>
+        /// The `.ctl` a bound field points at - the LAST <c>Label</c>, because the first names the
+        /// owning library and the last the control.
+        ///
+        /// READ THE <c>Text</c> ATTRIBUTE, NOT THE ELEMENT TEXT. pylabview writes
+        /// <c>&lt;Label Text="XNodeErrorCluster.ctl" /&gt;</c> - an empty element - so <c>.Value</c>
+        /// is the empty string, always. Measured 2026-09-03: <c>lvai_describe_class</c> reported
+        /// `isTypedef: true` with `typedef: ""` for a bind that was complete in the file, and
+        /// `lvai_bind_class_fields`' own verify emptied `typedefNameInFile` the same way - so a
+        /// SUCCESSFUL bind reported a name of nothing.
+        ///
+        /// TWO READERS IN THIS FILE DISAGREED, and the wrong one was the shipped path:
+        /// <see cref="LocateFieldCluster"/> had always read the attribute correctly. The unit tests
+        /// missed it because they asserted the FLAG (`BoundTypedefs` contains the index) and never
+        /// the NAME - the fixture was right and the assertion was incomplete, which is a different
+        /// failure from the fixture problems that broke this parser three times before.
+        /// </summary>
+        private static string? TypedefName(XElement resolved)
+        {
+            var last = resolved.Elements("Label").LastOrDefault();
+            if (last is null) return (string?)resolved.Attribute("Label");
+
+            return (string?)last.Attribute("Text")
+                   ?? (last.Value is { Length: > 0 } text ? text : null)
+                   ?? (string?)resolved.Attribute("Label");
+        }
+
+        /// <summary>
+        /// A field's own name, which for a BOUND field is not where it is for a plain one.
+        ///
+        /// Measured 2026-09-03 on a class whose `Error Cluster` field had just been bound to
+        /// `XNodeErrorCluster.ctl`: the field resolves to a <c>TypeDef</c> carrying NO <c>Label</c>
+        /// attribute at all, and the name sits on that typedef's INNER descriptor.
+        ///
+        /// <code>
+        /// [0] -> Refnum      Label="Task Reference"                        &lt;- plain field
+        /// [1] -> TypeDef     Label=null,  inner Cluster Label="Error Cluster"  &lt;- bound field
+        /// </code>
+        ///
+        /// Without the third lookup the field came back as `field 1`, which is worse than it
+        /// sounds: the name is what `lvai_bind_class_fields` matches a caller's request against, so
+        /// a bound field would become unaddressable by name the moment it was bound.
+        /// </summary>
+        private static string? FieldLabel(XElement resolved, XElement child) =>
+            (string?)resolved.Attribute("Label")
+            ?? (string?)child.Attribute("Label")
+            ?? (string?)resolved.Elements("TypeDesc").FirstOrDefault()?.Attribute("Label");
+
+        /// <summary>The label LabVIEW puts on the cluster holding a class's fields.</summary>
+        private const string PrivateDataClusterLabel = "Cluster of class private data";
+
+        /// <summary>
+        /// Find the cluster whose children are the class's fields.
+        ///
+        /// THIS USED TO BE <c>VCTP/TopLevel</c> INDEX 1, AND THAT WAS CORRECT ONLY UNTIL THE TOOL
+        /// WORKED. Measured 2026-09-03 on the first class where a typedef bind actually SUCCEEDED:
+        /// binding re-emits the type pool, and index 1 then resolves to the newly bound typedef -
+        /// here `XNodeErrorCluster.ctl` - while the class's own cluster has moved to index 2.
+        ///
+        /// <code>
+        /// TopLevel[1] -> flat 3  = TypeDef ['NI_XNodeSupport.lvlib','XNodeErrorCluster.ctl'], 3 children
+        /// TopLevel[2] -> flat 9  = TypeDef ['AnalogInput.lvclass','AnalogInput.ctl'],          5 children
+        /// </code>
+        ///
+        /// So `lvai_bind_class_fields` reported `boundInFile: false` for a field that HAD bound, and
+        /// `lvai_describe_class` reported the class as having three fields called `status`, `code`
+        /// and `source`. Both were reading the bound typedef instead of the class. A positional
+        /// index was never the right anchor; it merely agreed with the right answer while every
+        /// bind was failing.
+        ///
+        /// THE ANCHORS, in order, and the first is language-independent:
+        /// <list type="number">
+        /// <item>the flat <c>TypeDef</c> whose <c>Label</c> children name the class's OWN
+        /// <c>.ctl</c> - `AnalogInput.ctl` for `AnalogInput.lvclass`. Exact, and unaffected by how
+        /// many other typedefs the pool carries.</item>
+        /// <item>a cluster labelled <c>Cluster of class private data</c>, which both the bound and
+        /// the unbound shape carry. English-only, hence second.</item>
+        /// <item><c>TopLevel</c> index 1 with the TypeDef descent - the old behaviour, still right
+        /// for an EXPORTED `.ctl`, which has no wrapper and no class labels at all.</item>
+        /// </list>
+        /// </summary>
+        private static XElement? LocateFieldCluster(List<XElement> flat, XElement vctp,
+                                                    string? ownCtlName)
+        {
+            if (ownCtlName is { Length: > 0 })
+                foreach (var descriptor in flat)
+                {
+                    if ((string?)descriptor.Attribute("Type") != "TypeDef") continue;
+                    var names = descriptor.Elements("Label").Select(l => (string?)l.Attribute("Text"));
+                    if (names.Any(n => string.Equals(n, ownCtlName, StringComparison.OrdinalIgnoreCase)))
+                        return FieldCluster(flat, descriptor);
+                }
+
+            foreach (var descriptor in flat)
+            {
+                var located = FieldCluster(flat, descriptor);
+                if (string.Equals((string?)located.Attribute("Label"), PrivateDataClusterLabel,
+                                  StringComparison.Ordinal))
+                    return located;
+            }
+
+            var top = vctp.Element("TopLevel")?.Elements("TypeDesc")
+                .FirstOrDefault(e => (string?)e.Attribute("Index") == "1");
+            if (top is null || !int.TryParse((string?)top.Attribute("FlatTypeID"), out var id)
+                || id < 0 || id >= flat.Count)
+                return null;
+
+            return FieldCluster(flat, flat[id]);
         }
 
         /// <summary>

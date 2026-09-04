@@ -1698,3 +1698,30 @@ JSON text. `inputsJson` then parses, `section: 14` reaches the lookup as `"14"`,
 was happy to receive is never reshaped, because the fold only runs after a failure. The workaround
 this replaces was to bake the value into the helper VI. See `tool-argument-errors.md` for the rest
 of the machinery.
+
+### `lvai_close_active_project` DESTROYS an on-disk edit made while LabVIEW held the project
+
+Measured 2026-09-04, reproducibly, in four calls:
+
+1. `lvai_open_file projectPath=AccProbe.lvproj` - LabVIEW now holds the project.
+2. `lvai_create_class ... projectPath=AccProbe.lvproj` - its `projectEntry` step writes the new
+   class into the **file** directly, with LabVIEW deliberately not involved, and reports
+   `action: "added"`.
+3. `lvai_close_active_project` - answers `closed: true`.
+4. The entry is **gone from the file**, whose mtime is the close.
+
+The close SAVES LabVIEW's in-memory copy, and that copy predates step 2. So one tool's documented,
+correct behaviour silently destroys another's. `lvai_create_class` already guards the mirror image of
+this with `classEntriesRestored`; nothing guards this direction.
+
+**Two practical rules until it is fixed:**
+
+- **Re-read a `.lvproj` after any close.** `lvai_describe_project` or a grep - the file is text.
+- **Do not edit a `.lvproj` while LabVIEW holds it.** This is the rule `CLAUDE.md` already states as
+  "Edit a project file only while it is closed"; what is new is that our OWN tools break it for each
+  other when they are chained, without either of them doing anything wrong on its own.
+
+It also explains the shared-`.lvproj` hazard between two concurrent test agents from a second angle:
+it is not only that both write the file, it is that either one's close can roll the file back to
+whatever LabVIEW was holding.
+

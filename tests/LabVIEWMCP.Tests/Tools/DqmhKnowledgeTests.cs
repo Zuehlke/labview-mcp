@@ -88,6 +88,12 @@ public class DqmhKnowledgeTests
     [
         // "89 50 4E 47 magic" - the PNG file signature, in the icon section.
         ("vi-server-reference.md", "magic"),
+
+        // LabVIEW's own built-in end-of-line constant, listed beside TAB, CRTN and 0STR in
+        // the FixedConst table. Measured from NI's export corpus - it is the literal _name a
+        // generated <FixedConst> must carry, so it cannot be paraphrased away without making
+        // the reference unusable. Narrow on purpose: this document and this token only.
+        ("aixml-reference.md", "eol"),
     ];
 
     [Theory]
