@@ -1710,6 +1710,37 @@ Two consequences for authoring:
 - `lvai_check_aixml` leaves it alone. Its terminal check only fires where `connection` is **absent**,
   so a `dynamic` terminal is neither warned about nor repaired.
 
+### An enum `value` must be an INDEX — a label is discarded, an overshoot is clamped
+
+Both faults pass `ValidateAIXML` with `errorCode 0`, and neither is visible in the generated VI.
+Measured 2026-09-04 by generating one probe with three constants on the same five-item enum and
+exporting the VI straight back:
+
+| authored | exported | what LabVIEW did |
+|---|---|---|
+| `value="1"` | `1` | correct — an index is an index |
+| `value="open or create"` | **`0`** | the label was **discarded**; item 0 is what the diagram gets |
+| `value="9"` (items 0..4) | **`4`** | **clamped** to the last item |
+
+**What it costs in the field is a symptom pointing at the wrong thing.** A `TDMS Open` authored as
+`value="open or create"` ran as `open`, so writing to a file that did not exist yet failed with
+`Error 7, file not found` — which reads as a path problem. Nine nodes on the diagram, 2.5 minutes
+to find.
+
+`lvai_check_aixml` reports both (`enumValueIsALabel`, `enumValueOutOfRange`) and **repairs the
+label case** to its index, so `lvai_generate_vi` fixes it in passing. The out-of-range case is
+reported and left alone: an index the author typed is a number they meant, and clamping it here
+would only hide what LabVIEW already does silently.
+
+Two limits worth knowing. **A number is always read as an index**, even where a label happens to
+look like one — `uint16{0,1,2}` is legal, and treating `value="1"` as the label `"1"` would break
+the ordinary case to rescue an exotic one. And **the label list splits on commas**, so a label
+containing one cannot be matched; that degrades safely to the un-repairable warning rather than to
+a wrong repair.
+
+A `Ring` is a different shape — labels in `items`/`values` beside a plain `type` — and is covered
+by `ringValueNotInValues` instead. Neither check fires on the other's element.
+
 ### Polymorphic subVI calls
 
 A `Call` to a **polymorphic** VI names the concrete instance in a separate attribute:
@@ -1896,6 +1927,10 @@ Built 2026-09-04 out of the negative-test matrix above. It covers ONLY the three
 | `danglingParent` — a `uid_parent` naming no element | **error** | LabVIEW silently reparents the element to the TOP-LEVEL diagram. A node meant to sit inside a For Loop ends up outside it, changing what the diagram does, with nothing reported at validate, convert or run |
 | `duplicateUid` | warning | LabVIEW renumbers one of them silently, so the export stops matching the file. `uid="0"` is exempt - it asks for no number and was measured reusable |
 | `ringValueNotInValues` | warning | accepted with `errorCode 0` |
+| `enumValueIsALabel` — `value="open or create"` where the type lists that label | warning, **repaired** to the index | LabVIEW DISCARDS the label and writes `0`, `errorCode 0`. Repairable because a label names exactly one item |
+| `enumValueOutOfRange` — an index past the last item | warning, not repaired | LabVIEW CLAMPS it — measured, 9 became 4 on a five-item enum. Which item was meant is not knowable |
+| `outputTerminalDefaultsToRequired` | warning, **repaired** to `recommended` | an omitted `connection` means required, and a required output makes every caller `Error 1003` |
+| `inputTerminalDefaultsToRequired` | **info only** | same cause, but a required input is a legitimate choice |
 | `uidInReservedRange` | **info only** | the rule is measured AND incomplete: a three-object probe with `uid` 10 logs twelve entries, two shipped helpers with controls at 10 and 11 log none. A prompt to measure, never a defect claim |
 | `notWellFormedXml`, `rootIsNotVI` | error | LabVIEW's parse failure arrives as `Error -2628 ... error parsing the document`, which reads as an AIXML fault rather than an unclosed tag - and is what a shell heredoc produces when it eats an escape |
 

@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -88,6 +89,7 @@ internal static class AixmlCheck
         CheckDuplicateUids(elements, findings);
         CheckParents(root, elements, findings);
         CheckRings(root, findings);
+        CheckEnums(root, findings);
         CheckTerminalWireRules(root, findings);
         CheckReservedRange(elements, findings);
 
@@ -163,6 +165,92 @@ internal static class AixmlCheck
                 + $"\"{value}\" which is not among values=\"{values}\". LabVIEW accepts this "
                 + "without complaint.", (string?)element.Attribute("uid")));
         }
+    }
+
+    /// <summary>
+    /// An enum whose <c>value</c> is one of its LABELS instead of the label's index, and an index
+    /// past the end of the list. MEASURED 2026-09-04 by generating one probe VI and exporting it
+    /// back, on a five-item enum:
+    ///
+    /// <code>
+    ///   authored value="1"                 -> exported 1   correct
+    ///   authored value="open or create"    -> exported 0   the label is DISCARDED
+    ///   authored value="9"                 -> exported 4   CLAMPED to the last item
+    /// </code>
+    ///
+    /// <c>ValidateAIXML</c> answered <c>errorCode 0</c> for all three. Neither fault is visible
+    /// anywhere downstream: the VI generates, compiles and runs, with the wrong constant.
+    ///
+    /// What it cost in the field: a <c>TDMS Open</c> authored as <c>value="open or create"</c> ran
+    /// as "open", so the write failed on a file that did not exist yet - and the symptom was
+    /// <c>Error 7, file not found</c>, which points at the PATH. 2.5 minutes to find on a diagram
+    /// of nine nodes.
+    ///
+    /// THE LABEL CASE IS REPAIRED, the out-of-range one is not: an index the author typed is a
+    /// number they meant, and clamping it here would only hide what LabVIEW already does silently.
+    /// Same line the Ring check draws, for the same reason.
+    /// </summary>
+    private static void CheckEnums(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            // A Ring lists its labels in `items`/`values` beside a plain `type`, and CheckRings
+            // owns that shape. An enum carries them INSIDE the type, which is the only case here.
+            if (element.Attribute("values") is not null) continue;
+            if (EnumLabels(element) is not { Count: > 0 } labels) continue;
+            if ((string?)element.Attribute("value") is not { Length: > 0 } value) continue;
+
+            var name = element.Attribute("_name")?.Value ?? element.Name.LocalName;
+            var uid = (string?)element.Attribute("uid");
+
+            if (int.TryParse(value, out var index))
+            {
+                // A NUMBER IS ALWAYS AN INDEX, even where a label happens to look like one -
+                // `uint16{0,1,2}` is legal, and guessing "they meant the label" would break the
+                // ordinary case to rescue an exotic one.
+                if (index >= 0 && index < labels.Count) continue;
+
+                findings.Add(new Finding(Severity.Warning, "enumValueOutOfRange",
+                    $"\"{name}\" has value=\"{value}\" but its type lists {labels.Count} item(s), "
+                    + $"so the valid range is 0..{labels.Count - 1}. LabVIEW accepts this and CLAMPS "
+                    + "it - measured: 9 became 4 on a five-item enum, with errorCode 0. Not repaired "
+                    + "here, because which item you meant is not knowable.", uid));
+                continue;
+            }
+
+            var match = labels.IndexOf(value);
+            findings.Add(new Finding(Severity.Warning, "enumValueIsALabel",
+                match >= 0
+                    ? $"\"{name}\" has value=\"{value}\", which is the LABEL of item {match}, not "
+                      + $"an index. LabVIEW discards it and writes 0 - measured, with errorCode 0 "
+                      + $"from ValidateAIXML. Write value=\"{match}\"."
+                    : $"\"{name}\" has value=\"{value}\", which is neither an index nor one of its "
+                      + $"item labels ({string.Join(", ", labels)}). LabVIEW writes 0. Not repaired "
+                      + "here: nothing says which item was meant.", uid));
+        }
+    }
+
+    /// <summary>
+    /// The item labels of an enum <c>type</c> - <c>uint8{Label A,Label B}</c>, §5 of
+    /// aixml-reference.md. Null for anything else.
+    ///
+    /// THE SPLIT IS ON COMMAS AND A LABEL CONTAINING ONE IS INDISTINGUISHABLE. That is a property
+    /// of the format rather than of this parser, and it degrades safely: such a label simply fails
+    /// to match, which produces the un-repairable warning instead of a wrong repair.
+    /// </summary>
+    private static List<string>? EnumLabels(XElement element)
+    {
+        if ((string?)element.Attribute("type") is not { Length: > 0 } type) return null;
+
+        var open = type.IndexOf('{', StringComparison.Ordinal);
+        if (open <= 0 || !type.EndsWith("}", StringComparison.Ordinal)) return null;
+
+        var baseType = type[..open];
+        if (!baseType.StartsWith("int", StringComparison.Ordinal)
+            && !baseType.StartsWith("uint", StringComparison.Ordinal)) return null;
+
+        var inner = type[(open + 1)..^1];
+        return inner.Length == 0 ? null : [.. inner.Split(',')];
     }
 
     /// <summary>
@@ -338,6 +426,29 @@ internal static class AixmlCheck
                 replacement));
         }
 
+        // AN ENUM VALUE THAT IS A LABEL is repairable because the label names exactly one item -
+        // there is nothing to guess. LabVIEW discards it and writes 0 (measured), so leaving it
+        // alone means shipping the wrong constant with no error anywhere. An index OUT OF RANGE is
+        // left alone: that is a number the author chose, and clamping it here would hide what
+        // LabVIEW already does silently.
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Attribute("values") is not null) continue;
+            if (EnumLabels(element) is not { Count: > 0 } labels) continue;
+            if ((string?)element.Attribute("value") is not { Length: > 0 } value) continue;
+            if (int.TryParse(value, out _)) continue;
+
+            var match = labels.IndexOf(value);
+            if (match < 0) continue;
+
+            element.SetAttributeValue("value", match.ToString(CultureInfo.InvariantCulture));
+            repairs.Add(new Repair("enumValueIsALabel",
+                $"\"{element.Attribute("_name")?.Value ?? element.Name.LocalName}\" had "
+                + $"value=\"{value}\", the LABEL of item {match}; set to \"{match}\". LabVIEW "
+                + "discards a label and writes 0, with no error at validate, convert or run.",
+                (string?)element.Attribute("uid")));
+        }
+
         // A REQUIRED OUTPUT IS ALWAYS A MISTAKE, so this one is repairable where the input side is
         // not. An output terminal with no `connection` comes out required (measured), which makes
         // every CALLER that leaves it unwired non-executable - Error 1003, reported nowhere near
@@ -380,7 +491,8 @@ internal static class AixmlCheck
             ["note"] = errors == 0 && warnings == 0
                 ? "Nothing found. This checks ONLY what ValidateAIXML was measured not to check - "
                   + "duplicate uids, a uid_parent naming no element, a Ring default outside its "
-                  + "values, and a connector-pane terminal with no `connection` (which LabVIEW "
+                  + "values, an enum value that is a label or out of range, and a connector-pane "
+                  + "terminal with no `connection` (which LabVIEW "
                   + "reads as required). Wiring, terminal names, types, cycles and case "
                   + "completeness are LabVIEW's job and still need lvai_validate_aixml."
                 : "These are the gaps ValidateAIXML does not cover; it still has to run for "

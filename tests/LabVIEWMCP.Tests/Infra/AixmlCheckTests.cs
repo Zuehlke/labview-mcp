@@ -424,4 +424,94 @@ public sealed class AixmlCheckTests
                               r => r.Code == "inputTerminalDefaultsToRequired");
         Assert.Contains(fixedUp.Remaining, f => f.Code == "inputTerminalDefaultsToRequired");
     }
+
+    // ------------------------------------------------------------------ enums
+
+    /// <summary>
+    /// MEASURED 2026-09-04 by generating this exact document and exporting the VI back. LabVIEW
+    /// answered errorCode 0 for all three constants and then wrote 1, **0** and **4**: the label
+    /// was discarded, and the out-of-range index was clamped to the last item.
+    /// </summary>
+    private const string EnumProbe = """
+        <VI _name="EnumProbe.vi" description="d">
+          <Constant _name="by index" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="1" outputs="value:4300.value" uid="4300" uid_parent="root"/>
+          <Constant _name="by label" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="open or create" outputs="value:4310.value" uid="4310" uid_parent="root"/>
+          <Constant _name="out of range" type="uint32{open,open or create,create or replace,create,open (read-only)}" value="9" outputs="value:4320.value" uid="4320" uid_parent="root"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnEnumValueThatIsALabelIsReported_becauseLabVIEWWritesZero()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(EnumProbe), f => f.Code == "enumValueIsALabel");
+
+        Assert.Equal("4310", finding.Uid);
+        // The message has to carry the index to write, or the reader has to count the labels.
+        Assert.Contains("value=\"1\"", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnEnumIndexPastTheEndIsReportedSeparately_becauseLabVIEWClampsIt()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(EnumProbe),
+                                    f => f.Code == "enumValueOutOfRange");
+
+        Assert.Equal("4320", finding.Uid);
+        Assert.Contains("CLAMPS", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AValidEnumIndexIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(EnumProbe), f => f.Uid == "4300");
+
+    [Fact]
+    public void ANUMERICValueIsAlwaysAnIndex_evenWhereALabelLooksLikeOne() =>
+        // `uint16{0,1,2}` is legal, and "they must have meant the label" would break the ordinary
+        // case to rescue an exotic one. A number is an index, full stop.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Constant _name="n" type="uint16{0,1,2}" value="1" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """), f => f.Code.StartsWith("enumValue", StringComparison.Ordinal));
+
+    [Fact]
+    public void ARingIsLeftToTheRingCheck() =>
+        // A Ring lists its labels in items/values beside a plain type. Both checks firing on one
+        // element would report the same fault twice under two names.
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d"><Control _name="r" style="Ring" type="int32" items="a,b" values="[-1,10]" value="-1" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """), f => f.Code.StartsWith("enumValue", StringComparison.Ordinal));
+
+    [Fact]
+    public void AnEnumLabelIsREPAIRED_toItsIndex()
+    {
+        var fixedUp = AixmlCheck.Fix(EnumProbe);
+
+        var repair = Assert.Single(fixedUp.Repairs, r => r.Code == "enumValueIsALabel");
+        Assert.Equal("4310", repair.Uid);
+        Assert.Contains("value=\"1\"", fixedUp.Xml, StringComparison.Ordinal);
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "enumValueIsALabel");
+    }
+
+    [Fact]
+    public void AnOutOfRangeEnumIndexIsNotRepairedAway()
+    {
+        var fixedUp = AixmlCheck.Fix(EnumProbe);
+
+        // Clamping here would hide exactly what LabVIEW already does silently.
+        Assert.DoesNotContain(fixedUp.Repairs, r => r.Code == "enumValueOutOfRange");
+        Assert.Contains(fixedUp.Remaining, f => f.Code == "enumValueOutOfRange");
+        Assert.Contains("value=\"9\"", fixedUp.Xml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AValueMatchingNoLabelIsReportedButNotRepaired()
+    {
+        const string xml = """
+            <VI _name="X.vi" description="d"><Constant _name="m" type="uint8{a,b}" value="zzz" outputs="value:4300.value" uid="4300" uid_parent="root"/></VI>
+            """;
+
+        Assert.Contains(AixmlCheck.Check(xml), f => f.Code == "enumValueIsALabel");
+        // Nothing says which item was meant - a label with a comma in it lands here too, which is
+        // the safe way for the comma split to degrade.
+        Assert.Empty(AixmlCheck.Fix(xml).Repairs);
+    }
 }

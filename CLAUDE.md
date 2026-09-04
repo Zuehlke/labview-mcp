@@ -448,9 +448,17 @@ makes, six it makes and three it does not. A **`uid_parent` naming no element** 
 one - LabVIEW places that element on the TOP-LEVEL diagram and reports nothing, so a node meant to
 sit inside a For Loop ends up outside it, through validate, convert and a run alike; only a
 re-export shows it. A **duplicate `uid`** is silently renumbered, so the export stops matching your
-file. A **Ring `value` outside its `values`** passes with `errorCode 0`. `lvai_check_aixml` catches
-all three without LabVIEW, `lvai_generate_vi` blocks on the first, and the two raw RPCs report it
-as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
+file. A **Ring `value` outside its `values`** passes with `errorCode 0`.
+
+**Two more joined the list on 2026-09-04, both about an enum, both measured on one probe VI.** An
+enum `value` that is a **LABEL** (`value="open or create"`) is DISCARDED and written as `0`; an
+index **past the last item** is CLAMPED (9 became 4 on a five-item enum). Both answered
+`errorCode 0`. The field cost was a `TDMS Open` running as `open` instead of `open or create`,
+whose symptom was `Error 7, file not found` - pointing at the path, not the enum. `lvai_check_aixml`
+repairs the label case to its index and reports the overshoot without touching it.
+
+`lvai_check_aixml` catches all of these without LabVIEW, `lvai_generate_vi` blocks on the dangling
+parent and repairs the rest, and the two raw RPCs report them as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
 and a second implementation would drift.
 
 **And `uid="0"` is a SENTINEL, not a number.** The schema's minimum is 0 (a negative uid is refused,
