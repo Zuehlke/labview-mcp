@@ -1095,6 +1095,21 @@ Two things follow, and the second is the useful one:
   (md5 unchanged). That is §1c and §1d working as designed: a retype that does not reach both saves
   reaches nothing, and the in-memory `terminals retyped: 3` was not evidence of anything.
 
+### A pre-existing defect the verification run walked into
+
+`lvai_add_class_method` threw `InvalidOperationException: The node already has a parent` instead of
+reporting a failed verify. The evidence object is attached to the method's `steps`, and the same
+instance was then passed as the failure `detail`; System.Text.Json refuses a node that already has a
+parent. So the ONE branch that exists to report a repair which never reached disk - §1d's whole
+reason for being - produced an exception with no method list, no steps and no hint.
+
+It had never fired because every previous call retyped every `path` stand-in on the pane. The call
+that took it asked to retype **one of three**, so two stand-ins were legitimately left, `verify`
+failed as designed, and the report died on the way out. Fixed by building a fresh detail object,
+which also reads better: it names the counts and says which of the two causes it is - a terminal
+left out of `classTerminals` (or spelled differently there than on the pane), or a retype that
+stayed in memory.
+
 ### Cost
 
 The run that found all this: **~14.5 min of wall clock against ~35 s inside tools over 36 calls, a

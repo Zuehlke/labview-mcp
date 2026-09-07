@@ -1209,3 +1209,61 @@ measurement is finer than a per-run one and is still an interval. The only thing
 running the operation alone, with a counter read immediately before and after. It costs two calls.
 It has been decisive four times.
 
+
+## A SEVENTH signature: `bad parent in MoveItem` — investigated 2026-09-07, NOT reproduced
+
+Raised because it had been seen "a few times" in the IDE. It is real and it is in the log; what it
+is *not* is a crash, and it is not the routine class workflow.
+
+```
+04.09.2026 16:47:51.620
+DWarnInternal 0x484DB723: bad parent in MoveItem
+source\project\ProjectItem.cpp(18606) : DWarnInternal 0x484DB723: bad parent in MoveItem
+[ExecSys:0; NOT InExec]
+```
+
+**What is established.**
+
+- **Three occurrences, all on 2026-09-04**, at 16:47:51, 16:50:12 and 16:54:04 — spaced minutes
+  apart, with nothing else logged between them. `grep -c` gives 6 because NI writes each entry twice,
+  once bare and once with the source line.
+- **All three are `NOT InExec` with `No VI call stack`.** They did not come from a helper VI, from
+  `ConvertAIXMLToVI`, or from anything the gRPC service was executing. `MoveItem` in
+  `ProjectItem.cpp` is the project TREE re-parenting an item, and these fired on the UI thread.
+- **Not fatal.** That LabVIEW instance kept running until 2026-09-07 07:18, three days later, and the
+  current instance carries **zero**.
+- **Attribution needs care in this log format.** A block's own stack comes AFTER its
+  `</DEBUG_OUTPUT>`, not before it. Reading the stack above the first occurrence attributes it to
+  `VI generator.vi` / `ConvertAIXMLToVI.vi`, which is wrong — that stack belongs to the preceding
+  entry. The four blocks before it are the `HeapObjMapImpl` uid warnings, which *do* carry
+  `Executing:` in their own header; that is what settles the ordering.
+
+**What did NOT reproduce it**, run on a throwaway copy of a five-class project with the log counter
+read before and after each step, per the method at the end of the previous section:
+
+| operation | result |
+|---|---|
+| `lvai_create_class` with a parent class, 2 fields | 0 |
+| `lvai_create_accessors`, 4 accessors | 0 |
+| `lvai_convert_aixml_to_vi` **with the project open**, then `lvai_add_class_method` on that VI | 0 |
+
+The third row was the hypothesis: a VI LabVIEW has adopted as a loose project item is re-parented
+under a class by `AddItemFromMemory`, so the tree must MOVE it. It does not warn. Note also that
+`lvai_create_class` now works in a **throwaway scratch project** and never opens the user's, which
+removes it as a candidate on its own.
+
+**What remains unexcluded**, and both are named by the tools' own documentation as project-tree
+hazards:
+
+- `lvai_create_accessors` with **`tidyProject: true`**, which rewrites the `.lvproj` while LabVIEW
+  holds it open. Not tried here: it is measured elsewhere in this document as KILLING LabVIEW, and
+  reproducing a harmless warning is not worth that.
+- `lvai_create_class` with **`keepCarrier: false`**, which deletes a VI LabVIEW has adopted, leaving
+  it "holding a project whose items no longer exist" — the closest description of a bad parent there
+  is. Not tried, for the same reason: the documented consequence is a broken in-memory project that
+  overwrites the `.lvproj`.
+
+**The honest state:** a non-fatal project-tree warning, from the IDE's own UI thread, whose trigger
+is not established. It is worth a second look only if it ever coincides with a project losing items;
+on the evidence so far it is closer to the `DestroyPlatformEvent` class — noise that `looksDegraded`
+should probably not count either.

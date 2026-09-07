@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.Json.Nodes;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Xunit;
@@ -543,6 +544,43 @@ public sealed class ClassToolingLeverTests
             File.Delete(aixml);
             if (File.Exists(helper)) File.Delete(helper);
         }
+    }
+
+    [Fact]
+    public void TheVerifyFailureDetailIsAFreshNodeAndNotTheEvidenceItself()
+    {
+        // The evidence object is already attached to the method's `steps`, and System.Text.Json
+        // refuses a node that has a parent. Passing it on as the failure detail threw
+        // `InvalidOperationException: The node already has a parent` - so the ONE branch that
+        // reports a repair which never reached disk produced an exception instead of a report.
+        var steps = new JsonArray();
+        var evidence = new JsonObject
+        {
+            ["ran"] = true,
+            ["classTypedTerminals"] = 1,
+            ["pathStandInsLeft"] = 2,
+        };
+        steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = evidence });
+
+        var detail = ClassMethodTools.VerifyFailureDetail(evidence, expected: 1);
+
+        Assert.Null(detail.Parent);
+        Assert.Equal(2, detail["pathStandInsLeft"]!.GetValue<int>());
+        Assert.Contains("stand-in", detail["hint"]!.GetValue<string>());
+
+        // The whole point: it can now be attached somewhere else without throwing.
+        var results = new JsonArray();
+        results.Add(new JsonObject { ["detail"] = detail });
+    }
+
+    [Fact]
+    public void AVerifyThatCouldNotRunSaysSoRatherThanBlamingTheFile()
+    {
+        var detail = ClassMethodTools.VerifyFailureDetail(
+            new JsonObject { ["ran"] = false, ["classTypedTerminals"] = -1, ["pathStandInsLeft"] = -1 },
+            expected: 2);
+
+        Assert.Contains("could not run", detail["hint"]!.GetValue<string>());
     }
 
     [Fact]

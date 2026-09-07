@@ -328,7 +328,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 if (!verified)
                 {
-                    results.Add(Failed(method, viPath, "verify", steps, evidence));
+                    results.Add(Failed(method, viPath, "verify", steps,
+                                       VerifyFailureDetail(evidence!, method.ClassTerminals.Count)));
                     stoppedAt ??= "verify";
                     continue;
                 }
@@ -509,6 +510,39 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         if ((values?[name] as JsonObject)?["xml"]?.GetValue<string>() is not { } xml) return [];
         return [.. System.Text.RegularExpressions.Regex.Matches(xml, "<Val>([^<]*)</Val>")
             .Select(m => m.Groups[1].Value)];
+    }
+
+    /// <summary>
+    /// Why the on-disk check failed, as a FRESH object.
+    ///
+    /// NOT <c>evidence</c> itself: that node is already attached to <c>steps</c>, and
+    /// System.Text.Json refuses a node that has a parent. Passing it on threw
+    /// <c>InvalidOperationException: The node already has a parent</c> - which turned the one
+    /// branch that exists to report a repair that never reached disk into an exception with no
+    /// method list, no steps and no hint. Measured 2026-09-07, on the first call that ever took it:
+    /// a method asking to retype one of three <c>path</c> stand-ins, so two were legitimately left.
+    /// </summary>
+    internal static JsonObject VerifyFailureDetail(JsonObject evidence, int expected)
+    {
+        var typed = evidence["classTypedTerminals"]?.GetValue<int>() ?? -1;
+        var left = evidence["pathStandInsLeft"]?.GetValue<int>() ?? -1;
+        return new JsonObject
+        {
+            ["classTypedTerminals"] = typed,
+            ["pathStandInsLeft"] = left,
+            ["expected"] = expected,
+            ["ran"] = evidence["ran"]?.GetValue<bool>() ?? true,
+            ["hint"] = typed == -1
+                ? "The check could not run at all, so this says nothing about the file - see `ran` "
+                  + "and `why` in the verify step."
+                : left > 0
+                    ? $"{left} `path` stand-in(s) are still on the pane. Either a terminal was left "
+                      + "out of classTerminals, or its name is spelled differently there than on "
+                      + "the pane - compare with `terminal names seen` in the member step."
+                    : $"{typed} of {expected} terminals are class-typed in the SAVED file. The "
+                      + "retype may have stayed in memory: that is the 2026-09-02 failure this "
+                      + "check exists for.",
+        };
     }
 
     /// <summary>
