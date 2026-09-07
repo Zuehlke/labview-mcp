@@ -368,12 +368,19 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             }
 
             // ---- 4. list it in the project
+            // reopen: false, for the same reason lvai_generate_class_test passes it - a generator
+            // must leave no project active, or the NEXT generate call runs under an open one and
+            // meets the VICD / Error 7 condition. This site was MISSED when the class-test one was
+            // fixed on 2026-09-07, and the miss showed up as `projectLeftOpen: true` on the very
+            // first call that exercised the new output assertion.
             if (projectPath is { Length: > 0 })
                 steps.Add(await new TestTools(connection).ListInProjectAsync(
-                    projectPath, testFolderName, [testViPath], timeoutSeconds, ct));
+                    projectPath, testFolderName, [testViPath], timeoutSeconds, ct,
+                    reopen: false));
 
             var errorCases = cases.Count(c => c.ExpectErrorCode is not null);
             var wireCases = cases.Count(c => c.DataType is not null);
+            var outputCases = cases.Count(c => c.ExpectOutput is not null);
             steps.Add(new JsonObject
             {
                 ["step"] = "requiredInputs",
@@ -392,11 +399,17 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                            "Values marked as this tool's default are 0 or empty - if one of them " +
                            "matters to what the case proves, pass it in the case's `inputs`.",
             });
+            // EVERY SHAPE IS COUNTED. It used to name only the error-code and wire-survival ones,
+            // so the first suite built from `expectOutput` reported "0 error-code assertion(s) and
+            // 0 wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a
+            // suite whose assertion had just been proven to fire.
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
-                $"Generated. {errorCases} error-code assertion(s) and {wireCases} wire-survival " +
-                "assertion(s), every method called as an ordinary static subVI. Run it through " +
-                "Caraya's runner and read the JUnit report - and break one expectErrorCode by a " +
-                "digit once, because an all-green first run proves very little.",
+                $"Generated. {outputCases} returned-value assertion(s), {errorCases} error-code " +
+                $"assertion(s) and {wireCases} wire-survival assertion(s), every method called as " +
+                "an ordinary static subVI. THE PROJECT IS LEFT CLOSED, which is the state the next " +
+                "generate call needs; open it when you are ready to RUN the suite. Read the JUnit " +
+                "report, and break one expectation on purpose once, because an all-green first run " +
+                "proves very little.",
                 swapAnswer["callTargets"]?.DeepClone());
         });
 
