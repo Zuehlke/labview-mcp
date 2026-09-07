@@ -423,6 +423,15 @@ plus a heap object of class `typeDef`. `Is Typedef?` is **not** a boolean — it
 Accessors need the project **open and active**. No restart before this phase — the class you
 created last is found straight away (`classIndex` in the answer proves it).
 
+**ONE FOLDER PER CLASS, and every member of that class inside it.** `<target>\<ClassName>\` holds
+the `.lvclass`, its private data, its accessors and its methods. This is not tidiness: a parent and
+its override share a file name, so `Bicycle\Describe.vi` and `Car\Describe.vi` **must** be in
+different folders — NI does exactly this in `examples\Object-Oriented Programming\Basic
+Interfaces` — and the moment two classes in the hierarchy share a field name their accessors would
+collide too. Two builds of the same spec on 2026-09-07 chose different layouts (one per-class
+throughout, one with the classes and all sixteen accessors at the project root and only the
+overrides in subfolders), which is how the inconsistency was noticed. Pick per-class, always.
+
 1. `lvai_open_file` with `projectPath` **and** `projectName`.
 2. Per class: **call it with no `fromField` at all, and keep calling until `moreToDo` is false.**
    The default `-1` RESUMES from the class file's own member count, and one call now takes as many
@@ -560,7 +569,18 @@ tests is half a deliverable, and you are not the agent that writes them.
       advancing anything;
    - the `.lvproj` path;
    - the field table from Phase 1, so it does not have to re-derive the data model;
-   - anything the user said about values or cases, verbatim.
+   - anything the user said about values or cases, verbatim;
+   - **the MEASURED output of every method you built**, as `<method> -> <exact value>`, from the
+     Phase 4 verification runs you have already done.
+
+   **That last item is what decides whether the methods get tested at all.** A test agent will not
+   invent an expected string — correctly, since asserting a guess freezes current behaviour as if
+   it were the spec — so with nothing to anchor on it tests the accessors and skips the methods,
+   and says so. Measured across two builds of the same spec on 2026-09-07: the run that passed the
+   four measured strings on got a polymorphic-dispatch suite asserting them; the run that did not
+   left all five methods untested. You have those values for free, because Phase 4 makes you run
+   each method anyway — so hand them over, and label them as MEASURED rather than as intended, so
+   the test agent knows it is pinning observed behaviour and can say so in its own report.
 
    **Name the `.lvproj` explicitly.** `lvai_generate_class_test` lists its test VIs in the project
    only when it is given `projectPath`, and a suite the Project Explorer does not show is one the

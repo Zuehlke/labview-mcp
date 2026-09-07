@@ -391,4 +391,66 @@ public sealed class GenerateClassTestTests
         ((string)call.Attribute("inputs")!)
         .Split(',')
         .First(i => i.StartsWith(terminal + ":", StringComparison.Ordinal))[(terminal.Length + 1)..];
+
+    // ---------- uids must stay above LabVIEW's reserved range ----------
+
+    /// <summary>
+    /// A uid inside LabVIEW's reserved range costs TWO lines in NI's log per object per
+    /// generation: `panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420: trying to override with
+    /// non-reserved UID, request: 10 res: 0 max: 42`. LabVIEW substitutes its own number and logs
+    /// it.
+    ///
+    /// MEASURED 2026-09-07 as a controlled pair rather than assumed: one socket-shaped VI
+    /// generated twice through `ConvertAIXMLToVI`, identical but for the four uid numbers —
+    /// 10/11/12/13 gave **4** warnings, 4200/4210/4220/4230 gave **0**.
+    ///
+    /// The reason it is worth a guard: `dwarnCount` saturates at 200 and `looksDegraded` flips
+    /// with it, so a signature we emit ourselves crowds out the ones that mean something. A cold
+    /// class build with five test suites logged 24 of these — 60 % of that run's warnings — and
+    /// the runner generator was having three uids repaired on every single build.
+    /// </summary>
+    [Theory]
+    [InlineData("double", true)]
+    [InlineData("double", false)]
+    [InlineData("string", true)]
+    [InlineData("cluster{bool.status,int32.code,string.source}", false)]
+    public void ASocketNumbersEveryUidAboveTheReservedRange(string dataType, bool write)
+    {
+        var aixml = TestTools.SocketAixml("LVMCP Socket.vi", dataType, write);
+
+        AssertNoReservedUid(aixml);
+    }
+
+    [Fact]
+    public void TheRunnerNumbersEveryUidAboveTheReservedRange()
+    {
+        // Including the case that used to need repairing: `here`, `strip` and `array` were 10, 11
+        // and 40, and the generator's own repair pass raised all three on every runner build.
+        var aixml = TestTools.CarayaRunnerAixml(
+            @"C:\temp\Suite\Run Suite Tests.vi",
+            ["Bicycle\\Test Bicycle.vi", "Car\\Test Car.vi", "Test Three.vi"],
+            "Suite-TestReport.xml");
+
+        AssertNoReservedUid(aixml);
+    }
+
+    /// <summary>
+    /// LabVIEW reports the ceiling it allocated above in the DWarn itself (`max: 42`, `59`, `89`
+    /// on the measured probe), so the ceiling is not a fixed number. 200 is well clear of every
+    /// value observed and is what <see cref="TestTools.UidBase"/> sits above.
+    /// </summary>
+    private static void AssertNoReservedUid(string aixml)
+    {
+        var low = System.Text.RegularExpressions.Regex
+            .Matches(aixml, "uid=\"(\\d+)\"")
+            .Select(m => int.Parse(m.Groups[1].Value))
+            .Where(uid => uid != 0 && uid < 200)          // 0 is the documented sentinel
+            .Distinct()
+            .OrderBy(uid => uid)
+            .ToList();
+
+        Assert.True(low.Count == 0,
+            "these uids sit in LabVIEW's reserved range and cost two log lines each per "
+            + "generation: " + string.Join(", ", low));
+    }
 }

@@ -1065,6 +1065,19 @@ seconds, same two `OMAutoClasses` entries, zero new archives. The archives are w
 *starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
 causing the next one - eight in one day looked exactly like a cause and was not.
 
+**MOST OF A COLD BUILD'S DWARNS ARE OURS, and they come from uids inside LabVIEW's RESERVED RANGE.**
+Measured 2026-09-07 as a controlled pair — one socket-shaped VI through `ConvertAIXMLToVI` twice,
+identical but for four numbers: uids `10,11,12,13` cost **4** warnings, `4200,4210,4220,4230` cost
+**0**. One warning per element per generation, deterministic. A cold four-class build logged 24 of
+them, 60 % of that run's 40 warnings. So `TestTools.UidBase = 4200` now numbers everything the
+TOOLS emit — the class-test and method-test sockets, and the suite runner, whose `here`/`strip`/
+`array` were being repaired on every build. **The `scripts\` helpers are deliberately NOT
+renumbered**: they were measured silent and are generated once, and `docs/labview-crash-signatures.md`
+warns against renumbering 39 files on a rule rather than a measurement. It is worth doing not
+because the warnings cause anything — unestablished — but because `dwarnCount` saturates at 200 and
+`looksDegraded` flips with it, so a signature we emit ourselves crowds out the ones that might mean
+something.
+
 **A DWARN CLUSTER TAGGED WITH ONE VI IS NOT CAUSED BY THAT VI, and settling it needs an A/B rather
 than a fix.** Measured 2026-09-07: a 33-minute class build left 38 new DWarns, *every* one tagged
 `[Executing: lvai_close_active_project.vi]` — 15 `DestroyPlatformEvent failed with MgErr 42`, 3

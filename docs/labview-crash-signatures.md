@@ -1345,3 +1345,65 @@ adopted VIs in memory, and count.
 The section above lists `keepCarrier: false` and `tidyProject: true` as the other unexcluded
 candidates. Neither was in play here — which narrows it usefully, because this run reproduced the
 warning without either.
+
+## 2026-09-07, run 2: the low-uid DWarn is OURS, and a controlled pair settles the fix
+
+A cold rebuild of the same four-class hierarchy, on a freshly started LabVIEW whose log began at
+zero, logged **40 warnings**. The composition is nothing like run 1's:
+
+| signature | run 1 (warm) | run 2 (cold) | emitted under |
+|---|---|---|---|
+| `HeapObjMapImpl.cpp(226)` — `trying to override with non-reserved UID` | 0 | **24** | `LV AI Core.lvlibp:VI generator.vi` |
+| `ThEvent.cpp(213)` — `DestroyPlatformEvent failed with MgErr 42` | 15 | 14 | `lvai_close_active_project.vi` |
+| `ProjectItem.cpp(18606)` — `bad parent in MoveItem` | 3 | 2 | `lvai_close_active_project.vi` |
+| `ThThread.cpp(957)` — `Terminate thread failed` | 1 | 0 | — |
+
+So **60 % of a cold build's warnings are ours**, and the close-path family is unchanged — which is
+the third independent confirmation that the refnum repair is neutral.
+
+Why run 1 showed none of them is NOT established. The counters carry `sat:` equal to `max:` here
+(42/42, 59/59, 161/161), and run 1 ran in a long-warm instance; saturation is a plausible
+explanation and was not tested.
+
+### The controlled pair
+
+The rule "a low uid costs two lines per object" has been in this document since 2026-09-03 together
+with a warning not to act on it without measuring the file in hand. So: one socket-shaped VI put
+through `ConvertAIXMLToVI` twice — same four elements, same types, same conIdx, **differing only in
+the four uid numbers**. `ConvertAIXMLToVI` and not `lvai_generate_vi`, because the latter's repair
+pass would have raised the uids and destroyed the measurement.
+
+| uids | UID warnings | bytes added to the log |
+|---|---|---|
+| `10, 11, 12, 13` | **4** — one per uid, `max:` 42 / 59 / 69 / 89 | 8 370 |
+| `4200, 4210, 4220, 4230` | **0** | 0 |
+
+Deterministic, and it names the price exactly: one warning per element numbered inside the reserved
+range, per generation.
+
+### What was renumbered, and what deliberately was not
+
+`TestTools.UidBase = 4200`, used by:
+
+- `TestTools.SocketAixml` — was 10/11/12/13. `lvai_generate_class_test` writes one socket per
+  accessor slot, so a five-suite build generates several.
+- `MethodTestTools`' socket — was 10/11/12/13, plus its required-input base, which was `20`.
+- `TestTools.CarayaRunnerAixml` — `here`, `strip` and `array` were 10, 11 and 40. Those three were
+  being **repaired on every single runner build**, and the repair was reported in the answer's
+  `steps` as three routine items; at source the pass is now a no-op.
+
+**The helpers under `scripts\` were left alone**, on this document's own instruction: they were
+measured silent, they are generated once and cached, and renumbering 39 files on the strength of a
+rule is what §"What it changes about the RULE" warns against. What was renumbered is exactly what
+that section names as the part that still costs — the AIXML the tools emit on every run.
+
+A test pins it: `ASocketNumbersEveryUidAboveTheReservedRange` and
+`TheRunnerNumbersEveryUidAboveTheReservedRange` fail on any uid below 200 other than the `0`
+sentinel.
+
+### Why it is worth doing at all
+
+Not because the warnings cause anything — that remains unestablished, and these same low uids have
+produced hundreds of working VIs. Because **`dwarnCount` saturates at 200 and `looksDegraded` flips
+with it**, so a signature we emit ourselves crowds out the ones that might mean something. Removing
+24 per build keeps the number diagnostic for longer.

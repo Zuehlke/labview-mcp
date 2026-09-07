@@ -446,15 +446,20 @@ internal sealed class TestTools(LvaiConnection connection)
                 var extra = (alsoListInProject ?? "")
                     .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
                                          StringSplitOptions.TrimEntries);
+                // reopen: false — a generator must leave no project active, or the NEXT generate
+                // call runs under an open one. See ListInProjectAsync's `reopen` parameter.
                 steps.Add(await ListInProjectAsync(projectPath, testFolderName,
-                                                   [testViPath, .. extra], timeoutSeconds, ct));
+                                                   [testViPath, .. extra], timeoutSeconds, ct,
+                                                   reopen: false));
             }
 
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {cases.Count} round trip(s), each a static call to the class's own " +
                 "Write and Read accessors, verified against LabVIEW's own export. Run it through " +
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
-                "break one case on purpose once, because an all-green first run proves very little.",
+                "break one case on purpose once, because an all-green first run proves very " +
+                "little. THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
+                "needs; open it when you are ready to RUN the suite.",
                 swapAnswer["callTargets"]?.DeepClone());
         });
 
@@ -593,9 +598,11 @@ internal sealed class TestTools(LvaiConnection connection)
                                                 or UnauthorizedAccessException) { }
             }
 
+            // reopen: TRUE here, and deliberately — the caller's next move is to RUN this runner,
+            // which needs the project's classes linked.
             if (projectPath is { Length: > 0 })
                 steps.Add(await ListInProjectAsync(projectPath, testFolderName, [runnerViPath],
-                                                   timeoutSeconds, ct));
+                                                   timeoutSeconds, ct, reopen: true));
 
             return RunnerOutcome(true, null, steps, total, runnerViPath,
                 keepAixml ? aixml : null, reportFileName, relatives.Count,
@@ -676,9 +683,23 @@ internal sealed class TestTools(LvaiConnection connection)
     /// lists them, so a project that could not be edited must not turn a green suite into a failed
     /// call. It comes back as its own step with `ok: false` and says what to do by hand.
     /// </summary>
+    /// <param name="reopen">
+    /// Open the project again after the entry is written. TRUE for the suite RUNNER, which the
+    /// caller is about to execute and which needs its classes linked; FALSE for a generator,
+    /// because the next generation must run with no project active.
+    ///
+    /// IT USED TO BE UNCONDITIONAL, AND THAT LEFT EVERY CALLER IN THE WRONG STATE. Measured
+    /// 2026-09-07 on a five-suite cold build: `lvai_generate_class_test` ends by re-opening the
+    /// project, so the NEXT call's generation ran with one active - the documented VICD /
+    /// `Error 7, Bad Linkage` condition. The agent doing that build had to insert four
+    /// `lvai_close_active_project` calls nothing asked it for, and each reported
+    /// `nothingToClose: true, errorCode 1055` in this step, because this step closes at its own
+    /// start. Nothing failed and NO TOOL WARNED; trusting the sequence would have generated four
+    /// of five suites under an open project.
+    /// </param>
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
-        CancellationToken ct)
+        CancellationToken ct, bool reopen = true)
     {
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
         try
@@ -734,17 +755,21 @@ internal sealed class TestTools(LvaiConnection connection)
                 .Where(name => !listedNow.Contains(name))
                 .ToList();
 
-            var reopened = await new ActionTools(connection).OpenFileAsync(
-                null, null, projectPath, Path.GetFileName(projectPath), true, timeoutSeconds, ct);
+            var reopened = reopen
+                ? Read(await new ActionTools(connection).OpenFileAsync(
+                      null, null, projectPath, Path.GetFileName(projectPath), true,
+                      timeoutSeconds, ct))
+                : null;
 
             step["ok"] = notOnDisk.Count == 0 && notListed.Count == 0;
+            step["projectLeftOpen"] = reopen;
             step["added"] = added;
             step["restored"] = restored;
             step["folder"] = folderName;
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
-            step["reopened"] = Read(reopened);
+            step["reopened"] = reopened;
             if (notOnDisk.Count > 0)
                 step["notOnDisk"] = new JsonArray([.. notOnDisk.Select(v => (JsonNode)v)]);
             if (notListed.Count > 0)
@@ -927,6 +952,34 @@ internal sealed class TestTools(LvaiConnection connection)
     /// wire to the accessor's; a Variant constant meeting a `string` terminal afterwards is a type
     /// conflict LabVIEW will not coerce away.
     /// </summary>
+    /// <summary>
+    /// Where generated AIXML starts numbering, chosen to sit ABOVE LabVIEW's reserved uid range.
+    ///
+    /// A uid inside that range costs TWO log lines per object per generation:
+    /// <c>panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420: trying to override with non-reserved
+    /// UID, request: 10 res: 0 max: 42</c>. LabVIEW allocates immediately above the ceiling it
+    /// reports, replaces our number with its own, and logs the substitution.
+    ///
+    /// MEASURED 2026-09-07 as a controlled pair rather than taken on the rule, which is what
+    /// <c>docs/labview-crash-signatures.md</c> demands: one socket-shaped VI generated twice,
+    /// identical but for the four uid numbers.
+    ///
+    /// | uids | UID warnings |
+    /// |---|---|
+    /// | 10, 11, 12, 13 | **4** — one per uid |
+    /// | 4200, 4210, 4220, 4230 | **0** |
+    ///
+    /// It matters because <c>dwarnCount</c> saturates at 200 and <c>looksDegraded</c> flips with
+    /// it, so a signature we emit ourselves crowds out the ones that mean something. A cold class
+    /// build with five test suites logged 24 of these — 60 % of that run's 40 warnings.
+    ///
+    /// The helpers under <c>scripts\</c> are deliberately NOT renumbered: they were measured
+    /// silent, they are generated once and cached, and the same document warns against
+    /// renumbering 39 files on the strength of a rule. This constant covers what the TOOLS emit
+    /// on every run, which is what that document names as the part that still costs.
+    /// </summary>
+    internal const int UidBase = 4200;
+
     internal static string SocketAixml(string socketName, string dataType, bool write)
     {
         var sb = new StringBuilder();
@@ -939,9 +992,9 @@ internal sealed class TestTools(LvaiConnection connection)
           .AppendLine("because AIXML refuses a class-typed terminal.\">");
 
         sb.AppendLine(
-            "  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
-            "description=\"Stands in for the class input.\" outputs=\"value:10.value\" " +
-            "type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"/>");
+            $"  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
+            $"description=\"Stands in for the class input.\" outputs=\"value:{UidBase}.value\" " +
+            $"type=\"path\" uid=\"{UidBase}\" uid_parent=\"root\" value=\"\"/>");
 
         var empty = DefaultFor(dataType);
         if (write)
@@ -951,29 +1004,29 @@ internal sealed class TestTools(LvaiConnection connection)
             // reads like malformed XML and is a missing attribute - measured 2026-08-29.
             sb.AppendLine(
                 $"  <Control _name=\"value\" conIdx=\"10\" connection=\"recommended\" " +
-                $"description=\"Stands in for the data input.\" outputs=\"value:11.value\" " +
-                $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
+                $"description=\"Stands in for the data input.\" outputs=\"value:{UidBase + 10}.value\" " +
+                $"type=\"{Escape(dataType)}\" uid=\"{UidBase + 10}\" uid_parent=\"root\" " +
                 $"value=\"{EscapeValue(empty)}\"/>");
             sb.AppendLine(
-                "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
-                "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
-                "type=\"path\" uid=\"12\" uid_parent=\"root\" value=\"\"/>");
+                $"  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
+                $"description=\"Stands in for the class output.\" inputs=\"value:{UidBase}.value\" " +
+                $"type=\"path\" uid=\"{UidBase + 20}\" uid_parent=\"root\" value=\"\"/>");
         }
         else
         {
             // The data OUTPUT needs a source of its own type; a path cannot feed it.
             sb.AppendLine(
-                $"  <Constant _name=\"empty\" outputs=\"value:11.value\" " +
-                $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
+                $"  <Constant _name=\"empty\" outputs=\"value:{UidBase + 10}.value\" " +
+                $"type=\"{Escape(dataType)}\" uid=\"{UidBase + 10}\" uid_parent=\"root\" " +
                 $"value=\"{EscapeValue(empty)}\"/>");
             sb.AppendLine(
-                "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
-                "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
-                "type=\"path\" uid=\"12\" uid_parent=\"root\" value=\"\"/>");
+                $"  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
+                $"description=\"Stands in for the class output.\" inputs=\"value:{UidBase}.value\" " +
+                $"type=\"path\" uid=\"{UidBase + 20}\" uid_parent=\"root\" value=\"\"/>");
             sb.AppendLine(
                 $"  <Indicator _name=\"value\" conIdx=\"2\" connection=\"recommended\" " +
-                $"description=\"Stands in for the data output.\" inputs=\"value:11.value\" " +
-                $"type=\"{Escape(dataType)}\" uid=\"13\" uid_parent=\"root\" " +
+                $"description=\"Stands in for the data output.\" inputs=\"value:{UidBase + 10}.value\" " +
+                $"type=\"{Escape(dataType)}\" uid=\"{UidBase + 30}\" uid_parent=\"root\" " +
                 $"value=\"{EscapeValue(empty)}\"/>");
         }
 
@@ -1419,8 +1472,16 @@ internal sealed class TestTools(LvaiConnection connection)
         // Spaced ranges rather than one running counter: the name constants and their Build Path
         // nodes are parallel arrays, and a suite of forty tests must not have uid 20+n collide with
         // the node block.
-        const int here = 10, strip = 11, array = 40, interactive = 50, call = 60;
-        const int nameBase = 100, reportName = 199, buildBase = 200, reportBuild = 299;
+        //
+        // ALL OF THEM ABOVE `UidBase`. `here`, `strip` and `array` used to be 10, 11 and 40, which
+        // are inside LabVIEW's reserved range - and the generator's own repair pass was raising
+        // exactly those three on every single runner build (`10`->`4200`, `11`->`4210`,
+        // `40`->`4220`, reported in its `steps`). Fixing them at source makes that pass a no-op
+        // instead of a routine three-item repair, and stops the six log lines it cost.
+        const int here = UidBase, strip = UidBase + 10, array = UidBase + 40,
+                  interactive = UidBase + 50, call = UidBase + 60;
+        const int nameBase = UidBase + 100, reportName = UidBase + 199,
+                  buildBase = UidBase + 200, reportBuild = UidBase + 299;
 
         sb.AppendLine($"  <Node _name=\"Current VI's Path\" outputs=\"path:{here}.path\" " +
                       $"uid=\"{here}\" uid_parent=\"root\"/>");
@@ -1463,12 +1524,12 @@ internal sealed class TestTools(LvaiConnection connection)
 
         sb.AppendLine("  <Indicator _name=\"Report Path used\" description=\"Absolute path of the " +
                       $"JUnit XML report this run wrote.\" inputs=\"value:{reportBuild}.appended path\" " +
-                      "type=\"path\" uid=\"61\" uid_parent=\"root\" value=\"\"/>");
+                      $"type=\"path\" uid=\"{UidBase + 61}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine("  <Indicator _name=\"error out\" description=\"Caraya returns 7002 when a " +
                       "test suite FAILED - that is a pass/fail signal\\2C not a fault. It also " +
                       "carries the FIRST failed assertion only; read the JUnit report for all of " +
-                      $"them.\" inputs=\"value:{call}.error out\" type=\"{ErrorCluster}\" uid=\"62\" " +
-                      "uid_parent=\"root\" value=\"[false,0,]\"/>");
+                      $"them.\" inputs=\"value:{call}.error out\" type=\"{ErrorCluster}\" " +
+                      $"uid=\"{UidBase + 62}\" uid_parent=\"root\" value=\"[false,0,]\"/>");
 
         sb.AppendLine("</VI>");
         return sb.ToString();

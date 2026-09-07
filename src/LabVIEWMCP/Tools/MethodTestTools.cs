@@ -391,24 +391,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
           .Append("LabVIEW's own {LV.SubVI} Replace then swaps for the real method. The class ")
           .AppendLine("terminals are stood in for by paths\\2C because AIXML refuses one.\">");
 
+        // Numbered from TestTools.UidBase, not from 10: a uid inside LabVIEW's reserved range
+        // costs two log lines per object per generation, measured 4 -> 0 on a controlled pair.
+        const int objIn = TestTools.UidBase, errIn = TestTools.UidBase + 10,
+                  objOut = TestTools.UidBase + 20, errOut = TestTools.UidBase + 30;
+
         sb.AppendLine(
-            "  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
-            "description=\"Stands in for the class input.\" outputs=\"value:10.value\" " +
-            "type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"/>");
+            $"  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
+            $"description=\"Stands in for the class input.\" outputs=\"value:{objIn}.value\" " +
+            $"type=\"path\" uid=\"{objIn}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine(
             $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
             "connection=\"recommended\" description=\"Error cluster in.\" " +
-            $"outputs=\"value:11.value\" type=\"{ErrorCluster}\" uid=\"11\" uid_parent=\"root\" " +
-            "value=\"[false,0,]\"/>");
+            $"outputs=\"value:{errIn}.value\" type=\"{ErrorCluster}\" uid=\"{errIn}\" " +
+            "uid_parent=\"root\" value=\"[false,0,]\"/>");
         sb.AppendLine(
-            "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
-            "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
-            "type=\"path\" uid=\"12\" uid_parent=\"root\" value=\"\"/>");
+            $"  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
+            $"description=\"Stands in for the class output.\" inputs=\"value:{objIn}.value\" " +
+            $"type=\"path\" uid=\"{objOut}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine(
             $"  <Indicator _name=\"error out\"{ConIdx(geometry?.ErrorOut)} " +
             "connection=\"recommended\" description=\"Error cluster out.\" " +
-            $"inputs=\"value:11.value\" type=\"{ErrorCluster}\" uid=\"13\" uid_parent=\"root\" " +
-            "value=\"[false,0,]\"/>");
+            $"inputs=\"value:{errIn}.value\" type=\"{ErrorCluster}\" uid=\"{errOut}\" " +
+            "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
         // EVERY REQUIRED INPUT OF THE METHOD GETS A TERMINAL HERE, or the test cannot wire it and
         // the suite comes out NOT EXECUTABLE. Measured 2026-09-03 on this tool's first real use:
@@ -420,7 +425,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         // The panes need NOT otherwise match: {LV.SubVI} Replace RE-TYPES the wires, which is how a
         // four-terminal socket swapped cleanly onto an eleven-terminal method in that same run. So
         // this mirrors what the test must WIRE, not the method's whole pane.
-        var uid = 20;
+        // Also above the reserved ceiling, and clear of the four terminals above.
+        var uid = TestTools.UidBase + 100;
         foreach (var input in required ?? [])
         {
             sb.AppendLine(

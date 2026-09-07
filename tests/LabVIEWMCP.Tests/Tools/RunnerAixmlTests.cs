@@ -30,11 +30,11 @@ public sealed class RunnerAixmlTests
         var xml = Runner("Test One.vi", "Test Two.vi");
 
         Assert.Contains("<Node _name=\"Current VI's Path\"", xml, StringComparison.Ordinal);
-        Assert.Contains("<Node _name=\"Strip Path\" inputs=\"path:10.path\"", xml,
+        Assert.Contains($"<Node _name=\"Strip Path\" inputs=\"path:{TestTools.UidBase}.path\"", xml,
                         StringComparison.Ordinal);
         // Two tests plus the report = three Build Path nodes, all fed by the stripped path.
         Assert.Equal(3, xml.Split("_name=\"Build Path\"").Length - 1);
-        Assert.Equal(3, xml.Split("base path:11.stripped path").Length - 1);
+        Assert.Equal(3, xml.Split($"base path:{TestTools.UidBase + 10}.stripped path").Length - 1);
         Assert.DoesNotContain(@"C:\temp\Suite", xml, StringComparison.Ordinal);
     }
 
@@ -84,10 +84,14 @@ public sealed class RunnerAixmlTests
     {
         var xml = Runner("A.vi", "B.vi", "C.vi");
 
-        Assert.Contains("inputs=\"element:200.appended path,element:201.appended path," +
-                        "element:202.appended path\"", xml, StringComparison.Ordinal);
-        Assert.Contains("Paths:40.appended array", xml, StringComparison.Ordinal);
-        Assert.Contains("Report Path:299.appended path", xml, StringComparison.Ordinal);
+        Assert.Contains($"inputs=\"element:{TestTools.UidBase + 200}.appended path," +
+                        $"element:{TestTools.UidBase + 201}.appended path," +
+                        $"element:{TestTools.UidBase + 202}.appended path\"",
+                        xml, StringComparison.Ordinal);
+        Assert.Contains($"Paths:{TestTools.UidBase + 40}.appended array", xml,
+                        StringComparison.Ordinal);
+        Assert.Contains($"Report Path:{TestTools.UidBase + 299}.appended path", xml,
+                        StringComparison.Ordinal);
     }
 
     /// <summary>TRUE opens Caraya's modal report dialog, and a modal dialog stops LabVIEW's whole
@@ -98,9 +102,10 @@ public sealed class RunnerAixmlTests
         var xml = Runner("A.vi");
 
         Assert.Contains("_name=\"Interactive (T)\"", xml, StringComparison.Ordinal);
-        Assert.Contains("type=\"bool\" uid=\"50\" uid_parent=\"root\" value=\"false\"", xml,
+        Assert.Contains($"type=\"bool\" uid=\"{TestTools.UidBase + 50}\" uid_parent=\"root\" " +
+                        "value=\"false\"", xml, StringComparison.Ordinal);
+        Assert.Contains($"Interactive (T):{TestTools.UidBase + 50}.value", xml,
                         StringComparison.Ordinal);
-        Assert.Contains("Interactive (T):50.value", xml, StringComparison.Ordinal);
     }
 
     /// <summary>A polymorphic call: `target` is the wrapper, `instance` picks the member. Both
