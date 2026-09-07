@@ -70,7 +70,19 @@ internal sealed class KnowledgeTools
     /// Measured: section 8 is 54 kB, and a VI-generator run failed to find a subsection that had
     /// been added to it that same day, then re-derived the fact by exporting a VI.
     /// </summary>
-    private const int BigSectionChars = 8_000;
+    /// <summary>
+    /// The most one answer may carry. Past this a client spills the whole thing to a file, and a
+    /// file holding one JSON string is not greppable - so the content becomes unreachable rather
+    /// than merely long. Measured 2026-09-07: section 8 of the AIXML reference is 89 521
+    /// characters and could not be read at all.
+    ///
+    /// This replaced an 8 000-character threshold that only APPENDED ADVICE - "call again with
+    /// node= instead" - to an answer that had already overrun the limit, so the advice arrived
+    /// inside the thing it was warning about. Only three sections of one document are over it
+    /// (8, 9 and 10 of the AIXML reference, all with subsections to index); no other served
+    /// document has a section anywhere near it.
+    /// </summary>
+    private const int MaxServeChars = 20_000;
 
     /// <summary>Past this many hits a lookup is answered with headings, not with passages.</summary>
     private const int FloodThreshold = 25;
@@ -159,7 +171,10 @@ internal sealed class KnowledgeTools
                      "is one round trip and prints each passage once rather than once per term. " +
                      "Takes precedence over section")]
         string? node = null,
-        [Description("Max passages to return (default 40, max 400)")] int limit = DefaultLimit)
+        [Description("Max passages to return (default 40, max 400)")] int limit = DefaultLimit,
+        [Description("Which chunk of an over-long section to return, 1-based. Omit for the " +
+                     "subsection index, which is what you want first")]
+        int page = 0)
     {
         string document;
         try
@@ -192,13 +207,7 @@ internal sealed class KnowledgeTools
             // appears anywhere, show it.
             return LookupMany(document, ParseTerms(section), DefaultLimit, AixmlLabel);
 
-        return match.Length > BigSectionChars
-            ? match + Environment.NewLine + Environment.NewLine +
-              $"[{match.Length / 1024} kB. If you came for one node, call this again with " +
-              "node='<name>' instead - and name every node you need in that one call, " +
-              "comma-separated: it returns only the passages that mention them, which is " +
-              "searchable where this is not.]"
-            : match;
+        return Serve(match, page, AixmlLabel);
     }
 
     [McpServerResource(Name = "aixml-reference", UriTemplate = "labview://aixml-reference",
@@ -530,9 +539,85 @@ internal sealed class KnowledgeTools
         // reads as "that content is not here", and it was measured sending a caller off to
         // re-derive a fact the document carried. If the term appears anywhere, show the passages
         // - and accept a comma-separated list, so several terms cost one call.
-        return Find(sections, section.Trim())
-               ?? FindSubsection(document, section.Trim())
-               ?? LookupMany(document, ParseTerms(section), DefaultLimit, LabelFor(resourceName));
+        var match = Find(sections, section.Trim()) ?? FindSubsection(document, section.Trim());
+        return match is null
+            ? LookupMany(document, ParseTerms(section), DefaultLimit, LabelFor(resourceName))
+            : Serve(match, page: 0, LabelFor(resourceName));
+    }
+
+    /// <summary>
+    /// One matched section, chunked when it is too big to survive the round trip.
+    ///
+    /// SECTION 8 OF THE AIXML REFERENCE COULD NOT BE READ AT ALL. Measured 2026-09-07: it is
+    /// 89 521 characters, which overruns the client's tool-output limit, so the whole answer was
+    /// spilled to a file - and a file holding one JSON string is not greppable, which cost the
+    /// caller two extra <c>grep</c> calls to find one paragraph. It is also the section the
+    /// document's own multi-terminal rule points at, so the failure lands on a reader who was
+    /// told to go there.
+    ///
+    /// The old behaviour was to return it whole with a note suggesting <c>node=</c> instead. That
+    /// note was right and useless: by the time it is read, the answer has already blown the limit.
+    ///
+    /// So an over-long section is answered with its SUBSECTION INDEX plus its own preamble - the
+    /// <c>###</c> headings with their sizes, each of which <see cref="FindSubsection"/> can
+    /// already serve by title. That turns one unreadable answer into a two-call lookup with no
+    /// content unreachable. A section with no subsections to index falls back to
+    /// <c>page=</c> chunks, and an explicit <c>page</c> always gets the raw chunk.
+    /// </summary>
+    private static string Serve(string match, int page, string documentLabel)
+    {
+        if (match.Length <= MaxServeChars && page <= 0) return match;
+
+        var lines = match.Replace("\r\n", "\n").Split('\n');
+        var subs = new List<(string Title, int Start, int End)>();
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].StartsWith("### ", StringComparison.Ordinal)) continue;
+            if (subs.Count > 0) subs[^1] = (subs[^1].Title, subs[^1].Start, i);
+            subs.Add((lines[i][4..].Trim(), i, lines.Length));
+        }
+
+        var pages = (match.Length + MaxServeChars - 1) / MaxServeChars;
+
+        // An index is only an answer if it can actually aim the next call. Two subsections in a
+        // 90 kB section would leave both over the limit, so that falls through to chunks.
+        if (page <= 0 && subs.Count >= 3)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"[{match.Length / 1024} kB - too large to return whole, so this is its " +
+                          "index. Ask for one subsection by title with section='<title>', or for " +
+                          $"a raw chunk with page=1..{pages}. If you came for one node, " +
+                          "node='<name>' is better than either - and name every node you need in " +
+                          "that one call, comma-separated: it returns just the passages that " +
+                          "mention them, which is searchable where this is not.]");
+            sb.AppendLine();
+            sb.AppendLine(string.Join(Environment.NewLine, lines[..subs[0].Start]).TrimEnd());
+            sb.AppendLine();
+            sb.AppendLine("Subsections (pass one as `section`):");
+            foreach (var (title, start, end) in subs)
+            {
+                var size = lines[start..end].Sum(l => l.Length + 1);
+                sb.AppendLine($"  {title}   ({size / 1024} kB)");
+            }
+            return sb.ToString().TrimEnd();
+        }
+
+        var wanted = Math.Clamp(page <= 0 ? 1 : page, 1, pages);
+        var from = (wanted - 1) * MaxServeChars;
+
+        // Cut on a line boundary: a chunk that ends mid-row of a terminal-name table is worse
+        // than a slightly uneven one, because the row is the unit a caller came for.
+        var take = Math.Min(MaxServeChars, match.Length - from);
+        var end2 = from + take;
+        if (end2 < match.Length)
+        {
+            var nl = match.LastIndexOf('\n', end2 - 1, take);
+            if (nl > from) end2 = nl + 1;
+        }
+
+        return $"[{documentLabel}, chunk {wanted} of {pages} ({match.Length / 1024} kB total). " +
+               $"Next: page={Math.Min(wanted + 1, pages)}.]" + Environment.NewLine +
+               Environment.NewLine + match[from..end2].TrimEnd();
     }
 
     /// <summary>
@@ -642,6 +727,14 @@ internal sealed class KnowledgeTools
     /// </summary>
     internal static int Rank(string passage, string needle)
     {
+        // A TABLE ROW WHOSE FIRST CELL *IS* THE TERM IS THE ANSWER, not one passage among many.
+        // Measured 2026-09-07: node='Select' returned 34 passages and printed 8, and the one row
+        // the caller came for - `| \`Select\` | \`t\`, \`s\`, \`f\` | \`s? t\3Af\` |` - was among
+        // them but buried, because every other mention of `Select` in backticks scored the same 3.
+        // A leading cell is a much stronger signal than a mention: that row is ABOUT the term,
+        // where the prose merely uses it. This is not specific to the terminal tables - it holds
+        // for every keyed table in every document these tools serve.
+        if (IsLeadingCell(passage, needle)) return 5;
         if (passage.Contains($"`{needle}`", StringComparison.OrdinalIgnoreCase)) return 3;
         if (passage.Contains($"`{needle} ", StringComparison.OrdinalIgnoreCase) ||
             passage.Contains($"\"{needle}\"", StringComparison.OrdinalIgnoreCase)) return 2;
@@ -656,6 +749,31 @@ internal sealed class KnowledgeTools
             at = passage.IndexOf(needle, at + 1, StringComparison.OrdinalIgnoreCase);
         }
         return 0;
+    }
+
+    /// <summary>
+    /// Does any line of this passage put <paramref name="needle"/> in its FIRST table cell?
+    ///
+    /// A passage built for a table hit carries three lines - the header, the `|---|` rule and the
+    /// matched row - so every line is checked rather than just the last. Backticks are stripped
+    /// because this document writes every node name in them, and the match is exact: `Select`
+    /// must not be answered by the `Select (Array)` row of some other table.
+    /// </summary>
+    private static bool IsLeadingCell(string passage, string needle)
+    {
+        foreach (var line in passage.Split('\n'))
+        {
+            var trimmed = line.TrimStart();
+            if (!trimmed.StartsWith('|')) continue;
+
+            var cut = trimmed.IndexOf('|', 1);
+            if (cut < 0) continue;
+
+            if (trimmed[1..cut].Trim().Trim('`', '*', ' ')
+                    .Equals(needle, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

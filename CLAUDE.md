@@ -234,6 +234,23 @@ A cache was the wrong instinct here and is worth remembering as such: no two of 
 the same argument, so nothing keyed on the input would have saved a single one. The waste was
 duplicated *output*.
 
+**And a batch only helps if each term's answer is aimed, which needed two more fixes on 2026-09-07.**
+Both were measured as friction in one class build, and both are about the lookup, not the round trip:
+
+- **A LOOKUP FOR A COMMON WORD RANKS THE WRONG PASSAGES FIRST.** `node='Select'` answered "34
+  passages, that term is everywhere - showing 8", and the terminal row was among the eight but
+  buried, because every other backticked mention scored the same. **A table row whose FIRST CELL is
+  the term now outranks a mention of it** — that row is *about* the term where prose merely uses it,
+  and it generalises to every keyed table in every served document.
+- **`lvai_aixml_reference section=8` COULD NOT BE READ AT ALL.** 89 521 characters overruns the
+  client's output limit, so the whole answer spilled to a file — and a file holding one JSON string
+  is not greppable, which cost two extra `grep` calls to find one paragraph. It is also the section
+  the document's own multi-terminal rule sends you to. The old code returned it whole with a note
+  saying "call again with `node=` instead", so **the advice arrived inside the thing it was warning
+  about**. An over-long section now comes back as its **subsection index** plus its preamble, each
+  title fetchable with `section='<title>'`, and `page=1..N` still reaches the raw chunks. Only
+  sections 8, 9 and 10 of the AIXML reference are over the limit; no other served document is close.
+
 **The two fixes save different things, and it is worth not confusing them.** A cache was added as
 well — the embedded documents and each document's line index are now built once per process instead
 of once per call — and that is where the *server-side* time went: the 18-term workload dropped from
@@ -267,6 +284,17 @@ tools. The two halves separate cleanly and point in opposite directions:
 That is what `lvai_generate_caraya_test_runner` now does in one call, and the general lesson is the one
 this file has learned twice: **a step that is cheap for LabVIEW and expensive in turns is a tool
 waiting to be written.** Optimise the number of calls, not the cost of one.
+
+**A BACKSLASH IN A `value=` ATTRIBUTE IS AN ESCAPE INTRODUCER, NOT DATA, and it must be `\5C`.**
+Measured 2026-09-07 on two one-constant probes: `value="Bicycle\5CTest Bicycle.vi"` validates in
+72 ms, and the same string with a raw backslash is `Error 42 … "values in the input are not escaped
+correctly"`, naming the string. It is a **whole-file** refusal, so one unescaped separator loses
+every VI in that AIXML. This shipped in `lvai_generate_caraya_test_runner`, which wrote a test VI's
+relative path raw — invisible while tests sat in a flat folder, because the relative path is then a
+bare file name, and reachable on almost every real run once the one-agent-one-output-directory rule
+forced per-class subfolders. **Its unit test asserted the raw separator**, so the fixture agreed
+with the defect: the third instance of "a tool tested against a plausible fixture is not tested".
+A raw `:` has never been measured failing there; only the backslash is mandatory.
 
 For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
 and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
@@ -595,6 +623,29 @@ the whole time because it stopped at the argument parse.
 Measured on this pair: the dynamic member reads `0`, the static one reads `1073741832`, neither
 carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
 `lvai_vi_terminals` is the answer.
+
+**AN INTERFACE IS FINISHED — `.lvclass` AND EVERY METHOD — BEFORE THE FIRST CLASS THAT IMPLEMENTS
+IT.** Being scriptable is not the same as being schedulable anywhere, and the ordering is the
+user's correction of 2026-09-07: a four-class build created the interface early and added its two
+members only after the classes *and* their accessors existed. Two reasons it has to be one step.
+`lvai_create_class` takes the interface list as a **creation-time** input with no scriptable way to
+add a link afterwards — NI's after-the-fact provider is a modal dialog, which stops the whole gRPC
+service. And **a declared method breaks every implementing class until that class's override
+exists**, measured with the require-override flag both set and cleared. So the method list is part
+of the contract a class is created against: finish it, then create the implementers, then write
+their overrides. `.claude/agents/labview-class-generator.md` Phase 1b.
+
+**`lvai_add_class_method` VALIDATES the AIXML now, and classifies the verdict rather than skipping
+it.** It converted blind because the validator is genuinely stricter for a class wire — and that
+also skipped every ORDINARY wiring fault. Measured 2026-09-07: three overrides came back
+`ok: true`, `terminalsRetyped: 2`, `verifiedOnDisk: true`, then answered **`Error 1003`** when run,
+with the describe, the export and the `udClassDDO` count all green; the skipped validate named the
+fault in 75 ms. A refusal mentioning `.lvclass`, `UDClassInst` or `LabVIEW Object` is the documented
+strictness and converts anyway; anything else stops. `validateFirst: false` restores the old
+behaviour, and needing it is worth reporting. **Re-running over an existing member is safe now**
+(`memberAlreadyExisted`): `Error 56002` used to travel down the chain and skip all three saves while
+the freshly converted diagram was already on disk, leaving the member *worse* than before the call.
+`docs/class-method-tooling.md` §4p.
 
 The manual route stays written up in §3 of that document — `Replace` on `.lvclass`,
 `AddItemFromMemory`, `SetWireRule` — with its four traps, of which the sharpest is that

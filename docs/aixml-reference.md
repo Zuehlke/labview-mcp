@@ -594,8 +594,30 @@ Two layers stack, and both are needed:
 |---|---|---|
 | `\3A` | `:` | qualified subVI names, property paths, event selectors, terminal names |
 | `\2C` | `,` | any comment or description containing a comma |
+| `\5C` | `\` | **mandatory in any `value`** — see below |
 | `\0A` | LF | multi-line `description` |
 | `\0D` | CR | multi-line `description` |
+
+**A BACKSLASH IN A `value` IS NOT OPTIONAL AND NOT COSMETIC — a raw one is refused outright.**
+Measured 2026-09-07 on two one-constant probes:
+
+| `value=` | verdict |
+|---|---|
+| `"Bicycle\5CTest Bicycle.vi"` | `errorCode 0`, 72 ms |
+| `"Bicycle\Test Bicycle.vi"` | **`Error 42`** — *"The following string or path control, indicator, or constant values in the input are not escaped correctly"*, naming the string |
+
+The message is the useful part: it names the offending value and nothing else, so it is unambiguous
+once seen — and it is a **whole-file** refusal, so one unescaped separator loses every VI in that
+AIXML. This shipped as a defect in `lvai_generate_caraya_test_runner`, which wrote a test VI's
+relative path raw; a flat output folder never reveals it, because the relative path is then a bare
+file name with no separator in it.
+
+Note the validator's own wording says "escaped with another backslash". Both spellings may work;
+`\5C` is the one measured here and the one the rest of this document uses, so prefer it.
+
+**The colon is different: a raw `:` in a `value` has never been measured failing.** `\3A` there is
+accepted and decodes back to `:`, so escaping it is harmless, but it is not required the way the
+backslash is. An absolute Windows path is conventionally written `C\3A\5Ctemp\5Cout.txt`.
 
 Both `:` and `,` are separators inside `inputs`/`outputs`, which is why they are escaped
 everywhere — including in free text. You may write a literal comma in a `comment` and
@@ -960,6 +982,25 @@ A `Property Node` without the `write+` prefix reads. `Index Array` with two `ind
 entries in `inputs` returns two `element` outputs — repeated terminal names are how
 expandable nodes are described.
 
+**BUT NOT EVERY EXPANDABLE NODE EXPANDS FROM AIXML, and `Format Into String` is the one that
+matters.** Read as a general rule this sentence cost a session about 330 s of wall clock, so the
+exception belongs beside it:
+
+| node | grows from repeated terminal names? |
+|---|---|
+| `Index Array` | **yes** — two `index:` entries give two `element` outputs |
+| `Concatenate Strings` | **yes** — measured 2026-09-07, nine repeated `string:` inputs validated first try |
+| `Format Into String` | **NO** — arity is fixed at one `input 1` |
+
+`Format Into String` was tried as `input 2`/`input 3`/`input 4` and as repeated `input 1:`, and both
+give the same three complaints at once: `Too many format specifiers`, `Contains unwired or bad
+terminal`, and a double-into-string coercion. So a multi-value format string is not authorable here —
+**build the string with `Concatenate Strings` and one converter per value** (`Number To Decimal
+String`, `Number To Fractional String`, a `Select` between two string constants for a boolean).
+
+The trap is that the failure names the format string rather than the arity, which reads as "my
+format specifiers are wrong" and sends you off editing them.
+
 ### Invoke Nodes
 
 An `Invoke Node` is a `Node` with **`target`** (the method) and **`type`** (the refnum
@@ -1166,7 +1207,7 @@ the other reason this one is spliced into the document rather than left beside i
 | `Close Reference` | `reference`, `error in (no error)` | `error out` |
 | `Build Path` | `base path`, `name or relative path` | `appended path` |
 | `Random Number (0-1)` | — | `number\3A 0 to 1` |
-| `Format Into String` | `initial string`, `error in`, `input 1`, `format string` (93/150) | `resulting string`, `error out` |
+| `Format Into String` | `initial string`, `error in`, **exactly one** `input 1`, `format string` (93/150) — the arity does NOT expand from AIXML; use `Concatenate Strings` plus one converter per value | `resulting string`, `error out` |
 | `Increment` | `x` | `x+1` |
 | `Unbundle / Bundle Elements` | `input cluster` (72/144) | `output cluster` (72/144) |
 | `Unbundle` | `cluster` | varies per instance (58 shapes) |

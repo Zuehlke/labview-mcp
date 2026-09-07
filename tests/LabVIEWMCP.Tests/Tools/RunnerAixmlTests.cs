@@ -44,8 +44,36 @@ public sealed class RunnerAixmlTests
         var xml = Runner("Test One.vi", "Sub\\Test Two.vi");
 
         Assert.Contains("value=\"Test One.vi\"", xml, StringComparison.Ordinal);
-        Assert.Contains("value=\"Sub\\Test Two.vi\"", xml, StringComparison.Ordinal);
+        Assert.Contains("value=\"Sub\\5CTest Two.vi\"", xml, StringComparison.Ordinal);
         Assert.Contains("value=\"Suite-TestReport.xml\"", xml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A TEST IN A SUBFOLDER USED TO BREAK THE WHOLE RUNNER, and the assertion above is what let
+    /// it ship: it expected the raw separator, so the test agreed with the defect.
+    ///
+    /// Measured 2026-09-07 on two one-constant probes put through the real validator:
+    /// <c>value="Bicycle\5CTest Bicycle.vi"</c> answers <c>errorCode 0</c> in 72 ms, while
+    /// <c>value="Bicycle\Test Bicycle.vi"</c> answers <c>Error 42 ... "values in the input are not
+    /// escaped correctly"</c> and names the string. In the field the whole runner was refused and
+    /// nothing was written, on the first run that ever put test VIs in per-class subfolders -
+    /// which the one-agent-one-output-directory rule requires, so this is the normal layout and
+    /// not an exotic one.
+    ///
+    /// A flat folder cannot see the fault: the relative path is then a bare file name.
+    /// </summary>
+    [Fact]
+    public void A_test_in_a_subfolder_escapes_its_separator()
+    {
+        var xml = Runner("Bicycle\\Test Bicycle.vi", "Offroad Bicycle\\Test Offroad.vi");
+
+        Assert.Contains("value=\"Bicycle\\5CTest Bicycle.vi\"", xml, StringComparison.Ordinal);
+        Assert.Contains("value=\"Offroad Bicycle\\5CTest Offroad.vi\"", xml, StringComparison.Ordinal);
+
+        // The fault is a backslash that is NOT the start of an escape. Every one in the file must
+        // now be followed by two hex digits.
+        foreach (var (index, _) in xml.Select((c, i) => (i, c)).Where(p => p.c == '\\'))
+            Assert.Matches("^[0-9A-F]{2}", xml[(index + 1)..Math.Min(index + 3, xml.Length)]);
     }
 
     /// <summary>Only the TESTS go into the array - the report path is a separate Build Path whose

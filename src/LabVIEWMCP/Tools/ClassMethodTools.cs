@@ -62,9 +62,17 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         THIS IS THE STEP AIXML CANNOT DO. A class-typed terminal is `Control with type=UDClassInst
         is not supported`, so a method is authored with `path` stand-ins and repaired here. Measured
         2026-09-02: doing it by hand cost ~105 s of wall clock for 3.3 s inside LabVIEW.
-        Each method is either an `aixml` file (converted here, deliberately WITHOUT validating,
-        because the validator is STRICTER than the generator for exactly this case) or a `vi` that
-        already exists (repaired in place).
+        Each method is either an `aixml` file or a `vi` that already exists (repaired in place).
+        The AIXML is VALIDATED FIRST and the verdict CLASSIFIED: a refusal naming a class type is
+        the documented case where ValidateAIXML is stricter than ConvertAIXMLToVI, and is converted
+        anyway; anything else STOPS, because the converter writes a broken diagram from it and the
+        fault then surfaces as Error 1003 at RUN time with every file-level check green - measured
+        2026-09-07 on three overrides that all reported ok. `validateFirst: false` restores the old
+        convert-blind behaviour.
+        RE-RUNNING OVER AN EXISTING MEMBER IS SAFE. Error 56002 from AddItemFromMemory used to
+        travel down the chain and skip the saves, discarding the retype while the new diagram was
+        already on disk - the member ended up worse than before. It is filtered now and reported as
+        `memberAlreadyExisted`.
         methodsJson is a JSON ARRAY:
           [{"aixml":"C:\\x\\Initialize.xml","vi":"C:\\cls\\Initialize.vi",
             "classTerminals":["obj in","obj out"],"dispatchTerminals":["obj in","obj out"]}]
@@ -103,6 +111,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         int panePattern = DefaultPanePattern,
         [Description("Read each saved file back and confirm the terminals really are class-typed")]
         bool verify = true,
+        [Description("""
+            Validate each method's AIXML before converting it, and stop on a fault that is NOT the
+            class-wire strictness. On by default. Turn it off only when the classifier wrongly
+            calls a class-wire refusal a real fault - and report that, because the classifier then
+            needs the message adding to it.
+            """)]
+        bool validateFirst = true,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
         string? helperAixmlPath = null,
@@ -205,8 +220,52 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 if (method.Aixml is { } aixml)
                 {
-                    // WITHOUT validating - see the class comment. This is the one case where the
-                    // validator is stricter than the generator.
+                    // The validator is STRICTER than the generator for a class wire, which is why
+                    // this call converts without it. But "stricter" is not "useless": it is also
+                    // the only thing that sees an ORDINARY wiring mistake, and skipping it
+                    // outright is what let three overrides ship as `ok: true` and then answer
+                    // Error 1003 at run time - measured 2026-09-07, with every file-level check
+                    // green. So it runs, and its verdict is CLASSIFIED rather than obeyed.
+                    if (validateFirst)
+                    {
+                        var check = await new AixmlTools(connection).ValidateAixmlAsync(
+                            aixml, timeoutSeconds, ct);
+                        var message = (Read(check) as JsonObject)?["errorMessage"]?
+                            .GetValue<string>() ?? "";
+                        var classWire = Code(check) != 0 && IsClassTypeComplaint(message);
+                        steps.Add(new JsonObject
+                        {
+                            ["step"] = "preValidate",
+                            ["answer"] = Read(check),
+                            ["verdict"] = Code(check) == 0 ? "clean"
+                                : classWire ? "classWireStrictness" : "realFault",
+                            ["note"] = Code(check) == 0
+                                ? "The AIXML validates on its own, so nothing here is being waved through."
+                                : classWire
+                                    ? "Refused for a CLASS-TYPED wire, which is the documented case " +
+                                      "where ValidateAIXML is stricter than ConvertAIXMLToVI. " +
+                                      "Converting anyway - that is what this tool is for."
+                                    : "Refused for something that is NOT a class-typed wire, so it " +
+                                      "is an ordinary fault the converter will happily write into a " +
+                                      "broken diagram. Stopped here instead: the measured symptom is " +
+                                      "Error 1003 at run time with every file-level check green.",
+                        });
+
+                        if (Code(check) != 0 && !classWire)
+                        {
+                            results.Add(Failed(method, viPath, "preValidate", steps, new JsonObject
+                            {
+                                ["errorMessage"] = message,
+                                ["hint"] = "Fix the AIXML and call again. If this really is the " +
+                                           "class-wire case and the classifier missed it, pass " +
+                                           "validateFirst: false - and say so, because the " +
+                                           "classifier then needs the message adding to it.",
+                            }));
+                            stoppedAt ??= "preValidate";
+                            continue;
+                        }
+                    }
+
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
                         aixml, viPath, openVI: false, timeoutSeconds, ct);
                     steps.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
@@ -293,6 +352,9 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 var values = (Read(run) as JsonObject)?["values"] as JsonObject;
                 var retyped = int.TryParse(Scalar(values, "terminals retyped"), out var r) ? r : -1;
+                // Error 56002 is now filtered inside the helper, so `add member error` reads 0 on a
+                // re-run and this is the only thing that says the member was already there.
+                var alreadyMember = Scalar(values, "member already existed") is "1" or "true";
                 var stages = new[] { "open vi error", "class open error", "add member error",
                                      "wire rule error", "save vi error", "save class error" };
                 var failedStage = stages.FirstOrDefault(s => StageCode(values, s) is not (0 or null));
@@ -343,6 +405,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["terminalsRetyped"] = retyped,
                     ["dynamicDispatchTerminals"] = new JsonArray([.. (indices ?? []).Select(i => (JsonNode)i)]),
                     ["verifiedOnDisk"] = verify,
+                    ["memberAlreadyExisted"] = alreadyMember,
                     ["steps"] = steps,
                 });
             }
@@ -484,6 +547,27 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     }
 
     // ------------------------------------------------------------------ plumbing
+
+    /// <summary>
+    /// Is this validator refusal the documented CLASS-WIRE STRICTNESS, or an ordinary fault?
+    ///
+    /// The distinction is the whole value of running the validator at all here. Measured
+    /// 2026-09-01: <c>lvai_validate_aixml</c> refuses a class-typed wire with
+    /// <c>Error 53 ... the type of the source is Test Case.lvclass ... the type of the sink is
+    /// file path</c> while <c>ConvertAIXMLToVI</c> writes the same file with <c>errorCode 0</c>.
+    /// That case must NOT block - authoring against stand-ins and repairing afterwards is what
+    /// this tool exists for. Everything else must, because the converter writes a broken diagram
+    /// and the fault then surfaces as Error 1003 at RUN time, long after every file-level check
+    /// has passed it.
+    ///
+    /// Deliberately conservative: an unrecognised message counts as a real fault. Waving one
+    /// through is the failure this method was added to stop, and the caller has
+    /// <c>validateFirst: false</c> when the classifier is wrong.
+    /// </summary>
+    internal static bool IsClassTypeComplaint(string message) =>
+        message.Contains(".lvclass", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("UDClassInst", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("LabVIEW Object", StringComparison.OrdinalIgnoreCase);
 
     private static JsonNode? Read(string answer)
     {

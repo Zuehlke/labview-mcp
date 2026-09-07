@@ -953,7 +953,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"  <Control _name=\"value\" conIdx=\"10\" connection=\"recommended\" " +
                 $"description=\"Stands in for the data input.\" outputs=\"value:11.value\" " +
                 $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
-                $"value=\"{Escape(empty)}\"/>");
+                $"value=\"{EscapeValue(empty)}\"/>");
             sb.AppendLine(
                 "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
                 "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
@@ -965,7 +965,7 @@ internal sealed class TestTools(LvaiConnection connection)
             sb.AppendLine(
                 $"  <Constant _name=\"empty\" outputs=\"value:11.value\" " +
                 $"type=\"{Escape(dataType)}\" uid=\"11\" uid_parent=\"root\" " +
-                $"value=\"{Escape(empty)}\"/>");
+                $"value=\"{EscapeValue(empty)}\"/>");
             sb.AppendLine(
                 "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
                 "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
@@ -974,7 +974,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"  <Indicator _name=\"value\" conIdx=\"2\" connection=\"recommended\" " +
                 $"description=\"Stands in for the data output.\" inputs=\"value:11.value\" " +
                 $"type=\"{Escape(dataType)}\" uid=\"13\" uid_parent=\"root\" " +
-                $"value=\"{Escape(empty)}\"/>");
+                $"value=\"{EscapeValue(empty)}\"/>");
         }
 
         sb.AppendLine("</VI>");
@@ -1151,7 +1151,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// literal is its fields' literals, which is why this recurses rather than growing three more
     /// cases.
     ///
-    /// COMMAS HERE ARE STRUCTURE, NOT CONTENT, so they are NEVER escaped as <c>C</c> -
+    /// COMMAS HERE ARE STRUCTURE, NOT CONTENT, so they are NEVER escaped as <c>\2C</c> -
     /// <c>docs/aixml-reference.md</c> section 5 counted 51 raw separators against one escaped byte
     /// inside a picture payload. A cluster whose last field is a string ends in a trailing comma
     /// because an empty string literal is empty: <c>[false,0,]</c> is what NI's own exports carry,
@@ -1385,7 +1385,7 @@ internal sealed class TestTools(LvaiConnection connection)
     {
         var named = name is null ? "" : $" _name=\"{Escape(name)}\"";
         return $"  <Constant{named} outputs=\"value:{uid}.value\" type=\"{Escape(type)}\" " +
-               $"uid=\"{uid}\" uid_parent=\"root\" value=\"{Escape(value)}\"/>";
+               $"uid=\"{uid}\" uid_parent=\"root\" value=\"{EscapeValue(value)}\"/>";
     }
 
     /// <summary>
@@ -1607,4 +1607,26 @@ internal sealed class TestTools(LvaiConnection connection)
 
     internal static string Escape(string text) =>
         text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+
+    /// <summary>
+    /// XML escaping PLUS the AIXML backslash escape, for a raw literal going into a
+    /// <c>value=</c> attribute.
+    ///
+    /// A BACKSLASH IN A `value` IS AN ESCAPE INTRODUCER, NOT DATA. Measured 2026-09-07 on two
+    /// one-constant probes: <c>value="Bicycle\5CTest Bicycle.vi"</c> validates in 72 ms, and the
+    /// same string with a raw backslash is <c>Error 42 ... "values in the input are not escaped
+    /// correctly"</c>, which names the offending string and nothing else.
+    ///
+    /// It shipped as a defect in <see cref="CarayaRunnerAixml"/>: a test VI in a SUBFOLDER of the
+    /// runner's own directory produces a relative path with a separator in it, and the whole
+    /// runner was then refused. A flat <c>Tests\</c> folder never hits it - which is why it
+    /// survived until the one-agent-one-output-directory rule forced per-class subfolders.
+    ///
+    /// ONLY THE BACKSLASH. A raw <c>:</c> has never been measured failing here, and the
+    /// validator's own message names backslashes alone; escaping the colon as well would be an
+    /// unmeasured change to every value this generator writes. <see cref="Escape"/> stays as it
+    /// is for <c>target=</c> and <c>fields=</c>, whose callers pass strings that ALREADY carry
+    /// <c>\3A</c> escapes - putting this on those would double-escape them.
+    /// </summary>
+    internal static string EscapeValue(string value) => Escape(value).Replace("\\", "\\5C");
 }

@@ -1267,3 +1267,56 @@ hazards:
 is not established. It is worth a second look only if it ever coincides with a project losing items;
 on the evidence so far it is closer to the `DestroyPlatformEvent` class — noise that `looksDegraded`
 should probably not count either.
+
+## 2026-09-07: 38 DWarns in one class build, and EVERY ONE of them under `lvai_close_active_project.vi`
+
+A four-class build with interfaces, 16 accessors, 5 methods and six Caraya suites — 33 minutes, no
+crash, no hang, every call answered. The log grew from 1 640 174 to 1 761 835 bytes and the DWarn
+count from **66 to 104**. The 38 new entries:
+
+| count | signature |
+|---|---|
+| 15 | `source\ThEvent.cpp(213) : DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42` |
+| 3 | `source\project\ProjectItem.cpp(18606) : DWarnInternal 0x484DB723: bad parent in MoveItem` |
+| 1 | `source\ThThread.cpp(957) : DWarn 0x69BBB755: Terminate thread failed` |
+
+**The new fact is the attribution.** Every `Executing:` line in the appended region names the same
+VI:
+
+```
+[ExecSys:0; Executing:"[VI "lvai_close_active_project.vi" (0x346df0b8)]"]
+```
+
+Three of them, for three closes. Nothing else in a 33-minute run that generated 28 VIs and four
+`.lvclass` files carried an `Executing:` context at all. So the warnings cluster on the **project
+close**, not on generation, conversion, the accessor wizard or `lvai_add_class_method`.
+
+The 16 minidump ids in the same region are the DWarn handler's own dumps, not crashes — the process
+never left the table. See "COUNTING MINIDUMPS IS NOT A FAULT MEASURE" above.
+
+### What was fixed on the strength of it, and what was not
+
+`lvai_close_active_project.xml` **leaked the project reference**: it took the refnum from
+`Project:Active Project`, passed it through `Save` and `Close`, and never closed it. That breaks this
+repository's own rule — a leaked refnum keeps its object in LabVIEW's memory, which is the exact
+mechanism that made `lvai_create_class` produce parentless children. Fixed 2026-09-07 by adding a
+`Close Reference` at uid 45, out of the error chain (error in wired for ordering, error out dropped),
+copying the pattern `lvai_active_project.vi` has always used on the same reference and
+`lvai_create_class.vi` uses at uid 88.
+
+**Whether that leak CAUSED any of the 38 warnings is NOT established.** The fix stands on the rule,
+not on this measurement, and the honest position is that a correctness defect and a warning cluster
+were found in the same VI. Do not write it up as a cure.
+
+**The `MoveItem` three point somewhere else, and the next thing to measure is the `Save`.** This
+helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved project
+risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a loose
+project item — measured repeatedly elsewhere in this repository, and seen in this very run, where a
+test agent had to strip three `LVMCP Stub …` items that LabVIEW had adopted into the `.lvproj`.
+Three adopted items, three `bad parent in MoveItem`. That is a correlation from one run and nothing
+more, but it is a cheap experiment: close a project with and without the `Save`, with and without
+adopted VIs in memory, and count.
+
+The section above lists `keepCarrier: false` and `tidyProject: true` as the other unexcluded
+candidates. Neither was in play here — which narrows it usefully, because this run reproduced the
+warning without either.

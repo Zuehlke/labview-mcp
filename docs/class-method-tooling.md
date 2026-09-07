@@ -532,7 +532,7 @@ DIFFERENT types left the diagram silently broken and was still reported as a cor
 ```xml
 <Call inputs="AnalogInput in:265.AnalogInput out,error in (no error):"
       outputs="AnalogInput out:796.AnalogInput out,Sample Rate:,error out:"
-      target="AnalogInput.lvclassARead Sample Rate.vi" uid="796"/>
+      target="AnalogInput.lvclass\3ARead Sample Rate.vi" uid="796"/>
 ```
 
 `Sample Rate` is unwired and the assertion's `Actual` is bound to the CLASS wire — LabVIEW's
@@ -1116,6 +1116,84 @@ The run that found all this: **~14.5 min of wall clock against ~35 s inside tool
 ratio near 25 : 1.** LabVIEW's share was 5.1 s per `lvai_add_class_method` call and never varied.
 Practically all of it was the model re-deriving AIXML of a shape that does not change — the same
 signature that justified this tool in the first place.
+
+## 4p. Two fixes to `lvai_add_class_method`, 2026-09-07 — validation and idempotency
+
+Both came out of one four-class build (`IVehicle` + `Bicycle` + `Car` + `Offroad Bicycle`), and both
+are cases where the tool reported success or a misleading failure over a real defect.
+
+### The tool skipped validation on purpose, and that also skipped ORDINARY wiring faults
+
+`lvai_add_class_method` converted without validating, because for a class-typed wire the validator is
+genuinely stricter than the converter — §3 of `docs/labview-lunit-testing.md` and the `Error 53`
+measurement of 2026-09-01. That reasoning is sound and the conclusion drawn from it was too broad.
+
+Measured: three `Describe.vi` overrides came back
+
+```
+ok: true, terminalsRetyped: 2, verifiedOnDisk: true, pathStandInsLeft: 0
+```
+
+and then answered **`Error 1003`** when run. Every file-level check passed — the describe, the AIXML
+export, the `udClassDDO` count of §1d. What discriminated a broken *diagram* from a broken *class*
+was two controls: the static interface member returned its constant, and a wizard-made accessor ran
+clean, so the owning libraries were not blocked. Running the skipped `lvai_validate_aixml` on the
+author's own source then named the fault **in 75 ms**.
+
+So the validator's strictness is a property of ONE case, not a reason to never call it. The tool now
+validates each method's AIXML and **classifies** the verdict:
+
+| verdict | what happens |
+|---|---|
+| `clean` | convert, as before |
+| `classWireStrictness` — the message names a `.lvclass`, `UDClassInst` or `LabVIEW Object` | convert anyway; this is what the tool is for |
+| `realFault` — anything else | **STOP**, with the validator's message and the AIXML path |
+
+The classifier is deliberately conservative: an unrecognised message counts as a real fault, because
+waving one through is the failure being fixed. `validateFirst: false` restores the old behaviour for
+a caller who finds the classifier wrong — and finding that is worth reporting, since the fix is to
+add the message to the list.
+
+The step appears in each method's `steps` as `preValidate` with its `verdict`, so a class-wire
+refusal is visible rather than silently tolerated.
+
+### Re-running over an existing member left it WORSE than before the call
+
+§4o records `Error 1004` for one shape of this. The other shape is `Error 56002`, and it is worse
+than a failed call:
+
+`AddItemFromMemory` answers 56002 when the VI is already a member. That error travelled down the
+error chain, so `SetWireRule`, the VI's `Save.Instrument` and the class `Save` were **all skipped** —
+while the freshly converted diagram had **already been written to disk** by the convert step. So the
+member ended up with the new (stand-in-typed) diagram and none of the repair: not a no-op, a
+regression. Recovery was the documented rebuild — close the project, delete the `.vi` *and* its
+`<Item>` block from the `.lvclass`, re-add.
+
+Fixed in the helper rather than in C#, because the decision belongs where the error is raised:
+
+```xml
+<Node _name="Unbundle By Name" fields="code" inputs="input cluster:90.error out" .../>
+<Constant _name="already a member code" type="int32" value="56002" .../>
+<Node _name="Equal?" inputs="x:110.code,y:111.value" outputs="x = y?:112.eq" .../>
+<Constant _name="no error" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" .../>
+<Node _name="Select" inputs="t:113.value,s:112.eq,f:90.error out" outputs="s? t\3Af:114.sel" .../>
+```
+
+Everything downstream now takes `114.sel` instead of `90.error out`, and the boolean surfaces as a
+new indicator `member already existed` → `memberAlreadyExisted` in the answer. **Only 56002 is
+filtered**; every other code still stops the chain, 1004 included. A second run therefore retypes,
+rewires and saves exactly as the first did.
+
+The modified helper was validated against LabVIEW the same day: `lvai_check_aixml` clean,
+`lvai_validate_aixml` `errorCode 0` in 427 ms.
+
+### The lesson both share
+
+Neither defect was reachable through the tool's own reporting. One reported `ok: true` over an
+`Error 1003`; the other reported a failure whose stated cause pointed at the project. In both cases
+the evidence that settled it came from **outside** the tool — a run, and a byte comparison of the
+saved file. That is the third and fourth time in this document that a session-level reading passed
+while the artefact disagreed. Ask the file, or run it.
 
 ## 5. What is NOT measured yet
 

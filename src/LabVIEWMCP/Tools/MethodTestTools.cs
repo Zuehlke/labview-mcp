@@ -428,7 +428,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "connection=\"required\" description=\"Stands in for a required input of the " +
                 $"method.\" outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
                 $"uid=\"{uid}\" uid_parent=\"root\" " +
-                $"value=\"{TestTools.Escape(input.Value)}\"/>");
+                $"value=\"{TestTools.EscapeValue(input.Value)}\"/>");
             uid++;
         }
 
