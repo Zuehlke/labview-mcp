@@ -1065,6 +1065,20 @@ seconds, same two `OMAutoClasses` entries, zero new archives. The archives are w
 *starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
 causing the next one - eight in one day looked exactly like a cause and was not.
 
+**A DWARN CLUSTER TAGGED WITH ONE VI IS NOT CAUSED BY THAT VI, and settling it needs an A/B rather
+than a fix.** Measured 2026-09-07: a 33-minute class build left 38 new DWarns, *every* one tagged
+`[Executing: lvai_close_active_project.vi]` — 15 `DestroyPlatformEvent failed with MgErr 42`, 3
+`bad parent in MoveItem`. That helper did leak the project refnum, so the two looked connected. They
+are not: building the pre-fix helper (the same AIXML with the one `Close Reference` removed) and
+alternating the two over four closes in the same state gave **0, 2, 1, 0** warnings, pre-fix and
+fixed alike. And `bad parent in MoveItem` did not reproduce once in those four, so it depends on
+what LabVIEW holds in MEMORY — the `Save` adopting every open VI — not on the close's wiring.
+
+Two process lessons, both cheap: **the `Executing:` tag names where the warning was emitted, not
+what caused it**, and **two measurements do not separate two distributions whose values are 0, 1 and
+2** — after round 2 the reading was "the fix causes them", the exact opposite of the hypothesis, and
+just as wrong. `docs/labview-crash-signatures.md`.
+
 **Read NI's own log, not the Windows event log.** LabVIEW installs its own crash handler: it catches
 the fault, writes `%TEMP%\LabVIEW_32_<ver>_interactive_<user>_cur.txt` plus a minidump, and exits.
 Windows Error Reporting never sees it, so an empty Application log is **not an alibi**. Measured

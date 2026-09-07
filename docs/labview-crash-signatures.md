@@ -1304,11 +1304,36 @@ mechanism that made `lvai_create_class` produce parentless children. Fixed 2026-
 copying the pattern `lvai_active_project.vi` has always used on the same reference and
 `lvai_create_class.vi` uses at uid 88.
 
-**Whether that leak CAUSED any of the 38 warnings is NOT established.** The fix stands on the rule,
-not on this measurement, and the honest position is that a correctness defect and a warning cluster
-were found in the same VI. Do not write it up as a cure.
+**And an A/B THEN SETTLED IT: the leak causes none of them.** Measured the same day by building the
+pre-fix helper — the identical AIXML with the one `Close Reference` node removed — and alternating
+the two against the same project, in the same state, four closes:
 
-**The `MoveItem` three point somewhere else, and the next thing to measure is the `Save`.** This
+| round | helper | bytes logged | `DestroyPlatformEvent` | `bad parent in MoveItem` |
+|---|---|---|---|---|
+| 1 | pre-fix | 0 | 0 | 0 |
+| 2 | fixed | 3438 | 2 | 0 |
+| 3 | pre-fix | 1689 | 1 | 0 |
+| 4 | fixed | 0 | 0 | 0 |
+
+**Indistinguishable.** 0 to 2 warnings per close with either helper, and the two orderings that
+looked decisive — round 1 against round 2 — inverted on the next pair. This is worth recording as a
+method note as much as a result: after round 2 the reading was "the fix CAUSES the warnings", which
+is the opposite of the hypothesis it was testing and was equally wrong. Two points do not separate
+two distributions whose values are 0, 1 and 2.
+
+So the refnum close **neither causes nor cures** `DestroyPlatformEvent`. It is kept on the rule
+alone — `Project:Active Project` hands out a reference the caller owns, which is why the read-only
+`lvai_active_project.vi` has always closed the same one — and the honest summary is that a
+correctness defect and a warning cluster happened to be found in the same VI. Do not write it up as
+a cure, and do not write it up as a regression either.
+
+**`bad parent in MoveItem` did not reproduce ONCE in four closes.** That is the useful half of the
+A/B: in a quiet state — project opened, closed, nothing built in between — the signature is absent
+with both helpers, while the 33-minute class build produced one per close. It therefore depends on
+what LabVIEW has in memory, not on the close's own wiring, which is exactly what the `Save`
+adoption hypothesis below predicts and the refnum hypothesis does not.
+
+**The `Save` is the remaining candidate, and the A/B above raised its odds.** This
 helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved project
 risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a loose
 project item — measured repeatedly elsewhere in this repository, and seen in this very run, where a
