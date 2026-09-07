@@ -642,10 +642,22 @@ also skipped every ORDINARY wiring fault. Measured 2026-09-07: three overrides c
 with the describe, the export and the `udClassDDO` count all green; the skipped validate named the
 fault in 75 ms. A refusal mentioning `.lvclass`, `UDClassInst` or `LabVIEW Object` is the documented
 strictness and converts anyway; anything else stops. `validateFirst: false` restores the old
-behaviour, and needing it is worth reporting. **Re-running over an existing member is safe now**
-(`memberAlreadyExisted`): `Error 56002` used to travel down the chain and skip all three saves while
-the freshly converted diagram was already on disk, leaving the member *worse* than before the call.
-`docs/class-method-tooling.md` §4p.
+behaviour, and needing it is worth reporting.
+
+**Re-running over an existing member is safe now** (`memberAlreadyExisted`) — and getting there
+needed TWO codes, not one. `AddItemFromMemory` used to send its refusal down the chain and skip
+`SetWireRule` and both saves, discarding the retype while the freshly converted diagram was already
+on disk: the member ended up *worse* than before the call. The first fix filtered `56002` and did
+**nothing for the common case**, because a plain re-run answers **`1004`** — measured 2026-09-07,
+`member already existed: 0` and all three saves still inheriting the error. So both are tolerated,
+**gated on the `.lvclass` itself already listing the VI**, because `1004` is also what a full path
+in the `Name` input produces and those two are opposite verdicts. The class file is plain XML, so
+that check costs no LabVIEW. `docs/class-method-tooling.md` §4p.
+
+**The process lesson is the sharper one: A FIX IS NOT VERIFIED BY THE TEST WRITTEN ALONGSIDE IT.**
+The 56002-only filter passed its unit test, validated against LabVIEW, and was inert. What found it
+was re-running the tool against a member that really existed — reproducing the original failure,
+which is the only thing that ever settles it.
 
 The manual route stays written up in §3 of that document — `Replace` on `.lvclass`,
 `AddItemFromMemory`, `SetWireRule` — with its four traps, of which the sharpest is that
@@ -1083,7 +1095,7 @@ validated **once and then cached** under `%TEMP%\LabVIEWMCP\helpers\`, and do no
 to force a rebuild unless the AIXML actually changed. A development loop that regenerates every
 iteration pays the risk every iteration, which is how three deaths happened in one afternoon.
 `docs/labview-crash-signatures.md` has the other crash points, including `Open project application
-ref.vi` - the `ProjectAActive Project` route itself.
+ref.vi` - the `Project\3AActive Project` route itself.
 
 ## Writing things down
 

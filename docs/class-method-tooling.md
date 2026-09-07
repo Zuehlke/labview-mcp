@@ -1169,23 +1169,59 @@ member ended up with the new (stand-in-typed) diagram and none of the repair: no
 regression. Recovery was the documented rebuild — close the project, delete the `.vi` *and* its
 `<Item>` block from the `.lvclass`, re-add.
 
+**AND THE FIRST FIX FOR THIS WAS WRONG, caught by testing it.** It filtered `56002` alone, and a
+plain re-run does not answer 56002 — measured the same day on `Bicycle.lvclass:Describe.vi`,
+`vi` with no `aixml` and `panePattern: 0`:
+
+```
+terminalsRetyped: 2, failedStage: "add member error", stageErrorCode: 1004
+member already existed: 0        <- the filter never fired
+wire rule / save vi / save class: all 1004, inherited
+```
+
+So there are **two** codes, from two different states, and §4o had already recorded one of them
+without the connection being made:
+
+| code | state | what it means for a re-run |
+|---|---|---|
+| `56002` | the VI is already a **loose project item** — the project was open when the VI was converted | no-op |
+| `1004` | the VI is already a **member** — LabVIEW knows it by its qualified name | no-op |
+| `1004` | the `Name` input got a full **path** where a bare name belongs (§3.0) | a real bug |
+
+The last row is why `1004` may not simply be tolerated: two of its causes are opposite verdicts.
+The discriminator is the class file itself — plain XML, no LabVIEW — so `ClassMethodTools`
+reads it before the helper runs and passes a `member exists` flag, and the helper's condition is
+**`(56002 or 1004) and memberExists`**. Tolerance therefore applies exactly where re-adding is a
+no-op and nowhere else; a wrong-`Name` 1004 against a class that does not list the VI still stops
+the chain, and its hint now says so instead of blaming the project.
+
+Nothing was damaged by the failed re-run, and the reason is worth keeping: with no `aixml` there
+is no convert, so there was no new diagram on disk to be left behind. `md5sum` on the `.vi` and
+the `.lvclass` was unchanged. **The dangerous combination is convert + a skipped save**, which is
+the shape the fix is really for.
+
 Fixed in the helper rather than in C#, because the decision belongs where the error is raised:
 
 ```xml
 <Node _name="Unbundle By Name" fields="code" inputs="input cluster:90.error out" .../>
-<Constant _name="already a member code" type="int32" value="56002" .../>
+<Constant _name="loose project item code" type="int32" value="56002" uid="111" .../>
+<Constant _name="already a member code"   type="int32" value="1004"  uid="118" .../>
 <Node _name="Equal?" inputs="x:110.code,y:111.value" outputs="x = y?:112.eq" .../>
+<Node _name="Equal?" inputs="x:110.code,y:118.value" outputs="x = y?:119.eq" .../>
+<Node _name="Or"  inputs="x:112.eq,y:119.eq"  outputs="x .or. y?:120.or"   .../>
+<Node _name="Equal?" inputs="x:16.value,y:116.value" outputs="x = y?:117.eq" .../>
+<Node _name="And" inputs="x:120.or,y:117.eq" outputs="x .and. y?:121.and"  .../>
 <Constant _name="no error" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" .../>
-<Node _name="Select" inputs="t:113.value,s:112.eq,f:90.error out" outputs="s? t\3Af:114.sel" .../>
+<Node _name="Select" inputs="t:113.value,s:121.and,f:90.error out" outputs="s? t\3Af:114.sel" .../>
 ```
 
-Everything downstream now takes `114.sel` instead of `90.error out`, and the boolean surfaces as a
-new indicator `member already existed` → `memberAlreadyExisted` in the answer. **Only 56002 is
-filtered**; every other code still stops the chain, 1004 included. A second run therefore retypes,
-rewires and saves exactly as the first did.
+Everything downstream takes `114.sel` instead of `90.error out`, and the boolean surfaces as a new
+indicator `member already existed` → `memberAlreadyExisted` in the answer. Every code other than
+those two still stops the chain, and so does either of those two on a class that does not list the
+VI. A second run therefore retypes, rewires and saves exactly as the first did.
 
-The modified helper was validated against LabVIEW the same day: `lvai_check_aixml` clean,
-`lvai_validate_aixml` `errorCode 0` in 427 ms.
+The helper was validated against LabVIEW at each step: `lvai_check_aixml` clean, `lvai_validate_aixml`
+`errorCode 0` — 427 ms for the 56002-only version, 495 ms with the gate added.
 
 ### The lesson both share
 
@@ -1194,6 +1230,21 @@ Neither defect was reachable through the tool's own reporting. One reported `ok:
 the evidence that settled it came from **outside** the tool — a run, and a byte comparison of the
 saved file. That is the third and fourth time in this document that a session-level reading passed
 while the artefact disagreed. Ask the file, or run it.
+
+**And the same lesson caught the FIX.** The 56002-only filter passed its unit test, validated
+against LabVIEW, and did nothing at all for the case it was written for — because the code it
+watched for was not the code that case raises. What found it was running the tool against a member
+that really existed. A fix is not verified by the test that was written alongside it; it is
+verified by reproducing the original failure.
+
+### Verified against LabVIEW, 2026-09-07
+
+| what | result |
+|---|---|
+| `preValidate` on an ordinary wiring fault (`Increment` with an input named `y`) | `verdict: realFault`, stopped in **104 ms**, message names the terminal; no `.vi` written, no class member added |
+| `preValidate` on a clean method AIXML | `verdict: clean`, converts as before |
+| re-run over an existing member, 56002-only filter | **`1004`, filter never fired** — the measurement that corrected the fix |
+| `.lvclass` and `.vi` after that failed re-run | `md5sum` unchanged — no `aixml`, so no convert, so nothing to leave behind |
 
 ## 5. What is NOT measured yet
 

@@ -865,4 +865,121 @@ public sealed class ClassToolingLeverTests
         Assert.Null(parsed[0].ReadField);      // resolved to WriteField by the caller, not here
         Assert.Equal("10.0", parsed[0].Value);
     }
+
+    // ---------- re-running over a member that already exists ----------
+
+    /// <summary>
+    /// The item shape of a REAL `.lvclass`, taken verbatim off `Bicycle.lvclass` rather than
+    /// invented - two tabs of indent, the members' URLs relative with a `../` because they sit in
+    /// a subfolder, and the parent link carried as an `Item Type="Parent"` among them.
+    ///
+    /// Written out here because the fixture is the thing that keeps being wrong in this repository:
+    /// a plausible one made <see cref="ClassMethodTools.IsAlreadyMember"/> answerable by a naive
+    /// URL match, which the real file's `../Describe.vi` would then have missed.
+    /// </summary>
+    private const string RealClassFile = """
+        <?xml version='1.0' encoding='UTF-8'?>
+        <Project Type="Class" LVVersion="26008000">
+        	<Item Name="Parent Libraries" Type="Parent Libraries">
+        		<Item Name="IVehicle.lvclass" Type="Parent" URL="../../IVehicle/IVehicle.lvclass"/>
+        	</Item>
+        	<Item Name="Bicycle.ctl" Type="Class Private Data" URL="Bicycle.ctl">
+        	</Item>
+        	<Item Name="Describe.vi" Type="VI" URL="../Describe.vi">
+        	</Item>
+        	<Item Name="Read Manufacturer.vi" Type="VI" URL="../Read Manufacturer.vi">
+        	</Item>
+        </Project>
+        """;
+
+    [Fact]
+    public void AMemberTheClassFileListsIsRecognised()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        var lvclass = Path.Combine(dir, "Bicycle.lvclass");
+        File.WriteAllText(lvclass, RealClassFile);
+
+        // A member whose URL is relative with `../` - the shape a real class in a subfolder has.
+        Assert.True(ClassMethodTools.IsAlreadyMember(lvclass, Path.Combine(dir, "Describe.vi")));
+        Assert.True(ClassMethodTools.IsAlreadyMember(lvclass,
+                                                     Path.Combine(dir, "Read Manufacturer.vi")));
+
+        // And one it does not list. THIS is the case that must stay false, because it is what
+        // separates a benign re-add from a wrong `Name` input - both answer Error 1004.
+        Assert.False(ClassMethodTools.IsAlreadyMember(lvclass, Path.Combine(dir, "Nope.vi")));
+
+        Directory.Delete(dir, true);
+    }
+
+    /// <summary>
+    /// A missing or unreadable class file must answer false rather than throw: the gate exists to
+    /// widen tolerance, so failing closed is the safe direction.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableClassFileIsNotTakenAsMembership() =>
+        Assert.False(ClassMethodTools.IsAlreadyMember(
+            Path.Combine(Path.GetTempPath(), "no such class here.lvclass"), @"C:\x\A.vi"));
+
+    /// <summary>
+    /// MEASURED 2026-09-07, AND IT CORRECTED THE FIRST ATTEMPT AT THIS FIX. A plain re-run over an
+    /// existing member answers <c>1004</c>, not <c>56002</c> - so a filter written for 56002 alone
+    /// left the common case exactly as broken as before, with `wire rule`, `save vi` and
+    /// `save class` all inheriting the error and the retype discarded.
+    ///
+    /// The flag is what lets the helper tolerate 1004 without masking the OTHER thing 1004 means
+    /// (a full path where a bare name belongs), so it has to reach the helper on every call.
+    /// </summary>
+    [Fact]
+    public void TheMemberExistsFlagIsAlwaysSent()
+    {
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Describe.vi","classTerminals":["obj in"]}]""")[0];
+
+        var fresh = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                  @"C:\cls\A.lvclass", [11]);
+        var again = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                  @"C:\cls\A.lvclass", [11], memberExists: true);
+
+        Assert.Equal("0", fresh["member exists"]!.GetValue<string>());
+        Assert.Equal("1", again["member exists"]!.GetValue<string>());
+
+        // The runner pairs names with values by line and refuses an empty value, so "0" rather
+        // than "" is load-bearing - an empty one stops the call at `member` with the pane rebuilt.
+        Assert.DoesNotContain(fresh, pair => pair.Value!.GetValue<string>().Length == 0);
+    }
+
+    /// <summary>
+    /// The helper's own AIXML must actually carry the control the flag is sent to. A name mismatch
+    /// here is silent - the runner sets nothing, the control keeps its default of "", the filter
+    /// never fires, and the only symptom is the defect coming back.
+    /// </summary>
+    [Fact]
+    public void TheHelperDeclaresTheMemberExistsControlAndFiltersBothCodes()
+    {
+        var helper = FindRepoFile("scripts/" + ClassMethodTools.HelperFileName);
+        Assert.NotNull(helper);
+        var aixml = File.ReadAllText(helper!);
+
+        Assert.Contains("_name=\"member exists\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("value=\"56002\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("value=\"1004\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("_name=\"member already existed\"", aixml, StringComparison.Ordinal);
+
+        // Both codes must be OR-ed and then AND-ed with the flag. An OR alone would tolerate a
+        // wrong-Name 1004 on a class that does not list the VI at all.
+        Assert.Contains("_name=\"Or\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("_name=\"And\"", aixml, StringComparison.Ordinal);
+    }
+
+    private static string? FindRepoFile(string relative)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return null;
+    }
 }

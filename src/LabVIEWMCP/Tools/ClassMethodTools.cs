@@ -69,10 +69,12 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         fault then surfaces as Error 1003 at RUN time with every file-level check green - measured
         2026-09-07 on three overrides that all reported ok. `validateFirst: false` restores the old
         convert-blind behaviour.
-        RE-RUNNING OVER AN EXISTING MEMBER IS SAFE. Error 56002 from AddItemFromMemory used to
-        travel down the chain and skip the saves, discarding the retype while the new diagram was
-        already on disk - the member ended up worse than before. It is filtered now and reported as
-        `memberAlreadyExisted`.
+        RE-RUNNING OVER AN EXISTING MEMBER IS SAFE. AddItemFromMemory answers 56002 (already a
+        loose project item) or 1004 (already a member); either used to travel down the chain and
+        skip SetWireRule and both saves, discarding the retype while the new diagram was already on
+        disk - the member ended up worse than before. Both are tolerated now and reported as
+        `memberAlreadyExisted`, but ONLY when the .lvclass itself already lists the VI, because
+        1004 is also what a wrong `Name` input produces.
         methodsJson is a JSON ARRAY:
           [{"aixml":"C:\\x\\Initialize.xml","vi":"C:\\cls\\Initialize.vi",
             "classTerminals":["obj in","obj out"],"dispatchTerminals":["obj in","obj out"]}]
@@ -344,7 +346,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     });
                 }
 
-                var inputs = HelperInputs(method, viPath, classPath, indices);
+                // Asked from the FILE before the helper runs, so the helper can tell a benign
+                // re-add from a genuinely wrong Name input. Costs no LabVIEW.
+                var memberExists = IsAlreadyMember(classPath, viPath);
+                var inputs = HelperInputs(method, viPath, classPath, indices, memberExists);
                 var run = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                     helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
@@ -352,8 +357,9 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 var values = (Read(run) as JsonObject)?["values"] as JsonObject;
                 var retyped = int.TryParse(Scalar(values, "terminals retyped"), out var r) ? r : -1;
-                // Error 56002 is now filtered inside the helper, so `add member error` reads 0 on a
-                // re-run and this is the only thing that says the member was already there.
+                // 56002 and 1004 are filtered inside the helper when `member exists` was passed,
+                // so `add member error` reads 0 on a re-run and this is the only thing that says
+                // the member was already there.
                 var alreadyMember = Scalar(values, "member already existed") is "1" or "true";
                 var stages = new[] { "open vi error", "class open error", "add member error",
                                      "wire rule error", "save vi error", "save class error" };
@@ -645,7 +651,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// typed on a class other than the method's own.
     /// </summary>
     internal static JsonObject HelperInputs(MethodRequest method, string viPath, string classPath,
-                                            List<int>? indices)
+                                            List<int>? indices, bool memberExists = false)
     {
         var inputs = new JsonObject
         {
@@ -655,10 +661,43 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             ["terminal class paths"] =
                 string.Join("|", method.ClassTerminals.Select(t => t.ClassPath ?? classPath)),
             ["vi name in memory"] = Path.GetFileName(viPath),
+            // Gates the helper's tolerance of 56002 and 1004 at AddItemFromMemory. Not a
+            // convenience: 1004 also means "the Name input was a path where a bare name belongs",
+            // so tolerating it unconditionally would mask a real bug.
+            ["member exists"] = memberExists ? "1" : "0",
         };
         if (indices is { Count: > 0 })
             inputs["dispatch terminal indices"] = string.Join("|", indices);
         return inputs;
+    }
+
+    /// <summary>
+    /// Does the <c>.lvclass</c> already list this VI as a member? Read from the FILE, which is
+    /// plain XML, so this costs no LabVIEW at all.
+    ///
+    /// WHY IT IS ASKED BEFORE THE HELPER RUNS. <c>AddItemFromMemory</c> answers <c>56002</c> when
+    /// the VI is already a loose project item and <c>1004</c> when it is already a member, and
+    /// both are no-ops that must not abort the retype-and-save chain. But <c>1004</c> is also what
+    /// a wrong <c>Name</c> input produces - §3.0 records it for a full path where a bare name
+    /// belongs - so the two are told apart by asking the class file, not by trusting the code.
+    ///
+    /// Matched on the item's own <c>Name</c> attribute rather than on the URL, because a member's
+    /// URL is relative and its spelling varies (<c>../Describe.vi</c> for a member in a subfolder).
+    /// </summary>
+    internal static bool IsAlreadyMember(string classPath, string viPath)
+    {
+        string text;
+        try { text = File.ReadAllText(classPath); }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+
+        var name = Path.GetFileName(viPath);
+        foreach (var line in text.Split('\n'))
+        {
+            if (!line.Contains("<Item", StringComparison.Ordinal)) continue;
+            if (line.Contains($"Name=\"{name}\"", StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
     }
 
     private static JsonObject Failed(MethodRequest method, string viPath, string step,
@@ -679,8 +718,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         "open vi error" => "The VI could not be opened in the IDE's instance. Error 1055 means no " +
                            "project is active - pass projectPath.",
         "class open error" => "LVClass.Open failed. Error 1055 again points at no active project.",
-        "add member error" => "AddItemFromMemory failed. Error 56002 means the VI is already a " +
-                              "loose item of the project - it was open when the VI was converted.",
+        "add member error" => "AddItemFromMemory failed. 56002 means the VI is already a LOOSE " +
+                              "PROJECT ITEM - it was open when the VI was converted. 1004 means " +
+                              "either that the VI is already a MEMBER, or that `Name` got a full " +
+                              "path where a bare name belongs. Both no-op cases are tolerated " +
+                              "automatically when the .lvclass already lists the VI; seeing 1004 " +
+                              "HERE therefore means the class file does NOT list it, so check the " +
+                              "spelling of the VI's file name against the class's Item entries.",
         "wire rule error" => "SetWireRule failed. A conIdx that is not on this pane's pattern is " +
                              "the usual cause; check with lvai_connector_pane.",
         "save vi error" => "Save.Instrument failed - most often the file is read-only or held.",
