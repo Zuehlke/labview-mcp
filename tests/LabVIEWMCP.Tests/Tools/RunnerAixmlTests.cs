@@ -30,11 +30,11 @@ public sealed class RunnerAixmlTests
         var xml = Runner("Test One.vi", "Test Two.vi");
 
         Assert.Contains("<Node _name=\"Current VI's Path\"", xml, StringComparison.Ordinal);
-        Assert.Contains("<Node _name=\"Strip Path\" inputs=\"path:10.path\"", xml,
+        Assert.Contains($"<Node _name=\"Strip Path\" inputs=\"path:{TestTools.UidBase}.path\"", xml,
                         StringComparison.Ordinal);
         // Two tests plus the report = three Build Path nodes, all fed by the stripped path.
         Assert.Equal(3, xml.Split("_name=\"Build Path\"").Length - 1);
-        Assert.Equal(3, xml.Split("base path:11.stripped path").Length - 1);
+        Assert.Equal(3, xml.Split($"base path:{TestTools.UidBase + 10}.stripped path").Length - 1);
         Assert.DoesNotContain(@"C:\temp\Suite", xml, StringComparison.Ordinal);
     }
 
@@ -44,8 +44,36 @@ public sealed class RunnerAixmlTests
         var xml = Runner("Test One.vi", "Sub\\Test Two.vi");
 
         Assert.Contains("value=\"Test One.vi\"", xml, StringComparison.Ordinal);
-        Assert.Contains("value=\"Sub\\Test Two.vi\"", xml, StringComparison.Ordinal);
+        Assert.Contains("value=\"Sub\\5CTest Two.vi\"", xml, StringComparison.Ordinal);
         Assert.Contains("value=\"Suite-TestReport.xml\"", xml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A TEST IN A SUBFOLDER USED TO BREAK THE WHOLE RUNNER, and the assertion above is what let
+    /// it ship: it expected the raw separator, so the test agreed with the defect.
+    ///
+    /// Measured 2026-09-07 on two one-constant probes put through the real validator:
+    /// <c>value="Bicycle\5CTest Bicycle.vi"</c> answers <c>errorCode 0</c> in 72 ms, while
+    /// <c>value="Bicycle\Test Bicycle.vi"</c> answers <c>Error 42 ... "values in the input are not
+    /// escaped correctly"</c> and names the string. In the field the whole runner was refused and
+    /// nothing was written, on the first run that ever put test VIs in per-class subfolders -
+    /// which the one-agent-one-output-directory rule requires, so this is the normal layout and
+    /// not an exotic one.
+    ///
+    /// A flat folder cannot see the fault: the relative path is then a bare file name.
+    /// </summary>
+    [Fact]
+    public void A_test_in_a_subfolder_escapes_its_separator()
+    {
+        var xml = Runner("Bicycle\\Test Bicycle.vi", "Offroad Bicycle\\Test Offroad.vi");
+
+        Assert.Contains("value=\"Bicycle\\5CTest Bicycle.vi\"", xml, StringComparison.Ordinal);
+        Assert.Contains("value=\"Offroad Bicycle\\5CTest Offroad.vi\"", xml, StringComparison.Ordinal);
+
+        // The fault is a backslash that is NOT the start of an escape. Every one in the file must
+        // now be followed by two hex digits.
+        foreach (var (index, _) in xml.Select((c, i) => (i, c)).Where(p => p.c == '\\'))
+            Assert.Matches("^[0-9A-F]{2}", xml[(index + 1)..Math.Min(index + 3, xml.Length)]);
     }
 
     /// <summary>Only the TESTS go into the array - the report path is a separate Build Path whose
@@ -56,10 +84,14 @@ public sealed class RunnerAixmlTests
     {
         var xml = Runner("A.vi", "B.vi", "C.vi");
 
-        Assert.Contains("inputs=\"element:200.appended path,element:201.appended path," +
-                        "element:202.appended path\"", xml, StringComparison.Ordinal);
-        Assert.Contains("Paths:40.appended array", xml, StringComparison.Ordinal);
-        Assert.Contains("Report Path:299.appended path", xml, StringComparison.Ordinal);
+        Assert.Contains($"inputs=\"element:{TestTools.UidBase + 200}.appended path," +
+                        $"element:{TestTools.UidBase + 201}.appended path," +
+                        $"element:{TestTools.UidBase + 202}.appended path\"",
+                        xml, StringComparison.Ordinal);
+        Assert.Contains($"Paths:{TestTools.UidBase + 40}.appended array", xml,
+                        StringComparison.Ordinal);
+        Assert.Contains($"Report Path:{TestTools.UidBase + 299}.appended path", xml,
+                        StringComparison.Ordinal);
     }
 
     /// <summary>TRUE opens Caraya's modal report dialog, and a modal dialog stops LabVIEW's whole
@@ -70,9 +102,10 @@ public sealed class RunnerAixmlTests
         var xml = Runner("A.vi");
 
         Assert.Contains("_name=\"Interactive (T)\"", xml, StringComparison.Ordinal);
-        Assert.Contains("type=\"bool\" uid=\"50\" uid_parent=\"root\" value=\"false\"", xml,
+        Assert.Contains($"type=\"bool\" uid=\"{TestTools.UidBase + 50}\" uid_parent=\"root\" " +
+                        "value=\"false\"", xml, StringComparison.Ordinal);
+        Assert.Contains($"Interactive (T):{TestTools.UidBase + 50}.value", xml,
                         StringComparison.Ordinal);
-        Assert.Contains("Interactive (T):50.value", xml, StringComparison.Ordinal);
     }
 
     /// <summary>A polymorphic call: `target` is the wrapper, `instance` picks the member. Both

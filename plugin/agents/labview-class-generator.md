@@ -39,6 +39,14 @@ they were all measured, most of them twice.
 
 ## Hard rules
 
+- **AN INTERFACE IS FINISHED BEFORE THE FIRST CLASS THAT IMPLEMENTS IT — the `.lvclass` AND every
+  method it declares.** Both are Phase 1b, in that order, and no implementing class is created until
+  they are both done. The reason is not tidiness: `lvai_create_class` takes the interface list as a
+  CREATION-TIME input with no scriptable way to add a link afterwards, and a method declared later
+  breaks every implementer at once until each writes its override. So the contract must be complete
+  when the first implementer is created. A run that built the interface early and added its members
+  after the classes and accessors was corrected on exactly this point.
+
 - **Dynamic dispatch is the default and you do not override it.** `lvai_create_accessors` already
   defaults `dynamicDispatch: true`. Passing `false` because static is the commoner style for plain
   data accessors is a judgement the user did not ask for — it cost a full rebuild of twelve
@@ -185,7 +193,14 @@ question. If the user asked for an interface without saying which methods it dec
 `NEEDS CLARIFICATION` row: an interface with no methods is legal and sometimes deliberate, but it is
 usually not what someone means.
 
-### Phase 1b — Interfaces, BEFORE the classes that implement them
+### Phase 1b — Interfaces AND THEIR METHODS, BEFORE the classes that implement them
+
+**An interface is finished before the first implementing class is created — the `.lvclass` AND every
+method it declares.** Both halves are Phase 1b. Creating the interface early and its methods later is
+a defect, not a variation: the method list is the contract a class is created against, and a method
+added afterwards breaks every implementer at once. Measured 2026-09-07 on a four-class build whose
+interface was created in Phase 1b and whose two members were only added after the classes and their
+accessors existed — the user asked for that ordering to be fixed.
 
 Skip this phase entirely if no interface is involved. Read `docs/lvclass-interfaces.md` before your
 first interface — it is short and every rule in it was measured the hard way.
@@ -214,57 +229,75 @@ a class can later become an interface without touching caller code. NI's shapes 
 then use the name the user gave — a user who wants `IHaustier` gets `IHaustier`, and you do not raise
 it again.
 
-4. **INTERFACE METHODS ARE CURRENTLY BROKEN AND YOU MAY NOT SHIP THEM SILENTLY.** Measured on a cold
-   rebuild 2026-08-31: the scripted route writes VIs that load, export with the correct diagram and
-   read back correctly through every tool here — **and do not compile.** The whole class then answers
-   `Error 1003`, an isolated probe with one accessor call confirms it is the class and not the test
-   harness, and `{LV.SubVI}` `Replace` refuses each method VI with `Error 1154` while accepting every
-   wizard accessor. `pylv_extract` shows the cause's shape: no parsed `LIvi` owning-library link and a
-   malformed front-panel class link. The banner at the top of §3 in `docs/lvclass-interfaces.md` has
-   the full measurement.
+4. **DECLARE EVERY INTERFACE METHOD NOW, BEFORE ANY IMPLEMENTING CLASS EXISTS.** `lvai_add_class_method`
+   is the tool, and it does not care that the `.lvclass` carries `IsInterface` — an interface is a
+   `.lvclass`, so `LVClass.Open`, `AddItemFromMemory`, `{LV.Control}` `Replace` and `SetWireRule` all
+   behave identically on one. Measured 2026-09-07 over five VIs on `IVehicle.lvclass`: two interface
+   members and three overrides, `error out = 0` at every stage, no restart.
 
-   **ROOT CAUSE, from LabVIEW itself: the member link is ONE-SIDED.** The IDE says
-   `"Lautgebung.vi" is at the expected path but is not part of "IHaustier.lvclass"`, and the Error
-   list reports `Owning library has blocked execution of the VI.` against the library. So
-   `AddItemFromMemory` writes the entry into the LIBRARY while the VI on disk carries no
-   owning-library record - and a broken library blocks EVERY VI it owns, healthy wizard accessors
-   included. That is why an isolated `Read Name.vi` probe fails although nothing is wrong with it,
-   and why no single-file check can see the defect: each file is well-formed, and the fault is the
-   disagreement between two of them.
+   **THIS PARAGRAPH SAID THE OPPOSITE UNTIL 2026-09-07** — that interface methods were broken and must
+   not be shipped — and following it cost one agent a hand-built duplicate of a tool that already
+   worked, and cost a later run its ordering: the interface was created early, its methods only after
+   the classes and their accessors. Do not reinstate that claim. The one-sided-link defect it
+   described was real and is fixed: `lvai_add_class_method` writes `AddItemFromMemory` first, then the
+   VI's `Save.Instrument`, then the library's `Save`, which is the order both sides need.
 
-   The fix is the ORDER, which the doc had backwards: `AddItemFromMemory` first, then the VI's
-   `Save.Instrument`, then the library's `Save` - both sides must be written. Not yet measured in
-   that order. Files already written the wrong way are repaired by answering LabVIEW's dialog with
-   **Update** once per VI, no regeneration needed.
+   **WHY HERE AND NOT LATER.** A declared method breaks every implementing class until that class's
+   override exists — see the rule below, measured with the require-override flag both set and cleared.
+   So the interface's method list is part of its CONTRACT, and a class must be created against the
+   finished contract. Declare them here and Phase 2a only has to write overrides; declare one after
+   the implementers exist and you break all of them at once, each needing its override before
+   anything runs again.
 
-   So, unless the user has explicitly accepted a class that does not compile:
+5. **COPY NI'S SHAPE, WHICH IS TWO KINDS OF MEMBER.** Measured on NI's own `Basic Interfaces`:
+   `Lever.lvclass:Multiply Force.vi` has `Lever in` **`dynamic`** — the contract every implementer
+   must override — while `Lever.lvclass:Pry.vi` has it **`required`** and carries a `Pryable in`, an
+   object of a *different* interface, on the same pane. So an interface ships concrete methods too.
 
-   - **Do NOT create interface methods as part of a normal class build.** Build the interface with no
-     members — that is valid — deliver the class, its accessors and its tests working, and report the
-     methods as not yet scriptable with the IDE steps below.
-   - If the user asks for them anyway, say plainly what will happen first, and **verify by EXECUTION**
-     before reporting success: a probe VI calling one accessor on a class constant, run, must not
-     answer `Error 1003`. A file that reads back correctly is NOT verification — that is exactly the
-     trap this route fell into, and the second time in this repository that file-level checks passed
-     while LabVIEW's compiler disagreed.
-   - Never leave a class broken without saying so in your report, in the first paragraph.
+   - A **dynamic** member: pass `dispatchTerminals`. This is the contract; every implementing class
+     needs an override in Phase 2a.
+   - A **static** (concrete) member: **omit `dispatchTerminals` entirely.** No override is needed and
+     none should be written.
+   - A terminal typed on ANOTHER class is an object rather than a bare name:
+     `"classTerminals":["obj in","obj out",{"terminal":"Engine in","class":"C:\x\Engine.lvclass"}]`.
 
-   The route itself, for when it is fixed, is written up with its traps in §3 of
-   `docs/lvclass-interfaces.md`. Read that section rather than re-deriving it; do not invent a
-   substitute.
+   **DO NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Three sessions have tried.
+   Measured on one such pair: the dynamic member reads `0`, the static one `1073741832`, neither
+   carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
+   `lvai_vi_terminals` is the answer.
 
-   The short form, so you recognise the shape: AIXML cannot author a class-typed terminal
-   (`Error 53`), so generate the method with `path` stand-ins on the pane, then retype them with
-   `{LV.Control}` `Replace` pointing at the `.lvclass`, make the VI a member with
-   `{LV.LVClassLibrary}` `AddItemFromMemory`, and set dynamic dispatch with `SetWireRule(TermIdx, 4)`.
-   The two traps that cost a session each: **find terminals by NAME, never by index** — `Controls[]`
-   returns the error clusters first, and indexing blindly retyped the error clusters into class
-   terminals — and **generate with the project CLOSED**, or LabVIEW adopts the VI as a loose project
-   item and `AddItemFromMemory` then answers `Error 56002`.
+6. **An interface member CANNOT call the parent through `Call Parent Class Method` in AIXML.** The
+   node name is recognised, but it exposes no terminals for a VI that is not yet a class member, so
+   every wire is refused (`Object terminal not found for input: …`) — and membership happens after
+   conversion, so it is chicken-and-egg with no way round. An override reads what it needs through
+   the parent's public accessors instead. A *static* call to the parent would be wrong anyway: a
+   dynamic dispatch subVI dispatches on the object, so a child's wire recurses into its own override.
 
-   `CLSUIP_MemberTemplate.vit` is NOT the way in, though it looks like it: it instantiates cleanly
-   but types its terminals on `LabVIEW Object`, and `AddItemFromMemory` does not retype them. NI's
-   own retyper `CLSUIP_ReplaceLVClassControls.vi` is **private scope** and cannot be called.
+7. **The declaration body may be empty, and usually should be.** An interface method exists to fix
+   the signature; give it whatever a caller of the unimplemented contract should see — an empty
+   string, a zero — and let the overrides carry the behaviour. Say in your report that it is a
+   **declaration**, and do not present a run of it as evidence that the contract works.
+
+   **The reason is dispatch, NOT instantiability — this clause said the latter until 2026-09-07 and
+   it is false.** It claimed "an interface cannot be instantiated, so no object exists to feed it".
+   Measured: `IVehicle.lvclass:Get Type Name.vi` ran as a top-level VI, returned `Vehicle` with
+   `error out.code = 0`, and put an `IVehicle.lvclass` object on its output terminal — the
+   interface-typed control has a usable default, so a run is perfectly possible. What that run
+   tells you is only what the *declaration body* does. The real limit is the DYNAMIC member: any
+   object you could wire into one belongs to an implementing class, so the call dispatches to that
+   class's override and never executes the declaration at all. A **static** interface member is
+   ordinary code and can be tested like any other method.
+
+8. **Verify each member by EXECUTION, not by reading the file back.** `lvai_add_class_method` now
+   validates each method's AIXML before converting and stops on a fault that is not the class-wire
+   strictness — added 2026-09-07 after three overrides came back `ok: true`, `terminalsRetyped: 2`,
+   `verifiedOnDisk: true` and then answered **Error 1003** when run, with every file-level check
+   green. Trust the pre-validate step, and still run one: a static member returning its constant, or
+   one accessor on a class constant, must not answer `Error 1003`.
+
+   Re-running the tool over a member that already exists is safe now (`memberAlreadyExisted: true`).
+   It used to answer `Error 56002` and discard the retype while leaving the new diagram on disk,
+   which left the member worse than before the call.
 
    If the user named no methods, the interface legitimately has none — an interface with no members
    is valid and not broken. Say so, and give the IDE steps for adding them later: right-click the
@@ -397,6 +430,15 @@ plus a heap object of class `typeDef`. `Is Typedef?` is **not** a boolean — it
 
 Accessors need the project **open and active**. No restart before this phase — the class you
 created last is found straight away (`classIndex` in the answer proves it).
+
+**ONE FOLDER PER CLASS, and every member of that class inside it.** `<target>\<ClassName>\` holds
+the `.lvclass`, its private data, its accessors and its methods. This is not tidiness: a parent and
+its override share a file name, so `Bicycle\Describe.vi` and `Car\Describe.vi` **must** be in
+different folders — NI does exactly this in `examples\Object-Oriented Programming\Basic
+Interfaces` — and the moment two classes in the hierarchy share a field name their accessors would
+collide too. Two builds of the same spec on 2026-09-07 chose different layouts (one per-class
+throughout, one with the classes and all sixteen accessors at the project root and only the
+overrides in subfolders), which is how the inconsistency was noticed. Pick per-class, always.
 
 1. `lvai_open_file` with `projectPath` **and** `projectName`.
 2. Per class: **call it with no `fromField` at all, and keep calling until `moreToDo` is false.**
@@ -535,7 +577,18 @@ tests is half a deliverable, and you are not the agent that writes them.
       advancing anything;
    - the `.lvproj` path;
    - the field table from Phase 1, so it does not have to re-derive the data model;
-   - anything the user said about values or cases, verbatim.
+   - anything the user said about values or cases, verbatim;
+   - **the MEASURED output of every method you built**, as `<method> -> <exact value>`, from the
+     Phase 4 verification runs you have already done.
+
+   **That last item is what decides whether the methods get tested at all.** A test agent will not
+   invent an expected string — correctly, since asserting a guess freezes current behaviour as if
+   it were the spec — so with nothing to anchor on it tests the accessors and skips the methods,
+   and says so. Measured across two builds of the same spec on 2026-09-07: the run that passed the
+   four measured strings on got a polymorphic-dispatch suite asserting them; the run that did not
+   left all five methods untested. You have those values for free, because Phase 4 makes you run
+   each method anyway — so hand them over, and label them as MEASURED rather than as intended, so
+   the test agent knows it is pinning observed behaviour and can say so in its own report.
 
    **Name the `.lvproj` explicitly.** `lvai_generate_class_test` lists its test VIs in the project
    only when it is given `projectPath`, and a suite the Project Explorer does not show is one the
@@ -706,7 +759,7 @@ class wire and call it done.
 signature.** Measured 2026-09-03:
 
 ```
-<Call target="AnalogInput.lvclassARead Physical Channel.vi" .../>
+<Call target="AnalogInput.lvclass\3ARead Physical Channel.vi" .../>
 → Error 53 ... Unsupported SubVI: AnalogInput.lvclass:Read Physical Channel.vi
 ```
 

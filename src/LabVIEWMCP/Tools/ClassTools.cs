@@ -2420,9 +2420,10 @@ internal sealed class ClassTools(LvaiConnection connection)
     // deleting this cache to force a rebuild, because validating a helper is what killed LabVIEW
     // three times in one afternoon, and a development loop that regenerates every iteration pays
     // that risk every iteration. An AIXML that has genuinely changed is the one sanctioned case.
+    // The check itself now lives in Infra/HelperCache, because every other helper-caching site in
+    // this server had the same latent bug and none of them could reach a private method here.
     private static bool HelperNeedsRebuild(string aixml, string helperVi) =>
-        !File.Exists(helperVi) ||
-        File.GetLastWriteTimeUtc(aixml) > File.GetLastWriteTimeUtc(helperVi);
+        HelperCache.NeedsRebuild(aixml, helperVi);
 
     private async Task<string?> GenerateAccessorHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)

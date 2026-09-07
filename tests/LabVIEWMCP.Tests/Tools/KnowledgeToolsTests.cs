@@ -183,8 +183,15 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
 
     /// <summary>
     /// The regression this whole feature exists for: a VI generator could not find a subsection
-    /// added to section 8 the same day, because section 8 comes back as 54 kB that the client
+    /// added to section 8 the same day, because section 8 came back as tens of kB that the client
     /// spills into a one-line JSON file. It re-derived the fact by exporting a VI instead.
+    ///
+    /// THIS TEST USED TO COMPARE THE TWO LENGTHS - the node lookup had to be under a tenth of the
+    /// section - and that assertion died with the thing it was measuring. Since 2026-09-07 an
+    /// over-long section is answered with its subsection index instead of its body, so the
+    /// section is now SMALLER than a node lookup and the ratio inverted. Keeping the ratio would
+    /// have meant loosening it until it passed, which asserts nothing; what actually matters is
+    /// that the node lookup lands on the content, and that neither answer floods.
     /// </summary>
     [Fact]
     public void TheRealDocumentAnswersANodeQueryWithoutReturningSectionEight()
@@ -192,9 +199,13 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
         var whole = KnowledgeTools.AixmlReference(section: "8");
         var focused = KnowledgeTools.AixmlReference(node: "disabled index");
 
+        // The point of the node lookup: the exact row, from inside a section nobody fetched.
         Assert.Contains("disabled index (col)", focused);
-        Assert.True(focused.Length < whole.Length / 10,
-            $"node lookup returned {focused.Length} chars against {whole.Length} for the section");
+        Assert.DoesNotContain("disabled index (col)", whole);
+
+        // And neither route may return something the client has to spill to a file.
+        Assert.True(focused.Length < 20_000, $"node lookup returned {focused.Length} chars");
+        Assert.True(whole.Length < 20_000, $"section 8 returned {whole.Length} chars");
     }
 
     [Fact]
@@ -203,6 +214,73 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
         var result = KnowledgeTools.AixmlReference(section: "8");
 
         Assert.Contains("node='<name>'", result);
+    }
+
+    /// <summary>
+    /// SECTION 8 COULD NOT BE READ AT ALL. Measured 2026-09-07: 89 521 characters, which overruns
+    /// the client's tool-output limit, so the whole answer was spilled to a file - and a file
+    /// holding one JSON string is not greppable, so it cost two extra `grep` calls to find one
+    /// paragraph. It is also the section the document's own multi-terminal rule sends you to.
+    ///
+    /// The previous behaviour appended "call again with node= instead" to an answer that had
+    /// already blown the limit, so the advice arrived inside the thing it was warning about.
+    /// </summary>
+    [Fact]
+    public void AnOverLongSectionComesBackAsAnIndexRatherThanUnreadably()
+    {
+        var result = KnowledgeTools.AixmlReference(section: "8");
+
+        Assert.True(result.Length < 20_000,
+            $"section 8 still returns {result.Length} chars, which the client spills to a file");
+        Assert.Contains("Subsections (pass one as `section`)", result);
+        Assert.Contains("too large to return whole", result);
+    }
+
+    /// <summary>An index is only useful if every title in it actually resolves.</summary>
+    [Fact]
+    public void EverySubsectionTheIndexNamesCanBeFetched()
+    {
+        var index = KnowledgeTools.AixmlReference(section: "8");
+        var titles = index.Split('\n')
+            .SkipWhile(l => !l.StartsWith("Subsections", StringComparison.Ordinal))
+            .Skip(1)
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0 && l.EndsWith("kB)", StringComparison.Ordinal))
+            .Select(l => l[..l.LastIndexOf("   (", StringComparison.Ordinal)].Trim())
+            .ToList();
+
+        Assert.True(titles.Count >= 3, $"the index named only {titles.Count} subsections");
+        foreach (var title in titles)
+            Assert.NotNull(KnowledgeTools.FindSubsection(KnowledgeTools.Load(), title));
+    }
+
+    /// <summary>
+    /// The raw chunks stay reachable, and no content is lost between them - an index that hid
+    /// half the section would be a worse failure than the one it replaced.
+    /// </summary>
+    [Fact]
+    public void ThePagesCoverTheWholeSection()
+    {
+        var joined = new System.Text.StringBuilder();
+        var pages = 0;
+        for (var page = 1; page <= 20; page++)
+        {
+            var chunk = KnowledgeTools.AixmlReference(section: "8", page: page);
+            Assert.StartsWith("[", chunk, StringComparison.Ordinal);
+            Assert.True(chunk.Length < 21_000, $"chunk {page} is {chunk.Length} chars");
+
+            joined.Append(chunk[(chunk.IndexOf(']') + 1)..]);
+            pages = page;
+            if (chunk.Contains($"chunk {page} of {page}]", StringComparison.Ordinal)) break;
+        }
+
+        Assert.True(pages > 1, "section 8 should need more than one chunk");
+
+        // The terminal rows are what a caller comes to this section for; none may fall between
+        // two chunks, which is why the cut is on a line boundary.
+        var text = joined.ToString();
+        Assert.Contains("| `Select` |", text, StringComparison.Ordinal);
+        Assert.Contains("| `Build Path` |", text, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -290,13 +368,56 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
     /// The reference writes node names in backticks, so that beats a bare substring.
     /// </summary>
     [Theory]
-    [InlineData("| `Select` | `s? t\\3Af` |", 3)]        // the row actually wanted
+    [InlineData("| `Select` | `s? t\\3Af` |", 5)]        // the row actually wanted - keyed ON it
+    [InlineData("| a node | see `Select` |", 3)]         // mentions it, but is not about it
     [InlineData("a `Select node` in prose", 2)]
     [InlineData("the Select node picks one", 1)]         // whole word, no backticks
     [InlineData("CaseFrame carries `selector`", 0)]      // substring only - rank last
     [InlineData("`selectin` and `selectout`", 0)]
     public void BacktickedNamesOutrankSubstrings(string passage, int expected) =>
         Assert.Equal(expected, KnowledgeTools.Rank(passage, "Select"));
+
+    /// <summary>
+    /// RANK 3 WAS NOT ENOUGH, measured 2026-09-07. `node='Select'` answered "34 passages, that
+    /// term is everywhere - showing 8" and the terminal row was among the eight but buried, since
+    /// every other backticked mention scored the same 3. A row whose FIRST CELL is the term is
+    /// about the term; prose merely uses it. So a leading cell outranks a mention.
+    ///
+    /// The exactness matters as much as the boost: a `Select (Array)` row must not answer a
+    /// lookup for `Select`.
+    /// </summary>
+    [Theory]
+    [InlineData("| `Select (Array)` | `x` |")]
+    [InlineData("| `Selector` | `x` |")]
+    public void ALeadingCellMustMatchTheTermExactly(string passage) =>
+        Assert.True(KnowledgeTools.Rank(passage, "Select") < 5,
+                    "a different node's row was promoted as if it were the term's own");
+
+    /// <summary>The three-line passage a table hit produces - header, rule, row - must still be
+    /// recognised, because that is the only shape a real lookup ever sees.</summary>
+    [Fact]
+    public void ATableHitIsRankedFromItsRowAndNotItsHeader()
+    {
+        var passage = "[8. Multi-terminal nodes]\n| Node | inputs | outputs |\n|---|---|---|\n"
+                    + "| `Select` | `t`, `s`, `f` | `s? t\\3Af` |";
+
+        Assert.Equal(5, KnowledgeTools.Rank(passage, "Select"));
+    }
+
+    [Fact]
+    public void TheTerminalRowLeadsAFloodedLookup()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "Select");
+
+        // Not just "before `selector`" - the row must be the FIRST passage of the answer, which
+        // is what makes an 8-of-34 sample usable.
+        var row = result.IndexOf("| `Select` |", StringComparison.Ordinal);
+        Assert.True(row >= 0, "the Select node's own terminal row is missing entirely");
+
+        var otherBacktick = result.IndexOf("`Select`", StringComparison.Ordinal);
+        Assert.True(otherBacktick >= row - 2,
+            "some other `Select` passage is still printed before the terminal row");
+    }
 
     [Fact]
     public void AFloodedLookupShowsTheExactMatchFirst()

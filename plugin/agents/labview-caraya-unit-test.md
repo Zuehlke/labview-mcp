@@ -328,6 +328,17 @@ Two constraints it enforces rather than trusting you with, both of which have bi
 - **`reportFileName` must end in `.xml`.** Any other extension makes Caraya write no file at all and
   report no error about it.
 
+**A TEST IN A SUBFOLDER USED TO BREAK THE WHOLE RUNNER, and that is fixed — do not repair it by
+hand.** Until 2026-09-07 the relative path was written with a raw backslash, and a backslash in a
+`value` attribute is an escape introducer rather than data, so `ValidateAIXML` refused the entire
+file (`Error 42 … values in the input are not escaped correctly`, naming `Bicycle\Test Bicycle.vi`)
+and nothing was written. It is `\5C` now, with a regression test. A flat `Tests\` folder never hit
+it — it needs the per-class subfolders the one-agent-one-output-directory rule requires, which is
+the normal layout, so the defect was reachable on almost every real run and invisible on the fixture.
+
+If you ever see that error from this tool again, report it rather than patching the kept AIXML: a
+hand-repair leaves the tool broken for the next caller, and the fix is two characters.
+
 **Caraya can fail once, right after the test VIs were re-saved** — `Error 1` at `Generate User Event`
 in `Caraya.lvlib:Basic Test Manager.lvclass:Send Test Event.vi`, and no report written. The next run
 is green. It is a stale refnum in Caraya, not a failing test, but a CI job that runs the suite

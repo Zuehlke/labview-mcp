@@ -234,6 +234,23 @@ A cache was the wrong instinct here and is worth remembering as such: no two of 
 the same argument, so nothing keyed on the input would have saved a single one. The waste was
 duplicated *output*.
 
+**And a batch only helps if each term's answer is aimed, which needed two more fixes on 2026-09-07.**
+Both were measured as friction in one class build, and both are about the lookup, not the round trip:
+
+- **A LOOKUP FOR A COMMON WORD RANKS THE WRONG PASSAGES FIRST.** `node='Select'` answered "34
+  passages, that term is everywhere - showing 8", and the terminal row was among the eight but
+  buried, because every other backticked mention scored the same. **A table row whose FIRST CELL is
+  the term now outranks a mention of it** — that row is *about* the term where prose merely uses it,
+  and it generalises to every keyed table in every served document.
+- **`lvai_aixml_reference section=8` COULD NOT BE READ AT ALL.** 89 521 characters overruns the
+  client's output limit, so the whole answer spilled to a file — and a file holding one JSON string
+  is not greppable, which cost two extra `grep` calls to find one paragraph. It is also the section
+  the document's own multi-terminal rule sends you to. The old code returned it whole with a note
+  saying "call again with `node=` instead", so **the advice arrived inside the thing it was warning
+  about**. An over-long section now comes back as its **subsection index** plus its preamble, each
+  title fetchable with `section='<title>'`, and `page=1..N` still reaches the raw chunks. Only
+  sections 8, 9 and 10 of the AIXML reference are over the limit; no other served document is close.
+
 **The two fixes save different things, and it is worth not confusing them.** A cache was added as
 well — the embedded documents and each document's line index are now built once per process instead
 of once per call — and that is where the *server-side* time went: the 18-term workload dropped from
@@ -267,6 +284,17 @@ tools. The two halves separate cleanly and point in opposite directions:
 That is what `lvai_generate_caraya_test_runner` now does in one call, and the general lesson is the one
 this file has learned twice: **a step that is cheap for LabVIEW and expensive in turns is a tool
 waiting to be written.** Optimise the number of calls, not the cost of one.
+
+**A BACKSLASH IN A `value=` ATTRIBUTE IS AN ESCAPE INTRODUCER, NOT DATA, and it must be `\5C`.**
+Measured 2026-09-07 on two one-constant probes: `value="Bicycle\5CTest Bicycle.vi"` validates in
+72 ms, and the same string with a raw backslash is `Error 42 … "values in the input are not escaped
+correctly"`, naming the string. It is a **whole-file** refusal, so one unescaped separator loses
+every VI in that AIXML. This shipped in `lvai_generate_caraya_test_runner`, which wrote a test VI's
+relative path raw — invisible while tests sat in a flat folder, because the relative path is then a
+bare file name, and reachable on almost every real run once the one-agent-one-output-directory rule
+forced per-class subfolders. **Its unit test asserted the raw separator**, so the fixture agreed
+with the defect: the third instance of "a tool tested against a plausible fixture is not tested".
+A raw `:` has never been measured failing there; only the backslash is mandatory.
 
 For scale on the LabVIEW side: `LabVIEWMCP --selftest` over a VI and its project costs 3.30 s cold
 and **0.76 s warm**, whole process included. LabVIEW is not the slow part of a generation session.
@@ -575,13 +603,75 @@ Three things about interfaces that cost a session each, all in `docs/lvclass-int
   test cannot show what it means; isolating it needs an ordinary class as parent. Do not repeat the
   claim that it is the require-override flag.
 
-**Interface METHODS are not scriptable yet** and the reason is worth knowing before trying: a method
-needs a dynamic dispatch terminal typed on the interface, AIXML refuses a class-typed terminal, the
-accessor wizard works off private data an interface cannot have, and NI's retyper
-`CLSUIP_ReplaceLVClassControls.vi` is **private scope**. A working manual route is written up in §3
-of that document — `Replace` on `.lvclass`, `AddItemFromMemory`, `SetWireRule` — with its four traps,
-of which the sharpest is that **`Controls[]` returns the error clusters FIRST**, so terminals must be
-found by name and never by index.
+**INTERFACE METHODS ARE SCRIPTABLE, and `lvai_add_class_method` is the tool** — this clause said the
+opposite until 2026-09-07 and cost an agent a hand-built duplicate of a tool that already worked.
+The tool does not inspect `NI.LVClass.IsInterface` and has no reason to: an interface is a
+`.lvclass`, so `LVClass.Open`, `AddItemFromMemory`, `{LV.Control}` `Replace` and `SetWireRule` all
+behave the same on one. Measured over five VIs on `IVehicle.lvclass` — two interface members, three
+overrides, `error out = 0` at every stage, no restart.
+
+**Copy NI's shape, which is TWO kinds of member, not one.** Measured on `Basic Interfaces`:
+`Lever.lvclass:Multiply Force.vi` has `Lever in` **`dynamic`** — the contract every implementing
+class must override — while `Lever.lvclass:Pry.vi` has it **`required`** and carries a `Pryable in`,
+an object of a *different* interface, on the same pane. So an interface ships concrete methods too,
+and a terminal on one may be typed on another class: write it as
+`{"terminal":"Engine in","class":"…\Engine.lvclass"}` rather than a bare name. Both of those were
+gaps in the tool until 2026-09-07 — a static member was refused outright, with a unit test passing
+the whole time because it stopped at the argument parse.
+
+**And do NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Three sessions have tried.
+Measured on this pair: the dynamic member reads `0`, the static one reads `1073741832`, neither
+carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
+`lvai_vi_terminals` is the answer.
+
+**AN INTERFACE IS FINISHED — `.lvclass` AND EVERY METHOD — BEFORE THE FIRST CLASS THAT IMPLEMENTS
+IT.** Being scriptable is not the same as being schedulable anywhere, and the ordering is the
+user's correction of 2026-09-07: a four-class build created the interface early and added its two
+members only after the classes *and* their accessors existed. Two reasons it has to be one step.
+`lvai_create_class` takes the interface list as a **creation-time** input with no scriptable way to
+add a link afterwards — NI's after-the-fact provider is a modal dialog, which stops the whole gRPC
+service. And **a declared method breaks every implementing class until that class's override
+exists**, measured with the require-override flag both set and cleared. So the method list is part
+of the contract a class is created against: finish it, then create the implementers, then write
+their overrides. `.claude/agents/labview-class-generator.md` Phase 1b.
+
+**`lvai_add_class_method` VALIDATES the AIXML now, and classifies the verdict rather than skipping
+it.** It converted blind because the validator is genuinely stricter for a class wire — and that
+also skipped every ORDINARY wiring fault. Measured 2026-09-07: three overrides came back
+`ok: true`, `terminalsRetyped: 2`, `verifiedOnDisk: true`, then answered **`Error 1003`** when run,
+with the describe, the export and the `udClassDDO` count all green; the skipped validate named the
+fault in 75 ms. A refusal mentioning `.lvclass`, `UDClassInst` or `LabVIEW Object` is the documented
+strictness and converts anyway; anything else stops. `validateFirst: false` restores the old
+behaviour, and needing it is worth reporting.
+
+**Re-running over an existing member is safe now** (`memberAlreadyExisted`) — and getting there
+needed TWO codes, not one. `AddItemFromMemory` used to send its refusal down the chain and skip
+`SetWireRule` and both saves, discarding the retype while the freshly converted diagram was already
+on disk: the member ended up *worse* than before the call. The first fix filtered `56002` and did
+**nothing for the common case**, because a plain re-run answers **`1004`** — measured 2026-09-07,
+`member already existed: 0` and all three saves still inheriting the error. So both are tolerated,
+**gated on the `.lvclass` itself already listing the VI**, because `1004` is also what a full path
+in the `Name` input produces and those two are opposite verdicts. The class file is plain XML, so
+that check costs no LabVIEW. `docs/class-method-tooling.md` §4p.
+
+**The process lesson is the sharper one: A FIX IS NOT VERIFIED BY THE TEST WRITTEN ALONGSIDE IT.**
+The 56002-only filter passed its unit test, validated against LabVIEW, and was inert. What found it
+was re-running the tool against a member that really existed — reproducing the original failure,
+which is the only thing that ever settles it.
+
+The manual route stays written up in §3 of that document — `Replace` on `.lvclass`,
+`AddItemFromMemory`, `SetWireRule` — with its four traps, of which the sharpest is that
+**`Controls[]` returns the error clusters FIRST**, so terminals must be found by name and never by
+index. **The general lesson: check the tool list before believing a `docs/` sentence about what is
+missing.**
+
+**An interface member CANNOT call the parent through `Call Parent Class Method` in AIXML.** The node
+name is recognised — the validator does not say "unsupported node type" — but it exposes **no
+terminals** for a VI that is not yet a class member, so every wire is refused
+(`Object terminal not found for input: Car in`). Membership happens after conversion, so this is
+chicken-and-egg with no way round it. An override reads what it needs through the parent's public
+accessors instead. Note a *static* call to the parent's method would be wrong anyway: a dynamic
+dispatch subVI dispatches on the object, so a child's wire recurses into the child's own override.
 
 **CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
 untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the
@@ -975,6 +1065,33 @@ seconds, same two `OMAutoClasses` entries, zero new archives. The archives are w
 *starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
 causing the next one - eight in one day looked exactly like a cause and was not.
 
+**MOST OF A COLD BUILD'S DWARNS ARE OURS, and they come from uids inside LabVIEW's RESERVED RANGE.**
+Measured 2026-09-07 as a controlled pair — one socket-shaped VI through `ConvertAIXMLToVI` twice,
+identical but for four numbers: uids `10,11,12,13` cost **4** warnings, `4200,4210,4220,4230` cost
+**0**. One warning per element per generation, deterministic. A cold four-class build logged 24 of
+them, 60 % of that run's 40 warnings. So `TestTools.UidBase = 4200` now numbers everything the
+TOOLS emit — the class-test and method-test sockets, and the suite runner, whose `here`/`strip`/
+`array` were being repaired on every build. **The `scripts\` helpers are deliberately NOT
+renumbered**: they were measured silent and are generated once, and `docs/labview-crash-signatures.md`
+warns against renumbering 39 files on a rule rather than a measurement. It is worth doing not
+because the warnings cause anything — unestablished — but because `dwarnCount` saturates at 200 and
+`looksDegraded` flips with it, so a signature we emit ourselves crowds out the ones that might mean
+something.
+
+**A DWARN CLUSTER TAGGED WITH ONE VI IS NOT CAUSED BY THAT VI, and settling it needs an A/B rather
+than a fix.** Measured 2026-09-07: a 33-minute class build left 38 new DWarns, *every* one tagged
+`[Executing: lvai_close_active_project.vi]` — 15 `DestroyPlatformEvent failed with MgErr 42`, 3
+`bad parent in MoveItem`. That helper did leak the project refnum, so the two looked connected. They
+are not: building the pre-fix helper (the same AIXML with the one `Close Reference` removed) and
+alternating the two over four closes in the same state gave **0, 2, 1, 0** warnings, pre-fix and
+fixed alike. And `bad parent in MoveItem` did not reproduce once in those four, so it depends on
+what LabVIEW holds in MEMORY — the `Save` adopting every open VI — not on the close's wiring.
+
+Two process lessons, both cheap: **the `Executing:` tag names where the warning was emitted, not
+what caused it**, and **two measurements do not separate two distributions whose values are 0, 1 and
+2** — after round 2 the reading was "the fix causes them", the exact opposite of the hypothesis, and
+just as wrong. `docs/labview-crash-signatures.md`.
+
 **Read NI's own log, not the Windows event log.** LabVIEW installs its own crash handler: it catches
 the fault, writes `%TEMP%\LabVIEW_32_<ver>_interactive_<user>_cur.txt` plus a minidump, and exits.
 Windows Error Reporting never sees it, so an empty Application log is **not an alibi**. Measured
@@ -1005,7 +1122,7 @@ validated **once and then cached** under `%TEMP%\LabVIEWMCP\helpers\`, and do no
 to force a rebuild unless the AIXML actually changed. A development loop that regenerates every
 iteration pays the risk every iteration, which is how three deaths happened in one afternoon.
 `docs/labview-crash-signatures.md` has the other crash points, including `Open project application
-ref.vi` - the `ProjectAActive Project` route itself.
+ref.vi` - the `Project\3AActive Project` route itself.
 
 ## Writing things down
 
@@ -1042,7 +1159,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — three case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value` |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
@@ -1057,7 +1174,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
-| How do I create an INTERFACE, and why can't I script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces` |
+| How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
 | How do I turn a generated VI into a class METHOD? | `docs/class-method-tooling.md` §3c | `lvai_add_class_method` |
@@ -1200,3 +1317,19 @@ powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
 Use the second one rather than a bare `dotnet test`: a running MCP server holds an OS lock on the
 exe, and the script stops it first. After either command the `lvai_*` tools are gone from the
 current session until the client is restarted — nothing is lost, but plan the restart.
+
+**NEVER RUN `dotnet msbuild -t:Compile` HERE, and do not build to a redirected output path either.**
+Both look like harmless ways to type-check around that exe lock, and both silently produce a DLL
+**with no embedded resources** — then mark it up to date, so the next full `build.ps1` inherits it.
+Measured twice on 2026-09-07: 1 627 648 bytes against 2 592 768, and `build.ps1` answering
+`12 document(s) wrong - the build is not what you think it is.` Every served document and three
+embedded agent definitions were missing, which is 40-odd failing tests pointing everywhere except
+at the cause. `-t:Compile` skips the resource-preparation targets; a redirected
+`BaseIntermediateOutputPath` collides with the generated protobuf and `AssemblyInfo`.
+
+**The recovery is `rm -rf src/LabVIEWMCP/obj src/LabVIEWMCP/bin tests/LabVIEWMCP.Tests/obj
+tests/LabVIEWMCP.Tests/bin` and a normal build.** If you want a type-check while the server holds
+the lock, accept the two copy errors at the end of a normal build — the compile has already
+happened by then, and `0 Error(s)` above them is the answer. **And read `build.ps1`'s whole tail,
+not a grep for `error`**: its byte-identity check is the only thing that catches this, and it
+reports as `MISMATCH`, not as an error.

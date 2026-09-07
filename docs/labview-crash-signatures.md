@@ -1209,3 +1209,201 @@ measurement is finer than a per-run one and is still an interval. The only thing
 running the operation alone, with a counter read immediately before and after. It costs two calls.
 It has been decisive four times.
 
+
+## A SEVENTH signature: `bad parent in MoveItem` — investigated 2026-09-07, NOT reproduced
+
+Raised because it had been seen "a few times" in the IDE. It is real and it is in the log; what it
+is *not* is a crash, and it is not the routine class workflow.
+
+```
+04.09.2026 16:47:51.620
+DWarnInternal 0x484DB723: bad parent in MoveItem
+source\project\ProjectItem.cpp(18606) : DWarnInternal 0x484DB723: bad parent in MoveItem
+[ExecSys:0; NOT InExec]
+```
+
+**What is established.**
+
+- **Three occurrences, all on 2026-09-04**, at 16:47:51, 16:50:12 and 16:54:04 — spaced minutes
+  apart, with nothing else logged between them. `grep -c` gives 6 because NI writes each entry twice,
+  once bare and once with the source line.
+- **All three are `NOT InExec` with `No VI call stack`.** They did not come from a helper VI, from
+  `ConvertAIXMLToVI`, or from anything the gRPC service was executing. `MoveItem` in
+  `ProjectItem.cpp` is the project TREE re-parenting an item, and these fired on the UI thread.
+- **Not fatal.** That LabVIEW instance kept running until 2026-09-07 07:18, three days later, and the
+  current instance carries **zero**.
+- **Attribution needs care in this log format.** A block's own stack comes AFTER its
+  `</DEBUG_OUTPUT>`, not before it. Reading the stack above the first occurrence attributes it to
+  `VI generator.vi` / `ConvertAIXMLToVI.vi`, which is wrong — that stack belongs to the preceding
+  entry. The four blocks before it are the `HeapObjMapImpl` uid warnings, which *do* carry
+  `Executing:` in their own header; that is what settles the ordering.
+
+**What did NOT reproduce it**, run on a throwaway copy of a five-class project with the log counter
+read before and after each step, per the method at the end of the previous section:
+
+| operation | result |
+|---|---|
+| `lvai_create_class` with a parent class, 2 fields | 0 |
+| `lvai_create_accessors`, 4 accessors | 0 |
+| `lvai_convert_aixml_to_vi` **with the project open**, then `lvai_add_class_method` on that VI | 0 |
+
+The third row was the hypothesis: a VI LabVIEW has adopted as a loose project item is re-parented
+under a class by `AddItemFromMemory`, so the tree must MOVE it. It does not warn. Note also that
+`lvai_create_class` now works in a **throwaway scratch project** and never opens the user's, which
+removes it as a candidate on its own.
+
+**What remains unexcluded**, and both are named by the tools' own documentation as project-tree
+hazards:
+
+- `lvai_create_accessors` with **`tidyProject: true`**, which rewrites the `.lvproj` while LabVIEW
+  holds it open. Not tried here: it is measured elsewhere in this document as KILLING LabVIEW, and
+  reproducing a harmless warning is not worth that.
+- `lvai_create_class` with **`keepCarrier: false`**, which deletes a VI LabVIEW has adopted, leaving
+  it "holding a project whose items no longer exist" — the closest description of a bad parent there
+  is. Not tried, for the same reason: the documented consequence is a broken in-memory project that
+  overwrites the `.lvproj`.
+
+**The honest state:** a non-fatal project-tree warning, from the IDE's own UI thread, whose trigger
+is not established. It is worth a second look only if it ever coincides with a project losing items;
+on the evidence so far it is closer to the `DestroyPlatformEvent` class — noise that `looksDegraded`
+should probably not count either.
+
+## 2026-09-07: 38 DWarns in one class build, and EVERY ONE of them under `lvai_close_active_project.vi`
+
+A four-class build with interfaces, 16 accessors, 5 methods and six Caraya suites — 33 minutes, no
+crash, no hang, every call answered. The log grew from 1 640 174 to 1 761 835 bytes and the DWarn
+count from **66 to 104**. The 38 new entries:
+
+| count | signature |
+|---|---|
+| 15 | `source\ThEvent.cpp(213) : DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42` |
+| 3 | `source\project\ProjectItem.cpp(18606) : DWarnInternal 0x484DB723: bad parent in MoveItem` |
+| 1 | `source\ThThread.cpp(957) : DWarn 0x69BBB755: Terminate thread failed` |
+
+**The new fact is the attribution.** Every `Executing:` line in the appended region names the same
+VI:
+
+```
+[ExecSys:0; Executing:"[VI "lvai_close_active_project.vi" (0x346df0b8)]"]
+```
+
+Three of them, for three closes. Nothing else in a 33-minute run that generated 28 VIs and four
+`.lvclass` files carried an `Executing:` context at all. So the warnings cluster on the **project
+close**, not on generation, conversion, the accessor wizard or `lvai_add_class_method`.
+
+The 16 minidump ids in the same region are the DWarn handler's own dumps, not crashes — the process
+never left the table. See "COUNTING MINIDUMPS IS NOT A FAULT MEASURE" above.
+
+### What was fixed on the strength of it, and what was not
+
+`lvai_close_active_project.xml` **leaked the project reference**: it took the refnum from
+`Project:Active Project`, passed it through `Save` and `Close`, and never closed it. That breaks this
+repository's own rule — a leaked refnum keeps its object in LabVIEW's memory, which is the exact
+mechanism that made `lvai_create_class` produce parentless children. Fixed 2026-09-07 by adding a
+`Close Reference` at uid 45, out of the error chain (error in wired for ordering, error out dropped),
+copying the pattern `lvai_active_project.vi` has always used on the same reference and
+`lvai_create_class.vi` uses at uid 88.
+
+**And an A/B THEN SETTLED IT: the leak causes none of them.** Measured the same day by building the
+pre-fix helper — the identical AIXML with the one `Close Reference` node removed — and alternating
+the two against the same project, in the same state, four closes:
+
+| round | helper | bytes logged | `DestroyPlatformEvent` | `bad parent in MoveItem` |
+|---|---|---|---|---|
+| 1 | pre-fix | 0 | 0 | 0 |
+| 2 | fixed | 3438 | 2 | 0 |
+| 3 | pre-fix | 1689 | 1 | 0 |
+| 4 | fixed | 0 | 0 | 0 |
+
+**Indistinguishable.** 0 to 2 warnings per close with either helper, and the two orderings that
+looked decisive — round 1 against round 2 — inverted on the next pair. This is worth recording as a
+method note as much as a result: after round 2 the reading was "the fix CAUSES the warnings", which
+is the opposite of the hypothesis it was testing and was equally wrong. Two points do not separate
+two distributions whose values are 0, 1 and 2.
+
+So the refnum close **neither causes nor cures** `DestroyPlatformEvent`. It is kept on the rule
+alone — `Project:Active Project` hands out a reference the caller owns, which is why the read-only
+`lvai_active_project.vi` has always closed the same one — and the honest summary is that a
+correctness defect and a warning cluster happened to be found in the same VI. Do not write it up as
+a cure, and do not write it up as a regression either.
+
+**`bad parent in MoveItem` did not reproduce ONCE in four closes.** That is the useful half of the
+A/B: in a quiet state — project opened, closed, nothing built in between — the signature is absent
+with both helpers, while the 33-minute class build produced one per close. It therefore depends on
+what LabVIEW has in memory, not on the close's own wiring, which is exactly what the `Save`
+adoption hypothesis below predicts and the refnum hypothesis does not.
+
+**The `Save` is the remaining candidate, and the A/B above raised its odds.** This
+helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved project
+risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a loose
+project item — measured repeatedly elsewhere in this repository, and seen in this very run, where a
+test agent had to strip three `LVMCP Stub …` items that LabVIEW had adopted into the `.lvproj`.
+Three adopted items, three `bad parent in MoveItem`. That is a correlation from one run and nothing
+more, but it is a cheap experiment: close a project with and without the `Save`, with and without
+adopted VIs in memory, and count.
+
+The section above lists `keepCarrier: false` and `tidyProject: true` as the other unexcluded
+candidates. Neither was in play here — which narrows it usefully, because this run reproduced the
+warning without either.
+
+## 2026-09-07, run 2: the low-uid DWarn is OURS, and a controlled pair settles the fix
+
+A cold rebuild of the same four-class hierarchy, on a freshly started LabVIEW whose log began at
+zero, logged **40 warnings**. The composition is nothing like run 1's:
+
+| signature | run 1 (warm) | run 2 (cold) | emitted under |
+|---|---|---|---|
+| `HeapObjMapImpl.cpp(226)` — `trying to override with non-reserved UID` | 0 | **24** | `LV AI Core.lvlibp:VI generator.vi` |
+| `ThEvent.cpp(213)` — `DestroyPlatformEvent failed with MgErr 42` | 15 | 14 | `lvai_close_active_project.vi` |
+| `ProjectItem.cpp(18606)` — `bad parent in MoveItem` | 3 | 2 | `lvai_close_active_project.vi` |
+| `ThThread.cpp(957)` — `Terminate thread failed` | 1 | 0 | — |
+
+So **60 % of a cold build's warnings are ours**, and the close-path family is unchanged — which is
+the third independent confirmation that the refnum repair is neutral.
+
+Why run 1 showed none of them is NOT established. The counters carry `sat:` equal to `max:` here
+(42/42, 59/59, 161/161), and run 1 ran in a long-warm instance; saturation is a plausible
+explanation and was not tested.
+
+### The controlled pair
+
+The rule "a low uid costs two lines per object" has been in this document since 2026-09-03 together
+with a warning not to act on it without measuring the file in hand. So: one socket-shaped VI put
+through `ConvertAIXMLToVI` twice — same four elements, same types, same conIdx, **differing only in
+the four uid numbers**. `ConvertAIXMLToVI` and not `lvai_generate_vi`, because the latter's repair
+pass would have raised the uids and destroyed the measurement.
+
+| uids | UID warnings | bytes added to the log |
+|---|---|---|
+| `10, 11, 12, 13` | **4** — one per uid, `max:` 42 / 59 / 69 / 89 | 8 370 |
+| `4200, 4210, 4220, 4230` | **0** | 0 |
+
+Deterministic, and it names the price exactly: one warning per element numbered inside the reserved
+range, per generation.
+
+### What was renumbered, and what deliberately was not
+
+`TestTools.UidBase = 4200`, used by:
+
+- `TestTools.SocketAixml` — was 10/11/12/13. `lvai_generate_class_test` writes one socket per
+  accessor slot, so a five-suite build generates several.
+- `MethodTestTools`' socket — was 10/11/12/13, plus its required-input base, which was `20`.
+- `TestTools.CarayaRunnerAixml` — `here`, `strip` and `array` were 10, 11 and 40. Those three were
+  being **repaired on every single runner build**, and the repair was reported in the answer's
+  `steps` as three routine items; at source the pass is now a no-op.
+
+**The helpers under `scripts\` were left alone**, on this document's own instruction: they were
+measured silent, they are generated once and cached, and renumbering 39 files on the strength of a
+rule is what §"What it changes about the RULE" warns against. What was renumbered is exactly what
+that section names as the part that still costs — the AIXML the tools emit on every run.
+
+A test pins it: `ASocketNumbersEveryUidAboveTheReservedRange` and
+`TheRunnerNumbersEveryUidAboveTheReservedRange` fail on any uid below 200 other than the `0`
+sentinel.
+
+### Why it is worth doing at all
+
+Not because the warnings cause anything — that remains unestablished, and these same low uids have
+produced hundreds of working VIs. Because **`dwarnCount` saturates at 200 and `looksDegraded` flips
+with it**, so a signature we emit ourselves crowds out the ones that might mean something. Removing
+24 per build keeps the number diagnostic for longer.

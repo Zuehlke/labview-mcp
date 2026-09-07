@@ -1,4 +1,6 @@
 using System.Xml.Linq;
+using System.Text.Json.Nodes;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -455,6 +457,133 @@ public sealed class ClassToolingLeverTests
     }
 
     [Fact]
+    public void AStaticMemberSENDSNoDispatchInputAtAll()
+    {
+        // THE PARSE TEST ABOVE PASSED WHILE THE FEATURE DID NOT WORK. `dispatchTerminals` being
+        // legally absent is settled there; what was broken is one line further on, where the empty
+        // list was still joined into an input. The runner refuses an empty VALUE - names and values
+        // are paired by position and an empty one does not survive the split - so a static member
+        // answered `badArguments ... has an empty value` and stopped at `member`, with the pane
+        // already rebuilt. Measured 2026-09-07 on an interface member of NI's own `Pry.vi` shape.
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Pry.vi","classTerminals":["obj in","obj out"]}]""")[0];
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\cls\Pry.vi", @"C:\cls\A.lvclass", null);
+
+        Assert.False(inputs.ContainsKey("dispatch terminal indices"));
+        Assert.DoesNotContain(inputs, pair => pair.Value!.GetValue<string>().Length == 0);
+    }
+
+    [Fact]
+    public void ADispatchingMemberStillSendsItsIndices()
+    {
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Describe.vi","classTerminals":["obj in"]}]""")[0];
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                   @"C:\cls\A.lvclass", [11, 3]);
+
+        Assert.Equal("11|3", inputs["dispatch terminal indices"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void ATerminalMayCarryAClassOtherThanTheMethodsOwn()
+    {
+        // NI's own interface shape: `Lever.lvclass:Pry.vi` has a `Pryable in`. Before this the tool
+        // retyped every terminal to lvclassPath, so that VI needed a hand-built helper.
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """
+            [{"vi":"C:\\IVehicle\\Report Engine Power.vi",
+              "classTerminals":["IVehicle in",
+                                {"terminal":"Engine in","class":"C:\\Engine\\Engine.lvclass"}]}]
+            """)[0];
+
+        Assert.Null(method.ClassTerminals[0].ClassPath);
+        Assert.Equal(@"C:\Engine\Engine.lvclass", method.ClassTerminals[1].ClassPath);
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\IVehicle\Report Engine Power.vi",
+                                                   @"C:\IVehicle\IVehicle.lvclass", null);
+
+        // One path per name, in the same order - the helper indexes the two arrays together.
+        Assert.Equal("IVehicle in|Engine in", inputs["class terminal names"]!.GetValue<string>());
+        Assert.Equal(@"C:\IVehicle\IVehicle.lvclass|C:\Engine\Engine.lvclass",
+                     inputs["terminal class paths"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void AClassTerminalObjectWithoutATerminalNameIsRefused()
+    {
+        var bad = Assert.Throws<ArgumentException>(() => ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\a.vi","classTerminals":[{"class":"C:\\Engine\\Engine.lvclass"}]}]"""));
+        Assert.Contains("terminal", bad.Message);
+    }
+
+    [Fact]
+    public void ACachedHelperOlderThanItsSourceIsRebuilt()
+    {
+        // The helper VI is generated once and reused. An edit to the AIXML would otherwise keep
+        // running the previously built VI - silently, because a control that is not there is not an
+        // error: it simply keeps its default and every stage still answers 0. Found twice, most
+        // recently 2026-09-07 when a per-terminal class path was added to lvai_add_class_method.xml.
+        var aixml = Path.GetTempFileName();
+        var helper = Path.GetTempFileName();
+        try
+        {
+            File.SetLastWriteTimeUtc(aixml, new DateTime(2026, 9, 7, 12, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(helper, new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc));
+            Assert.False(HelperCache.NeedsRebuild(aixml, helper));
+
+            File.SetLastWriteTimeUtc(aixml, new DateTime(2026, 9, 7, 14, 0, 0, DateTimeKind.Utc));
+            Assert.True(HelperCache.NeedsRebuild(aixml, helper));
+
+            File.Delete(helper);
+            Assert.True(HelperCache.NeedsRebuild(aixml, helper));
+        }
+        finally
+        {
+            File.Delete(aixml);
+            if (File.Exists(helper)) File.Delete(helper);
+        }
+    }
+
+    [Fact]
+    public void TheVerifyFailureDetailIsAFreshNodeAndNotTheEvidenceItself()
+    {
+        // The evidence object is already attached to the method's `steps`, and System.Text.Json
+        // refuses a node that has a parent. Passing it on as the failure detail threw
+        // `InvalidOperationException: The node already has a parent` - so the ONE branch that
+        // reports a repair which never reached disk produced an exception instead of a report.
+        var steps = new JsonArray();
+        var evidence = new JsonObject
+        {
+            ["ran"] = true,
+            ["classTypedTerminals"] = 1,
+            ["pathStandInsLeft"] = 2,
+        };
+        steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = evidence });
+
+        var detail = ClassMethodTools.VerifyFailureDetail(evidence, expected: 1);
+
+        Assert.Null(detail.Parent);
+        Assert.Equal(2, detail["pathStandInsLeft"]!.GetValue<int>());
+        Assert.Contains("stand-in", detail["hint"]!.GetValue<string>());
+
+        // The whole point: it can now be attached somewhere else without throwing.
+        var results = new JsonArray();
+        results.Add(new JsonObject { ["detail"] = detail });
+    }
+
+    [Fact]
+    public void AVerifyThatCouldNotRunSaysSoRatherThanBlamingTheFile()
+    {
+        var detail = ClassMethodTools.VerifyFailureDetail(
+            new JsonObject { ["ran"] = false, ["classTypedTerminals"] = -1, ["pathStandInsLeft"] = -1 },
+            expected: 2);
+
+        Assert.Contains("could not run", detail["hint"]!.GetValue<string>());
+    }
+
+    [Fact]
     public void TwoMethodsCannotNameTheSameVi()
     {
         var bad = Assert.Throws<ArgumentException>(() => ClassMethodTools.MethodRequest.ParseAll(
@@ -735,5 +864,247 @@ public sealed class ClassToolingLeverTests
         Assert.Equal("Timeout", parsed[0].WriteField);
         Assert.Null(parsed[0].ReadField);      // resolved to WriteField by the caller, not here
         Assert.Equal("10.0", parsed[0].Value);
+    }
+
+    // ---------- re-running over a member that already exists ----------
+
+    /// <summary>
+    /// The item shape of a REAL `.lvclass`, taken verbatim off `Bicycle.lvclass` rather than
+    /// invented - two tabs of indent, the members' URLs relative with a `../` because they sit in
+    /// a subfolder, and the parent link carried as an `Item Type="Parent"` among them.
+    ///
+    /// Written out here because the fixture is the thing that keeps being wrong in this repository:
+    /// a plausible one made <see cref="ClassMethodTools.IsAlreadyMember"/> answerable by a naive
+    /// URL match, which the real file's `../Describe.vi` would then have missed.
+    /// </summary>
+    private const string RealClassFile = """
+        <?xml version='1.0' encoding='UTF-8'?>
+        <Project Type="Class" LVVersion="26008000">
+        	<Item Name="Parent Libraries" Type="Parent Libraries">
+        		<Item Name="IVehicle.lvclass" Type="Parent" URL="../../IVehicle/IVehicle.lvclass"/>
+        	</Item>
+        	<Item Name="Bicycle.ctl" Type="Class Private Data" URL="Bicycle.ctl">
+        	</Item>
+        	<Item Name="Describe.vi" Type="VI" URL="../Describe.vi">
+        	</Item>
+        	<Item Name="Read Manufacturer.vi" Type="VI" URL="../Read Manufacturer.vi">
+        	</Item>
+        </Project>
+        """;
+
+    [Fact]
+    public void AMemberTheClassFileListsIsRecognised()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        var lvclass = Path.Combine(dir, "Bicycle.lvclass");
+        File.WriteAllText(lvclass, RealClassFile);
+
+        // A member whose URL is relative with `../` - the shape a real class in a subfolder has.
+        Assert.True(ClassMethodTools.IsAlreadyMember(lvclass, Path.Combine(dir, "Describe.vi")));
+        Assert.True(ClassMethodTools.IsAlreadyMember(lvclass,
+                                                     Path.Combine(dir, "Read Manufacturer.vi")));
+
+        // And one it does not list. THIS is the case that must stay false, because it is what
+        // separates a benign re-add from a wrong `Name` input - both answer Error 1004.
+        Assert.False(ClassMethodTools.IsAlreadyMember(lvclass, Path.Combine(dir, "Nope.vi")));
+
+        Directory.Delete(dir, true);
+    }
+
+    /// <summary>
+    /// A missing or unreadable class file must answer false rather than throw: the gate exists to
+    /// widen tolerance, so failing closed is the safe direction.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableClassFileIsNotTakenAsMembership() =>
+        Assert.False(ClassMethodTools.IsAlreadyMember(
+            Path.Combine(Path.GetTempPath(), "no such class here.lvclass"), @"C:\x\A.vi"));
+
+    /// <summary>
+    /// MEASURED 2026-09-07, AND IT CORRECTED THE FIRST ATTEMPT AT THIS FIX. A plain re-run over an
+    /// existing member answers <c>1004</c>, not <c>56002</c> - so a filter written for 56002 alone
+    /// left the common case exactly as broken as before, with `wire rule`, `save vi` and
+    /// `save class` all inheriting the error and the retype discarded.
+    ///
+    /// The flag is what lets the helper tolerate 1004 without masking the OTHER thing 1004 means
+    /// (a full path where a bare name belongs), so it has to reach the helper on every call.
+    /// </summary>
+    [Fact]
+    public void TheMemberExistsFlagIsAlwaysSent()
+    {
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Describe.vi","classTerminals":["obj in"]}]""")[0];
+
+        var fresh = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                  @"C:\cls\A.lvclass", [11]);
+        var again = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                  @"C:\cls\A.lvclass", [11], memberExists: true);
+
+        Assert.Equal("0", fresh["member exists"]!.GetValue<string>());
+        Assert.Equal("1", again["member exists"]!.GetValue<string>());
+
+        // The runner pairs names with values by line and refuses an empty value, so "0" rather
+        // than "" is load-bearing - an empty one stops the call at `member` with the pane rebuilt.
+        Assert.DoesNotContain(fresh, pair => pair.Value!.GetValue<string>().Length == 0);
+    }
+
+    /// <summary>
+    /// The helper's own AIXML must actually carry the control the flag is sent to. A name mismatch
+    /// here is silent - the runner sets nothing, the control keeps its default of "", the filter
+    /// never fires, and the only symptom is the defect coming back.
+    /// </summary>
+    [Fact]
+    public void TheHelperDeclaresTheMemberExistsControlAndFiltersBothCodes()
+    {
+        var helper = FindRepoFile("scripts/" + ClassMethodTools.HelperFileName);
+        Assert.NotNull(helper);
+        var aixml = File.ReadAllText(helper!);
+
+        Assert.Contains("_name=\"member exists\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("value=\"56002\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("value=\"1004\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("_name=\"member already existed\"", aixml, StringComparison.Ordinal);
+
+        // Both codes must be OR-ed and then AND-ed with the flag. An OR alone would tolerate a
+        // wrong-Name 1004 on a class that does not list the VI at all.
+        Assert.Contains("_name=\"Or\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("_name=\"And\"", aixml, StringComparison.Ordinal);
+    }
+
+    private static string? FindRepoFile(string relative)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
+    // ---------- asserting a method's ordinary OUTPUT ----------
+
+    private static MethodTestTools.MethodCase OutputCase(
+        int slot, string method, string terminal, string type, string expected) =>
+        new(slot, $"{method} returns {terminal}", method, $@"C:\cls\{method}.vi",
+            null, null, null, null, null, null, null, @"C:\cls\Daq.lvclass", [],
+            ExpectOutput: terminal, ExpectValue: expected, OutputType: type, OutputConIdx: 2);
+
+    /// <summary>
+    /// THE GAP THIS CLOSES. Until 2026-09-07 the tool had `expectErrorCode` and `writeField`, so a
+    /// method whose whole job is to RETURN something — a `Describe.vi`, a formatter, any getter
+    /// that is not an accessor — could not be tested at all. Measured cost: a cold build's test
+    /// phase went 634 s -> 890 s because four such tests were hand-authored instead.
+    /// </summary>
+    [Fact]
+    public void AnOutputCaseAssertsTheMethodsOwnTerminal()
+    {
+        var xml = Suite(OutputCase(1, "Describe", "description", "string", "Bicycle - two wheels."));
+
+        // The Call must ASK for the terminal, or there is nothing to assert against.
+        var call = xml.Elements("Call").Single(c => (string?)c.Attribute("target") == "LVMCP Mth1.vi");
+        Assert.Contains("description:", (string)call.Attribute("outputs")!, StringComparison.Ordinal);
+
+        // And the expectation must be a constant of the terminal's own type, not a string dump.
+        var expected = xml.Elements("Constant")
+            .Single(c => ((string?)c.Attribute("_name"))?.StartsWith("expected description",
+                                                                     StringComparison.Ordinal) == true);
+        Assert.Equal("string", (string)expected.Attribute("type")!);
+        Assert.Equal("Bicycle - two wheels.", (string)expected.Attribute("value")!);
+    }
+
+    /// <summary>
+    /// The socket has to carry the terminal under the SAME NAME as the real method, because
+    /// `{LV.SubVI}` `Replace` re-attaches wires by name. A socket without it gives the assertion
+    /// nothing to read; a socket with a differently spelled one leaves the real terminal unwired
+    /// and the suite goes green having asserted a default. That is the failure mode
+    /// `lvai_swap_subvis` was measured producing on 2026-09-07.
+    /// </summary>
+    [Fact]
+    public void TheSocketCarriesTheAssertedOutputUnderItsRealName()
+    {
+        var xml = XElement.Parse(MethodTestTools.MethodSocketAixml(
+            "LVMCP Mth1.vi", null, ("description", "string", 2)));
+
+        var indicator = xml.Elements("Indicator")
+            .Single(e => (string?)e.Attribute("_name") == "description");
+
+        Assert.Equal("string", (string)indicator.Attribute("type")!);
+        Assert.Equal("2", (string)indicator.Attribute("conIdx")!);
+
+        // An output edge, never a left-edge input slot - the pane defect that shipped twice.
+        Assert.DoesNotContain(2, MethodTestTools.FreeSocketSlots());
+        Assert.Contains(2, MethodTestTools.FreeOutputSlots());
+    }
+
+    /// <summary>
+    /// THE SOCKET MUST NOT BE SEEDED WITH THE EXPECTED VALUE. It is replaced before anything runs,
+    /// so seeding it would make a socket that never got swapped pass the assertion anyway - the
+    /// exact shape of "a green run that tested nothing" this repository keeps meeting.
+    /// </summary>
+    [Fact]
+    public void TheSocketsStandInValueIsTheTypesDefaultAndNotTheExpectation()
+    {
+        var xml = XElement.Parse(MethodTestTools.MethodSocketAixml(
+            "LVMCP Mth1.vi", null, ("description", "string", 2)));
+
+        foreach (var element in xml.Elements())
+            Assert.NotEqual("Bicycle - two wheels.", (string?)element.Attribute("value"));
+    }
+
+    [Fact]
+    public void AnOutputCaseNeedsBothHalves()
+    {
+        // expectOutput with nothing to compare against.
+        Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectOutput":"description"}]"""));
+
+        // expectValue with no terminal named.
+        Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectValue":"x"}]"""));
+    }
+
+    /// <summary>
+    /// An EMPTY expected value is legal and must survive the parse: an interface declaration body
+    /// returning `""` is the normal case, and refusing it would push the caller into asserting
+    /// something it does not mean.
+    /// </summary>
+    [Fact]
+    public void AnEmptyExpectedValueIsLegal()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectOutput":"description","expectValue":""}]""");
+
+        Assert.Equal("description", parsed[0].ExpectOutput);
+        Assert.Equal("", parsed[0].ExpectValue);
+    }
+
+    [Fact]
+    public void AnOutputCaseGetsADefaultLabelNamingTheTerminal()
+    {
+        var xml = Suite(OutputCase(1, "Describe", "description", "string", "x"));
+
+        Assert.Contains(xml.Elements("Constant"),
+            c => (string?)c.Attribute("value") == "Describe returns description (description)");
+    }
+
+    /// <summary>All three assertion shapes may sit in one case, and each gets its own Caraya
+    /// assertion - the error code, the returned value and the surviving field.</summary>
+    [Fact]
+    public void TheThreeAssertionShapesCoexist()
+    {
+        var both = new MethodTestTools.MethodCase(
+            1, "Start does everything", "Start", @"C:\cls\Start.vi",
+            "Timeout", @"C:\cls\Write Timeout.vi", "Timeout", @"C:\cls\Read Timeout.vi",
+            "double", "10.0", -200099, @"C:\cls\Daq.lvclass", [],
+            ExpectOutput: "status text", ExpectValue: "running", OutputType: "string",
+            OutputConIdx: 2);
+
+        var xml = Suite(both);
+        var asserts = xml.Elements("Call")
+            .Count(c => ((string?)c.Attribute("target"))?.Contains("Assert", StringComparison.Ordinal) == true);
+
+        Assert.Equal(3, asserts);
     }
 }

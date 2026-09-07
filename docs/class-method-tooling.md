@@ -166,7 +166,13 @@ Replace the class terminals (BY NAME)  →  AddItemFromMemory  →  SetWireRule(
   owning-library link; LabVIEW marks the LIBRARY broken and it then blocks every VI it owns as
   `Error 1003`, healthy ones included.
 - **`Rule = 4` is dynamic dispatch** on `{LV.ConnectorPane}` `SetWireRule`. Omit the dispatch
-  terminals for a static member — an LUnit test method is one.
+  terminals for a static member — an LUnit test method is one, and so is a concrete method an
+  interface ships. That omission was **refused until 2026-09-07**; see §4o.
+- **A terminal may carry a class other than the method's own**, written as an object rather than a
+  name: `{"terminal":"Engine in","class":"…\Engine.lvclass"}`. That is NI's own interface shape —
+  `Lever.lvclass:Pry.vi` takes a `Pryable`. Added 2026-09-07, §4o.
+- **It works on an INTERFACE**, unchanged: it does not look at `NI.LVClass.IsInterface` and has no
+  reason to. `docs/lvclass-interfaces.md` §3 claimed for five days that no tool did this.
 - **Convert WITHOUT validating.** The tool does this for you when given `aixml`. `ValidateAIXML`
   type-checks subVI wiring and refuses a class wire fed from a `path` stand-in while
   `ConvertAIXMLToVI` writes the same file with `errorCode 0`, so `lvai_generate_vi` — which
@@ -526,7 +532,7 @@ DIFFERENT types left the diagram silently broken and was still reported as a cor
 ```xml
 <Call inputs="AnalogInput in:265.AnalogInput out,error in (no error):"
       outputs="AnalogInput out:796.AnalogInput out,Sample Rate:,error out:"
-      target="AnalogInput.lvclassARead Sample Rate.vi" uid="796"/>
+      target="AnalogInput.lvclass\3ARead Sample Rate.vi" uid="796"/>
 ```
 
 `Sample Rate` is unwired and the assertion's `Actual` is bound to the CLASS wire — LabVIEW's
@@ -980,6 +986,346 @@ same files. Measured here: the count stayed 31 before and after, and **8 of them
 out; one checked mtimes and reported "not reused", the other inferred "everything reused" from the
 count alone. The mtimes settle it. The two runs happened not to collide; nothing prevents it.
 
+## 4o. Interface members, 2026-09-07: two gaps in `lvai_add_class_method`
+
+Found building `IVehicle.lvclass` with the two shapes NI's `Basic Interfaces` uses — one dynamic
+contract, one concrete member whose pane carries a *different* class. Both gaps are ordinary class
+bugs; an interface is simply where they cannot be avoided.
+
+### A static member was refused, and a passing test said otherwise
+
+`dispatchTerminals` has always been documented as omittable, and `MethodRequest.ParseAll` accepted
+the omission — the unit test `AStaticMemberIsExpressedByNamingNoDispatchTerminals` asserted exactly
+that and passed. One function later the call site did:
+
+```csharp
+["dispatch terminal indices"] = string.Join("|", indices ?? []),
+```
+
+which sends `""`. `lvai_run_vi_and_read_values` **refuses an empty value** — names and values are
+paired by position, an empty one does not survive the helper's `Spreadsheet String To Array`, and
+every later input would land on the wrong control. So a static member answered
+`badArguments … has an empty value` and stopped at `member`, **after** the conversion and the pane
+rebuild had already run.
+
+The input is now omitted entirely when there is nothing to dispatch; the helper's control keeps its
+own default and the wire-rule loop runs zero times.
+
+**The lesson is `CLAUDE.md`'s fixture rule from a new side.** The feature was covered by a test that
+could not fail, because the test stopped at the parse and the defect was in the code that consumed
+it. The regression test now asserts on the input map itself, which is why `HelperInputs` was
+extracted from the call site — an untestable expression inside an async method is where this hid.
+
+### A terminal could not be typed on another class
+
+`classTerminals` retyped every named terminal to `lvclassPath`. NI's interfaces do the opposite:
+
+| `Lever.lvclass` member | `Lever in` | the interesting terminal |
+|---|---|---|
+| `Multiply Force.vi` | `dynamic` | — the contract |
+| `Pry.vi` | `required` | **`Pryable in`**, an object of a different interface |
+
+An entry may now be an object instead of a name, and the helper takes a second pipe-separated array
+of one path per terminal, indexed alongside the names:
+
+```json
+"classTerminals": ["IVehicle in",
+                   {"terminal": "Engine in", "class": "C:\Vehicle\Engine\Engine.lvclass"}]
+```
+
+A bare name still means the method's own class, so every existing call is unchanged. A path that
+does not exist is refused up front, because `Replace` against a missing file is refused by LabVIEW
+rather than reported.
+
+### And the helper cache had to be fixed first
+
+Adding a control to `lvai_add_class_method.xml` would have changed nothing at run time: this site
+still keyed on `!File.Exists(helperVi)`, so the cached VI from before the edit would have kept
+running — with no error, because a control that is absent simply keeps its default. Same bug as
+2026-08-31 in `ClassTools`, and it recurred because that fix was a `private static` method the other
+file could not reach. The check now lives in `Infra/HelperCache.NeedsRebuild`;
+`docs/lvclass-interfaces.md` §5 lists the ~13 sites that still key on existence alone.
+
+### Verified against LabVIEW the same day
+
+Both changes were run for real on a throwaway copy of the interface, building a **new static member
+with three class-typed terminals across two classes** — NI's `Pry.vi` shape exactly:
+
+- `ok: true`, every stage `error out = 0`, `terminalsRetyped: 3`, `dynamicDispatchTerminals: []`,
+  `verifiedOnDisk: true` with `pathStandInsLeft: 0`. 7.1 s end to end.
+- **`inputsSent: 5`, not 6** — the `dispatch terminal indices` input really was omitted, which is
+  the static-member fix seen from the run's own answer.
+- The helper VI was **rebuilt** (`step: helper` in the prologue) from the edited AIXML, which is the
+  cache fix firing live; the cached copy on disk was four days old.
+- `lvai_vi_terminals` reads the result as `IVehicle.lvclass:Probe Engine Power.vi` with `IVehicle in`
+  `required` — a member, and static.
+
+### The verify step counts terminals; it does not check WHICH class
+
+Worth knowing before trusting `verifiedOnDisk`. `classTypedTerminals: 3` would read exactly the same
+if all three terminals had been retyped to the method's own class — which is precisely what the old
+code did and the new code must not. So the per-terminal fix was confirmed one level lower, in the
+saved file's `VCTP`, where each type descriptor names its class:
+
+```xml
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="IVehicle in"><Item Text="IVehicle.lvclass"/>
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="Engine in">  <Item Text="Engine.lvclass"/>
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="Engine out"> <Item Text="Engine.lvclass"/>
+```
+
+`pylv_extract` reads that with no LabVIEW. **The front-panel heap does NOT carry the class name** —
+`udClassDDO` objects have no label and no `.lvclass` string in them at all, so the heap can only ever
+answer "class-typed" and never "typed on what". Extending the tool's verify to compare `VCTP` labels
+against the requested classes is the obvious next change and is not done.
+
+### Re-running on a member that already exists is Error 1004, and the hint names the wrong cause
+
+Measured in passing, because it was the first thing tried. Repairing an existing member in place —
+`vi` with no `aixml`, `panePattern: 0` — retyped all three terminals correctly in memory and then
+answered **`add member error`, code 1004** at `AddItemFromMemory`. §3.0 records 1004 for wiring the
+VI's full *path* where its bare name belongs; here the bare name was right, and the likely cause is
+that a VI already owned by a library is known to LabVIEW by its **qualified** name. Not established.
+
+Two things follow, and the second is the useful one:
+
+- The tool's `Hint` for that stage names **Error 56002** ("already a loose project item"), which is
+  a different cause and sends you to the project. The hint should distinguish the two codes.
+- **Nothing was written.** `wire rule`, `save vi` and `save class` all inherited the 1004 through the
+  error chain and did not run, so the on-disk VI and `.lvclass` were byte-identical afterwards
+  (md5 unchanged). That is §1c and §1d working as designed: a retype that does not reach both saves
+  reaches nothing, and the in-memory `terminals retyped: 3` was not evidence of anything.
+
+### A pre-existing defect the verification run walked into
+
+`lvai_add_class_method` threw `InvalidOperationException: The node already has a parent` instead of
+reporting a failed verify. The evidence object is attached to the method's `steps`, and the same
+instance was then passed as the failure `detail`; System.Text.Json refuses a node that already has a
+parent. So the ONE branch that exists to report a repair which never reached disk - §1d's whole
+reason for being - produced an exception with no method list, no steps and no hint.
+
+It had never fired because every previous call retyped every `path` stand-in on the pane. The call
+that took it asked to retype **one of three**, so two stand-ins were legitimately left, `verify`
+failed as designed, and the report died on the way out. Fixed by building a fresh detail object,
+which also reads better: it names the counts and says which of the two causes it is - a terminal
+left out of `classTerminals` (or spelled differently there than on the pane), or a retype that
+stayed in memory.
+
+### Cost
+
+The run that found all this: **~14.5 min of wall clock against ~35 s inside tools over 36 calls, a
+ratio near 25 : 1.** LabVIEW's share was 5.1 s per `lvai_add_class_method` call and never varied.
+Practically all of it was the model re-deriving AIXML of a shape that does not change — the same
+signature that justified this tool in the first place.
+
+## 4p. Two fixes to `lvai_add_class_method`, 2026-09-07 — validation and idempotency
+
+Both came out of one four-class build (`IVehicle` + `Bicycle` + `Car` + `Offroad Bicycle`), and both
+are cases where the tool reported success or a misleading failure over a real defect.
+
+### The tool skipped validation on purpose, and that also skipped ORDINARY wiring faults
+
+`lvai_add_class_method` converted without validating, because for a class-typed wire the validator is
+genuinely stricter than the converter — §3 of `docs/labview-lunit-testing.md` and the `Error 53`
+measurement of 2026-09-01. That reasoning is sound and the conclusion drawn from it was too broad.
+
+Measured: three `Describe.vi` overrides came back
+
+```
+ok: true, terminalsRetyped: 2, verifiedOnDisk: true, pathStandInsLeft: 0
+```
+
+and then answered **`Error 1003`** when run. Every file-level check passed — the describe, the AIXML
+export, the `udClassDDO` count of §1d. What discriminated a broken *diagram* from a broken *class*
+was two controls: the static interface member returned its constant, and a wizard-made accessor ran
+clean, so the owning libraries were not blocked. Running the skipped `lvai_validate_aixml` on the
+author's own source then named the fault **in 75 ms**.
+
+So the validator's strictness is a property of ONE case, not a reason to never call it. The tool now
+validates each method's AIXML and **classifies** the verdict:
+
+| verdict | what happens |
+|---|---|
+| `clean` | convert, as before |
+| `classWireStrictness` — the message names a `.lvclass`, `UDClassInst` or `LabVIEW Object` | convert anyway; this is what the tool is for |
+| `realFault` — anything else | **STOP**, with the validator's message and the AIXML path |
+
+The classifier is deliberately conservative: an unrecognised message counts as a real fault, because
+waving one through is the failure being fixed. `validateFirst: false` restores the old behaviour for
+a caller who finds the classifier wrong — and finding that is worth reporting, since the fix is to
+add the message to the list.
+
+The step appears in each method's `steps` as `preValidate` with its `verdict`, so a class-wire
+refusal is visible rather than silently tolerated.
+
+### Re-running over an existing member left it WORSE than before the call
+
+§4o records `Error 1004` for one shape of this. The other shape is `Error 56002`, and it is worse
+than a failed call:
+
+`AddItemFromMemory` answers 56002 when the VI is already a member. That error travelled down the
+error chain, so `SetWireRule`, the VI's `Save.Instrument` and the class `Save` were **all skipped** —
+while the freshly converted diagram had **already been written to disk** by the convert step. So the
+member ended up with the new (stand-in-typed) diagram and none of the repair: not a no-op, a
+regression. Recovery was the documented rebuild — close the project, delete the `.vi` *and* its
+`<Item>` block from the `.lvclass`, re-add.
+
+**AND THE FIRST FIX FOR THIS WAS WRONG, caught by testing it.** It filtered `56002` alone, and a
+plain re-run does not answer 56002 — measured the same day on `Bicycle.lvclass:Describe.vi`,
+`vi` with no `aixml` and `panePattern: 0`:
+
+```
+terminalsRetyped: 2, failedStage: "add member error", stageErrorCode: 1004
+member already existed: 0        <- the filter never fired
+wire rule / save vi / save class: all 1004, inherited
+```
+
+So there are **two** codes, from two different states, and §4o had already recorded one of them
+without the connection being made:
+
+| code | state | what it means for a re-run |
+|---|---|---|
+| `56002` | the VI is already a **loose project item** — the project was open when the VI was converted | no-op |
+| `1004` | the VI is already a **member** — LabVIEW knows it by its qualified name | no-op |
+| `1004` | the `Name` input got a full **path** where a bare name belongs (§3.0) | a real bug |
+
+The last row is why `1004` may not simply be tolerated: two of its causes are opposite verdicts.
+The discriminator is the class file itself — plain XML, no LabVIEW — so `ClassMethodTools`
+reads it before the helper runs and passes a `member exists` flag, and the helper's condition is
+**`(56002 or 1004) and memberExists`**. Tolerance therefore applies exactly where re-adding is a
+no-op and nowhere else; a wrong-`Name` 1004 against a class that does not list the VI still stops
+the chain, and its hint now says so instead of blaming the project.
+
+Nothing was damaged by the failed re-run, and the reason is worth keeping: with no `aixml` there
+is no convert, so there was no new diagram on disk to be left behind. `md5sum` on the `.vi` and
+the `.lvclass` was unchanged. **The dangerous combination is convert + a skipped save**, which is
+the shape the fix is really for.
+
+Fixed in the helper rather than in C#, because the decision belongs where the error is raised:
+
+```xml
+<Node _name="Unbundle By Name" fields="code" inputs="input cluster:90.error out" .../>
+<Constant _name="loose project item code" type="int32" value="56002" uid="111" .../>
+<Constant _name="already a member code"   type="int32" value="1004"  uid="118" .../>
+<Node _name="Equal?" inputs="x:110.code,y:111.value" outputs="x = y?:112.eq" .../>
+<Node _name="Equal?" inputs="x:110.code,y:118.value" outputs="x = y?:119.eq" .../>
+<Node _name="Or"  inputs="x:112.eq,y:119.eq"  outputs="x .or. y?:120.or"   .../>
+<Node _name="Equal?" inputs="x:16.value,y:116.value" outputs="x = y?:117.eq" .../>
+<Node _name="And" inputs="x:120.or,y:117.eq" outputs="x .and. y?:121.and"  .../>
+<Constant _name="no error" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" .../>
+<Node _name="Select" inputs="t:113.value,s:121.and,f:90.error out" outputs="s? t\3Af:114.sel" .../>
+```
+
+Everything downstream takes `114.sel` instead of `90.error out`, and the boolean surfaces as a new
+indicator `member already existed` → `memberAlreadyExisted` in the answer. Every code other than
+those two still stops the chain, and so does either of those two on a class that does not list the
+VI. A second run therefore retypes, rewires and saves exactly as the first did.
+
+The helper was validated against LabVIEW at each step: `lvai_check_aixml` clean, `lvai_validate_aixml`
+`errorCode 0` — 427 ms for the 56002-only version, 495 ms with the gate added.
+
+### The lesson both share
+
+Neither defect was reachable through the tool's own reporting. One reported `ok: true` over an
+`Error 1003`; the other reported a failure whose stated cause pointed at the project. In both cases
+the evidence that settled it came from **outside** the tool — a run, and a byte comparison of the
+saved file. That is the third and fourth time in this document that a session-level reading passed
+while the artefact disagreed. Ask the file, or run it.
+
+**And the same lesson caught the FIX.** The 56002-only filter passed its unit test, validated
+against LabVIEW, and did nothing at all for the case it was written for — because the code it
+watched for was not the code that case raises. What found it was running the tool against a member
+that really existed. A fix is not verified by the test that was written alongside it; it is
+verified by reproducing the original failure.
+
+### Verified against LabVIEW, 2026-09-07
+
+| what | result |
+|---|---|
+| `preValidate` on an ordinary wiring fault (`Increment` with an input named `y`) | `verdict: realFault`, stopped in **104 ms**, message names the terminal; no `.vi` written, no class member added |
+| `preValidate` on a clean method AIXML | `verdict: clean`, converts as before |
+| re-run over an existing member, 56002-only filter | **`1004`, filter never fired** — the measurement that corrected the fix |
+| `.lvclass` and `.vi` after that failed re-run | `md5sum` unchanged — no `aixml`, so no convert, so nothing to leave behind |
+
+## 4q. Run 3 of the same build, and the gap it exposed by closing another one
+
+The third cold rebuild of the same four-class hierarchy, after the uid, project-state, layout and
+measured-values changes. Everything asked of it held, and the run cost MORE than run 2 for a reason
+worth recording.
+
+| | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| wall clock | 1966 s | 1168 s | 1543 s |
+| class build alone | ~755 s | ~431 s | 431 s (118 s inside LabVIEW) |
+| test phase | ~900 s | 634 s | **890 s** |
+| low-uid DWarns | 0 | 24 | **0** |
+| `DestroyPlatformEvent` | 15 | 14 | 26 |
+| `bad parent in MoveItem` | 3 | 2 | 3 |
+| unrequested project closes | — | 4 | **0** |
+| methods tested | yes | **no** | yes |
+
+### What the fixes did
+
+- **uids from `AixmlCheck.SafeUidBase`**: 24 → 0, exactly as the controlled pair predicted.
+- **`lvai_generate_class_test` leaving the project closed**: `projectLeftOpen: false` on all five
+  calls, and the agent inserted none of run 2's four compensating closes.
+- **One folder per class**: nothing at the project root but the `.lvproj` and LabVIEW's own
+  `.aliases`/`.lvlps`. It was load-bearing here — four VIs are called `Describe.vi`.
+- **Handing the test agent the MEASURED method outputs**: three `Describe` suites plus
+  `Get Type Name`, where run 2 left all five methods untested.
+
+`DestroyPlatformEvent` went UP, and that is not a regression of anything changed: it tracks the
+number of close and helper operations, and run 3's test phase ran far more of them. The agent split
+it 2 → 14 across the class build and 14 → 60 across the test run.
+
+### THE GAP THAT CLOSING A GAP EXPOSED
+
+`lvai_generate_method_test` had two case shapes — `expectErrorCode` and `writeField`+`value` — and
+**neither can assert a value the method RETURNS**. A `Describe.vi` is exactly that, so the moment
+the class agent started handing over measured method strings (which is what fix 4 was *for*), the
+test agent had somewhere to aim and no tool to aim with. It hand-authored four tests, and the test
+phase went 634 s → 890 s.
+
+So fix 4 created the demand without the supply. The lesson generalises past this instance: **when a
+change makes an agent attempt something new, check that the tool it will reach for can express
+it** — otherwise the measured saving lands as a measured cost one phase later.
+
+The third shape is now `expectOutput` + `expectValue`:
+
+```json
+[{"method":"Describe","expectOutput":"description",
+  "expectValue":"Bicycle - a human-powered two-wheeled vehicle."}]
+```
+
+Three things about it are deliberate, and each is a failure mode this document already records:
+
+- **The terminal's TYPE is read off the method's own export**, from the parse
+  `RequiredInputsAsync` already does — no second round trip, and no `outputType` to get wrong
+  (it exists as an override).
+- **A name the method does not declare is REFUSED, with the available names listed.** `{LV.SubVI}`
+  `Replace` re-attaches wires BY NAME (§4m), so a misspelling would leave the real terminal
+  unwired, the socket's wire in place, and the suite green having asserted a default. Nothing
+  downstream can see that — the swap reports `ok`, `socketsLeft: 0` and a clean export.
+- **The socket's stand-in value is the type's DEFAULT, never the expectation.** Seeding it with the
+  expected value would make a socket that never got swapped pass anyway, which is the precise shape
+  of the vacuous green run in §4b and §4o.
+
+### Two more from the same run
+
+**`lvai_swap_subvis`' documented batch mode was unreachable.** `editsJson` promised that `viPath`
+"is ignored", but `viPath` was a required positional parameter, so the CLIENT refused the call
+against the schema (`-32602 Invalid arguments`) before the server could honour its own contract.
+The caller worked around it with a dummy path. **Identical to the defect fixed on
+`lvai_placeholder_subvi` on 2026-09-03** — a parameter one mode ignores must not be mandatory in
+the schema. `viPath` is optional now and its absence is refused by name.
+
+**An interface's STATIC member runs as a top-level VI.** `IVehicle.lvclass:Get Type Name.vi`
+returned `Vehicle`, `error out.code = 0`, with an `IVehicle.lvclass` object on its out terminal.
+The class-generator definition said an interface "cannot be instantiated, so no object exists to
+feed it" — false; the interface-typed control has a usable default. The rule it justified still
+stands, with the right reason: a **dynamic** member cannot be tested because any object you could
+wire in belongs to an implementing class and dispatches to that class's override. A static one is
+ordinary code.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
@@ -994,10 +1340,14 @@ Honest limits, so nobody reads this document as a warranty:
   exercised it — a DAQmx task reference — was legitimately skipped by the test agent, which declined
   to invent a literal for a hardware handle. That was the right call and it leaves the branch
   untested.
-- **`lvai_add_class_method`'s combined order** is composed from two helpers that were each measured
+- **`lvai_add_class_method`'s combined order** was composed from two helpers that were each measured
   separately — `scripts/lvlu_add_test_method.xml` (retype + membership) and the DAQmx run's
-  `daq_member.vi` (membership + wire rules). Their constraints do not conflict, but the combination
-  is inferred rather than observed.
+  `daq_member.vi` (membership + wire rules). Observed since, repeatedly: five VIs on 2026-09-07 with
+  `error out = 0` at every stage, including on an interface.
+- **The two 2026-09-07 changes are verified against LabVIEW**, on a new static member with three
+  class-typed terminals across two classes — §4o. What is *not* covered: a per-terminal class on a
+  **dynamic** terminal (every measured case put the foreign class on a static one), and the verify
+  step still cannot tell a right class from a wrong one.
 - **No polymorphic dispatch through the base class.** The DAQmx methods are dynamic dispatch on the
   child; the base carries no matching stubs, so a caller holding a base-class wire cannot dispatch
   to them. Creating those stubs is now a `lvai_add_class_method` call away and was out of scope.

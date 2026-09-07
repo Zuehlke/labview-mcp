@@ -42,6 +42,21 @@ internal static class AixmlCheck
     /// </summary>
     private const int ObservedReservedFloor = 42;
 
+    /// <summary>
+    /// Where AIXML should start numbering to stay clear of that ceiling, and what this class's own
+    /// repair pass raises a low uid to.
+    ///
+    /// A hundred times the observed floor: far enough above the highest ceiling ever measured
+    /// (130) that no plausible object count reaches it, and low enough to stay readable.
+    ///
+    /// EXPOSED SO THE GENERATORS CAN USE IT RATHER THAN BE REPAIRED BY IT. Measured 2026-09-07 as
+    /// a controlled pair - one socket VI converted twice, identical but for four uid numbers:
+    /// uids 10..13 cost four `trying to override with non-reserved UID` warnings, uids 4200..4230
+    /// cost none. The suite runner was having three uids raised on every single build, reported as
+    /// three routine repairs; numbering at source makes that a no-op.
+    /// </summary>
+    internal const int SafeUidBase = ObservedReservedFloor * 100;
+
     internal enum Severity { Error, Warning, Info }
 
     internal sealed record Finding(Severity Severity, string Code, string Message, string? Uid = null)
@@ -378,7 +393,7 @@ internal static class AixmlCheck
         var highest = withUid
             .Select(e => int.TryParse((string)e.Attribute("uid")!, out var n) ? n : 0)
             .DefaultIfEmpty(0).Max();
-        var next = Math.Max(ObservedReservedFloor * 100, highest + 10);
+        var next = Math.Max(SafeUidBase, highest + 10);
 
         var parentCounts = root.DescendantsAndSelf()
             .Select(e => (string?)e.Attribute("uid_parent"))

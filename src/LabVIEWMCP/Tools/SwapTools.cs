@@ -64,7 +64,19 @@ internal sealed class SwapTools(LvaiConnection connection)
         only real proof, and `socketsLeft` above zero means a swap did not land.
         """)]
     public async Task<string> SwapSubVisAsync(
-        [Description(@"Absolute path to the .vi to edit - it is SAVED IN PLACE")] string viPath,
+        [Description("""
+            Absolute path to the .vi to edit - it is SAVED IN PLACE. Omit it when you pass
+            `editsJson`, which carries a path per VI.
+
+            IT USED TO BE REQUIRED, WHICH MADE `editsJson` UNREACHABLE. The description promised
+            that `viPath` is ignored when `editsJson` is given, and a required parameter is
+            enforced by the CLIENT against the schema - so the batch call was refused with
+            `-32602 Invalid arguments` before the server could honour its own contract. Measured
+            2026-09-07; the caller worked around it with a dummy path. Identical to the defect
+            fixed on lvai_placeholder_subvi on 2026-09-03, which is why the lesson is written on
+            both: a parameter that ONE mode ignores must not be mandatory in the schema.
+            """)]
+        string? viPath = null,
         [Description(@"JSON array of {socket, target} node swaps. Omit to swap no nodes.")]
         string? swapsJson = null,
         [Description(@"JSON array of {label, class} constant swaps. Omit to swap no constants.")]
@@ -115,6 +127,13 @@ internal sealed class SwapTools(LvaiConnection connection)
         if (editsJson is { Length: > 0 })
             return await ManyAsync(editsJson, verify, verbose, helperViPath, helperAixmlPath,
                                    regenerateHelper, timeoutSeconds, ct);
+
+        // Now that `viPath` is optional in the schema, its absence has to be caught here - and
+        // named, rather than arriving as a null-reference somewhere further down.
+        if (string.IsNullOrWhiteSpace(viPath))
+            return Json.Error("badArguments",
+                "Give either `viPath` (one VI) or `editsJson` (several). Neither arrived.",
+                new { viPath, editsJson });
 
         return await OneAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
                               helperAixmlPath, regenerateHelper, timeoutSeconds, ct);

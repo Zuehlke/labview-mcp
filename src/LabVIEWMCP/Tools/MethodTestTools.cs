@@ -55,14 +55,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         THE COMPANION TO lvai_generate_class_test, which does accessors. Measured 2026-09-02:
         authoring a method suite by hand was the largest single item of that run - ~80 s of wall
         clock for 0 s inside LabVIEW, because the shape never varies.
-        casesJson is a JSON ARRAY, one object per case, in one of two shapes:
-          [{"method":"Initialize","expectErrorCode":-200099,
+        casesJson is a JSON ARRAY, one object per case, in one of THREE shapes:
+          [{"method":"Describe","expectOutput":"description",
+            "expectValue":"Bicycle - a human-powered two-wheeled vehicle.",
+            "label":"Describe names the class"},
+           {"method":"Initialize","expectErrorCode":-200099,
             "label":"Initialize with no device reports invalid physical channel"},
            {"method":"Start","writeField":"Timeout","value":"10.0",
             "label":"Timeout survives Start"}]
+        `expectOutput` + `expectValue` assert a value the method RETURNS on a named terminal -
+        which is what a `Describe.vi`, a formatter or any non-accessor getter needs, and what this
+        tool could NOT express until 2026-09-07. The gap cost a cold build's test phase 634 s ->
+        890 s, because four such tests were hand-authored instead. The terminal's TYPE is read off
+        the method's own export (override with `outputType`), and a name the method does not
+        declare is REFUSED BY NAME with the available ones listed: the socket swap re-attaches
+        wires by terminal name, so a misspelling would leave the real terminal unwired and the
+        suite would pass having asserted a default. `expectValue":""` is legal and means the empty
+        value - an interface declaration body returning "" is the normal case.
         `expectErrorCode` asserts the `code` of the method's own error cluster. `writeField` +
         `value` writes a field, calls the method, and reads the field back OFF THE RETURNED OBJECT -
-        pass `readField` when it differs. A case may carry both.
+        pass `readField` when it differs. A case may carry any combination.
+        WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
+        you the value. Say which in your report - a measured string asserted as if it were the spec
+        freezes whatever the method happens to do today.
         THE METHOD'S ERROR IS NEVER CHAINED INTO THE ASSERTIONS. A method under test is expected to
         fail with no hardware; chaining it would poison every later assertion and report failures
         the test itself caused. It is fed `no error` and its `error out` is only unbundled.
@@ -97,7 +112,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     public async Task<string> GenerateMethodTestAsync(
         [Description(@"Absolute path to the .lvclass whose methods are the subject")]
         string lvclassPath,
-        [Description("JSON array of cases: method, and either expectErrorCode or writeField+value")]
+        [Description("JSON array of cases: method, plus expectOutput+expectValue, " +
+                     "expectErrorCode, or writeField+value")]
         string casesJson,
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <Class> Methods.vi' beside the class.")]
@@ -218,16 +234,50 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 // left unwired makes the generated caller NOT EXECUTABLE, and neither this tool's
                 // validation nor its verify can see that - measured 2026-09-03, `ok: true` for a
                 // suite LabVIEW refused with 7101.
-                var (required, fault) = await RequiredInputsAsync(
+                var (required, terminals, fault) = await RequiredInputsAsync(
                     methodVi, request.Inputs, timeoutSeconds, ct);
                 if (fault is not null)
                     return Json.Error(fault.Kind, fault.Message, fault.Detail);
+
+                // AN ASSERTED OUTPUT'S TYPE COMES OFF THE METHOD'S OWN EXPORT, and its NAME has to
+                // exist there. `{LV.SubVI}` `Replace` re-attaches wires by terminal name, so a
+                // misspelling is silent: the socket keeps the wire, the real method's terminal
+                // comes out unwired, and the suite goes green having asserted a default. Refusing
+                // by name here is the only place that can see it.
+                string? outputType = request.OutputType;
+                int? outputConIdx = null;
+                if (request.ExpectOutput is { } wanted)
+                {
+                    var match = terminals!.Outputs
+                        .FirstOrDefault(t => t.Name.Equals(wanted, StringComparison.Ordinal));
+                    if (match.Name is null)
+                        return Json.Error("outputTerminalNotFound",
+                            $"'{request.Method}' has no output terminal called '{wanted}'. " +
+                            "Names are literal and case-sensitive, and a wrong one is not caught " +
+                            "later - the swap would re-attach the wire by name, leave the real " +
+                            "terminal unwired, and the suite would pass having asserted nothing.",
+                            new
+                            {
+                                method = request.Method,
+                                asked = wanted,
+                                available = terminals.Outputs.Select(t => t.Name).ToArray(),
+                            });
+
+                    outputType ??= match.Type;
+                    var freeOut = FreeOutputSlots();
+                    if (freeOut.Count == 0)
+                        return Json.Error("noFreeOutputSlot",
+                            "The socket pane has no free right-edge slot for an asserted output.");
+                    outputConIdx = freeOut[0];
+                }
 
                 cases.Add(new MethodCase(i + 1, request.Label ?? DefaultLabel(request),
                                          request.Method, methodVi,
                                          request.WriteField, writeAccessor,
                                          readField, readAccessor, dataType, request.Value,
-                                         request.ExpectErrorCode, seed, required!));
+                                         request.ExpectErrorCode, seed, required!,
+                                         request.ExpectOutput, request.ExpectValue,
+                                         outputType, outputConIdx));
             }
 
             // ---- 1. the sockets: one per method call, plus an accessor pair per wire-survival case
@@ -243,7 +293,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             foreach (var test in cases)
             {
                 Author(pairs, scratch, socketRoot, test.MethodSocket,
-                       MethodSocketAixml(test.MethodSocket, test.Required));
+                       MethodSocketAixml(test.MethodSocket, test.Required,
+                           test.ExpectOutput is { } outName && test.OutputType is { } outType
+                               && test.OutputConIdx is { } outSlot
+                               ? (outName, outType, outSlot)
+                               : null));
                 if (test.DataType is { } type)
                 {
                     Author(pairs, scratch, socketRoot, test.WriteSocket!,
@@ -314,12 +368,19 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             }
 
             // ---- 4. list it in the project
+            // reopen: false, for the same reason lvai_generate_class_test passes it - a generator
+            // must leave no project active, or the NEXT generate call runs under an open one and
+            // meets the VICD / Error 7 condition. This site was MISSED when the class-test one was
+            // fixed on 2026-09-07, and the miss showed up as `projectLeftOpen: true` on the very
+            // first call that exercised the new output assertion.
             if (projectPath is { Length: > 0 })
                 steps.Add(await new TestTools(connection).ListInProjectAsync(
-                    projectPath, testFolderName, [testViPath], timeoutSeconds, ct));
+                    projectPath, testFolderName, [testViPath], timeoutSeconds, ct,
+                    reopen: false));
 
             var errorCases = cases.Count(c => c.ExpectErrorCode is not null);
             var wireCases = cases.Count(c => c.DataType is not null);
+            var outputCases = cases.Count(c => c.ExpectOutput is not null);
             steps.Add(new JsonObject
             {
                 ["step"] = "requiredInputs",
@@ -338,11 +399,17 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                            "Values marked as this tool's default are 0 or empty - if one of them " +
                            "matters to what the case proves, pass it in the case's `inputs`.",
             });
+            // EVERY SHAPE IS COUNTED. It used to name only the error-code and wire-survival ones,
+            // so the first suite built from `expectOutput` reported "0 error-code assertion(s) and
+            // 0 wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a
+            // suite whose assertion had just been proven to fire.
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
-                $"Generated. {errorCases} error-code assertion(s) and {wireCases} wire-survival " +
-                "assertion(s), every method called as an ordinary static subVI. Run it through " +
-                "Caraya's runner and read the JUnit report - and break one expectErrorCode by a " +
-                "digit once, because an all-green first run proves very little.",
+                $"Generated. {outputCases} returned-value assertion(s), {errorCases} error-code " +
+                $"assertion(s) and {wireCases} wire-survival assertion(s), every method called as " +
+                "an ordinary static subVI. THE PROJECT IS LEFT CLOSED, which is the state the next " +
+                "generate call needs; open it when you are ready to RUN the suite. Read the JUnit " +
+                "report, and break one expectation on purpose once, because an all-green first run " +
+                "proves very little.",
                 swapAnswer["callTargets"]?.DeepClone());
         });
 
@@ -380,8 +447,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// THE ERROR PAIR IS REAL, not a stand-in: it is what the error-code assertion reads, and a
     /// method's pane carries one whatever else it has.
     /// </summary>
+    /// <param name="assertedOutput">
+    /// An output terminal the test asserts on, as (name, AIXML type, conIdx). The socket must
+    /// carry it under the SAME NAME as the real method, because `{LV.SubVI}` `Replace` re-attaches
+    /// wires by name - a socket without it leaves the assertion nothing to read, and a socket with
+    /// a differently spelled one leaves the real terminal unwired and the suite green.
+    /// </param>
     internal static string MethodSocketAixml(string socketName,
-                                             IReadOnlyList<RequiredInput>? required = null)
+                                             IReadOnlyList<RequiredInput>? required = null,
+                                             (string Name, string Type, int ConIdx)? assertedOutput = null)
     {
         var geometry = ConnectorPanePatterns.Find(TestTools.AccessorPanePattern)?.Geometry;
         var sb = new StringBuilder();
@@ -391,24 +465,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
           .Append("LabVIEW's own {LV.SubVI} Replace then swaps for the real method. The class ")
           .AppendLine("terminals are stood in for by paths\\2C because AIXML refuses one.\">");
 
+        // Numbered from TestTools.UidBase, not from 10: a uid inside LabVIEW's reserved range
+        // costs two log lines per object per generation, measured 4 -> 0 on a controlled pair.
+        const int objIn = TestTools.UidBase, errIn = TestTools.UidBase + 10,
+                  objOut = TestTools.UidBase + 20, errOut = TestTools.UidBase + 30;
+
         sb.AppendLine(
-            "  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
-            "description=\"Stands in for the class input.\" outputs=\"value:10.value\" " +
-            "type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"/>");
+            $"  <Control _name=\"obj in\" conIdx=\"11\" connection=\"recommended\" " +
+            $"description=\"Stands in for the class input.\" outputs=\"value:{objIn}.value\" " +
+            $"type=\"path\" uid=\"{objIn}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine(
             $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
             "connection=\"recommended\" description=\"Error cluster in.\" " +
-            $"outputs=\"value:11.value\" type=\"{ErrorCluster}\" uid=\"11\" uid_parent=\"root\" " +
-            "value=\"[false,0,]\"/>");
+            $"outputs=\"value:{errIn}.value\" type=\"{ErrorCluster}\" uid=\"{errIn}\" " +
+            "uid_parent=\"root\" value=\"[false,0,]\"/>");
         sb.AppendLine(
-            "  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
-            "description=\"Stands in for the class output.\" inputs=\"value:10.value\" " +
-            "type=\"path\" uid=\"12\" uid_parent=\"root\" value=\"\"/>");
+            $"  <Indicator _name=\"obj out\" conIdx=\"3\" connection=\"recommended\" " +
+            $"description=\"Stands in for the class output.\" inputs=\"value:{objIn}.value\" " +
+            $"type=\"path\" uid=\"{objOut}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine(
             $"  <Indicator _name=\"error out\"{ConIdx(geometry?.ErrorOut)} " +
             "connection=\"recommended\" description=\"Error cluster out.\" " +
-            $"inputs=\"value:11.value\" type=\"{ErrorCluster}\" uid=\"13\" uid_parent=\"root\" " +
-            "value=\"[false,0,]\"/>");
+            $"inputs=\"value:{errIn}.value\" type=\"{ErrorCluster}\" uid=\"{errOut}\" " +
+            "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
         // EVERY REQUIRED INPUT OF THE METHOD GETS A TERMINAL HERE, or the test cannot wire it and
         // the suite comes out NOT EXECUTABLE. Measured 2026-09-03 on this tool's first real use:
@@ -420,7 +499,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         // The panes need NOT otherwise match: {LV.SubVI} Replace RE-TYPES the wires, which is how a
         // four-terminal socket swapped cleanly onto an eleven-terminal method in that same run. So
         // this mirrors what the test must WIRE, not the method's whole pane.
-        var uid = 20;
+        // Also above the reserved ceiling, and clear of the four terminals above.
+        var uid = TestTools.UidBase + 100;
         foreach (var input in required ?? [])
         {
             sb.AppendLine(
@@ -428,8 +508,26 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "connection=\"required\" description=\"Stands in for a required input of the " +
                 $"method.\" outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
                 $"uid=\"{uid}\" uid_parent=\"root\" " +
-                $"value=\"{TestTools.Escape(input.Value)}\"/>");
+                $"value=\"{TestTools.EscapeValue(input.Value)}\"/>");
             uid++;
+        }
+
+        if (assertedOutput is { } output)
+        {
+            // A CONSTANT FEEDS IT, because an Indicator needs a source of its own type and this
+            // socket has nothing else to give it. The value is the type's empty literal, never the
+            // expected one: the socket is replaced before anything runs, and seeding it with the
+            // expectation is how a socket that never got swapped would pass the assertion anyway.
+            var source = uid++;
+            sb.AppendLine(TestTools.Constant(source, output.Type,
+                TestTools.DefaultFor(output.Type), $"{output.Name} source"));
+            sb.AppendLine(
+                $"  <Indicator _name=\"{TestTools.Escape(output.Name)}\" " +
+                $"conIdx=\"{output.ConIdx}\" connection=\"recommended\" " +
+                "description=\"Stands in for the method output the test asserts on.\" " +
+                $"inputs=\"value:{source}.value\" type=\"{TestTools.Escape(output.Type)}\" " +
+                $"uid=\"{uid++}\" uid_parent=\"root\" " +
+                $"value=\"{TestTools.EscapeValue(TestTools.DefaultFor(output.Type))}\"/>");
         }
 
         sb.AppendLine("</VI>");
@@ -451,6 +549,23 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         // middle-left columns. Only left-edge slots are offered, so a required INPUT never lands
         // on an output edge - the defect docs/aixml-reference.md records as shipping twice.
         return [.. new[] { 10, 9, 8, 7, 6 }.Where(slot => !taken.Contains(slot))];
+    }
+
+    /// <summary>
+    /// Where an asserted OUTPUT terminal can sit on the socket's pane. The right edge of 4815,
+    /// minus the class output at 3 and the error cluster.
+    ///
+    /// Kept apart from <see cref="FreeSocketSlots"/> rather than folded into it: putting an output
+    /// on a left-edge slot is the connector-pane defect `docs/aixml-reference.md` records as
+    /// having shipped twice, and the two lists must not be able to hand out the same number.
+    /// </summary>
+    internal static IReadOnlyList<int> FreeOutputSlots()
+    {
+        var geometry = ConnectorPanePatterns.Find(TestTools.AccessorPanePattern)?.Geometry;
+        var taken = new HashSet<int> { 11, 3 };
+        if (geometry?.ErrorIn is { } errorIn) taken.Add(errorIn);
+        if (geometry?.ErrorOut is { } errorOut) taken.Add(errorOut);
+        return [.. new[] { 2, 1, 4, 5 }.Where(slot => !taken.Contains(slot))];
     }
 
     // ------------------------------------------------------------------ the suite
@@ -480,7 +595,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
           .Append("assertions\\2C because a method under test is expected to fail without ")
           .AppendLine("hardware.\">");
 
-        var uid = 100;
+        // 100 was already clear of the reserved ceiling, but the test suite is the longest AIXML
+        // these tools emit and the ceiling GROWS with the object count - measured up to 130. So
+        // this starts from the same base as everything else rather than from a number that only
+        // happens to be safe on a short diagram.
+        var uid = TestTools.UidBase;
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
@@ -542,10 +661,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             var call = uid++;
             var inputs = string.Join(",",
                 [$"obj in:{objectIn}", $"error in (no error):{noError}.value", .. wired]);
+            var outputs = test.ExpectOutput is { } asserted
+                ? $"obj out:{call}.obj out,error out:{call}.error out," +
+                  $"{TestTools.Escape(asserted)}:{call}.asserted"
+                : $"obj out:{call}.obj out,error out:{call}.error out";
             sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.MethodSocket)}\" " +
-                          $"inputs=\"{inputs}\" " +
-                          $"outputs=\"obj out:{call}.obj out,error out:{call}.error out\" " +
+                          $"inputs=\"{inputs}\" outputs=\"{outputs}\" " +
                           $"uid=\"{call}\" uid_parent=\"root\"/>");
+
+            // THE OUTPUT ASSERTION. This is what the tool could not express until 2026-09-07: it
+            // had `expectErrorCode` and `writeField`, so a method whose whole job is to RETURN
+            // something - a `Describe.vi`, a formatter, any getter that is not an accessor - could
+            // not be tested at all. Measured cost of the gap: a cold build's test phase went from
+            // 634 s to 890 s because four such tests were hand-authored instead.
+            if (test.ExpectOutput is not null && test.ExpectValue is { } expectedValue)
+            {
+                var wantedValue = uid++;
+                sb.AppendLine(TestTools.Constant(wantedValue, test.OutputType!,
+                    TestTools.ValueFor(test.OutputType!, expectedValue),
+                    $"expected {test.ExpectOutput} {test.Slot}"));
+
+                assertions.Add(Assert(sb, ref uid, define, wantedValue, $"{call}.asserted",
+                                      $"{test.Label} ({test.ExpectOutput})"));
+            }
 
             if (test.ExpectErrorCode is { } expected)
             {
@@ -640,7 +778,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// type, and the JSON to add. Inventing one would put the tool straight back into answering
     /// <c>ok</c> for a test that pins nothing.
     /// </summary>
-    private async Task<(IReadOnlyList<RequiredInput>? Inputs, Fault? Fault)>
+    private async Task<(IReadOnlyList<RequiredInput>? Inputs, ViTerminals.Result? Terminals,
+                        Fault? Fault)>
         RequiredInputsAsync(string methodVi, IReadOnlyDictionary<string, string>? supplied,
                             int timeoutSeconds, CancellationToken ct)
     {
@@ -654,7 +793,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
         var xml = (Read(answer) as JsonObject)?["xml"]?.GetValue<string>();
         if (ViTerminals.Parse(xml) is not { } terminals)
-            return (null, new Fault("methodNotReadable",
+            return (null, null, new Fault("methodNotReadable",
                 $"'{Path.GetFileName(methodVi)}' could not be exported, so its required inputs " +
                 "are unknown. A required input left unwired makes the suite not executable, so " +
                 "this call stops rather than generating one that cannot run.",
@@ -669,7 +808,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             if (ConnectorPane.IsErrorIn(terminal.Name)) continue;
 
             if (resolved.Count >= slots.Count)
-                return (null, new Fault("tooManyRequiredInputs",
+                return (null, null, new Fault("tooManyRequiredInputs",
                     $"'{Path.GetFileName(methodVi)}' has more required inputs than the socket " +
                     $"pane has free slots ({slots.Count}). Wire fewer of them by making the " +
                     "surplus `recommended` on the method, or test it through a wrapper.",
@@ -677,7 +816,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var given = supplied is not null && supplied.TryGetValue(terminal.Name, out var v);
             if (!given && !HasHonestDefault(terminal.Type))
-                return (null, new Fault("requiredInputNeedsAValue",
+                return (null, null, new Fault("requiredInputNeedsAValue",
                     $"'{terminal.Name}' on '{Path.GetFileName(methodVi)}' is a REQUIRED input of " +
                     $"type `{terminal.Type}`, and there is no default this call can invent that " +
                     "means anything. Leaving it unwired would generate a suite LabVIEW refuses to " +
@@ -690,7 +829,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 slots[resolved.Count], given));
         }
 
-        return (resolved, null);
+        // The parsed export travels back so the caller can resolve an asserted OUTPUT's type from
+        // it. Doing that here would mean this method knowing about assertions; doing it with a
+        // second export would cost another LabVIEW round trip for something already in hand.
+        return (resolved, terminals, null);
     }
 
     /// <summary>
@@ -709,7 +851,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     private static string DefaultLabel(MethodCaseRequest request) =>
         request.WriteField is { } field
             ? $"{field} survives {request.Method}"
-            : $"{request.Method} reports {request.ExpectErrorCode}";
+            : request.ExpectOutput is { } output
+                ? $"{request.Method} returns {output}"
+                : $"{request.Method} reports {request.ExpectErrorCode}";
 
     private static JsonNode? Read(string answer)
     {
@@ -739,12 +883,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     internal sealed record RequiredInput(string Name, string Type, string Value, int ConIdx,
                                          bool FromCaller);
 
+    /// <param name="ExpectOutput">
+    /// The method's own output terminal to assert on, spelled exactly as the method spells it -
+    /// `{LV.SubVI}` `Replace` re-attaches wires BY NAME, and a mismatch is silent.
+    /// </param>
     internal sealed record MethodCase(int Slot, string Label, string Method, string MethodVi,
                                       string? WriteField, string? WriteAccessor,
                                       string? ReadField, string? ReadAccessor,
                                       string? DataType, string? Value, int? ExpectErrorCode,
                                       string SeedClassPath,
-                                      IReadOnlyList<RequiredInput> Required)
+                                      IReadOnlyList<RequiredInput> Required,
+                                      string? ExpectOutput = null,
+                                      string? ExpectValue = null,
+                                      string? OutputType = null,
+                                      int? OutputConIdx = null)
     {
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
@@ -758,7 +910,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     internal sealed record MethodCaseRequest(string Method, string? WriteField, string? ReadField,
                                              string? Value, string? Type, int? ExpectErrorCode,
                                              string? Label,
-                                             IReadOnlyDictionary<string, string>? Inputs)
+                                             IReadOnlyDictionary<string, string>? Inputs,
+                                             string? ExpectOutput = null,
+                                             string? ExpectValue = null,
+                                             string? OutputType = null)
     {
         public static List<MethodCaseRequest> ParseAll(string json)
         {
@@ -789,16 +944,36 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 int? expect = o["expectErrorCode"] is { } n
                               && n.GetValueKind() is JsonValueKind.Number ? n.GetValue<int>() : null;
 
-                if (string.IsNullOrWhiteSpace(writeField) && expect is null)
+                var expectOutput = o["expectOutput"]?.GetValue<string>();
+                var expectValue = o["expectValue"]?.GetValue<string>();
+
+                if (string.IsNullOrWhiteSpace(writeField) && expect is null
+                    && string.IsNullOrWhiteSpace(expectOutput))
                     throw new ArgumentException(
-                        $"Case for '{method}' asserts nothing. Give it \"expectErrorCode\" (the " +
-                        "code the method returns) or \"writeField\" plus \"value\" (a field that " +
-                        "must survive the call) - or both.");
+                        $"Case for '{method}' asserts nothing. Give it \"expectOutput\" plus " +
+                        "\"expectValue\" (a value the method RETURNS on a named terminal), " +
+                        "\"expectErrorCode\" (the code it returns), or \"writeField\" plus " +
+                        "\"value\" (a field that must survive the call) - or any combination.");
 
                 if (!string.IsNullOrWhiteSpace(writeField) && string.IsNullOrWhiteSpace(value))
                     throw new ArgumentException(
                         $"Case for '{method}' names writeField '{writeField}' with no \"value\". " +
                         "The value written is also the value asserted, so it is not optional.");
+
+                // `expectValue` may legitimately be an EMPTY string - an interface declaration
+                // body returning "" is the normal case - so this checks for null, not for empty.
+                if (!string.IsNullOrWhiteSpace(expectOutput) && expectValue is null)
+                    throw new ArgumentException(
+                        $"Case for '{method}' names expectOutput '{expectOutput}' with no " +
+                        "\"expectValue\". There is nothing to assert against, and this call will " +
+                        "not invent one. Pass \"expectValue\":\"\" if the empty value is what you " +
+                        "mean.");
+
+                if (string.IsNullOrWhiteSpace(expectOutput) && expectValue is not null)
+                    throw new ArgumentException(
+                        $"Case for '{method}' gives \"expectValue\" with no \"expectOutput\". " +
+                        "Name the method's output TERMINAL to assert on - exactly as the method " +
+                        "spells it, because the socket swap re-attaches wires by terminal name.");
 
                 Dictionary<string, string>? inputs = null;
                 if (o["inputs"] is JsonObject given)
@@ -811,7 +986,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
-                                              o["label"]?.GetValue<string>(), inputs));
+                                              o["label"]?.GetValue<string>(), inputs,
+                                              expectOutput, expectValue,
+                                              o["outputType"]?.GetValue<string>()));
             }
 
             return all;

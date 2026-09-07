@@ -62,9 +62,19 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         THIS IS THE STEP AIXML CANNOT DO. A class-typed terminal is `Control with type=UDClassInst
         is not supported`, so a method is authored with `path` stand-ins and repaired here. Measured
         2026-09-02: doing it by hand cost ~105 s of wall clock for 3.3 s inside LabVIEW.
-        Each method is either an `aixml` file (converted here, deliberately WITHOUT validating,
-        because the validator is STRICTER than the generator for exactly this case) or a `vi` that
-        already exists (repaired in place).
+        Each method is either an `aixml` file or a `vi` that already exists (repaired in place).
+        The AIXML is VALIDATED FIRST and the verdict CLASSIFIED: a refusal naming a class type is
+        the documented case where ValidateAIXML is stricter than ConvertAIXMLToVI, and is converted
+        anyway; anything else STOPS, because the converter writes a broken diagram from it and the
+        fault then surfaces as Error 1003 at RUN time with every file-level check green - measured
+        2026-09-07 on three overrides that all reported ok. `validateFirst: false` restores the old
+        convert-blind behaviour.
+        RE-RUNNING OVER AN EXISTING MEMBER IS SAFE. AddItemFromMemory answers 56002 (already a
+        loose project item) or 1004 (already a member); either used to travel down the chain and
+        skip SetWireRule and both saves, discarding the retype while the new diagram was already on
+        disk - the member ended up worse than before. Both are tolerated now and reported as
+        `memberAlreadyExisted`, but ONLY when the .lvclass itself already lists the VI, because
+        1004 is also what a wrong `Name` input produces.
         methodsJson is a JSON ARRAY:
           [{"aixml":"C:\\x\\Initialize.xml","vi":"C:\\cls\\Initialize.vi",
             "classTerminals":["obj in","obj out"],"dispatchTerminals":["obj in","obj out"]}]
@@ -72,6 +82,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         index, because Controls[] order is not portable. `dispatchTerminals` (names) or
         `dispatchTerminalIndices` (conIdx numbers) are the ones set to dynamic dispatch; names are
         resolved from the VI's own AIXML export. Omit both for a STATIC member.
+        A TERMINAL MAY CARRY A DIFFERENT CLASS. Write it as an object instead of a name:
+          "classTerminals":["obj in","obj out",{"terminal":"Engine in","class":"C:\x\Engine.lvclass"}]
+        That is NI's own interface shape - `Lever.lvclass:Pry.vi` takes a `Pryable` - and it works
+        on an INTERFACE too: this tool does not care that the .lvclass carries IsInterface.
         THE PROJECT MUST BE OPEN AND ACTIVE for the repair, and CLOSED for the conversion. Pass
         projectPath and this call sequences both - closed for every convert and pane repair, then
         opened once for every retype. Getting that backwards is Error 56002 on one side and a
@@ -99,6 +113,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         int panePattern = DefaultPanePattern,
         [Description("Read each saved file back and confirm the terminals really are class-typed")]
         bool verify = true,
+        [Description("""
+            Validate each method's AIXML before converting it, and stop on a fault that is NOT the
+            class-wire strictness. On by default. Turn it off only when the classifier wrongly
+            calls a class-wire refusal a real fault - and report that, because the classifier then
+            needs the message adding to it.
+            """)]
+        bool validateFirst = true,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
         string? helperAixmlPath = null,
@@ -124,6 +145,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 if (method.Aixml is null && !File.Exists(method.Vi))
                     return Json.Error("badArguments",
                         $"'{method.Vi}' does not exist and no \"aixml\" was given to make it from.");
+                foreach (var terminal in method.ClassTerminals)
+                    if (terminal.ClassPath is { } other && !File.Exists(other))
+                        return Json.Error("badArguments",
+                            $"Terminal '{terminal.Name}' of " +
+                            $"'{Path.GetFileName(method.Vi)}' names a class at '{other}', and " +
+                            "there is no file there. A Replace against a missing path is refused " +
+                            "by LabVIEW rather than reported, so this is checked first.");
             }
 
             var classPath = Path.GetFullPath(lvclassPath);
@@ -141,7 +169,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
                 Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_class_method.vi"));
             Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-            if (regenerateHelper || !File.Exists(helperVi))
+            // NOT `!File.Exists` - see Infra/HelperCache. This site kept running the helper
+            // built before the per-terminal class path was added to the AIXML, which is not an
+            // error anywhere: the missing control simply keeps its default.
+            if (regenerateHelper || HelperCache.NeedsRebuild(source, helperVi))
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     source, helperVi, openVI: false, measurePane: false, panePattern: null,
@@ -191,8 +222,52 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 if (method.Aixml is { } aixml)
                 {
-                    // WITHOUT validating - see the class comment. This is the one case where the
-                    // validator is stricter than the generator.
+                    // The validator is STRICTER than the generator for a class wire, which is why
+                    // this call converts without it. But "stricter" is not "useless": it is also
+                    // the only thing that sees an ORDINARY wiring mistake, and skipping it
+                    // outright is what let three overrides ship as `ok: true` and then answer
+                    // Error 1003 at run time - measured 2026-09-07, with every file-level check
+                    // green. So it runs, and its verdict is CLASSIFIED rather than obeyed.
+                    if (validateFirst)
+                    {
+                        var check = await new AixmlTools(connection).ValidateAixmlAsync(
+                            aixml, timeoutSeconds, ct);
+                        var message = (Read(check) as JsonObject)?["errorMessage"]?
+                            .GetValue<string>() ?? "";
+                        var classWire = Code(check) != 0 && IsClassTypeComplaint(message);
+                        steps.Add(new JsonObject
+                        {
+                            ["step"] = "preValidate",
+                            ["answer"] = Read(check),
+                            ["verdict"] = Code(check) == 0 ? "clean"
+                                : classWire ? "classWireStrictness" : "realFault",
+                            ["note"] = Code(check) == 0
+                                ? "The AIXML validates on its own, so nothing here is being waved through."
+                                : classWire
+                                    ? "Refused for a CLASS-TYPED wire, which is the documented case " +
+                                      "where ValidateAIXML is stricter than ConvertAIXMLToVI. " +
+                                      "Converting anyway - that is what this tool is for."
+                                    : "Refused for something that is NOT a class-typed wire, so it " +
+                                      "is an ordinary fault the converter will happily write into a " +
+                                      "broken diagram. Stopped here instead: the measured symptom is " +
+                                      "Error 1003 at run time with every file-level check green.",
+                        });
+
+                        if (Code(check) != 0 && !classWire)
+                        {
+                            results.Add(Failed(method, viPath, "preValidate", steps, new JsonObject
+                            {
+                                ["errorMessage"] = message,
+                                ["hint"] = "Fix the AIXML and call again. If this really is the " +
+                                           "class-wire case and the classifier missed it, pass " +
+                                           "validateFirst: false - and say so, because the " +
+                                           "classifier then needs the message adding to it.",
+                            }));
+                            stoppedAt ??= "preValidate";
+                            continue;
+                        }
+                    }
+
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
                         aixml, viPath, openVI: false, timeoutSeconds, ct);
                     steps.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
@@ -271,14 +346,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     });
                 }
 
-                var inputs = new JsonObject
-                {
-                    ["vi path"] = viPath,
-                    ["class path"] = classPath,
-                    ["class terminal names"] = string.Join("|", method.ClassTerminals),
-                    ["vi name in memory"] = Path.GetFileName(viPath),
-                    ["dispatch terminal indices"] = string.Join("|", indices ?? []),
-                };
+                // Asked from the FILE before the helper runs, so the helper can tell a benign
+                // re-add from a genuinely wrong Name input. Costs no LabVIEW.
+                var memberExists = IsAlreadyMember(classPath, viPath);
+                var inputs = HelperInputs(method, viPath, classPath, indices, memberExists);
                 var run = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                     helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
@@ -286,6 +357,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 var values = (Read(run) as JsonObject)?["values"] as JsonObject;
                 var retyped = int.TryParse(Scalar(values, "terminals retyped"), out var r) ? r : -1;
+                // 56002 and 1004 are filtered inside the helper when `member exists` was passed,
+                // so `add member error` reads 0 on a re-run and this is the only thing that says
+                // the member was already there.
+                var alreadyMember = Scalar(values, "member already existed") is "1" or "true";
                 var stages = new[] { "open vi error", "class open error", "add member error",
                                      "wire rule error", "save vi error", "save class error" };
                 var failedStage = stages.FirstOrDefault(s => StageCode(values, s) is not (0 or null));
@@ -321,7 +396,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 if (!verified)
                 {
-                    results.Add(Failed(method, viPath, "verify", steps, evidence));
+                    results.Add(Failed(method, viPath, "verify", steps,
+                                       VerifyFailureDetail(evidence!, method.ClassTerminals.Count)));
                     stoppedAt ??= "verify";
                     continue;
                 }
@@ -335,6 +411,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["terminalsRetyped"] = retyped,
                     ["dynamicDispatchTerminals"] = new JsonArray([.. (indices ?? []).Select(i => (JsonNode)i)]),
                     ["verifiedOnDisk"] = verify,
+                    ["memberAlreadyExisted"] = alreadyMember,
                     ["steps"] = steps,
                 });
             }
@@ -477,6 +554,27 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ plumbing
 
+    /// <summary>
+    /// Is this validator refusal the documented CLASS-WIRE STRICTNESS, or an ordinary fault?
+    ///
+    /// The distinction is the whole value of running the validator at all here. Measured
+    /// 2026-09-01: <c>lvai_validate_aixml</c> refuses a class-typed wire with
+    /// <c>Error 53 ... the type of the source is Test Case.lvclass ... the type of the sink is
+    /// file path</c> while <c>ConvertAIXMLToVI</c> writes the same file with <c>errorCode 0</c>.
+    /// That case must NOT block - authoring against stand-ins and repairing afterwards is what
+    /// this tool exists for. Everything else must, because the converter writes a broken diagram
+    /// and the fault then surfaces as Error 1003 at RUN time, long after every file-level check
+    /// has passed it.
+    ///
+    /// Deliberately conservative: an unrecognised message counts as a real fault. Waving one
+    /// through is the failure this method was added to stop, and the caller has
+    /// <c>validateFirst: false</c> when the classifier is wrong.
+    /// </summary>
+    internal static bool IsClassTypeComplaint(string message) =>
+        message.Contains(".lvclass", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("UDClassInst", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("LabVIEW Object", StringComparison.OrdinalIgnoreCase);
+
     private static JsonNode? Read(string answer)
     {
         try { return JsonNode.Parse(answer); }
@@ -504,6 +602,104 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             .Select(m => m.Groups[1].Value)];
     }
 
+    /// <summary>
+    /// Why the on-disk check failed, as a FRESH object.
+    ///
+    /// NOT <c>evidence</c> itself: that node is already attached to <c>steps</c>, and
+    /// System.Text.Json refuses a node that has a parent. Passing it on threw
+    /// <c>InvalidOperationException: The node already has a parent</c> - which turned the one
+    /// branch that exists to report a repair that never reached disk into an exception with no
+    /// method list, no steps and no hint. Measured 2026-09-07, on the first call that ever took it:
+    /// a method asking to retype one of three <c>path</c> stand-ins, so two were legitimately left.
+    /// </summary>
+    internal static JsonObject VerifyFailureDetail(JsonObject evidence, int expected)
+    {
+        var typed = evidence["classTypedTerminals"]?.GetValue<int>() ?? -1;
+        var left = evidence["pathStandInsLeft"]?.GetValue<int>() ?? -1;
+        return new JsonObject
+        {
+            ["classTypedTerminals"] = typed,
+            ["pathStandInsLeft"] = left,
+            ["expected"] = expected,
+            ["ran"] = evidence["ran"]?.GetValue<bool>() ?? true,
+            ["hint"] = typed == -1
+                ? "The check could not run at all, so this says nothing about the file - see `ran` "
+                  + "and `why` in the verify step."
+                : left > 0
+                    ? $"{left} `path` stand-in(s) are still on the pane. Either a terminal was left "
+                      + "out of classTerminals, or its name is spelled differently there than on "
+                      + "the pane - compare with `terminal names seen` in the member step."
+                    : $"{typed} of {expected} terminals are class-typed in the SAVED file. The "
+                      + "retype may have stayed in memory: that is the 2026-09-02 failure this "
+                      + "check exists for.",
+        };
+    }
+
+    /// <summary>
+    /// The helper's controls, by name. Extracted from the call site because two of the three rules
+    /// below are invisible there and were each shipped broken once.
+    ///
+    /// AN EMPTY VALUE IS REFUSED BY THE RUNNER, so a control with nothing to say is OMITTED rather
+    /// than set to "". Values are paired with names BY POSITION, an empty one does not survive the
+    /// helper's split, and every later input would land on the wrong control - hence the refusal.
+    /// A STATIC member has no dispatch indices, so this is not an edge case but the whole reason
+    /// static members did not work: measured 2026-09-07 on an interface's own <c>Pry.vi</c> shape,
+    /// the run answered <c>badArguments ... has an empty value</c> and stopped at <c>member</c>,
+    /// after the pane had already been rebuilt.
+    ///
+    /// AND THE PATHS ARE PER TERMINAL, in the same order as the names, because a terminal may be
+    /// typed on a class other than the method's own.
+    /// </summary>
+    internal static JsonObject HelperInputs(MethodRequest method, string viPath, string classPath,
+                                            List<int>? indices, bool memberExists = false)
+    {
+        var inputs = new JsonObject
+        {
+            ["vi path"] = viPath,
+            ["class path"] = classPath,
+            ["class terminal names"] = string.Join("|", method.ClassTerminals.Select(t => t.Name)),
+            ["terminal class paths"] =
+                string.Join("|", method.ClassTerminals.Select(t => t.ClassPath ?? classPath)),
+            ["vi name in memory"] = Path.GetFileName(viPath),
+            // Gates the helper's tolerance of 56002 and 1004 at AddItemFromMemory. Not a
+            // convenience: 1004 also means "the Name input was a path where a bare name belongs",
+            // so tolerating it unconditionally would mask a real bug.
+            ["member exists"] = memberExists ? "1" : "0",
+        };
+        if (indices is { Count: > 0 })
+            inputs["dispatch terminal indices"] = string.Join("|", indices);
+        return inputs;
+    }
+
+    /// <summary>
+    /// Does the <c>.lvclass</c> already list this VI as a member? Read from the FILE, which is
+    /// plain XML, so this costs no LabVIEW at all.
+    ///
+    /// WHY IT IS ASKED BEFORE THE HELPER RUNS. <c>AddItemFromMemory</c> answers <c>56002</c> when
+    /// the VI is already a loose project item and <c>1004</c> when it is already a member, and
+    /// both are no-ops that must not abort the retype-and-save chain. But <c>1004</c> is also what
+    /// a wrong <c>Name</c> input produces - §3.0 records it for a full path where a bare name
+    /// belongs - so the two are told apart by asking the class file, not by trusting the code.
+    ///
+    /// Matched on the item's own <c>Name</c> attribute rather than on the URL, because a member's
+    /// URL is relative and its spelling varies (<c>../Describe.vi</c> for a member in a subfolder).
+    /// </summary>
+    internal static bool IsAlreadyMember(string classPath, string viPath)
+    {
+        string text;
+        try { text = File.ReadAllText(classPath); }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+
+        var name = Path.GetFileName(viPath);
+        foreach (var line in text.Split('\n'))
+        {
+            if (!line.Contains("<Item", StringComparison.Ordinal)) continue;
+            if (line.Contains($"Name=\"{name}\"", StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
+
     private static JsonObject Failed(MethodRequest method, string viPath, string step,
                                      JsonArray steps, JsonObject? detail) =>
         new()
@@ -522,8 +718,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         "open vi error" => "The VI could not be opened in the IDE's instance. Error 1055 means no " +
                            "project is active - pass projectPath.",
         "class open error" => "LVClass.Open failed. Error 1055 again points at no active project.",
-        "add member error" => "AddItemFromMemory failed. Error 56002 means the VI is already a " +
-                              "loose item of the project - it was open when the VI was converted.",
+        "add member error" => "AddItemFromMemory failed. 56002 means the VI is already a LOOSE " +
+                              "PROJECT ITEM - it was open when the VI was converted. 1004 means " +
+                              "either that the VI is already a MEMBER, or that `Name` got a full " +
+                              "path where a bare name belongs. Both no-op cases are tolerated " +
+                              "automatically when the .lvclass already lists the VI; seeing 1004 " +
+                              "HERE therefore means the class file does NOT list it, so check the " +
+                              "spelling of the VI's file name against the class's Item entries.",
         "wire rule error" => "SetWireRule failed. A conIdx that is not on this pane's pattern is " +
                              "the usual cause; check with lvai_connector_pane.",
         "save vi error" => "Save.Instrument failed - most often the file is read-only or held.",
@@ -536,7 +737,17 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ the request
 
-    internal sealed record MethodRequest(string Vi, string? Aixml, List<string> ClassTerminals,
+    /// <summary>
+    /// One pane terminal to retype, and the class it should carry. <c>ClassPath</c> is null for the
+    /// ordinary case - the method's own class - and set when a terminal is typed on a DIFFERENT
+    /// class, which is what NI's own interfaces do: <c>Lever.lvclass:Pry.vi</c> takes a
+    /// <c>Pryable</c>. Measured 2026-09-07; before this the tool retyped every terminal to
+    /// <c>lvclassPath</c>, so that shape needed a hand-built helper.
+    /// </summary>
+    internal sealed record ClassTerminal(string Name, string? ClassPath);
+
+    internal sealed record MethodRequest(string Vi, string? Aixml,
+                                         List<ClassTerminal> ClassTerminals,
                                          List<string>? DispatchTerminals,
                                          List<int>? DispatchTerminalIndices)
     {
@@ -570,7 +781,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     vi = Path.ChangeExtension(aixml, ".vi");
                 }
 
-                var terminals = Strings(o["classTerminals"]);
+                var terminals = Terminals(o["classTerminals"], Path.GetFileName(vi));
                 if (terminals.Count == 0)
                     throw new ArgumentException(
                         $"'{Path.GetFileName(vi)}' names no \"classTerminals\". These are the pane " +
@@ -607,5 +818,43 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             node is not JsonArray array
                 ? []
                 : [.. array.Where(n => n is not null).Select(n => n!.GetValue<string>())];
+
+        /// <summary>
+        /// A terminal is either a bare NAME - retyped to the method's own class, the common case -
+        /// or an object naming the class it should carry instead:
+        /// <c>{"terminal":"Engine in","class":"C:\Vehicle\Engine\Engine.lvclass"}</c>.
+        /// </summary>
+        private static List<ClassTerminal> Terminals(JsonNode? node, string vi)
+        {
+            if (node is not JsonArray array) return [];
+
+            var all = new List<ClassTerminal>();
+            foreach (var entry in array)
+            {
+                switch (entry)
+                {
+                    case null:
+                        continue;
+                    case JsonValue value when value.GetValueKind() is JsonValueKind.String:
+                        all.Add(new ClassTerminal(value.GetValue<string>(), null));
+                        continue;
+                    case JsonObject o:
+                        var name = o["terminal"]?.GetValue<string>() ?? o["name"]?.GetValue<string>();
+                        if (string.IsNullOrWhiteSpace(name))
+                            throw new ArgumentException(
+                                $"A classTerminals entry of '{vi}' is an object with no " +
+                                "\"terminal\". Write either \"obj in\" or " +
+                                "{\"terminal\":\"Engine in\",\"class\":\"...\\Engine.lvclass\"}.");
+                        var cls = o["class"]?.GetValue<string>() ?? o["lvclass"]?.GetValue<string>();
+                        all.Add(new ClassTerminal(name,
+                            string.IsNullOrWhiteSpace(cls) ? null : Path.GetFullPath(cls)));
+                        continue;
+                    default:
+                        throw new ArgumentException(
+                            $"A classTerminals entry of '{vi}' is neither a name nor an object.");
+                }
+            }
+            return all;
+        }
     }
 }

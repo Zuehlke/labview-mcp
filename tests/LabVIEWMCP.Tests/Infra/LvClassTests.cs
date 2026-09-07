@@ -206,8 +206,8 @@ public class LvClassTests : IDisposable
         // controls and constants alike, the same empty literal a string uses.
         var aixml = LvClass.CarrierAixml("X", LvClass.ParseFields("timestamp.When,double.How Far"));
 
-        Assert.Contains("type=\"timestamp\" uid=\"10\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
-        Assert.Contains("type=\"double\" uid=\"11\" uid_parent=\"root\" value=\"0\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"timestamp\" uid=\"4200\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"double\" uid=\"4210\" uid_parent=\"root\" value=\"0\"", aixml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -220,8 +220,8 @@ public class LvClassTests : IDisposable
         // cached export writes a path control as value="".
         var aixml = LvClass.CarrierAixml("X", LvClass.ParseFields("path.File Path,string.Group"));
 
-        Assert.Contains("type=\"path\" uid=\"10\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
-        Assert.Contains("type=\"string\" uid=\"11\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"path\" uid=\"4200\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
+        Assert.Contains("type=\"string\" uid=\"4210\" uid_parent=\"root\" value=\"\"", aixml, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------- the document
