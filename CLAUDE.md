@@ -581,8 +581,22 @@ worked example and the lesson generalises to anything installed there. Its scrip
 VIs with ordinary connector panes, and they build a forty-file module correctly. But **an AIXML
 `Call` cannot reach them: `Error 53, Unsupported SubVI`, in every spelling.** That is not the
 library-qualifier trap; a correct qualifier is not the missing piece. Generation resolves a target
-by name against what the installation can **find** — `vi.lib`, `user.lib`, `LVAddons` — and
-`project\Delacor\` is none of those, so no spelling exists that works.
+by name against what the installation can **find** — `vi.lib`, `user.lib`, `instr.lib`, `LVAddons`
+— and `project\Delacor\` is none of those, so no spelling exists that works.
+
+**`instr.lib` was missing from that list until 2026-09-07, and its absence read as a much bigger
+limit than it is.** Measured on `Agilent 34401.lvlib`, the one real instrument driver on this
+station: `Agilent 34401.lvlib\3AInitialize.vi` resolves and answers with a **wiring** complaint
+(`required input 'VISA resource name' is not wired`), which is the signature of a target LabVIEW
+loaded and read the connector pane of. The bare name does not resolve, because the VI is
+library-owned. So a generated VI CAN drive an instrument, and the list saying otherwise was the
+only thing suggesting it could not.
+
+**And the qualifier is FLAT — a library's own folders are not part of it.** `Initialize.vi` sits in
+that library's `Public\` folder on disk and in its tree, and
+`Agilent 34401.lvlib\3APublic\5CInitialize.vi` is `Unsupported SubVI` while the folderless form
+works. Worth knowing before hunting for a spelling that does not exist. §9 of
+`lvai_aixml_reference` has all three rows.
 
 **`Open VI Reference` takes a PATH and has no such restriction.** So the route is VI Server: open by
 path into the **IDE's** application instance (`Project\3AActive Project` → `Application`, the same
