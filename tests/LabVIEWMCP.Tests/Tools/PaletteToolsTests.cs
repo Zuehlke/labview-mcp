@@ -412,4 +412,90 @@ public class PaletteToolsTests : IDisposable
             Assert.False(string.IsNullOrWhiteSpace(vi.PaletteFile));
         });
     }
+
+    // ---------- .mnu files that live OUTSIDE any menus folder ----------
+
+    /// <summary>Write a synthetic palette file at an arbitrary path under the fake installation.</summary>
+    private string WriteLoosePalette(string relative, params string[] entries)
+    {
+        var path = Path.Combine(_root, relative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, Pascal(entries));
+        return path;
+    }
+
+    /// <summary>
+    /// A TOOLKIT CAN PUT ITS PALETTE OUTSIDE `menus`, AND SCANNING ONLY `menus` MISSES IT WHOLE.
+    ///
+    /// Measured on LabVIEW 2026, 2026-09-07: 94 `.mnu` files sit outside every `menus` folder and
+    /// carry 429 VI names the index did not have — Caraya's entire assertion API among them, so a
+    /// query for `Caraya` answered "no match" for VIs that validate, generate and run. After the
+    /// fix the same query answers 94 hits, and `Assert Almost Equal_Float.vi` — named in an
+    /// earlier session as wanted and undiscoverable — is one of them.
+    /// </summary>
+    [Fact]
+    public void APaletteOutsideTheMenusFolderIsFound()
+    {
+        WritePalette("Categories/base.mnu", "In Menus.vi");
+        WriteLoosePalette("vi.lib/addons/_JKI Toolkits/dynamic_palette/caraya.mnu",
+                          "Assert Equal Value_Variant.vi");
+        WriteLoosePalette("user.lib/_OpenG.lib/lvzip/zip.mnu", "OpenG Zip.vi");
+
+        var names = PaletteIndex.Build(_root).Vis.Select(v => v.Name).ToList();
+
+        Assert.Contains("In Menus.vi", names);
+        Assert.Contains("Assert Equal Value_Variant.vi", names);
+        Assert.Contains("OpenG Zip.vi", names);
+    }
+
+    /// <summary>
+    /// The label names the TREE, then the path inside it. Labelling it relative to `vi.lib` alone
+    /// would print `addons\...`, which reads exactly like a `menus`-relative palette path — a
+    /// plausible-but-wrong string, which is the failure mode this whole class is written against.
+    /// </summary>
+    [Fact]
+    public void ALoosePaletteIsLabelledWithTheTreeItCameFrom()
+    {
+        // An empty menus folder, because Scan still REFUSES a root without one - every real
+        // installation has it, and "no menus folder" stays a configuration error rather than
+        // something the loose trees quietly paper over.
+        Directory.CreateDirectory(Path.Combine(_root, "menus"));
+        WriteLoosePalette("vi.lib/addons/_JKI Toolkits/dynamic_palette/caraya.mnu", "Assert Error.vi");
+
+        var vi = Assert.Single(PaletteIndex.Build(_root).Vis);
+
+        Assert.StartsWith("vi.lib: ", vi.PaletteFile, StringComparison.Ordinal);
+        Assert.Contains("caraya.mnu", vi.PaletteFile, StringComparison.Ordinal);
+        Assert.DoesNotContain("menus", vi.PaletteFile, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// `menus` IS SCANNED FIRST AND KEEPS THE LABEL. The index keys on the bare VI name and the
+    /// first palette wins, so a VI present in both trees must still report its menus-relative
+    /// path — the more useful one, and the one every existing answer already carries.
+    /// </summary>
+    [Fact]
+    public void TheMenusFolderStillWinsForAViThatIsInBoth()
+    {
+        WritePalette("Categories/base.mnu", "Shared.vi");
+        WriteLoosePalette("vi.lib/addons/other/other.mnu", "Shared.vi");
+
+        var vi = Assert.Single(PaletteIndex.Build(_root).Vis);
+
+        Assert.DoesNotContain("vi.lib:", vi.PaletteFile, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// An installation with no `vi.lib` or `user.lib` — every synthetic fixture in this file —
+    /// must behave exactly as before. The loose roots are skipped when absent rather than
+    /// throwing, which is what keeps the rest of these tests meaningful.
+    /// </summary>
+    [Fact]
+    public void AnInstallationWithoutThoseTreesIsUnaffected()
+    {
+        WritePalette("Categories/base.mnu", "Only.vi");
+
+        Assert.False(Directory.Exists(Path.Combine(_root, "vi.lib")));
+        Assert.Equal("Only.vi", Assert.Single(PaletteIndex.Build(_root).Vis).Name);
+    }
 }

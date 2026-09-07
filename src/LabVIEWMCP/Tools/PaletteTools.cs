@@ -28,10 +28,16 @@ internal sealed class PaletteTools
         user.lib be callable with no .lvlib, no .mnu and no restart. What does NOT resolve: a VI
         inside an .llb by bare name, a path in any spelling, and project-local code, loose or in a
         project library. Full table in lvai_aixml_reference, section 9.
-        The index also misses whole toolkits: Caraya's .mnu files live under
-        vi.lib\addons\_JKI Toolkits\dynamic_palette\, which is neither scan root, so a query for
-        "Caraya" answers "no match" for VIs that validate and run. A MISS HERE IS NOT PROOF THAT A
-        CALL IS ILLEGAL - settle a target with a throwaway ValidateAIXML instead.
+        A MISS HERE IS NOT PROOF THAT A CALL IS ILLEGAL - settle a target with a throwaway
+        ValidateAIXML instead.
+        THE INDEX USED TO MISS WHOLE TOOLKITS, and that is fixed as of 2026-09-07. Caraya's 18
+        .mnu files live under vi.lib\addons\_JKI Toolkits\dynamic_palette\, which was under no
+        scan root, so a query for "Caraya" answered "no match" for VIs that validate and run.
+        Measured on this installation: 94 .mnu files sit outside every `menus` folder, carrying
+        roughly 374 VI names - Caraya's whole assertion API, VI Tester, DQMH's palette, OpenG's
+        lvzip, LabVIEW Open Source Project, and NI's own 3D Picture Control, SFTP and SSH trees.
+        vi.lib and user.lib are now scanned whole for .mnu files and those entries are labelled
+        `vi.lib: <path>`.
         A HIT IS THE VI, NOT NECESSARILY THE TARGET STRING. A palette VI owned by a library needs
         its `lvlib:` qualifier and is refused by bare name - MEASURED: `Draw Image from
         File__ogtk.vi` gives "Unsupported SubVI" where `openg_picture.lvlib:Draw Image from
@@ -41,10 +47,11 @@ internal sealed class PaletteTools
         with both spellings as two Calls - an unresolvable target is named in the message, a
         resolved one only complains about unwired terminals.
         Scanned from disk at call time because the palette is station-specific - installed
-        toolkits and add-ons hook into it - and cached for the process lifetime. Both palette
-        locations are read: LabVIEW's own menus folder AND every LVAddon under
-        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install. An
-        add-on entry is labelled with the add-on it came from.
+        toolkits and add-ons hook into it - and cached for the process lifetime. THREE kinds of
+        location are read: LabVIEW's own menus folder; every LVAddon under
+        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install; and
+        vi.lib plus user.lib, for the toolkits that put .mnu files outside any menus folder. An
+        entry from anything but the IDE's own menus is labelled with the tree it came from.
         Without a query: the totals plus the scan location. With query: matching VI names and the
         palette each was found in; EVERY word of the query must appear, in the name or in the
         palette path. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a

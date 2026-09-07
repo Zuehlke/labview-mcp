@@ -105,11 +105,23 @@ does *not* resolve: a VI inside an `.llb` by bare name — which is what the old
 seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
 loose or in a project library.
 
-The index compounds this by being incomplete: it scans `menus\` and `LVAddons\`, so it does not see
-Caraya at all, whose `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`. A query
-for `Caraya` answers "no match" for VIs that validate and run. Search the index to *find* something;
-settle a target spelling with a throwaway `ValidateAIXML`. Full table in §9 of
-`lvai_aixml_reference`.
+**The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
+scanned `menus\` and `LVAddons\` only, so a `.mnu` anywhere else was invisible — a query for
+`Caraya` answered "no match" for VIs that validate and run. Measured on this installation: **94
+`.mnu` files sit outside every `menus` folder and carry 429 VI names the index did not have**, 15 %
+of the whole catalogue. Not just Caraya: VI Tester, DQMH's palette, JSONtext, OpenG's lvzip,
+Wovalab, and NI's own 3D Picture Control, SFTP and SSH trees. `vi.lib` and `user.lib` are now
+scanned whole for `.mnu` files and those entries are labelled `vi.lib: <path>`; `Caraya` answers 94
+hits, `Assert Almost Equal_Float.vi` among them. The scan went from 582 palette files to 680, and
+`menus\` is still read FIRST so a VI in both trees keeps its menus-relative label.
+
+**It is scanned BROADLY — `vi.lib` and `user.lib` whole — rather than at the `addons` folders the
+pattern suggests**, because NI's 3D Picture, SFTP and SSH palettes are under neither, and "palette
+files live under a folder called X" is a convention this scanner has now been caught by twice. The
+cost is a directory walk, not a read: only the 94 `.mnu` files are opened.
+
+Search the index to *find* something; settle a target spelling with a throwaway `ValidateAIXML`.
+Full table in §9 of `lvai_aixml_reference`.
 
 **The practical prize is a placeholder you generate yourself, and `lvai_placeholder_subvi` does
 it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be given a call node
