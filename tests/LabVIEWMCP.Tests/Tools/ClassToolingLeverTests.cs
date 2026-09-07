@@ -982,4 +982,129 @@ public sealed class ClassToolingLeverTests
         }
         return null;
     }
+
+    // ---------- asserting a method's ordinary OUTPUT ----------
+
+    private static MethodTestTools.MethodCase OutputCase(
+        int slot, string method, string terminal, string type, string expected) =>
+        new(slot, $"{method} returns {terminal}", method, $@"C:\cls\{method}.vi",
+            null, null, null, null, null, null, null, @"C:\cls\Daq.lvclass", [],
+            ExpectOutput: terminal, ExpectValue: expected, OutputType: type, OutputConIdx: 2);
+
+    /// <summary>
+    /// THE GAP THIS CLOSES. Until 2026-09-07 the tool had `expectErrorCode` and `writeField`, so a
+    /// method whose whole job is to RETURN something — a `Describe.vi`, a formatter, any getter
+    /// that is not an accessor — could not be tested at all. Measured cost: a cold build's test
+    /// phase went 634 s -> 890 s because four such tests were hand-authored instead.
+    /// </summary>
+    [Fact]
+    public void AnOutputCaseAssertsTheMethodsOwnTerminal()
+    {
+        var xml = Suite(OutputCase(1, "Describe", "description", "string", "Bicycle - two wheels."));
+
+        // The Call must ASK for the terminal, or there is nothing to assert against.
+        var call = xml.Elements("Call").Single(c => (string?)c.Attribute("target") == "LVMCP Mth1.vi");
+        Assert.Contains("description:", (string)call.Attribute("outputs")!, StringComparison.Ordinal);
+
+        // And the expectation must be a constant of the terminal's own type, not a string dump.
+        var expected = xml.Elements("Constant")
+            .Single(c => ((string?)c.Attribute("_name"))?.StartsWith("expected description",
+                                                                     StringComparison.Ordinal) == true);
+        Assert.Equal("string", (string)expected.Attribute("type")!);
+        Assert.Equal("Bicycle - two wheels.", (string)expected.Attribute("value")!);
+    }
+
+    /// <summary>
+    /// The socket has to carry the terminal under the SAME NAME as the real method, because
+    /// `{LV.SubVI}` `Replace` re-attaches wires by name. A socket without it gives the assertion
+    /// nothing to read; a socket with a differently spelled one leaves the real terminal unwired
+    /// and the suite goes green having asserted a default. That is the failure mode
+    /// `lvai_swap_subvis` was measured producing on 2026-09-07.
+    /// </summary>
+    [Fact]
+    public void TheSocketCarriesTheAssertedOutputUnderItsRealName()
+    {
+        var xml = XElement.Parse(MethodTestTools.MethodSocketAixml(
+            "LVMCP Mth1.vi", null, ("description", "string", 2)));
+
+        var indicator = xml.Elements("Indicator")
+            .Single(e => (string?)e.Attribute("_name") == "description");
+
+        Assert.Equal("string", (string)indicator.Attribute("type")!);
+        Assert.Equal("2", (string)indicator.Attribute("conIdx")!);
+
+        // An output edge, never a left-edge input slot - the pane defect that shipped twice.
+        Assert.DoesNotContain(2, MethodTestTools.FreeSocketSlots());
+        Assert.Contains(2, MethodTestTools.FreeOutputSlots());
+    }
+
+    /// <summary>
+    /// THE SOCKET MUST NOT BE SEEDED WITH THE EXPECTED VALUE. It is replaced before anything runs,
+    /// so seeding it would make a socket that never got swapped pass the assertion anyway - the
+    /// exact shape of "a green run that tested nothing" this repository keeps meeting.
+    /// </summary>
+    [Fact]
+    public void TheSocketsStandInValueIsTheTypesDefaultAndNotTheExpectation()
+    {
+        var xml = XElement.Parse(MethodTestTools.MethodSocketAixml(
+            "LVMCP Mth1.vi", null, ("description", "string", 2)));
+
+        foreach (var element in xml.Elements())
+            Assert.NotEqual("Bicycle - two wheels.", (string?)element.Attribute("value"));
+    }
+
+    [Fact]
+    public void AnOutputCaseNeedsBothHalves()
+    {
+        // expectOutput with nothing to compare against.
+        Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectOutput":"description"}]"""));
+
+        // expectValue with no terminal named.
+        Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectValue":"x"}]"""));
+    }
+
+    /// <summary>
+    /// An EMPTY expected value is legal and must survive the parse: an interface declaration body
+    /// returning `""` is the normal case, and refusing it would push the caller into asserting
+    /// something it does not mean.
+    /// </summary>
+    [Fact]
+    public void AnEmptyExpectedValueIsLegal()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Describe","expectOutput":"description","expectValue":""}]""");
+
+        Assert.Equal("description", parsed[0].ExpectOutput);
+        Assert.Equal("", parsed[0].ExpectValue);
+    }
+
+    [Fact]
+    public void AnOutputCaseGetsADefaultLabelNamingTheTerminal()
+    {
+        var xml = Suite(OutputCase(1, "Describe", "description", "string", "x"));
+
+        Assert.Contains(xml.Elements("Constant"),
+            c => (string?)c.Attribute("value") == "Describe returns description (description)");
+    }
+
+    /// <summary>All three assertion shapes may sit in one case, and each gets its own Caraya
+    /// assertion - the error code, the returned value and the surviving field.</summary>
+    [Fact]
+    public void TheThreeAssertionShapesCoexist()
+    {
+        var both = new MethodTestTools.MethodCase(
+            1, "Start does everything", "Start", @"C:\cls\Start.vi",
+            "Timeout", @"C:\cls\Write Timeout.vi", "Timeout", @"C:\cls\Read Timeout.vi",
+            "double", "10.0", -200099, @"C:\cls\Daq.lvclass", [],
+            ExpectOutput: "status text", ExpectValue: "running", OutputType: "string",
+            OutputConIdx: 2);
+
+        var xml = Suite(both);
+        var asserts = xml.Elements("Call")
+            .Count(c => ((string?)c.Attribute("target"))?.Contains("Assert", StringComparison.Ordinal) == true);
+
+        Assert.Equal(3, asserts);
+    }
 }

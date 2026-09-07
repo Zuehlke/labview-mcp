@@ -276,9 +276,17 @@ it again.
 7. **The declaration body may be empty, and usually should be.** An interface method exists to fix
    the signature; give it whatever a caller of the unimplemented contract should see — an empty
    string, a zero — and let the overrides carry the behaviour. Say in your report that it is a
-   declaration, and never describe it as tested: an interface cannot be instantiated, so no object
-   exists to feed it and every wire you could supply belongs to an implementing class and dispatches
-   away from it.
+   **declaration**, and do not present a run of it as evidence that the contract works.
+
+   **The reason is dispatch, NOT instantiability — this clause said the latter until 2026-09-07 and
+   it is false.** It claimed "an interface cannot be instantiated, so no object exists to feed it".
+   Measured: `IVehicle.lvclass:Get Type Name.vi` ran as a top-level VI, returned `Vehicle` with
+   `error out.code = 0`, and put an `IVehicle.lvclass` object on its output terminal — the
+   interface-typed control has a usable default, so a run is perfectly possible. What that run
+   tells you is only what the *declaration body* does. The real limit is the DYNAMIC member: any
+   object you could wire into one belongs to an implementing class, so the call dispatches to that
+   class's override and never executes the declaration at all. A **static** interface member is
+   ordinary code and can be tested like any other method.
 
 8. **Verify each member by EXECUTION, not by reading the file back.** `lvai_add_class_method` now
    validates each method's AIXML before converting and stops on a fault that is not the class-wire

@@ -1159,7 +1159,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — three case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value` |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
@@ -1317,3 +1317,19 @@ powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
 Use the second one rather than a bare `dotnet test`: a running MCP server holds an OS lock on the
 exe, and the script stops it first. After either command the `lvai_*` tools are gone from the
 current session until the client is restarted — nothing is lost, but plan the restart.
+
+**NEVER RUN `dotnet msbuild -t:Compile` HERE, and do not build to a redirected output path either.**
+Both look like harmless ways to type-check around that exe lock, and both silently produce a DLL
+**with no embedded resources** — then mark it up to date, so the next full `build.ps1` inherits it.
+Measured twice on 2026-09-07: 1 627 648 bytes against 2 592 768, and `build.ps1` answering
+`12 document(s) wrong - the build is not what you think it is.` Every served document and three
+embedded agent definitions were missing, which is 40-odd failing tests pointing everywhere except
+at the cause. `-t:Compile` skips the resource-preparation targets; a redirected
+`BaseIntermediateOutputPath` collides with the generated protobuf and `AssemblyInfo`.
+
+**The recovery is `rm -rf src/LabVIEWMCP/obj src/LabVIEWMCP/bin tests/LabVIEWMCP.Tests/obj
+tests/LabVIEWMCP.Tests/bin` and a normal build.** If you want a type-check while the server holds
+the lock, accept the two copy errors at the end of a normal build — the compile has already
+happened by then, and `0 Error(s)` above them is the answer. **And read `build.ps1`'s whole tail,
+not a grep for `error`**: its byte-identity check is the only thing that catches this, and it
+reports as `MISMATCH`, not as an error.

@@ -978,7 +978,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// renumbering 39 files on the strength of a rule. This constant covers what the TOOLS emit
     /// on every run, which is what that document names as the part that still costs.
     /// </summary>
-    internal const int UidBase = 4200;
+    internal const int UidBase = AixmlCheck.SafeUidBase;
 
     internal static string SocketAixml(string socketName, string dataType, bool write)
     {
@@ -1069,7 +1069,7 @@ internal sealed class TestTools(LvaiConnection connection)
           .Append("LabVIEW's own Replace\\2C which re-types the wires.\\0A\\0AThe error cluster ")
           .AppendLine("carries the FIRST failure only. Read the JUnit report for all of them.\">");
 
-        var uid = 100;
+        var uid = UidBase;
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
@@ -1336,7 +1336,7 @@ internal sealed class TestTools(LvaiConnection connection)
           .Append("measured.\\0A\\0AThe error cluster carries the FIRST failure only. Read the ")
           .AppendLine("JUnit report for all of them.\">");
 
-        var uid = 100;
+        var uid = UidBase;
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +

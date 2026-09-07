@@ -1246,6 +1246,86 @@ verified by reproducing the original failure.
 | re-run over an existing member, 56002-only filter | **`1004`, filter never fired** — the measurement that corrected the fix |
 | `.lvclass` and `.vi` after that failed re-run | `md5sum` unchanged — no `aixml`, so no convert, so nothing to leave behind |
 
+## 4q. Run 3 of the same build, and the gap it exposed by closing another one
+
+The third cold rebuild of the same four-class hierarchy, after the uid, project-state, layout and
+measured-values changes. Everything asked of it held, and the run cost MORE than run 2 for a reason
+worth recording.
+
+| | run 1 | run 2 | run 3 |
+|---|---|---|---|
+| wall clock | 1966 s | 1168 s | 1543 s |
+| class build alone | ~755 s | ~431 s | 431 s (118 s inside LabVIEW) |
+| test phase | ~900 s | 634 s | **890 s** |
+| low-uid DWarns | 0 | 24 | **0** |
+| `DestroyPlatformEvent` | 15 | 14 | 26 |
+| `bad parent in MoveItem` | 3 | 2 | 3 |
+| unrequested project closes | — | 4 | **0** |
+| methods tested | yes | **no** | yes |
+
+### What the fixes did
+
+- **uids from `AixmlCheck.SafeUidBase`**: 24 → 0, exactly as the controlled pair predicted.
+- **`lvai_generate_class_test` leaving the project closed**: `projectLeftOpen: false` on all five
+  calls, and the agent inserted none of run 2's four compensating closes.
+- **One folder per class**: nothing at the project root but the `.lvproj` and LabVIEW's own
+  `.aliases`/`.lvlps`. It was load-bearing here — four VIs are called `Describe.vi`.
+- **Handing the test agent the MEASURED method outputs**: three `Describe` suites plus
+  `Get Type Name`, where run 2 left all five methods untested.
+
+`DestroyPlatformEvent` went UP, and that is not a regression of anything changed: it tracks the
+number of close and helper operations, and run 3's test phase ran far more of them. The agent split
+it 2 → 14 across the class build and 14 → 60 across the test run.
+
+### THE GAP THAT CLOSING A GAP EXPOSED
+
+`lvai_generate_method_test` had two case shapes — `expectErrorCode` and `writeField`+`value` — and
+**neither can assert a value the method RETURNS**. A `Describe.vi` is exactly that, so the moment
+the class agent started handing over measured method strings (which is what fix 4 was *for*), the
+test agent had somewhere to aim and no tool to aim with. It hand-authored four tests, and the test
+phase went 634 s → 890 s.
+
+So fix 4 created the demand without the supply. The lesson generalises past this instance: **when a
+change makes an agent attempt something new, check that the tool it will reach for can express
+it** — otherwise the measured saving lands as a measured cost one phase later.
+
+The third shape is now `expectOutput` + `expectValue`:
+
+```json
+[{"method":"Describe","expectOutput":"description",
+  "expectValue":"Bicycle - a human-powered two-wheeled vehicle."}]
+```
+
+Three things about it are deliberate, and each is a failure mode this document already records:
+
+- **The terminal's TYPE is read off the method's own export**, from the parse
+  `RequiredInputsAsync` already does — no second round trip, and no `outputType` to get wrong
+  (it exists as an override).
+- **A name the method does not declare is REFUSED, with the available names listed.** `{LV.SubVI}`
+  `Replace` re-attaches wires BY NAME (§4m), so a misspelling would leave the real terminal
+  unwired, the socket's wire in place, and the suite green having asserted a default. Nothing
+  downstream can see that — the swap reports `ok`, `socketsLeft: 0` and a clean export.
+- **The socket's stand-in value is the type's DEFAULT, never the expectation.** Seeding it with the
+  expected value would make a socket that never got swapped pass anyway, which is the precise shape
+  of the vacuous green run in §4b and §4o.
+
+### Two more from the same run
+
+**`lvai_swap_subvis`' documented batch mode was unreachable.** `editsJson` promised that `viPath`
+"is ignored", but `viPath` was a required positional parameter, so the CLIENT refused the call
+against the schema (`-32602 Invalid arguments`) before the server could honour its own contract.
+The caller worked around it with a dummy path. **Identical to the defect fixed on
+`lvai_placeholder_subvi` on 2026-09-03** — a parameter one mode ignores must not be mandatory in
+the schema. `viPath` is optional now and its absence is refused by name.
+
+**An interface's STATIC member runs as a top-level VI.** `IVehicle.lvclass:Get Type Name.vi`
+returned `Vehicle`, `error out.code = 0`, with an `IVehicle.lvclass` object on its out terminal.
+The class-generator definition said an interface "cannot be instantiated, so no object exists to
+feed it" — false; the interface-typed control has a usable default. The rule it justified still
+stands, with the right reason: a **dynamic** member cannot be tested because any object you could
+wire in belongs to an implementing class and dispatches to that class's override. A static one is
+ordinary code.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
