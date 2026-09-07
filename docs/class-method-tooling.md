@@ -166,7 +166,13 @@ Replace the class terminals (BY NAME)  →  AddItemFromMemory  →  SetWireRule(
   owning-library link; LabVIEW marks the LIBRARY broken and it then blocks every VI it owns as
   `Error 1003`, healthy ones included.
 - **`Rule = 4` is dynamic dispatch** on `{LV.ConnectorPane}` `SetWireRule`. Omit the dispatch
-  terminals for a static member — an LUnit test method is one.
+  terminals for a static member — an LUnit test method is one, and so is a concrete method an
+  interface ships. That omission was **refused until 2026-09-07**; see §4o.
+- **A terminal may carry a class other than the method's own**, written as an object rather than a
+  name: `{"terminal":"Engine in","class":"…\Engine.lvclass"}`. That is NI's own interface shape —
+  `Lever.lvclass:Pry.vi` takes a `Pryable`. Added 2026-09-07, §4o.
+- **It works on an INTERFACE**, unchanged: it does not look at `NI.LVClass.IsInterface` and has no
+  reason to. `docs/lvclass-interfaces.md` §3 claimed for five days that no tool did this.
 - **Convert WITHOUT validating.** The tool does this for you when given `aixml`. `ValidateAIXML`
   type-checks subVI wiring and refuses a class wire fed from a `path` stand-in while
   `ConvertAIXMLToVI` writes the same file with `errorCode 0`, so `lvai_generate_vi` — which
@@ -980,6 +986,73 @@ same files. Measured here: the count stayed 31 before and after, and **8 of them
 out; one checked mtimes and reported "not reused", the other inferred "everything reused" from the
 count alone. The mtimes settle it. The two runs happened not to collide; nothing prevents it.
 
+## 4o. Interface members, 2026-09-07: two gaps in `lvai_add_class_method`
+
+Found building `IVehicle.lvclass` with the two shapes NI's `Basic Interfaces` uses — one dynamic
+contract, one concrete member whose pane carries a *different* class. Both gaps are ordinary class
+bugs; an interface is simply where they cannot be avoided.
+
+### A static member was refused, and a passing test said otherwise
+
+`dispatchTerminals` has always been documented as omittable, and `MethodRequest.ParseAll` accepted
+the omission — the unit test `AStaticMemberIsExpressedByNamingNoDispatchTerminals` asserted exactly
+that and passed. One function later the call site did:
+
+```csharp
+["dispatch terminal indices"] = string.Join("|", indices ?? []),
+```
+
+which sends `""`. `lvai_run_vi_and_read_values` **refuses an empty value** — names and values are
+paired by position, an empty one does not survive the helper's `Spreadsheet String To Array`, and
+every later input would land on the wrong control. So a static member answered
+`badArguments … has an empty value` and stopped at `member`, **after** the conversion and the pane
+rebuild had already run.
+
+The input is now omitted entirely when there is nothing to dispatch; the helper's control keeps its
+own default and the wire-rule loop runs zero times.
+
+**The lesson is `CLAUDE.md`'s fixture rule from a new side.** The feature was covered by a test that
+could not fail, because the test stopped at the parse and the defect was in the code that consumed
+it. The regression test now asserts on the input map itself, which is why `HelperInputs` was
+extracted from the call site — an untestable expression inside an async method is where this hid.
+
+### A terminal could not be typed on another class
+
+`classTerminals` retyped every named terminal to `lvclassPath`. NI's interfaces do the opposite:
+
+| `Lever.lvclass` member | `Lever in` | the interesting terminal |
+|---|---|---|
+| `Multiply Force.vi` | `dynamic` | — the contract |
+| `Pry.vi` | `required` | **`Pryable in`**, an object of a different interface |
+
+An entry may now be an object instead of a name, and the helper takes a second pipe-separated array
+of one path per terminal, indexed alongside the names:
+
+```json
+"classTerminals": ["IVehicle in",
+                   {"terminal": "Engine in", "class": "C:\Vehicle\Engine\Engine.lvclass"}]
+```
+
+A bare name still means the method's own class, so every existing call is unchanged. A path that
+does not exist is refused up front, because `Replace` against a missing file is refused by LabVIEW
+rather than reported.
+
+### And the helper cache had to be fixed first
+
+Adding a control to `lvai_add_class_method.xml` would have changed nothing at run time: this site
+still keyed on `!File.Exists(helperVi)`, so the cached VI from before the edit would have kept
+running — with no error, because a control that is absent simply keeps its default. Same bug as
+2026-08-31 in `ClassTools`, and it recurred because that fix was a `private static` method the other
+file could not reach. The check now lives in `Infra/HelperCache.NeedsRebuild`;
+`docs/lvclass-interfaces.md` §5 lists the ~13 sites that still key on existence alone.
+
+### Cost
+
+The run that found all this: **~14.5 min of wall clock against ~35 s inside tools over 36 calls, a
+ratio near 25 : 1.** LabVIEW's share was 5.1 s per `lvai_add_class_method` call and never varied.
+Practically all of it was the model re-deriving AIXML of a shape that does not change — the same
+signature that justified this tool in the first place.
+
 ## 5. What is NOT measured yet
 
 Honest limits, so nobody reads this document as a warranty:
@@ -994,10 +1067,15 @@ Honest limits, so nobody reads this document as a warranty:
   exercised it — a DAQmx task reference — was legitimately skipped by the test agent, which declined
   to invent a literal for a hardware handle. That was the right call and it leaves the branch
   untested.
-- **`lvai_add_class_method`'s combined order** is composed from two helpers that were each measured
+- **`lvai_add_class_method`'s combined order** was composed from two helpers that were each measured
   separately — `scripts/lvlu_add_test_method.xml` (retype + membership) and the DAQmx run's
-  `daq_member.vi` (membership + wire rules). Their constraints do not conflict, but the combination
-  is inferred rather than observed.
+  `daq_member.vi` (membership + wire rules). Observed since, repeatedly: five VIs on 2026-09-07 with
+  `error out = 0` at every stage, including on an interface.
+- **The two 2026-09-07 changes are unit-tested but not yet run against LabVIEW.** The static-member
+  omission and the per-terminal class path are covered by regression tests over the input map, and
+  the helper AIXML change — a third `Spreadsheet String To Array` and an indexing tunnel — has not
+  been generated or run. That is exactly the fixture trap §4b names, so treat the next real use as
+  the measurement.
 - **No polymorphic dispatch through the base class.** The DAQmx methods are dynamic dispatch on the
   child; the base carries no matching stubs, so a caller holding a base-class wire cannot dispatch
   to them. Creating those stubs is now a `lvai_add_class_method` call away and was out of scope.

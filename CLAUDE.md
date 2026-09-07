@@ -575,13 +575,40 @@ Three things about interfaces that cost a session each, all in `docs/lvclass-int
   test cannot show what it means; isolating it needs an ordinary class as parent. Do not repeat the
   claim that it is the require-override flag.
 
-**Interface METHODS are not scriptable yet** and the reason is worth knowing before trying: a method
-needs a dynamic dispatch terminal typed on the interface, AIXML refuses a class-typed terminal, the
-accessor wizard works off private data an interface cannot have, and NI's retyper
-`CLSUIP_ReplaceLVClassControls.vi` is **private scope**. A working manual route is written up in §3
-of that document — `Replace` on `.lvclass`, `AddItemFromMemory`, `SetWireRule` — with its four traps,
-of which the sharpest is that **`Controls[]` returns the error clusters FIRST**, so terminals must be
-found by name and never by index.
+**INTERFACE METHODS ARE SCRIPTABLE, and `lvai_add_class_method` is the tool** — this clause said the
+opposite until 2026-09-07 and cost an agent a hand-built duplicate of a tool that already worked.
+The tool does not inspect `NI.LVClass.IsInterface` and has no reason to: an interface is a
+`.lvclass`, so `LVClass.Open`, `AddItemFromMemory`, `{LV.Control}` `Replace` and `SetWireRule` all
+behave the same on one. Measured over five VIs on `IVehicle.lvclass` — two interface members, three
+overrides, `error out = 0` at every stage, no restart.
+
+**Copy NI's shape, which is TWO kinds of member, not one.** Measured on `Basic Interfaces`:
+`Lever.lvclass:Multiply Force.vi` has `Lever in` **`dynamic`** — the contract every implementing
+class must override — while `Lever.lvclass:Pry.vi` has it **`required`** and carries a `Pryable in`,
+an object of a *different* interface, on the same pane. So an interface ships concrete methods too,
+and a terminal on one may be typed on another class: write it as
+`{"terminal":"Engine in","class":"…\Engine.lvclass"}` rather than a bare name. Both of those were
+gaps in the tool until 2026-09-07 — a static member was refused outright, with a unit test passing
+the whole time because it stopped at the argument parse.
+
+**And do NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Three sessions have tried.
+Measured on this pair: the dynamic member reads `0`, the static one reads `1073741832`, neither
+carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
+`lvai_vi_terminals` is the answer.
+
+The manual route stays written up in §3 of that document — `Replace` on `.lvclass`,
+`AddItemFromMemory`, `SetWireRule` — with its four traps, of which the sharpest is that
+**`Controls[]` returns the error clusters FIRST**, so terminals must be found by name and never by
+index. **The general lesson: check the tool list before believing a `docs/` sentence about what is
+missing.**
+
+**An interface member CANNOT call the parent through `Call Parent Class Method` in AIXML.** The node
+name is recognised — the validator does not say "unsupported node type" — but it exposes **no
+terminals** for a VI that is not yet a class member, so every wire is refused
+(`Object terminal not found for input: Car in`). Membership happens after conversion, so this is
+chicken-and-egg with no way round it. An override reads what it needs through the parent's public
+accessors instead. Note a *static* call to the parent's method would be wrong anyway: a dynamic
+dispatch subVI dispatches on the object, so a child's wire recurses into the child's own override.
 
 **CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
 untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the
@@ -1057,7 +1084,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
-| How do I create an INTERFACE, and why can't I script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces` |
+| How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I create a class's accessor VIs? | `docs/lvclass-creation.md` §5.1 | `lvai_create_accessors` |
 | How do I turn a generated VI into a class METHOD? | `docs/class-method-tooling.md` §3c | `lvai_add_class_method` |

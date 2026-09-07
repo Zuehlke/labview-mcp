@@ -4,6 +4,7 @@
   <Control _name="class terminal names" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
   <Control _name="vi name in memory" type="string" uid="13" uid_parent="root" value="" outputs="value:13.value"/>
   <Control _name="dispatch terminal indices" type="string" uid="14" uid_parent="root" value="" outputs="value:14.value"/>
+  <Control _name="terminal class paths" type="string" uid="15" uid_parent="root" value="" outputs="value:15.value"/>
 
   <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:20.proj,reference out:20.reference out,error out:20.error out" uid="20" uid_parent="root"/>
   <Node _name="Property Node" fields="read+Application" inputs="reference:20.proj,error in (no error):20.error out" outputs="Application:22.app,reference out:22.reference out,error out:22.error out" type="{LV.Project}" uid="22" uid_parent="root"/>
@@ -14,6 +15,7 @@
   <Constant _name="int array type" outputs="value:26.value" type="array{int32}" uid="26" uid_parent="root" value="[]"/>
   <Node _name="Spreadsheet String To Array" inputs="format string:29.value,spreadsheet string:12.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:32.array" uid="32" uid_parent="root"/>
   <Node _name="Spreadsheet String To Array" inputs="format string:29.value,spreadsheet string:14.value,array type (2D Dbl):26.value,delimiter (Tab):30.value" outputs="array:33.array" uid="33" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:29.value,spreadsheet string:15.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:25.array" uid="25" uid_parent="root"/>
 
   <Node _name="String To Path" inputs="string:10.value" outputs="path:34.path" uid="34" uid_parent="root"/>
   <Node _name="String To Path" inputs="string:11.value" outputs="path:35.path" uid="35" uid_parent="root"/>
@@ -35,14 +37,15 @@
     <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:51.value" uid="51" uid_parent="50"/>
     <Tunnel _id="In2" inputs="value:44.value" outputs="value:52.value" uid="52" uid_parent="50"/>
     <Tunnel _id="In3" inputs="value:39.controls" outputs="value:53.value" uid="53" uid_parent="50"/>
-    <Tunnel _id="In4" inputs="value:35.path" outputs="value:54.value" uid="54" uid_parent="50"/>
+    <Tunnel _id="In4" inputs="value:25.array" mode="index" outputs="value:54.value" uid="54" uid_parent="50"/>
+    <Node _name="String To Path" inputs="string:54.value" outputs="path:58.path" uid="58" uid_parent="50"/>
     <Node _name="Search 1D Array" inputs="1D array:52.value,element:51.value,start index (0):" outputs="index of element:55.index of element" uid="55" uid_parent="50"/>
     <Constant _name="zero" outputs="value:56.value" type="int32" uid="56" uid_parent="50" value="0"/>
     <Node _name="Greater Or Equal?" inputs="x:55.index of element,y:56.value" outputs="x &gt;= y?:57.x &gt;= y?" uid="57" uid_parent="50"/>
     <Structure _name="Case Structure" selectin="57.x &gt;= y?" uid="60" uid_parent="50">
       <Tunnel _id="In1" inputs="value:53.value" uid="61" uid_parent="60"/>
       <Tunnel _id="In2" inputs="value:55.index of element" uid="62" uid_parent="60"/>
-      <Tunnel _id="In3" inputs="value:54.value" uid="63" uid_parent="60"/>
+      <Tunnel _id="In3" inputs="value:58.path" uid="63" uid_parent="60"/>
       <CaseFrame selector="False" selectout="" uid="64" uid_parent="60">
         <Constant _name="none" outputs="value:65.value" type="int32" uid="65" uid_parent="64" value="0"/>
         <Tunnel _id="Out1" inputs="value:65.value" uid="66" uid_parent="64"/>

@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -452,6 +453,96 @@ public sealed class ClassToolingLeverTests
 
         Assert.Null(parsed[0].DispatchTerminals);
         Assert.Null(parsed[0].DispatchTerminalIndices);
+    }
+
+    [Fact]
+    public void AStaticMemberSENDSNoDispatchInputAtAll()
+    {
+        // THE PARSE TEST ABOVE PASSED WHILE THE FEATURE DID NOT WORK. `dispatchTerminals` being
+        // legally absent is settled there; what was broken is one line further on, where the empty
+        // list was still joined into an input. The runner refuses an empty VALUE - names and values
+        // are paired by position and an empty one does not survive the split - so a static member
+        // answered `badArguments ... has an empty value` and stopped at `member`, with the pane
+        // already rebuilt. Measured 2026-09-07 on an interface member of NI's own `Pry.vi` shape.
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Pry.vi","classTerminals":["obj in","obj out"]}]""")[0];
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\cls\Pry.vi", @"C:\cls\A.lvclass", null);
+
+        Assert.False(inputs.ContainsKey("dispatch terminal indices"));
+        Assert.DoesNotContain(inputs, pair => pair.Value!.GetValue<string>().Length == 0);
+    }
+
+    [Fact]
+    public void ADispatchingMemberStillSendsItsIndices()
+    {
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\cls\\Describe.vi","classTerminals":["obj in"]}]""")[0];
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\cls\Describe.vi",
+                                                   @"C:\cls\A.lvclass", [11, 3]);
+
+        Assert.Equal("11|3", inputs["dispatch terminal indices"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void ATerminalMayCarryAClassOtherThanTheMethodsOwn()
+    {
+        // NI's own interface shape: `Lever.lvclass:Pry.vi` has a `Pryable in`. Before this the tool
+        // retyped every terminal to lvclassPath, so that VI needed a hand-built helper.
+        var method = ClassMethodTools.MethodRequest.ParseAll(
+            """
+            [{"vi":"C:\\IVehicle\\Report Engine Power.vi",
+              "classTerminals":["IVehicle in",
+                                {"terminal":"Engine in","class":"C:\\Engine\\Engine.lvclass"}]}]
+            """)[0];
+
+        Assert.Null(method.ClassTerminals[0].ClassPath);
+        Assert.Equal(@"C:\Engine\Engine.lvclass", method.ClassTerminals[1].ClassPath);
+
+        var inputs = ClassMethodTools.HelperInputs(method, @"C:\IVehicle\Report Engine Power.vi",
+                                                   @"C:\IVehicle\IVehicle.lvclass", null);
+
+        // One path per name, in the same order - the helper indexes the two arrays together.
+        Assert.Equal("IVehicle in|Engine in", inputs["class terminal names"]!.GetValue<string>());
+        Assert.Equal(@"C:\IVehicle\IVehicle.lvclass|C:\Engine\Engine.lvclass",
+                     inputs["terminal class paths"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void AClassTerminalObjectWithoutATerminalNameIsRefused()
+    {
+        var bad = Assert.Throws<ArgumentException>(() => ClassMethodTools.MethodRequest.ParseAll(
+            """[{"vi":"C:\\a.vi","classTerminals":[{"class":"C:\\Engine\\Engine.lvclass"}]}]"""));
+        Assert.Contains("terminal", bad.Message);
+    }
+
+    [Fact]
+    public void ACachedHelperOlderThanItsSourceIsRebuilt()
+    {
+        // The helper VI is generated once and reused. An edit to the AIXML would otherwise keep
+        // running the previously built VI - silently, because a control that is not there is not an
+        // error: it simply keeps its default and every stage still answers 0. Found twice, most
+        // recently 2026-09-07 when a per-terminal class path was added to lvai_add_class_method.xml.
+        var aixml = Path.GetTempFileName();
+        var helper = Path.GetTempFileName();
+        try
+        {
+            File.SetLastWriteTimeUtc(aixml, new DateTime(2026, 9, 7, 12, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(helper, new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc));
+            Assert.False(HelperCache.NeedsRebuild(aixml, helper));
+
+            File.SetLastWriteTimeUtc(aixml, new DateTime(2026, 9, 7, 14, 0, 0, DateTimeKind.Utc));
+            Assert.True(HelperCache.NeedsRebuild(aixml, helper));
+
+            File.Delete(helper);
+            Assert.True(HelperCache.NeedsRebuild(aixml, helper));
+        }
+        finally
+        {
+            File.Delete(aixml);
+            if (File.Exists(helper)) File.Delete(helper);
+        }
     }
 
     [Fact]

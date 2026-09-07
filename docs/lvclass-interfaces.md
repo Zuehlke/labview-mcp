@@ -135,11 +135,24 @@ started failing the moment `parentInterfaces` was used alongside `parentClassPat
 Not through `lvai_describe_project`: it cannot tell an interface from a class, and it answers
 `errorCode 0` for a class whose private data does not compile.
 
-## 3. Interface METHODS: scriptable, but by no route NI offers
+## 3. Interface METHODS: scriptable, and `lvai_add_class_method` is the tool
 
-This section was headed "What is NOT scriptable" until 2026-08-31, and that was true of every route
-NI exposes and false of the composition below, which is now execution-verified over two cold
-rebuilds. There is still no single tool for it - see the banner.
+This heading has now been wrong twice. It read "What is NOT scriptable" until 2026-08-31, when the
+composition below was measured; it then read "by no route NI offers … there is still no single tool
+for it" until **2026-09-07**, when the tool turned out to have existed for five days.
+
+**`lvai_add_class_method` drives this whole sequence on an INTERFACE.** It does not inspect
+`NI.LVClass.IsInterface` and has no reason to: an interface is a `.lvclass`, `LVClass.Open`,
+`AddItemFromMemory`, `{LV.Control}` `Replace` and `{LV.ConnectorPane}` `SetWireRule` all behave the
+same on one. Measured 2026-09-07 on `IVehicle.lvclass` — two members created, three overrides,
+`error out = 0` at every stage, no LabVIEW restart, ~5.1 s inside LabVIEW per VI.
+
+The lesson is the one this repository keeps relearning about its own tooling: the document said no
+tool existed, an agent believed the document, and hand-built a helper that duplicated it. **Check
+the tool list before believing a `docs/` sentence about what is missing.** Two real gaps were found
+in the process and are fixed — see §3.3.
+
+The composition below is what the tool does, and remains the reference for driving it by hand.
 
 An interface method needs a **dynamic dispatch input whose type is the interface**. That is a
 class-typed connector pane, and every route NI offers to one is closed:
@@ -371,15 +384,70 @@ Ten of five SetWireRule calls across four VIs: `error out = 0` every time.
 bits mean is **not established** — do not read them as a dispatch setting, and do not repeat this
 paragraph as if it were one.
 
+Re-measured 2026-09-07 on `IVehicle`, where one member is genuinely **static**, and the flag word is
+no better at showing it: `Describe.vi` (dynamic) reads **`0`**, `Report Engine Power.vi` (static,
+`connection="required"`) reads **`1073741832`** (`0x40000008`). Neither carries `0x1000000`, so the
+static member is not marked static and the dynamic one is not marked dynamic. LabVIEW wrote both
+itself. **Read `connection=` from `lvai_vi_terminals`. The flag word does not answer this question
+and three sessions have now tried to make it.**
+
 ### 3.0.4 `lvai_describe_project` CAN now tell an interface from a class
 
 §2.3 says it cannot. Measured 2026-08-31, it reports `"interface": true` on the interface and
 `"interfaces": ["IHaustier.lvclass"]` on the implementing class. The tool was improved after §2.3
 was written; the sentence in §2.3 is stale. It is still not evidence that anything COMPILES.
 
-Until that is productised, the IDE steps are: right-click the interface → **New » VI from Dynamic
-Dispatch Template**, add the outputs, put them on the connector pane, save beside the interface;
-then right-click the implementing class → **New » VI for Override…**.
+It is productised: `lvai_add_class_method`. The IDE equivalents, for comparison or for a case the
+tool cannot reach: right-click the interface → **New » VI from Dynamic Dispatch Template**, add the
+outputs, put them on the connector pane, save beside the interface; then right-click the implementing
+class → **New » VI for Override…**.
+
+### 3.3 Two gaps in `lvai_add_class_method`, both found on an interface, both fixed 2026-09-07
+
+Neither is specific to interfaces; an interface is simply where NI's own shapes make them
+unavoidable.
+
+**A STATIC member could not be made at all.** `dispatchTerminals` was already documented as
+omittable, and the parse accepted the omission — but the call site then joined the empty list into
+the helper's `dispatch terminal indices` input anyway, and the runner refuses an **empty value**
+outright (names and values are paired by position; an empty one does not survive the helper's split
+and would shift every later input onto the wrong control). So a static member answered
+`badArguments … has an empty value` and stopped at `member`, with the connector pane already
+rebuilt. The input is now omitted, which leaves the helper's control at its own default and runs the
+wire-rule loop zero times.
+
+This is the `CLAUDE.md` trap about fixtures, seen from a new angle: a unit test named
+`AStaticMemberIsExpressedByNamingNoDispatchTerminals` was **passing** the whole time. It tested the
+parse. The defect was one function later, in code no test reached, so the feature was covered on
+paper and broken in fact. The regression test now asserts on the input map itself.
+
+**A terminal could not carry a class other than the method's own.** `classTerminals` retyped
+everything to `lvclassPath`. That is exactly what NI's interfaces do NOT do — `Lever.lvclass:Pry.vi`
+has a `Pryable in`, an object of a *different* interface, on its pane. A terminal may now be written
+as an object instead of a name:
+
+```json
+"classTerminals": ["IVehicle in",
+                   {"terminal": "Engine in", "class": "C:\Vehicle\Engine\Engine.lvclass"}]
+```
+
+The helper takes a second pipe-separated array, one path per terminal in the same order, and indexes
+the two together. A bare name still means the method's own class, so nothing that worked before
+changes.
+
+### 3.4 What NI's own interface members look like, measured
+
+Read off `Basic Interfaces` on 2026-09-07 with `lvai_vi_terminals`, because the shape is the thing
+worth copying:
+
+| member | `Lever in` | other terminals |
+|---|---|---|
+| `Lever.lvclass:Multiply Force.vi` | `dynamic` | `force in` double required, `force out` double recommended |
+| `Lever.lvclass:Pry.vi` | **`required`** | **`Pryable in`** required, `force` double required, `Pryable out` recommended |
+
+So an interface carries **both** kinds of member: `dynamic` is the contract every implementing class
+must override, `required` is a concrete implementation the interface ships. `Pry.vi` is the second
+kind, and it is where the class-typed terminal on another class comes from.
 
 ### 3.1 A class must override EVERY interface method
 
@@ -455,13 +523,24 @@ reports `Contains unwired or bad terminal`.
 
 ## 5. The helper cache was not invalidated by an edit
 
-Unrelated to interfaces and found because of them, so recorded here as well as in the code: both
-helper-cache sites keyed on **existence alone** (`!File.Exists(helperVi)`), so editing a helper under
-`scripts\` left LabVIEW running the *previous* build's VI — silently, with nothing in any answer to
-say so. `HelperNeedsRebuild` now compares timestamps. The check is deliberately narrow: `CLAUDE.md`
+Unrelated to interfaces and found because of them — **twice, in the same way, a week apart**, so
+recorded here as well as in the code: helper-cache sites keyed on **existence alone**
+(`!File.Exists(helperVi)`), so editing a helper under `scripts\` left LabVIEW running the *previous*
+build's VI — silently, with nothing in any answer to say so. A control that is not there is not an
+error; it keeps its default and every stage still answers 0.
+
+2026-08-31 fixed it in `ClassTools` while adding `parentInterfaces`. 2026-09-07 hit it again in
+`ClassMethodTools` while adding the per-terminal class path, because the 2026-08-31 fix was a
+`private static` method in one file and could not be reached from the other. The check now lives in
+`Infra/HelperCache.NeedsRebuild` and compares timestamps. The check is deliberately narrow: `CLAUDE.md`
 warns against deleting that cache to force a rebuild, because validating a helper is what killed
 LabVIEW three times in one afternoon, and an AIXML that has genuinely changed is the one sanctioned
 case for paying that risk.
+
+**Around thirteen other call sites still key on existence alone** — `CloseTools`, `IconTools`,
+`LUnitTools` (twice), `PaneTools`, `RunTools`, `SwapTools`, `TypedefTools` (four), `DqmhTools`. Each
+is the same one-line change now that the check is shared. They are listed rather than swept because
+none has been observed failing; the two that were observed are fixed.
 
 ## 6. What is verified and what is not
 

@@ -72,6 +72,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         index, because Controls[] order is not portable. `dispatchTerminals` (names) or
         `dispatchTerminalIndices` (conIdx numbers) are the ones set to dynamic dispatch; names are
         resolved from the VI's own AIXML export. Omit both for a STATIC member.
+        A TERMINAL MAY CARRY A DIFFERENT CLASS. Write it as an object instead of a name:
+          "classTerminals":["obj in","obj out",{"terminal":"Engine in","class":"C:\x\Engine.lvclass"}]
+        That is NI's own interface shape - `Lever.lvclass:Pry.vi` takes a `Pryable` - and it works
+        on an INTERFACE too: this tool does not care that the .lvclass carries IsInterface.
         THE PROJECT MUST BE OPEN AND ACTIVE for the repair, and CLOSED for the conversion. Pass
         projectPath and this call sequences both - closed for every convert and pane repair, then
         opened once for every retype. Getting that backwards is Error 56002 on one side and a
@@ -124,6 +128,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 if (method.Aixml is null && !File.Exists(method.Vi))
                     return Json.Error("badArguments",
                         $"'{method.Vi}' does not exist and no \"aixml\" was given to make it from.");
+                foreach (var terminal in method.ClassTerminals)
+                    if (terminal.ClassPath is { } other && !File.Exists(other))
+                        return Json.Error("badArguments",
+                            $"Terminal '{terminal.Name}' of " +
+                            $"'{Path.GetFileName(method.Vi)}' names a class at '{other}', and " +
+                            "there is no file there. A Replace against a missing path is refused " +
+                            "by LabVIEW rather than reported, so this is checked first.");
             }
 
             var classPath = Path.GetFullPath(lvclassPath);
@@ -141,7 +152,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
                 Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_class_method.vi"));
             Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-            if (regenerateHelper || !File.Exists(helperVi))
+            // NOT `!File.Exists` - see Infra/HelperCache. This site kept running the helper
+            // built before the per-terminal class path was added to the AIXML, which is not an
+            // error anywhere: the missing control simply keeps its default.
+            if (regenerateHelper || HelperCache.NeedsRebuild(source, helperVi))
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     source, helperVi, openVI: false, measurePane: false, panePattern: null,
@@ -271,14 +285,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     });
                 }
 
-                var inputs = new JsonObject
-                {
-                    ["vi path"] = viPath,
-                    ["class path"] = classPath,
-                    ["class terminal names"] = string.Join("|", method.ClassTerminals),
-                    ["vi name in memory"] = Path.GetFileName(viPath),
-                    ["dispatch terminal indices"] = string.Join("|", indices ?? []),
-                };
+                var inputs = HelperInputs(method, viPath, classPath, indices);
                 var run = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
                     helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
@@ -504,6 +511,38 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             .Select(m => m.Groups[1].Value)];
     }
 
+    /// <summary>
+    /// The helper's controls, by name. Extracted from the call site because two of the three rules
+    /// below are invisible there and were each shipped broken once.
+    ///
+    /// AN EMPTY VALUE IS REFUSED BY THE RUNNER, so a control with nothing to say is OMITTED rather
+    /// than set to "". Values are paired with names BY POSITION, an empty one does not survive the
+    /// helper's split, and every later input would land on the wrong control - hence the refusal.
+    /// A STATIC member has no dispatch indices, so this is not an edge case but the whole reason
+    /// static members did not work: measured 2026-09-07 on an interface's own <c>Pry.vi</c> shape,
+    /// the run answered <c>badArguments ... has an empty value</c> and stopped at <c>member</c>,
+    /// after the pane had already been rebuilt.
+    ///
+    /// AND THE PATHS ARE PER TERMINAL, in the same order as the names, because a terminal may be
+    /// typed on a class other than the method's own.
+    /// </summary>
+    internal static JsonObject HelperInputs(MethodRequest method, string viPath, string classPath,
+                                            List<int>? indices)
+    {
+        var inputs = new JsonObject
+        {
+            ["vi path"] = viPath,
+            ["class path"] = classPath,
+            ["class terminal names"] = string.Join("|", method.ClassTerminals.Select(t => t.Name)),
+            ["terminal class paths"] =
+                string.Join("|", method.ClassTerminals.Select(t => t.ClassPath ?? classPath)),
+            ["vi name in memory"] = Path.GetFileName(viPath),
+        };
+        if (indices is { Count: > 0 })
+            inputs["dispatch terminal indices"] = string.Join("|", indices);
+        return inputs;
+    }
+
     private static JsonObject Failed(MethodRequest method, string viPath, string step,
                                      JsonArray steps, JsonObject? detail) =>
         new()
@@ -536,7 +575,17 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ the request
 
-    internal sealed record MethodRequest(string Vi, string? Aixml, List<string> ClassTerminals,
+    /// <summary>
+    /// One pane terminal to retype, and the class it should carry. <c>ClassPath</c> is null for the
+    /// ordinary case - the method's own class - and set when a terminal is typed on a DIFFERENT
+    /// class, which is what NI's own interfaces do: <c>Lever.lvclass:Pry.vi</c> takes a
+    /// <c>Pryable</c>. Measured 2026-09-07; before this the tool retyped every terminal to
+    /// <c>lvclassPath</c>, so that shape needed a hand-built helper.
+    /// </summary>
+    internal sealed record ClassTerminal(string Name, string? ClassPath);
+
+    internal sealed record MethodRequest(string Vi, string? Aixml,
+                                         List<ClassTerminal> ClassTerminals,
                                          List<string>? DispatchTerminals,
                                          List<int>? DispatchTerminalIndices)
     {
@@ -570,7 +619,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     vi = Path.ChangeExtension(aixml, ".vi");
                 }
 
-                var terminals = Strings(o["classTerminals"]);
+                var terminals = Terminals(o["classTerminals"], Path.GetFileName(vi));
                 if (terminals.Count == 0)
                     throw new ArgumentException(
                         $"'{Path.GetFileName(vi)}' names no \"classTerminals\". These are the pane " +
@@ -607,5 +656,43 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             node is not JsonArray array
                 ? []
                 : [.. array.Where(n => n is not null).Select(n => n!.GetValue<string>())];
+
+        /// <summary>
+        /// A terminal is either a bare NAME - retyped to the method's own class, the common case -
+        /// or an object naming the class it should carry instead:
+        /// <c>{"terminal":"Engine in","class":"C:\Vehicle\Engine\Engine.lvclass"}</c>.
+        /// </summary>
+        private static List<ClassTerminal> Terminals(JsonNode? node, string vi)
+        {
+            if (node is not JsonArray array) return [];
+
+            var all = new List<ClassTerminal>();
+            foreach (var entry in array)
+            {
+                switch (entry)
+                {
+                    case null:
+                        continue;
+                    case JsonValue value when value.GetValueKind() is JsonValueKind.String:
+                        all.Add(new ClassTerminal(value.GetValue<string>(), null));
+                        continue;
+                    case JsonObject o:
+                        var name = o["terminal"]?.GetValue<string>() ?? o["name"]?.GetValue<string>();
+                        if (string.IsNullOrWhiteSpace(name))
+                            throw new ArgumentException(
+                                $"A classTerminals entry of '{vi}' is an object with no " +
+                                "\"terminal\". Write either \"obj in\" or " +
+                                "{\"terminal\":\"Engine in\",\"class\":\"...\\Engine.lvclass\"}.");
+                        var cls = o["class"]?.GetValue<string>() ?? o["lvclass"]?.GetValue<string>();
+                        all.Add(new ClassTerminal(name,
+                            string.IsNullOrWhiteSpace(cls) ? null : Path.GetFullPath(cls)));
+                        continue;
+                    default:
+                        throw new ArgumentException(
+                            $"A classTerminals entry of '{vi}' is neither a name nor an object.");
+                }
+            }
+            return all;
+        }
     }
 }
