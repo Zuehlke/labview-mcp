@@ -5,15 +5,15 @@ using System.Text.Json;
 namespace LabVIEWMcp.Infra;
 
 /// <summary>
-/// Keeps the palette index on disk, so the scan of 582 palette files is paid once per machine
+/// Keeps the palette index on disk, so the scan of 743 palette files is paid once per machine
 /// instead of once per server process.
 ///
-/// WHAT IT IS WORTH, measured rather than assumed - `LabVIEWMCP --palette` over 582 palette files,
+/// WHAT IT IS WORTH, measured rather than assumed - `LabVIEWMCP --palette` over 743 palette files,
 /// three runs each:
 ///
 /// | | scan | served from here |
 /// |---|---|---|
-/// | | 146, 150, 148 ms | 93, 94, 90 ms |
+/// | | 221, 217, 218 ms | 102, 97, 130 ms |
 ///
 /// So about 55 ms, and most of the 90 ms that remains is process start-up rather than the index.
 /// State that plainly because the neighbouring <see cref="ExampleIndexStore"/> earns its cache by a
@@ -72,7 +72,7 @@ internal static class PaletteIndexStore
         catch
         {
             // A corrupt or unreadable cache must never take the tool down with it: the scan is
-            // always available as the answer, and here it costs 150 ms.
+            // always available as the answer, and here it costs 220 ms.
             return null;
         }
     }

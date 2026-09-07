@@ -175,7 +175,7 @@ builder.Services
 // every other tool.
 _ = ExampleIndex.WarmAsync();
 
-// Same treatment for the palette index. It reads a comparably large tree - 582 palette files on
+// Same treatment for the palette index. It reads a comparably large tree - 743 palette files on
 // this station - and until it got a disk cache it was rescanned on every single start-up, which
 // nothing ever argued for; the example index had a measurement behind it and this one did not.
 _ = PaletteIndex.WarmAsync();

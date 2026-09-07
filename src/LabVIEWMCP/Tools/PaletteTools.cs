@@ -30,14 +30,21 @@ internal sealed class PaletteTools
         project library. Full table in lvai_aixml_reference, section 9.
         A MISS HERE IS NOT PROOF THAT A CALL IS ILLEGAL - settle a target with a throwaway
         ValidateAIXML instead.
-        THE INDEX USED TO MISS WHOLE TOOLKITS, and that is fixed as of 2026-09-07. Caraya's 18
-        .mnu files live under vi.lib\addons\_JKI Toolkits\dynamic_palette\, which was under no
-        scan root, so a query for "Caraya" answered "no match" for VIs that validate and run.
-        Measured on this installation: 94 .mnu files sit outside every `menus` folder, carrying
-        roughly 374 VI names - Caraya's whole assertion API, VI Tester, DQMH's palette, OpenG's
-        lvzip, LabVIEW Open Source Project, and NI's own 3D Picture Control, SFTP and SSH trees.
-        vi.lib and user.lib are now scanned whole for .mnu files and those entries are labelled
-        `vi.lib: <path>`.
+        THE INDEX USED TO MISS WHOLE TOOLKITS AND EVERY INSTRUMENT DRIVER, and that is fixed as of
+        2026-09-07. It scanned only `menus` folders, so a .mnu anywhere else was invisible: a query
+        for "Caraya" answered "no match" for VIs that validate and run, because its 18 palette
+        files live under vi.lib\addons\_JKI Toolkits\dynamic_palette\. Swept the whole
+        installation: 157 .mnu files sit outside every `menus` folder, and reading them took the
+        index from 582 palette files to 743 and from 2835 VIs to 3335 - 500 more, 15%.
+
+          vi.lib     404 new   Caraya, VI Tester, JSONtext, Wovalab, plus NI's own 3D Picture
+                               Control, SFTP and SSH
+          instr.lib   71 new   INSTRUMENT DRIVERS - and this station has one real driver and nine
+                               _Template skeletons, so a real test rig yields far more
+          user.lib    25 new   OpenG, and whatever the user installed
+          Targets      0 new   its FPGA palettes carry .ctl controls, which this index filters out
+
+        Entries from those trees are labelled `vi.lib: <path>`, `instr.lib: <path>` and so on.
         A HIT IS THE VI, NOT NECESSARILY THE TARGET STRING. A palette VI owned by a library needs
         its `lvlib:` qualifier and is refused by bare name - MEASURED: `Draw Image from
         File__ogtk.vi` gives "Unsupported SubVI" where `openg_picture.lvlib:Draw Image from
@@ -49,9 +56,12 @@ internal sealed class PaletteTools
         Scanned from disk at call time because the palette is station-specific - installed
         toolkits and add-ons hook into it - and cached for the process lifetime. THREE kinds of
         location are read: LabVIEW's own menus folder; every LVAddon under
-        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install; and
-        vi.lib plus user.lib, for the toolkits that put .mnu files outside any menus folder. An
-        entry from anything but the IDE's own menus is labelled with the tree it came from.
+        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install; and the
+        trees vi.lib, user.lib, instr.lib and Targets, swept whole for the .mnu files that sit
+        outside any menus folder. An entry from anything but the IDE's own menus is labelled with
+        the tree it came from. The one .mnu deliberately left out is
+        resource\plugins\PopupMenus\...\Class Methods Shortcut Palette.mnu - a right-click menu,
+        not a palette of callable VIs.
         Without a query: the totals plus the scan location. With query: matching VI names and the
         palette each was found in; EVERY word of the query must appear, in the name or in the
         palette path. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a
@@ -96,7 +106,7 @@ internal sealed class PaletteTools
         if (PaletteIndex.BuiltUtc(installRoot, addonsRoot) is { } built)
             header += Environment.NewLine +
                       $"Index cached {built:yyyy-MM-dd HH:mm} UTC; pass refresh=true to rebuild it " +
-                      "(about 150 ms) after installing or upgrading LabVIEW or an add-on.";
+                      "(about 220 ms) after installing or upgrading LabVIEW or an add-on.";
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +

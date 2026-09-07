@@ -107,18 +107,30 @@ loose or in a project library.
 
 **The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
 scanned `menus\` and `LVAddons\` only, so a `.mnu` anywhere else was invisible — a query for
-`Caraya` answered "no match" for VIs that validate and run. Measured on this installation: **94
-`.mnu` files sit outside every `menus` folder and carry 429 VI names the index did not have**, 15 %
-of the whole catalogue. Not just Caraya: VI Tester, DQMH's palette, JSONtext, OpenG's lvzip,
-Wovalab, and NI's own 3D Picture Control, SFTP and SSH trees. `vi.lib` and `user.lib` are now
-scanned whole for `.mnu` files and those entries are labelled `vi.lib: <path>`; `Caraya` answers 94
-hits, `Assert Almost Equal_Float.vi` among them. The scan went from 582 palette files to 680, and
-`menus\` is still read FIRST so a VI in both trees keeps its menus-relative label.
+`Caraya` answered "no match" for VIs that validate and run. Sweeping the whole installation found
+**157 `.mnu` files outside every `menus` folder**, and reading them took the index from 582 palette
+files to **743**, and from 2 835 VIs to **3 335 — 500 more, 15 % of the catalogue**:
 
-**It is scanned BROADLY — `vi.lib` and `user.lib` whole — rather than at the `addons` folders the
-pattern suggests**, because NI's 3D Picture, SFTP and SSH palettes are under neither, and "palette
-files live under a folder called X" is a convention this scanner has now been caught by twice. The
-cost is a directory walk, not a read: only the 94 `.mnu` files are opened.
+| tree | new VIs | what was missing |
+|---|---|---|
+| `vi.lib` | 404 | Caraya, VI Tester, JSONtext, Wovalab, and NI's own 3D Picture Control, SFTP, SSH |
+| `instr.lib` | 71 | **every instrument driver** — this station has one real one plus nine `_Template` skeletons, so a real test rig yields far more |
+| `user.lib` | 25 | OpenG, and whatever the user installed |
+| `Targets` | 0 | its FPGA palettes carry `.ctl` controls, which the index filters out |
+
+`Caraya` now answers 94 hits, `Assert Almost Equal_Float.vi` among them — the VI an earlier session
+wanted and could not discover. `menus\` is still read FIRST, so a VI in both trees keeps its
+menus-relative label; the rest are labelled `vi.lib: <path>`, `instr.lib: <path>`.
+
+**Scanned BROADLY — each tree whole — rather than at the `addons` folders the pattern suggests**,
+because NI's 3D Picture, SFTP and SSH palettes are under neither, and "palette files live under a
+folder called X" is a convention this scanner has now been caught by twice. The cost is a directory
+walk, not a read: only the 157 `.mnu` files are opened, and the scan went from ~148 ms to ~218 ms
+against ~110 ms from the cache.
+
+**One `.mnu` is deliberately left out**: `resource\plugins\PopupMenus\…\Class Methods Shortcut
+Palette.mnu` is a right-click menu, not a palette of callable VIs, and feeding IDE menu actions
+into a catalogue of `Call` targets is the plausible-but-wrong string this index exists to avoid.
 
 Search the index to *find* something; settle a target spelling with a throwaway `ValidateAIXML`.
 Full table in §9 of `lvai_aixml_reference`.

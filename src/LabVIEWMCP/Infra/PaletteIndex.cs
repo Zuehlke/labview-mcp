@@ -48,10 +48,12 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// list would be wrong on the next machine.
 ///
 /// IT IS CACHED ON DISK by <see cref="PaletteIndexStore"/>, and the payoff is MEASURED rather than
-/// assumed - `LabVIEWMCP --palette` over 582 palette files, three runs each: 146, 150, 148 ms to
-/// scan against 93, 94, 90 ms served from the cache. About 55 ms, most of the remainder being
-/// process start-up. That is a far smaller win than the example index's, which is 55 SECONDS cold
-/// against 804 ms, so do not read the two caches as resting on the same argument.
+/// assumed - `LabVIEWMCP --palette` over 743 palette files, three runs each: 221, 217, 218 ms to
+/// scan against 102, 97, 130 ms served from the cache. About 110 ms, most of the remainder being
+/// process start-up. It was 146/150/148 against 582 files before the loose trees were added, so
+/// the sweep roughly doubled the scan and the cache absorbs it. That is still a far smaller win
+/// than the example index's, which is 55 SECONDS cold against 804 ms, so do not read the two
+/// caches as resting on the same argument.
 ///
 /// The price is staleness, and it bites harder here: a stale palette either hides a VI that exists,
 /// which sends a generator off to rebuild from primitives, or offers one that has been uninstalled,
@@ -199,11 +201,14 @@ internal static class PaletteIndex
     /// | `vi.lib\addons\Wovalab`, `vi.lib\addons\Delacor` (DQMH) | 4 each |
     /// | NI's own `vi.lib\picture\3D Picture Control`, `vi.lib\net\SFTP`, `vi.lib\net\SSH` | ~12 |
     ///
-    /// SCANNED BROADLY - `vi.lib` and `user.lib` whole - rather than at the two `addons` folders
-    /// the pattern suggests. NI's 3D Picture, SFTP and SSH palettes are under neither, so the
-    /// narrow reading would miss them; and "palette files live under a folder called X" is a
-    /// convention this class has already been caught by twice, once for LVAddons and once here.
-    /// The cost is a directory walk, not a read: only `.mnu` files are opened, and there are 94.
+    /// SCANNED BROADLY - each tree whole - rather than at the `addons` folders the pattern
+    /// suggests. NI's 3D Picture, SFTP and SSH palettes are under neither, so the narrow reading
+    /// would miss them; and "palette files live under a folder called X" is a convention this
+    /// class has already been caught by twice, once for LVAddons and once here. The cost is a
+    /// directory walk, not a read: only the `.mnu` files are opened, and there are 157.
+    ///
+    /// See <see cref="LooseTrees"/> for the full sweep and for the one `.mnu` deliberately left
+    /// out.
     ///
     /// The LABEL reuses the add-on convention rather than inventing a second one: the source name
     /// then the path within it, so a Caraya hit reads
@@ -211,8 +216,31 @@ internal static class PaletteIndex
     /// tree alone would print `addons\...` and read like a `menus`-relative palette path, which is
     /// exactly the kind of plausible-but-wrong string this class exists to avoid handing out.
     /// </summary>
+    /// <summary>
+    /// The trees swept for `.mnu` files beyond `menus` and the LVAddons. Chosen by sweeping the
+    /// WHOLE installation and reading what came back, 2026-09-07:
+    ///
+    /// | tree | .mnu | why |
+    /// |---|---|---|
+    /// | `vi.lib` | 68 | toolkits: Caraya, VI Tester, JSONtext, Wovalab, plus NI's 3D Picture, SFTP, SSH |
+    /// | `user.lib` | 26 | OpenG, and anything the user installed |
+    /// | `instr.lib` | 61 | INSTRUMENT DRIVERS - the standard location for them |
+    /// | `Targets` | 2 | `Targets\NI\FPGA\menus\FPGAControls` - a real menus folder the scan never reached |
+    ///
+    /// `instr.lib` matters more than its count here suggests. This station carries one driver
+    /// (`Agilent 34401`) and nine `_Template - *` skeletons, and still yields 68 VI names; a real
+    /// test rig has a driver per instrument, and "which VI configures this DMM" is exactly the
+    /// question a caller brings to this index.
+    ///
+    /// DELIBERATELY EXCLUDED: `resource\plugins\PopupMenus\...\Class Methods Shortcut Palette.mnu`.
+    /// It is a right-click menu, not a palette of callable VIs, and feeding IDE menu actions into
+    /// a catalogue of Call targets is precisely the plausible-but-wrong string this class exists
+    /// to avoid handing out. It is the only `.mnu` under `resource`.
+    /// </summary>
+    private static readonly string[] LooseTrees = ["vi.lib", "user.lib", "instr.lib", "Targets"];
+
     private static List<PaletteSource> LooseSources(string root) =>
-        [.. new[] { "vi.lib", "user.lib" }
+        [.. LooseTrees
             .Select(folder => (Name: folder, Path: Path.Combine(root, folder)))
             .Where(pair => Directory.Exists(pair.Path))
             .Select(pair => new PaletteSource(pair.Name, pair.Path))];
