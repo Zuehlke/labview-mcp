@@ -30,6 +30,7 @@ internal static class CommandLine
         ["--include-specialised"] = false,
         ["--refresh"] = false,
         ["--port"] = true,
+        ["--lvversion"] = true,
         ["--vi"] = true,
         ["--project"] = true,
         ["--timeout"] = true,
@@ -97,6 +98,9 @@ internal static class CommandLine
                                             and reopen the project. Does NOT save the project
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
+          --lvversion <v>   LVVersion stamped into NEW .lvproj/.lvclass/.lvlib files,
+                            as a year (2025) or a stamp (25008000). Detected from the
+                            running LabVIEW otherwise; may not be NEWER than it
           --vi <path>       VI used by --selftest (defaults to a shipped LabVIEW example)
           --project <path>  .lvproj used by --selftest
           --timeout <s>     how long --watch and --ensure-labview wait (default 300),
@@ -121,8 +125,9 @@ internal static class CommandLine
           --parent <path>   --create-class parent .lvclass to derive from
           --help            print this text
 
-        LABVIEW_GRPC_PORT works instead of --port. The self-test needs LabVIEW 2026 running
-        WITH its AI assistant open: the lvai gRPC service starts with Nigel, not with the IDE.
+        LABVIEW_GRPC_PORT works instead of --port, LABVIEWMCP_LVVERSION instead of
+        --lvversion. The self-test needs the LabVIEW this server connects to running WITH its
+        AI assistant open: the lvai gRPC service starts with Nigel, not with the IDE.
         """;
 
     public static bool HasFlag(string[] args, string name) =>

@@ -89,7 +89,15 @@ internal static class LabViewLocator
         return int.TryParse(match.Groups["release"].Value, out release);
     }
 
-    /// <summary>Newest release first; within a release, 32-bit first.</summary>
+    /// <summary>
+    /// Newest release first; within a release, 32-bit first.
+    ///
+    /// DELIBERATELY NOT STEERABLE, decided 2026-09-07. Making `--lvversion` pick which LabVIEW to
+    /// START was considered and rejected: newest-installed is the wanted behaviour, and the
+    /// version stamp does not need it. Stamping a file OLDER than the running LabVIEW is safe -
+    /// LabVIEW opens older files - so the override can serve its purpose without touching the
+    /// launcher. Only the reverse breaks, and <see cref="Infra.LabViewVersionStamp"/> refuses it.
+    /// </summary>
     internal static LabViewInstall? Select(IEnumerable<LabViewInstall> installs) =>
         installs
             .OrderByDescending(i => i.Release)

@@ -199,6 +199,14 @@ internal sealed class ClassTools(LvaiConnection connection)
             // every accessor built against it broke with it. LabVIEW does it correctly in about
             // 350 ms. docs/lvclass-creation.md section 2a has what the old route would have had
             // to synthesise, and why it was abandoned.
+            // THE VERSION STAMP FIRST, because getting it wrong makes every later step fail with a
+            // message that points at the project rather than at the version. See
+            // LabViewVersionStamp: this REFUSES rather than guessing.
+            LabViewVersionStamp.Resolution stamp;
+            try { stamp = LabViewVersionStamp.Resolve(connection.Port); }
+            catch (LabViewVersionStamp.UnknownVersionException unknown)
+            { return Json.Error("lvVersionUnknown", unknown.Message); }
+
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
             var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classes",
@@ -227,9 +235,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                 //        what made `Project:Active Project` answer nothing and the accessor phase
                 //        report Error 1055.
                 //    None of it can happen to a project LabVIEW never sees.
-                var userProject = EnsureUserProject(projectPath, classPath, parentClassPath);
+                var userProject = EnsureUserProject(projectPath, classPath, parentClassPath,
+                                                    stamp.Stamp);
                 var (projectUsed, _, projectStep) =
-                    PrepareProject(null, classPath, className, work, parentClassPath);
+                    PrepareProject(null, classPath, className, work, parentClassPath,
+                                   stamp.Stamp);
+                projectStep["lvVersion"] = stamp.Stamp;
+                projectStep["lvVersionFrom"] = stamp.Source;
                 projectStep["userProject"] = userProject;
                 projectStep["note"] =
                     "LabVIEW works in a throwaway project so it never opens, adopts into, or saves "
@@ -271,8 +283,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, classPath, null,
-                        "The project could not be opened, so no project is active and NI's class " +
-                        "provider has nothing to work in. Nothing was written.");
+                        OpenProjectFailure(opened, stamp,
+                            "NI's class provider has nothing to work in."));
 
                 // 2. the carrier: one front-panel control per field, which is what NI's
                 //    add-member-data takes references to. No carrier means no private data.
@@ -604,6 +616,11 @@ internal sealed class ClassTools(LvaiConnection connection)
                     "overwrite=true if that is what you want, or use lvai_describe_class - it " +
                     "reports isInterface and the member list.");
 
+            LabViewVersionStamp.Resolution stamp;
+            try { stamp = LabViewVersionStamp.Resolve(connection.Port); }
+            catch (LabViewVersionStamp.UnknownVersionException unknown)
+            { return Json.Error("lvVersionUnknown", unknown.Message); }
+
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
             var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "interfaces",
@@ -618,9 +635,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // file on close, and keeps it in memory afterwards. A project LabVIEW never sees
                 // cannot suffer any of it. `parentClassPath` is null throughout - an interface has
                 // no parent class, and NI's provider has no terminal for one.
-                var userProject = EnsureUserProject(projectPath, interfacePath, null);
+                var userProject = EnsureUserProject(projectPath, interfacePath, null,
+                                                    stamp.Stamp);
                 var (projectUsed, _, projectStep) =
-                    PrepareProject(null, interfacePath, interfaceName, work, null);
+                    PrepareProject(null, interfacePath, interfaceName, work, null,
+                                   stamp.Stamp);
+                projectStep["lvVersion"] = stamp.Stamp;
+                projectStep["lvVersionFrom"] = stamp.Source;
                 projectStep["userProject"] = userProject;
                 projectStep["note"] =
                     "LabVIEW works in a throwaway project so it never opens, adopts into, or saves "
@@ -649,8 +670,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, interfacePath, null,
-                        "The project could not be opened, so no project is active and NI's "
-                        + "interface provider has nothing to work in. Nothing was written.");
+                        OpenProjectFailure(opened, stamp,
+                            "NI's interface provider has nothing to work in."));
 
                 var helperRun = await RunCreateInterfaceHelperAsync(
                     interfacePath, parents, timeoutSeconds, ct);
@@ -988,7 +1009,7 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// path rather than searched for among an open project's classes.
     /// </summary>
     private static string? EnsureUserProject(string? projectPath, string classPath,
-                                             string? parentClassPath)
+                                             string? parentClassPath, string lvVersion)
     {
         if (projectPath is not { Length: > 0 }) return null;
 
@@ -996,7 +1017,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         // An EMPTY project, not one listing the class: LabVIEW opens a modal search dialog for a
         // project item whose file is not there yet, and a modal dialog stops the gRPC service.
-        if (!File.Exists(full)) File.WriteAllText(full, LvClass.Project([]));
+        if (!File.Exists(full)) File.WriteAllText(full, LvClass.Project([], lvVersion));
 
         // The parent is listed for the READER's benefit - a hierarchy the project does not show is
         // confusing - not because anything in the run needs it there.
@@ -1018,12 +1039,12 @@ internal sealed class ClassTools(LvaiConnection connection)
 
     private static (string Path, bool Scratch, JsonObject Step) PrepareProject(
         string? projectPath, string classPath, string className, string work,
-        string? parentClassPath)
+        string? parentClassPath, string lvVersion)
     {
         if (projectPath is not { Length: > 0 })
         {
             var scratchPath = Path.Combine(work, $"{className}-loadcheck.lvproj");
-            File.WriteAllText(scratchPath, LvClass.Project(ParentEntry(scratchPath)));
+            File.WriteAllText(scratchPath, LvClass.Project(ParentEntry(scratchPath), lvVersion));
             return (scratchPath, true, new JsonObject
             {
                 ["step"] = "project",
@@ -1041,7 +1062,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         if (!File.Exists(full))
         {
-            File.WriteAllText(full, LvClass.Project(ParentEntry(full)));
+            File.WriteAllText(full, LvClass.Project(ParentEntry(full), lvVersion));
             return (full, false, new JsonObject
             {
                 ["step"] = "project",
@@ -1500,6 +1521,32 @@ internal sealed class ClassTools(LvaiConnection connection)
         try { if (Directory.Exists(path)) Directory.Delete(path, recursive: true); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    /// <summary>
+    /// Why the throwaway project would not open, saying so in terms of the CAUSE rather than the
+    /// consequence.
+    ///
+    /// `Error 1125, File version is later than the current LabVIEW version` is the one worth
+    /// naming: it means the file this server just wrote is stamped for a newer LabVIEW than the
+    /// one at the other end of the connection, and it is what made the whole class toolchain
+    /// unusable on a LabVIEW 2025 station while every message talked about projects. The old text
+    /// - "The project could not be opened, so no project is active" - describes what followed.
+    /// </summary>
+    private static string OpenProjectFailure(string opened, LabViewVersionStamp.Resolution stamp,
+                                             string consequence)
+    {
+        if (ErrorCode(opened) == 1125)
+            return $"VERSION MISMATCH. LabVIEW refused the throwaway project with Error 1125, " +
+                   $"'File version is later than the current LabVIEW version' - so the stamp " +
+                   $"written into it ({stamp.Stamp}, from {stamp.Source}) is NEWER than the " +
+                   "LabVIEW this server is connected to. Nothing was written. Check which LabVIEW " +
+                   "is actually serving the gRPC port, and set " +
+                   $"{LabViewVersionStamp.OverrideVariable}=<year> or --lvversion <year> to the " +
+                   "release it really is.";
+
+        return "The project could not be opened, so no project is active and " + consequence +
+               " Nothing was written.";
     }
 
     private static JsonObject Step(string name, string answer) => new()

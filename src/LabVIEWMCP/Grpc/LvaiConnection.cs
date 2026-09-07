@@ -138,7 +138,7 @@ internal sealed class LvaiConnection : IAsyncDisposable
             $"Could not find a port serving lvai.LVAI. Tried {candidates.Count} candidate(s):" +
             Environment.NewLine + string.Join(Environment.NewLine, tried.Select(t => "  - " + t)) +
             Environment.NewLine +
-            "Is LabVIEW 2026 running, and is the 'LV AI gRPC Service' active? " +
+            "Is LabVIEW running, and is the 'LV AI gRPC Service' active? " +
             "MEASURED: a running LabVIEW is not enough - the service starts with NIGEL, the AI " +
             "assistant, not with the IDE. " +
             "THE STATUS CODE ABOVE SAYS WHICH OF TWO VERY DIFFERENT PROBLEMS THIS IS, and reading " +

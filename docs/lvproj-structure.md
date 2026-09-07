@@ -59,6 +59,21 @@ An 8-digit number, `YY008000`, where `YY` is the LabVIEW year minus 2000:
 The pattern is inferred from three points, so read the value off a shipped project for any other
 version rather than extrapolating.
 
+**A FILE THIS SERVER CREATES IS STAMPED FOR THE LabVIEW IT IS CONNECTED TO, not for 2026.** That
+was a hardcoded `26008000` in three writers until 2026-09-07, and it made every class tool unusable
+on a LabVIEW 2025 station: each writes a throwaway `<name>-loadcheck.lvproj` and opens it, and 2025
+answers `Error 1125, File version is later than the current LabVIEW version` at `Project:Open`.
+Re-stamping the same file to `25008000` by hand made `lvai_open_file` answer `errorCode: 0`, which
+is what identified the cause. `LabViewVersionStamp` is now the single source; it reads the release
+off the RUNNING LabVIEW's own executable path, and refuses rather than guessing when it cannot.
+`LABVIEWMCP_LVVERSION` / `--lvversion` override it, and may name an older release but not a newer
+one — older opens fine in a newer IDE, the reverse is the 1125.
+
+**An EXISTING file is never re-stamped.** Anything that edits a `.lvproj`, `.lvlib` or `.lvclass`
+the user already has leaves its `LVVersion` byte-for-byte, even when it is older than the connected
+LabVIEW — otherwise every edit is a silent, irreversible version upgrade of somebody's file. The
+stamp is for NEW files only.
+
 ## 3. Item types
 
 Eleven `Type` values appear. Only six ever carry a `URL`; the rest are containers or build specs

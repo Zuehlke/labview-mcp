@@ -77,7 +77,7 @@ public class LvClassTests : IDisposable
     public void WrapPutsTheControlLengthAtOffset29AsBigEndianU32()
     {
         var ctl = new byte[300];
-        var blob = LvClass.DecodeProperty(LvClass.Wrap(ctl));
+        var blob = LvClass.DecodeProperty(LvClass.Wrap(ctl, LabViewVersionStamp.Stamp(2026)));
 
         var length = (blob[LvClass.LengthFieldOffset] << 24) |
                      (blob[LvClass.LengthFieldOffset + 1] << 16) |
@@ -94,7 +94,7 @@ public class LvClassTests : IDisposable
     [Fact]
     public void WrapKeepsTheLabViewVersionAtTheFrontOfTheHeader()
     {
-        var blob = LvClass.DecodeProperty(LvClass.Wrap(new byte[8]));
+        var blob = LvClass.DecodeProperty(LvClass.Wrap(new byte[8], LabViewVersionStamp.Stamp(2026)));
 
         // LVVersion 26008000, the only four bytes of that header anyone has decoded.
         Assert.Equal(new byte[] { 0x26, 0x00, 0x80, 0x00 }, blob[..4]);
@@ -106,7 +106,7 @@ public class LvClassTests : IDisposable
         var ctl = new byte[512];
         for (var i = 0; i < ctl.Length; i++) ctl[i] = (byte)(i % 251);
 
-        Assert.Equal(ctl, LvClass.Unwrap(LvClass.Wrap(ctl)));
+        Assert.Equal(ctl, LvClass.Unwrap(LvClass.Wrap(ctl, LabViewVersionStamp.Stamp(2026))));
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class LvClassTests : IDisposable
     [Fact]
     public void UnwrapRefusesALengthFieldThePayloadCannotSatisfy()
     {
-        var good = LvClass.DecodeProperty(LvClass.Wrap(new byte[64]));
+        var good = LvClass.DecodeProperty(LvClass.Wrap(new byte[64], LabViewVersionStamp.Stamp(2026)));
         var shifted = new byte[good.Length];
         good.AsSpan(0, good.Length - 2).CopyTo(shifted.AsSpan(2));
 
@@ -229,7 +229,8 @@ public class LvClassTests : IDisposable
     [Fact]
     public void DocumentWithNoParentCarriesNoParentLibrariesItem()
     {
-        var text = LvClass.Document("Auto", LvClass.Wrap(new byte[16]), null, null);
+        var text = LvClass.Document("Auto", LvClass.Wrap(new byte[16], LabViewVersionStamp.Stamp(2026)),
+                                    null, null, LabViewVersionStamp.Stamp(2026));
 
         Assert.DoesNotContain("Parent Libraries", text, StringComparison.Ordinal);
         Assert.Contains("<Item Name=\"Auto.ctl\" Type=\"Class Private Data\" URL=\"Auto.ctl\">",
@@ -240,8 +241,9 @@ public class LvClassTests : IDisposable
     [Fact]
     public void DocumentWithAParentNamesItQualifiedAndByRelativeUrl()
     {
-        var text = LvClass.Document("Bus", LvClass.Wrap(new byte[16]),
-                                    "Fleet.lvlib:Auto.lvclass", "../Auto/Auto.lvclass");
+        var text = LvClass.Document("Bus", LvClass.Wrap(new byte[16], LabViewVersionStamp.Stamp(2026)),
+                                    "Fleet.lvlib:Auto.lvclass", "../Auto/Auto.lvclass",
+                                    LabViewVersionStamp.Stamp(2026));
 
         Assert.Contains(
             "<Item Name=\"Fleet.lvlib:Auto.lvclass\" Type=\"Parent\" URL=\"../Auto/Auto.lvclass\"/>",
@@ -381,7 +383,7 @@ public class LvClassTests : IDisposable
     [Fact]
     public void ReadReportsPrivateDataBytesAndFlagsABlobThatDoesNotDecode()
     {
-        var good = LvClass.Read(WriteClass("Auto", "", LvClass.Wrap(new byte[321])));
+        var good = LvClass.Read(WriteClass("Auto", "", LvClass.Wrap(new byte[321], LabViewVersionStamp.Stamp(2026))));
         Assert.Equal(321, good.PrivateDataBytes);
 
         // -1 is the state that makes LabVIEW report the class with every field blank.
@@ -415,7 +417,7 @@ public class LvClassTests : IDisposable
     public void AddToProjectPutsTheClassBeforeDependenciesAndRefusesADuplicate()
     {
         var projectPath = Path.Combine(_tree, "Fleet.lvproj");
-        File.WriteAllText(projectPath, LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")]));
+        File.WriteAllText(projectPath, LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")], LabViewVersionStamp.Stamp(2026)));
 
         Assert.True(LvClass.AddToProject(projectPath, "Bus", "../Bus/Bus.lvclass"));
 
@@ -438,7 +440,7 @@ public class LvClassTests : IDisposable
     public void AddToProjectPreservesTheFilesOwnFormatting()
     {
         var projectPath = Path.Combine(_tree, "Style.lvproj");
-        var before = LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")]);
+        var before = LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")], LabViewVersionStamp.Stamp(2026));
         File.WriteAllText(projectPath, before);
 
         Assert.True(LvClass.AddToProject(projectPath, "Bus", "../Bus/Bus.lvclass"));
@@ -548,7 +550,7 @@ public class LvClassTests : IDisposable
     [Fact]
     public void ProjectCarriesTheDocumentedCorePropertySetAheadOfItsItems()
     {
-        var text = LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")]);
+        var text = LvClass.Project([("Auto.lvclass", "../Auto/Auto.lvclass")], LabViewVersionStamp.Stamp(2026));
 
         foreach (var name in new[]
                  {
