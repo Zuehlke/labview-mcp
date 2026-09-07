@@ -1046,6 +1046,55 @@ running — with no error, because a control that is absent simply keeps its def
 file could not reach. The check now lives in `Infra/HelperCache.NeedsRebuild`;
 `docs/lvclass-interfaces.md` §5 lists the ~13 sites that still key on existence alone.
 
+### Verified against LabVIEW the same day
+
+Both changes were run for real on a throwaway copy of the interface, building a **new static member
+with three class-typed terminals across two classes** — NI's `Pry.vi` shape exactly:
+
+- `ok: true`, every stage `error out = 0`, `terminalsRetyped: 3`, `dynamicDispatchTerminals: []`,
+  `verifiedOnDisk: true` with `pathStandInsLeft: 0`. 7.1 s end to end.
+- **`inputsSent: 5`, not 6** — the `dispatch terminal indices` input really was omitted, which is
+  the static-member fix seen from the run's own answer.
+- The helper VI was **rebuilt** (`step: helper` in the prologue) from the edited AIXML, which is the
+  cache fix firing live; the cached copy on disk was four days old.
+- `lvai_vi_terminals` reads the result as `IVehicle.lvclass:Probe Engine Power.vi` with `IVehicle in`
+  `required` — a member, and static.
+
+### The verify step counts terminals; it does not check WHICH class
+
+Worth knowing before trusting `verifiedOnDisk`. `classTypedTerminals: 3` would read exactly the same
+if all three terminals had been retyped to the method's own class — which is precisely what the old
+code did and the new code must not. So the per-terminal fix was confirmed one level lower, in the
+saved file's `VCTP`, where each type descriptor names its class:
+
+```xml
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="IVehicle in"><Item Text="IVehicle.lvclass"/>
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="Engine in">  <Item Text="Engine.lvclass"/>
+<TypeDesc Type="Refnum" RefType="UDClassInst" Label="Engine out"> <Item Text="Engine.lvclass"/>
+```
+
+`pylv_extract` reads that with no LabVIEW. **The front-panel heap does NOT carry the class name** —
+`udClassDDO` objects have no label and no `.lvclass` string in them at all, so the heap can only ever
+answer "class-typed" and never "typed on what". Extending the tool's verify to compare `VCTP` labels
+against the requested classes is the obvious next change and is not done.
+
+### Re-running on a member that already exists is Error 1004, and the hint names the wrong cause
+
+Measured in passing, because it was the first thing tried. Repairing an existing member in place —
+`vi` with no `aixml`, `panePattern: 0` — retyped all three terminals correctly in memory and then
+answered **`add member error`, code 1004** at `AddItemFromMemory`. §3.0 records 1004 for wiring the
+VI's full *path* where its bare name belongs; here the bare name was right, and the likely cause is
+that a VI already owned by a library is known to LabVIEW by its **qualified** name. Not established.
+
+Two things follow, and the second is the useful one:
+
+- The tool's `Hint` for that stage names **Error 56002** ("already a loose project item"), which is
+  a different cause and sends you to the project. The hint should distinguish the two codes.
+- **Nothing was written.** `wire rule`, `save vi` and `save class` all inherited the 1004 through the
+  error chain and did not run, so the on-disk VI and `.lvclass` were byte-identical afterwards
+  (md5 unchanged). That is §1c and §1d working as designed: a retype that does not reach both saves
+  reaches nothing, and the in-memory `terminals retyped: 3` was not evidence of anything.
+
 ### Cost
 
 The run that found all this: **~14.5 min of wall clock against ~35 s inside tools over 36 calls, a
@@ -1071,11 +1120,10 @@ Honest limits, so nobody reads this document as a warranty:
   separately — `scripts/lvlu_add_test_method.xml` (retype + membership) and the DAQmx run's
   `daq_member.vi` (membership + wire rules). Observed since, repeatedly: five VIs on 2026-09-07 with
   `error out = 0` at every stage, including on an interface.
-- **The two 2026-09-07 changes are unit-tested but not yet run against LabVIEW.** The static-member
-  omission and the per-terminal class path are covered by regression tests over the input map, and
-  the helper AIXML change — a third `Spreadsheet String To Array` and an indexing tunnel — has not
-  been generated or run. That is exactly the fixture trap §4b names, so treat the next real use as
-  the measurement.
+- **The two 2026-09-07 changes are verified against LabVIEW**, on a new static member with three
+  class-typed terminals across two classes — §4o. What is *not* covered: a per-terminal class on a
+  **dynamic** terminal (every measured case put the foreign class on a static one), and the verify
+  step still cannot tell a right class from a wrong one.
 - **No polymorphic dispatch through the base class.** The DAQmx methods are dynamic dispatch on the
   child; the base carries no matching stubs, so a caller holding a base-class wire cannot dispatch
   to them. Creating those stubs is now a `lvai_add_class_method` call away and was out of scope.
