@@ -1092,6 +1092,18 @@ what caused it**, and **two measurements do not separate two distributions whose
 2** — after round 2 the reading was "the fix causes them", the exact opposite of the hypothesis, and
 just as wrong. `docs/labview-crash-signatures.md`.
 
+**AND THE `Save` BEFORE THE `Close` IS NOT THE CAUSE EITHER — tested, 2026-09-07, seven closes.**
+It was the last standing hypothesis, because a project save is documented here as making LabVIEW
+adopt every open VI and `bad parent in MoveItem` is a project-tree complaint. Built the helper with
+the `Save` node removed and alternated: **with the Save 0, 2, 0, 0; without it 0, 3, 0** — and the
+same condition gave 2 and 0 on two runs, so the condition does not determine the count either.
+**Keep the `Save`**: it costs nothing measurable, and dropping it re-opens the modal-save-prompt
+hazard that stops the whole gRPC service. A `saveFirst: false` option was considered and NOT added.
+Two things fell out of it: `MoveItem` did not reproduce ONCE in seven closes, so it needs a
+condition none of them created — VIs **generated** while the project is open, rather than merely
+loaded or opened, is the only surviving candidate; and **a non-member VI open in the IDE was NOT
+adopted by the save**, so "LabVIEW adopts every VI it has open" is at best incomplete as written.
+
 **Read NI's own log, not the Windows event log.** LabVIEW installs its own crash handler: it catches
 the fault, writes `%TEMP%\LabVIEW_32_<ver>_interactive_<user>_cur.txt` plus a minidump, and exits.
 Windows Error Reporting never sees it, so an empty Application log is **not an alibi**. Measured

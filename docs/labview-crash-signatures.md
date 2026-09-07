@@ -1333,14 +1333,20 @@ with both helpers, while the 33-minute class build produced one per close. It th
 what LabVIEW has in memory, not on the close's own wiring, which is exactly what the `Save`
 adoption hypothesis below predicts and the refnum hypothesis does not.
 
-**The `Save` is the remaining candidate, and the A/B above raised its odds.** This
-helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved project
-risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a loose
-project item — measured repeatedly elsewhere in this repository, and seen in this very run, where a
-test agent had to strip three `LVMCP Stub …` items that LabVIEW had adopted into the `.lvproj`.
-Three adopted items, three `bad parent in MoveItem`. That is a correlation from one run and nothing
-more, but it is a cheap experiment: close a project with and without the `Save`, with and without
-adopted VIs in memory, and count.
+**The `Save` looked like the remaining candidate here — IT WAS TESTED AND IT IS NOT. See "SETTLED,
+2026-09-07" at the end of this document before spending any more time on it.** The reasoning below
+is kept because it is how the hypothesis was formed, not because it held.
+
+This helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved
+project risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a
+loose project item — seen in this very run, where a test agent had to strip three `LVMCP Stub …`
+items that LabVIEW had adopted into the `.lvproj`. Three adopted items, three `bad parent in
+MoveItem`; a correlation from one run, and a cheap experiment.
+
+Run seven closes later: no separation with or without the `Save`, `MoveItem` did not reproduce at
+all, and a non-member VI merely OPEN in the IDE was not adopted by the save. So the adoption
+sentence above is at best incomplete, and whatever adopts those stubs in a class build is something
+narrower than "open in the IDE".
 
 The section above lists `keepCarrier: false` and `tidyProject: true` as the other unexcluded
 candidates. Neither was in play here — which narrows it usefully, because this run reproduced the
@@ -1407,3 +1413,61 @@ Not because the warnings cause anything — that remains unestablished, and thes
 produced hundreds of working VIs. Because **`dwarnCount` saturates at 200 and `looksDegraded` flips
 with it**, so a signature we emit ourselves crowds out the ones that might mean something. Removing
 24 per build keeps the number diagnostic for longer.
+
+## SETTLED, 2026-09-07: the `Save` before `Close` is NOT what emits these warnings
+
+The last open hypothesis about the close path. `lvai_close_active_project` runs `Save` then
+`Close`, a project save is documented here as making LabVIEW **adopt every VI it has open**, and
+`bad parent in MoveItem` is a project-tree complaint — so the `Save` was the standing suspect for
+the 1–3 `MoveItem` warnings every cold class build produced. Tested by building the shipped helper
+with the `Save` node **removed** (`Close` takes the reference straight from
+`Project:Active Project`; everything else byte-identical, including the `Close Reference` at uid 45)
+and alternating the two over seven closes in three deliberately different states.
+
+| # | state | `Save`? | warnings | of those `MoveItem` |
+|---|---|---|---|---|
+| 1 | quiet — project just opened | yes | 0 | 0 |
+| 2 | quiet | **no** | 0 | 0 |
+| 3 | loaded — a 9-suite Caraya run first, so every test VI, class and accessor is in memory | yes | 2 | 0 |
+| 4 | loaded | **no** | 3 | 0 |
+| 5 | a NON-MEMBER VI opened into the IDE beside the project | yes | 0 | 0 |
+| 6 | loaded (repeat of 3) | yes | **0** | 0 |
+| 7 | loaded (repeat of 4) | **no** | **0** | 0 |
+
+**With the Save: 0, 2, 0, 0. Without it: 0, 3, 0.** No separation — and rows 3 and 6 are the SAME
+condition giving 2 and 0, so the condition does not determine the count either. `DestroyPlatformEvent`
+here is sporadic noise that appears around a heavy load and is not caused by the Save.
+
+### Three things this settles or corrects
+
+**Keep the `Save`.** It costs nothing measurable, and removing it re-opens a real hazard: `Close`
+carries no save parameter, so an unsaved project risks LabVIEW's **modal** save prompt, which stops
+the whole gRPC service until a human dismisses it. A `saveFirst: false` option was considered and
+NOT added — there is no measured benefit to trade against that risk, and an option nobody should
+use is worse than no option.
+
+**`bad parent in MoveItem` did not reproduce ONCE in seven closes**, having appeared 1–3 times per
+cold class build. So it needs a condition none of these seven created. What the builds have that
+these do not is VIs **generated** while the project is open — the class carriers and socket stubs —
+rather than merely loaded or opened. That is the next thing to try, and it is now the only
+surviving candidate rather than one of two.
+
+**"LabVIEW adopts every VI it has open when it saves the project" is at best incomplete.** Row 5
+opened `LVMCP Mth1.vi` — not a project member, in `user.lib` — into the IDE alongside the active
+project, then saved and closed. `grep -c LVMCP` on the `.lvproj` afterwards: **0**. No adoption, no
+warning. So adoption is not a property of "open in the IDE"; whatever causes it in a class build is
+something narrower, and the sentence should not be relied on as written.
+
+### Method note
+
+Seven closes rather than two, deliberately. An earlier A/B on this same signature was called
+after two rounds and read "the fix CAUSES the warnings" — the exact opposite of its hypothesis, and
+wrong. With counts that live in 0–3, two points separate nothing; rows 3 and 6 above are the same
+experiment disagreeing with itself, which is the whole reason the repeat exists.
+
+The variant helper and the log-differ are kept under `experiments/close-save-dwarn/`, because
+re-deriving them is the expensive part of repeating this. **Under `experiments/`, not `scripts/`**,
+and that is deliberate: the `.csproj` copies `scripts\**\*` recursively next to the exe, so a
+never-to-be-shipped helper placed there would install alongside the real ones — and
+`lvai_close_active_project` takes a `helperAixmlPath`, so it could be pointed at by mistake.
+`experiments/` ships nothing.
