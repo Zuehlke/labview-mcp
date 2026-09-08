@@ -1333,14 +1333,20 @@ with both helpers, while the 33-minute class build produced one per close. It th
 what LabVIEW has in memory, not on the close's own wiring, which is exactly what the `Save`
 adoption hypothesis below predicts and the refnum hypothesis does not.
 
-**The `Save` is the remaining candidate, and the A/B above raised its odds.** This
-helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved project
-risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a loose
-project item — measured repeatedly elsewhere in this repository, and seen in this very run, where a
-test agent had to strip three `LVMCP Stub …` items that LabVIEW had adopted into the `.lvproj`.
-Three adopted items, three `bad parent in MoveItem`. That is a correlation from one run and nothing
-more, but it is a cheap experiment: close a project with and without the `Save`, with and without
-adopted VIs in memory, and count.
+**The `Save` looked like the remaining candidate here — IT WAS TESTED AND IT IS NOT. See "SETTLED,
+2026-09-07" at the end of this document before spending any more time on it.** The reasoning below
+is kept because it is how the hypothesis was formed, not because it held.
+
+This helper runs `Save` before `Close`, because `Close` carries no save parameter and an unsaved
+project risks a modal prompt. But a project save makes LabVIEW **adopt every VI it has open** as a
+loose project item — seen in this very run, where a test agent had to strip three `LVMCP Stub …`
+items that LabVIEW had adopted into the `.lvproj`. Three adopted items, three `bad parent in
+MoveItem`; a correlation from one run, and a cheap experiment.
+
+Run seven closes later: no separation with or without the `Save`, `MoveItem` did not reproduce at
+all, and a non-member VI merely OPEN in the IDE was not adopted by the save. So the adoption
+sentence above is at best incomplete, and whatever adopts those stubs in a class build is something
+narrower than "open in the IDE".
 
 The section above lists `keepCarrier: false` and `tidyProject: true` as the other unexcluded
 candidates. Neither was in play here — which narrows it usefully, because this run reproduced the
@@ -1407,3 +1413,131 @@ Not because the warnings cause anything — that remains unestablished, and thes
 produced hundreds of working VIs. Because **`dwarnCount` saturates at 200 and `looksDegraded` flips
 with it**, so a signature we emit ourselves crowds out the ones that might mean something. Removing
 24 per build keeps the number diagnostic for longer.
+
+## SETTLED, 2026-09-07: the `Save` before `Close` is NOT what emits these warnings
+
+The last open hypothesis about the close path. `lvai_close_active_project` runs `Save` then
+`Close`, a project save is documented here as making LabVIEW **adopt every VI it has open**, and
+`bad parent in MoveItem` is a project-tree complaint — so the `Save` was the standing suspect for
+the 1–3 `MoveItem` warnings every cold class build produced. Tested by building the shipped helper
+with the `Save` node **removed** (`Close` takes the reference straight from
+`Project:Active Project`; everything else byte-identical, including the `Close Reference` at uid 45)
+and alternating the two over seven closes in three deliberately different states.
+
+| # | state | `Save`? | warnings | of those `MoveItem` |
+|---|---|---|---|---|
+| 1 | quiet — project just opened | yes | 0 | 0 |
+| 2 | quiet | **no** | 0 | 0 |
+| 3 | loaded — a 9-suite Caraya run first, so every test VI, class and accessor is in memory | yes | 2 | 0 |
+| 4 | loaded | **no** | 3 | 0 |
+| 5 | a NON-MEMBER VI opened into the IDE beside the project | yes | 0 | 0 |
+| 6 | loaded (repeat of 3) | yes | **0** | 0 |
+| 7 | loaded (repeat of 4) | **no** | **0** | 0 |
+
+**With the Save: 0, 2, 0, 0. Without it: 0, 3, 0.** No separation — and rows 3 and 6 are the SAME
+condition giving 2 and 0, so the condition does not determine the count either. `DestroyPlatformEvent`
+here is sporadic noise that appears around a heavy load and is not caused by the Save.
+
+### Three things this settles or corrects
+
+**Keep the `Save`.** It costs nothing measurable, and removing it re-opens a real hazard: `Close`
+carries no save parameter, so an unsaved project risks LabVIEW's **modal** save prompt, which stops
+the whole gRPC service until a human dismisses it. A `saveFirst: false` option was considered and
+NOT added — there is no measured benefit to trade against that risk, and an option nobody should
+use is worse than no option.
+
+**`bad parent in MoveItem` did not reproduce ONCE in seven closes**, having appeared 1–3 times per
+cold class build. So it needs a condition none of these seven created. What the builds have that
+these do not is VIs **generated** while the project is open — the class carriers and socket stubs —
+rather than merely loaded or opened. That is the next thing to try, and it is now the only
+surviving candidate rather than one of two.
+
+**"LabVIEW adopts every VI it has open when it saves the project" is at best incomplete.** Row 5
+opened `LVMCP Mth1.vi` — not a project member, in `user.lib` — into the IDE alongside the active
+project, then saved and closed. `grep -c LVMCP` on the `.lvproj` afterwards: **0**. No adoption, no
+warning. So adoption is not a property of "open in the IDE"; whatever causes it in a class build is
+something narrower, and the sentence should not be relied on as written.
+
+### Method note
+
+Seven closes rather than two, deliberately. An earlier A/B on this same signature was called
+after two rounds and read "the fix CAUSES the warnings" — the exact opposite of its hypothesis, and
+wrong. With counts that live in 0–3, two points separate nothing; rows 3 and 6 above are the same
+experiment disagreeing with itself, which is the whole reason the repeat exists.
+
+The variant helper and the log-differ are kept under `experiments/close-save-dwarn/`, because
+re-deriving them is the expensive part of repeating this. **Under `experiments/`, not `scripts/`**,
+and that is deliberate: the `.csproj` copies `scripts\**\*` recursively next to the exe, so a
+never-to-be-shipped helper placed there would install alongside the real ones — and
+`lvai_close_active_project` takes a `helperAixmlPath`, so it could be pointed at by mistake.
+`experiments/` ships nothing.
+
+## SETTLED, 2026-09-08: `dwarnCount` counted LOG LINES, not events — and the fix is in the counter
+
+**Every DWarn figure in this repository written before this date is a line count and halves.** NI
+writes each event **twice**: a bare line, then the same message prefixed with its source position.
+
+```
+DWarn 0xBB613420: trying to override with non-reserved UID, request: 10 res: 0 max: 42 sat: 42
+source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420: trying to override with non-reserved UID, request: 10 res: 0 max: 42 sat: 42
+```
+
+`StatusTools.Health` counted the substring `DWarn`, so it reported two per event.
+
+**Measured with a controlled probe rather than inferred from one sample.** Four diagram objects at
+uids inside the reserved range log one event per object — a known delta — so both counting rules
+can be read against a number fixed in advance:
+
+| reading | `DWarn` substrings | `) : DWarn` lines | `<DEBUG_OUTPUT>` blocks |
+|---|---|---|---|
+| baseline | 2 | 1 | 1 |
+| after a 4-object probe at uids `10,11,12,13` | **10** | **5** | **5** |
+| Δ | +8 | +4 | +4 |
+
+Exactly 2× in both readings, and the event count matches the probe's four objects. So the marker
+is `) : DWarn`, one per event. `<DEBUG_OUTPUT>` blocks agree here but are **not** used, because a
+block need not carry a DWarn at all.
+
+**This was already known in one place and never propagated — which is the failure worth recording,
+not the arithmetic.** The paragraph above on the 34 `ThEvent.cpp` lines says it outright:
+"`dwarnCount` counts LINES while each event writes two, so 34 lines are 17 events." That analysis
+halved by hand, correctly, and then nothing else in this document, in `CLAUDE.md`, or in the code
+was changed to match. Same shape as the embedded-but-unshipped documents: a fact recorded in the
+one place that needed it, invisible to every other reader.
+
+**What changed in the code.** `StatusTools.CountDwarnEvents` counts events, `lvai_status` reports
+`dwarnCountedBy` so the unit is named in the answer, and both thresholds are halved to preserve
+their calibration exactly:
+
+| | before | after |
+|---|---|---|
+| unit | log lines | events |
+| `dwarnCountSaturated` cap | 200 | **100** |
+| `looksDegraded` floor | 50 | **25** |
+
+So "saturates at 200 after about fifty objects" — stated above and in
+`AixmlCheck`, `LvClass` and `TestTools` — remains true of the LOG; the counter now says 100.
+The **ratios** in every earlier analysis are unaffected, and so is every conclusion drawn from a
+delta: only absolute magnitudes were doubled.
+
+There is a fallback: if no `) : DWarn` line is found while the bare form is present, the raw count
+is returned and `dwarnCountedBy` reads `rawFallback`. A format this was never measured against must
+not make the count read 0, because a caller reads 0 as "nothing has gone wrong".
+
+### And the one event this build did produce was `bad parent in MoveItem`
+
+One event in a whole cold build — a class, six accessors, a scripted method, two swaps, a driver
+and eight icons. Its `LinkIdentity` stack names NI's accessor scripter, not the close helper:
+
+```
+[LinkIdentity "MemberVICreation.lvlib:BaseAccessorScripter.lvclass:AddVIToClass.vi" ...
+[LinkIdentity "MemberVICreation.lvlib:CLSUIP_CreateNewAccessor.vi" ...
+[LinkIdentity "lvai_create_accessors.vi" ...
+```
+
+`AddVIToClass` moves the new VI into the class item, and `MoveItem` is a project-tree operation, so
+the association is at least coherent. **It settles nothing.** The 2026-09-07 investigation above
+failed to reproduce this signature in seven closes and named "VIs generated while the project is
+open" as the surviving candidate — this run had that condition too, so it does not discriminate
+between the two. And n = 1, against the method note above: with counts that live in 0–3, one point
+separates nothing.

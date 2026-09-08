@@ -17,12 +17,19 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// The set of VIs reachable from LabVIEW's palettes, read from the .mnu files of the installed
 /// LabVIEW.
 ///
-/// Why this matters: AIXML generation accepts a `Call` only to a PALETTE-REACHABLE VI. Anything
-/// else - project-local, library-local, even a loose .vi in a folder - is rejected as "Unsupported
-/// SubVI". So "what may a generated VI call" is exactly "what is on the palette", and until now
-/// there was no way to ask: the info cache came back empty on a station whose cache is not
-/// populated, and enumerating vi.lib gives 19 322 files of which the vast majority are internal
-/// implementation VIs that are NOT legal Call targets.
+/// Why this matters: it is the searchable catalogue of what this station HAS. Enumerating vi.lib
+/// instead gives 19 616 files, the vast majority of them internal implementation VIs nobody should
+/// call, and the info cache comes back empty on a station whose cache is not populated.
+///
+/// THIS COMMENT CLAIMED THE INDEX WAS THE SET OF LEGAL TARGETS - "AIXML generation accepts a
+/// `Call` only to a PALETTE-REACHABLE VI" - AND THAT IS FALSE. Measured 2026-08-27 over eight
+/// probes: generation resolves a target BY NAME against what the installation can FIND, and the
+/// palette has nothing to do with it. A library member resolves by its qualifier with no palette
+/// entry; a loose .vi under vi.lib or user.lib resolves by its bare name with no palette entry and
+/// no library - which is exactly what makes a generated placeholder in user.lib callable. What
+/// does not resolve: a VI inside an .llb by bare name, a path in any spelling, and project-local
+/// code. Read literally, the old sentence argued away 600 usable VIs. Section 9 of
+/// docs/aixml-reference.md has the table.
 ///
 /// THE NAMES REPORTED HERE ARE NOT ALWAYS THE CALL TARGET. A palette VI that a LIBRARY owns needs
 /// its `lvlib:` qualifier and is refused by bare name - measured on LabVIEW 2026:
@@ -41,10 +48,12 @@ internal sealed record PaletteSource(string Label, string MenusFolder);
 /// list would be wrong on the next machine.
 ///
 /// IT IS CACHED ON DISK by <see cref="PaletteIndexStore"/>, and the payoff is MEASURED rather than
-/// assumed - `LabVIEWMCP --palette` over 582 palette files, three runs each: 146, 150, 148 ms to
-/// scan against 93, 94, 90 ms served from the cache. About 55 ms, most of the remainder being
-/// process start-up. That is a far smaller win than the example index's, which is 55 SECONDS cold
-/// against 804 ms, so do not read the two caches as resting on the same argument.
+/// assumed - `LabVIEWMCP --palette` over 743 palette files, three runs each: 221, 217, 218 ms to
+/// scan against 102, 97, 130 ms served from the cache. About 110 ms, most of the remainder being
+/// process start-up. It was 146/150/148 against 582 files before the loose trees were added, so
+/// the sweep roughly doubled the scan and the cache absorbs it. That is still a far smaller win
+/// than the example index's, which is 55 SECONDS cold against 804 ms, so do not read the two
+/// caches as resting on the same argument.
 ///
 /// The price is staleness, and it bites harder here: a stale palette either hides a VI that exists,
 /// which sends a generator off to rebuild from primitives, or offers one that has been uninstalled,
@@ -173,6 +182,69 @@ internal static class PaletteIndex
         return (folders.Select(f => new PaletteSource(f.Addon, f.Folder)).ToList(), skipped);
     }
 
+    /// <summary>
+    /// The palette trees that are NOT under a folder called `menus`, and which scanning only
+    /// `menus` therefore misses entirely.
+    ///
+    /// MEASURED 2026-09-07 on this installation: 94 `.mnu` files sit outside every `menus` folder,
+    /// carrying roughly 374 VI names. The documented casualty was Caraya, whose 18 palette files
+    /// live in `vi.lib\addons\_JKI Toolkits\dynamic_palette` - a query for `Caraya` answered "no
+    /// match" for VIs that validate, generate and run. It is not alone:
+    ///
+    /// | tree | .mnu |
+    /// |---|---|
+    /// | `vi.lib\addons` itself | 27 |
+    /// | `vi.lib\addons\_JKI Toolkits\dynamic_palette` (Caraya) | 18 |
+    /// | `vi.lib\addons\LabVIEW Open Source Project` | 8 |
+    /// | `vi.lib\addons\_JKI Toolkits\VI Tester` | 5 |
+    /// | `user.lib\_OpenG.lib\lvzip` | 5 |
+    /// | `vi.lib\addons\Wovalab`, `vi.lib\addons\Delacor` (DQMH) | 4 each |
+    /// | NI's own `vi.lib\picture\3D Picture Control`, `vi.lib\net\SFTP`, `vi.lib\net\SSH` | ~12 |
+    ///
+    /// SCANNED BROADLY - each tree whole - rather than at the `addons` folders the pattern
+    /// suggests. NI's 3D Picture, SFTP and SSH palettes are under neither, so the narrow reading
+    /// would miss them; and "palette files live under a folder called X" is a convention this
+    /// class has already been caught by twice, once for LVAddons and once here. The cost is a
+    /// directory walk, not a read: only the `.mnu` files are opened, and there are 157.
+    ///
+    /// See <see cref="LooseTrees"/> for the full sweep and for the one `.mnu` deliberately left
+    /// out.
+    ///
+    /// The LABEL reuses the add-on convention rather than inventing a second one: the source name
+    /// then the path within it, so a Caraya hit reads
+    /// `vi.lib: addons\_JKI Toolkits\dynamic_palette\caraya.mnu`. Labelling it relative to the
+    /// tree alone would print `addons\...` and read like a `menus`-relative palette path, which is
+    /// exactly the kind of plausible-but-wrong string this class exists to avoid handing out.
+    /// </summary>
+    /// <summary>
+    /// The trees swept for `.mnu` files beyond `menus` and the LVAddons. Chosen by sweeping the
+    /// WHOLE installation and reading what came back, 2026-09-07:
+    ///
+    /// | tree | .mnu | why |
+    /// |---|---|---|
+    /// | `vi.lib` | 68 | toolkits: Caraya, VI Tester, JSONtext, Wovalab, plus NI's 3D Picture, SFTP, SSH |
+    /// | `user.lib` | 26 | OpenG, and anything the user installed |
+    /// | `instr.lib` | 61 | INSTRUMENT DRIVERS - the standard location for them |
+    /// | `Targets` | 2 | `Targets\NI\FPGA\menus\FPGAControls` - a real menus folder the scan never reached |
+    ///
+    /// `instr.lib` matters more than its count here suggests. This station carries one driver
+    /// (`Agilent 34401`) and nine `_Template - *` skeletons, and still yields 68 VI names; a real
+    /// test rig has a driver per instrument, and "which VI configures this DMM" is exactly the
+    /// question a caller brings to this index.
+    ///
+    /// DELIBERATELY EXCLUDED: `resource\plugins\PopupMenus\...\Class Methods Shortcut Palette.mnu`.
+    /// It is a right-click menu, not a palette of callable VIs, and feeding IDE menu actions into
+    /// a catalogue of Call targets is precisely the plausible-but-wrong string this class exists
+    /// to avoid handing out. It is the only `.mnu` under `resource`.
+    /// </summary>
+    private static readonly string[] LooseTrees = ["vi.lib", "user.lib", "instr.lib", "Targets"];
+
+    private static List<PaletteSource> LooseSources(string root) =>
+        [.. LooseTrees
+            .Select(folder => (Name: folder, Path: Path.Combine(root, folder)))
+            .Where(pair => Directory.Exists(pair.Path))
+            .Select(pair => new PaletteSource(pair.Name, pair.Path))];
+
     private static Result Scan(string root, string? addonsRoot, int? release)
     {
         var menus = Path.Combine(root, "menus");
@@ -183,6 +255,10 @@ internal static class PaletteIndex
         var sources = new List<PaletteSource> { new("", menus) };
         var (addonSources, skipped) = AddonSources(addonsRoot, release);
         sources.AddRange(addonSources);
+
+        // LAST, so `menus` and the add-ons keep naming the palette path for any VI they also
+        // carry - "first palette wins", and a menus-relative path is the more useful label.
+        sources.AddRange(LooseSources(root));
 
         // First palette wins for the reported location; a VI on several palettes is one entry.
         //

@@ -40,6 +40,22 @@ if (CommandLine.UnknownFlags(args) is { Count: > 0 } unknownFlags)
 
 var portOverride = CommandLine.IntArg(args, "--port");
 
+// BEFORE anything that might write a LabVIEW file. Accepts the year or the stamp - see
+// LabViewVersionStamp.ParseOverride - and a value that is neither is refused here rather than
+// ignored, because a typo that silently falls back to auto-detection is how you get a file
+// stamped for the wrong release without ever being told.
+if (CommandLine.StringArg(args, "--lvversion") is { Length: > 0 } wantedVersion)
+{
+    if (LabViewVersionStamp.ParseOverride(wantedVersion) is not { } release)
+    {
+        Console.Error.WriteLine(
+            $"--lvversion '{wantedVersion}' is not a LabVIEW release. Give the year (2025) or the " +
+            "stamp (25008000).");
+        return 2;
+    }
+    LabViewVersionStamp.SetOverride(release);
+}
+
 if (CommandLine.HasFlag(args, "--selftest"))
     return await SelfTest.RunAsync(
         portOverride, CommandLine.StringArg(args, "--vi"), CommandLine.StringArg(args, "--project"));
@@ -175,7 +191,7 @@ builder.Services
 // every other tool.
 _ = ExampleIndex.WarmAsync();
 
-// Same treatment for the palette index. It reads a comparably large tree - 582 palette files on
+// Same treatment for the palette index. It reads a comparably large tree - 743 palette files on
 // this station - and until it got a disk cache it was rescanned on every single start-up, which
 // nothing ever argued for; the example index had a measurement behind it and this one did not.
 _ = PaletteIndex.WarmAsync();

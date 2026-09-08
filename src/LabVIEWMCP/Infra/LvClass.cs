@@ -100,6 +100,18 @@ internal static class LvClass
     /// <summary>Four zero bytes close the property, after the .ctl.</summary>
     private static readonly byte[] Trailer = [0, 0, 0, 0];
 
+    /// <summary>
+    /// The stamp as the four bytes that open <see cref="Header"/>. The XML attribute and the
+    /// binary header carry the SAME digits - `26008000` is `0x26 0x00 0x80 0x00` - so this is a
+    /// hex read of the string, not a second encoding to keep in step.
+    /// </summary>
+    internal static byte[] VersionBytes(string lvVersion) =>
+        lvVersion.Length == 8 && lvVersion.All(Uri.IsHexDigit)
+            ? Convert.FromHexString(lvVersion)
+            : throw new ArgumentException(
+                $"'{lvVersion}' is not an eight-hex-digit LVVersion stamp such as 25008000.",
+                nameof(lvVersion));
+
     /// <summary>Where the u32 big-endian length of the .ctl sits. Getting this wrong is silent.</summary>
     public const int LengthFieldOffset = 29;
 
@@ -109,10 +121,22 @@ internal static class LvClass
     /// <c>.ctl</c> on disk beside a class, which is why <see cref="Document"/> names one that does
     /// not exist.
     /// </summary>
-    public static string Wrap(ReadOnlySpan<byte> ctl)
+    /// <param name="lvVersion">
+    /// The <c>LVVersion</c> stamp. THE FIRST FOUR HEADER BYTES ARE THAT SAME VERSION, in the same
+    /// digits: `26008000` is the bytes `0x26 0x00 0x80 0x00`. So a 2025 station needs
+    /// `0x25 0x00 0x80 0x00` here too, and leaving the captured header verbatim would put a 2026
+    /// stamp inside a 2025 class's private data.
+    ///
+    /// NOT MEASURED ON A 2025 STATION - there is none here. What IS established is that the four
+    /// bytes are the version (the header's own comment, from the LabVIEW-2026 class it was copied
+    /// from) and that the XML attribute uses the identical digits. If a 2025 class built this way
+    /// still fails to load, this is the first place to look.
+    /// </param>
+    public static string Wrap(ReadOnlySpan<byte> ctl, string lvVersion)
     {
         var blob = new byte[Header.Length + 4 + ctl.Length + Trailer.Length];
         Header.CopyTo(blob, 0);
+        VersionBytes(lvVersion).CopyTo(blob, 0);
         blob[LengthFieldOffset + 0] = (byte)(ctl.Length >> 24);
         blob[LengthFieldOffset + 1] = (byte)(ctl.Length >> 16);
         blob[LengthFieldOffset + 2] = (byte)(ctl.Length >> 8);
@@ -285,7 +309,8 @@ internal static class LvClass
     {
         // NUMBERED FROM AixmlCheck.SafeUidBase, not from 10. Every lvai_create_class call used to
         // log a `uidInReservedRange` repair per field - self-corrected before conversion, so it
-        // cost nothing but log noise, and the noise is the point: dwarnCount saturates at 200 and
+        // cost nothing but log noise, and the noise is the point: dwarnCount saturates (at 100
+        // events, 200 log lines - see docs/labview-crash-signatures.md, 2026-09-08) and
         // a signature we emit ourselves crowds out the ones that mean something. Measured
         // 2026-09-07, three calls in one cold build reporting 4, 2 and 2 such repairs.
         var controls = string.Join("\n", fields.Select((f, i) =>
@@ -307,12 +332,14 @@ internal static class LvClass
     /// <c>NI.LVClass.Geneology</c> are needed, and LabVIEW added neither when it saved three such
     /// classes - it did not rewrite one byte of them.
     /// </summary>
+    /// <param name="lvVersion">The <c>LVVersion</c> stamp - see <see cref="Project"/>.</param>
     public static string Document(string className, string privateDataBlob,
-                                  string? parentQualifiedName, string? parentUrl)
+                                  string? parentQualifiedName, string? parentUrl,
+                                  string lvVersion)
     {
         var text = new StringBuilder();
         text.Append("<?xml version='1.0' encoding='UTF-8'?>\r\n");
-        text.Append("<LVClass LVVersion=\"26008000\">\r\n");
+        text.Append($"<LVClass LVVersion=\"{lvVersion}\">\r\n");
         text.Append("\t<Property Name=\"NI.Lib.SourceVersion\" Type=\"Int\">637566976</Property>\r\n");
         text.Append("\t<Property Name=\"NI.Lib.Version\" Type=\"Str\">1.0.0.0</Property>\r\n");
         text.Append("\t<Property Name=\"NI.LV.All.SourceOnly\" Type=\"Bool\">true</Property>\r\n");
@@ -643,11 +670,18 @@ internal static class LvClass
     /// on LabVIEW 2026: two project-scope properties, the nine target-scope ones, then the content
     /// items, then <c>Dependencies</c> and <c>Build Specifications</c>.
     /// </summary>
-    public static string Project(IEnumerable<(string Name, string Url)> classes)
+    /// <param name="lvVersion">
+    /// The <c>LVVersion</c> stamp, from <see cref="LabViewVersionStamp"/>. PASSED IN rather than
+    /// resolved here: resolving needs a running LabVIEW, and a writer that reaches out to find one
+    /// cannot be unit-tested and fails in surprising places. It was the constant `26008000` until
+    /// 2026-09-07, which made every class tool unusable on a LabVIEW 2025 station - the throwaway
+    /// `-loadcheck.lvproj` this writes could not be opened, `Error 1125`.
+    /// </param>
+    public static string Project(IEnumerable<(string Name, string Url)> classes, string lvVersion)
     {
         var text = new StringBuilder();
         text.Append("<?xml version='1.0' encoding='UTF-8'?>\r\n");
-        text.Append("<Project Type=\"Project\" LVVersion=\"26008000\">\r\n");
+        text.Append($"<Project Type=\"Project\" LVVersion=\"{lvVersion}\">\r\n");
         text.Append("\t<Property Name=\"NI.LV.All.SourceOnly\" Type=\"Bool\">false</Property>\r\n");
         text.Append("\t<Property Name=\"NI.Project.Description\" Type=\"Str\"></Property>\r\n");
         text.Append("\t<Item Name=\"My Computer\" Type=\"My Computer\">\r\n");

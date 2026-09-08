@@ -2364,6 +2364,9 @@ it excludes targets that do resolve, and it does not explain the ones that do no
 | `openg_variant.lvlib\3AconvertClusterToObject__ogtk.vi` | `user.lib`, library member, **in no palette** | **resolved** |
 | `Test Addition.vi` | `vi.lib`, **plain folder**, no library, **no palette** | **resolved** |
 | `LVMCP Socket 1x1 q7k2.vi` | `user.lib`, plain folder, freshly generated, no library, no palette | **resolved** |
+| `Agilent 34401.lvlib\3AInitialize.vi` | **`instr.lib`**, library member, in the library's `Public\` folder | **resolved** |
+| `Agilent 34401.lvlib\3APublic\5CInitialize.vi` | the same VI, qualifier carrying the **in-library folder** | not resolved |
+| `Initialize.vi` | the same VI by **bare name** | not resolved |
 | `Inverse Error Function_Estimation.vi` | `vi.lib`, **inside `SpecialFunctions.llb`**, no library, no palette | not resolved |
 | `ProbeLib.lvlib\3ACelsius To Fahrenheit.vi` | a **project** library, hand-written `.lvlib` | not resolved |
 | `LV_MCP\5CPlaceholder 1 in 1 out.vi` | the resolving VI above, addressed by **relative path** | not resolved |
@@ -2376,6 +2379,17 @@ So the target is resolved **by name, against what the installation can find**:
   no `.lvlib`, no `.mnu` and no LabVIEW restart.
 - **a library member** — the library-qualified name, nested for classes
   (`Caraya.lvlib\3AAssert.lvclass\3AAssert Equal Value_Variant.vi`). Again no palette entry needed.
+  **THE QUALIFIER IS FLAT: the library's own FOLDERS are not part of it.** Measured 2026-09-07 on
+  `Agilent 34401.lvlib`, whose `Initialize.vi` sits in a `Public\` folder both on disk and in the
+  library tree: `Agilent 34401.lvlib\3AInitialize.vi` resolves, and
+  `Agilent 34401.lvlib\3APublic\5CInitialize.vi` is `Unsupported SubVI`. A library is a flat
+  namespace of qualified names; its folder structure is presentation.
+- **`instr.lib` IS on the search path**, and this list said `vi.lib`, `user.lib` and `LVAddons` for
+  a fortnight without it. Measured the same day on the only real instrument driver on this station:
+  the qualified form resolves and answers with a WIRING complaint - `required input 'VISA resource
+  name' is not wired` - which is the signature of a target LabVIEW loaded and read the pane of.
+  That matters because `instr.lib` is where every Plug and Play instrument driver installs, so the
+  omission read as "a generated VI cannot drive an instrument", which is false.
 - **inside an `.llb`** — the bare name does NOT reach it. `.llb` contents are exposed through the
   palette or through the owning library, not by name alone. This is what the old rule was really
   observing: most palette VIs live in `.llb`s.

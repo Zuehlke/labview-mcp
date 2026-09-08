@@ -700,6 +700,104 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         return false;
     }
 
+    /// <summary>
+    /// Delete the <c>&lt;Item … Type="VI"&gt;</c> blocks naming these VIs from a <c>.lvclass</c>,
+    /// returning the names actually removed. Nothing is written when nothing matched.
+    ///
+    /// WHY A TOOL HAS TO DO THIS, rather than tolerating the error. Re-generating a method the class
+    /// ALREADY lists cannot work any other way: <c>AddItemFromMemory</c> refuses an item the project
+    /// already holds - 56002 or 1004 - and never establishes the owning-library link inside the .vi,
+    /// which the convert has by then already overwritten. Measured 2026-09-08 in BOTH directions: the
+    /// run with the refusal filtered out reported <c>memberAlreadyExisted: true</c> with both saves
+    /// executing and <c>isClassMember</c> still FALSE, while dropping the entry first and letting the
+    /// ordinary add path run gave <c>isClassMember: true</c> on every method. The filter makes the
+    /// breakage VISIBLE; only this makes the re-add actually happen.
+    ///
+    /// IT MUST RUN WITH THE PROJECT CLOSED, and the caller is responsible for that. This edits the
+    /// file behind LabVIEW's back; with the project open LabVIEW holds the class in memory and writes
+    /// its own copy back over this on the next save, so the removal would silently not have happened.
+    ///
+    /// A LABVIEW RESTART IS NOT NEEDED, and that was worth measuring rather than assuming: probed
+    /// 2026-09-08 by stripping one entry with the project closed and re-adding the method WITHOUT
+    /// restarting, which answered <c>isClassMember: true</c>. The project close is the effective
+    /// part - the manual repairs that preceded this tool restarted LabVIEW as well, and the restart
+    /// was never the ingredient that mattered.
+    ///
+    /// TEXT, NOT XML. An <c>XDocument</c> round trip would reformat a file LabVIEW owns and diff
+    /// noisily against everything else in it. Only whole lines are dropped here; every other byte,
+    /// line ending included, survives.
+    ///
+    /// IT FAILS SAFE. Anything not matching the flat shape measured on real class files - a nested
+    /// item inside a VI block, a block that never closes - abandons the edit and writes NOTHING,
+    /// because a half-stripped class file is worse than the state this is repairing.
+    ///
+    /// The LabVIEW-side alternative, opening the class and calling <c>RemoveItem</c>, was not chosen:
+    /// it needs the project OPEN, which is the opposite of what the convert needs, so it would buy a
+    /// second open/close cycle per call in exchange for replacing an edit already measured to work.
+    /// </summary>
+    internal static IReadOnlyList<string> RemoveMemberEntries(
+        string classPath, IEnumerable<string> viPaths)
+    {
+        var wanted = new HashSet<string>(
+            viPaths.Select(p => Path.GetFileName(p)), StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return [];
+
+        string text;
+        try { text = File.ReadAllText(classPath); }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+
+        // Split on '\n' only, so each element keeps any '\r' it had and the join is byte-exact.
+        var lines = text.Split('\n');
+        var kept = new List<string>(lines.Length);
+        var removed = new List<string>();
+        string? dropping = null;
+
+        foreach (var line in lines)
+        {
+            if (dropping is not null)
+            {
+                // Nested item: not the shape this was measured against, so change nothing at all.
+                if (line.Contains("<Item", StringComparison.Ordinal)) return [];
+                if (line.Contains("</Item>", StringComparison.Ordinal))
+                {
+                    removed.Add(dropping);
+                    dropping = null;
+                }
+                continue;
+            }
+
+            var opensViItem = line.Contains("<Item", StringComparison.Ordinal)
+                              && line.Contains("Type=\"VI\"", StringComparison.Ordinal);
+            var match = opensViItem
+                ? wanted.FirstOrDefault(
+                    n => line.Contains($"Name=\"{n}\"", StringComparison.OrdinalIgnoreCase))
+                : null;
+
+            if (match is null)
+            {
+                kept.Add(line);
+                continue;
+            }
+
+            // A self-closing entry is the whole block; there is no closing line to wait for.
+            if (line.TrimEnd().EndsWith("/>", StringComparison.Ordinal))
+            {
+                removed.Add(match);
+                continue;
+            }
+            dropping = match;
+        }
+
+        // An unterminated block means the file is not what we parsed. Leave it alone.
+        if (dropping is not null || removed.Count == 0) return [];
+
+        try { File.WriteAllText(classPath, string.Join("\n", kept)); }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+        return removed;
+    }
+
     private static JsonObject Failed(MethodRequest method, string viPath, string step,
                                      JsonArray steps, JsonObject? detail) =>
         new()

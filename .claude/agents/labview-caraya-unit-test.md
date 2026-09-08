@@ -362,8 +362,18 @@ not demonstrated.
 
 ### Phase 6 — Hand over clean
 
-Icons on the test VIs and the runner with `lvai_set_vi_icon` — it also re-saves each VI, which is a
-free check that LabVIEW can load it. Delete anything you generated and superseded.
+**Give EVERY test VI and the runner an icon — this is the step that gets forgotten**, and a suite
+whose VIs all carry the default blank icon is unreadable in the project tree and on the runner's
+diagram. One call each, and let the tool draw the PNG rather than building one yourself:
+
+```
+lvai_set_vi_icon  viPath=<abs>  line1="CARAY"  line2="SETP"  line3="RANGE"
+```
+
+`errorCode 91` with empty outputs is the normal read-back artefact and **not** a failure — judge by
+`verified`. It also re-saves each VI, which is a free check that LabVIEW can load it. Do it last:
+regenerating a VI over an existing path destroys its icon. Then delete anything you generated and
+superseded.
 
 **PASS `projectPath` TO `lvai_generate_class_test` AND THE TEST LANDS IN THE PROJECT.** Do it every
 time the class belongs to one. The tool closes the project, writes the entry into a `Tests` virtual

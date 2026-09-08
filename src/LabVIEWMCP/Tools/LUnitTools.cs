@@ -98,6 +98,25 @@ internal sealed class LUnitTools(LvaiConnection connection)
         owning-library link, and LabVIEW then marks the whole LIBRARY broken, blocking every VI it
         owns with Error 1003. A method that fails before membership can simply be regenerated; one
         that fails after cannot.
+        RE-RUNNING OVER AN EXISTING TEST METHOD IS SAFE SINCE 2026-09-08, and before that date it
+        SILENTLY EMPTIED THE SUITE. AddItemFromMemory answers 56002 or 1004 for a method the class
+        already lists; that error used to stop the helper's chain after the convert had already
+        overwritten the .vi, so the file was left carrying a fresh diagram with NO owning-library
+        link while the .lvclass still listed it. Nothing reported it - lvai_describe_class still
+        showed every method as a public member - and lvai_run_lunit_tests answered `tests: 0` with
+        `allPassed: true`.
+        THE REPAIR IS IN TWO PARTS, AND TOLERATING THE ERROR WAS ONLY THE SMALLER ONE. Measured
+        2026-09-08: with both codes filtered the run reported `memberAlreadyExisted: true`, both
+        saves executing, and `isClassMember` STILL FALSE - because AddItemFromMemory does not
+        re-adopt an item the project already holds, so there was no link to save. What fixes it is
+        the `dropExistingMembers` phase: with the project closed, the .lvclass entry for every
+        method this call is regenerating is removed, and the ordinary add path then writes the link
+        into the .vi. `projectPath` IS REQUIRED for that - without it the caller owns the project
+        state, and editing the class file under an open project would be undone by LabVIEW's own
+        save. The filter is kept as the guard that makes any remaining refusal visible.
+        SO ADDING COMMENTS OR CHANGING VALUES IN A FINISHED SUITE IS: edit the AIXML, call this
+        with projectPath, redo every lvai_swap_subvis, re-apply icons and any placed comments -
+        the convert destroys all three - then run the tests.
         `verify` re-exports each finished VI and is the only real proof: it must report the VI's
         name as `<Class>.lvclass:<Method>.vi` and both class terminals back as `ref{UDClassInst}`.
         """)]
@@ -233,6 +252,34 @@ internal sealed class LUnitTools(LvaiConnection connection)
                                "this step is trying to reach.",
                     ["answer"] = Slim(Read(closed), verbose),
                 });
+
+                // STILL CLOSED, AND THIS IS THE ONLY WINDOW IT FITS IN: drop the class's entry for
+                // any method it ALREADY lists, so the ordinary add path runs for it afterwards.
+                // Without this, re-generating a finished method CANNOT work - AddItemFromMemory
+                // refuses an item the project already holds and never writes the owning-library
+                // link into the .vi, which the convert has just overwritten. The tolerance filter
+                // in the helper makes that refusal visible; only removing the entry repairs it.
+                // Measured 2026-09-08: filtered-but-not-removed gave isClassMember FALSE on all
+                // three methods, removed-first gave TRUE on all three.
+                //
+                // It is deliberately inside this branch. Without projectPath the CALLER owns the
+                // project state, and editing the class file while LabVIEW holds the project open
+                // would be undone by LabVIEW's own save - silently, which is the one outcome worth
+                // avoiding. Regenerating an existing member therefore needs projectPath.
+                var dropped = ClassMethodTools.RemoveMemberEntries(
+                    Path.GetFullPath(classPath), methods.Select(m => Path.GetFullPath(m.Vi)));
+                if (dropped.Count > 0)
+                    prologue.Add(new JsonObject
+                    {
+                        ["order"] = 2,
+                        ["step"] = "dropExistingMembers",
+                        ["thenWhat"] = "these are re-added by the member step, which is what puts " +
+                                       "the owning-library link back INSIDE each .vi",
+                        ["note"] = "Only entries this call is regenerating are dropped, and only " +
+                                   "with the project closed. A class file that does not match the " +
+                                   "expected shape is left untouched instead of half-stripped.",
+                        ["removed"] = new JsonArray([.. dropped.Select(n => (JsonNode)n!)]),
+                    });
             }
 
             foreach (var method in methods)
@@ -294,7 +341,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     checkActive: true, timeoutSeconds, ct);
                 prologue.Add(new JsonObject
                 {
-                    ["order"] = 2,
+                    ["order"] = 3,
                     ["step"] = "openProject",
                     ["thenWhat"] = "retype + membership + verify for EVERY method run AFTER this, " +
                                    "with the project open and active",
@@ -312,12 +359,29 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 // 3. Retype the class terminals and make the VI a member - membership FIRST inside
                 //    the helper, then the VI's save, then the class's. That order is the fix for
                 //    the one-sided owning-library link.
+                //
+                //    `member exists` gates the helper's tolerance of 56002 and 1004 at
+                //    AddItemFromMemory, exactly as lvai_add_class_method has done since
+                //    2026-09-07. Without it, RE-GENERATING AN EXISTING TEST METHOD DESTROYED THE
+                //    SUITE: the error travelled down the helper's chain, both saves were skipped,
+                //    and the VI was left on disk carrying the freshly converted diagram with NO
+                //    owning-library link while the .lvclass still listed it. Every file-level
+                //    check stayed green - lvai_describe_class still reported six public members -
+                //    and LUnit then found NO test methods at all. Measured 2026-09-08 while
+                //    adding diagram comments to a finished six-method suite.
+                //
+                //    The gate is read from the .lvclass FILE, which is plain XML, so it costs no
+                //    LabVIEW. It matters because 1004 also means the Name input got a full path
+                //    where a bare name belongs, and tolerating that blindly would mask a real bug.
+                var memberExists = ClassMethodTools.IsAlreadyMember(Path.GetFullPath(classPath),
+                                                                    viPath);
                 var inputs = new JsonObject
                 {
                     ["vi path"] = viPath,
                     ["class path"] = Path.GetFullPath(classPath),
                     ["class terminal names"] = terminals,
                     ["vi name in memory"] = Path.GetFileName(viPath),
+                    ["member exists"] = memberExists ? "1" : "0",
                 };
                 var member = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
@@ -381,6 +445,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
                                                     or UnauthorizedAccessException) { }
                 }
 
+                // Whether AddItemFromMemory was a tolerated no-op is worth saying out loud: a
+                // re-run over an existing suite and a fresh add are indistinguishable in
+                // `methodsAdded`, and only this tells the caller which one happened.
+                if (verified is JsonObject verifiedDetail)
+                    verifiedDetail["memberAlreadyExisted"] =
+                        Scalar(values, "member already existed") == "1";
+
                 if (verifiedOk) added++;
                 else stoppedAt ??= "verify";
                 results.Add(Result(method, viPath, verifiedOk, verifiedOk ? null : "verify",
@@ -422,10 +493,16 @@ internal sealed class LUnitTools(LvaiConnection connection)
                    "Project:Active Project -> Application so it edits the copy the project holds. " +
                    "Open the .lvproj with lvai_open_file - projectPath must be the FULL path " +
                    "including the file name - and call again.";
-        if (code == 56002)
-            return "Error 56002 is \"an item with this path already exists in the project\". The VI " +
-                   "was generated while the project was open and LabVIEW adopted it as a loose " +
-                   "project item. Close the project, regenerate the VI, then call again.";
+        if (code is 56002 or 1004)
+            return $"Error {code} at AddItemFromMemory means the VI is already known to the " +
+                   "project - 56002 as a LOOSE PROJECT ITEM (it was open when the VI was " +
+                   "converted), 1004 as a MEMBER. Both are no-ops and are tolerated " +
+                   "automatically when the .lvclass already lists this VI, so seeing one HERE " +
+                   "means the class file does NOT list it: check the VI's file name against the " +
+                   "class's Item entries. Do NOT simply regenerate - that was the old advice and " +
+                   "it made things worse, because the convert overwrites the .vi and, with the " +
+                   "membership step stopped, leaves it on disk with no owning-library link while " +
+                   "the .lvclass still lists it. LUnit then finds no test methods at all.";
         if (stage is null && retyped != wanted.Length)
         {
             var seen = Names(values, "terminal names seen");
@@ -829,6 +906,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
         numbers, with no error anywhere. This deletes the target and its numbered siblings first
         (freshReport), and if a sibling still appears afterwards it says so instead of reporting
         stale figures.
+        A SUITE THAT RAN NOTHING IS NOT A GREEN SUITE, AND `allPassed` ALONE CANNOT TELL YOU.
+        LUnit answers `All Passed?` true when it found no test methods, and `failures == 0` is
+        vacuously true for an empty report, so the two figures a caller naturally reads both say
+        pass. CHECK `tests`, or branch on `foundNoTests`; `ok` is false in that case since
+        2026-09-08. It is a real state and not a hypothetical: a test method that is listed in the
+        .lvclass but no longer carries the owning-library link inside the .vi is invisible to LUnit,
+        while lvai_describe_class still reports it as a public member.
         READ `allPassed` AND `failures`, never the error cluster: an error cluster carries the first
         failure only, so a partial run and a single failing assertion are indistinguishable in it.
         `cases` carries one entry per test method with its status, assertion count and, for a
@@ -965,12 +1049,28 @@ internal sealed class LUnitTools(LvaiConnection connection)
             // run answer ok: false, so an unparsed report falls back to the runner's own verdict
             // rather than counting as a failure.
             var reportAgrees = failures < 0 ? allPassed : failures == 0;
-            var ok = runError == 0 && allPassed && reportAgrees && siblings.Count == 0;
+
+            // A report with ZERO tests is NOT a pass, and until 2026-09-08 it read as one: LUnit's
+            // own `All Passed?` reads true when it ran nothing, `failures == 0` is vacuously true
+            // for an empty report, so `ok` and `allPassed` both came back true for a suite that
+            // never executed. Only `note` said so. Measured 2026-09-08, where re-generating six
+            // test methods over an existing class left them non-members and this tool answered
+            // `tests: 0, failures: 0, allPassed: true` - the run that was supposed to catch the
+            // breakage certified it instead.
+            // Gated on `tests == 0` rather than `tests <= 0`: -1 means there was no JUnit report to
+            // count (a .txt path, or none written), which the branches above already handle and
+            // which must keep falling back to the runner's verdict.
+            var foundNoTests = tests == 0;
+            var ok = runError == 0 && allPassed && reportAgrees && siblings.Count == 0
+                     && !foundNoTests;
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
                 ["testPath"] = Path.GetFullPath(testPath),
+                // Kept as LUnit's own answer even when it contradicts `ok` - overwriting it would
+                // hide what the runner actually said. `foundNoTests` is the one to branch on.
                 ["allPassed"] = allPassed,
+                ["foundNoTests"] = foundNoTests,
                 ["tests"] = tests < 0 ? null : tests,
                 ["failures"] = failures < 0 ? null : failures,
                 ["reportPath"] = report,

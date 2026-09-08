@@ -105,11 +105,35 @@ does *not* resolve: a VI inside an `.llb` by bare name — which is what the old
 seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
 loose or in a project library.
 
-The index compounds this by being incomplete: it scans `menus\` and `LVAddons\`, so it does not see
-Caraya at all, whose `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`. A query
-for `Caraya` answers "no match" for VIs that validate and run. Search the index to *find* something;
-settle a target spelling with a throwaway `ValidateAIXML`. Full table in §9 of
-`lvai_aixml_reference`.
+**The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
+scanned `menus\` and `LVAddons\` only, so a `.mnu` anywhere else was invisible — a query for
+`Caraya` answered "no match" for VIs that validate and run. Sweeping the whole installation found
+**157 `.mnu` files outside every `menus` folder**, and reading them took the index from 582 palette
+files to **743**, and from 2 835 VIs to **3 335 — 500 more, 15 % of the catalogue**:
+
+| tree | new VIs | what was missing |
+|---|---|---|
+| `vi.lib` | 404 | Caraya, VI Tester, JSONtext, Wovalab, and NI's own 3D Picture Control, SFTP, SSH |
+| `instr.lib` | 71 | **every instrument driver** — this station has one real one plus nine `_Template` skeletons, so a real test rig yields far more |
+| `user.lib` | 25 | OpenG, and whatever the user installed |
+| `Targets` | 0 | its FPGA palettes carry `.ctl` controls, which the index filters out |
+
+`Caraya` now answers 94 hits, `Assert Almost Equal_Float.vi` among them — the VI an earlier session
+wanted and could not discover. `menus\` is still read FIRST, so a VI in both trees keeps its
+menus-relative label; the rest are labelled `vi.lib: <path>`, `instr.lib: <path>`.
+
+**Scanned BROADLY — each tree whole — rather than at the `addons` folders the pattern suggests**,
+because NI's 3D Picture, SFTP and SSH palettes are under neither, and "palette files live under a
+folder called X" is a convention this scanner has now been caught by twice. The cost is a directory
+walk, not a read: only the 157 `.mnu` files are opened, and the scan went from ~148 ms to ~218 ms
+against ~110 ms from the cache.
+
+**One `.mnu` is deliberately left out**: `resource\plugins\PopupMenus\…\Class Methods Shortcut
+Palette.mnu` is a right-click menu, not a palette of callable VIs, and feeding IDE menu actions
+into a catalogue of `Call` targets is the plausible-but-wrong string this index exists to avoid.
+
+Search the index to *find* something; settle a target spelling with a throwaway `ValidateAIXML`.
+Full table in §9 of `lvai_aixml_reference`.
 
 **The practical prize is a placeholder you generate yourself, and `lvai_placeholder_subvi` does
 it.** Because a loose VI under `user.lib` is callable by bare name, AIXML can be given a call node
@@ -442,6 +466,22 @@ crashes on a working station, so the script now *refuses* a non-identity mapping
 wrong assignment is fixed by regenerating from AIXML** with the `conIdx` values
 `lvai_connector_pane` prints. `docs/connector-pane-repair.md` has both measurements.
 
+**EVERY generated VI carries at least one AIXML comment; PLACING comments accurately is OPTIONAL.**
+The user's rule of 2026-09-08, and it falls exactly along the cost line. A `<FreeLabel>` is free —
+it rides along in the `lvai_generate_vi` call. Placing it on the node it describes costs **26–35 s
+per comment**, measured by attributing every call of three builds of the same three VIs: comment
+work was **35–38 % of the whole run** every time, split into 92–154 s of placing and 118–237 s of
+rendering to check.
+
+**So the mandatory comment MUST be position-independent, and that is what makes leaving it unplaced
+safe.** Write it as a statement about the diagram, true wherever LabVIEW drops it — `One iteration
+per element of Values` — never as a label for one node, like `Scale by 9/5`, which becomes wrong the
+moment it drifts onto the `Add`. Node-specific text is precisely what needs placement, so it belongs
+in the optional half; and a node-specific comment left unplaced is the one combination that
+manufactures confident, wrong documentation. **Fewer and shorter wins twice**: the run that cut back
+to one comment per diagram was both the fastest (570 s against 776 s) and the one that placed most
+cleanly, because a small box has more positions clear of its neighbours.
+
 **A diagram comment authored in AIXML lands somewhere the generator chooses, not on the node you
 meant.** AIXML has no coordinate attribute at all, so `<FreeLabel>` can only be *created* there.
 Measured 2026-08-24 on `DaqReadAndTDMS2.vi`: six comments came out at six plausible node positions
@@ -457,6 +497,57 @@ own caption is a `label` too, and node classes must not be enumerated.
 label already occupies the space above it. A comment describing a stretch of diagram — anchored to a
 structure or a primitive — stays above. `--side auto` is the default and decides from the target, so
 anchoring a comment to what it is actually about gets the side right for free.
+
+**AND A COMMENT FOR A LOOP OR CASE FRAME MUST BE WRITTEN INSIDE THAT ELEMENT — `uid_parent` alone
+does not put it there.** Measured 2026-09-08 with a three-comment probe: `uid_parent="<loop uid>"`
+on a `<FreeLabel>` nested inside the `<Structure>` lands in the loop's diagram; the *same*
+attribute on a `FreeLabel` written at document top level lands on **root**, silently, through
+validate, convert and a run. `placeLabels` then refuses the pair as cross-diagram and names two
+uids without saying why — or, if you anchored it to a root node instead, places it happily on the
+wrong part of the VI. This qualifies §2's "document order carries no meaning": true for `Node`,
+`Control`, `Indicator` and `Constant`, which reached the loop correctly from top level in the same
+probe, and false for `FreeLabel`. `lvai_check_aixml` does NOT catch it — the uid exists, so
+nothing dangles.
+
+**But `auto` is a PREFERENCE, not a verdict, since the placer started maximising clearance.** The
+preferred side is worth about 6 px of clearance in the score, so the other one wins wherever the
+preferred is cramped — measured 2026-09-08, a comment anchored to two accessor calls came out
+*above* them with 50 px of room. Read the side the script prints; do not predict it. The placer also
+keeps every comment clear of nodes, constants, terminals and terminal captions, and off a
+structure's borders. **Wires and tunnels it cannot avoid** — no tunnel uid has `<bounds>` anywhere
+in the heap and wires carry no geometry — so crossing a wire is accepted.
+
+**ON THE DEFAULT PATH, DO NOT TOUCH PYLABVIEW AT ALL — not even its read-only inspect.** Author the
+`<FreeLabel>`, generate, move on; the comment sits where LabVIEW put it, which is what a
+position-independent caption is written to survive. No render, no image read, no `pylv_apply`.
+
+**An inspect you do not need is not free, because of what you then do with it.** Measured
+2026-09-08: a clip check was added to that listing on the argument that it was cheap and would
+"rarely fire". The next run saw `CLIPPED?` on 3 of 3 comments, placed two of them, and came in at
+**588 s against the 428 s of the run before it** — 15 comment calls where that build had 9. All
+three flags were then measured FALSE against the rendered diagram: LabVIEW derives a one-line box's
+width from the caption at 5.1–5.3 px/char while the check assumed a pessimistic 6.0. The check is
+calibrated now (it only judges MULTI-line boxes) and it is still not worth asking for on this path.
+**A guard that is cheap to run is not cheap if it prompts expensive work.**
+
+**And this whole detour is a STOPGAP.** Positioning needs pylabview only because AIXML has no
+coordinate attribute; **NI is expected to extend the format so a comment carries its own position**,
+and that retires the detour entirely. Do not build habits around it. **When you DO render, one call
+for every VI** — `lvai_render_diagrams` takes a path per line and one build made three calls where
+one would do.
+
+**AND A COMMENT CAN STILL BE CLIPPED, WHICH NOTHING BUT THE RENDERED DIAGRAM SHOWS.** A label box
+does not auto-grow, so a caption too long for it is cut off mid-sentence in silence. The placer
+resizes a box that cannot hold its text — and its estimate of "cannot" was wrong in the damaging
+direction until 2026-09-08: `Below the lower edge of the band the heater must switch on` shipped as
+`… the heater must` in a 54 × 88 box, past validation, rebuild, export, link check and a run.
+Two one-sided causes, both now pessimistic: a per-character width average cannot describe a
+PROPORTIONAL font (in one 88 px box LabVIEW fitted 16 characters of `the state of the` and refused
+15 of `Below the lower`), and `round` on the line budget granted a fraction of a line that does not
+exist. **So finish by rendering the diagram and reading it** — `Print.VI To HTML` through
+`scripts/lvdoc_print.xml`, one PNG per diagram, and **create the image directory first** or LabVIEW
+answers `Error 118` without creating it. Every programmatic check in the chain passed the clipped
+comment; only the picture disagreed.
 
 **Everything you write INTO a VI is English by default — descriptions, terminal descriptions and
 diagram comments alike. A German request does not imply German text.** Only an explicit wish
@@ -557,8 +648,22 @@ worked example and the lesson generalises to anything installed there. Its scrip
 VIs with ordinary connector panes, and they build a forty-file module correctly. But **an AIXML
 `Call` cannot reach them: `Error 53, Unsupported SubVI`, in every spelling.** That is not the
 library-qualifier trap; a correct qualifier is not the missing piece. Generation resolves a target
-by name against what the installation can **find** — `vi.lib`, `user.lib`, `LVAddons` — and
-`project\Delacor\` is none of those, so no spelling exists that works.
+by name against what the installation can **find** — `vi.lib`, `user.lib`, `instr.lib`, `LVAddons`
+— and `project\Delacor\` is none of those, so no spelling exists that works.
+
+**`instr.lib` was missing from that list until 2026-09-07, and its absence read as a much bigger
+limit than it is.** Measured on `Agilent 34401.lvlib`, the one real instrument driver on this
+station: `Agilent 34401.lvlib\3AInitialize.vi` resolves and answers with a **wiring** complaint
+(`required input 'VISA resource name' is not wired`), which is the signature of a target LabVIEW
+loaded and read the connector pane of. The bare name does not resolve, because the VI is
+library-owned. So a generated VI CAN drive an instrument, and the list saying otherwise was the
+only thing suggesting it could not.
+
+**And the qualifier is FLAT — a library's own folders are not part of it.** `Initialize.vi` sits in
+that library's `Public\` folder on disk and in its tree, and
+`Agilent 34401.lvlib\3APublic\5CInitialize.vi` is `Unsupported SubVI` while the folderless form
+works. Worth knowing before hunting for a spelling that does not exist. §9 of
+`lvai_aixml_reference` has all three rows.
 
 **`Open VI Reference` takes a PATH and has no such restriction.** So the route is VI Server: open by
 path into the **IDE's** application instance (`Project\3AActive Project` → `Application`, the same
@@ -1074,9 +1179,27 @@ TOOLS emit — the class-test and method-test sockets, and the suite runner, who
 `array` were being repaired on every build. **The `scripts\` helpers are deliberately NOT
 renumbered**: they were measured silent and are generated once, and `docs/labview-crash-signatures.md`
 warns against renumbering 39 files on a rule rather than a measurement. It is worth doing not
-because the warnings cause anything — unestablished — but because `dwarnCount` saturates at 200 and
+because the warnings cause anything — unestablished — but because `dwarnCount` saturates and
 `looksDegraded` flips with it, so a signature we emit ourselves crowds out the ones that might mean
 something.
+
+**AND `dwarnCount` COUNTED LOG LINES, NOT EVENTS, UNTIL 2026-09-08 — so every DWarn figure written
+down here before that date is doubled.** NI writes each event twice: a bare line, then the same
+message prefixed `source\…cpp(N) : `. Measured with a controlled probe, because one sample cannot
+tell a format from a coincidence — four diagram objects at reserved uids log one event each, and
+the substring count went 2 → 10 while `) : DWarn` lines and `<DEBUG_OUTPUT>` blocks both went
+1 → 5. Exactly 2×. The counter now reports **events**, names the rule in `dwarnCountedBy`, and both
+thresholds are halved to keep their calibration: the observed cap of 200 lines is **100 events**,
+and `looksDegraded` fires at 25. Ratios and deltas in every earlier analysis stand; only absolute
+magnitudes were inflated — the `4` in the paragraph above is an event count, re-measured, and the
+`24 of 40` pair is of unrecoverable unit.
+
+**The lesson is the propagation, not the arithmetic: this was ALREADY WRITTEN DOWN and changed
+nothing.** `docs/labview-crash-signatures.md` says outright, in the middle of one analysis, that
+"`dwarnCount` counts LINES while each event writes two" — halves by hand, correctly, and then no
+other passage in that document, none in this file, and not one line of code was brought into step.
+Same shape as an embedded document nothing serves. **When a measurement contradicts a number, fix
+the thing that PRODUCES the number, not just the paragraph you happen to be writing.**
 
 **A DWARN CLUSTER TAGGED WITH ONE VI IS NOT CAUSED BY THAT VI, and settling it needs an A/B rather
 than a fix.** Measured 2026-09-07: a 33-minute class build left 38 new DWarns, *every* one tagged
@@ -1091,6 +1214,18 @@ Two process lessons, both cheap: **the `Executing:` tag names where the warning 
 what caused it**, and **two measurements do not separate two distributions whose values are 0, 1 and
 2** — after round 2 the reading was "the fix causes them", the exact opposite of the hypothesis, and
 just as wrong. `docs/labview-crash-signatures.md`.
+
+**AND THE `Save` BEFORE THE `Close` IS NOT THE CAUSE EITHER — tested, 2026-09-07, seven closes.**
+It was the last standing hypothesis, because a project save is documented here as making LabVIEW
+adopt every open VI and `bad parent in MoveItem` is a project-tree complaint. Built the helper with
+the `Save` node removed and alternated: **with the Save 0, 2, 0, 0; without it 0, 3, 0** — and the
+same condition gave 2 and 0 on two runs, so the condition does not determine the count either.
+**Keep the `Save`**: it costs nothing measurable, and dropping it re-opens the modal-save-prompt
+hazard that stops the whole gRPC service. A `saveFirst: false` option was considered and NOT added.
+Two things fell out of it: `MoveItem` did not reproduce ONCE in seven closes, so it needs a
+condition none of them created — VIs **generated** while the project is open, rather than merely
+loaded or opened, is the only surviving candidate; and **a non-member VI open in the IDE was NOT
+adopted by the save**, so "LabVIEW adopts every VI it has open" is at best incomplete as written.
 
 **Read NI's own log, not the Windows event log.** LabVIEW installs its own crash handler: it catches
 the fault, writes `%TEMP%\LabVIEW_32_<ver>_interactive_<user>_cur.txt` plus a minidump, and exits.
@@ -1184,6 +1319,7 @@ literally it argued away 600 usable palette VIs.
 | Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
+| How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

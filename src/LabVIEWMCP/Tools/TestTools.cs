@@ -969,9 +969,16 @@ internal sealed class TestTools(LvaiConnection connection)
     /// | 10, 11, 12, 13 | **4** — one per uid |
     /// | 4200, 4210, 4220, 4230 | **0** |
     ///
-    /// It matters because <c>dwarnCount</c> saturates at 200 and <c>looksDegraded</c> flips with
-    /// it, so a signature we emit ourselves crowds out the ones that mean something. A cold class
-    /// build with five test suites logged 24 of these — 60 % of that run's 40 warnings.
+    /// It matters because <c>dwarnCount</c> saturates and <c>looksDegraded</c> flips with it, so a
+    /// signature we emit ourselves crowds out the ones that mean something. A cold class build
+    /// with five test suites logged 24 of these — 60 % of that run's 40 warnings.
+    ///
+    /// THE UNIT OF THAT 24/40 PAIR IS NOT RECOVERABLE, because NI writes each event on TWO lines
+    /// and <c>dwarnCount</c> counted lines until 2026-09-08. If they came from the counter they
+    /// are 12 events of 20. The 60 % holds either way, which is what the argument rests on.
+    /// The table above is NOT affected: re-measured 2026-09-08 with the same four uids, 4 objects
+    /// produced 4 events (8 lines), so "one per uid" was and is an event count. Ceiling: 100
+    /// events. See docs/labview-crash-signatures.md, 2026-09-08.
     ///
     /// The helpers under <c>scripts\</c> are deliberately NOT renumbered: they were measured
     /// silent, they are generated once and cached, and the same document warns against

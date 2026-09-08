@@ -255,7 +255,8 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                     "project the helper did not reach, OR that this LabVIEW instance is degraded. " +
                     "Measured 2026-09-03 - 1073 reproduced with a DECOY project open that did not " +
                     "list the class at all, and the identical call succeeded after a LabVIEW " +
-                    "restart. That instance's log carried 200 DWarn entries predating the session " +
+                    "restart. That instance's log carried 200 DWarn LINES predating the session " +
+                    "- a saturated counter, so 100 events and a floor rather than a magnitude " +
                     "(RTSetCleanupProc, leaf and root VIs in different contexts) and the accessor " +
                     "wizard was also answering Error 1562. So check the project first, and if it " +
                     "is right, read LabVIEW_32_*_cur.txt in %TEMP% and restart LabVIEW.");

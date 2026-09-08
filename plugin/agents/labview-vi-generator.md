@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -356,18 +356,32 @@ overwrites your edit. There is no `CloseFile` RPC.
 `describe_project` will list the new item under `missingFiles` until Phase 6 creates the file.
 That is expected, and it is the check that your `URL` is right.
 
-### Phase 6 — Validate, generate, run
+### Phase 6 — Generate, then run
 
-1. `lvai_validate_aixml` — cheap, and its messages name the node and the terminal. Fix and repeat
-   until clean.
-2. `lvai_convert_aixml_to_vi` with the target `viPath` and `openVI: false`.
-   **`Error 1357` — "a LabVIEW file from that path already exists in memory"** means LabVIEW has
-   the path loaded and cannot be made to overwrite it. `lvai_open_file` alone is enough to cause
-   it, which is why `openVI` stays false until the VI is finished. The release recipe (reaching
-   the IDE's application instance and closing the front panel) is in
-   [`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). `Error 1051` is its
-   sibling and means something else: same *filename*, different path.
-3. `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
+**ONE CALL: `lvai_generate_vi`.** It runs `lvai_validate_aixml`, then `lvai_convert_aixml_to_vi`,
+then `lvai_connector_pane` on the result, stops at the first failure and names it, and returns each
+sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would from
+the three separate tools. **Do not call those three by hand.** Measured 2026-09-08 on a run that
+built three small VIs: `lvai_convert_aixml_to_vi` 11 times, `lvai_validate_aixml` 7 and
+`lvai_connector_pane` 4 — **22 calls where 6 would have done**, and in that run a round trip cost
+**9.8 s of model time against under 2 s inside the tool**, so the hand-driven route spent about
+160 s achieving nothing. `ok: false` with `failedAtStep: connectorPane` still means the `.vi` WAS
+written; it is the pane that needs another pass.
+
+**SEVERAL VIs AT ONCE: `lvai_generate_vis`**, one AIXML/VI pair per line. Same trade — LabVIEW
+serialises the work either way, so what you save is round trips, which is the only thing that costs
+real time here.
+
+Two failures worth recognising, whichever tool reports them.
+**`Error 1357` — "a LabVIEW file from that path already exists in memory"** means LabVIEW has the
+path loaded and cannot be made to overwrite it. `lvai_open_file` alone is enough to cause it, which
+is why `openVI` stays false until the VI is finished. The release recipe (reaching the IDE's
+application instance and closing the front panel) is in
+[`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). **`Error 7` at
+`Save:Instrument`** means the target DIRECTORY does not exist — LabVIEW does not create one.
+`Error 1051` is 1357's sibling and means something else: same *filename*, different path.
+
+Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
 4. Run it, with `inputsJson` covering the inputs from Phase 1, including at least one edge case
    you promised to handle. **Which tool depends on the output types, and for most VIs it is the
    second one:**
@@ -387,6 +401,107 @@ That is expected, and it is the check that your `URL` is right.
    about eight minutes per VI; the harness is shipped. Note also that `lvai_run_vi_and_read_values`
    reports the *helper's* error code: a target VI that itself failed shows that in its own
    `error out` under `values`, not in `errorCode`.
+
+### Phase 6b — One comment always; PLACING them is optional
+
+Two different things, with two different price tags, and the rule of this repository since
+2026-09-08 splits them:
+
+| | when | cost |
+|---|---|---|
+| **A `<FreeLabel>` in the AIXML** | **ALWAYS. Every generated VI carries at least one.** | free — it rides along in the `lvai_generate_vi` call |
+| **Placing it on the node it describes** | only when the task asks for it | **26–35 s per comment**, measured over three runs |
+
+**The mandatory one MUST be position-independent, and that is not a style note — it is what makes
+it safe to leave unplaced.** AIXML has no coordinate attribute (§1: "NO LAYOUT"), so LabVIEW picks
+the spot, and what it picks is not the node you meant: measured on a six-comment VI, exactly one
+landed on the right node, by luck. **A comment on the wrong node is worse than none, because a
+reader trusts it as documentation.** So write the always-comment as a statement about the DIAGRAM,
+true wherever it lands — `One iteration per element of Values; the indexing tunnel rebuilds
+Clamped` — and never as a label for one node, like `Scale by 9/5`, which is wrong the moment it
+drifts to the `Add`.
+
+### THE DEFAULT PATH ENDS HERE. Do not touch pylabview at all.
+
+**Write the comment into the AIXML, generate, and move on.** No `pylv_apply`, not even its
+read-only inspect. No render. No image read. The comment sits wherever LabVIEW put it, which is
+exactly what a position-independent caption is written to survive.
+
+Say in the report that the comments are present but **unplaced**, so a reader knows not to read
+proximity as attribution.
+
+Why this is the default, in numbers from three measured builds of the same three VIs: comment work
+was **35–38 % of the whole run**; placing cost 92–154 s and rendering to check it 118–237 s. Two
+runs that skipped it came in at 428 s against 570–776 s. And a stopgap is not worth that: **NI is
+expected to extend AIXML so a comment can be positioned in the format itself**, at which point this
+whole pylabview detour retires and the `<FreeLabel>` simply carries its own coordinates. Do not
+build habits around the detour.
+
+One thing that cost a 588 s run, so it is worth naming: **an inspect you did not need is not free,
+because of what you then do with it.** Run with the check in the listing, an agent saw
+`CLIPPED?` on 3 of 3 comments and placed two of them — 15 comment calls where the previous build
+had 9. All three flags were later measured FALSE. The listing is honest now, but the lesson holds:
+on this path there is no question to ask, so do not ask one.
+
+### Placing them accurately — ONLY when the task asks
+
+Do this when the task prompt asks for accurately placed comments, and not otherwise. It is
+**26–35 s per comment**.
+
+**Fewer and shorter wins twice** — the run that cut itself back to one comment per diagram was both
+the fastest and the one with the cleanest placements, because a small box has more positions that
+clear its neighbours.
+
+**When you place, you must also look**, and one call does every VI: `lvai_render_diagrams` takes a
+path per line. Every layout defect worth catching is caused BY the placer — a box resized and still
+clipped, a comment covering a Case selector, one pushed off the diagram — and the picture is the
+only thing that sees them. **Negative clearance means OCCLUDED; a clip reports no number at all.**
+Read the top-level diagram, and a Case frame only when a comment is anchored inside one.
+
+The inspect listing also marks a comment whose caption does not fit its box
+(`CLIPPED? needs ~5 lines … (4 fit)`). It only flags MULTI-line boxes, because LabVIEW derives a
+one-line box's width from the text; treat a flag as worth a look, not as an automatic fix.
+
+One inspect call to learn the pairs, one call to place them.
+
+```
+pylv_apply  viPath=<abs>  operationsJson=[]
+    -> the diagramLabels listing: comment uids on the left, anchor uids on the right,
+       grouped by diagram
+
+pylv_apply  viPath=<abs>  operationsJson=[{"op":"placeLabels","place":"801:2362,799:831"}]
+```
+
+Rules that come out of that listing rather than out of your head:
+
+- **Pair inside one diagram only.** Bounds are relative to the diagram an object sits in, so a
+  root-level comment anchored to a node inside a loop lands somewhere unrelated. The tool refuses
+  such a pair — read the refusal, do not work around it.
+- **Anchor to a node, never to a constant.** A constant has no terminal list, so the tool rejects
+  it. Pick a real node in the same frame and accept that the comment sits near it instead.
+- **One comment per anchor.** Two comments on one node is how they end up on top of each other.
+
+The placer keeps every comment clear of nodes, constants, terminals, terminal captions and
+structure borders, resizes a box that cannot hold its text, and reports the clearance it achieved.
+It cannot avoid **wires** or **tunnels** — neither carries geometry in the heap — and a comment
+crossing a wire is accepted. A `WARNING ... no position with N px clearance` line means it fell
+back to a fixed offset: that one needs your eyes.
+
+**Then look at it — `lvai_render_diagrams`, and pass EVERY VI you have built in ONE call.** It
+runs LabVIEW's `Print.VI To HTML`, creates the image directory (LabVIEW does not, and answers
+`Error 118` instead), and hands back the PNGs per VI with the top-level diagram first and one entry
+per Case frame. Then `Read` the ones you need.
+
+Clearance is measured; whether a comment reads well is not — and this step is not a formality.
+Measured three times on 2026-09-08, the render was the ONLY check that caught a clipped caption, a
+comment covering a Case selector, and one pushed off the visible diagram; all three had passed
+validation, rebuild, export and a run. Two readings that are easy to get backwards: **negative
+clearance means OCCLUDED, and a clip reports no number at all** — so a warned comment can look
+perfectly clean and an unwarned one can be cut off. Judge from the picture.
+
+Do NOT drive `scripts/lvdoc_print.xml` by hand. Measured on one three-VI run, that cost 7 helper
+runs plus 3 `mkdir` calls where 1 would have done — about 100 s of the 1000 s that run took, in a
+run whose tools accounted for only 120 s of it.
 
 ### Phase 7 — The icon, last
 

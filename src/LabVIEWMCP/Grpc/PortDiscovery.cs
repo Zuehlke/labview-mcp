@@ -82,6 +82,30 @@ internal static class PortDiscovery
         }
     }
 
+    /// <summary>
+    /// The process listening on <paramref name="port"/>, or null when nothing is or the table
+    /// cannot be read.
+    ///
+    /// Exposed for <see cref="Infra.LabViewVersionStamp"/>, which needs to tell WHICH LabVIEW a
+    /// station is talking to when several releases run at once - the connected one decides the
+    /// version stamped into new files, and "newest installed" is the wrong answer. The pid was
+    /// already read here to filter the candidate ports; only the discarding of it was new work.
+    /// </summary>
+    public static int? PidOwningPort(int port)
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            foreach (var (listening, pid) in ListenersWithPid())
+                if (listening == port) return pid;
+        }
+        catch
+        {
+            // Same fallback as the candidate scan: an unreadable table is not an error here.
+        }
+        return null;
+    }
+
     private static IEnumerable<int> LoopbackListeners()
     {
         try

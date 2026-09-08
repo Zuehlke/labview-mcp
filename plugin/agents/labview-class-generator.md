@@ -492,6 +492,25 @@ A child class gets accessors for **its own** fields only. It inherits the parent
 3. Read the `.lvproj` and confirm it lists every class and **no stray VIs**. Any item whose URL
    points into `%TEMP%\LabVIEWMCP` is a helper LabVIEW adopted; it should already be gone.
 
+### Phase 4b — Icons on the methods you wrote. Do not skip this.
+
+**This is the step that gets forgotten.** A class whose methods all carry the default blank icon
+is unreadable on a caller's diagram: every call node looks the same, so a reader cannot tell
+`Write Setpoint` from `Read Status` without opening them. One call per VI, and the tool draws the
+PNG — never build one yourself:
+
+```
+lvai_set_vi_icon  viPath=<abs>  line1="NETZ"  line2="WR"  line3="SETP"
+```
+
+Use `line1` for the class (a short tag, ≤5 characters) and the lines under it for the method, so
+one glance identifies both. Cover **every method VI you generated**, accessors included.
+
+Two things about the answer, both measured: `errorCode 91` with empty outputs is the normal
+read-back artefact and **does not** mean failure — judge by `verified`; and `lvai_set_vi_icon`
+re-saves the VI, which doubles as a free check that LabVIEW can still load it. Icons last, because
+regenerating a VI over an existing path destroys its icon.
+
 ### Phase 5 — Hand the result over clean
 
 LabVIEW still holds the project, and it may have adopted the accessor helper into it. Flush that
