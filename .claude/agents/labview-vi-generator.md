@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -356,18 +356,32 @@ overwrites your edit. There is no `CloseFile` RPC.
 `describe_project` will list the new item under `missingFiles` until Phase 6 creates the file.
 That is expected, and it is the check that your `URL` is right.
 
-### Phase 6 — Validate, generate, run
+### Phase 6 — Generate, then run
 
-1. `lvai_validate_aixml` — cheap, and its messages name the node and the terminal. Fix and repeat
-   until clean.
-2. `lvai_convert_aixml_to_vi` with the target `viPath` and `openVI: false`.
-   **`Error 1357` — "a LabVIEW file from that path already exists in memory"** means LabVIEW has
-   the path loaded and cannot be made to overwrite it. `lvai_open_file` alone is enough to cause
-   it, which is why `openVI` stays false until the VI is finished. The release recipe (reaching
-   the IDE's application instance and closing the front panel) is in
-   [`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). `Error 1051` is its
-   sibling and means something else: same *filename*, different path.
-3. `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
+**ONE CALL: `lvai_generate_vi`.** It runs `lvai_validate_aixml`, then `lvai_convert_aixml_to_vi`,
+then `lvai_connector_pane` on the result, stops at the first failure and names it, and returns each
+sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would from
+the three separate tools. **Do not call those three by hand.** Measured 2026-09-08 on a run that
+built three small VIs: `lvai_convert_aixml_to_vi` 11 times, `lvai_validate_aixml` 7 and
+`lvai_connector_pane` 4 — **22 calls where 6 would have done**, and in that run a round trip cost
+**9.8 s of model time against under 2 s inside the tool**, so the hand-driven route spent about
+160 s achieving nothing. `ok: false` with `failedAtStep: connectorPane` still means the `.vi` WAS
+written; it is the pane that needs another pass.
+
+**SEVERAL VIs AT ONCE: `lvai_generate_vis`**, one AIXML/VI pair per line. Same trade — LabVIEW
+serialises the work either way, so what you save is round trips, which is the only thing that costs
+real time here.
+
+Two failures worth recognising, whichever tool reports them.
+**`Error 1357` — "a LabVIEW file from that path already exists in memory"** means LabVIEW has the
+path loaded and cannot be made to overwrite it. `lvai_open_file` alone is enough to cause it, which
+is why `openVI` stays false until the VI is finished. The release recipe (reaching the IDE's
+application instance and closing the front panel) is in
+[`docs/vi-server-reference.md`](../../docs/vi-server-reference.md). **`Error 7` at
+`Save:Instrument`** means the target DIRECTORY does not exist — LabVIEW does not create one.
+`Error 1051` is 1357's sibling and means something else: same *filename*, different path.
+
+Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
 4. Run it, with `inputsJson` covering the inputs from Phase 1, including at least one edge case
    you promised to handle. **Which tool depends on the output types, and for most VIs it is the
    second one:**
@@ -422,10 +436,21 @@ It cannot avoid **wires** or **tunnels** — neither carries geometry in the hea
 crossing a wire is accepted. A `WARNING ... no position with N px clearance` line means it fell
 back to a fixed offset: that one needs your eyes.
 
-**Then look at it.** Clearance is measured; whether a comment reads well is not. Generate the
-helper from `scripts/lvdoc_print.xml` and run `Print.VI To HTML`: it writes one PNG per diagram —
-`<name>d.png` for the top level, `d1..dN` per Case frame. **Create the image directory first**;
-LabVIEW does not, and answers Error 118 instead.
+**Then look at it — `lvai_render_diagrams`, and pass EVERY VI you have built in ONE call.** It
+runs LabVIEW's `Print.VI To HTML`, creates the image directory (LabVIEW does not, and answers
+`Error 118` instead), and hands back the PNGs per VI with the top-level diagram first and one entry
+per Case frame. Then `Read` the ones you need.
+
+Clearance is measured; whether a comment reads well is not — and this step is not a formality.
+Measured three times on 2026-09-08, the render was the ONLY check that caught a clipped caption, a
+comment covering a Case selector, and one pushed off the visible diagram; all three had passed
+validation, rebuild, export and a run. Two readings that are easy to get backwards: **negative
+clearance means OCCLUDED, and a clip reports no number at all** — so a warned comment can look
+perfectly clean and an unwarned one can be cut off. Judge from the picture.
+
+Do NOT drive `scripts/lvdoc_print.xml` by hand. Measured on one three-VI run, that cost 7 helper
+runs plus 3 `mkdir` calls where 1 would have done — about 100 s of the 1000 s that run took, in a
+run whose tools accounted for only 120 s of it.
 
 ### Phase 7 — The icon, last
 

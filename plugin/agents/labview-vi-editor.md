@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -317,10 +317,15 @@ The documentation is part of this file, not a later step:
    ([`docs/aixml-reference.md`](../../docs/aixml-reference.md) §14): the RPC is real and
    surgical, but gated on a per-VI attachment a third-party client cannot obtain. Sixteen
    variables were ruled out — do not debug it, just fall through.
-2. `lvai_validate_aixml` on your edited file. Fix and repeat until clean.
-3. `lvai_convert_aixml_to_vi` to a **scratch path** first, and look at it. AIXML has no
-   coordinates, so LabVIEW decides the layout and looking is the only way to know what you got.
-4. `lvai_convert_aixml_to_vi` over the **real path**, `openVI: false`.
+2. **`lvai_generate_vi` to a scratch path**, and look at it. AIXML has no coordinates, so LabVIEW
+   decides the layout and looking is the only way to know what you got. ONE call: it validates,
+   converts and measures the connector pane, stops at the first failure and names it, and returns
+   each sub-answer whole under `steps`. **Do not drive `lvai_validate_aixml` and
+   `lvai_convert_aixml_to_vi` by hand** — measured 2026-09-08, a run that built three small VIs
+   spent 22 calls on those three tools where 6 would have done, and a round trip there costs
+   **9.8 s of model time against under 2 s inside the tool**. Editing several VIs? `lvai_generate_vis`
+   takes one AIXML/VI pair per line.
+3. `lvai_generate_vi` over the **real path**, `openVI: false`.
    **`Error 1357` — "a LabVIEW file from that path already exists in memory"** is the normal
    hazard here, because an existing VI is far more likely to be open than a new one.
    `lvai_open_file` alone causes it. The release route is the IDE's own application instance
@@ -375,9 +380,14 @@ The placer keeps comments clear of nodes, constants, terminals, terminal caption
 borders, resizes a box too small for its text, and prints the clearance it reached. **Wires and
 tunnels carry no geometry in the heap and cannot be avoided** — crossing a wire is fine. A
 `WARNING ... no position with N px clearance` line means it fell back to a fixed offset; look at
-that one yourself, by rendering the diagram with the `scripts/lvdoc_print.xml` helper
-(`Print.VI To HTML`, one PNG per diagram — and create the image directory first, or LabVIEW
-answers Error 118).
+that one yourself.
+
+**Look with `lvai_render_diagrams`** — one call, every VI you touched, and it creates the image
+directory for you (LabVIEW does not, and answers `Error 118`). Do not drive
+`scripts/lvdoc_print.xml` by hand: measured on a three-VI run, that cost 10 calls where 1 would
+have done, in a run where a round trip was worth 9.8 s and the tools themselves 2 s.
+**Negative clearance means OCCLUDED and a clip reports no number at all**, so read the picture
+rather than the number.
 
 ### Phase 8 — Put the icon back
 
