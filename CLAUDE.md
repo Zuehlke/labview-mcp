@@ -482,6 +482,27 @@ label already occupies the space above it. A comment describing a stretch of dia
 structure or a primitive — stays above. `--side auto` is the default and decides from the target, so
 anchoring a comment to what it is actually about gets the side right for free.
 
+**But `auto` is a PREFERENCE, not a verdict, since the placer started maximising clearance.** The
+preferred side is worth about 6 px of clearance in the score, so the other one wins wherever the
+preferred is cramped — measured 2026-09-08, a comment anchored to two accessor calls came out
+*above* them with 50 px of room. Read the side the script prints; do not predict it. The placer also
+keeps every comment clear of nodes, constants, terminals and terminal captions, and off a
+structure's borders. **Wires and tunnels it cannot avoid** — no tunnel uid has `<bounds>` anywhere
+in the heap and wires carry no geometry — so crossing a wire is accepted.
+
+**AND A COMMENT CAN STILL BE CLIPPED, WHICH NOTHING BUT THE RENDERED DIAGRAM SHOWS.** A label box
+does not auto-grow, so a caption too long for it is cut off mid-sentence in silence. The placer
+resizes a box that cannot hold its text — and its estimate of "cannot" was wrong in the damaging
+direction until 2026-09-08: `Below the lower edge of the band the heater must switch on` shipped as
+`… the heater must` in a 54 × 88 box, past validation, rebuild, export, link check and a run.
+Two one-sided causes, both now pessimistic: a per-character width average cannot describe a
+PROPORTIONAL font (in one 88 px box LabVIEW fitted 16 characters of `the state of the` and refused
+15 of `Below the lower`), and `round` on the line budget granted a fraction of a line that does not
+exist. **So finish by rendering the diagram and reading it** — `Print.VI To HTML` through
+`scripts/lvdoc_print.xml`, one PNG per diagram, and **create the image directory first** or LabVIEW
+answers `Error 118` without creating it. Every programmatic check in the chain passed the clipped
+comment; only the picture disagreed.
+
 **Everything you write INTO a VI is English by default — descriptions, terminal descriptions and
 diagram comments alike. A German request does not imply German text.** Only an explicit wish
 ("auf Deutsch", "in French") changes it, and then everything in that VI follows it.
@@ -1112,9 +1133,27 @@ TOOLS emit — the class-test and method-test sockets, and the suite runner, who
 `array` were being repaired on every build. **The `scripts\` helpers are deliberately NOT
 renumbered**: they were measured silent and are generated once, and `docs/labview-crash-signatures.md`
 warns against renumbering 39 files on a rule rather than a measurement. It is worth doing not
-because the warnings cause anything — unestablished — but because `dwarnCount` saturates at 200 and
+because the warnings cause anything — unestablished — but because `dwarnCount` saturates and
 `looksDegraded` flips with it, so a signature we emit ourselves crowds out the ones that might mean
 something.
+
+**AND `dwarnCount` COUNTED LOG LINES, NOT EVENTS, UNTIL 2026-09-08 — so every DWarn figure written
+down here before that date is doubled.** NI writes each event twice: a bare line, then the same
+message prefixed `source\…cpp(N) : `. Measured with a controlled probe, because one sample cannot
+tell a format from a coincidence — four diagram objects at reserved uids log one event each, and
+the substring count went 2 → 10 while `) : DWarn` lines and `<DEBUG_OUTPUT>` blocks both went
+1 → 5. Exactly 2×. The counter now reports **events**, names the rule in `dwarnCountedBy`, and both
+thresholds are halved to keep their calibration: the observed cap of 200 lines is **100 events**,
+and `looksDegraded` fires at 25. Ratios and deltas in every earlier analysis stand; only absolute
+magnitudes were inflated — the `4` in the paragraph above is an event count, re-measured, and the
+`24 of 40` pair is of unrecoverable unit.
+
+**The lesson is the propagation, not the arithmetic: this was ALREADY WRITTEN DOWN and changed
+nothing.** `docs/labview-crash-signatures.md` says outright, in the middle of one analysis, that
+"`dwarnCount` counts LINES while each event writes two" — halves by hand, correctly, and then no
+other passage in that document, none in this file, and not one line of code was brought into step.
+Same shape as an embedded document nothing serves. **When a measurement contradicts a number, fix
+the thing that PRODUCES the number, not just the paragraph you happen to be writing.**
 
 **A DWARN CLUSTER TAGGED WITH ONE VI IS NOT CAUSED BY THAT VI, and settling it needs an A/B rather
 than a fix.** Measured 2026-09-07: a 33-minute class build left 38 new DWarns, *every* one tagged

@@ -309,7 +309,8 @@ internal static class LvClass
     {
         // NUMBERED FROM AixmlCheck.SafeUidBase, not from 10. Every lvai_create_class call used to
         // log a `uidInReservedRange` repair per field - self-corrected before conversion, so it
-        // cost nothing but log noise, and the noise is the point: dwarnCount saturates at 200 and
+        // cost nothing but log noise, and the noise is the point: dwarnCount saturates (at 100
+        // events, 200 log lines - see docs/labview-crash-signatures.md, 2026-09-08) and
         // a signature we emit ourselves crowds out the ones that mean something. Measured
         // 2026-09-07, three calls in one cold build reporting 4, 2 and 2 such repairs.
         var controls = string.Join("\n", fields.Select((f, i) =>

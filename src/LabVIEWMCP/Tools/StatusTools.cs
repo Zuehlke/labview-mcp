@@ -24,9 +24,12 @@ internal sealed class StatusTools(LvaiConnection connection)
         Also reports scriptsDirectory: the absolute path of the helper scripts shipped next to
         this server's exe. Use it instead of a relative path - it works from any working
         directory, and from a binary-only install with no repository checkout.
-        `labviewHealth` counts the `DWarn` entries in NI's OWN crash log, which is where
+        `labviewHealth` counts the `DWarn` EVENTS in NI's OWN crash log, which is where
         LabVIEW records faults - its crash handler means Windows Error Reporting never sees them,
-        so an empty event log is not an alibi. USE IT AFTER A FAILURE, NEVER AS A GATE BEFORE
+        so an empty event log is not an alibi. Events, not lines: NI writes each one twice and
+        this counted the substring until 2026-09-08, so `dwarnCount` was double throughout and
+        every DWarn figure in this repository predating that halves. `dwarnCountedBy` names the
+        rule that counted. USE IT AFTER A FAILURE, NEVER AS A GATE BEFORE
         WORK: measured 2026-09-03 over two runs, it was wrong in BOTH directions - an instance at
         200 completed a whole cold class build without incident, and an instance reading 0
         crashed inside ConvertAIXMLToVI minutes later. What it is good for is the retrospective
@@ -150,18 +153,28 @@ internal sealed class StatusTools(LvaiConnection connection)
             };
         }
 
-        var warnings = Count(text, "DWarn");
+        var (warnings, countedBy) = CountDwarnEvents(text);
         var lastSignature = text.Split(['\n'], StringSplitOptions.RemoveEmptyEntries)
             .LastOrDefault(line => line.Contains("DWarn", StringComparison.Ordinal))?.Trim();
 
-        // SATURATED AT 200, so the number is a FLOOR once it gets there. Measured 2026-09-03
-        // across four captures of this log: three read exactly 200 at three different file sizes
-        // (1.94, 1.98 and 2.00 MB) while others read 16 and 146. A count that stops dead at a
-        // round number while the file keeps growing is a cap, not a coincidence - and reporting
-        // "200" as a magnitude invites the reader to compare two saturated logs and conclude
-        // nothing changed. NI documents no such limit; this is inferred from the four readings and
-        // is labelled as inference rather than fact.
-        const int knownCap = 200;
+        // SATURATED AT 100 EVENTS, so the number is a FLOOR once it gets there. Measured
+        // 2026-09-03 across four captures of this log: three read exactly 200 at three different
+        // file sizes (1.94, 1.98 and 2.00 MB) while others read 16 and 146. A count that stops
+        // dead at a round number while the file keeps growing is a cap, not a coincidence - and
+        // reporting it as a magnitude invites the reader to compare two saturated logs and
+        // conclude nothing changed. NI documents no such limit; this is inferred from the four
+        // readings and is labelled as inference rather than fact.
+        //
+        // THOSE FOUR READINGS WERE LINE COUNTS, AND EVERY THRESHOLD HERE IS HALVED BECAUSE OF IT.
+        // Until 2026-09-08 this counted the substring "DWarn", and NI writes each event TWICE -
+        // a bare line, then the same message prefixed with `source\...cpp(N) : `. Measured that
+        // day by generating four diagram objects at uids inside LabVIEW's reserved range, which
+        // logs one event per object: the substring count went 2 -> 10 while the event count went
+        // 1 -> 5. Exactly 2x, in both readings. So the observed cap of 200 lines is 100 events,
+        // and the degraded threshold of 50 lines is 25 - the calibration is preserved, only its
+        // unit is corrected. Any DWarn figure recorded in this repository before that date is a
+        // line count and halves.
+        const int knownCap = 100;
         var saturated = warnings >= knownCap;
 
         return new JsonObject
@@ -171,6 +184,11 @@ internal sealed class StatusTools(LvaiConnection connection)
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
             ["dwarnCount"] = warnings,
             ["dwarnCountSaturated"] = saturated,
+            // EVENTS, NOT LINES - and named, because the unit CHANGED on 2026-09-08 and a reader
+            // comparing this number against an older note would otherwise be comparing halves.
+            // "rawFallback" means no `cpp(N) : DWarn` line was found while the bare form was, so
+            // NI's format is not the one measured here and the number may be doubled again.
+            ["dwarnCountedBy"] = countedBy,
             // COUNT AND SIZE BOTH, because the count alone was ambiguous: measured 2026-09-03, the
             // log was rewritten during a run - logWrittenUtc moved by an hour - while dwarnCount
             // stayed at exactly 200 and the last signature was byte-identical. Whether LabVIEW
@@ -184,7 +202,7 @@ internal sealed class StatusTools(LvaiConnection connection)
             // crash, no restart and every artefact correct. Counting them made this field
             // read `true` through a completely clean run, which is worse than not having it.
             // A log carrying ONLY that signature is not degraded however many there are.
-            ["looksDegraded"] = warnings >= 50 && HasSignatureOtherThanBenignTeardown(text),
+            ["looksDegraded"] = warnings >= 25 && HasSignatureOtherThanBenignTeardown(text),
             // `looksDegraded` HAS NOW BEEN WRONG IN BOTH DIRECTIONS, and saying so is the
             // point of this field rather than a caveat on it. Measured 2026-09-03 over two runs:
             // an instance at 200 completed a full cold class build, a typedef binding, ten
@@ -198,10 +216,11 @@ internal sealed class StatusTools(LvaiConnection connection)
                   + "instance reading 0 has been measured crashing minutes later, because the log "
                   + "is reset at start and records only what has already gone wrong."
                 : saturated
-                    ? $"AT LEAST {knownCap} DWarn entries - the count is SATURATED and is a "
+                    ? $"AT LEAST {knownCap} DWarn events - the count is SATURATED and is a "
                       + "FLOOR, not a magnitude. Measured 2026-09-03: three captures read "
-                      + "exactly 200 at three different file sizes (1.94, 1.98, 2.00 MB) "
-                      + "while others read 16 and 146. So two saturated logs cannot be "
+                      + "exactly 200 LOG LINES at three different file sizes (1.94, 1.98, "
+                      + "2.00 MB) while others read 16 and 146, and NI writes two lines per "
+                      + "event - so the cap is 100 events. Two saturated logs cannot be "
                       + "compared with each other, and a count that is NOT RISING is no "
                       + "evidence that nothing new went wrong - read `lastDwarn` instead. "
                       + "NI documents no such limit; this is inferred from four readings. "
@@ -212,17 +231,51 @@ internal sealed class StatusTools(LvaiConnection connection)
                       + "explains - Error 1073 on a private-data export, Error 1562 from "
                       + "the accessor wizard - restart LabVIEW before hunting further. Do "
                       + "not gate work on this number."
-                : warnings >= 50
-                    ? $"{warnings} DWarn entries. A RECORD OF WHAT HAS ALREADY GONE WRONG, "
+                : warnings >= 25
+                    ? $"{warnings} DWarn events. A RECORD OF WHAT HAS ALREADY GONE WRONG, "
                       + "not a prediction - an instance at this level has also been measured "
                       + "completing a whole cold class build without incident. Its use is "
                       + "RETROSPECTIVE: when a class-editing call fails for no reason the project "
                       + "state explains - Error 1073 on a private-data export, Error 1562 from the "
                       + "accessor wizard - check whether the count moved and restart LabVIEW "
                       + "before hunting further. Do not gate work on this number."
-                    : $"{warnings} DWarn entries. Low enough to be ordinary; read the log if a "
+                    : $"{warnings} DWarn events. Low enough to be ordinary; read the log if a "
                       + "call fails in a way the arguments do not explain.",
         };
+    }
+
+    /// <summary>
+    /// How many DWarn EVENTS the log records, and which rule counted them.
+    ///
+    /// NI WRITES EACH EVENT TWICE, which is why this is not a substring count. Every event is a
+    /// bare line followed by the same message prefixed with its source position:
+    ///
+    /// <code>
+    /// DWarn 0xBB613420: trying to override with non-reserved UID, request: 10 ...
+    /// source\panel\HeapObjMapImpl.cpp(226) : DWarn 0xBB613420: trying to override with ...
+    /// </code>
+    ///
+    /// MEASURED 2026-09-08, not inferred from one sample. Generating four diagram objects at uids
+    /// inside LabVIEW's reserved range logs one event per object, so the delta is known in
+    /// advance: the substring count went 2 -> 10 while `) : DWarn` lines and `DEBUG_OUTPUT`
+    /// blocks both went 1 -> 5. Two lines per event, in both the before and after readings.
+    ///
+    /// The consequence was not cosmetic. Every threshold in <see cref="Health"/> was calibrated
+    /// against doubled numbers, so the "saturates at 200" cap was really 100 events - and any
+    /// figure written down in this repository before that date halves.
+    ///
+    /// THE `) : DWarn` FORM IS THE MARKER, and `DEBUG_OUTPUT` blocks are not, because a block
+    /// need not carry a DWarn at all. The fallback exists so a format this was never measured
+    /// against cannot make the count read 0 while warnings are plainly present: that answers the
+    /// raw substring count and says so, rather than silently claiming health.
+    /// </summary>
+    internal static (int Count, string CountedBy) CountDwarnEvents(string text)
+    {
+        var events = Count(text, ") : DWarn");
+        if (events > 0) return (events, "events");
+
+        var raw = Count(text, "DWarn");
+        return raw > 0 ? (raw, "rawFallback") : (0, "events");
     }
 
     private static int Count(string text, string needle)

@@ -336,7 +336,8 @@ internal static class AixmlCheck
             $"{low.Count} uid(s) below {ObservedReservedFloor} ({string.Join(", ", low.Take(8))}"
             + (low.Count > 8 ? ", ..." : "") + "). LabVIEW may log `trying to override with "
             + "non-reserved UID` for these and substitute its own numbers - harmless to the VI, but "
-            + "it fills the DWarn log, which saturates at 200. Numbering above the ceiling, or "
+            + "it fills the DWarn log, which saturates at 200 lines - 100 events, which is what "
+            + "`lvai_status` reports. Numbering above the ceiling, or "
             + "uid=\"0\" where nothing references the element, avoids it. NOT a defect: our own "
             + "helpers use low uids and log nothing, and why they differ is not established."));
     }
