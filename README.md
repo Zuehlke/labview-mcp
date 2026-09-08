@@ -741,8 +741,8 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**68 tools over 23 RPCs.** Thirty-seven map to no RPC: `lvai_status`, `lvai_dump_schema`,
-`lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` — which composes three RPCs
+**69 tools over 23 RPCs.** Thirty-eight map to no RPC: `lvai_status`, `lvai_dump_schema`,
+`lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` and `lvai_render_diagrams` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
 tools. 33 carry `readOnlyHint`,
@@ -791,6 +791,7 @@ resources rather than call tools.
 | `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **edits an existing `.vi`** |
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
 | `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
+| `lvai_render_diagrams` | — (same composition) | **renders block diagrams to PNG**, several VIs in one call, and reports the images per VI - top-level diagram first, then one per Case frame. Creates the image directory, which LabVIEW does not (`Error 118`). The only check that sees a clipped or occluded diagram comment; measured saving about 100 s of a 1000 s run against driving the print helper by hand |
 | `lvai_close_vi` | — (same composition) | closes a VI in the IDE, **releasing it from memory** |
 | `lvai_close_active_project` | — (same composition) | **saves** the active project and closes it |
 | `lvai_build_from_build_specification` | `BuildFromBuildSpecification` | writes build output |
