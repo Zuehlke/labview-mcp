@@ -517,6 +517,14 @@ keeps every comment clear of nodes, constants, terminals and terminal captions, 
 structure's borders. **Wires and tunnels it cannot avoid** — no tunnel uid has `<bounds>` anywhere
 in the heap and wires carry no geometry — so crossing a wire is accepted.
 
+**AND ON THE UNPLACED PATH, DO NOT RENDER — READ THE `CLIPPED?` NOTES.** Every defect the render
+has caught was caused by the placer, so skipping placement removes the reason to look. Exactly one
+layout fault survives: LabVIEW's own generated box can be too small for its own caption. That is
+arithmetic, not a picture, and `pylv_apply` with no operations now marks it per comment — lines
+needed against lines that fit. Measured what it replaces: 3 render calls plus 4 image reads in one
+three-VI build, about 60–70 s of a 428 s run. **And when you DO render, one call for every VI** —
+`lvai_render_diagrams` takes a path per line and that build made three calls where one would do.
+
 **AND A COMMENT CAN STILL BE CLIPPED, WHICH NOTHING BUT THE RENDERED DIAGRAM SHOWS.** A label box
 does not auto-grow, so a caption too long for it is cut off mid-sentence in silence. The placer
 resizes a box that cannot hold its text — and its estimate of "cannot" was wrong in the damaging

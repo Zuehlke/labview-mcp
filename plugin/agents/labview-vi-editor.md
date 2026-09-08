@@ -399,12 +399,18 @@ tunnels carry no geometry in the heap and cannot be avoided** — crossing a wir
 `WARNING ... no position with N px clearance` line means it fell back to a fixed offset; look at
 that one yourself.
 
-**Look with `lvai_render_diagrams`** — one call, every VI you touched, and it creates the image
-directory for you (LabVIEW does not, and answers `Error 118`). Do not drive
-`scripts/lvdoc_print.xml` by hand: measured on a three-VI run, that cost 10 calls where 1 would
-have done, in a run where a round trip was worth 9.8 s and the tools themselves 2 s.
-**Negative clearance means OCCLUDED and a clip reports no number at all**, so read the picture
-rather than the number.
+**When you PLACED comments, look with `lvai_render_diagrams`** — **one call for every VI you
+touched**, not one per VI: measured on a three-VI build, that was 3 calls where 1 would have done,
+plus 4 image reads. It creates the image directory for you (LabVIEW does not, and answers
+`Error 118`). Do not drive `scripts/lvdoc_print.xml` by hand. **Negative clearance means OCCLUDED
+and a clip reports no number at all**, so read the picture rather than the number.
+
+**When you did NOT place them, do not render at all — read the `CLIPPED?` notes instead.** Every
+defect the render has caught was caused by the placer; the one layout fault that survives without it
+is LabVIEW's own box being too small for its own caption, and `pylv_apply`'s no-operations listing
+marks that per comment with the lines needed against the lines that fit. Shorten the text, or place
+that one comment. It errs towards warning, so a named comment is worth a look and not an automatic
+fix.
 
 ### Phase 8 — Put the icon back
 

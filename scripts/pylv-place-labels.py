@@ -237,7 +237,32 @@ def index_by_uid(diagrams):
     return found
 
 
+def clip_note(bounds, caption):
+    """`` when the caption fits its own box, a CLIPPED warning when it does not.
+
+    WHY THE LISTING CARRIES THIS. A label box does not auto-grow, so a caption too long for it is
+    cut off mid-word in silence - and LabVIEW's OWN generated box does it: measured 2026-09-08, it
+    gave a 57-character caption a 54 x 88 box and rendered `... the heater must`. That is the one
+    layout fault that survives when comments are left UNPLACED, and it was costing a render plus an
+    image read per VI to find. The arithmetic behind the fit is already here, so the answer is a
+    text field rather than a picture: no LabVIEW, no PNG, and it cannot overlook what an eye can.
+
+    Deliberately PESSIMISTIC, the same way `fit_options` is. A false CLIPPED costs a look; a missed
+    one ships documentation with its last words cut off.
+    """
+    height, width = bounds[2] - bounds[0], bounds[3] - bounds[1]
+    if not caption or height <= 0 or width <= 0:
+        return ""
+    needed = wrapped_lines(caption, width)
+    holds = max(1, int(float(height) / LINE_HEIGHT))
+    if needed <= holds:
+        return ""
+    return ("  CLIPPED? needs ~%d lines of %d px in a %d px box (%d fit) - place it, or shorten it"
+            % (needed, LINE_HEIGHT, height, holds))
+
+
 def show(diagrams):
+    clipped = 0
     for n, diagram in enumerate(diagrams):
         comments = [r for r in diagram["objects"] if r[4] == "comment" and r[3]]
         targets = [r for r in diagram["objects"] if r[4] == "node"]
@@ -245,11 +270,20 @@ def show(diagrams):
             continue
         print("--- diagram %d ---" % n)
         for uid, _cls, bounds, caption, _kind, _free in sorted(comments, key=lambda r: r[2][1]):
-            print("  comment  uid %-6d at (top %d, left %d)  %r"
-                  % (uid, bounds[0], bounds[1], caption))
+            note = clip_note(bounds, caption)
+            if note:
+                clipped += 1
+            print("  comment  uid %-6d at (top %d, left %d)  %r%s"
+                  % (uid, bounds[0], bounds[1], caption, note))
         for uid, cls, bounds, caption, _kind, _free in sorted(targets, key=lambda r: r[2][1]):
             print("  target   uid %-6d %-26s at (top %d, left %d)  %s"
                   % (uid, describe(cls), bounds[0], bounds[1], caption))
+
+    if clipped:
+        print("%d comment(s) may be CLIPPED by their own box. That is the one layout fault an "
+              "unplaced comment can still have - placing them resizes the box, and so does "
+              "shortening the text. The estimate errs towards warning: a proportional font cannot "
+              "be measured by character count, so check the ones it names." % clipped)
 
 
 SUBVI_CLASSES = {"iUse", "polyIUse"}

@@ -432,10 +432,30 @@ check them 118–237 s. **Fewer and shorter wins twice** — the run that cut it
 comment per diagram was both the fastest (570 s against 776 s) and the one with the cleanest
 placements, because a small box has more positions that clear its neighbours.
 
-**The render is worth keeping even when you skip placement.** It is the only check in this
-interface that sees anything about layout, and on the day this rule was written it caught three
-defects that had passed validation, rebuild, export and a run. Skipping placement does not oblige
-you to skip looking.
+**DO NOT RENDER ON THE UNPLACED PATH — check the boxes instead.** The render is the only check
+that sees layout, and all three defects it caught on the day this rule was written were caused BY
+the placer: a box resized and still clipped, a comment covering a Case selector, one pushed off the
+diagram. If you do not place, the placer cannot cause them. **Exactly one layout fault survives**,
+and it needs no picture: LabVIEW's own generated box can be too small for its own caption — measured
+that morning at 54 x 88 px for 57 characters, rendered as `... the heater must`.
+
+That one is arithmetic, and `pylv_apply` with no operations already reports it. Its listing marks
+every comment whose caption does not fit:
+
+```
+comment  uid 4500  at (top 117, left 205)  'Below the lower edge ...'
+    CLIPPED? needs ~5 lines of 13 px in a 54 px box (4 fit) - place it, or shorten it
+```
+
+Shorten the text, or place that one comment. The estimate errs towards warning — a proportional
+font cannot be measured by character count — so a named comment is worth a second look, not an
+automatic fix. Measured cost of the render it replaces: 3 render calls plus 4 image reads in one
+three-VI build, about 60–70 s of a 428 s run.
+
+**If you DO render — because placement was asked for, or you want to see the diagram — do it in
+ONE call for every VI**, not one call per VI. `lvai_render_diagrams` takes a path per line and the
+same build made three calls where one would have done. Read the top-level diagram; read a Case
+frame only when a comment is anchored inside one.
 
 When you do place them: one inspect call to learn the pairs, one call to place them.
 
