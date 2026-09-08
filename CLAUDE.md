@@ -517,13 +517,24 @@ keeps every comment clear of nodes, constants, terminals and terminal captions, 
 structure's borders. **Wires and tunnels it cannot avoid** — no tunnel uid has `<bounds>` anywhere
 in the heap and wires carry no geometry — so crossing a wire is accepted.
 
-**AND ON THE UNPLACED PATH, DO NOT RENDER — READ THE `CLIPPED?` NOTES.** Every defect the render
-has caught was caused by the placer, so skipping placement removes the reason to look. Exactly one
-layout fault survives: LabVIEW's own generated box can be too small for its own caption. That is
-arithmetic, not a picture, and `pylv_apply` with no operations now marks it per comment — lines
-needed against lines that fit. Measured what it replaces: 3 render calls plus 4 image reads in one
-three-VI build, about 60–70 s of a 428 s run. **And when you DO render, one call for every VI** —
-`lvai_render_diagrams` takes a path per line and that build made three calls where one would do.
+**ON THE DEFAULT PATH, DO NOT TOUCH PYLABVIEW AT ALL — not even its read-only inspect.** Author the
+`<FreeLabel>`, generate, move on; the comment sits where LabVIEW put it, which is what a
+position-independent caption is written to survive. No render, no image read, no `pylv_apply`.
+
+**An inspect you do not need is not free, because of what you then do with it.** Measured
+2026-09-08: a clip check was added to that listing on the argument that it was cheap and would
+"rarely fire". The next run saw `CLIPPED?` on 3 of 3 comments, placed two of them, and came in at
+**588 s against the 428 s of the run before it** — 15 comment calls where that build had 9. All
+three flags were then measured FALSE against the rendered diagram: LabVIEW derives a one-line box's
+width from the caption at 5.1–5.3 px/char while the check assumed a pessimistic 6.0. The check is
+calibrated now (it only judges MULTI-line boxes) and it is still not worth asking for on this path.
+**A guard that is cheap to run is not cheap if it prompts expensive work.**
+
+**And this whole detour is a STOPGAP.** Positioning needs pylabview only because AIXML has no
+coordinate attribute; **NI is expected to extend the format so a comment carries its own position**,
+and that retires the detour entirely. Do not build habits around it. **When you DO render, one call
+for every VI** — `lvai_render_diagrams` takes a path per line and one build made three calls where
+one would do.
 
 **AND A COMMENT CAN STILL BE CLIPPED, WHICH NOTHING BUT THE RENDERED DIAGRAM SHOWS.** A label box
 does not auto-grow, so a caption too long for it is cut off mid-sentence in silence. The placer

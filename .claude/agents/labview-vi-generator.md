@@ -421,43 +421,48 @@ true wherever it lands — `One iteration per element of Values; the indexing tu
 Clamped` — and never as a label for one node, like `Scale by 9/5`, which is wrong the moment it
 drifts to the `Add`.
 
-**Anything node-specific belongs in the optional half.** If the task asks for accurately placed
-comments — or the user's wording implies documentation a developer will read closely — do the rest
-of this phase. Otherwise stop here and say in the report that the comments are present but
-unplaced, so the reader knows not to trust their position.
+### THE DEFAULT PATH ENDS HERE. Do not touch pylabview at all.
 
-Measured share, for when you are deciding: comment work was **35–38 % of the whole run** in all
-three measured builds of the same three VIs; placing them was 92–154 s of that and rendering to
-check them 118–237 s. **Fewer and shorter wins twice** — the run that cut itself back to one
-comment per diagram was both the fastest (570 s against 776 s) and the one with the cleanest
-placements, because a small box has more positions that clear its neighbours.
+**Write the comment into the AIXML, generate, and move on.** No `pylv_apply`, not even its
+read-only inspect. No render. No image read. The comment sits wherever LabVIEW put it, which is
+exactly what a position-independent caption is written to survive.
 
-**DO NOT RENDER ON THE UNPLACED PATH — check the boxes instead.** The render is the only check
-that sees layout, and all three defects it caught on the day this rule was written were caused BY
-the placer: a box resized and still clipped, a comment covering a Case selector, one pushed off the
-diagram. If you do not place, the placer cannot cause them. **Exactly one layout fault survives**,
-and it needs no picture: LabVIEW's own generated box can be too small for its own caption — measured
-that morning at 54 x 88 px for 57 characters, rendered as `... the heater must`.
+Say in the report that the comments are present but **unplaced**, so a reader knows not to read
+proximity as attribution.
 
-That one is arithmetic, and `pylv_apply` with no operations already reports it. Its listing marks
-every comment whose caption does not fit:
+Why this is the default, in numbers from three measured builds of the same three VIs: comment work
+was **35–38 % of the whole run**; placing cost 92–154 s and rendering to check it 118–237 s. Two
+runs that skipped it came in at 428 s against 570–776 s. And a stopgap is not worth that: **NI is
+expected to extend AIXML so a comment can be positioned in the format itself**, at which point this
+whole pylabview detour retires and the `<FreeLabel>` simply carries its own coordinates. Do not
+build habits around the detour.
 
-```
-comment  uid 4500  at (top 117, left 205)  'Below the lower edge ...'
-    CLIPPED? needs ~5 lines of 13 px in a 54 px box (4 fit) - place it, or shorten it
-```
+One thing that cost a 588 s run, so it is worth naming: **an inspect you did not need is not free,
+because of what you then do with it.** Run with the check in the listing, an agent saw
+`CLIPPED?` on 3 of 3 comments and placed two of them — 15 comment calls where the previous build
+had 9. All three flags were later measured FALSE. The listing is honest now, but the lesson holds:
+on this path there is no question to ask, so do not ask one.
 
-Shorten the text, or place that one comment. The estimate errs towards warning — a proportional
-font cannot be measured by character count — so a named comment is worth a second look, not an
-automatic fix. Measured cost of the render it replaces: 3 render calls plus 4 image reads in one
-three-VI build, about 60–70 s of a 428 s run.
+### Placing them accurately — ONLY when the task asks
 
-**If you DO render — because placement was asked for, or you want to see the diagram — do it in
-ONE call for every VI**, not one call per VI. `lvai_render_diagrams` takes a path per line and the
-same build made three calls where one would have done. Read the top-level diagram; read a Case
-frame only when a comment is anchored inside one.
+Do this when the task prompt asks for accurately placed comments, and not otherwise. It is
+**26–35 s per comment**.
 
-When you do place them: one inspect call to learn the pairs, one call to place them.
+**Fewer and shorter wins twice** — the run that cut itself back to one comment per diagram was both
+the fastest and the one with the cleanest placements, because a small box has more positions that
+clear its neighbours.
+
+**When you place, you must also look**, and one call does every VI: `lvai_render_diagrams` takes a
+path per line. Every layout defect worth catching is caused BY the placer — a box resized and still
+clipped, a comment covering a Case selector, one pushed off the diagram — and the picture is the
+only thing that sees them. **Negative clearance means OCCLUDED; a clip reports no number at all.**
+Read the top-level diagram, and a Case frame only when a comment is anchored inside one.
+
+The inspect listing also marks a comment whose caption does not fit its box
+(`CLIPPED? needs ~5 lines … (4 fit)`). It only flags MULTI-line boxes, because LabVIEW derives a
+one-line box's width from the text; treat a flag as worth a look, not as an automatic fix.
+
+One inspect call to learn the pairs, one call to place them.
 
 ```
 pylv_apply  viPath=<abs>  operationsJson=[]

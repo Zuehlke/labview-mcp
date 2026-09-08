@@ -370,9 +370,14 @@ since 2026-09-08 separates the two cases:
   comment that has drifted onto an unrelated node reads as documentation and lies. Re-place, and
   render to check.
 - **They were not placed, or the comments are diagram-level prose** that is true wherever it sits.
-  Then re-placing is **optional** — measured at 26–35 s per comment, 35–38 % of a whole build — and
-  skipping it changes nothing about how the VI reads. Say in the report that the comments are
-  present but unplaced.
+  Then **do nothing at all — do not even run `pylv_apply`'s read-only inspect.** Re-placing costs
+  26–35 s per comment and 35–38 % of a whole build, and skipping it changes nothing about how the
+  VI reads. Say in the report that the comments are present but unplaced.
+
+  **An inspect you do not need is not free, because of what you then do with it.** Measured
+  2026-09-08: with a clip check in that listing, an agent saw `CLIPPED?` on 3 of 3 comments and
+  placed two of them — 15 comment calls where the build before had 9, and a 588 s run against
+  428 s. All three flags were later measured FALSE. On this branch there is no question to ask.
 
 You can tell which case you are in from the export you already have: a comment naming one node
 (`Scale by 9/5`) needed its position; one describing the diagram (`One iteration per element`) did
@@ -405,12 +410,14 @@ plus 4 image reads. It creates the image directory for you (LabVIEW does not, an
 `Error 118`). Do not drive `scripts/lvdoc_print.xml` by hand. **Negative clearance means OCCLUDED
 and a clip reports no number at all**, so read the picture rather than the number.
 
-**When you did NOT place them, do not render at all — read the `CLIPPED?` notes instead.** Every
-defect the render has caught was caused by the placer; the one layout fault that survives without it
-is LabVIEW's own box being too small for its own caption, and `pylv_apply`'s no-operations listing
-marks that per comment with the lines needed against the lines that fit. Shorten the text, or place
-that one comment. It errs towards warning, so a named comment is worth a look and not an automatic
-fix.
+The inspect listing also marks a caption that does not fit its box
+(`CLIPPED? needs ~5 lines … (4 fit)`). It only flags MULTI-line boxes, because LabVIEW derives a
+one-line box's width from the text itself; treat a flag as worth a look, not as an automatic fix.
+
+**This whole detour is a stopgap.** AIXML has no coordinate attribute today, which is the only
+reason positioning needs pylabview at all. **NI is expected to extend the format so a comment can
+carry its own position**, and when that lands this phase collapses to authoring. Do not build
+habits around the detour, and do not spend a caller's time on it unasked.
 
 ### Phase 8 — Put the icon back
 
