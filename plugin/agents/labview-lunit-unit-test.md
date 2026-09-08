@@ -276,6 +276,18 @@ hold for LUnit too.
 
 - **No newlines in `lvai_run_vi_and_read_values` inputs.** Use `|`.
 
+- **Give every VI you generated an icon, as the LAST step — this is the one that gets forgotten.**
+  A suite of test VIs all carrying the default blank icon is unreadable in the project tree and on
+  a runner's diagram. One call each, and let the tool draw the PNG:
+
+  ```
+  lvai_set_vi_icon  viPath=<abs>  line1="LUNIT"  line2="SETP"  line3="RANGE"
+  ```
+
+  `errorCode 91` with empty outputs is the normal read-back artefact, **not** a failure — judge by
+  `verified`. It re-saves the VI, so it doubles as a free check that LabVIEW can still load it.
+  Last, because regenerating a VI over an existing path destroys its icon.
+
 ## Report
 
 Say, in this order: whether the framework was found and **where you looked**; every target spelling

@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -351,6 +351,33 @@ a regression check.
 cannot be read back through a variant; only `string` indicators survive that path. **Never report
 success from an empty answer** — switch tools rather than making the VI write to a file, which
 was the old workaround and cost about eight minutes of hand-built harness per VI.
+
+### Phase 7b — Re-place the comments. A regeneration scatters them.
+
+**Do this on every edit that regenerated the VI, not only when you added a comment.** A
+regeneration re-creates the whole diagram, so LabVIEW picks fresh positions for *all* comments —
+including the ones that were correct before your change. Skipping this is how an edit silently
+turns good documentation into comments sitting on unrelated nodes.
+
+```
+pylv_apply  viPath=<abs>  operationsJson=[]
+    -> diagramLabels: comment uids on the left, anchor uids on the right, grouped by diagram
+
+pylv_apply  viPath=<abs>  operationsJson=[{"op":"placeLabels","place":"801:2362,799:831"}]
+```
+
+- **Pair inside one diagram only** — bounds are relative to the diagram an object sits in, and the
+  tool refuses a cross-diagram pair. Read the refusal instead of working around it.
+- **Anchor to a node, not to a constant** — a constant has no terminal list and is rejected.
+- **One comment per anchor.**
+
+The placer keeps comments clear of nodes, constants, terminals, terminal captions and structure
+borders, resizes a box too small for its text, and prints the clearance it reached. **Wires and
+tunnels carry no geometry in the heap and cannot be avoided** — crossing a wire is fine. A
+`WARNING ... no position with N px clearance` line means it fell back to a fixed offset; look at
+that one yourself, by rendering the diagram with the `scripts/lvdoc_print.xml` helper
+(`Print.VI To HTML`, one PNG per diagram — and create the image directory first, or LabVIEW
+answers Error 118).
 
 ### Phase 8 — Put the icon back
 

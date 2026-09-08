@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -387,6 +387,45 @@ That is expected, and it is the check that your `URL` is right.
    about eight minutes per VI; the harness is shipped. Note also that `lvai_run_vi_and_read_values`
    reports the *helper's* error code: a target VI that itself failed shows that in its own
    `error out` under `values`, not in `errorCode`.
+
+### Phase 6b — Put the comments on the nodes they describe. ALWAYS.
+
+**Every generated VI gets this. It is not optional and it is not cosmetic.** AIXML creates a
+comment but cannot place one — §1 of the AIXML reference: "NO LAYOUT. There is no coordinate
+attribute anywhere." LabVIEW picks the position, and what it picks is not the node you meant:
+measured on a six-comment VI, one comment landed on the right node, one over an unrelated subVI
+and one in the top-left corner over a wire. **A comment on the wrong node is worse than no
+comment, because a reader trusts it as documentation.**
+
+One inspect call to learn the pairs, one call to place them:
+
+```
+pylv_apply  viPath=<abs>  operationsJson=[]
+    -> the diagramLabels listing: comment uids on the left, anchor uids on the right,
+       grouped by diagram
+
+pylv_apply  viPath=<abs>  operationsJson=[{"op":"placeLabels","place":"801:2362,799:831"}]
+```
+
+Rules that come out of that listing rather than out of your head:
+
+- **Pair inside one diagram only.** Bounds are relative to the diagram an object sits in, so a
+  root-level comment anchored to a node inside a loop lands somewhere unrelated. The tool refuses
+  such a pair — read the refusal, do not work around it.
+- **Anchor to a node, never to a constant.** A constant has no terminal list, so the tool rejects
+  it. Pick a real node in the same frame and accept that the comment sits near it instead.
+- **One comment per anchor.** Two comments on one node is how they end up on top of each other.
+
+The placer keeps every comment clear of nodes, constants, terminals, terminal captions and
+structure borders, resizes a box that cannot hold its text, and reports the clearance it achieved.
+It cannot avoid **wires** or **tunnels** — neither carries geometry in the heap — and a comment
+crossing a wire is accepted. A `WARNING ... no position with N px clearance` line means it fell
+back to a fixed offset: that one needs your eyes.
+
+**Then look at it.** Clearance is measured; whether a comment reads well is not. Generate the
+helper from `scripts/lvdoc_print.xml` and run `Print.VI To HTML`: it writes one PNG per diagram —
+`<name>d.png` for the top level, `d1..dN` per Case frame. **Create the image directory first**;
+LabVIEW does not, and answers Error 118 instead.
 
 ### Phase 7 — The icon, last
 
