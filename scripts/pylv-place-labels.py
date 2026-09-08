@@ -244,14 +244,34 @@ def clip_note(bounds, caption):
     cut off mid-word in silence - and LabVIEW's OWN generated box does it: measured 2026-09-08, it
     gave a 57-character caption a 54 x 88 box and rendered `... the heater must`. That is the one
     layout fault that survives when comments are left UNPLACED, and it was costing a render plus an
-    image read per VI to find. The arithmetic behind the fit is already here, so the answer is a
-    text field rather than a picture: no LabVIEW, no PNG, and it cannot overlook what an eye can.
+    image read per VI to find. The arithmetic is already here, so the answer is a text field rather
+    than a picture: no LabVIEW, no PNG, and it cannot overlook what an eye can.
 
-    Deliberately PESSIMISTIC, the same way `fit_options` is. A false CLIPPED costs a look; a missed
-    one ships documentation with its last words cut off.
+    A SINGLE-LINE BOX IS NEVER FLAGGED, and that is the correction to this check's first version,
+    which fired on 3 of 3 comments in a real run and pushed the agent into placing two of them -
+    the exact work the unplaced path exists to avoid. Measured the same day on a three-comment
+    probe, rendered and read:
+
+        15 x 174 box, 34 chars, renders on ONE line, complete   -> 5.12 px/char
+        15 x 192 box, 36 chars, renders on ONE line, complete   -> 5.33 px/char
+        54 x  70 box, 37 chars, renders on FOUR lines, complete -> correctly silent
+
+    So LabVIEW derives a one-line box's WIDTH from the caption at about 5.1-5.3 px per character,
+    while this file's PIXELS_PER_CHAR is a deliberately pessimistic 6.0 - which demands 15-20 %
+    more room than LabVIEW needs and therefore condemns every box LabVIEW sized correctly. Raising
+    the constant is not the fix: it is right for the RESIZE decision, where erring small clips
+    text. The fix is structural. **A one-line-high box is LabVIEW stating that the caption fits on
+    one line at that width**; a multi-line box is where it may have capped the width and then run
+    out of height, which is what the morning's 54 x 88 clip was.
+
+    The residual risk, stated rather than hidden: a one-line box that is genuinely too narrow would
+    now pass unflagged. None has been observed, and the mechanism above says none should exist,
+    because the width is derived from the text. Multi-line boxes keep the pessimistic estimate.
     """
     height, width = bounds[2] - bounds[0], bounds[3] - bounds[1]
     if not caption or height <= 0 or width <= 0:
+        return ""
+    if height <= LINE_HEIGHT + 3:
         return ""
     needed = wrapped_lines(caption, width)
     holds = max(1, int(float(height) / LINE_HEIGHT))
