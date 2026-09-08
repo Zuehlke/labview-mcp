@@ -357,12 +357,29 @@ cannot be read back through a variant; only `string` indicators survive that pat
 success from an empty answer** — switch tools rather than making the VI write to a file, which
 was the old workaround and cost about eight minutes of hand-built harness per VI.
 
-### Phase 7b — Re-place the comments. A regeneration scatters them.
+### Phase 7b — Re-place the comments, IF they were placed before
 
-**Do this on every edit that regenerated the VI, not only when you added a comment.** A
-regeneration re-creates the whole diagram, so LabVIEW picks fresh positions for *all* comments —
-including the ones that were correct before your change. Skipping this is how an edit silently
-turns good documentation into comments sitting on unrelated nodes.
+**A regeneration scatters every comment, including the ones that were right before your change.**
+LabVIEW re-decides the whole layout, so this is not only about comments you added.
+
+**Whether to re-place them depends on what the VI already was**, and the rule of this repository
+since 2026-09-08 separates the two cases:
+
+- **The VI's comments were accurately placed** — they sat on the nodes they describe. Then
+  re-placing is **mandatory**: your edit has just destroyed positioning somebody paid for, and a
+  comment that has drifted onto an unrelated node reads as documentation and lies. Re-place, and
+  render to check.
+- **They were not placed, or the comments are diagram-level prose** that is true wherever it sits.
+  Then re-placing is **optional** — measured at 26–35 s per comment, 35–38 % of a whole build — and
+  skipping it changes nothing about how the VI reads. Say in the report that the comments are
+  present but unplaced.
+
+You can tell which case you are in from the export you already have: a comment naming one node
+(`Scale by 9/5`) needed its position; one describing the diagram (`One iteration per element`) did
+not.
+
+**Never leave a node-specific comment unplaced after a regeneration.** That is the combination
+that produces confident, wrong documentation — and neither validation nor a run can see it.
 
 ```
 pylv_apply  viPath=<abs>  operationsJson=[]

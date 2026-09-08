@@ -466,6 +466,22 @@ crashes on a working station, so the script now *refuses* a non-identity mapping
 wrong assignment is fixed by regenerating from AIXML** with the `conIdx` values
 `lvai_connector_pane` prints. `docs/connector-pane-repair.md` has both measurements.
 
+**EVERY generated VI carries at least one AIXML comment; PLACING comments accurately is OPTIONAL.**
+The user's rule of 2026-09-08, and it falls exactly along the cost line. A `<FreeLabel>` is free —
+it rides along in the `lvai_generate_vi` call. Placing it on the node it describes costs **26–35 s
+per comment**, measured by attributing every call of three builds of the same three VIs: comment
+work was **35–38 % of the whole run** every time, split into 92–154 s of placing and 118–237 s of
+rendering to check.
+
+**So the mandatory comment MUST be position-independent, and that is what makes leaving it unplaced
+safe.** Write it as a statement about the diagram, true wherever LabVIEW drops it — `One iteration
+per element of Values` — never as a label for one node, like `Scale by 9/5`, which becomes wrong the
+moment it drifts onto the `Add`. Node-specific text is precisely what needs placement, so it belongs
+in the optional half; and a node-specific comment left unplaced is the one combination that
+manufactures confident, wrong documentation. **Fewer and shorter wins twice**: the run that cut back
+to one comment per diagram was both the fastest (570 s against 776 s) and the one that placed most
+cleanly, because a small box has more positions clear of its neighbours.
+
 **A diagram comment authored in AIXML lands somewhere the generator chooses, not on the node you
 meant.** AIXML has no coordinate attribute at all, so `<FreeLabel>` can only be *created* there.
 Measured 2026-08-24 on `DaqReadAndTDMS2.vi`: six comments came out at six plausible node positions

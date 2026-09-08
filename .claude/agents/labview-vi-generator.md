@@ -402,16 +402,42 @@ Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFil
    reports the *helper's* error code: a target VI that itself failed shows that in its own
    `error out` under `values`, not in `errorCode`.
 
-### Phase 6b — Put the comments on the nodes they describe. ALWAYS.
+### Phase 6b — One comment always; PLACING them is optional
 
-**Every generated VI gets this. It is not optional and it is not cosmetic.** AIXML creates a
-comment but cannot place one — §1 of the AIXML reference: "NO LAYOUT. There is no coordinate
-attribute anywhere." LabVIEW picks the position, and what it picks is not the node you meant:
-measured on a six-comment VI, one comment landed on the right node, one over an unrelated subVI
-and one in the top-left corner over a wire. **A comment on the wrong node is worse than no
-comment, because a reader trusts it as documentation.**
+Two different things, with two different price tags, and the rule of this repository since
+2026-09-08 splits them:
 
-One inspect call to learn the pairs, one call to place them:
+| | when | cost |
+|---|---|---|
+| **A `<FreeLabel>` in the AIXML** | **ALWAYS. Every generated VI carries at least one.** | free — it rides along in the `lvai_generate_vi` call |
+| **Placing it on the node it describes** | only when the task asks for it | **26–35 s per comment**, measured over three runs |
+
+**The mandatory one MUST be position-independent, and that is not a style note — it is what makes
+it safe to leave unplaced.** AIXML has no coordinate attribute (§1: "NO LAYOUT"), so LabVIEW picks
+the spot, and what it picks is not the node you meant: measured on a six-comment VI, exactly one
+landed on the right node, by luck. **A comment on the wrong node is worse than none, because a
+reader trusts it as documentation.** So write the always-comment as a statement about the DIAGRAM,
+true wherever it lands — `One iteration per element of Values; the indexing tunnel rebuilds
+Clamped` — and never as a label for one node, like `Scale by 9/5`, which is wrong the moment it
+drifts to the `Add`.
+
+**Anything node-specific belongs in the optional half.** If the task asks for accurately placed
+comments — or the user's wording implies documentation a developer will read closely — do the rest
+of this phase. Otherwise stop here and say in the report that the comments are present but
+unplaced, so the reader knows not to trust their position.
+
+Measured share, for when you are deciding: comment work was **35–38 % of the whole run** in all
+three measured builds of the same three VIs; placing them was 92–154 s of that and rendering to
+check them 118–237 s. **Fewer and shorter wins twice** — the run that cut itself back to one
+comment per diagram was both the fastest (570 s against 776 s) and the one with the cleanest
+placements, because a small box has more positions that clear its neighbours.
+
+**The render is worth keeping even when you skip placement.** It is the only check in this
+interface that sees anything about layout, and on the day this rule was written it caught three
+defects that had passed validation, rebuild, export and a run. Skipping placement does not oblige
+you to skip looking.
+
+When you do place them: one inspect call to learn the pairs, one call to place them.
 
 ```
 pylv_apply  viPath=<abs>  operationsJson=[]
