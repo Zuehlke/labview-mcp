@@ -18,11 +18,52 @@ root's - so placing a root-level label "above" a node inside a loop by copying i
 label somewhere else entirely, off-screen as often as not. `--place` therefore refuses a pair whose
 label and target do not share a diagram, and `--list` groups by diagram so the pairs are pickable.
 
+IT AVOIDS THE OTHER OBJECTS, and until 2026-09-08 it did not. The first version anchored a comment
+a fixed `--gap` from its node and staggered only against OTHER COMMENTS, so on a dense diagram it
+put documentation on top of wired elements - measured on a CLD exam solution, where six of twelve
+comments landed on constants, terminals and a Case structure border, and one was clipped by the
+frame it sat in. Getting the obstacle set right took four wrong models; all four are recorded here
+because not one of them announces itself:
+
+1. A diagram's `zPlaneList` holds only SOME of its objects. Constants, front panel terminals and
+   indicators appear there as bare uid references and are DEFINED under
+   `nodeList -> sRN -> termList -> term -> ddo`, with bounds in diagram space. Collecting only
+   `zPlaneList` children missed 8 of 18 objects on one loop diagram.
+2. The `sRN` pseudo-node has a degenerate box - `(-43, -1309, -43, -1309)` on that VI. Treating it
+   as an obstacle is harmless in itself, but it BLOCKS THE DESCENT to the definitions in (1).
+3. A constant's own bounds already span its caption. An `fPTerm`'s do NOT: those are just the
+   32x16 socket, and the terminal NAME is a nested label whose bounds are RELATIVE to the socket.
+4. A comment has to fit inside the structure that clips it, or LabVIEW cuts the text off silently.
+
+TUNNELS AND WIRES CANNOT BE AVOIDED. Every tunnel uid in `tunnelList` / `srDCOList` is a bare
+reference and no element carrying that uid has a `<bounds>` anywhere in the heap - searched, none.
+Wires have no geometry either. Tunnels sit on a structure's left and right border, so the only
+defence is a horizontal margin off those two edges; a comment crossing a WIRE is accepted, which
+is the convention the user of this repository asked for on 2026-09-08.
+
+A LABEL BOX DOES NOT AUTO-GROW. Text too long for its box is silently clipped - "paced at 50 ms"
+rendered as "paced at 50". A box that cannot hold its text is resized here; one that can is left
+alone, because its size is the author's choice.
+
+AND THE ESTIMATE DECIDING "CAN HOLD" WAS WRONG IN THE DAMAGING DIRECTION UNTIL 2026-09-08, so the
+resize did not fire and this script clipped a comment while reporting success. `Below the lower
+edge of the band the heater must switch on` rendered as `... the heater must` in a 54 x 88 box:
+the model said four lines and LabVIEW wrapped five. Two causes, both one-sided - a per-character
+width average cannot describe a proportional font, and `round` on the line budget granted a
+fraction of a line that does not exist. A wrong verdict here is invisible in every check the
+chain makes: it validates, rebuilds, exports and runs, and only the rendered diagram disagrees.
+Hence the constants above are pessimistic and the budget is floored.
+
+Placement maximises CLEARANCE rather than taking the first free slot. First-fit is what leaves a
+comment touching the thing next to it, which reads as badly as overlapping it.
+
 usage:
   pylv-place-labels.py <bundle|heap_BDHb.xml> --list
   pylv-place-labels.py <bundle|heap_BDHb.xml> --place 900:130,901:135,910:230 [--gap 20]
 
-Then `pylv_rebuild`. A rebuild verifies nothing - open the VI and look, or print the diagram.
+Then `pylv_rebuild`. A rebuild verifies nothing - render the diagram and look. `Print.VI To HTML`
+(see `scripts/lvdoc_print.xml`) writes one PNG per diagram; its image directory MUST EXIST, or
+LabVIEW answers Error 118 without creating it.
 """
 
 import argparse
@@ -48,6 +89,28 @@ CLASS_NAMES = {
 
 # Structures own a diagram rather than a terminal list, so they are named explicitly.
 STRUCTURES = {"forLoop", "whileLoop", "select", "eventStruct", "seqStruct", "timedLoop"}
+
+# Classes whose bounds are RELATIVE to the object they belong to.
+CAPTION_CLASSES = {"label", "multiLabel", "numLabel", "selLabel"}
+
+# Never an obstacle: `attachment` is a comment's own anchor dot, and `sRN` is a pseudo-node whose
+# degenerate box would hide every constant and terminal defined beneath it.
+NOT_AN_OBSTACLE = {"attachment", "sRN"}
+
+PAD = 10                # clear space demanded on every side of a placed comment
+SIDE_MARGIN = 26        # keep off a structure's left/right border, where its tunnels sit
+END_MARGIN = 12         # keep off its top/bottom border
+REACH = 420             # past this a comment stops reading as documentation OF that node
+# DELIBERATELY PESSIMISTIC, and the fit test is the only reason. A per-character average cannot
+# describe a proportional font: measured 2026-09-08 in ONE 88 px box, LabVIEW fitted the 16
+# characters of "the state of the" on a line and refused the 15 of "Below the lower" - under 5.5
+# px/char one way, over 5.87 the other. So this sits above the observed upper bound rather than
+# on the average (the old 5.2 came from "Release the state queue", 23 chars in 128 px = 5.57).
+# The error is one-sided on purpose: over-estimating costs a comment a wider box it did not need,
+# under-estimating SILENTLY CLIPS its last words, which is what shipped.
+PIXELS_PER_CHAR = 6.0
+LINE_HEIGHT = 13        # measured: four lines rendered inside a 54 px box, so at most 13.5
+FIT_WIDTH = 150         # width given to a multi-line comment that had to be resized
 
 
 def is_node(element, cls):
@@ -88,59 +151,103 @@ def parse_bounds(element):
     raw = element.findtext("bounds")
     if not raw:
         return None
-    return tuple(int(v) for v in raw.strip("() ").split(","))   # top, left, bottom, right
+    values = tuple(int(v) for v in raw.strip("() ").split(","))   # top, left, bottom, right
+    return values if len(values) == 4 else None
+
+
+def solid(bounds):
+    """A box with real extent. A degenerate one is bookkeeping, not something on screen."""
+    return bounds is not None and bounds[2] > bounds[0] and bounds[3] > bounds[1]
+
+
+def caption_of(element):
+    return (element.findtext("textRec/text")
+            or element.findtext("label/textRec/text") or "").strip('"')
 
 
 def survey(text):
-    """(objects, diagram_of) - every uid'd object with bounds, and which diagram it lives in.
+    """One record per diagram, breadth first.
 
-    Diagram identity is the enclosing `zPlaneList` ELEMENT, compared by identity rather than by
-    name: a VI has one per structure frame and they are all called the same thing.
+    Each record is {'objects': [...], 'owner': rect|None}. An object is
+    (uid, cls, bounds, caption, kind, is_free_label) with bounds in THAT diagram's space, and kind
+    is 'comment', 'node' or 'other'. `owner` is the structure that clips the diagram, so a comment
+    can be kept inside it; it is None for the top-level diagram, which grows instead.
     """
     root = ET.fromstring(text)
-    parent = {child: par for par in root.iter() for child in par}
+    top = root.find("root")
+    diagrams, queue = [], [(top if top is not None else root, None)]
 
-    def diagram_of(element):
-        cur = parent.get(element)
-        while cur is not None and cur.tag != "zPlaneList":
-            cur = parent.get(cur)
-        return id(cur)
+    while queue:
+        diag, owner = queue.pop(0)
+        objects, nested = [], []
 
-    objects = {}
-    for element in root.iter("SL__arrayElement"):
-        uid, cls = element.get("uid"), element.get("class")
-        if not uid or not cls or element.find("bounds") is None:
-            continue
-        bounds = parse_bounds(element)
-        if bounds is None:
-            continue
-        # A FREE label sits directly in the diagram; a control's own caption sits in that control's
-        # `partsList` and is class="label" too. Without this the listing offers "status", "code" and
-        # every terminal name as things to move, and moving one detaches a caption from its control.
-        if cls == "label" and parent.get(element) is not None \
-                and parent[element].tag != "zPlaneList":
-            continue
-        caption = (element.findtext("textRec/text")
-                   or element.findtext("label/textRec/text") or "").strip('"')
-        kind = "label" if cls == "label" else ("node" if is_node(element, cls) else "other")
-        objects[int(uid)] = (cls, bounds, caption, diagram_of(element), kind)
-    return objects
+        zplane = diag.find("zPlaneList")
+        # A FREE label sits directly in the diagram; a control's own caption sits inside that
+        # control and is class="label" too. Only the free ones may be moved.
+        free_ids = {id(c) for c in list(zplane)} if zplane is not None else set()
+
+        def record(element, bounds, free):
+            uid, cls = element.get("uid"), element.get("class")
+            if not uid:
+                return
+            if cls == "label":
+                kind = "comment" if free else "other"
+            elif is_node(element, cls):
+                kind = "node"
+            else:
+                kind = "other"
+            objects.append((int(uid), cls, bounds, caption_of(element), kind, free))
+
+        def walk(element, origin, inside):
+            for child in list(element):
+                if child.get("class") == "diag":
+                    nested.append((child, origin))
+                    continue
+                bounds, cls = parse_bounds(child), child.get("class")
+                usable = solid(bounds)
+                if id(child) in free_ids:
+                    if usable:
+                        record(child, bounds, True)
+                        walk(child, bounds, True)       # only to reach nested diagrams
+                    else:
+                        walk(child, origin, inside)
+                elif usable and cls not in NOT_AN_OBSTACLE and not inside:
+                    record(child, bounds, False)
+                    walk(child, bounds, True)
+                elif inside and usable and cls in CAPTION_CLASSES and origin:
+                    record(child, (origin[0] + bounds[0], origin[1] + bounds[1],
+                                   origin[0] + bounds[2], origin[1] + bounds[3]), False)
+                    walk(child, origin, True)
+                else:
+                    walk(child, origin, inside)
+
+        walk(diag, None, False)
+        diagrams.append({"objects": objects, "owner": owner})
+        queue += nested
+
+    return diagrams
 
 
-def show(objects):
-    diagrams = {}
-    for uid, (cls, bounds, caption, diagram, kind) in objects.items():
-        diagrams.setdefault(diagram, []).append((uid, cls, bounds, caption, kind))
+def index_by_uid(diagrams):
+    """uid -> (diagram index, record)."""
+    found = {}
+    for n, diagram in enumerate(diagrams):
+        for record in diagram["objects"]:
+            found.setdefault(record[0], (n, record))
+    return found
 
-    for n, items in enumerate(diagrams.values()):
-        labels = [i for i in items if i[4] == "label" and i[3]]
-        targets = [i for i in items if i[4] == "node"]
-        if not labels and not targets:
+
+def show(diagrams):
+    for n, diagram in enumerate(diagrams):
+        comments = [r for r in diagram["objects"] if r[4] == "comment" and r[3]]
+        targets = [r for r in diagram["objects"] if r[4] == "node"]
+        if not comments and not targets:
             continue
         print("--- diagram %d ---" % n)
-        for uid, _, bounds, caption, _kind in sorted(labels, key=lambda i: i[2][1]):
-            print("  comment  uid %-6d at (top %d, left %d)  %r" % (uid, bounds[0], bounds[1], caption))
-        for uid, cls, bounds, caption, _kind in sorted(targets, key=lambda i: i[2][1]):
+        for uid, _cls, bounds, caption, _kind, _free in sorted(comments, key=lambda r: r[2][1]):
+            print("  comment  uid %-6d at (top %d, left %d)  %r"
+                  % (uid, bounds[0], bounds[1], caption))
+        for uid, cls, bounds, caption, _kind, _free in sorted(targets, key=lambda r: r[2][1]):
             print("  target   uid %-6d %-26s at (top %d, left %d)  %s"
                   % (uid, describe(cls), bounds[0], bounds[1], caption))
 
@@ -149,76 +256,202 @@ SUBVI_CLASSES = {"iUse", "polyIUse"}
 
 
 def side_for(cls, side):
-    """Which side of the node the comment goes on.
+    """Which side of the node the comment is TRIED on first.
 
     `auto` follows the convention the user of this repository asked for on 2026-08-24: a comment
     ABOUT A SUBVI CALL reads better BELOW the node, while a general description of what a stretch of
-    diagram does belongs above it. The target itself decides, so no per-comment flag is needed - a
-    comment anchored to a subVI goes below, one anchored to a primitive or a structure goes above.
+    diagram does belongs above it. The target itself decides, so no per-comment flag is needed.
+    Since 2026-09-08 this is a preference rather than a verdict: when the preferred side has no
+    clear room the other one is taken, because a readable position beats a conventional one.
     """
     if side != "auto":
         return side
     return "below" if cls in SUBVI_CLASSES else "above"
 
 
-def place(text, objects, pairs, gap, side):
-    """Move each comment clear of its target, staggering away where two would overlap."""
-    rows = {}          # (diagram, side, row) -> list of (left, right) already taken
-    plan = []
+def wrapped_lines(caption, width):
+    """Greedy word wrap, the way LabVIEW breaks a label."""
+    per_line = max(1, int(width / PIXELS_PER_CHAR))
+    lines, used = 1, 0
+    for word in caption.split():
+        extra = len(word) + (1 if used else 0)
+        if used + extra <= per_line:
+            used += extra
+        else:
+            lines, used = lines + 1, len(word)
+    return lines
 
-    # Left to right, so a stagger decision only ever looks at comments already placed.
-    for label_uid, target_uid in sorted(pairs, key=lambda p: objects[p[1]][1][1]):
-        label = objects.get(label_uid)
-        target = objects.get(target_uid)
-        if label is None:
+
+def fit_options(bounds, caption, cramped=False):
+    """Box shapes that hold `caption`, in preference order. The author's box wins when it fits.
+
+    THE LINE BUDGET IS FLOORED, NEVER ROUNDED, and that was half of a real defect. `round` let a
+    54 px box claim four 13 px lines' worth of room and a fraction more; combined with an
+    optimistic PIXELS_PER_CHAR it passed a comment needing FIVE lines as fitting, and LabVIEW then
+    clipped it without a word. Measured 2026-09-08 on `Below the lower edge of the band the heater
+    must switch on`, which rendered as `... the heater must` inside a 54 x 88 box. Both halves of
+    the estimate now err towards resizing.
+
+    SEVERAL SHAPES, NOT ONE, and that is the correction to the correction. Resizing to a single
+    fixed width made the fix WORSE than the defect on a cramped diagram: measured the same day, the
+    three comments inside that VI's For Loop were each widened to 150 px, whereupon one of them no
+    longer had a clear position anywhere in the loop and was placed overlapping at -24 px. So the
+    wide shape is offered first because it reads best, and a shape keeping the author's WIDTH and
+    growing DOWNWARDS follows it - a structure too narrow for the first often has room for the
+    second. Placement tries them in this order and takes the first that clears its neighbours,
+    which is why this returns a list and not a box.
+
+    `cramped` REVERSES that order, and it is set for any comment INSIDE A STRUCTURE. Space there
+    is finite and shared, so a greedy first-come widening starves whatever is placed after it:
+    measured 2026-09-08 in that same For Loop, the first two comments took 150 px each and the
+    third then had nowhere to go, which is a worse outcome for the diagram than three narrow boxes
+    that all fit. On the root diagram there is room below and to the right, so `wide` stays first.
+    """
+    height, width = bounds[2] - bounds[0], bounds[3] - bounds[1]
+    if not caption:
+        return [(height, width)]
+
+    def holds(box_height, box_width):
+        return wrapped_lines(caption, box_width) <= max(1, int(float(box_height) / LINE_HEIGHT))
+
+    if holds(height, width):
+        return [(height, width)]
+
+    if wrapped_lines(caption, FIT_WIDTH) == 1:
+        wide = (15, int(len(caption) * PIXELS_PER_CHAR) + 8)
+    else:
+        wide = ((wrapped_lines(caption, FIT_WIDTH) + 1) * LINE_HEIGHT, FIT_WIDTH)
+
+    tall = ((wrapped_lines(caption, width) + 1) * LINE_HEIGHT, width)
+    if tall == wide:
+        return [wide]
+    return [tall, wide] if cramped else [wide, tall]
+
+
+def clearance(box, obstacles):
+    """Smallest edge distance to any obstacle; negative where the two overlap."""
+    worst = None
+    for other in obstacles:
+        dx = max(other[1] - box[3], box[1] - other[3])
+        dy = max(other[0] - box[2], box[0] - other[2])
+        gap = max(dx, dy) if (dx < 0 or dy < 0) else max(0, min(dx, dy))
+        worst = gap if worst is None else min(worst, gap)
+    return 999 if worst is None else worst
+
+
+def place(text, diagrams, pairs, gap, side):
+    """Move each comment into the most open spot within reach of its node."""
+    located = index_by_uid(diagrams)
+    moving = {label for label, _target in pairs}
+    # Obstacles per diagram. A comment we are NOT moving still blocks the ones we are.
+    obstacles = {}
+    for n, diagram in enumerate(diagrams):
+        obstacles[n] = [r[2] for r in diagram["objects"]
+                        if r[4] != "comment" or r[0] not in moving]
+
+    plan = []
+    for label_uid, target_uid in pairs:
+        if label_uid not in located:
             raise SystemExit("no object with uid %d in this diagram heap" % label_uid)
-        if target is None:
+        if target_uid not in located:
             raise SystemExit("no object with uid %d in this diagram heap" % target_uid)
-        if label[4] != "label":
-            raise SystemExit("uid %d is a %s, not a comment" % (label_uid, label[0]))
+        label_diagram, label = located[label_uid]
+        target_diagram, target = located[target_uid]
+        if label[4] != "comment":
+            raise SystemExit("uid %d is a %s, not a comment" % (label_uid, describe(label[1])))
         if target[4] != "node":
             raise SystemExit("uid %d is a %s - not something to anchor a comment to"
-                             % (target_uid, describe(target[0])))
-        if label[3] != target[3]:
+                             % (target_uid, describe(target[1])))
+        if label_diagram != target_diagram:
             raise SystemExit(
                 "uid %d and uid %d are in DIFFERENT diagrams. Bounds are relative to the diagram, "
                 "so this pairing would put the comment somewhere unrelated. Run --list: a comment "
-                "can only be anchored inside the structure it already lives in." % (label_uid, target_uid))
+                "can only be anchored inside the structure it already lives in."
+                % (label_uid, target_uid))
 
-        top, left, bottom, right = label[1]
-        height, width = bottom - top, right - left
-        anchor_top, anchor_left, anchor_bottom = target[1][0], target[1][1], target[1][2]
-        where = side_for(target[0], side)
+        owner = diagrams[label_diagram]["owner"]
+        blocking = obstacles[label_diagram]
+        shapes = fit_options(label[2], label[3], cramped=owner is not None)
 
-        # Stagger AWAY from the node, so a displaced comment never crosses it.
-        row, step = 0, height + 4
-        while True:
-            taken = rows.setdefault((label[3], where, row), [])
-            if all(anchor_left >= r or anchor_left + width <= l for l, r in taken):
-                taken.append((anchor_left, anchor_left + width))
+        anchor = target[2]
+        prefer = side_for(target[1], side)
+        limit_bottom = (owner[2] - owner[0] - END_MARGIN) if owner else 10 ** 6
+        limit_right = (owner[3] - owner[1] - SIDE_MARGIN) if owner else 10 ** 6
+        centre_x, centre_y = (anchor[1] + anchor[3]) / 2.0, (anchor[0] + anchor[2]) / 2.0
+
+        # SHAPE BY SHAPE, widest first, and the FIRST that clears its neighbours wins - a later
+        # shape is not compared against an earlier one on score. Deliberate: the shapes are
+        # already ordered by how well they read, so a narrower box is a concession made only when
+        # the better-looking one cannot be placed at all.
+        best, best_score, best_side = None, None, prefer
+        for height, width in shapes:
+            current = (label[2][0], label[2][1], label[2][0] + height, label[2][1] + width)
+            candidates = [(current[0], current[1], prefer)]
+            for offset in range(gap, gap + 220, 16):
+                for step in range(-8, 9):
+                    shift = step * width // 4
+                    candidates.append((anchor[0] - offset - height, anchor[1] + shift, "above"))
+                    candidates.append((anchor[2] + offset, anchor[1] + shift, "below"))
+
+            for top, left, where in candidates:
+                box = (top, left, top + height, left + width)
+                if (box[0] < END_MARGIN or box[1] < SIDE_MARGIN
+                        or box[2] > limit_bottom or box[3] > limit_right):
+                    continue
+                room = clearance(box, blocking)
+                if room < PAD:
+                    continue
+                away = (((left + width / 2.0) - centre_x) ** 2
+                        + ((top + height / 2.0) - centre_y) ** 2) ** 0.5
+                if away > REACH:
+                    continue
+                score = min(room, 60) - 0.12 * away + (6 if where == prefer else 0)
+                if best_score is None or score > best_score:
+                    best, best_score, best_side = box, score, where
+
+            if best is not None:
                 break
-            row += 1
 
-        if where == "below":
-            new_top = anchor_bottom + gap + row * step
-        else:
-            new_top = anchor_top - gap - height - row * step
-        plan.append((label_uid, (new_top, anchor_left, new_top + height, anchor_left + width),
-                     label[1], label[2], where))
+        if best is None:
+            # THE NARROWEST shape, not the best-looking one: nothing cleared PAD, so what matters
+            # now is staying inside the structure that clips this comment rather than reading well.
+            height, width = shapes[-1]
+            # Fall back to the old fixed-offset behaviour rather than refuse, and SAY SO - that
+            # result needs a human eye on it.
+            top = anchor[2] + gap if prefer == "below" else anchor[0] - gap - height
+            left = anchor[1]
+            # AND CLAMP IT INTO THE DIAGRAM. The scored path discards any box crossing a margin,
+            # so only this branch can put a comment off-screen - and it did: measured 2026-09-08,
+            # two comments above shallow anchors inside a For Loop landed at top -41 and -45,
+            # invisible. An overlapping comment a reader can SEE and move is strictly better than
+            # a correctly-sized one they cannot find, and the same run's own WARNING says which
+            # ones to look at.
+            top = max(END_MARGIN, min(top, limit_bottom - height))
+            left = max(SIDE_MARGIN, min(left, limit_right - width))
+            best = (top, left, top + height, left + width)
+            print("  WARNING uid %d: no position with %d px clearance within %d px of its node - "
+                  "placed %s it anyway, so LOOK at this one" % (label_uid, PAD, REACH, prefer))
 
-    for label_uid, new_bounds, old_bounds, caption, where in plan:
+        blocking.append(best)
+        plan.append((label_uid, best, label[2], label[3], best_side,
+                     clearance(best, [b for b in blocking if b is not best])))
+
+    for label_uid, new_bounds, old_bounds, caption, where, room in plan:
         # Anchored replacement: a label's FIRST <bounds> after its opening tag is its own.
-        anchor = re.search(r'<SL__arrayElement class="label" uid="%d">' % label_uid, text)
-        if not anchor:
+        anchor_match = re.search(r'<SL__arrayElement class="label" uid="%d">' % label_uid, text)
+        if not anchor_match:
             raise SystemExit("uid %d is not a label element in the text" % label_uid)
-        head, tail = text[:anchor.end()], text[anchor.end():]
-        tail, n = re.subn(r"<bounds>\([^)]*\)</bounds>",
-                          "<bounds>(%d, %d, %d, %d)</bounds>" % new_bounds, tail, count=1)
-        if n != 1:
+        head, tail = text[:anchor_match.end()], text[anchor_match.end():]
+        tail, replaced = re.subn(r"<bounds>\([^)]*\)</bounds>",
+                                 "<bounds>(%d, %d, %d, %d)</bounds>" % new_bounds, tail, count=1)
+        if replaced != 1:
             raise SystemExit("uid %d has no <bounds> to rewrite" % label_uid)
         text = head + tail
-        print("  %-5s %-28r (%d, %d) -> (%d, %d)"
-              % (where, caption, old_bounds[0], old_bounds[1], new_bounds[0], new_bounds[1]))
+        resized = ((new_bounds[2] - new_bounds[0], new_bounds[3] - new_bounds[1])
+                   != (old_bounds[2] - old_bounds[0], old_bounds[3] - old_bounds[1]))
+        print("  %-5s %-28r (%d, %d) -> (%d, %d)  clearance %d px%s"
+              % (where, caption, old_bounds[0], old_bounds[1], new_bounds[0], new_bounds[1],
+                 room, "  resized to fit its text" if resized else ""))
 
     return text
 
@@ -230,18 +463,20 @@ def main(argv):
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--place", metavar="labelUid:targetUid,...")
     ap.add_argument("--gap", type=int, default=20,
-                    help="pixels between the comment and the node (default 20)")
+                    help="smallest distance between the comment and the node (default 20). A "
+                         "comment may end up further away when nearer positions are occupied.")
     ap.add_argument("--side", choices=("auto", "above", "below"), default="auto",
                     help="auto (default): a comment on a subVI call goes BELOW it, everything "
-                         "else above. Override to force one side for every comment.")
+                         "else above. A preference, not a guarantee - the other side is used "
+                         "when the preferred one has no clear room.")
     args = ap.parse_args(argv)
 
     path = heap_path(args.bundle)
     text = read(path)
-    objects = survey(text)
+    diagrams = survey(text)
 
     if args.list or not args.place:
-        show(objects)
+        show(diagrams)
         return 0
 
     pairs = []
@@ -249,9 +484,9 @@ def main(argv):
         label_uid, target_uid = pair.split(":")
         pairs.append((int(label_uid), int(target_uid)))
 
-    write(path, place(text, objects, pairs, args.gap, args.side))
-    print("placed %d comment(s). Now pylv_rebuild - and then LOOK at the diagram; nothing here "
-          "can tell you a comment reads well." % len(pairs))
+    write(path, place(text, diagrams, pairs, args.gap, args.side))
+    print("placed %d comment(s). Now pylv_rebuild - and then LOOK at the diagram; clearance is "
+          "measured here, but whether a comment READS well is not." % len(pairs))
     return 0
 
 
