@@ -35,6 +35,38 @@ python scripts/pylv-place-labels.py <bundle> --place 900:130 --side above
 
 Then `pylv_rebuild`.
 
+## Which diagram a comment lands in is decided by XML NESTING, not by `uid_parent`
+
+**Measured 2026-09-08 with a three-comment probe, and it is silent in every check.** For a
+`FreeLabel`, the element it is *written inside* decides its diagram; `uid_parent` is not what
+LabVIEW reads:
+
+| comment | `uid_parent` | written | landed in |
+|---|---|---|---|
+| uid 4500 | the For Loop's uid | **inside** the `<Structure>` element | the loop's diagram ✓ |
+| uid 4510 | the For Loop's uid | at document top level | **the ROOT diagram** ✗ |
+| uid 4520 | `root` | at document top level | the root diagram ✓ |
+
+So a comment meant for a loop or a Case frame, authored as a sibling of the `<Structure>` with the
+right `uid_parent`, ends up on the root diagram — and nothing says so. It validates, it converts,
+it runs. What it breaks is the step after: `placeLabels` then refuses the pair as cross-diagram
+(bounds are relative to the enclosing diagram, so it must), and the message names two uids without
+explaining why the comment is not where the author put it. Worse, if the comment is anchored to a
+root-level node instead, it is placed happily and simply documents the wrong part of the VI.
+
+**The fix is to move the `<FreeLabel>` element physically inside the `<Structure>` or
+`<CaseFrame>`**, keeping the same `uid_parent`. Nothing else changes.
+
+This is the same damage as the documented dangling-`uid_parent` fault — an element silently
+reparented to the top-level diagram — arriving by a different route, and `lvai_check_aixml` does
+**not** catch this one: the uid it names exists, so there is nothing dangling to find. Worth adding
+there; it is a pure nesting check that needs no LabVIEW.
+
+It also qualifies §2 of the AIXML reference, which says document order carries no meaning. That
+holds for `Node`, `Control`, `Indicator` and `Constant` — the nodes in this very probe carried
+`uid_parent="4300"` at top level and went into the loop correctly. It does not hold for
+`FreeLabel`.
+
 **The uids you author in AIXML survive into the heap**, so the pairing is stable: `<FreeLabel
 uid="900"/>` is still uid 900 after generation, and `<Call uid="130">` is still uid 130. A
 regeneration resets every position but not the numbers, so the same `--place` line can simply be

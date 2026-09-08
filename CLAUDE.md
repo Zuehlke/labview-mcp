@@ -482,6 +482,17 @@ label already occupies the space above it. A comment describing a stretch of dia
 structure or a primitive — stays above. `--side auto` is the default and decides from the target, so
 anchoring a comment to what it is actually about gets the side right for free.
 
+**AND A COMMENT FOR A LOOP OR CASE FRAME MUST BE WRITTEN INSIDE THAT ELEMENT — `uid_parent` alone
+does not put it there.** Measured 2026-09-08 with a three-comment probe: `uid_parent="<loop uid>"`
+on a `<FreeLabel>` nested inside the `<Structure>` lands in the loop's diagram; the *same*
+attribute on a `FreeLabel` written at document top level lands on **root**, silently, through
+validate, convert and a run. `placeLabels` then refuses the pair as cross-diagram and names two
+uids without saying why — or, if you anchored it to a root node instead, places it happily on the
+wrong part of the VI. This qualifies §2's "document order carries no meaning": true for `Node`,
+`Control`, `Indicator` and `Constant`, which reached the loop correctly from top level in the same
+probe, and false for `FreeLabel`. `lvai_check_aixml` does NOT catch it — the uid exists, so
+nothing dangles.
+
 **But `auto` is a PREFERENCE, not a verdict, since the placer started maximising clearance.** The
 preferred side is worth about 6 px of clearance in the score, so the other one wins wherever the
 preferred is cramped — measured 2026-09-08, a comment anchored to two accessor calls came out
