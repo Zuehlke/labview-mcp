@@ -230,4 +230,30 @@ public sealed class LUnitToolsTests
         Assert.Empty(LUnitTools.TestMethod.ParseAll(null));
         Assert.Empty(LUnitTools.TestMethod.ParseAll("   "));
     }
+
+    /// <summary>
+    /// A report with no suites at all - what LUnit writes when it finds no test methods.
+    ///
+    /// UNLIKE THE TWO FIXTURES ABOVE THIS ONE IS CONSTRUCTED, not captured: the real file from the
+    /// 2026-09-08 run was overwritten by the next run before it could be kept. Its SHAPE is what
+    /// was observed - an empty document parsing to zero suites.
+    ///
+    /// The point is what the numbers then look like: <c>failures == 0</c>, which every caller reads
+    /// as green, and <c>tests == 0</c>, which is the only thing saying nothing ran. LUnit's own
+    /// `All Passed?` reads true here too, so `tests` is not one signal among several - it is the
+    /// ONLY one. That is why the tool gates `ok` on it and reports `foundNoTests`.
+    /// </summary>
+    [Fact]
+    public void AnEmptyReportParsesToZeroTestsAndZeroFailures()
+    {
+        var parsed = LUnitTools.ParseJUnit(
+            """<?xml version="1.0" encoding="UTF-8" standalone="no" ?><testsuites></testsuites>""",
+            out var tests, out var failures);
+
+        Assert.Equal(0, tests);
+        // Vacuously zero - that is precisely the trap, so it is pinned rather than left implicit.
+        Assert.Equal(0, failures);
+        Assert.True(parsed["parsed"]!.GetValue<bool>());
+        Assert.Empty(parsed["suites"]!.AsArray());
+    }
 }
