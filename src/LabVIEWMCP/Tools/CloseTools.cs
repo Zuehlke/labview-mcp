@@ -107,7 +107,7 @@ internal sealed class CloseTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
                 helperGenerated = true;
             }
@@ -120,7 +120,7 @@ internal sealed class CloseTools(LvaiConnection connection)
             var inputs = new JsonObject { ["VI Path"] = Path.GetFullPath(viPath) }.ToJsonString();
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct);
+                regenerateHelper: false, timeoutSeconds, ct: ct);
 
             return Describe(answer, viPath, helperVi, aixml, helperGenerated);
         });
@@ -178,7 +178,7 @@ internal sealed class CloseTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
                 helperGenerated = true;
             }
@@ -186,7 +186,7 @@ internal sealed class CloseTools(LvaiConnection connection)
             var wall = System.Diagnostics.Stopwatch.StartNew();
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
-                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
             return DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
                                         wall.ElapsedMilliseconds);

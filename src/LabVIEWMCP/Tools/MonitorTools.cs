@@ -94,7 +94,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorDiscussVIRequest, MonitorDiscussVIResponse>(
-            (c, o) => c.MonitorDiscussVI(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct);
+            (c, o) => c.MonitorDiscussVI(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct: ct);
 
     [McpServerTool(Name = "lvai_monitor_palette_searches", ReadOnly = true,
                    Title = "Wait for a palette-search request")]
@@ -115,7 +115,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorPaletteSearchesRequest, MonitorPaletteSearchesResponse>(
-            (c, o) => c.MonitorPaletteSearches(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct);
+            (c, o) => c.MonitorPaletteSearches(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct: ct);
 
     [McpServerTool(Name = "lvai_monitor_example_searches", ReadOnly = true,
                    Title = "Wait for an example-search request")]
@@ -135,7 +135,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorExampleSearchesRequest, MonitorExampleSearchesResponse>(
-            (c, o) => c.MonitorExampleSearches(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct);
+            (c, o) => c.MonitorExampleSearches(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct: ct);
 
     [McpServerTool(Name = "lvai_monitor_code_completion", ReadOnly = true,
                    Title = "Wait for a code-completion request")]
@@ -158,7 +158,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorCodeCompletionRequest, MonitorCodeCompletionResponse>(
-            (c, o) => c.MonitorCodeCompletion(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct);
+            (c, o) => c.MonitorCodeCompletion(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct: ct);
 
     [McpServerTool(Name = "lvai_monitor_front_panel_cleanup", ReadOnly = true,
                    Title = "Wait for a front-panel-cleanup request")]
@@ -178,7 +178,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorFrontPanelCleanupRequest, MonitorFrontPanelCleanupResponse>(
-            (c, o) => c.MonitorFrontPanelCleanup(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct);
+            (c, o) => c.MonitorFrontPanelCleanup(o), sendReady, replyJson, maxMessages, timeoutSeconds, ct: ct);
 
     // ---------- shared bidi wait ----------
 

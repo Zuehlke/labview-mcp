@@ -128,7 +128,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 }
             }
 
-            var validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds, ct);
+            var validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds, ct: ct);
             steps.Add(Step("validate", validate));
             if (Failed(validate))
                 return Outcome(false, "validate", steps, total, viPath, null,
@@ -137,7 +137,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "terminal not found\" a misspelled terminal name.");
 
             var convert = await aixml.ConvertAixmlToViAsync(aiXmlFilePath, viPath, openVI,
-                                                            timeoutSeconds, ct);
+                                                            timeoutSeconds, ct: ct);
             steps.Add(Step("convert", convert));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
@@ -193,7 +193,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
             var verdict = await new PaneTools(connection).MeasureViAsync(
                 viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject
             {
                 ["step"] = "connectorPane",
@@ -330,7 +330,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 }
 
                 var answer = await GenerateViAsync(request.Aixml, request.Vi, openVI, measurePane,
-                                                   request.PanePattern, timeoutSeconds, ct);
+                                                   request.PanePattern, timeoutSeconds, ct: ct);
                 var parsed = Parse(answer);
                 // THE SUB-ANSWER'S OWN VERDICT, NOT `viExistsNow`. That field is true for a file
                 // some EARLIER run left behind, so a batch over targets that already existed
@@ -502,7 +502,10 @@ internal sealed class BulkTools(LvaiConnection connection)
         string? operationsJson = null,
         [Description("Save and close the project active in the IDE before extracting")]
         bool closeProject = true,
-        [Description("AIXML-export the rebuilt VI and report its Call targets")]
+        [Description("""
+            AIXML-export the rebuilt VI, report its Call targets, and read whether LabVIEW can
+            still run it.
+            """)]
         bool verify = true,
         [Description("""
             Where to put the extracted bundle. Defaults to a fresh temp directory, deleted on
@@ -510,6 +513,17 @@ internal sealed class BulkTools(LvaiConnection connection)
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 120,
+        [Description("""
+            Let a NOT EXECUTABLE result make `ok` false. On by default, because `ok` is the field a
+            script reads before moving on, and a retarget that breaks the connector pane contract
+            is invisible everywhere else - measured, a caller was Error 1003 while callTargets, the
+            export and validate were all green.
+            `ok: false` is a measurement and NOT a rollback: the .vi on disk carries the edit.
+            Turn it OFF for a deliberately unfinished intermediate state. The
+            placeholder-plus-retarget route is built out of those, and a gate that forbade them
+            would break the one workflow this tool exists to serve.
+            """)]
+        bool gateOnExecState = true,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -541,11 +555,11 @@ internal sealed class BulkTools(LvaiConnection connection)
             // somebody is working in: it reads the VI and rebuilds nothing, so the gate it protects
             // (LabVIEW serving a stale in-memory copy of a file we replaced) cannot be reached.
             if (closeProject && operations.Count > 0)
-                steps.Add(await CloseStepAsync(timeoutSeconds, ct));
+                steps.Add(await CloseStepAsync(timeoutSeconds, ct: ct));
 
             // 2. extract
             var extract = await new PyLabviewTools(connection).ExtractAsync(
-                viPath, directory, annotate: true, timeoutSeconds, ct);
+                viPath, directory, annotate: true, timeoutSeconds, ct: ct);
             steps.Add(Step("extract", extract));
             if (!Succeeded(extract))
                 return PyOutcome(false, "extract", steps, total, viPath, directory, true,
@@ -562,7 +576,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             {
                 foreach (var listing in Listings(mainXml, heaps, directory))
                     steps.Add(await RunScriptAsync(bundle, scripts, listing.Script, listing.Args,
-                                                   listing.Label, timeoutSeconds, ct));
+                                                   listing.Label, timeoutSeconds, ct: ct));
                 return PyOutcome(true, null, steps, total, viPath, directory, keepBundle,
                     "INSPECTED ONLY - no operations were given, so the VI is untouched and the " +
                     "active project was NOT closed. The listings above are what an operations " +
@@ -585,7 +599,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
                 var step = await RunScriptAsync(bundle, scripts, operation.Script,
                     operation.Arguments(mainXml, heaps.FirstOrDefault(), directory),
-                    operation.Op, timeoutSeconds, ct);
+                    operation.Op, timeoutSeconds, ct: ct);
                 steps.Add(step);
                 if (step["exitCode"]?.GetValue<int>() != 0)
                     return PyOutcome(false, operation.Op, steps, total, viPath, directory, true,
@@ -595,22 +609,42 @@ internal sealed class BulkTools(LvaiConnection connection)
             }
 
             // 4. rebuild
-            var rebuild = await new PyLabviewTools(connection).RebuildAsync(mainXml, viPath, timeoutSeconds, ct);
+            var rebuild = await new PyLabviewTools(connection).RebuildAsync(mainXml, viPath, timeoutSeconds, ct: ct);
             steps.Add(Step("rebuild", rebuild));
             if (!Succeeded(rebuild))
                 return PyOutcome(false, "rebuild", steps, total, viPath, directory, true,
                     "The edits applied but the rebuild failed. The bundle is kept.");
 
             // 5. verify - the third gate pylv_rebuild names and cannot check
-            if (verify) steps.Add(await VerifyStepAsync(viPath, timeoutSeconds, ct));
+            JsonObject? verifyStep = null;
+            if (verify)
+            {
+                verifyStep = await VerifyStepAsync(viPath, timeoutSeconds, ct: ct);
+                steps.Add(verifyStep);
+            }
+
+            // GATED ON EXECUTABILITY, because `ok` is the field a script reads and moves on from.
+            // `ok: false` here is a MEASUREMENT, never a rollback: the file is written and the
+            // call targets are right. gateOnExecState turns it off for a deliberately unfinished
+            // intermediate state - the placeholder-plus-retarget route is built out of those, and
+            // a gate that forbids them would break the one workflow this tool exists to serve.
+            var broken = gateOnExecState && verifyStep?["broken"]?.GetValue<bool>() == true;
+            if (broken)
+                return PyOutcome(false, "verify", steps, total, viPath, directory, keepBundle,
+                    "The edit was applied and the call targets are right - and the result is NOT " +
+                    "EXECUTABLE (eBad). Nothing was rolled back; the .vi on disk carries the " +
+                    "change. Read linkerErrors in the verify step. The usual cause is a breached " +
+                    "connector pane contract, which never mentions linking in its symptom. Pass " +
+                    "gateOnExecState: false when the VI is deliberately unfinished at this point.");
 
             return PyOutcome(true, null, steps, total, viPath, directory, keepBundle,
                 verify
                     ? "Rebuilt. The verify step is LabVIEW's OWN export of the result - read its " +
-                      "callTargets and confirm the change you meant is there. A rebuild reporting " +
-                      "ok says nothing about whether the edit was sound."
+                      "callTargets and confirm the change you meant is there, and its execState " +
+                      "for whether LabVIEW can still run the caller."
                     : "Rebuilt. NOTHING HERE CONFIRMS THE EDIT - verify was false, so LabVIEW has " +
-                      "not read the file back. Export it yourself before believing this.");
+                      "not read the file back, and its executability was not measured either. " +
+                      "Export it yourself before believing this.");
         });
 
     /// <summary>
@@ -621,7 +655,7 @@ internal sealed class BulkTools(LvaiConnection connection)
     private async Task<JsonObject> CloseStepAsync(int timeoutSeconds, CancellationToken ct)
     {
         var answer = await new CloseTools(connection).CloseActiveProjectAsync(
-            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
         // 1055 is "no project was active", which is the desired end state, not a problem.
         var code = ErrorCode(answer);
@@ -678,7 +712,7 @@ internal sealed class BulkTools(LvaiConnection connection)
         // creates the defect, rather than at generation time where the call still targets the stub
         // and no dot can exist yet.
         var dots = await new TypedefTools(connection).CoercedTerminalsAsync(viPath,
-            timeoutSeconds, ct);
+            timeoutSeconds, ct: ct);
 
         if (dots is null)
         {
@@ -695,12 +729,41 @@ internal sealed class BulkTools(LvaiConnection connection)
             }
         }
 
+        // THE GATE pylv_rebuild has always named and never checked: "ExecState was not read - do
+        // it through VI Server; 0 means eBad". A retarget that breaks the connector pane contract
+        // shows up ONLY here - measured 2026-09-09, a caller was Error 1003 while this step's
+        // callTargets were all correct, the export was clean and validate answered errorCode 0.
+        var reading = await new ExecStateTools(connection).ReadAsync(
+            viPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
+            timeoutSeconds, ct: ct);
+
+        if (reading is null)
+        {
+            step["execState"] = null;
+            step["execStateNote"] = "not read - the helper could not be run. That is not a clean " +
+                                    "bill of health; it is no measurement at all.";
+        }
+        else
+        {
+            step["execState"] = reading.State;
+            step["execStateMeaning"] = ExecStateTools.Meaning(reading.State);
+            step["broken"] = reading.Broken;
+            if (reading.LinkerErrors.Length > 0) step["linkerErrors"] = reading.LinkerErrors;
+            if (reading.CouldNotOpen) step["execStateCode"] = reading.Code;
+        }
+
         step["note"] = "Exporting does not keep the VI in memory - measured - so the path can " +
                        "still be regenerated afterwards. Only lvai_open_file burns it." +
                        (dots is { Count: > 0 }
                            ? $" {dots.Count} terminal(s) now wear a COERCION DOT: the retarget " +
                              "linked, but the subVI's pane carries typedefs the stub could not. " +
                              "Repair with lvai_bind_typedef_constants."
+                           : "") +
+                       (reading is { Broken: true }
+                           ? " AND THE VI IS NOT EXECUTABLE (eBad). The edit was written and the " +
+                             "call targets are right, so this is not a rollback - but LabVIEW " +
+                             "cannot run the result. A breached connector pane contract is the " +
+                             "usual cause and it never mentions linking."
                            : "");
         return step;
     }

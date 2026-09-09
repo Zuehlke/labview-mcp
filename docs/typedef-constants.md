@@ -194,3 +194,74 @@ instead when the exe is locked by a running server:
 ```
 dotnet test tests/LabVIEWMCP.Tests/LabVIEWMCP.Tests.csproj -p:BaseOutputPath=<scratch>\
 ```
+
+## The sweep does not descend into structures — and a PARTIAL sweep passes as clean
+
+Measured 2026-09-09. `lvai_coercion_dots` enumerates through exactly one property chain:
+
+```
+{LV.VI} read+Block Diagram  ->  {LV.Diagram} read+All Objects[]
+```
+
+That is the TOP diagram only. A Case Structure appears in `All Objects[]` as one object, and
+every call inside its frames is invisible.
+
+**The damaging part is not the blindness, it is the verdict.** On a fixture with three calls to
+the same stub — one at top level, two inside a Case frame inside a While loop — the tool answered
+
+```
+subViCalls: 1, terminalsChecked: 3, coerced: 0, clean: TRUE
+note: "No coercion dot on any subVI call terminal. Nothing to repair."
+```
+
+A clean bill of health for a VI where two of three calls were never looked at. The
+`examinedNothing` guard only fires when the sweep finds *nothing at all*; a partial sweep is
+indistinguishable from a complete one. For the placeholder-plus-retarget route this is the
+dangerous direction: "nothing to repair" is exactly the answer that makes a caller skip
+`lvai_bind_typedef_constants` while dots sit in the frames.
+
+### The invariant any fix must keep: REPORT, never GATE
+
+A coercion dot is a deliberate intermediate state. The route inserts stub VIs and `.ctl`s whose
+panes carry the bare underlying type, swaps them with pylabview, and only then repairs the dots.
+So `coerced > 0` is the EXPECTED reading between those steps, and anything that refuses to
+proceed on it breaks the only route by which a generated VI can call project-local code.
+
+Today nothing gates: `pylv_apply`'s verify records `coercionDots` as a count plus
+`coercedTerminals` and leaves `ok` alone. **Keep it that way.** Note the temptation grows once
+the sweep descends — a tool answering `subViCalls: 0` invites nobody to gate on it, one
+answering "40 calls, 12 coerced" does. `docs/class-method-tooling.md` §4m records what happened
+the one time a check on this route gated `ok`: `wiringLost` was wrong every time it fired and
+was retracted to reporting-only inside a day.
+
+### The acceptance fixture
+
+Calls to one stub at top level and inside a Case frame inside a While loop — the same stub three
+times, because the tool's contract is one entry per call NODE, not per VI name. Any
+`user.lib\LV_MCP\LVMCP *.vi` stub works as the target; take its terminals from
+`lvai_vi_terminals` first, because the stubs are hashed by signature and two of them do not
+share one. Generate with `measurePane: false` — it is a probe with no pane worth checking.
+
+### Why the descent is not a two-node addition
+
+The obvious change — a second `To More Specific Class` to `{LV.Structure}` plus a
+`read+Diagrams[]` in the existing enumeration loop — was tried and **broke the enumeration that
+already worked**: `subvis seen` came back as N empty strings, so even the top-level call was
+lost, while the untouched AIXML regenerated to the same path still found it. Bisected: with only
+the new `ref{LV.Structure}` constant added and no new nodes, the helper works
+(`subViCalls: 1, terminalsChecked: 3`). So the constant is innocent and the fault is in the added
+nodes — the fan-out of the object reference to a second downcast, or the second indexed output
+tunnel. Cause not established; the helper was reverted rather than left in that state.
+
+And a true recursion cannot simply be nested loops: this helper's own description records that
+"a nested pair accumulating through shift registers was measured to keep only the LAST outer
+iteration". The two designs that respect it:
+
+- **One While loop, two worklists** — one of diagrams, one of objects — with a Case inside
+  choosing which to pop. No nesting, arbitrary depth, everything stays in the helper.
+- **Recursion in C#**, with the helper taking a diagram ADDRESS (`"3.0"` = object 3, diagram 0)
+  instead of only a node index. Costs one helper run per diagram.
+
+Either way `nodeIndex` stops being unique — an index into `All Objects[]` is per diagram — so the
+address becomes compound or a flat ordinal over a traversal both passes must walk identically.
+That contract, not the descent, is the bulk of the work.

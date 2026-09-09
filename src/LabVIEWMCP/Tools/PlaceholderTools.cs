@@ -90,14 +90,14 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         CancellationToken ct = default)
     {
         if (viPaths is { Length: > 0 })
-            return await ManyAsync(viPaths, refresh, timeoutSeconds, ct);
+            return await ManyAsync(viPaths, refresh, timeoutSeconds, ct: ct);
 
         if (viPath is not { Length: > 0 })
             return Json.Error("badArguments",
                 "Give either `viPath` (one VI) or `viPaths` (several, one absolute path per line). " +
                 "Neither was set.");
 
-        return await OneAsync(viPath, refresh, timeoutSeconds, ct);
+        return await OneAsync(viPath, refresh, timeoutSeconds, ct: ct);
     }
 
     /// <summary>
@@ -132,7 +132,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         var failed = 0;
         foreach (var path in paths)
         {
-            var one = await OneAsync(path, refresh, timeoutSeconds, ct);
+            var one = await OneAsync(path, refresh, timeoutSeconds, ct: ct);
             var node = Read(one);
             if ((node as JsonObject)?["ok"]?.GetValue<bool>() is not true) failed++;
             answers.Add(new JsonObject { ["viPath"] = path, ["answer"] = node });
@@ -210,7 +210,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             // a coercion dot per terminal. Fails soft: a probe that cannot run leaves the answer
             // exactly as it was before this existed rather than failing a working placeholder.
             var typedefs = await new TypedefTools(connection)
-                .PaneTypedefsAsync(viPath, timeoutSeconds, ct);
+                .PaneTypedefsAsync(viPath, timeoutSeconds, ct: ct);
 
             // A CLASS TERMINAL IS NOT A TYPEDEF ANYONE BINDS, and it looks like one to the probe.
             // A `.lvclass` presents its private data control as the terminal's type, so the typedef
@@ -315,7 +315,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 await File.WriteAllTextAsync(
                     stubAixmlPath, StubAixml(stubName, subject, subjectXml), ct);
 
-                var validate = await aixml.ValidateAixmlAsync(stubAixmlPath, timeoutSeconds, ct);
+                var validate = await aixml.ValidateAixmlAsync(stubAixmlPath, timeoutSeconds, ct: ct);
                 if (Read(validate)?["errorCode"]?.GetValue<int>() is not 0)
                     return Json.Error("stubRefused",
                         "The placeholder's own AIXML was refused, which normally means a terminal " +
@@ -324,7 +324,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                         new JsonObject { ["validate"] = Read(validate) });
 
                 var convert = await aixml.ConvertAixmlToViAsync(stubAixmlPath, stubPath, false,
-                                                                 timeoutSeconds, ct);
+                                                                 timeoutSeconds, ct: ct);
                 if (Read(convert)?["errorCode"]?.GetValue<int>() is not 0)
                     return Json.Error("stubNotWritten",
                         $"The placeholder could not be written to '{stubPath}'. The convert " +

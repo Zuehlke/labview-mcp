@@ -163,12 +163,12 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
                 helperGenerated = true;
             }
 
-            var before = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct);
+            var before = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
             // One helper run per terminal, in order. LabVIEW serialises this work anyway - six
             // generate calls issued together were measured at 559 ms against 543 ms sequentially -
@@ -188,7 +188,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
 
                 answers.Add(await runner.RunViAndReadValuesAsync(
                     helperVi, inputs, includeRawXml: false, helperViPath: null,
-                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct));
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct));
             }
 
             // THE VERDICT IS A SWEEP, not the helper's own reading. The helper matches the subVI by
@@ -196,7 +196,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             // subVI twice its dot reading described the wrong node: measured, it reported
             // `alreadyClean` for constants it had in fact just replaced. A sweep before and after
             // covers every node and is the only honest proof.
-            var after = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct);
+            var after = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
             return Describe(answers, wanted, viPath, subViName, helperVi, aixml, helperGenerated,
                             before, after);
@@ -363,7 +363,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             if (!File.Exists(helperVi) &&
-                await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is not null)
+                await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is not null)
                 return null;
 
             var runner = new RunTools(connection);
@@ -373,7 +373,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 await runner.RunViAndReadValuesAsync(
                     helperVi, Inputs(full, nodeIndex),
                     includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                    regenerateHelper: false, timeoutSeconds, ct));
+                    regenerateHelper: false, timeoutSeconds, ct: ct));
 
             var first = await Run(EnumerateOnly);
             if (first is null) return null;
@@ -436,14 +436,14 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             if (!File.Exists(helperVi) &&
-                await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is not null)
+                await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is not null)
                 return null;
 
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi,
                 new JsonObject { ["vi path"] = Path.GetFullPath(viPath) }.ToJsonString(),
                 includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct);
+                regenerateHelper: false, timeoutSeconds, ct: ct);
 
             var values = ValuesOf(answer);
             if (values is null) return null;
@@ -530,7 +530,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
                 helperGenerated = true;
             }
@@ -542,7 +542,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 await runner.RunViAndReadValuesAsync(
                     helperVi, Inputs(full, nodeIndex),
                     includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                    regenerateHelper: false, timeoutSeconds, ct);
+                    regenerateHelper: false, timeoutSeconds, ct: ct);
 
             // `subvis seen` is filled by an indexed output tunnel that runs whatever the node
             // index is, so one run with the enumerate-only index is the cheapest way to learn

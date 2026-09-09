@@ -76,6 +76,20 @@ internal sealed class RunTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds - raise it for long-running VIs")]
         int timeoutSeconds = 300,
+        [Description("""
+            Run the VI for this many milliseconds, read its front panel, then ABORT it - instead of
+            waiting for it to finish. Zero, the default, keeps the original behaviour.
+            THIS IS THE ONLY WAY TO LOOK AT A VI THAT NEVER ENDS, which is every event or polling
+            loop and therefore every real application. Without it such a VI times out the call and
+            keeps running, and the caller has to generate a scriptable copy of their own program to
+            test it at all.
+            TWO THINGS TO KNOW. The values are a SNAPSHOT at the moment the time elapsed, not a
+            result: a loop that has not reached its second state yet shows the first. And Abort is
+            not a stop button - it kills the VI where it stands and runs NO cleanup the diagram may
+            contain, so a VI that closes files or releases hardware on its normal path does not do
+            that here.
+            """)]
+        int runForMs = 0,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -90,22 +104,23 @@ internal sealed class RunTools(LvaiConnection connection)
                     "silently shift every later pair onto the wrong control.",
                     new { controlName = offender });
 
-            var aixml = helperAixmlPath ?? DefaultHelperAixmlPath()
+            var timed = runForMs > 0;
+            var aixml = helperAixmlPath ?? DefaultHelperAixmlPath(timed)
                 ?? throw new FileNotFoundException(
                     $"The helper's AIXML source could not be located: no scripts folder next to " +
                     $"the exe (lvai_status reports it as scriptsDirectory). Pass helperAixmlPath " +
-                    $"explicitly, pointing at {HelperAixmlFileName}.");
+                    $"explicitly, pointing at {(timed ? TimedHelperAixmlFileName : HelperAixmlFileName)}.");
             if (!File.Exists(aixml))
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
-            var helperVi = Path.GetFullPath(helperViPath ?? DefaultHelperViPath());
+            var helperVi = Path.GetFullPath(helperViPath ?? DefaultHelperViPath(timed));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } generationFailure) return generationFailure;
                 helperGenerated = true;
             }
@@ -164,10 +179,15 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
             payload["inputsSent"] = JsonValue.Create(inputs.Count);
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
+            payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
             payload["note"] = JsonValue.Create(
                 "errorCode here is the HELPER's. A target VI that itself reported an error " +
                 "shows that in its own error out under values - read it there, not from " +
-                "errorCode.");
+                "errorCode." +
+                (timed
+                    ? $" These values are a SNAPSHOT taken {runForMs} ms after the VI started, and " +
+                      "the VI was then ABORTED - no cleanup on its diagram ran."
+                    : ""));
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
@@ -228,15 +248,19 @@ internal sealed class RunTools(LvaiConnection connection)
             });
     }
 
-    private static string? DefaultHelperAixmlPath() =>
+    /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>
+    internal const string TimedHelperAixmlFileName = "lvai_run_for_ms.xml";
+
+    private static string? DefaultHelperAixmlPath(bool timed = false) =>
         StatusTools.ScriptsDirectory() is { } scripts
-            ? Path.Combine(scripts, HelperAixmlFileName)
+            ? Path.Combine(scripts, timed ? TimedHelperAixmlFileName : HelperAixmlFileName)
             : null;
 
     /// <summary>
     /// Under TEMP, not %LOCALAPPDATA%: LabVIEW's Save:Instrument fails there with Error 7 even
     /// though the directory exists. Measured for lvai_set_vi_icon; see IconTools for the detail.
     /// </summary>
-    private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_run_and_read.vi");
+    private static string DefaultHelperViPath(bool timed = false) =>
+        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+            timed ? "lvai_run_for_ms.vi" : "lvai_run_and_read.vi");
 }

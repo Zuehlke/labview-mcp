@@ -209,7 +209,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             if (!alreadyOpen)
             {
                 if (await RunAsync(scripts, "lvdqmh_dlg_start",
-                        new() { ["dialog vi path"] = dialogPath }, timeoutSeconds, ct)
+                        new() { ["dialog vi path"] = dialogPath }, timeoutSeconds, ct: ct)
                     is not { } start) return HelperMissing("lvdqmh_dlg_start");
                 steps.Add(Step("startDialog", start));
                 if (Failed(start) is { } startError)
@@ -229,7 +229,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             // ring can fill in instalments, and a later arrival shifts the index of an earlier
             // one, so a position taken from a half-built list can name the wrong module.
             var (ring, entries, ringReads) = await WaitForRingAsync(
-                scripts, dialogPath, timeoutSeconds, ct);
+                scripts, dialogPath, timeoutSeconds, ct: ct);
             if (ring is null) return HelperMissing("lvdqmh_ring2");
             var ringStep = Step("readModuleRing", ring);
             ringStep["reads"] = ringReads;
@@ -246,7 +246,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             // ---- 3. the arguments carrier -------------------------------------------------
             var carrierVi = Path.Combine(HelperDirectory(),
                 $"dqmh_args_{Sanitise(eventName)}_{Environment.ProcessId}.vi");
-            if (await BuildCarrierAsync(arguments, carrierVi, timeoutSeconds, ct)
+            if (await BuildCarrierAsync(arguments, carrierVi, timeoutSeconds, ct: ct)
                 is { } carrierError) return carrierError;
             steps.Add(new JsonObject
             {
@@ -260,7 +260,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             {
                 replyCarrierVi = Path.Combine(HelperDirectory(),
                     $"dqmh_reply_{Sanitise(eventName)}_{Environment.ProcessId}.vi");
-                if (await BuildCarrierAsync(replyArguments, replyCarrierVi, timeoutSeconds, ct)
+                if (await BuildCarrierAsync(replyArguments, replyCarrierVi, timeoutSeconds, ct: ct)
                     is { } replyCarrierError) return replyCarrierError;
                 steps.Add(new JsonObject
                 {
@@ -283,7 +283,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             // description is omitted rather than sent - the control keeps its own default.
             if (description.Length > 0) fill["event description"] = description;
 
-            if (await RunAsync(scripts, "lvdqmh_dlg_fill3", fill, timeoutSeconds, ct)
+            if (await RunAsync(scripts, "lvdqmh_dlg_fill3", fill, timeoutSeconds, ct: ct)
                 is not { } filled) return HelperMissing("lvdqmh_dlg_fill3");
             steps.Add(Step("fillDialog", filled));
 
@@ -291,7 +291,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             // The ring is written through Value (Signaling) so the dialog rebuilds step 6, but it
             // does not do so within the same helper run - the text read above is the OLD one.
             // Running the fill a second time is idempotent and returns the updated text.
-            if (await RunAsync(scripts, "lvdqmh_dlg_fill3", fill, timeoutSeconds, ct)
+            if (await RunAsync(scripts, "lvdqmh_dlg_fill3", fill, timeoutSeconds, ct: ct)
                 is not { } confirmed) return HelperMissing("lvdqmh_dlg_fill3");
             steps.Add(Step("confirmTarget", confirmed));
 
@@ -328,7 +328,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
                         ["dialog vi path"] = dialogPath,
                         ["control index"] = EventTypeRingIndex.ToString(),
                         ["value"] = typeIndex.ToString(),
-                    }, timeoutSeconds, ct) is not { } signalled)
+                    }, timeoutSeconds, ct: ct) is not { } signalled)
                     return HelperMissing("lvdqmh_dlg_signal");
                 steps.Add(Step("revealReplyWindow", signalled));
 
@@ -361,7 +361,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
                         ["dialog vi path"] = dialogPath,
                         ["control name"] = RoundTripBroadcastControl,
                         ["value"] = roundTripBroadcastName,
-                    }, timeoutSeconds, ct) is not { } named)
+                    }, timeoutSeconds, ct: ct) is not { } named)
                     return HelperMissing("lvdqmh_dlg_setstring");
                 steps.Add(Step("setRoundTripBroadcastName", named));
                 if (Failed(named) is { } nameError)
@@ -405,7 +405,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
 
                 if (await PasteAsync(scripts, replyCarrierVi, replyWindow, replyArguments,
                         "pasteReplyArguments", "the reply payload window",
-                        steps, stopwatch, timeoutSeconds, ct) is { } replyPasteError)
+                        steps, stopwatch, timeoutSeconds, ct: ct) is { } replyPasteError)
                     return replyPasteError;
             }
 
@@ -418,11 +418,11 @@ internal sealed class DqmhTools(LvaiConnection connection)
 
             if (arguments.Count > 0
                 && await PasteAsync(scripts, carrierVi, argumentsWindow, arguments,
-                       "pasteArguments", "the arguments window", steps, stopwatch, timeoutSeconds, ct)
+                       "pasteArguments", "the arguments window", steps, stopwatch, timeoutSeconds, ct: ct)
                    is { } pasteError) return pasteError;
 
             // ---- 7. press OK --------------------------------------------------------------
-            if (await PressOkAsync(scripts, dialogPath, timeoutSeconds, ct) is var (pressed, focusSteps))
+            if (await PressOkAsync(scripts, dialogPath, timeoutSeconds, ct: ct) is var (pressed, focusSteps))
             {
                 foreach (var s in focusSteps) steps.Add(s);
                 if (!pressed)
@@ -520,7 +520,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             {
                 ["dialog vi path"] = dialogPath,
                 ["control index"] = ModuleRingIndex.ToString(),
-            }, timeoutSeconds, ct);
+            }, timeoutSeconds, ct: ct);
             if (ring is null) return (null, entries, reads);
 
             last = ring;
@@ -561,7 +561,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             {
                 ["dialog vi path"] = dialogPath,
                 ["control index"] = OkButtonIndex.ToString(),
-            }, timeoutSeconds, ct);
+            }, timeoutSeconds, ct: ct);
             if (focus is null) return (false, steps);
 
             var settled = Scalar(focus, "focus after write") is "1" or "true" or "TRUE";
@@ -722,13 +722,13 @@ internal sealed class DqmhTools(LvaiConnection connection)
         if (!File.Exists(aixml)) return null;
 
         var helperVi = Path.Combine(HelperDirectory(), helperName + ".vi");
-        if (!File.Exists(helperVi) && await EnsureAsync(aixml, helperVi, timeoutSeconds, ct) is false)
+        if (!File.Exists(helperVi) && await EnsureAsync(aixml, helperVi, timeoutSeconds, ct: ct) is false)
             return null;
 
         var wrapperAixml = Path.Combine(scripts, "lvai_run_and_read.xml");
         var wrapperVi = Path.Combine(HelperDirectory(), "lvai_run_and_read.vi");
         if (!File.Exists(wrapperVi)
-            && await EnsureAsync(wrapperAixml, wrapperVi, timeoutSeconds, ct) is false)
+            && await EnsureAsync(wrapperAixml, wrapperVi, timeoutSeconds, ct: ct) is false)
             return null;
 
         var request = new RunVIAsTopLevelRequest { ViPath = wrapperVi };
@@ -940,7 +940,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             {
                 ["carrier vi path"] = carrierVi,
                 ["arguments window vi name"] = windowName,
-            }, timeoutSeconds, ct) is not { } pasted)
+            }, timeoutSeconds, ct: ct) is not { } pasted)
             return HelperMissing("lvdqmh_args_paste2");
         steps.Add(Step(stepName, pasted));
 

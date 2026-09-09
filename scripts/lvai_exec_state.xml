@@ -1,0 +1,27 @@
+<VI _name="lvai_exec_state.vi" description="Is this VI EXECUTABLE\3F Reads {LV.VI} Execution\3AState and VI Linker Errors through VI Server and hands both back as text.\0A\0AWHY IT EXISTS. Nothing in the generate-or-retarget chain answers this question. Measured 2026-09-09 over a ten-VI build\3A after a pylv_apply retarget the caller was Error 1003\2C not executable - and pylv_apply answered ok\3A true\2C its verify step listed all eight expected callTargets\2C the AIXML export showed every terminal wired\2C lvai_check_aixml found nothing and lvai_validate_aixml answered errorCode 0 on the source. The only way to notice was to RUN the VI\2C and a top-level UI loop never ends on its own\2C so noticing cost 2400 s and nine bisection probes. pylv_apply already names the gap in its own gatesNotChecked list - \22ExecState was not read - do it through VI Server\3B 0 means eBad\22 - so the hint was there and the reading was not.\0A\0AExecution\3AState is an enum\3A 0 eBad\2C 1 eIdle\2C 2 eRunTopLevel\2C 3 eRunning. Only 0 means broken. A VI that is merely idle reads 1\2C which is the normal answer for anything on disk that is not running.\0A\0AREAD ONLY\2C and opened WITHOUT an application instance on purpose - the same choice lvbd_coercion_dots makes\2C so this also answers while pylv_apply has the project closed. Opening and closing a VI REFERENCE does not burn the path for a later ConvertAIXMLToVI\3B only lvai_open_file does that.">
+
+  <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI to interrogate\2C as a string." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
+
+  <FreeLabel comment="Read only: a VI reference is opened and closed, which does not burn the path." uid="5010" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:5000.value" outputs="path:5020.path" uid="5020" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:5020.path,error in (no error):" outputs="vi reference:5030.vi reference,error out:5030.error out" uid="5030" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Execution\3AState,read+VI Linker Errors" type="{LV.VI}" inputs="reference:5030.vi reference,error in (no error):5030.error out" outputs="Execution\3AState:5040.state,VI Linker Errors:5040.linker,reference out:,error out:5040.error out" uid="5040" uid_parent="root"/>
+
+  <Node _name="Number To Decimal String" inputs="number:5040.state" outputs="decimal integer string:5050.text" uid="5050" uid_parent="root"/>
+
+  <FreeLabel comment="A reference that never opened must not read as eBad; that case answers -1." uid="5051" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:5030.error out" outputs="status:5052.status" uid="5052" uid_parent="root"/>
+  <Constant _name="could not open" type="string" value="-1" outputs="value:5053.value" uid="5053" uid_parent="root"/>
+  <Node _name="Select" inputs="s:5052.status,t:5053.value,f:5050.text" outputs="s? t\3Af:5054.state" uid="5054" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5040.linker" outputs="xml string:5060.xml" uid="5060" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:5030.vi reference,error in (no error):5040.error out" outputs="error out:5070.error out" uid="5070" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:5070.error out" outputs="code:5080.code,source:5080.source" uid="5080" uid_parent="root"/>
+
+  <Indicator _name="exec state" conIdx="4" connection="recommended" description="Execution\3AState as a number\3A 0 eBad\2C 1 eIdle\2C 2 eRunTopLevel\2C 3 eRunning. Only 0 means the VI is broken\2C and -1 means the reference NEVER OPENED - read code and source for why. That case is split off on purpose\3A a failed Open VI Reference leaves the state property unread at 0\2C which is indistinguishable from eBad\2C and a tool whose whole job is \22broken or not\22 must not answer \22broken\22 when it means \22could not look\22. Measured by pointing this VI at a .xml by mistake\3A error 1059\2C and exec state read 0." inputs="value:5054.state" type="string" uid="5100" uid_parent="root" value=""/>
+  <Indicator _name="linker errors xml" conIdx="6" connection="recommended" description="VI Linker Errors flattened to XML. Empty when the VI has none. Flattened rather than typed so that whatever shape LabVIEW returns survives the trip back through a string." inputs="value:5060.xml" type="string" uid="5110" uid_parent="root" value=""/>
+  <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:5080.code" type="int32" uid="5120" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="10" connection="recommended" inputs="value:5080.source" type="string" uid="5130" uid_parent="root" value=""/>
+</VI>

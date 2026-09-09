@@ -176,7 +176,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     source, helperVi, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject { ["step"] = "helper", ["answer"] = Read(built) });
                 if (!File.Exists(helperVi))
                     return Json.Document(new JsonObject
@@ -202,7 +202,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             {
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject
                 {
                     ["order"] = 1,
@@ -231,7 +231,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     if (validateFirst)
                     {
                         var check = await new AixmlTools(connection).ValidateAixmlAsync(
-                            aixml, timeoutSeconds, ct);
+                            aixml, timeoutSeconds, ct: ct);
                         var message = (Read(check) as JsonObject)?["errorMessage"]?
                             .GetValue<string>() ?? "";
                         var classWire = Code(check) != 0 && IsClassTypeComplaint(message);
@@ -269,7 +269,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     }
 
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                        aixml, viPath, openVI: false, timeoutSeconds, ct);
+                        aixml, viPath, openVI: false, timeoutSeconds, ct: ct);
                     steps.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
                     if (Code(convert) != 0 || !File.Exists(viPath))
                     {
@@ -287,7 +287,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                         new JsonArray { new JsonObject
                             { ["op"] = "conpane", ["pattern"] = panePattern } }.ToJsonString(),
                         closeProject: false, verify: false, bundleDirectory: null,
-                        timeoutSeconds, ct);
+                        timeoutSeconds, ct: ct);
                     steps.Add(new JsonObject { ["step"] = "conpane", ["answer"] = Read(pane) });
                     if ((Read(pane) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                     {
@@ -306,7 +306,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
                     projectName: Path.GetFileName(projectPath),
-                    checkActive: true, timeoutSeconds, ct);
+                    checkActive: true, timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject
                 {
                     ["order"] = 2,
@@ -329,7 +329,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var indices = method.DispatchTerminalIndices;
                 if (indices is null && method.DispatchTerminals is { Count: > 0 } names)
                 {
-                    var (resolved, note) = await ResolveConIdxAsync(viPath, names, timeoutSeconds, ct);
+                    var (resolved, note) = await ResolveConIdxAsync(viPath, names, timeoutSeconds, ct: ct);
                     if (resolved is null)
                     {
                         results.Add(Failed(method, viPath, "dispatchTerminals", steps,
@@ -352,7 +352,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var inputs = HelperInputs(method, viPath, classPath, indices, memberExists);
                 var run = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
-                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject { ["step"] = "member", ["answer"] = Read(run) });
 
                 var values = (Read(run) as JsonObject)?["values"] as JsonObject;
@@ -387,7 +387,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 if (verify)
                 {
                     evidence = await VerifyOnDiskAsync(viPath, method.ClassTerminals.Count,
-                                                       timeoutSeconds, ct);
+                                                       timeoutSeconds, ct: ct);
                     verified = evidence["classTypedTerminals"]?.GetValue<int>()
                                == method.ClassTerminals.Count
                                && evidence["pathStandInsLeft"]?.GetValue<int>() == 0;

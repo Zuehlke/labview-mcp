@@ -109,7 +109,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             // ---- 1. The class's own field list, read off the file. No LabVIEW, and it is what
             //         turns a field NAME into the index the helper wants.
             PrivateDataFields fields;
-            try { fields = await PrivateDataFields.ReadAsync(classPath, timeoutSeconds, ct); }
+            try { fields = await PrivateDataFields.ReadAsync(classPath, timeoutSeconds, ct: ct); }
             catch (Exception ex) when (ex is InvalidDataException or IOException)
             {
                 return Json.Error("privateDataUnreadable",
@@ -150,7 +150,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                     return Json.Error("badArguments",
                         $"No .ctl at '{request.CtlPath}' for field '{fields.Labels[index]}'.");
 
-                var verdict = await CtlVerdictAsync(request.CtlPath, timeoutSeconds, ct);
+                var verdict = await CtlVerdictAsync(request.CtlPath, timeoutSeconds, ct: ct);
                 if (!force && verdict.Bindable is false)
                     return Json.Error("sourceIsNotATypedef",
                         $"'{Path.GetFileName(request.CtlPath)}' cannot be bound to: " +
@@ -207,7 +207,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 {
                     var built = await new BulkTools(connection).GenerateViAsync(
                         source, vi, openVI: false, measurePane: false, panePattern: null,
-                        timeoutSeconds, ct);
+                        timeoutSeconds, ct: ct);
                     if (!File.Exists(vi))
                         return Json.Document(new JsonObject
                         {
@@ -227,7 +227,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
                     projectName: Path.GetFileName(projectPath),
-                    checkActive: true, timeoutSeconds, ct);
+                    checkActive: true, timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject
                 {
                     ["step"] = "openProject",
@@ -245,7 +245,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             {
                 ["class path"] = classPath,
                 ["out name"] = Path.GetFileName(scratchCtl),
-            }, timeoutSeconds, ct);
+            }, timeoutSeconds, ct: ct);
             steps.Add(Step("export", export));
             if (StageFailed(export, "error out") is { } exportCode)
                 return Stop(steps, "export", exportCode, total,
@@ -269,7 +269,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                     ["ctl path"] = scratchCtl,
                     ["typedef path"] = binding.CtlPath,
                     ["field index"] = binding.Index.ToString(),
-                }, timeoutSeconds, ct);
+                }, timeoutSeconds, ct: ct);
 
                 var values = Values(bind);
                 perField.Add(new JsonObject
@@ -297,7 +297,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             {
                 ["class path"] = classPath,
                 ["ctl path"] = scratchCtl,
-            }, timeoutSeconds, ct);
+            }, timeoutSeconds, ct: ct);
             steps.Add(Step("import", import));
             if (StageFailed(import, "error out") is { } importCode)
                 return Stop(steps, "import", importCode, total,
@@ -309,7 +309,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             var verified = true;
             if (verify)
             {
-                var after = await PrivateDataFields.ReadAsync(classPath, timeoutSeconds, ct);
+                var after = await PrivateDataFields.ReadAsync(classPath, timeoutSeconds, ct: ct);
                 foreach (var entry in perField.OfType<JsonObject>())
                 {
                     var index = entry["fieldIndex"]!.GetValue<int>();
@@ -353,7 +353,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                                               int timeoutSeconds, CancellationToken ct) =>
         await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
-            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
     private static JsonNode? Read(string answer)
     {
@@ -419,7 +419,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                                                        CancellationToken ct)
     {
         var answer = await new CtlTools().DescribeCtlAsync(ctlPath, keepBundle: false,
-                                                           timeoutSeconds, ct);
+                                                           timeoutSeconds, ct: ct);
         if (Read(answer) is not JsonObject obj || obj["ok"]?.GetValue<bool>() is not true)
             // A source that cannot be read is not a source that is known to be wrong. Say so by
             // leaving the verdict open rather than refusing on a failure of the check itself.

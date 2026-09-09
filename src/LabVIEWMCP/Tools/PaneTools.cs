@@ -82,7 +82,7 @@ internal sealed class PaneTools(LvaiConnection connection)
         {
             if (viPath is null) return pattern is { } id ? DescribePattern(id) : DescribeAll();
             return (await MeasureViAsync(viPath, helperViPath, helperAixmlPath, regenerateHelper,
-                                         timeoutSeconds, ct)).Text;
+                                         timeoutSeconds, ct: ct)).Text;
         });
 
     /// <summary>
@@ -124,14 +124,14 @@ internal sealed class PaneTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             if (regenerateHelper || !File.Exists(helperVi))
-                if (await GenerateHelperAsync(aixmlSource, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixmlSource, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return new PaneVerdict(failure, 0, -1, 0);
 
             // 1. the geometry, over VI Server
             var inputs = new JsonObject { ["VI Path"] = Path.GetFullPath(viPath) }.ToJsonString();
             var runner = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct);
+                regenerateHelper: false, timeoutSeconds, ct: ct);
 
             if (Measurement(runner) is not { } measurement)
                 return new PaneVerdict(Json.Error("paneNotMeasured",
@@ -140,7 +140,7 @@ internal sealed class PaneTools(LvaiConnection connection)
                     0, -1, 0);
 
             // 2. which terminal owns which slot, out of the VI's own export
-            var terminals = await TerminalsAsync(viPath, timeoutSeconds, ct);
+            var terminals = await TerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
             return RenderVerdict(Path.GetFullPath(viPath), measurement.Pattern,
                 measurement.Bounds, terminals);
