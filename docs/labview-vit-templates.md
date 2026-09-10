@@ -769,6 +769,10 @@ Settled 2026-09-10 by an A/B on one VI, with the user drawing the wire between
 the two measurements. The conclusion is smaller than it first looked, and in the
 useful direction: **there is nothing for a tool to write.**
 
+**Half of that is superseded - see "THE WIRE IS SCRIPTABLE AFTER ALL" below.** The EventSpec really
+is LabVIEW's output and still needs no writer; the wire itself is no longer an IDE-only gesture, once
+the refnum is authored into the structure as an ordinary tunnel.
+
 **What conversion already gives you.** `Create User Event`, `Register For
 Events`, `Generate User Event` and `Destroy User Event` all convert; the
 `eventRegNode` survives with all five terminals; its `eventRegItem` already
@@ -814,6 +818,214 @@ of an UNWIRED structure, which is a garbage state and no evidence about the
 constant at all. The wired measurement confirms the original derivation. Reading
 a rule off a broken state is the same mistake as the first attempt at the
 dynamic-terminal flags, one section below.
+
+### THE WIRE IS SCRIPTABLE AFTER ALL - measured 2026-09-11
+
+The section above ends "there is nothing for a tool to write" and "one IDE drag". **The first half
+stands - the EventSpec is still LabVIEW's output - and the second half is now wrong.** The wire can
+be drawn over VI Server, and what made it reachable was the user's change to how the diagram is
+authored rather than any new scripting call:
+
+**Wire the registration refnum into the Event Structure as an ORDINARY TUNNEL, always.** AIXML keeps
+a `<Tunnel>` on a `<Structure>`, so a regeneration preserves the net right up to the structure's
+border, and the only thing missing afterwards is the short hop onto the dynamic event terminal
+sitting a few pixels away. That turns "compose a wire across the diagram" - which pylabview cannot
+do and AIXML cannot express - into "branch an existing net onto the terminal beside it", which is
+one invoke node.
+
+**The call is `{LV.Terminal}` `Connect Wire`** (singular - `Connect Wires` is the node-level
+sibling), with the destination terminal as `reference` and the net's SOURCE as `Wire Source`;
+`Auto Wire?`, `Wiring Specs` and `Auto Route?` stay unwired.
+
+**DIRECTION DECIDES IT, and getting that wrong is `Error 1062, "Specified objects cannot be wired
+together"`.** The first attempt passed the structure's own refnum tunnel as `Wire Source`: refused,
+because that tunnel is a SINK and so is the dynamic terminal - two sinks have no direction between
+them. The source is the far end of the wire that already exists:
+
+```
+{LV.EventStructure} Tunnels[]          -> the refnum tunnel  (NOT Terminals[], see below)
+  To More Specific Class -> {LV.Tunnel}
+  {LV.Tunnel}   Outside Terminal       -> its outer terminal
+  {LV.Terminal} Connected Wire         -> the existing wire
+  {LV.Wire}     Terminals[]            -> its two ends, one of which Is Source? = true
+{LV.EventStructure} Terminals[] [0]    -> the dynamic terminal, Name "Event Registration Refnum"
+  {LV.Terminal} Connect Wire   Wire Source = that source terminal
+{LV.VI}         Save.Instrument        -> path unwired, saves in place
+```
+
+**Verified from the FILE, one line of difference in 396 kB of heap.** The `signalList` entry for the
+existing wire grew by exactly one terminal and nothing else in the VI moved:
+
+| | before | after |
+|---|---|---|
+| the refnum wire, `signal 718` | `termList [5063, 715]` | `termList [5063, 715, **5088**]` |
+| event frames / `EventSpec` / `EventNodeEvents` | 8 / 8 / 8 | **8 / 8 / 8** |
+| both `eventDynDCO` flag words | `65536`, `1` | **unchanged** |
+| `Execution:State` | 1 | **1**, `broken: false` |
+
+So it is a BRANCH of the user's own net, not a second wire, which is what the IDE gesture produces
+too - and it explains why the signal count fell when the wire was first drawn by hand.
+
+**IDENTIFY BOTH ENDS BY NAME, never by index.** The dynamic terminal's `Name` is the literal
+**`Event Registration Refnum`**, and so is the `Outside Terminal` `Name` of the tunnel carrying the
+refnum - the name comes from the data type, so both ends of that net answer to it. Index 0 and
+`Tunnels[]` index 6 were true of this VI and are not a rule; the name is.
+
+**And the two arrays are NOT interchangeable.** On this structure `Terminals[]` returned 10 elements
+of which only index 0 could be read at all - elements 1 to 9 answered **`Error 1055, Object reference
+is invalid`** - while `Tunnels[]` returned all 7 `SelectorTunnel`s cleanly. So take the dynamic
+terminal from `Terminals[]` and every tunnel from `Tunnels[]`; the heap's `termList` order
+(2 `eventDynDCO`, 1 `eventTimeOut`, then the `selTun`s) is what `Terminals[]` mirrors, invalid
+entries included.
+
+**One side effect worth planning for: `Save.Instrument` COMPILES.** The file went from 18 298 bytes
+to 28 266 because the save added `VICD0/1/2` and `CNST`, where the hand-prepared VI had been
+source-only. That matters for whatever comes next rather than for the wire - a pylabview edit copies
+compiled code through unparsed, which is how `Error 47, Unknown heap` was reached once before.
+`scripts/pylv-strip-compiled.py` is the undo.
+
+**What this does NOT yet establish.** The wire was added to a VI whose user-event FRAMES were
+already configured, so it says nothing about the order that matters for a full regeneration:
+AIXML writes the tunnel, this writes the wire, and the frame's event selection is then still
+missing. Whether `pylv-set-event-spec.py` can supply it once the wire is in place - or whether
+LabVIEW recomputes it, as the table above suggests it does - is the next measurement, not a
+conclusion.
+
+#### `Auto Route? (F)` MUST BE WIRED TRUE, or the wire is connected and INVISIBLE
+
+Settled the same day, after the user looked at the diagram and could not see the connection. The
+recipe above is complete only with the parameter this paragraph is named after:
+
+```
+{LV.Terminal} Connect Wire   Wire Source = <the net's source terminal>
+                             Auto Wire? (T)  = TRUE
+                             Auto Route? (F) = TRUE     <- NOT optional
+```
+
+**With `Auto Route?` left unwired the connection is real and nothing is drawn.** Measured as a
+controlled pair on the same VI, one run per setting:
+
+| | `Auto Route?` unwired (FALSE) | `Auto Route?` = TRUE |
+|---|---|---|
+| signal `termList` | `[5063, 715, 5088]` | `[5063, 715, 5088]` |
+| dynamic terminal `objFlags` | `0x008040` | `0x008040` |
+| `Connected Wire` -> wire `Terminals[]` | 3 ends | 3 ends |
+| `Is Broken?` / `Execution:State` | `false` / 1 | `false` / 1 |
+| `Position:Top`/`Left`, `Bounds:Area Width`/`Height` | 610 / 700 / 55 / 45 | **610 / 700 / 55 / 45** |
+| `compressedWireTable` | `0401000802012E0327` | `0500080600030B272623` |
+| **the rendered diagram** | **no wire** | **the wire, branching at a junction dot** |
+
+**So every property a caller would reach for is BLIND to it.** The geometry is byte-identical
+between a drawn wire and an undrawn one - the bounding box is computed from the terminals, not from
+the route - and `{LV.Wire}` `CleanUpWire`, LabVIEW's own re-route, ran with `errorCode 0` and
+changed nothing at all. The only difference in the saved file is the `compressedWireTable`, which is
+opaque hex. **`Print.VI To HTML` is the only check that sees this**, which is this repository's
+standing rule about diagrams, arrived at here the expensive way: four agreeing measurements were
+reported as success before anybody looked.
+
+**AND THE TERMINAL NAME CARRIES ITS DEFAULT, exactly like `error in (no error)`.** The names are
+`Auto Wire? (T)` and `Auto Route? (F)`, parentheses included. Writing `Auto Route?` without them
+does not fail as an unknown terminal - AIXML positions the value onto the NEXT input instead, which
+is `Wiring Specs`, and validation then complains that a **boolean** cannot go into a **2D array of
+string**, naming neither the terminal you meant nor the one it used.
+
+**The wire is what makes the VI executable, so this is not cosmetic either way.** Controlled pair,
+both states rebuilt from their extracted bundles through the same pylabview round trip so the round
+trip cannot be the cause:
+
+| rebuilt from | `Execution:State` |
+|---|---|
+| the prepared VI - tunnel in place, dynamic terminal unwired | **0, `eBad`, broken** |
+| the same VI with the branch | **1, `eIdle`** |
+
+That also disposes of the doubt about whether the edit changes anything LabVIEW acts on: without the
+branch the VI does not run at all.
+
+**One trap on the way to looking at it: a VI can be loaded TWICE, and a render can show the wrong
+copy.** The first render was taken from the same path that had just been edited and saved, and it
+showed the PRE-EDIT diagram - because the copy it drew lives in the application instance the addon
+helpers run in, loaded by an earlier AIXML export, while the edit went to the copy the ACTIVE
+PROJECT holds (`My Computer`). Both were measured answering about the same path.
+**Render from a path LabVIEW has never loaded** - copy the saved `.vi` to a fresh name first - or
+the picture is as stale as the copy behind it.
+
+#### THE AUTHORING RULE: always route the refnum in as a TUNNEL
+
+The user's rule of 2026-09-11, and it belongs with the authoring guidance rather than with the
+repair: **whenever you author an Event Structure that consumes a registration refnum, give it an
+ordinary `<Tunnel>` carrying that refnum - even if nothing inside the frames reads it.** An unread
+tunnel is inert on the diagram and it is the whole reason the dynamic terminal becomes reachable:
+AIXML keeps a tunnel, so after a regeneration the net still touches the structure and the only
+missing piece is a BRANCH onto the terminal beside it. Without it the wire would have to be
+composed across the diagram, which AIXML cannot describe and pylabview cannot do.
+
+It is recorded in `CLAUDE.md` under "Generating LabVIEW code", not only here, because that is the
+file an authoring session actually reads - the same lesson as "a rule that lives only in an agent
+definition is invisible to the route that does not spawn an agent".
+
+#### `lvai_wire_dynamic_events` - the hop in one call, either way round
+
+Shipped 2026-09-11. `viPath` in, the branch made, the VI saved; `scripts/lvai_wire_dyn_events.xml`
+is the helper. It needs a project open and active, because the VI is opened through
+`Application\3AProject\3AActive Project` so the edit lands in the copy the user is looking at.
+
+**TWO SOURCES, tried in that order, and `sourceFrom` says which ran.** Preferred is the
+structure's own refnum `<Tunnel>`, whose net is BRANCHED - that is the shape to author. When there
+is none it falls back to the `Register For Events` node on the block diagram and wires straight
+across the loop border: measured 2026-09-11, `Connect Wire` accepts it, **LabVIEW creates the loop
+tunnel itself**, and the render shows the wire running from the node through that new tunnel into
+the terminal. The fallback takes the FIRST registration node and reports how many it saw, because
+"there is only one" is an assumption worth making and worth seeing.
+
+The node's terminals are named in LOWER CASE - `event registration refnum`, twice, as input and
+output - where the structure's are title case, because a structure's terminal is named after its
+DATA TYPE and a node's after its own label. The tool never spells either: it picks the node's
+refnum output as **a source that is not named `error out`**, the node's only other source.
+
+**`ok` IS GATED ON THE DESTINATION TERMINAL'S OWN WIRE** - none before the call, one that is not
+broken after. A clean error chain, `Is Broken?` false and `Execution:State` 1 were all true of a
+branch LabVIEW never drew, so something about the wire's existence has to be checked; and an END
+COUNT will not do it, because the two routes give different counts - three for a branch of an
+existing net, two for the fresh wire the fallback produces. `alreadyWired` covers the terminal that
+was wired already, which makes a re-run a no-op rather than a second wire.
+
+**It still tells you to render**, and to render a COPY at a path LabVIEW has never loaded - both
+halves measured, both halves having cost a wrong report already.
+
+Measured end to end on fresh unwired copies of the template-derived VI. Tunnel route:
+`found: true`, `sourceFrom: tunnel`, `wired before: false`, `wire ends after` 3, chain code 0,
+`execState` 0 -> **1**, wire visible in the render. Diagram route: chain code 0, a fresh wire of
+**two** ends on the terminal, and the render showing a NEW tunnel on the loop border with the wire
+running through it.
+
+**Two limits it reports rather than hides.** The search is **two levels** - the block diagram and
+the diagrams of every `WhileLoop`, `ForLoop`, `TimedLoop` and `CaseStructure` on it - and a miss
+comes back with the class names it did see. And the destination is the FIRST terminal named
+`Event Registration Refnum` that is not a source: three terminals carry that name (the dynamic
+input, the dynamic output, the tunnel), `Is Source?` excludes the output - measured `true` for it -
+and the input is told from the tunnel by `Terminals[]` order, which mirrors the heap's term list.
+`Class Name` cannot help: all ten terminals of this structure report **`OuterTerminal`**. Picking
+the tunnel by mistake is `Error 1062`, which is loud, so the residual risk is a refusal rather
+than a wrong wire.
+
+**And one measurement that refines the reference-invalidation rule.** `Terminals[]` elements 1 to 9
+answered `Error 1055` in the probes that led here, and they read perfectly in this helper. The
+difference is not the downcast: it is that the earlier loop also read **`Connected Wire`** on a
+terminal that had none. One property node per reference, and no `Connected Wire` on a terminal you
+have not established as wired.
+
+#### Superseded, kept for the process lesson: "the renderer draws no wire"
+
+For an hour this section said the branch could not be drawn at all, and listed two candidate
+explanations - a route lying along the border where it is overdrawn, or a connection registered but
+never routed. The second one was right, and the first was a plausible story built to fit a
+measurement that had not been taken. What produced both was reporting success from the data
+structure: `signalList`, the terminal's bit 15, the wire table, a live `Connected Wire` and
+`Is Broken?` all agreed, and all five are downstream of the same heap. **Agreement among checks
+that read one representation is not corroboration.**
+
+The user asked "hat es wirklich geklappt?" after looking at the diagram, which is how this was
+found. That question cost one render to answer and would have cost nothing to ask first.
 
 ### What an AIXML ROUND TRIP costs a wired user event - measured on a working VI
 

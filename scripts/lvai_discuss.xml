@@ -1,0 +1,47 @@
+<VI _name="lvai_discuss.vi" description="Attaches a VI or a project to Nigel's chat\2C launching the chat first if it is not running - the same two stages as the IDE's &quot;Discuss with Nigel&quot; command\2C but driven over VI Server so that BOTH error results survive.\0A\0AWHY NOT CALL NI'S CALLBACK. LV AI Plugins.lvlib\3Alv_discuss_file_with_nigel.vi does exactly these two stages in a Flat Sequence and is reachable as an AIXML Call - but it returns NOTHING\2C discarding InvokeDiscussVI's error code and message. This helper calls the two packed-library VIs itself instead\3A they are unreachable as AIXML Call targets\2C and reachable by qualified name through Open VI Reference. Measured 2026-09-10\3A both open\2C both report Execution\3AState 1\2C and Ctrl Val.Set accepts all three of InvokeDiscussVI's controls - the string\2C the PATH\2C and the uint32 ENUM\2C which is the one that had to be proven because Ctrl Val.Set type-checks the variant against the control.\0A\0AWHY THE SELECT WITH TWO IDENTICAL INPUTS. NI leaves the launch's error out unwired\2C so its Flat Sequence supplies ORDER and nothing else. Chaining the error here instead would let a failed launch suppress the push\2C which is a behaviour change. So the launch's status gates a Select whose two branches are the same string\3A the value is unchanged\2C the data dependency forces the launch to finish first\2C and the launch error is reported rather than acted on.\0A\0AFile Type takes the literal text VI or PROJECT\2C UPPERCASE - the comparison is case-sensitive and anything else falls through to VI.">
+  <Control _name="Target Path" conIdx="0" connection="required" description="Absolute path of the .vi or .lvproj to discuss\2C as a string. Converted on the diagram\2C because InvokeDiscussVI's terminal is a path and values reach a generated VI as strings." outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Target Name" conIdx="5" connection="required" description="The name Nigel shows for the file. NI's own callback passes the file name." outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="File Type" conIdx="7" connection="optional" description="VI or PROJECT\2C uppercase. Empty or unrecognised means VI\2C which is what the IDE's own Discuss command hardcodes." outputs="value:4204.value" type="string" uid="4204" uid_parent="root" value="VI"/>
+
+  <FreeLabel comment="NI's two stages over VI Server: the chat is launched first, then the discuss request is pushed and its error read back." uid="4206" uid_parent="root"/>
+
+  <Constant _name="PROJECT literal" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value="PROJECT"/>
+  <Constant _name="fileType if project" outputs="value:4212.value" type="uint32{DISCUSS_FILE_TYPE_UNSPECIFIED,DISCUSS_FILE_TYPE_VI,DISCUSS_FILE_TYPE_PROJECT}" uid="4212" uid_parent="root" value="2"/>
+  <Constant _name="fileType if vi" outputs="value:4214.value" type="uint32{DISCUSS_FILE_TYPE_UNSPECIFIED,DISCUSS_FILE_TYPE_VI,DISCUSS_FILE_TYPE_PROJECT}" uid="4214" uid_parent="root" value="1"/>
+  <Constant _name="project text" outputs="value:4216.value" type="string" uid="4216" uid_parent="root" value="DISCUSS_FILE_TYPE_PROJECT"/>
+  <Constant _name="vi text" outputs="value:4218.value" type="string" uid="4218" uid_parent="root" value="DISCUSS_FILE_TYPE_VI"/>
+  <Constant _name="launch member" outputs="value:4220.value" type="string" uid="4220" uid_parent="root" value="LV AI Core.lvlibp\3ALaunch Nigel Chat.vi"/>
+  <Constant _name="invoke member" outputs="value:4222.value" type="string" uid="4222" uid_parent="root" value="LV AI gRPC Service.lvlibp\3AgRPC Implementations.lvlib\3AInvokeDiscussVI.vi"/>
+  <Constant _name="vi name terminal" outputs="value:4224.value" type="string" uid="4224" uid_parent="root" value="vi name"/>
+  <Constant _name="vi path terminal" outputs="value:4226.value" type="string" uid="4226" uid_parent="root" value="vi path"/>
+  <Constant _name="fileType terminal" outputs="value:4228.value" type="string" uid="4228" uid_parent="root" value="fileType"/>
+  <Constant _name="wait until done" outputs="value:4230.value" type="bool" uid="4230" uid_parent="root" value="true"/>
+
+  <Node _name="Equal?" inputs="x:4204.value,y:4210.value" outputs="x = y?:4240.x = y?" uid="4240" uid_parent="root"/>
+  <Node _name="Select" inputs="t:4212.value,s:4240.x = y?,f:4214.value" outputs="s? t\3Af:4242.s? t\3Af" uid="4242" uid_parent="root"/>
+  <Node _name="Select" inputs="t:4216.value,s:4240.x = y?,f:4218.value" outputs="s? t\3Af:4244.s? t\3Af" uid="4244" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4200.value" outputs="path:4246.path" uid="4246" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="vi path:4220.value" outputs="vi reference:4250.vi reference,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4250.vi reference,error in (no error):4250.error out,Wait until done:4230.value" outputs="reference out:4252.reference out,error out:4252.error out" uid="4252" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4252.reference out,error in (no error):4252.error out" outputs="error out:4254.error out" uid="4254" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4254.error out" outputs="xml string:4256.xml string" uid="4256" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4254.error out" outputs="status:4258.status" uid="4258" uid_parent="root"/>
+  <Node _name="Select" inputs="t:4222.value,s:4258.status,f:4222.value" outputs="s? t\3Af:4260.s? t\3Af" uid="4260" uid_parent="root"/>
+
+  <Node _name="Open VI Reference" inputs="vi path:4260.s? t\3Af" outputs="vi reference:4262.vi reference,error out:4262.error out" uid="4262" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4262.vi reference,error in (no error):4262.error out,Control Name:4224.value,Value:4202.value" outputs="reference out:,error out:4264.error out" uid="4264" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4262.vi reference,error in (no error):4264.error out,Control Name:4226.value,Value:4246.path" outputs="reference out:,error out:4266.error out" uid="4266" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4262.vi reference,error in (no error):4266.error out,Control Name:4228.value,Value:4242.s? t\3Af" outputs="reference out:,error out:4268.error out" uid="4268" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4262.vi reference,error in (no error):4268.error out,Wait until done:4230.value" outputs="reference out:4270.reference out,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:4270.reference out,error in (no error):4270.error out" outputs="reference out:4272.reference out,error out:4272.error out,Controls:4272.Controls" uid="4272" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4272.Controls" outputs="xml string:4274.xml string" uid="4274" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4272.reference out,error in (no error):4272.error out" outputs="error out:4276.error out" uid="4276" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4276.error out" outputs="xml string:4278.xml string" uid="4278" uid_parent="root"/>
+
+  <Indicator _name="File Type Used" conIdx="4" connection="recommended" description="Which branch the diagram took\2C as the enum's item name. A STRING and not the enum itself\3A an enum indicator was measured coming back EMPTY with errorCode 91 under RunVIAsTopLevel - after the VI had run correctly - so echoing the enum would make every call report an error it did not have. Both Select nodes share one boolean\2C so this text and the enum handed to InvokeDiscussVI cannot disagree." inputs="value:4244.s? t\3Af" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="Launch Error" conIdx="6" connection="recommended" description="The error cluster of Launch Nigel Chat.vi\2C flattened. REPORTED\2C not acted on - NI leaves this unwired\2C so a failure here does not stop the push." inputs="value:4256.xml string" type="string" uid="4302" uid_parent="root" value=""/>
+  <Indicator _name="Invoke Values" conIdx="8" connection="recommended" description="InvokeDiscussVI's own indicators after it ran - error code and error message\2C the verdict NI's callback discards. Ctrl Val.Get All returns INDICATORS ONLY\2C measured\2C so this is exactly those two." inputs="value:4274.xml string" type="string" uid="4304" uid_parent="root" value=""/>
+  <Indicator _name="Invoke Error" conIdx="10" connection="recommended" description="This helper's own error chain around the push\2C flattened - the open\2C the three Ctrl Val.Set calls\2C Run VI and the close." inputs="value:4278.xml string" type="string" uid="4306" uid_parent="root" value=""/>
+</VI>

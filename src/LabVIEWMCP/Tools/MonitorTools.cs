@@ -83,6 +83,11 @@ internal sealed class MonitorTools(LvaiConnection connection)
         RPC MonitorDiscussVI (bidirectional). Fires when the user invokes "Discuss VI" in
         LabVIEW; the inbound item names the VI or project the user wants to talk about.
         Reply shape (replyJson, MonitorDiscussVIRequest): {"errorCode":0,"errorMessage":""}
+        EXPECT THIS ONE TO TIME OUT EVEN WHEN THE FEATURE FIRES. The monitors are
+        single-subscriber streams and NI's own service always wins - measured, including with
+        the service stopped first, where the click starts it and the event still goes there.
+        lvai_discuss_file TRIGGERS the feature, but it does not make the event arrive here:
+        emitting it and receiving it are separate questions, and only the first one is open.
         """ + Waits)]
     public async Task<string> MonitorDiscussViAsync(
         [Description("Send an empty request first to register the monitor")] bool sendReady = false,

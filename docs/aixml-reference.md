@@ -3142,6 +3142,178 @@ Two details from running this, in case anyone repeats it:
   meaningless. Confirm `[TOOL INVOCATION COMPLETE]` without a preceding `FAILED` line, then
   measure.
 
+### But TRIGGERING Discuss from a third-party client works — measured 2026-09-10
+
+Everything above asks whether the `MonitorDiscussVI` event can be **intercepted**, and the answer
+stays no. **Emitting** it is a different door, and it is open. This section read as though Discuss
+were unreachable altogether, which is why the distinction is spelled out here: NI's service is the
+only *subscriber*, and that is an argument against receiving the event, not against sending it.
+
+**NI's menu callbacks are LOOSE VIs with intact diagrams**, under
+`LVAddons\lvai\<ver>\resource\plugins\`, owned by `LV AI Plugins.lvlib`. So they export, and they
+can be read rather than guessed at:
+
+```
+lv_discuss_with_nigel.vi        vi path (path), vi name (string), fileType constant = 1
+  -> lv_discuss_file_with_nigel.vi      path (path), name (string), fileType (uint32 enum)
+       [frame 1]  LV AI Core.lvlibp:Launch Nigel Chat.vi
+       [frame 2]  LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:InvokeDiscussVI.vi
+```
+
+**And `LV AI Plugins.lvlib\3Alv_discuss_file_with_nigel.vi` RESOLVES as an AIXML `Call` target** —
+`errorCode 0` from `ValidateAIXML`, which extends §9's resolution list: a library-owned loose VI
+under `LVAddons` resolves by its qualifier even from `resource\plugins`, a folder the list did not
+mention. The two VIs it calls in turn are **packed-library members and do not resolve**, so the
+callback is the only reachable rung of that ladder.
+
+**This paragraph used to read "call the callback, not `InvokeDiscussVI.vi`", and the shipped tool
+now does the opposite.** The argument for the callback was its `Flat Sequence`: it launches the chat
+before pushing, and `InvokeDiscussVI.vi` exposes no error terminal, so no wire could order the two.
+That is a real constraint and it is not the only way to order anything — a data dependency does it
+just as well, and the callback costs more than it saves, because it **returns nothing at all**.
+
+**So drive NI's two VIs yourself, over VI Server, and keep the verdict.** Both open by qualified
+name; four things had to be established first, all measured 2026-09-10:
+
+| question | answer |
+|---|---|
+| do the packed-library VIs open by qualified name? | yes, both, `Execution:State` **1** — idle, so runnable |
+| does `Ctrl Val.Set` accept InvokeDiscussVI's three controls? | yes — the string, the **`path`**, and the **`uint32` enum**, all `code 0` |
+| where does a correctly typed enum variant come from? | an **AIXML-authored enum constant**. `Ctrl Val.Set` type-checks the variant against the control, and this is the piece that made the route possible |
+| does `Run VI` on `Launch Nigel Chat.vi` block? | **no** — 181 ms for the whole helper against 667 ms through the callback, with the chat appearing from a closed state |
+
+Ordering comes from a `Select` whose two branches are the **same** string, gated on the launch's
+`status`: the value is unchanged, the data dependency forces the launch to finish first, and a
+launch failure is *reported* rather than allowed to suppress the push — which is what NI does, since
+it leaves that error out unwired.
+
+The prize is `error code` and `error message`, read back with `Ctrl Val.Get All` after the run.
+`lvai_discuss_file` reports them as `discussErrorCode`/`discussErrorMessage` and gates `ok` on them.
+
+**Exercised through the tool across all three paths**, same day: a `.vi` and a `.lvproj` both
+`ok: true` with `discussErrorCode 0`, and a non-VI refused before any RPC. `fileType` given as
+lowercase `project` folded correctly to the enum. **175 ms warm against 1 793 ms on the first call
+of a session** — the first one pays port discovery and LabVIEW loading the helper, so do not read
+the cold figure as the cost of the operation.
+
+Measured end to end: the chat application appeared (`LVNigelChat`, process 91 s old at the check,
+`server_url.txt` written two seconds after the process start) and the chat showed the VI with its
+diagram, description and terminal table. `lvai_discuss_file` is this, shipped;
+`scripts/lvai_discuss.xml` is the helper.
+
+**Both file types are confirmed through the tool**, measured the same day once it shipped. A `.vi`
+with the chat closed: `errorCode 0`, `chatStartedByThisCall: true`, **667 ms** including generating
+the helper. A `.lvproj` with `fileType PROJECT`: **11.3 s**, and the chat displayed and explained
+the project — so `DISCUSS_FILE_TYPE_PROJECT` is not merely accepted, it is served. The extra ten
+seconds are NI's, spent reading the project.
+
+And the extension check is genuinely LabVIEW-free, which fell out as a bonus measurement: it
+refused an `.xml` target correctly **while the gRPC service was down**. Had that check sat behind
+the RPC, the answer would have been a connection failure instead.
+
+**It does NOT unlock `ApplyAIXMLToVI`, and that settles the open variable above.** This section
+ends by naming the one thing untested from here — "a human performing that command on the exact VI
+and an `Apply` firing immediately after". Done programmatically: Discuss fired on a VI from our own
+client, `Apply` on that same VI 30 s later, **still `Error 42`**. The gate is on the caller, and
+triggering Discuss does not move it.
+
+**Re-measured over BOTH emit routes, which is what makes that conclusion safe.** The first test
+went through NI's menu callback; repeating it after the direct `InvokeDiscussVI.vi` route — with
+`discussErrorCode 0`, so the push demonstrably succeeded — gave `Error 42` again. That closes the
+objection that the callback might have been what Apply objected to. Three independent activations
+now fail the same way: NI's assistant activating the file itself, our push through the callback, and
+our push through InvokeDiscussVI. **Emitting Discuss and being allowed to write are unrelated
+permissions.**
+
+Three traps, each measured on this route:
+
+- **NI's callback returns NOTHING** — it discards `InvokeDiscussVI`'s `error code` and `error
+  message` by its own design, so through it a silent success and a silent failure are
+  indistinguishable. That is the whole reason the shipped route goes one level deeper; it is listed
+  here as the property of NI's VI that it is, not as a limit anyone still has to live with.
+- **The chat validates the file ITSELF, and it is the ONLY thing that does.** Handed an `.xml` path
+  with `fileType` VI, the chat window showed a red banner — *The file you selected is not a VI.* —
+  while every call in the chain answered `errorCode 0`. Re-measured against `InvokeDiscussVI.vi`
+  **directly**, now that its verdict is readable: `error code 0` there too. So NI validates at no
+  level a caller can see, and an extension check in the caller is not the cheaper guard, it is the
+  only one.
+- **An enum indicator is unreadable under `RunVIAsTopLevel`.** A `uint32{…}` echo came back **empty
+  with `errorCode 91`** *after* the VI had run correctly — §10's marshalling limit, seen from the
+  output side. Echo the enum's item name as a **string** instead.
+
+One more fact worth having, measured while establishing the above:
+**`Ctrl Val.Get All` returns INDICATORS ONLY**, despite the name. `InvokeDiscussVI.vi` answered with
+its two indicators and none of its three controls, and a VI with no indicators answered `Dimsize 0`.
+Reading a *control* back needs `Ctrl Val.Get` by name.
+
+### Retested with the front panel OPEN AND ACTIVATED, NI's own way — still `Error 42`
+
+Measured 2026-09-11, on the observation that NI's project provider **opens the VI before it pushes
+Discuss**. `resource\Framework\Providers\AI\AI_Item_OnCommand.vi` exports cleanly, and its
+`"NIGEL-DISCUSS"` frame reads:
+
+```
+mxLvGetItemRef.vi                                   the U64 Object -> an Item Refnum
+{LV.ProjectItem}  read VI Reference, Path, Name, Type String
+  VI Reference is a refnum (the item IS a VI)
+    {LV.VI}       read Front Panel Window:State
+    case "Invalid", "Closed"  -> State := Standard        default -> keep the current state
+    {LV.VI}       FP.Open     Activate := TRUE, State
+    Close Reference
+    fileType := DISCUSS_FILE_TYPE_VI
+  VI Reference is NOT a refnum
+    case Type String "Project" -> fileType := DISCUSS_FILE_TYPE_PROJECT, else UNSPECIFIED
+case No Error -> Call LV AI Plugins.lvlib:lv_discuss_file_with_nigel.vi (path, name, fileType)
+```
+
+So the open is real, it **activates** the window, and it is part of the *Discuss* path rather than
+of any apply. The table above ruled out "VI open" through `lvai_open_file`, which is not the same
+gesture, so it was worth measuring properly. Reproduced with a probe helper that copies the
+sequence — reach the project's application instance, `Open VI Reference` there, `FP.Open` with
+`Activate` true and `State` Standard — and confirmed against the VI's own properties
+(`Front Panel Window:Open` **true**, `Front Panel Window:Is Frontmost` **true**, error 0):
+
+| Configuration | Result |
+|---|---|
+| Panel open, activated, frontmost; project active; VI a member; **no Discuss** | 42 |
+| Same, immediately after `lvai_discuss_file` reported `discussErrorCode 0` | 42 |
+| Same, 30 s later, chat window up and showing the VI | 42 |
+| Panel re-opened and re-activated, Apply fired with nothing in between | 42 |
+
+Five refusals, all `Error 42 occurred at LV AI Core.lvlibp:Apply code changes.vi`, and the target's
+export was unchanged each time. **Opening and activating the front panel is not the missing
+precondition**, and §14's conclusion stands: the gate is on the caller.
+
+One near-miss worth recording, because it looked like a finding for two calls. After an Apply the
+panel *appeared* to have closed, which would have meant Apply reaches the VI before refusing —
+and the negative control killed it: with **no** Apply in between, the same two probes disagreed
+about the same panel at the same moment. It was the route, not the state; see the application-context
+measurement in `docs/vi-server-reference.md`. **Two probes that disagree are measuring two things,
+and the cheap control says which.**
+
+### The rest of the provider tree, read while establishing that
+
+Nothing here unlocks Apply, but these are the VIs to read next and they cost one batch export:
+
+- **`Support\Is discuss enabled.vi`** → `LV AI Plugins.lvlib:lv_are_nigel_features_enabled.vi` →
+  `LV AI Core.lvlibp:Are Nigel features enabled.vi`, which answers a **Boolean array indexed by
+  `LV AI Core.lvlib:Nigel feature.ctl`**, collapsed to a `uint32` for LabVIEW's C++ side. Discuss
+  requires `mask AND 3 == 3`, so chat and discuss are the low two bits. A per-feature gate is the
+  right shape for an Apply permission, and this is the only readable end of it.
+- **`AI_Item_OnPopup.vi`** offers "Discuss with Nigel..." (`Menu Tag` `NIGEL-DISCUSS`, weight 8001)
+  only for `Get File Type` = `"Instrument"` or `"Project"`, which is where the VI/PROJECT pair of
+  `fileType` values comes from.
+- **`Support\Cache VIs by project ref.vi`** walks `{LV.Project}` `Get All Descendents` and stores
+  the paths through `Invoke cache.vi`. That is the neighbourhood of the assistant's
+  `GetUserAttachedVIPathsAsync`, and the closest thing to the attachment list that is readable from
+  here — unchased.
+- **`resource\plugins\Show code suggestions.vi`** is the code-completion UI, and it does **not**
+  call `Apply code changes.vi` at all: it calls `Get code suggestions.vi` and hands the result to
+  `LV Nigel Suggestions Window.lvlib:Main window.vi`. Its one `{LV.Application}`
+  `FeatureToggleEnabled` call asks for `Wiring.CodeCompletionTarget.DebugRequest`, which only
+  reveals a debug window. So the apply decision is inside the packed `Apply code changes.vi`, whose
+  diagram NI ships stripped (§15).
+
 ## 15. Reach
 
 `ConvertVIToAIXML` works on VIs inside **packed libraries** (`.lvlibp`) as well — a compiled

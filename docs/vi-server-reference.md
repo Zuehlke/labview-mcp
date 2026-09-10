@@ -624,6 +624,48 @@ node to break, three steps downstream of the cause. Removing the error clearing 
 the property node that actually failed. **A chain that clears errors between stages names its last
 casualty, not its first.**
 
+### "The IDE's instance" is not ONE instance — there are 34, and only one holds your VI
+
+Measured 2026-09-11, after NI's own `LV AI Plugins.lvlib:Get editor app ref.vi` suggested a
+**project-free** route to the editor: it reads `{LV.Application}` `Application\3AAll Contexts`,
+walks them reading `Application\3AContext Name`, and takes the one equal to the literal
+**`NI.LV.Editor`**. That looked like it would retire the active-project precondition above, which
+`lvai_close_vi` and every class-editing call pay. **It does not.**
+
+One probe opened the *same* VI in *every* context and read its `Front Panel Window\3AOpen`, with
+the panel demonstrably open and frontmost. All 34 contexts answered `Open VI Reference` with
+**error 0**; exactly **one** reported the panel open:
+
+| context | sees the open panel |
+|---|---|
+| `Main Application Instance` (index 0) | no |
+| `NI.LV.Editor`, `NI.LV.NoVIs`, `NI.LV.XNode`, `NI.LV.Express`, `NI.LV.IconEditor`, … 31 in all | no |
+| `JKI.LV.Extensions.SDP` | no |
+| `My Computer` — **the last of two so named** | **yes** |
+
+So a VI that belongs to an open project lives in that **project target's** application context, and
+the two `My Computer` entries are the targets of the two open projects. `NI.LV.Editor` is a
+*scripting* context, which is exactly what NI uses it for — `Get editor app ref.vi` feeds
+`Open VI Reference` plus `Start Asynchronous Call` to launch `Show code suggestions.vi`, its own UI
+VI, and never a user VI. **`Project\3AActive Project` → `Application` remains the only route to the
+context holding the user's code**, and the precondition is not an accident of how it was found.
+
+Two things fell out of establishing it, both cheap to know:
+
+- **NI's helper cannot be borrowed.** `LV AI Plugins.lvlib\3AGet editor app ref.vi` is refused by
+  `ValidateAIXML` — *"This VI cannot access the referenced item in private scope"* — while
+  `lv_discuss_file_with_nigel.vi` in the **same library** resolves and runs. So library membership
+  is not the question; **access scope is**, and it is worth one throwaway validate before designing
+  around any VI in that tree. The *technique* is public, and the walk is a dozen ordinary nodes.
+- **`Front Panel Window\3AOpen` is truthful once you are in the right context**, reading `true` for
+  a panel this document elsewhere records as reading `false`. That earlier finding was the addon's
+  instance, and index 0 above reproduces it.
+
+**And this is where a one-route measurement lies.** The two probes — project-route and
+`NI.LV.Editor`-route — disagreed about one panel at one moment, which first read as *"Apply closed
+the front panel"*, a much more interesting claim. The control that killed it took one call: run the
+two probes back to back with nothing in between and watch them still disagree.
+
 ## Unloading a VI so its path can be regenerated
 
 **This works.** A VI in memory blocks `ConvertAIXMLToVI` from overwriting that path (`Error 1357`),
@@ -1092,6 +1134,66 @@ Still open, and honest about it: with the downcast the document validates and
 generates, and at RUN time the traversal returns blank class names from the
 fourth object on with every inner count 0. That is a separate defect in the probe
 body, not in the rule above.
+
+### That defect is SOLVED, and it was two defects - measured 2026-09-11
+
+A working traversal of a real producer/consumer VI settles both halves, and the second one is the
+kind of fault that reports success:
+
+**1. A For Loop that iterates ZERO times emits the DEFAULT value at its output tunnel - including an
+error cluster.** The first probe answered `errorCode 0` with every array empty and every string
+blank, which reads as "the VI ran and found nothing". It had in fact failed at
+`Open VI Object Reference`, and routing the error chain THROUGH the loop replaced that fault with a
+fresh no-error cluster. Route the error chain AROUND any loop whose iteration count is data, and
+index the per-iteration codes out separately. With that one change the same probe named its own
+fault: `Error 1054` at that node.
+
+**2. A failing `To More Specific Class` in the same iteration as a read INVALIDATES the remaining
+references.** Two probes over the same five objects: one reading only `{LV.GObject}` `Class Name`
+returned all five (`Function, EventStructure, Text, Terminal, Terminal`); the other adding a downcast
+to `{LV.Terminal}` returned the first two and then **blank names with `Error 1055`** for the rest -
+after the downcast had answered `Error 1057, Object cannot be cast to the specified type` on the
+objects that are not terminals. So the earlier "blank from the fourth object on" was this, not a
+property-name problem. **One property node per reference, and no speculative downcast beside it** -
+read the class names first, then descend into the objects you have already identified.
+
+**`Open VI Object Reference` searches ONE diagram, not the hierarchy.** With `owner refnum` = the VI's
+Block Diagram and `vi object class` = a `ref{LV.EventStructure}` constant it answered
+**`Error 1054, The specified object was not found`** for a structure that sits inside a While Loop.
+Descend a level at a time - `All Objects[]`, downcast the loop, `{LV.WhileLoop}` `Diagram`,
+`All Objects[]` again.
+
+**The `Class Name` strings carry NO SPACES**, which matters when matching on them: measured on one VI,
+`Function`, `WhileLoop`, `CaseStructure`, `EventStructure`, `RegisterForEvents`, `SelectorTunnel`,
+`ClusterConstant`, `FixedConstant`, `ControlTerminal`, `Terminal`, `Text`. Not "Event Structure".
+
+### Drawing a WIRE from script, and the direction rule
+
+`{LV.Terminal}` **`Connect Wire`** (`Wire Source; Auto Wire? (T); Wiring Specs; Auto Route? (F)`) is
+called on the DESTINATION terminal; `{LV.Node}`, `{LV.Structure}` and every node class carry the
+plural `Connect Wires`. Measured 2026-09-11 branching an event registration refnum onto an Event
+Structure's dynamic event terminal: `errorCode 0`, the target's `signalList` entry grew by exactly
+one terminal, nothing else in the heap moved, `Execution:State` stayed 1.
+
+**`Error 1062, "Specified objects cannot be wired together"` is a DIRECTION verdict, not a type
+one.** The first attempt wired the structure's own tunnel to the terminal beside it - both are
+SINKS - and 1062 says so in the only words it has. The source of a net is found by walking it:
+`{LV.Tunnel}` `Outside Terminal` -> `{LV.Terminal}` `Connected Wire` -> `{LV.Wire}` `Terminals[]` ->
+the element whose `Is Source?` is true.
+
+**`Connected Wire` on an UNWIRED terminal answers `errorCode 0` with an invalid refnum**, so a clean
+read is not evidence that a wire exists. Ask the wire something - `{LV.Wire}` `Class Name` or
+`Is Broken?` - or read the heap.
+
+**LabVIEW's own error text is on disk and needs no LabVIEW to read.**
+`<install>\resource\errors\English\LabVIEW-errors.txt` is plain XML, one `<nierror code="N">` per
+code, and it is the fastest way to turn a scripting refusal into a sentence: 1054 "The specified
+object was not found", 1055 "Object reference is invalid", 1057 "Type mismatch: Object cannot be cast
+to the specified type", 1062 "Specified objects cannot be wired together". Four codes that all
+reached a probe in one afternoon, each of which reads like something else.
+
+The worked route, with the Event-Structure specifics and what it does not yet establish, is in
+[`labview-vit-templates.md`](labview-vit-templates.md) - "THE WIRE IS SCRIPTABLE AFTER ALL".
 
 ### And leaving the project open while probing ADOPTED six scratch VIs - second occurrence
 

@@ -1002,6 +1002,28 @@ name and their Check B entries are belt and braces. The `[0] Timeout` detail bel
 alone and had drifted onto both. Corrected in `experiments/pylabview/ROUTING.md` §2, which
 contradicted `FINDINGS.md` §3.11 on this for two commits.
 
+**SO WHEN YOU AUTHOR AN EVENT STRUCTURE, ALWAYS ROUTE THE EVENT REGISTRATION REFNUM INTO IT AS AN
+ORDINARY `<Tunnel>` — even when nothing inside the frames reads it.** This is the user's rule of
+2026-09-11 and it is the difference between a one-call repair and an impossible one. A `<Tunnel>` on
+a `<Structure>` is something AIXML keeps; the wire onto the **dynamic event terminal** is the one
+thing it cannot express, and without the tunnel that wire has to be composed across the diagram —
+which pylabview cannot do either. With the tunnel, the missing piece is a BRANCH of a net that
+already touches the structure, and `lvai_wire_dynamic_events` makes it in one call. An unread
+tunnel costs nothing on the diagram, and it keeps the shape identical after every regeneration,
+because it lives in your AIXML rather than in LabVIEW's layout.
+
+**The tool works without it, and that is not a reason to skip it.** With no such tunnel it falls
+back to the `Register For Events` node on the block diagram and wires straight across the loop
+border — LabVIEW accepts that and creates the tunnel itself, measured — but then the tunnel is
+LabVIEW's and your source AIXML still does not describe the net reaching the structure. `sourceFrom`
+in the answer says which route ran; `tunnel` is the one to design for.
+
+Two consequences worth knowing before you write the frames. **A wire count is not the check**:
+branching the tunnel's net gives a wire of three ends, the fallback a fresh one of two, so the tool
+judges on the destination terminal having a wire at all. And **only a RENDER shows the result** —
+`Auto Route?` defaults to FALSE, and with the default the connection is real in every readable form
+while LabVIEW draws nothing. `docs/labview-vit-templates.md` §5a has both measurements.
+
 **"The export is faithful" is an `Event Structure` fact and does NOT generalise. For a `Timed Loop`
 the export is lossy.** Measured 2026-08-22 on a controlled pair: the loop comes back as
 `<Structure _name="Timed Loop" count="…" label="…"/>` with **no configuration node on either side** —
@@ -1307,8 +1329,9 @@ literally it argued away 600 usable palette VIs.
 | How do I generate a VI whose front-panel EVENTS are registered? | `docs/labview-vit-templates.md` §5a | `lvai_generate_vi_with_events` |
 | How do I register one event by hand, or strip a generated VI's compiled code? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-set-event-spec.py`, `scripts/pylv-strip-compiled.py` |
 | How do I show an Event Structure's dynamic event terminals? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-show-dynamic-events.py` |
-| Why does a USER EVENT need an IDE wire, and why is there no tool for it? | `docs/labview-vit-templates.md` §5a | — |
+| How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
+| How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
 | Where do a VI's own terminals sit on the pane? | `docs/aixml-reference.md` §2, `docs/connector-pane-patterns.tsv` | `lvai_connector_pane` |

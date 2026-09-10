@@ -1,0 +1,180 @@
+<VI _name="lvai_wire_dyn_events.vi" description="Wire a VI's event registration refnum onto its Event Structure's DYNAMIC EVENT terminal - the one connection AIXML cannot express, and therefore the only thing a regeneration loses.\0A\0ATWO SOURCES, TRIED IN THAT ORDER. Preferred\3A the structure's own Event Registration Refnum TUNNEL, whose net is BRANCHED - authoring that tunnel in AIXML is what makes the whole route survive a regeneration, so it is the shape to write. Fallback\3A the Register For Events node on the block diagram, wired straight across the loop border, which LabVIEW accepts and answers by creating the tunnel itself - measured. The fallback assumes ONE such node in the VI and reports how many it saw.\0A\0AHOW BOTH ENDS ARE IDENTIFIED - BY NAME, never by index. The structure's terminals answer to the literal Event Registration Refnum, the node's to the lower-case event registration refnum, because a terminal's name comes from its data type or its node's label rather than from a user label. The node's refnum output is picked as 'a source that is not named error out', which needs no spelling of the refnum at all.\0A\0AAuto Route? (F) IS WIRED TRUE, AND THAT IS NOT OPTIONAL. With its FALSE default the connection is registered in every readable form - signal termList, the terminal's bit 15, a grown compressedWireTable, a live Connected Wire, Is Broken? false, the VI unbroken - and LabVIEW's renderer draws NOTHING. Position and Bounds are identical between the two cases, so no property can tell them apart and CleanUpWire changes neither.\0A\0AWHAT IT REPORTS AS THE EFFECT is the DESTINATION terminal's own wire\3A none before, one that is not broken after. That is route-independent, where an end COUNT is not - branching the tunnel's net gives a wire of three ends and crossing the loop border gives a fresh one of two.\0A\0ATHE SEARCH IS TWO LEVELS DEEP\3A the block diagram, and the diagrams of every WhileLoop, ForLoop, TimedLoop and CaseStructure on it - which covers a front-panel event loop as NI's own templates build one. Class Name carries NO SPACES (WhileLoop, EventStructure). A deeper structure is not found, and the class names seen at the top level are reported so that reads as a miss rather than a mystery.\0A\0AONE PROPERTY NODE PER REFERENCE, and no Connected Wire on a terminal not established as wired\3A that read is what invalidated the references following it in a probe, and it is why the tunnel branch here runs on an error path of its own.">
+  <FreeLabel comment="Prefer branching the tunnel's net; fall back to the node across the loop border." uid="4200" uid_parent="root"/>
+  <Control _name="VI Path" conIdx="1" connection="required" description="Absolute path of the VI to wire. Opened in the IDE's own application instance through Application\3AProject\3AActive Project, so the edit lands in the copy the user is looking at rather than in a second one - a VI can be loaded twice, and the addon's instance holds its own copy." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4211.path" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:4220.proj,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4220.proj,error in (no error):4220.error out" outputs="Application:4221.app,reference out:,error out:4221.error out" uid="4221" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4221.app,vi path:4211.path,error in (no error):4221.error out" outputs="vi reference:4222.vi reference,error out:4222.error out" uid="4222" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4222.error out" outputs="Block Diagram:4230.diagram,reference out:,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4230.diagram,error in (no error):4230.error out" outputs="All Objects[]:4240.objs,reference out:,error out:4240.error out" uid="4240" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4260" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4240.objs" mode="index" outputs="value:4261.obj" uid="4261" uid_parent="4260"/>
+    <Tunnel _id="In2" inputs="value:4240.error out" outputs="value:4262.err" uid="4262" uid_parent="4260"/>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:4261.obj,error in (no error):4262.err" outputs="Class Name:4263.class,reference out:,error out:4263.error out" uid="4263" uid_parent="4260"/>
+    <Constant _name="event structure" outputs="value:4264.value" type="string" uid="4264" uid_parent="4260" value="EventStructure"/>
+    <Constant _name="while loop" outputs="value:4265.value" type="string" uid="4265" uid_parent="4260" value="WhileLoop"/>
+    <Constant _name="for loop" outputs="value:4266.value" type="string" uid="4266" uid_parent="4260" value="ForLoop"/>
+    <Constant _name="timed loop" outputs="value:4267.value" type="string" uid="4267" uid_parent="4260" value="TimedLoop"/>
+    <Constant _name="case structure" outputs="value:4268.value" type="string" uid="4268" uid_parent="4260" value="CaseStructure"/>
+    <Constant _name="register for events" outputs="value:4258.value" type="string" uid="4258" uid_parent="4260" value="RegisterForEvents"/>
+    <Node _name="Equal?" inputs="x:4264.value,y:4263.class" outputs="x = y?:4269.eq" uid="4269" uid_parent="4260"/>
+    <Node _name="Equal?" inputs="x:4265.value,y:4263.class" outputs="x = y?:4270.eq" uid="4270" uid_parent="4260"/>
+    <Node _name="Equal?" inputs="x:4266.value,y:4263.class" outputs="x = y?:4271.eq" uid="4271" uid_parent="4260"/>
+    <Node _name="Equal?" inputs="x:4267.value,y:4263.class" outputs="x = y?:4272.eq" uid="4272" uid_parent="4260"/>
+    <Node _name="Equal?" inputs="x:4268.value,y:4263.class" outputs="x = y?:4273.eq" uid="4273" uid_parent="4260"/>
+    <Node _name="Equal?" inputs="x:4258.value,y:4263.class" outputs="x = y?:4259.eq" uid="4259" uid_parent="4260"/>
+    <Node _name="Or" inputs="x:4270.eq,y:4271.eq" outputs="x .or. y?:4274.or" uid="4274" uid_parent="4260"/>
+    <Node _name="Or" inputs="x:4274.or,y:4272.eq" outputs="x .or. y?:4275.or" uid="4275" uid_parent="4260"/>
+    <Node _name="Or" inputs="x:4275.or,y:4273.eq" outputs="x .or. y?:4276.or" uid="4276" uid_parent="4260"/>
+    <Tunnel _id="Out1" cond="4269.eq" inputs="value:4261.obj" mode="index" outputs="value:4277.value" uid="4277" uid_parent="4260"/>
+    <Tunnel _id="Out2" cond="4276.or" inputs="value:4261.obj" mode="index" outputs="value:4278.value" uid="4278" uid_parent="4260"/>
+    <Tunnel _id="Out3" inputs="value:4263.class" mode="index" outputs="value:4279.value" uid="4279" uid_parent="4260"/>
+    <Tunnel _id="Out4" cond="4259.eq" inputs="value:4261.obj" mode="index" outputs="value:4257.value" uid="4257" uid_parent="4260"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4280" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4278.value" mode="index" outputs="value:4281.container" uid="4281" uid_parent="4280"/>
+    <Tunnel _id="In2" inputs="value:4240.error out" outputs="value:4282.err" uid="4282" uid_parent="4280"/>
+    <Constant _name="structure class" outputs="value:4283.value" type="ref{LV.Structure}" uid="4283" uid_parent="4280" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4281.container,error in:4282.err,target class:4283.value" outputs="specific class reference:4284.structure,error out:4284.error out" uid="4284" uid_parent="4280"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4284.structure,error in (no error):4284.error out" outputs="Diagrams[]:4285.diags,reference out:,error out:4285.error out" uid="4285" uid_parent="4280"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4290" uid_parent="4280">
+      <Tunnel _id="In1" inputs="value:4285.diags" mode="index" outputs="value:4291.diag" uid="4291" uid_parent="4290"/>
+      <Tunnel _id="In2" inputs="value:4285.error out" outputs="value:4292.err" uid="4292" uid_parent="4290"/>
+      <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4291.diag,error in (no error):4292.err" outputs="All Objects[]:4293.objs,reference out:,error out:4293.error out" uid="4293" uid_parent="4290"/>
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="4290">
+        <Tunnel _id="In1" inputs="value:4293.objs" mode="index" outputs="value:4301.obj" uid="4301" uid_parent="4300"/>
+        <Tunnel _id="In2" inputs="value:4293.error out" outputs="value:4302.err" uid="4302" uid_parent="4300"/>
+        <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:4301.obj,error in (no error):4302.err" outputs="Class Name:4303.class,reference out:,error out:4303.error out" uid="4303" uid_parent="4300"/>
+        <Constant _name="event structure" outputs="value:4304.value" type="string" uid="4304" uid_parent="4300" value="EventStructure"/>
+        <Node _name="Equal?" inputs="x:4304.value,y:4303.class" outputs="x = y?:4305.eq" uid="4305" uid_parent="4300"/>
+        <Tunnel _id="Out1" cond="4305.eq" inputs="value:4301.obj" mode="index" outputs="value:4306.value" uid="4306" uid_parent="4300"/>
+      </Structure>
+      <Constant _name="first" outputs="value:4310.value" type="int32" uid="4310" uid_parent="4290" value="0"/>
+      <Node _name="Index Array" inputs="array:4306.value,index:4310.value" outputs="element:4311.element" uid="4311" uid_parent="4290"/>
+      <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4311.element" outputs="NaN/Path/Refnum?:4312.invalid" uid="4312" uid_parent="4290"/>
+      <Node _name="Not" inputs="x:4312.invalid" outputs=".not. x?:4313.valid" uid="4313" uid_parent="4290"/>
+      <Tunnel _id="Out1" cond="4313.valid" inputs="value:4311.element" mode="index" outputs="value:4314.value" uid="4314" uid_parent="4290"/>
+    </Structure>
+    <Constant _name="first" outputs="value:4320.value" type="int32" uid="4320" uid_parent="4280" value="0"/>
+    <Node _name="Index Array" inputs="array:4314.value,index:4320.value" outputs="element:4321.element" uid="4321" uid_parent="4280"/>
+    <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4321.element" outputs="NaN/Path/Refnum?:4322.invalid" uid="4322" uid_parent="4280"/>
+    <Node _name="Not" inputs="x:4322.invalid" outputs=".not. x?:4323.valid" uid="4323" uid_parent="4280"/>
+    <Tunnel _id="Out1" cond="4323.valid" inputs="value:4321.element" mode="index" outputs="value:4324.value" uid="4324" uid_parent="4280"/>
+  </Structure>
+
+  <Constant _name="first" outputs="value:4330.value" type="int32" uid="4330" uid_parent="root" value="0"/>
+  <Node _name="Index Array" inputs="array:4277.value,index:4330.value" outputs="element:4331.element" uid="4331" uid_parent="root"/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4331.element" outputs="NaN/Path/Refnum?:4332.invalid" uid="4332" uid_parent="root"/>
+  <Node _name="Not" inputs="x:4332.invalid" outputs=".not. x?:4333.valid" uid="4333" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4324.value,index:4330.value" outputs="element:4335.element" uid="4335" uid_parent="root"/>
+  <Node _name="Select" inputs="t:4331.element,s:4333.valid,f:4335.element" outputs="s? t\3Af:4336.es" uid="4336" uid_parent="root"/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4336.es" outputs="NaN/Path/Refnum?:4340.invalid" uid="4340" uid_parent="root"/>
+  <Node _name="Not" inputs="x:4340.invalid" outputs=".not. x?:4341.found" uid="4341" uid_parent="root"/>
+
+  <Constant _name="event structure class" outputs="value:4345.value" type="ref{LV.EventStructure}" uid="4345" uid_parent="root" value=""/>
+  <Node _name="To More Specific Class" inputs="reference:4336.es,error in:4240.error out,target class:4345.value" outputs="specific class reference:4346.structure,error out:4346.error out" uid="4346" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.EventStructure}" inputs="reference:4346.structure,error in (no error):4346.error out" outputs="Terminals[]:4350.terms,reference out:,error out:4350.error out" uid="4350" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4360" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4350.terms" mode="index" outputs="value:4361.term" uid="4361" uid_parent="4360"/>
+    <Tunnel _id="In2" inputs="value:4346.error out" outputs="value:4362.err" uid="4362" uid_parent="4360"/>
+    <Node _name="Property Node" fields="read+Name,read+Is Source?" type="{LV.Terminal}" inputs="reference:4361.term,error in (no error):4362.err" outputs="Name:4363.name,Is Source?:4363.src,reference out:,error out:4363.error out" uid="4363" uid_parent="4360"/>
+    <Constant _name="refnum terminal name" outputs="value:4364.value" type="string" uid="4364" uid_parent="4360" value="Event Registration Refnum"/>
+    <Node _name="Equal?" inputs="x:4364.value,y:4363.name" outputs="x = y?:4365.eq" uid="4365" uid_parent="4360"/>
+    <Node _name="Not" inputs="x:4363.src" outputs=".not. x?:4366.sink" uid="4366" uid_parent="4360"/>
+    <Node _name="And" inputs="x:4365.eq,y:4366.sink" outputs="x .and. y?:4367.wanted" uid="4367" uid_parent="4360"/>
+    <Tunnel _id="Out1" cond="4367.wanted" inputs="value:4361.term" mode="index" outputs="value:4368.value" uid="4368" uid_parent="4360"/>
+    <Tunnel _id="Out2" inputs="value:4363.name" mode="index" outputs="value:4369.value" uid="4369" uid_parent="4360"/>
+    <Tunnel _id="Out3" inputs="value:4363.src" mode="index" outputs="value:4372.value" uid="4372" uid_parent="4360"/>
+  </Structure>
+  <Node _name="Index Array" inputs="array:4368.value,index:4330.value" outputs="element:4371.dest" uid="4371" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:4371.dest,error in (no error):4350.error out" outputs="Connected Wire:4500.wire,reference out:,error out:4500.error out" uid="4500" uid_parent="root"/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4500.wire" outputs="NaN/Path/Refnum?:4501.invalid" uid="4501" uid_parent="root"/>
+  <Node _name="Not" inputs="x:4501.invalid" outputs=".not. x?:4502.wiredBefore" uid="4502" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Tunnels[]" type="{LV.EventStructure}" inputs="reference:4346.structure,error in (no error):4500.error out" outputs="Tunnels[]:4520.tuns,reference out:,error out:4520.error out" uid="4520" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4530" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4520.tuns" mode="index" outputs="value:4531.tun" uid="4531" uid_parent="4530"/>
+    <Tunnel _id="In2" inputs="value:4520.error out" outputs="value:4532.err" uid="4532" uid_parent="4530"/>
+    <Constant _name="tunnel class" outputs="value:4533.value" type="ref{LV.Tunnel}" uid="4533" uid_parent="4530" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4531.tun,error in:4532.err,target class:4533.value" outputs="specific class reference:4534.tunnel,error out:4534.error out" uid="4534" uid_parent="4530"/>
+    <Node _name="Property Node" fields="read+Outside Terminal" type="{LV.Tunnel}" inputs="reference:4534.tunnel,error in (no error):4534.error out" outputs="Outside Terminal:4535.outer,reference out:,error out:4535.error out" uid="4535" uid_parent="4530"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:4535.outer,error in (no error):4535.error out" outputs="Name:4536.name,reference out:,error out:4536.error out" uid="4536" uid_parent="4530"/>
+    <Constant _name="refnum terminal name" outputs="value:4537.value" type="string" uid="4537" uid_parent="4530" value="Event Registration Refnum"/>
+    <Node _name="Equal?" inputs="x:4537.value,y:4536.name" outputs="x = y?:4538.eq" uid="4538" uid_parent="4530"/>
+    <Tunnel _id="Out1" cond="4538.eq" inputs="value:4535.outer" mode="index" outputs="value:4539.value" uid="4539" uid_parent="4530"/>
+  </Structure>
+  <Node _name="Index Array" inputs="array:4539.value,index:4330.value" outputs="element:4541.outer" uid="4541" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:4541.outer,error in (no error):4350.error out" outputs="Connected Wire:4543.wire,reference out:,error out:4543.error out" uid="4543" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:4543.wire,error in (no error):4350.error out" outputs="Terminals[]:4545.ends,reference out:,error out:4545.error out" uid="4545" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4550" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4545.ends" mode="index" outputs="value:4551.end" uid="4551" uid_parent="4550"/>
+    <Tunnel _id="In2" inputs="value:4350.error out" outputs="value:4552.err" uid="4552" uid_parent="4550"/>
+    <Node _name="Property Node" fields="read+Is Source?" type="{LV.Terminal}" inputs="reference:4551.end,error in (no error):4552.err" outputs="Is Source?:4553.src,reference out:,error out:4553.error out" uid="4553" uid_parent="4550"/>
+    <Tunnel _id="Out1" cond="4553.src" inputs="value:4551.end" mode="index" outputs="value:4554.value" uid="4554" uid_parent="4550"/>
+  </Structure>
+  <Node _name="Index Array" inputs="array:4554.value,index:4330.value" outputs="element:4556.source" uid="4556" uid_parent="root"/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4556.source" outputs="NaN/Path/Refnum?:4557.invalid" uid="4557" uid_parent="root"/>
+  <Node _name="Not" inputs="x:4557.invalid" outputs=".not. x?:4558.tunnelSource" uid="4558" uid_parent="root"/>
+
+  <Node _name="Index Array" inputs="array:4257.value,index:4330.value" outputs="element:4560.regnode" uid="4560" uid_parent="root"/>
+  <Constant _name="node class" outputs="value:4561.value" type="ref{LV.Node}" uid="4561" uid_parent="root" value=""/>
+  <Node _name="To More Specific Class" inputs="reference:4560.regnode,error in:4350.error out,target class:4561.value" outputs="specific class reference:4562.node,error out:4562.error out" uid="4562" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Node}" inputs="reference:4562.node,error in (no error):4562.error out" outputs="Terminals[]:4564.terms,reference out:,error out:4564.error out" uid="4564" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4570" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4564.terms" mode="index" outputs="value:4571.term" uid="4571" uid_parent="4570"/>
+    <Tunnel _id="In2" inputs="value:4350.error out" outputs="value:4572.err" uid="4572" uid_parent="4570"/>
+    <Node _name="Property Node" fields="read+Name,read+Is Source?" type="{LV.Terminal}" inputs="reference:4571.term,error in (no error):4572.err" outputs="Name:4573.name,Is Source?:4573.src,reference out:,error out:4573.error out" uid="4573" uid_parent="4570"/>
+    <Constant _name="error out" comment="The node's only other source, so excluding it needs no refnum spelling." outputs="value:4574.value" type="string" uid="4574" uid_parent="4570" value="error out"/>
+    <Node _name="Equal?" inputs="x:4574.value,y:4573.name" outputs="x = y?:4575.eq" uid="4575" uid_parent="4570"/>
+    <Node _name="Not" inputs="x:4575.eq" outputs=".not. x?:4576.notError" uid="4576" uid_parent="4570"/>
+    <Node _name="And" inputs="x:4573.src,y:4576.notError" outputs="x .and. y?:4577.wanted" uid="4577" uid_parent="4570"/>
+    <Tunnel _id="Out1" cond="4577.wanted" inputs="value:4571.term" mode="index" outputs="value:4578.value" uid="4578" uid_parent="4570"/>
+    <Tunnel _id="Out2" inputs="value:4573.name" mode="index" outputs="value:4579.value" uid="4579" uid_parent="4570"/>
+  </Structure>
+  <Node _name="Index Array" inputs="array:4578.value,index:4330.value" outputs="element:4580.source" uid="4580" uid_parent="root"/>
+
+  <Node _name="Select" inputs="t:4556.source,s:4558.tunnelSource,f:4580.source" outputs="s? t\3Af:4582.source" uid="4582" uid_parent="root"/>
+  <Constant _name="tunnel label" outputs="value:4583.value" type="string" uid="4583" uid_parent="root" value="tunnel"/>
+  <Constant _name="diagram label" outputs="value:4584.value" type="string" uid="4584" uid_parent="root" value="diagram"/>
+  <Node _name="Select" inputs="t:4583.value,s:4558.tunnelSource,f:4584.value" outputs="s? t\3Af:4585.label" uid="4585" uid_parent="root"/>
+
+  <Constant _name="auto wire" outputs="value:4586.value" type="bool" uid="4586" uid_parent="root" value="true"/>
+  <Constant _name="auto route" comment="FALSE leaves the wire connected and undrawn." outputs="value:4587.value" type="bool" uid="4587" uid_parent="root" value="true"/>
+  <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:4371.dest,error in (no error):4350.error out,Wire Source:4582.source,Auto Wire? (T):4586.value,Auto Route? (F):4587.value" outputs="reference out:4590.reference out,error out:4590.error out" uid="4590" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:4590.reference out,error in (no error):4590.error out" outputs="Connected Wire:4592.wire,reference out:,error out:4592.error out" uid="4592" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Is Broken?,read+Terminals[]" type="{LV.Wire}" inputs="reference:4592.wire,error in (no error):4592.error out" outputs="Is Broken?:4594.broken,Terminals[]:4594.ends,reference out:,error out:4594.error out" uid="4594" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4600" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4594.ends" mode="index" outputs="value:4601.end" uid="4601" uid_parent="4600"/>
+    <Tunnel _id="In2" inputs="value:4594.error out" outputs="value:4602.err" uid="4602" uid_parent="4600"/>
+    <Node _name="Property Node" fields="read+Is Source?" type="{LV.Terminal}" inputs="reference:4601.end,error in (no error):4602.err" outputs="Is Source?:4603.src,reference out:,error out:4603.error out" uid="4603" uid_parent="4600"/>
+    <Tunnel _id="Out1" inputs="value:4603.src" mode="index" outputs="value:4604.value" uid="4604" uid_parent="4600"/>
+  </Structure>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4594.error out" outputs="reference out:4610.reference out,error out:4610.error out" uid="4610" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4610.reference out,error in (no error):4610.error out" outputs="error out:4612.error out" uid="4612" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4612.error out" outputs="status:4614.status,code:4614.code,source:4614.source" uid="4614" uid_parent="root"/>
+
+  <Node _name="Flatten To XML" inputs="anything:4279.value" outputs="xml string:4620.xml" uid="4620" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4369.value" outputs="xml string:4621.xml" uid="4621" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4372.value" outputs="xml string:4622.xml" uid="4622" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4604.value" outputs="xml string:4623.xml" uid="4623" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4257.value" outputs="xml string:4624.xml" uid="4624" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4579.value" outputs="xml string:4625.xml" uid="4625" uid_parent="root"/>
+
+  <Indicator _name="status" conIdx="0" connection="recommended" inputs="value:4614.status" type="bool" uid="4630" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="4" connection="recommended" inputs="value:4614.code" type="int32" uid="4631" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="5" connection="recommended" description="Which node in this chain failed. Error 1062 here means Wire Source and the destination had no direction between them\3B 1055 means a reference arrived invalid." inputs="value:4614.source" type="string" uid="4632" uid_parent="root" value=""/>
+  <Indicator _name="found" conIdx="6" connection="recommended" description="Whether an Event Structure was located at all - at the top level or one level inside a loop or case. False makes every measurement below meaningless\3B read top classes to see what the search did find." inputs="value:4341.found" type="bool" uid="4633" uid_parent="root" value="false"/>
+  <Indicator _name="source from" conIdx="7" connection="recommended" description="Which source the wire was taken from\3A 'tunnel' means the structure's own Event Registration Refnum tunnel had a net to BRANCH\2C which is the shape to author because AIXML keeps it\3B 'diagram' means there was none and the Register For Events node was wired straight across the loop border\2C which LabVIEW accepts and answers by creating the tunnel itself." inputs="value:4585.label" type="string" uid="4634" uid_parent="root" value=""/>
+  <Indicator _name="wired before" conIdx="9" connection="recommended" description="Whether the dynamic event terminal ALREADY carried a wire. True makes the call a no-op\2C which is what makes re-running safe." inputs="value:4502.wiredBefore" type="bool" uid="4635" uid_parent="root" value="false"/>
+  <Indicator _name="wire ends after" conIdx="10" connection="recommended" description="Is Source? per end of the wire on the dynamic terminal AFTER the call\2C flattened. Route-dependent by design\3A branching the tunnel's net gives THREE ends and crossing the loop border gives a fresh wire of TWO\2C so the caller judges on presence rather than on a count." inputs="value:4623.xml" type="string" uid="4636" uid_parent="root" value=""/>
+  <Indicator _name="wire broken" conIdx="11" connection="recommended" inputs="value:4594.broken" type="bool" uid="4637" uid_parent="root" value="false"/>
+  <Indicator _name="top classes" conIdx="12" connection="recommended" description="Class Name of every object on the top-level diagram\2C flattened. The evidence behind a miss." inputs="value:4620.xml" type="string" uid="4638" uid_parent="root" value=""/>
+  <Indicator _name="terminal names" conIdx="13" connection="recommended" description="The Event Structure's terminal names. THREE carry Event Registration Refnum - the dynamic input\2C the dynamic output and the refnum tunnel - and all ten report Class Name OuterTerminal\2C so the class cannot discriminate them\3A Is Source? excludes the output and the order decides the rest." inputs="value:4621.xml" type="string" uid="4639" uid_parent="root" value=""/>
+  <Indicator _name="terminal is source" conIdx="14" connection="recommended" inputs="value:4622.xml" type="string" uid="4640" uid_parent="root" value=""/>
+  <Indicator _name="registration nodes" conIdx="15" connection="recommended" description="One entry per Register For Events node on the top-level diagram\2C flattened. The fallback takes the FIRST and the caller is told the count\2C because 'there is only one' is an assumption worth making and worth seeing." inputs="value:4624.xml" type="string" uid="4641" uid_parent="root" value=""/>
+  <Indicator _name="node terminal names" conIdx="2" connection="recommended" description="The Register For Events node's terminal names\2C flattened - lower case 'event registration refnum'\2C twice\2C because the node has it as input and output." inputs="value:4625.xml" type="string" uid="4642" uid_parent="root" value=""/>
+</VI>
