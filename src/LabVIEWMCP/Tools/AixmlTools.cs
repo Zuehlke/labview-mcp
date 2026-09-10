@@ -334,11 +334,17 @@ internal sealed class AixmlTools(LvaiConnection connection)
                 $"'{aiXmlFilePath}' could not be read as text."));
         }
 
+        // TIMED like every other tool. Without it the only way to learn what the check costs is
+        // to bracket the call from outside, which in an agent loop measures model latency - about
+        // 7 s per turn - and not the analysis. It is also the number that makes the case for this
+        // tool: measured locally, 0.91 ms for a 47.5 kB VI against 477-610 ms for ValidateAIXML.
+        var clock = Stopwatch.StartNew();
+
         if (!fix)
         {
             var plain = AixmlCheck.Summarise(AixmlCheck.Check(text));
             plain["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
-            return Task.FromResult(Json.Document(plain));
+            return Task.FromResult(Json.Document(Timed(plain, clock)));
         }
 
         var repaired = AixmlCheck.Fix(text);
@@ -353,7 +359,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         {
             answer["written"] = false;
             answer["writeNote"] = "Nothing was repairable, so no file was written.";
-            return Task.FromResult(Json.Document(answer));
+            return Task.FromResult(Json.Document(Timed(answer, clock)));
         }
 
         var target = fixedPath ?? aiXmlFilePath;
@@ -365,7 +371,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
             answer["written"] = false;
             answer["writeNote"] = $"Repaired in memory but could not write '{target}': "
                                   + failure.Message;
-            return Task.FromResult(Json.Document(answer));
+            return Task.FromResult(Json.Document(Timed(answer, clock)));
         }
 
         answer["written"] = true;
@@ -373,7 +379,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         answer["writeNote"] = "Re-read the file before editing it further: repairing renumbers "
                             + "elements, so uids in your notes may be stale. No wire name changed - "
                             + "a wire name is a token, not a reference to a uid.";
-        return Task.FromResult(Json.Document(answer));
+        return Task.FromResult(Json.Document(Timed(answer, clock)));
     }
 
     /// <summary>
@@ -448,6 +454,20 @@ internal sealed class AixmlTools(LvaiConnection connection)
         return interesting ? answer : null;
     }
 
+    /// <summary>
+    /// Stamps a check answer with how long the analysis took. Separate from the RPC tools' own
+    /// timing because this one never reaches LabVIEW: the number's job is to show the DIFFERENCE -
+    /// sub-millisecond text analysis against hundreds of milliseconds for ValidateAIXML - which is
+    /// the whole argument for running it first, and in CI where there is no LabVIEW at all.
+    /// </summary>
+    private static JsonObject Timed(JsonObject answer, Stopwatch clock)
+    {
+        clock.Stop();
+        answer["elapsedMs"] = clock.Elapsed.TotalMilliseconds;
+        answer["labviewNeeded"] = false;
+        return answer;
+    }
+
     [McpServerTool(Name = "lvai_validate_aixml", ReadOnly = true, Title = "Validate an AIXML file")]
     [Description("""
         RPC ValidateAIXML. Asks LabVIEW whether an AIXML file is well-formed and semantically
@@ -457,10 +477,21 @@ internal sealed class AixmlTools(LvaiConnection connection)
         (project-local subVIs and Express VIs never can); "Object terminal not found for
         input" means a misspelled terminal name, or fallout from such a Call.
         lvai_aixml_reference has the authoring rules and a verified terminal-name table.
+        A REFUSAL NO LONGER BURNS THE VI's NAME. Validation runs against a throwaway copy whose
+        `_name` is replaced, because a failed validate used to register the real name in LabVIEW's
+        memory and every later ConvertAIXMLToVI for it answered Error 1051 until a restart -
+        measured, on a file that had never existed on disk. The answer says what name LabVIEW
+        actually saw under `validatedAs`. Pass preserveName to validate the real one.
         """)]
     public async Task<string> ValidateAixmlAsync(
         [Description(@"Absolute path to the .xml file to validate")] string aiXmlFilePath,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        [Description("""
+            Hand LabVIEW the document's REAL `_name` instead of a throwaway. Off by default: a
+            failed validation registers the name in LabVIEW's memory and burns it for every later
+            ConvertAIXMLToVI until a restart. Turn it on only to check the name itself.
+            """)]
+        bool preserveName = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -468,7 +499,11 @@ internal sealed class AixmlTools(LvaiConnection connection)
             // what a step costs is to bracket the call from outside, which in an agent loop
             // measures model latency - about 7 s per turn - rather than LabVIEW. Measured that
             // way, three calls read 30.4 s while the work was well under a second.
-            var symbolic = SymbolicUids.Prepare(aiXmlFilePath);
+            //
+            // THE SCRATCH COPY GOES FIRST, and the symbolic rewrite then works from it, so the two
+            // compose by chaining paths rather than by knowing about each other.
+            using var scratch = ValidationScratch.Create(aiXmlFilePath, preserveName);
+            var symbolic = SymbolicUids.Prepare(scratch.Path);
 
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
@@ -484,6 +519,15 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  // wants them accepted is not stopped. It is here because `errorCode 0` from this
                  // RPC reads as "the file is fine", and for a dangling uid_parent it is not.
                  ("preCheck", PreCheckIfInteresting(aiXmlFilePath)),
+                 ("validatedAs", scratch.Substituted ? JsonValue.Create(scratch.ValidatedAs) : null),
+                 ("nameNote", scratch.Substituted
+                     ? JsonValue.Create(
+                         "Validated under a throwaway _name, so a refusal here cannot burn the "
+                         + "document's real name. A failed validate registers that name in "
+                         + "LabVIEW's memory and every later ConvertAIXMLToVI for it answers "
+                         + "Error 1051 until a restart - measured on a file that had never "
+                         + "existed on disk.")
+                     : null),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 

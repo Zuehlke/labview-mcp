@@ -220,7 +220,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     if (dataType is null)
                     {
                         var (found, note) = await new TestTools(connection)
-                            .FieldTypeAsync(writeAccessor, field, timeoutSeconds, ct);
+                            .FieldTypeAsync(writeAccessor, field, timeoutSeconds, ct: ct);
                         if (found is null)
                             return Json.Error("fieldTypeUnknown",
                                 $"The type of '{field}' could not be read off " +
@@ -235,7 +235,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 // validation nor its verify can see that - measured 2026-09-03, `ok: true` for a
                 // suite LabVIEW refused with 7101.
                 var (required, terminals, fault) = await RequiredInputsAsync(
-                    methodVi, request.Inputs, timeoutSeconds, ct);
+                    methodVi, request.Inputs, timeoutSeconds, ct: ct);
                 if (fault is not null)
                     return Json.Error(fault.Kind, fault.Message, fault.Detail);
 
@@ -322,7 +322,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
@@ -350,7 +350,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 testViPath, swaps.ToJsonString(), seeds.ToJsonString(), verify: true,
                 verbose: false, helperViPath: null, helperAixmlPath: null,
                 regenerateHelper: false, editsJson: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Read(swapped) });
 
             var swapAnswer = Read(swapped) as JsonObject;

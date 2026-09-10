@@ -160,7 +160,7 @@ internal sealed class ActionTools(LvaiConnection connection)
             if (projectPath is not { Length: > 0 } || !checkActive)
                 return Json.Message(response);
 
-            var (active, note) = await ProjectIsActiveAsync(timeoutSeconds, ct);
+            var (active, note) = await ProjectIsActiveAsync(timeoutSeconds, ct: ct);
             return Json.Message(response,
                 ("projectBecameActive", JsonValue.Create(active)),
                 ("activeProjectCheck", JsonValue.Create(note)),
@@ -201,14 +201,14 @@ internal sealed class ActionTools(LvaiConnection connection)
             {
                 await new BulkTools(connection).GenerateViAsync(
                     source, helper, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 if (!File.Exists(helper))
                     return (null, "not checked - the read-only helper could not be generated.");
             }
 
             var run = await new RunTools(connection).RunViAndReadValuesAsync(
                 helper, "{}", includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct);
+                regenerateHelper: false, timeoutSeconds, ct: ct);
 
             var values = (JsonNode.Parse(run) as JsonObject)?["values"] as JsonObject;
             var code = (values?["code"] as JsonObject)?["value"]?.GetValue<string>();

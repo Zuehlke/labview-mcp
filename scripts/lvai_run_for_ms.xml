@@ -1,0 +1,68 @@
+<VI _name="lvai_run_for_ms.vi" description="Start a VI\2C let it run for a while\2C read every control and indicator\2C then ABORT it.\0A\0AWHY A SECOND RUNNER. lvai_run_and_read.vi wires Wait until done = TRUE\2C so it waits for termination. Every real application is an event or polling loop that never terminates on its own\3A the call times out and the VI keeps running. That is why a top-level VI could not be checked at all without first generating a scriptable copy of it - which is work the caller should not have to do to look at their own program.\0A\0AWHAT YOU GET IS A SNAPSHOT\2C and that is not a limitation to gloss over. The values are whatever the front panel held at the moment run for ms elapsed\3B a loop that has not reached its second state yet will show the first. Abort is not a stop button either - it kills the VI where it stands and runs NO cleanup the diagram may contain\2C so a VI that closes files or releases hardware on its normal path does not do that here.\0A\0AORDERING is enforced by the Case frame around the wait\2C not by layout\3A a structure produces its output tunnels only once every node inside it has finished\2C so Ctrl Val.Get All cannot read before the wait has elapsed. The frame also skips the wait when Run VI already failed\2C which turns a bad start into a fast answer instead of a pointless delay.">
+
+  <Control _name="VI Path" conIdx="0" connection="required" description="Absolute path of the VI to run\2C as a string. Converted to a path inside." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
+  <Control _name="Input Names" conIdx="5" connection="optional" description="Names of the target's controls to set before running\2C one per line." outputs="value:5010.value" type="string" uid="5010" uid_parent="root" value=""/>
+  <Control _name="Input Values" conIdx="7" connection="optional" description="Values for Input Names\2C one per line\2C paired by position. Strings only." outputs="value:5020.value" type="string" uid="5020" uid_parent="root" value=""/>
+  <Control _name="run for ms" conIdx="9" connection="required" description="How long to let the VI run before reading its front panel and aborting\2C as a string." outputs="value:5030.value" type="string" uid="5030" uid_parent="root" value="1000"/>
+
+  <Constant _name="newline" outputs="value:5040.value" type="string" uid="5040" uid_parent="root" value="\0A"/>
+  <Constant _name="1D string array type" outputs="value:5050.value" type="array{string}" uid="5050" uid_parent="root" value="[]"/>
+  <Constant _name="string format" outputs="value:5060.value" type="string" uid="5060" uid_parent="root" value="%s"/>
+  <Constant _name="do not wait" outputs="value:5070.value" type="bool" uid="5070" uid_parent="root" value="false"/>
+
+  <FreeLabel comment="One Ctrl Val.Set per name/value pair; the error wire through the shift register orders them before Run VI." uid="5080" uid_parent="root"/>
+
+  <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:5010.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:5090.names" uid="5090" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:5020.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:5100.values" uid="5100" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:5000.value" outputs="path:5110.path" uid="5110" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:5110.path" outputs="vi reference:5120.vi reference,error out:5120.error out" uid="5120" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:5030.value" outputs="number:5130.ms" uid="5130" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5090.names" mode="index" outputs="value:5210.name" uid="5210" uid_parent="5200"/>
+    <Tunnel _id="In2" inputs="value:5100.values" mode="index" outputs="value:5220.value" uid="5220" uid_parent="5200"/>
+    <Tunnel _id="In3" inputs="value:5120.vi reference" outputs="value:5230.ref" uid="5230" uid_parent="5200"/>
+    <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:5230.ref,error in (no error):5240.value,Control Name:5210.name,Value:5220.value" outputs="reference out:,error out:5250.error out" uid="5250" uid_parent="5200"/>
+    <ShiftReg uid="5260" uid_parent="5200">
+      <Left inputs="value:5120.error out" outputs="value:5240.value" uid="5240" uid_parent="5260"/>
+      <Right inputs="value:5250.error out" outputs="value:5270.value" uid="5270" uid_parent="5260"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:5120.vi reference,error in (no error):5270.value,Wait until done:5070.value" outputs="reference out:5300.reference out,error out:5300.error out" uid="5300" uid_parent="root"/>
+
+  <FreeLabel comment="The Case frame is what orders the wait before the read; a structure finishes only when every node inside it has." uid="5305" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:5300.error out" outputs="status:5310.status" uid="5310" uid_parent="root"/>
+
+  <Structure _name="Case Structure" selectin="5310.status" uid="5320" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5300.error out" uid="5330" uid_parent="5320"/>
+    <Tunnel _id="In2" inputs="value:5130.ms" uid="5340" uid_parent="5320"/>
+
+    <CaseFrame selector="False" selectout="" uid="5350" uid_parent="5320">
+      <Tunnel _id="In1" outputs="value:5360.err" uid="5360" uid_parent="5350"/>
+      <Tunnel _id="In2" outputs="value:5370.ms" uid="5370" uid_parent="5350"/>
+      <Node _name="Wait (ms)" inputs="milliseconds to wait:5370.ms" outputs="millisecond timer value:5380.tick" uid="5380" uid_parent="5350"/>
+      <Tunnel _id="Out1" inputs="value:5360.err" uid="5390" uid_parent="5350"/>
+    </CaseFrame>
+
+    <CaseFrame selector="True" selectout="" uid="5400" uid_parent="5320">
+      <Tunnel _id="In1" outputs="value:5410.err" uid="5410" uid_parent="5400"/>
+      <Tunnel _id="In2" outputs="value:" uid="5420" uid_parent="5400"/>
+      <Tunnel _id="Out1" inputs="value:5410.err" uid="5430" uid_parent="5400"/>
+    </CaseFrame>
+
+    <Tunnel _id="Out1" outputs="value:5440.err" uid="5440" uid_parent="5320"/>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:5300.reference out,error in (no error):5440.err" outputs="reference out:5500.reference out,error out:5500.error out,Controls:5500.Controls" uid="5500" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5500.Controls" outputs="xml string:5510.xml" uid="5510" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Abort VI" type="{LV.VI}" inputs="reference:5500.reference out,error in (no error):5500.error out" outputs="reference out:,error out:5520.error out" uid="5520" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:5120.vi reference,error in (no error):5520.error out" outputs="error out:5530.error out" uid="5530" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5530.error out" outputs="xml string:5540.xml" uid="5540" uid_parent="root"/>
+
+  <Indicator _name="values xml" conIdx="4" connection="recommended" description="Every control and indicator of the target at the moment run for ms elapsed\2C name and value\2C as flattened XML. A snapshot\2C not a final result." inputs="value:5510.xml" type="string" uid="5600" uid_parent="root" value=""/>
+  <Indicator _name="error xml" conIdx="6" connection="recommended" description="This helper's own error cluster\2C flattened to XML." inputs="value:5540.xml" type="string" uid="5610" uid_parent="root" value=""/>
+</VI>

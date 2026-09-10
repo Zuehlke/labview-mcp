@@ -158,7 +158,7 @@ internal sealed class IconTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || !File.Exists(helperVi))
             {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } generationFailure) return generationFailure;
                 helperGenerated = true;
             }

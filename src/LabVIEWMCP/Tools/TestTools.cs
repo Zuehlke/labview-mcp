@@ -104,7 +104,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
-                .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null, timeoutSeconds, ct);
+                .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null, timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "placeholder", ["answer"] = Read(placeholder) });
 
             if (Read(placeholder) is not JsonObject stub || stub["ok"]?.GetValue<bool>() is not true)
@@ -130,7 +130,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
 
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -148,7 +148,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var applied = await new BulkTools(connection).PyApplyAsync(
                 testViPath, retarget, closeProject: true, verify: true, bundleDirectory: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "retarget", ["answer"] = Read(applied) });
 
             if ((Read(applied) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
@@ -319,7 +319,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 var type = request.Type;
                 if (type is null)
                 {
-                    var (found, note) = await FieldTypeAsync(write, request.Field, timeoutSeconds, ct);
+                    var (found, note) = await FieldTypeAsync(write, request.Field, timeoutSeconds, ct: ct);
                     if (found is null)
                         return Json.Error("fieldTypeUnknown",
                             $"The type of '{request.Field}' could not be read off " +
@@ -391,7 +391,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject
             { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -418,7 +418,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 testViPath, swaps.ToJsonString(), seeds.ToJsonString(), verify: true,
                 verbose: false, helperViPath: null, helperAixmlPath: null,
                 regenerateHelper: false, editsJson: null,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Read(swapped) });
 
             var swapAnswer = Read(swapped) as JsonObject;
@@ -713,7 +713,7 @@ internal sealed class TestTools(LvaiConnection connection)
             var listedBefore = LvClass.ListedVis(projectPath);
 
             var closed = await new CloseTools(connection)
-                .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct);
+                .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct: ct);
             step["closed"] = Read(closed);
 
             // A VI THAT IS NOT ON DISK IS REFUSED RATHER THAN LISTED. It used to be added, counted
@@ -758,7 +758,7 @@ internal sealed class TestTools(LvaiConnection connection)
             var reopened = reopen
                 ? Read(await new ActionTools(connection).OpenFileAsync(
                       null, null, projectPath, Path.GetFileName(projectPath), true,
-                      timeoutSeconds, ct))
+                      timeoutSeconds, ct: ct))
                 : null;
 
             step["ok"] = notOnDisk.Count == 0 && notListed.Count == 0;

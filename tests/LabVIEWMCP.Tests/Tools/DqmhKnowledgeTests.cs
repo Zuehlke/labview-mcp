@@ -171,6 +171,48 @@ public class DqmhKnowledgeTests
         }
     }
 
+    /// <summary>
+    /// The same guard over scripts\ , which SHIPS next to the exe exactly as docs\ does and was
+    /// outside every check until 2026-09-10. Found by asking the question rather than by a test:
+    /// a customer library-qualified control name had reached a comment in scriptsixml_lint.py,
+    /// where nothing would ever have looked at it. The docs walk above would not have helped -
+    /// it is anchored on docs/aixml-reference.md and never leaves that folder.
+    ///
+    /// Binary helpers are skipped: a .vi is not text, and tokenising one produces noise that
+    /// cannot be reasoned about.
+    /// </summary>
+    [Fact]
+    public void NoCustomerOrProductIdentifiersAnywhereInTheScriptsFolder()
+    {
+        var anchor = Res.FindRepoFile("scripts/aixml_lint.py");
+        Assert.NotNull(anchor);
+        var folder = Path.GetDirectoryName(anchor!)!;
+
+        string[] textual = [".py", ".xml", ".ps1", ".md", ".tsv", ".txt", ".json"];
+        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            .Where(f => textual.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        Assert.True(files.Length >= 30, $"only {files.Length} text files found in {folder}");
+
+        foreach (var path in files)
+        {
+            var name = Path.GetFileName(path);
+            foreach (var token in Regex.Split(File.ReadAllText(path), "[^A-Za-z0-9]+"))
+            {
+                if (token.Length < 3) continue;
+
+                var hash = Convert.ToHexString(SHA256.HashData(
+                    Encoding.UTF8.GetBytes(token.ToLowerInvariant()))).ToLowerInvariant();
+
+                if (!ForbiddenTokenHashes.Contains(hash)) continue;
+                Assert.True(BenignOccurrences.Contains((name, token.ToLowerInvariant())),
+                    $"scripts/{name} contains the forbidden identifier \"{token}\" - anonymise "
+                    + "it, or add it to BenignOccurrences if the sentence around it is generic "
+                    + "technical English rather than the customer's name.");
+            }
+        }
+    }
+
     [Fact]
     public void TheHashSetIsIntact()
     {

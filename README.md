@@ -741,7 +741,7 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**69 tools over 23 RPCs.** Thirty-eight map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**70 tools over 23 RPCs.** Thirty-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` and `lvai_render_diagrams` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
@@ -781,6 +781,7 @@ resources rather than call tools.
 | `lvai_vi_terminals` | — (composes `ConvertVIToAIXML` and reads the pane) |
 | `lvai_describe_class` | — (parses the `.lvclass` XML directly; **needs no LabVIEW**, so it is the one honest reading after a timeout) |
 | `lvai_coercion_dots` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — every subVI call terminal with its `Coercion Dot?`. The placeholder route leaves one on each terminal whose real subVI carries a typedef, and validation, the retarget and a run all pass in that state; this is the only thing that sees it. Needs no active project |
+| `lvai_exec_state` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — a VI's `Execution:State` and `VI Linker Errors`, so "is this executable?" is answerable WITHOUT running it. That matters because a top-level UI loop never ends on its own. `0` is eBad; `-1` means the reference never opened, which is kept apart on purpose so it cannot read as broken. Needs no active project |
 | `lvai_list_labview_installations` | — (reads the installed versions off the machine) |
 
 ### Write — mutating

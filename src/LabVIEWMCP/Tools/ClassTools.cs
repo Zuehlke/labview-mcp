@@ -279,7 +279,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, classPath, null,
@@ -299,7 +299,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var carrier = await new BulkTools(connection).GenerateViAsync(
                     carrierAixml, carrierPath, openVI: false, measurePane: false,
-                    panePattern: null, timeoutSeconds, ct);
+                    panePattern: null, timeoutSeconds, ct: ct);
                 steps.Add(Step("carrier", carrier));
                 if (!File.Exists(carrierPath))
                     return Outcome(false, "carrier", steps, total, classPath, null,
@@ -309,7 +309,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 // 3. NI's Add Class + Add Member Data, in one helper run
                 var helperRun = await RunCreateClassHelperAsync(
-                    classPath, parentClassPath, carrierPath, interfacePaths, timeoutSeconds, ct);
+                    classPath, parentClassPath, carrierPath, interfacePaths, timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
                 var provider = ReadProviderRun(helperRun);
@@ -666,7 +666,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, interfacePath, null,
@@ -674,7 +674,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                             "NI's interface provider has nothing to work in."));
 
                 var helperRun = await RunCreateInterfaceHelperAsync(
-                    interfacePath, parents, timeoutSeconds, ct);
+                    interfacePath, parents, timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
                 var provider = ReadInterfaceProviderRun(helperRun);
@@ -801,7 +801,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                                     "lvai_create_interface.vi");
         Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
         if (HelperNeedsRebuild(aixml, helperVi) &&
-            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
             return failure;
 
         // ONLY THE INPUTS THAT HAVE A VALUE - the runner pairs names and values by POSITION and
@@ -821,7 +821,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         return await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
-            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
     }
 
     // ---------------------------------------------------------------- describe
@@ -896,7 +896,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 try
                 {
                     var read = await ClassBindTools.PrivateDataFields.ReadAsync(
-                        info.Path, timeoutSeconds, ct);
+                        info.Path, timeoutSeconds, ct: ct);
                     if (read.Unavailable is { } why) fieldsNote = why;
                     else
                     {
@@ -1391,7 +1391,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                                     "lvai_create_class.vi");
         Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
         if (HelperNeedsRebuild(aixml, helperVi) &&
-            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
             return failure;
 
         // ONLY THE INPUTS THAT HAVE A VALUE. The runner pairs names and values by POSITION and
@@ -1433,7 +1433,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         return await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-            regenerateHelper: false, timeoutSeconds, ct);
+            regenerateHelper: false, timeoutSeconds, ct: ct);
     }
 
 
@@ -1799,7 +1799,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             var helperGenerated = false;
             if (regenerateHelper || HelperNeedsRebuild(aixml, helperVi))
             {
-                if (await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct)
+                if (await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
                 helperGenerated = true;
             }
@@ -1860,7 +1860,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
                     projectName: Path.GetFileName(projectPath),
-                    checkActive: true, timeoutSeconds, ct);
+                    checkActive: true, timeoutSeconds, ct: ct);
                 projectOpened = Parsed(opened);
             }
 
@@ -1901,7 +1901,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
-                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
                 verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
                     fromField, membersBefore, helperGenerated);
@@ -2020,7 +2020,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             if (!tidyProject || !Succeeded(verdict)) return verdict;
 
             return await TidyProjectAsync(verdict, lvclassPath, helperVi, projectPath,
-                closeProject, timeoutSeconds, ct);
+                closeProject, timeoutSeconds, ct: ct);
         });
 
     /// <summary>

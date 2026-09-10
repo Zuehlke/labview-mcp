@@ -182,3 +182,38 @@ rest. Composition here is always sequential.
 specific — `Unsupported SubVI: …` names the target, `gatesNotChecked` names the gate,
 `pattern 4815 has no slot [15]` names the slot. A generic batch would collapse all of that into one
 opaque failure, which is a step backwards from calling the tools by hand.
+
+## Retargeting into a SUBDIRECTORY works — measured, after a report that it does not
+
+A session report of 2026-09-09 concluded that `retarget` with an absolute `path` into any folder
+other than the caller's produces a dead link — `Error 1003, jedes Mal` over nine runs — and
+proposed refusing the cross-folder case outright. **It does not reproduce, and the refusal was not
+built.** The user's own account was the opposite: subdirectories are usable, and a target LabVIEW
+can *find* is linked correctly.
+
+The controlled run, 2026-09-09. `Caller.vi` calls a placeholder stub by bare name; two
+byte-identical `Leaf.vi` copies exist, one beside the caller and one in `SubVIs\`; the stub is
+retargeted at the SUBDIRECTORY copy with an absolute `path`:
+
+| step | answer |
+|---|---|
+| baseline, caller → stub | `Execution:State` **1** (eIdle) |
+| `pylv_apply` retarget → `SubVIs\Leaf.vi` | `ok: true`, `callTargets ["Leaf.vi"]`, `coercionDots 0`, `link records 2 (2 name + 2 path)` |
+| caller after the retarget | `Execution:State` **1**, no `VI Linker Errors` |
+| running the caller | `hello` → `hello [leaf]` |
+
+The retarget wrote exactly the record shape the report blames — `2 name + 2 path` — and the caller
+stayed executable and ran.
+
+**And the resolution is by SEARCH, not only by the stored path.** Copied to a path LabVIEW had never
+seen, with the subdirectory target renamed away and only the sibling `Leaf.vi` left beside the
+caller, the caller still read `Execution:State` **1**: LabVIEW found the other copy by name. That is
+the mechanism behind "wenn die VIs gefunden werden wird das auch korrekt verlinkt", and it means a
+missing target does not automatically show up as a broken caller — a same-named VI anywhere LabVIEW
+searches will satisfy the link, possibly the wrong one.
+
+What this does NOT establish is why the reported build failed. Its caller was 43 kB with eight
+subVIs against one here, so the difference may be scale, pane contracts, or something else entirely;
+the failure was simply not reproduced at this size. **Do not refuse cross-folder retargets** — and
+when one does go wrong, read `Execution:State` rather than inferring from `callTargets`, which was
+green in both the reported failure and this success.

@@ -126,7 +126,7 @@ internal sealed class SwapTools(LvaiConnection connection)
     {
         if (editsJson is { Length: > 0 })
             return await ManyAsync(editsJson, verify, verbose, helperViPath, helperAixmlPath,
-                                   regenerateHelper, timeoutSeconds, ct);
+                                   regenerateHelper, timeoutSeconds, ct: ct);
 
         // Now that `viPath` is optional in the schema, its absence has to be caught here - and
         // named, rather than arriving as a null-reference somewhere further down.
@@ -136,7 +136,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 new { viPath, editsJson });
 
         return await OneAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
-                              helperAixmlPath, regenerateHelper, timeoutSeconds, ct);
+                              helperAixmlPath, regenerateHelper, timeoutSeconds, ct: ct);
     }
 
     /// <summary>
@@ -190,7 +190,7 @@ internal sealed class SwapTools(LvaiConnection connection)
         {
             var one = await OneAsync(edit.Vi, edit.Swaps, edit.Constants, verify, verbose,
                                      helperViPath, helperAixmlPath, regenerateHelper,
-                                     timeoutSeconds, ct);
+                                     timeoutSeconds, ct: ct);
             var node = Read(one);
             answers.Add(new JsonObject { ["vi"] = edit.Vi, ["answer"] = node });
 
@@ -284,7 +284,7 @@ internal sealed class SwapTools(LvaiConnection connection)
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     aixml, helperVi, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct);
+                    timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject { ["step"] = "helper", ["answer"] = Json.Slim(Parse(built), verbose) });
                 if (!File.Exists(helperVi))
                     return Json.Document(new JsonObject
@@ -339,7 +339,7 @@ internal sealed class SwapTools(LvaiConnection connection)
 
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
-                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct);
+                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "swap", ["answer"] = Json.Slim(Parse(answer), verbose) });
 
             var values = (Parse(answer) as JsonObject)?["values"] as JsonObject;
