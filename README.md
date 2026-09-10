@@ -741,7 +741,7 @@ key name here has moved, check your tool's own MCP documentation.
 
 ## Tools
 
-**70 tools over 23 RPCs.** Thirty-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**71 tools over 23 RPCs.** Thirty-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon` and `lvai_render_diagrams` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
@@ -802,6 +802,7 @@ resources rather than call tools.
 | `lvai_log_usage_data` | `LogUsageData` | writes telemetry |
 | `lvai_generate_vi` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + the pane measurement) | **creates a `.vi`** and reports a connector pane that breaches the style guide |
 | `lvai_run_vi_and_read_values` | — (same composition plus VI Server reads) | **executes code**, then reads every control and indicator back — use it whenever an output is not a string |
+| `lvai_generate_vi_with_events` | — (composes `ConvertAIXMLToVI` + `pylv_extract` + two helper scripts + `pylv_rebuild` + `lvai_exec_state`) | **creates a `.vi` whose Event Structure is actually REGISTERED**, which `lvai_generate_vi` cannot: it skips validation on purpose, because `ValidateAIXML` refuses every static event frame while `ConvertAIXMLToVI` on the same bytes writes the VI. Conversion keeps the frames and collapses `EventNodeEvents`, so this writes one EventSpec per frame plus the cached frame label — omitting that label leaves the IDE showing an event case with no event while an export, a render and `execState` are all green. No mapping argument: the selectors carry the control and the trigger. An unknown trigger and a dynamic user event are refused by name |
 | `lvai_placeholder_subvi` | — (composes `ConvertVIToAIXML` + `ValidateAIXML` + `ConvertAIXMLToVI`) | **writes one folder into the LabVIEW installation** — a placeholder whose connector pane clones the VI you name, so a generated VI can be given a `Call` that `pylv_apply {"op":"retarget"}` then points at your own code. Cached by signature; uninstall by deleting `user.lib\LV_MCP` |
 | `lvai_bind_typedef_constants` | — (same composition plus VI Server writes) | **re-points block diagram constants** onto the typedef their subVI terminal expects, removing the coercion dot the placeholder route leaves behind. You supply no `.ctl` path — `Create Constant` on the terminal yields the exact type, and `Replace` is what preserves the wire. Finds each constant by its **label**, so author them as `_name="<terminal name>"`. Needs a project open and active |
 | `lvai_generate_test` | — (composes the placeholder, `lvai_generate_vi` and the retarget) | **creates a Caraya unit-test `.vi`** that calls your VI as an ordinary static subVI, one node per case. Eighteen hand calls before this existed, ten of them editing an object heap |

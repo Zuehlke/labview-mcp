@@ -15,6 +15,7 @@ function for this":
 | a **whole working diagram** — a state machine, a producer/consumer, "how do I stream to TDMS" | a shipping example to read and adapt | `lvai_example_index` |
 | a computation on **data** — read a file, sort, parse, compare | primitive `Node`, or a subVI `Call` | `lvai_palette_index`; terminal names from an export |
 | a **property or action of a LabVIEW object** — a VI, control, panel, project, the application | `Property Node` / `Invoke Node` | `lvai_vi_server_reference` |
+| a **whole application skeleton** — producer/consumer, a dialog, a subVI stub | an NI `.vit` template, copied to a `.vi` | `templates\Frameworks\DesignPatterns\`; `docs/labview-vit-templates.md` |
 | a **VI's icon** | neither — AIXML cannot carry one | `lvai_set_vi_icon`, which drives VI Server for you |
 
 The second row is the one that gets forgotten. "Get this VI's icon", "list a project's items",
@@ -981,7 +982,22 @@ loud.** `Timed Loop` returns `errorCode 1`, `Unsupported node type: Timed Loop`,
 `Event Structure` returns `errorCode 1` too — re-measured 2026-08-22 on `State Machine
 Fundamentals.vi`, `Event Data Node: Cluster is invalid or empty` plus `Event Structure: One or more
 event cases have no events defined.` For `Event Structure` the export is faithful, `CaseFrame`s and
-event specifiers included; it is the generator that cannot read one back. So Check A catches both by
+event specifiers included; it is the generator that cannot read one back. **But "cannot read one
+back" is too strong, corrected 2026-09-10.** `ConvertAIXMLToVI` KEEPS every frame and
+everything inside it - `diagramList`, `dataNodeList` and `filterNodeList` all hold their
+count - and collapses only `EventNodeEvents` to a single Timeout spec. So an event structure
+survives an AIXML edit and only its REGISTRATION has to be written back, one
+`pylv-set-event-spec.py` call per frame. That makes a VI with a front-panel event structure
+fully editable through AIXML, which this file has said twice that it is not. **A NEW
+frame is authorable as well** - the frame count follows the number of `CaseFrame` elements
+in the document, measured by taking a three-frame export to four - so an event structure can
+be EXTENDED, not merely preserved. **And it works FROM SCRATCH too** - three
+frames authored in a document that was never a VI came out as three, `execState 1`, so the
+generator cares only about the `CaseFrame` count and not about where the AIXML came from.
+From scratch the `ddoUID`s are even the uids you wrote, which removes the heap lookup; what
+you give up is the template's panel STYLING and positions, which AIXML cannot express. The measurement
+that said otherwise was taken on a ONE-frame structure, where "frames lost" and "specs lost"
+are indistinguishable. `docs/labview-vit-templates.md`. So Check A catches both by
 name and their Check B entries are belt and braces. The `[0] Timeout` detail belonged to `Timed Loop`
 alone and had drifted onto both. Corrected in `experiments/pylabview/ROUTING.md` §2, which
 contradicted `FINDINGS.md` §3.11 on this for two commits.
@@ -1284,6 +1300,14 @@ literally it argued away 600 usable palette VIs.
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
+| How do I start from an NI `.vit` template? | `docs/labview-vit-templates.md` | — |
+| How do I add a front-panel CONTROL and register its EVENT? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-control.py` |
+| How do I add a STANDALONE event case to an Event Structure? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-frame.py` |
+| How do I change a string CONSTANT on a diagram? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-set-string-constant.py` |
+| How do I generate a VI whose front-panel EVENTS are registered? | `docs/labview-vit-templates.md` §5a | `lvai_generate_vi_with_events` |
+| How do I register one event by hand, or strip a generated VI's compiled code? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-set-event-spec.py`, `scripts/pylv-strip-compiled.py` |
+| How do I show an Event Structure's dynamic event terminals? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-show-dynamic-events.py` |
+| Why does a USER EVENT need an IDE wire, and why is there no tool for it? | `docs/labview-vit-templates.md` §5a | — |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |

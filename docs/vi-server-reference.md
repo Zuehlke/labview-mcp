@@ -1054,3 +1054,65 @@ wrapper exists only in consumers, and nothing in VI Server was found that create
 work - via the export, not in place" above.** What fails is creating a binding where the control sits;
 what works is exporting the cluster to an ordinary `.ctl`, calling `Replace` there, and importing it
 back. `Move` stays useful for exactly that - carrying the cluster out and back in.
+
+## A reference out of `All Objects[]` is GENERIC - downcast before reading anything class-specific
+
+Measured 2026-09-10 with one-property probes that differ in nothing else, which is
+what makes it attributable:
+
+| probe | in-loop read | verdict |
+|---|---|---|
+| F | `{LV.GObject}` `Class Name` | **`errorCode 0`** |
+| E | `{LV.Loop}` `Diagram` | `Property Node: Invalid property` |
+| G | `To More Specific Class` -> `{LV.WhileLoop}` `Diagram` | **`errorCode 0`** |
+| H | `To More Specific Class` -> `{LV.Loop}` `Diagram` | **`errorCode 0`** |
+
+So `{LV.Diagram}` `All Objects[]` hands back references whose STATIC type is the
+generic object class, and a Property Node typed for a subclass is refused on one -
+`Invalid property`, which reads like a wrong property NAME and is a wrong wire
+TYPE. `To More Specific Class` with a `<Constant type="ref{LV.WhileLoop}" value=""/>`
+as `target class` fixes it, and the same shape is already used by
+`lvai_create_accessors` for `{LV.Cluster}`.
+
+**The catalogue is not the culprit and checking it does not help here.** Both
+`{LV.WhileLoop}` `Diagram` and `{LV.Loop}` `Diagrams[]` are listed, and both are
+refused without the downcast. Four rounds went into hunting a spelling that was
+never wrong.
+
+**And the harness matters more than the candidate.** The first four probes put the
+property under test behind an `Index Array` and inside a full diagram; every
+failure produced 10-25 cascaded messages and all four candidates - including a
+deliberately wrong class as a control - answered IDENTICALLY. A probe whose
+negative control is indistinguishable from its hypothesis is measuring nothing.
+What discriminated was one property node inside a body already proven to pass,
+changing exactly one attribute. **Build the harness so a known-wrong input fails
+differently, then trust it.**
+
+Still open, and honest about it: with the downcast the document validates and
+generates, and at RUN time the traversal returns blank class names from the
+fourth object on with every inner count 0. That is a separate defect in the probe
+body, not in the rule above.
+
+### And leaving the project open while probing ADOPTED six scratch VIs - second occurrence
+
+Measured as damage, 2026-09-10. The probe needs a project ACTIVE (the
+`Project:Active Project` hop), so one was opened and left open across several
+runs. `lvai_close_active_project` then SAVED it, and the saved `.lvproj` had
+grown from 903 to 1919 bytes:
+
+- **six** of the session's throwaway VIs adopted as project items, with `URL`s
+  pointing into the session scratchpad and `%TEMP%\LabVIEWMCP\helpers` - paths
+  that are deleted when the session ends, so the project would have opened with
+  six broken items
+- **three** real VIs dropped out of the listing, including the main deliverable
+
+CLAUDE.md already says both halves of this - "LabVIEW adopts every VI it has open
+when it saves that project" and "Read the `.lvproj` after every close" - and it
+happened anyway, because the adoption is invisible until you look. So the rule
+that actually prevents it is narrower and mechanical: **do not leave a project
+open across probe runs.** Open it, take the one measurement that needs it, close
+it, read the file back. A probe loop that reuses an open project is trading one
+`lvai_open_file` call for a corrupted project file.
+
+Repairing it is plain XML work with the project CLOSED, and the check that
+settles it is resolving every `URL` against the disk rather than counting items.
