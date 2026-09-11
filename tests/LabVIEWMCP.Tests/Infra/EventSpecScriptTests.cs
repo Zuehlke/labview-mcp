@@ -87,8 +87,20 @@ public sealed class EventSpecScriptTests : IDisposable
                   </SL__arrayElement>
         """;
 
-    /// <summary>A bundle with NI's two real controls and one real event structure.</summary>
-    private string Bundle(int specs = 1)
+    /// <summary>
+    /// A bundle with NI's two real controls and one real event structure.
+    /// <para>
+    /// <paramref name="lastIsUserEvent"/> gives the LAST spec the DYNAMIC shape measured on a real
+    /// VI after LabVIEW had normalised it - <c>source 1</c>, <c>eSource 25</c>, <c>type 0</c>,
+    /// <c>dynIndex 2</c> - which is exactly the state lvai_wire_dynamic_events has to finish, and
+    /// exactly what was read off C:	emp\ProducerTest on 2026-09-11.
+    /// <paramref name="alreadyFinished"/> gives it the resolved row instead, for the idempotence
+    /// check. <paramref name="userEvents"/> writes that many <c>UserEvent</c> refnum TypeDescs
+    /// into <c>VCTP</c>, which is where the frame label's name comes from.
+    /// </para>
+    /// </summary>
+    private string Bundle(int specs = 1, int userEvents = 0, bool lastIsUserEvent = false,
+                          bool alreadyFinished = false)
     {
         var directory = Path.Combine(Path.GetTempPath(),
                                      "eventspec-" + Guid.NewGuid().ToString("n")[..8]);
@@ -107,19 +119,35 @@ public sealed class EventSpecScriptTests : IDisposable
               </FPHb>
             """);
 
-        var events = string.Concat(Enumerable.Range(0, specs).Select(i => $"""
+        var events = string.Concat(Enumerable.Range(0, specs).Select(i =>
+        {
+            var dynamic = lastIsUserEvent && i == specs - 1;
+            var source = dynamic ? "1" : "4";
+            var eSource = dynamic ? "25" : "0";
+            var kind = dynamic ? (alreadyFinished ? "1000" : "0") : "1073741825";
+            var flags = dynamic ? "0" : "1";
+            var dynIndex = dynamic ? (alreadyFinished ? "1" : "2") : "0";
+            return $"""
                           <SL__arrayElement class="EventSpec">
                             <diagramIdx>{i}</diagramIdx>
-                            <source>4</source>
+                            <source>{source}</source>
                             <regFlags>0</regFlags>
-                            <eSource>0</eSource>
-                            <type>1073741825</type>
-                            <eFlags>1</eFlags>
+                            <eSource>{eSource}</eSource>
+                            <type>{kind}</type>
+                            <eFlags>{flags}</eFlags>
                             <ddoUID>0</ddoUID>
                             <menuTag />
-                            <dynIndex>0</dynIndex>
+                            <dynIndex>{dynIndex}</dynIndex>
                             </SL__arrayElement>
-            """ + "\n"));
+            """ + "\n";
+        }));
+
+        var types = userEvents == 0
+            ? "<TypeDesc Type=\"Boolean\" />"
+            : string.Concat(Enumerable.Range(0, userEvents).Select(i =>
+                "<TypeDesc Type=\"Refnum\" RefType=\"UserEvent\""
+                + " Label=\"" + (i == 0 ? "Data Event" : "Event " + i) + "\">"
+                + "<TypeDesc Type=\"Boolean\" /></TypeDesc>"));
 
         File.WriteAllText(Path.Combine(directory, $"{Base}_BDHb.xml"), $"""
             <?xml version='1.0' encoding='utf-8'?>
@@ -145,7 +173,7 @@ public sealed class EventSpecScriptTests : IDisposable
               </BDHb>
             """);
 
-        File.WriteAllText(Path.Combine(directory, $"{Base}.xml"), """
+        File.WriteAllText(Path.Combine(directory, $"{Base}.xml"), $"""
             <?xml version='1.0' encoding='utf-8'?>
             <RSRC>
               <LVSR>
@@ -167,7 +195,7 @@ public sealed class EventSpecScriptTests : IDisposable
                 <Section Index="0" Format="bin" File="Probe_GCDI.bin" />
                 </GCDI>
               <VCTP>
-                <Section Index="0" Format="inline"><TypeDesc Type="Boolean" /></Section>
+                <Section Index="0" Format="inline">{types}</Section>
                 </VCTP>
               </RSRC>
             """);
@@ -359,4 +387,102 @@ public sealed class EventSpecScriptTests : IDisposable
         Assert.Equal(0, second!.ExitCode);
         Assert.Contains("already 1", second.StdOut);
     }
+    // ------------------------------------------------------- finish-user-events
+
+    /// <summary>
+    /// The step that can only happen after the dynamic-event wire exists. LabVIEW normalises a
+    /// user-event EventSpec when it LOADS the VI, against the wire in the file at that moment - so
+    /// the spec written at generation time is always discarded, and has to be written again once
+    /// the wire is in. This is that write, and the row is NI's own, measured 2026-09-11.
+    /// </summary>
+    [Fact]
+    public async Task FinishesAnUnresolvedUserEventFrameWithTheMeasuredRow()
+    {
+        var directory = Bundle(specs: 3, userEvents: 1, lastIsUserEvent: true);
+        var run = await RunAsync("pylv-finish-user-events.py", directory, Base);
+        if (run is null) return;   // no bundled interpreter in this checkout
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("RESULT: changed", run.StdOut);
+
+        var heap = Bd(directory);
+        // the resolved row: type 1000 is 0x03E8, the eventRegItem's own code
+        Assert.Contains("<type>1000</type>", heap);
+        Assert.Contains("<dynIndex>1</dynIndex>", heap);
+        Assert.Contains("<regFlags>1</regFlags>", heap);
+        // and no trace of the state it replaced
+        Assert.DoesNotContain("<dynIndex>2</dynIndex>", heap);
+    }
+
+    /// <summary>
+    /// The cached frame label, taken from VCTP's own UserEvent type label - and XML-ESCAPED,
+    /// because it goes into a text node. Raw angle brackets here killed pylv_rebuild with
+    /// `not well-formed (invalid token)`, two steps downstream of the cause, on 2026-09-11.
+    /// </summary>
+    [Fact]
+    public async Task WritesTheUserEventFrameLabelEscapedForTheTextNode()
+    {
+        var directory = Bundle(specs: 3, userEvents: 1, lastIsUserEvent: true);
+        var run = await RunAsync("pylv-finish-user-events.py", directory, Base);
+        if (run is null) return;
+
+        Assert.Equal(0, run.ExitCode);
+        var heap = Bd(directory);
+
+        Assert.Contains("""<text>" [2] &lt;Data Event&gt;: User Event "</text>""", heap);
+        Assert.Contains("<dIdx>2</dIdx>", heap);
+        // the whole heap must still parse - the defect was invalid XML, not a wrong label
+        System.Xml.Linq.XDocument.Parse(heap);
+    }
+
+    /// <summary>Re-running is how a regenerated VI is brought back, so it must be a no-op.</summary>
+    [Fact]
+    public async Task SaysNothingToDoWhenTheFrameIsAlreadyFinished()
+    {
+        var directory = Bundle(specs: 3, userEvents: 1, lastIsUserEvent: true,
+                               alreadyFinished: true);
+        var run = await RunAsync("pylv-finish-user-events.py", directory, Base);
+        if (run is null) return;
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("RESULT: nothing-to-do", run.StdOut);
+        Assert.DoesNotContain("RESULT: changed", run.StdOut);
+    }
+
+    /// <summary>A VI with no user-event frame at all must not be touched, and must not fail.</summary>
+    [Fact]
+    public async Task SaysNothingToDoWhenThereIsNoUserEventFrame()
+    {
+        var directory = Bundle(specs: 2);
+        var before = Bd(directory);
+        var run = await RunAsync("pylv-finish-user-events.py", directory, Base);
+        if (run is null) return;
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("RESULT: nothing-to-do", run.StdOut);
+        Assert.Equal(before, Bd(directory));
+    }
+
+    /// <summary>
+    /// IT MUST REFUSE RATHER THAN GUESS. `dynIndex` is the registration ITEM's position and only
+    /// the value 1 has been measured, so with two user events nobody knows which frame gets which
+    /// index - and a wrong one gives a VI that loads, compiles and fires the WRONG event. That is
+    /// the failure class this whole area keeps producing, so the refusal is the feature.
+    /// </summary>
+    [Fact]
+    public async Task RefusesWhenTheUserEventMappingIsAmbiguous()
+    {
+        var directory = Bundle(specs: 3, userEvents: 2, lastIsUserEvent: true);
+        var before = Bd(directory);
+        var run = await RunAsync("pylv-finish-user-events.py", directory, Base);
+        if (run is null) return;
+
+        Assert.NotEqual(0, run.ExitCode);
+        Assert.Contains("REFUSED", run.StdErr);
+        Assert.Contains("dynIndex", run.StdErr);
+        // and it changed nothing on the way to refusing
+        Assert.Equal(before, Bd(directory));
+    }
+
+
 }

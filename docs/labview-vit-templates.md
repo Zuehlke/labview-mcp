@@ -944,8 +944,33 @@ have not checked is what makes the next run a test instead of a demonstration.**
 the selector ` <Name>\3A User Event ` as a registerable frame instead of refusing the document
 (`unrecognisedSelector`), so `lvai_generate_vi_with_events` accepts an Event Structure mixing static
 and user-event frames; `Frame.SpecArguments` decides the arguments per kind so the call site cannot
-spell one wrongly. What is NOT automated is step 3 - it is the obvious next tool, because it never
-varies, and until it exists a user-event VI needs those two extra calls by hand.
+spell one wrongly.
+
+**Step 3 is AUTOMATED inside `lvai_wire_dynamic_events`**, because it never varies and because a
+tool that leaves a VI `eBad` is not finished. After wiring it extracts the VI, runs
+`pylv-finish-user-events.py`, strips the compiled code LabVIEW's save just added, **closes the
+active project** to release the path, rebuilds and reads `execState` back. `userEventStep` holds
+each sub-answer whole and `changed` says whether there was anything to do; the project close and
+the rebuild are skipped entirely when there was not. `finishUserEvents: false` turns it off. So a
+user-event VI is **two** calls again - generate, wire - and ends executable.
+
+**How the frame and the name are found, since the caller passes neither.** A frame is
+`source == 1`, which is the dynamic source and - the part that makes it usable - the one field
+LabVIEW's normalisation LEAVES ALONE, so `source 1` with `type` != 1000 reads as "needs finishing"
+after the save. The name comes from `VCTP`'s own
+`<TypeDesc Type="Refnum" RefType="UserEvent" Label="...">`, survives the normalisation too, and is
+needed only for the cached label - executability comes from the spec row alone.
+
+**It REFUSES more than one user-event frame** rather than guessing, and that refusal is the
+feature: `dynIndex` is the registration item's position, only `1` is measured, and a wrong one
+gives a VI that loads, compiles and fires the WRONG event.
+
+**NOT YET VERIFIED: the C# orchestration has not been run against a real VI.** The script half is
+measured on real bundles in three states - unresolved, already finished, ambiguous - and five unit
+tests cover it, but the sequence extract -> finish -> strip -> close project -> rebuild -> verify
+has only been driven BY HAND, not by the tool. The hand-driven sequence is what took both measured
+VIs to `execState 1`. Written down rather than assumed, because the last two things recorded here
+as unverified were both wrong.
 
 **`dynIndex` is the registration item's position and only `1` is measured** - a structure fed
 several user events needs the real one. Which of `regFlags`, `type` and `dynIndex` is decisive is

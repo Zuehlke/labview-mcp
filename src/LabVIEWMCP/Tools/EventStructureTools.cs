@@ -293,7 +293,11 @@ internal sealed class EventStructureTools(LvaiConnection connection)
         ["answer"] = Parsed(answer),
     };
 
-    private static async Task<JsonObject> RunScriptAsync(
+    /// <summary>Run one helper script over a bundle. Internal because
+    /// <see cref="WireEventTools"/> drives the same scripts for the step that can only
+    /// happen after the dynamic-event wire exists; a third copy of this is how they
+    /// would drift.</summary>
+    internal static async Task<JsonObject> RunScriptAsync(
         PyLabview.Bundle bundle, string scriptsDirectory, string script, string[] args,
         string label, int timeoutSeconds, CancellationToken ct)
     {
