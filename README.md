@@ -1031,9 +1031,14 @@ off a workstation's **Python 3.14** (the version the workflow pins away from, be
 SyntaxWarnings from `LVheap.py` on every import). For four days
 `/releases/latest/download/labview-mcp.zip` served it to every plugin install.
 
-[`.github/workflows/verify-release.yml`](.github/workflows/verify-release.yml) now rejects one — on
-every release event and on a **daily schedule**, because an asset can be replaced on an existing
-release long after any workflow has finished. Run the same check yourself at any time:
+Two things reject one now, and they cover different failures. `release.yml`'s **final step**
+re-downloads the release it has just cut and verifies it — that is the only moment a freshly
+published release is complete. And [`.github/workflows/verify-release.yml`](.github/workflows/verify-release.yml)
+runs the same check **daily**, which covers what `release.yml` cannot see: a release CI never
+published at all, or an asset replaced on an existing release afterwards. (There is deliberately no
+`release:` trigger — a release here exists with zero assets seconds before the publishing workflow
+starts, so every event-triggered run raced it and failed. The header of that file has the
+measurement.) Run the same check yourself at any time:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File scripts/Assert-PublishedRelease.ps1

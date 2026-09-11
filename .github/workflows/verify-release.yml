@@ -20,13 +20,28 @@ name: verify-release
 #
 # The daily schedule is the part that matters. An asset can be replaced on an existing release at
 # any time, long after any workflow ran, so the only reliable guard is to keep looking.
+#
+# THERE IS DELIBERATELY NO `release:` TRIGGER, and it was tried first. Measured 2026-09-11 over
+# v1.5.0 and v1.5.1: every automatically triggered run failed - 5 of 5 - and the one green run in
+# that history was a manual re-run. Two independent reasons, each fatal:
+#
+#   - A release in this repository is created in the GitHub UI, which creates the tag, which
+#     triggers release.yml by push. So the release EXISTS WITH ZERO ASSETS about two seconds
+#     before the publishing workflow even starts, and release.yml then takes 3-5 minutes to
+#     attach them. No retry window inside a release event can close that gap honestly, and the
+#     failure text - "the release has no asset named labview-mcp.zip" - is alarming and wrong.
+#   - It was also redundant. `release.yml`'s own final step re-downloads what it just published
+#     and runs THIS SAME script against it, after the attach step, which is the correct moment.
+#     Verified green on both v1.5.0 and v1.5.1.
+#
+# A third, smaller reason not to bring it back: one publish fires `created`, `published` AND
+# `released`, so five event types produced three concurrent racing runs per release.
+#
+# What the schedule still covers is exactly what release.yml structurally cannot: a release CI
+# never published. All five hand-cut releases had no release.yml run at all, so there was no
+# final step to catch them - which is the whole reason this file exists.
 
 on:
-  release:
-    # `published` covers a release created as published or promoted from draft; `edited` and
-    # `released` cover a later change to an existing one - which is exactly how an asset gets
-    # swapped after the fact.
-    types: [published, edited, released, created, prereleased]
   schedule:
     # Daily. Not on the hour, so it is not queued behind everyone else's cron.
     - cron: '17 6 * * *'
@@ -50,24 +65,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The tag to check, by trigger:
-      #   release event      -> the release that fired it
-      #   workflow_dispatch  -> the input, if given
-      #   schedule           -> blank, so the script checks /releases/latest, which is what the
-      #                         marketplace resolves and therefore what every install receives
+      # The tag to check:
+      #   workflow_dispatch -> the input, when one is given
+      #   schedule          -> blank, so the script checks /releases/latest, which is what the
+      #                        marketplace resolves and therefore what every install receives
       - name: Decide which release to check
         id: which
         shell: pwsh
         run: |
-          $tag = '${{ github.event.release.tag_name }}'
-          if (-not $tag) { $tag = '${{ inputs.tag }}' }
+          $tag = '${{ inputs.tag }}'
           if ($tag) { Write-Host "checking tag $tag" } else { Write-Host 'checking /releases/latest' }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      # Retried, because a release event can fire while the 63 MB assets are still uploading - the
-      # asset set would then be incomplete through no fault of the publisher. Three attempts a
-      # minute apart; a hand-cut release still fails all three, and this costs nothing when the
-      # first one passes.
+      # Retried only to absorb a transient - an API hiccup, or a dispatch aimed at a release whose
+      # upload is genuinely in flight. It is NOT here to wait out a publishing run: that race is
+      # why the release trigger was removed, because 60 s three times cannot cover the 3-5 minutes
+      # release.yml takes to attach its assets.
       - name: Verify the published release
         shell: pwsh
         env:

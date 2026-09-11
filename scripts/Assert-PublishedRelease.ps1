@@ -30,8 +30,19 @@
     ignored, which is what left no CI asset to publish). It does NOT stop anyone uploading an asset
     by hand, and this does: it reads what is published and fails loudly.
 
-    Run by .github\workflows\verify-release.yml on every release event and on a daily schedule, and
-    as the last step of release.yml against the release it has just cut.
+    Run as the last step of release.yml against the release it has just cut, and DAILY by
+    .github\workflows\verify-release.yml.
+
+    Those two cover different things, and it is worth not confusing them. release.yml's step runs
+    after its own attach step, which is the only moment at which a freshly published release is
+    complete. The daily run covers what release.yml structurally cannot: a release CI never
+    published at all, or an asset replaced on an existing release afterwards.
+
+    There is deliberately no `release:` trigger. It was tried and removed the same day - measured
+    over v1.5.0 and v1.5.1, all five automatically triggered runs failed, because a release here is
+    created in the GitHub UI (which creates the tag, which starts release.yml by push), so the
+    release exists with ZERO assets seconds before the publishing run begins and minutes before it
+    attaches anything. See the header of verify-release.yml.
 
 .PARAMETER Repo
     owner/name to query. Default: this repository.
