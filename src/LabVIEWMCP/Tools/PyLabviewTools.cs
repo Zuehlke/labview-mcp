@@ -52,6 +52,11 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
             if (bundle is null)
                 return Task.FromResult(Json.Error("notProvisioned", NotProvisioned, new
                 {
+                    // On the failure path especially: "the bundle is missing" is usually "this
+                    // install is older than v0.9.2", and the version is what settles that without
+                    // a second install to compare against.
+                    serverVersion = ServerVersion.Current.Display,
+                    serverCommit = ServerVersion.Current.Commit,
                     searched = new[]
                     {
                         PyLabview.DirectoryVariable + " (environment)",
@@ -63,6 +68,11 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
             return Task.FromResult(new JsonObject
             {
                 ["ok"] = true,
+                // Which build of the SERVER is answering, not of the bundle. Reported here as
+                // well as in lvai_status because this tool needs no running LabVIEW, and a stale
+                // or half-extracted install is suspected exactly when LabVIEW is not up.
+                ["serverVersion"] = ServerVersion.Current.Display,
+                ["serverCommit"] = ServerVersion.Current.Commit,
                 ["directory"] = bundle.Directory,
                 ["pythonVersion"] = bundle.PythonVersion,
                 ["pythonArch"] = bundle.PythonArch,

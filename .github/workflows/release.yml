@@ -3,7 +3,15 @@ name: release
 # Tag a commit v1.2.3 and push the tag to cut a release. The job runs on Windows because
 # the server is win-x64 only, publishes the self-contained single-file exe, packs it into
 # the plugin staging tree, and attaches the zip to the GitHub Release under a FIXED asset
-# name. The marketplace manifest points at
+# name.
+#
+# THE TAG MUST BE vX.Y.Z, lower-case, three numeric components. scripts\Assert-ReleaseTag.ps1
+# is the first step and refuses anything else with a diagnosis and the retag commands; the tag
+# is then stamped into the exe's version resource, plugin.json's `version` and VERSION.txt at
+# the archive root, so an install can say what it is. Three further assets go alongside the
+# fixed-name zip: a version-named copy of it, its SHA-256, and a per-file manifest.
+#
+# The marketplace manifest points at
 #   https://github.com/Zuehlke/labview-mcp/releases/latest/download/labview-mcp.zip
 # so the manifest never needs editing after a release: GitHub redirects /releases/latest/
 # to the newest published release, and the archive's own digest is the plugin version, so
@@ -28,6 +36,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 0. THE TAG IS THE VERSION, so refuse a tag that cannot be one - FIRST, before the test
+      #    run, so a mistyped tag costs seconds instead of ten minutes and publishes nothing.
+      #
+      #    The tags in this repository did not agree on a format: v1.3.0, v1.1.1 and v1.0.7 are
+      #    lower-case, V1.2.8/V1.2.5/V1.2.2/V1.2.0/V1.1.5 are upper-case, and v10.4 has two
+      #    components - which also sorts ABOVE every three-part tag in
+      #    `git tag --sort=-v:refname`, so the newest-looking tag in the list was for ten days
+      #    neither the newest release nor a valid version.
+      #
+      #    The script prints the diagnosis and the delete-and-retag commands; it also parses the
+      #    tag into steps.tag.outputs.version for the stamping steps below. A maintainer can run
+      #    it locally before pushing, which is the point at which it is cheapest to be told.
+      - name: Validate the release tag
+        id: tag
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/Assert-ReleaseTag.ps1 -Tag "${{ github.ref_name }}"
+          exit $LASTEXITCODE
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -47,7 +74,7 @@ jobs:
       - name: Build Release and verify embedded documentation
         shell: pwsh
         run: |
-          dotnet build $env:PROJECT -c Release --nologo -v quiet
+          dotnet build $env:PROJECT -c Release --nologo -v quiet -p:Version=${{ steps.tag.outputs.version }}
           if ($LASTEXITCODE -ne 0) { throw "Release build failed" }
           powershell -ExecutionPolicy Bypass -File build.ps1 -VerifyOnly -Configuration Release
           if ($LASTEXITCODE -ne 0) { throw "Embedded-documentation verification failed" }
@@ -56,6 +83,14 @@ jobs:
       #    for self-extract, and PublishTrimmed=false. Trimming strips the protobuf/gRPC
       #    reflection metadata the schema-recovery path depends on, and the failure only shows
       #    up at runtime as an empty schema dump — so trimming must stay off.
+      #
+      #    -p:Version stamps the tag into the Win32 version resource, so the exe names the release
+      #    it came from in Explorer → Properties → Details and through `--version`. The csproj
+      #    default is 0.0.0, which marks a build that did NOT come from here. Until 2026-09-11
+      #    nothing set it, so every release ever published carried the SDK default 1.0.0 and was
+      #    indistinguishable from a local debug build; identifying an install meant hashing 800
+      #    files. The commit SHA was already present - the SDK appends SourceRevisionId to
+      #    InformationalVersion - so only the semantic half was missing.
       - name: Publish (win-x64, self-contained, single file, NOT trimmed)
         shell: pwsh
         run: |
@@ -66,9 +101,19 @@ jobs:
             -p:PublishSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:PublishTrimmed=false `
+            -p:Version=${{ steps.tag.outputs.version }} `
             -o publish
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
           if (-not (Test-Path publish/LabVIEWMCP.exe)) { throw "publish/LabVIEWMCP.exe missing after publish" }
+
+          # Assert the stamp actually landed. `-p:Version=` is silently ignored if the property is
+          # overridden later in the build, and the failure would otherwise ship: an exe reporting
+          # 0.0.0 from a tagged release looks exactly like a dev build to every later check.
+          $stamped = (Get-Item publish/LabVIEWMCP.exe).VersionInfo.ProductVersion
+          Write-Host "stamped ProductVersion: $stamped"
+          if (-not $stamped.StartsWith("${{ steps.tag.outputs.version }}")) {
+            throw "the published exe reports '$stamped' but the tag is ${{ github.ref_name }} - the version stamp did not take"
+          }
 
       # 3b. Assemble the pylabview bundle.
       #
@@ -187,6 +232,79 @@ jobs:
           $bundleMB = [math]::Round(($bundleFiles | Measure-Object Length -Sum).Sum / 1MB, 1)
           Write-Host "  \bin\pylabview  ($($bundleFiles.Count) files, $bundleMB MB)"
 
+      # 4b. Make the ARTEFACT self-identifying, which the exe's version resource alone does not.
+      #
+      #     Two separate things, for two separate readers:
+      #
+      #     VERSION.txt at the archive root, because a FILE NAME dies at extraction. That is not
+      #     hypothetical: on 2026-09-11 a hand-extracted install at C:\Projects\labview-mcp could
+      #     not say what it was, and identifying it needed the exe's embedded commit SHA resolved
+      #     against `git describe`. A plain key/value file survives extraction, is greppable, needs
+      #     nothing to be running, and answers even when the exe will not start. It also carries
+      #     the TAG, which the assembly cannot: the assembly knows 1.3.0, not that it came from
+      #     `v1.3.0`.
+      #
+      #     plugin.json's `version`, because that is what `claude plugin list` and
+      #     `claude plugin details` read. The repository file carries the 0.0.0 placeholder so the
+      #     key's presence and position are reviewable in-repo; only the value is injected here.
+      #     A targeted string replacement rather than ConvertFrom-Json/ConvertTo-Json, so the rest
+      #     of the file - including the non-ASCII author name - stays byte-for-byte what was
+      #     reviewed.
+      - name: Stamp the version into the staging tree
+        shell: pwsh
+        run: |
+          $version = '${{ steps.tag.outputs.version }}'
+          $tag     = '${{ steps.tag.outputs.tag }}'
+
+          $lines = @(
+            "tag: $tag",
+            "version: $version",
+            "commit: ${{ github.sha }}",
+            "built: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))",
+            "run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          )
+          $versionFile = 'staging/VERSION.txt'
+          [IO.File]::WriteAllText($versionFile, ($lines -join "`n") + "`n",
+                                  [Text.UTF8Encoding]::new($false))
+          Write-Host "VERSION.txt:"
+          Get-Content $versionFile | ForEach-Object { Write-Host "  $_" }
+
+          # Encoding stated explicitly on every read and write. plugin.json holds a non-ASCII
+          # author name, and `Get-Content` decodes a BOM-less file with the system ANSI codepage
+          # on Windows PowerShell while `pwsh` uses UTF-8 - so a step that relies on the host
+          # default turns "Zühlke" into "ZÃ¼hlke" depending on which shell ran it. Measured while
+          # dry-running this step locally: the bytes on disk were right and the VERIFICATION was
+          # wrong, which is the failure that would have shipped a mojibake manifest one day.
+          $utf8 = [Text.UTF8Encoding]::new($false)
+          $manifestPath = 'staging/.claude-plugin/plugin.json'
+          $before = [IO.File]::ReadAllText($manifestPath, $utf8)
+          $after = $before -replace '"version"\s*:\s*"0\.0\.0"', ('"version": "' + $version + '"')
+          if ($after -eq $before) {
+            throw ("$manifestPath does not contain the `"version`": `"0.0.0`" placeholder, so the " +
+                   "release version could not be injected. Restore the placeholder in " +
+                   "plugin/.claude-plugin/plugin.json - a plugin with no version is one " +
+                   "`claude plugin list` cannot identify, which is the whole reason it is there.")
+          }
+          [IO.File]::WriteAllText($manifestPath, $after, $utf8)
+
+          # Read it back through a JSON parser: a replacement that produced invalid JSON would make
+          # the plugin uninstallable, and the string substitution above cannot tell.
+          $parsed = [IO.File]::ReadAllText($manifestPath, $utf8) | ConvertFrom-Json
+          if ($parsed.version -ne $version) {
+            throw "plugin.json reports version '$($parsed.version)' after stamping, expected '$version'"
+          }
+
+          # And that what reached disk is EXACTLY what we meant to write. plugin.json holds a
+          # non-ASCII author name, and a re-encode would leave valid JSON carrying a mangled
+          # string - so the parser above cannot see it, and the damage would surface only in the
+          # plugin's own listing. Compared as decoded bytes against $after rather than against a
+          # literal, so this assertion carries no non-ASCII text of its own to go wrong.
+          $roundTrip = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($manifestPath))
+          if ($roundTrip -ne $after) {
+            throw "plugin.json on disk is not byte-identical to the stamped text - it was re-encoded"
+          }
+          Write-Host "OK: plugin.json version = $($parsed.version), encoding intact"
+
       # 5. The manifest is what makes the zip installable. Fail loudly if it is not at the root.
       - name: Assert plugin manifest is at the staging root
         shell: pwsh
@@ -304,6 +422,25 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "LabVIEWMCP.exe --help exited $LASTEXITCODE (expected 0)" }
           Write-Host "OK: --help exited 0"
 
+      # 6b. --version, from the exe IN THE STAGING TREE, so this also proves VERSION.txt is where
+      #     the exe looks for it (<exe dir>\..\VERSION.txt) rather than merely present somewhere.
+      #     Asserting the OUTPUT, not just the exit code: the version resource is read at run time
+      #     through reflection, and an exe that starts fine can still report 0.0.0.
+      - name: Smoke-test the packaged exe (--version reports the tag)
+        shell: pwsh
+        run: |
+          $out = & staging/bin/LabVIEWMCP.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "LabVIEWMCP.exe --version exited $LASTEXITCODE (expected 0)" }
+          $out | ForEach-Object { Write-Host "  $_" }
+          $text = $out -join "`n"
+          foreach ($want in @('${{ steps.tag.outputs.version }}', '${{ steps.tag.outputs.tag }}', '${{ github.sha }}')) {
+            if ($text -notlike "*$want*") {
+              throw "--version output does not mention '$want' - the stamp or VERSION.txt did not reach the exe"
+            }
+          }
+          if ($text -like '*-dev*') { throw "--version reports a dev build from a tagged release" }
+          Write-Host "OK: --version reports the tag, the version and the commit"
+
       # 7. Zip the staging CONTENTS so .claude-plugin/plugin.json sits at the zip root, then
       #    attach it to the Release under the fixed asset name the marketplace manifest expects.
       - name: Zip the staging tree
@@ -327,10 +464,60 @@ jobs:
           if ($names -notcontains '.claude-plugin/plugin.json') {
             throw ".claude-plugin/plugin.json is not at the zip root"
           }
-          Write-Host "OK: .claude-plugin/plugin.json is at the zip root"
+          if ($names -notcontains 'VERSION.txt') {
+            throw "VERSION.txt is not at the zip root - an extracted install could not identify itself"
+          }
+          Write-Host "OK: .claude-plugin/plugin.json and VERSION.txt are at the zip root"
 
-      - name: Attach the zip to the release
+      # 7b. Three more assets, none of which may replace the fixed-name zip above.
+      #
+      #     labview-mcp-<tag>.zip  - the SAME bytes under a self-identifying name. The fixed name
+      #       is load-bearing: .claude-plugin/marketplace.json points at
+      #       releases/latest/download/labview-mcp.zip, which is why the manifest never needs
+      #       editing after a release. So the versioned copy is an ADDITION, for the human who
+      #       downloads from the Releases page and later wants to know what they extracted.
+      #
+      #     labview-mcp.sha256  - the archive's own digest, so a download can be checked.
+      #
+      #     labview-mcp.manifest.sha256  - relative path plus SHA-256 of EVERY file in the
+      #       archive. This is the one that answers "is my install intact and complete?" without a
+      #       second install to diff against - which on 2026-09-11 was the only way to settle a
+      #       report that the plugin route shipped less than the zip route (it does not: same
+      #       archive, 732 files, every hash equal - the reported difference was a three-release
+      #       stale plugin cache). scripts\Compare-Installs.ps1 -ManifestPath consumes it.
+      - name: Publish the version-named copy, the digest and the file manifest
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.tag.outputs.tag }}'
+          Copy-Item $env:ASSET_NAME "labview-mcp-$tag.zip" -Force
+
+          $hash = (Get-FileHash $env:ASSET_NAME -Algorithm SHA256).Hash.ToLowerInvariant()
+          # Two spaces then the name: the `sha256sum -c` format, so this is checkable with the
+          # tool people already have rather than only by eye.
+          [IO.File]::WriteAllText('labview-mcp.sha256', "$hash  $env:ASSET_NAME`n",
+                                  [Text.UTF8Encoding]::new($false))
+          Write-Host "archive sha256: $hash"
+
+          # Hashed from the STAGING TREE, whose bytes are what went into the archive. Sorted, so
+          # two releases' manifests diff meaningfully.
+          $root = (Resolve-Path 'staging').Path
+          $rows = Get-ChildItem $root -Recurse -File -Force | ForEach-Object {
+            $rel = $_.FullName.Substring($root.Length).TrimStart('\').Replace('\', '/')
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $rel"
+          } | Sort-Object
+          [IO.File]::WriteAllText('labview-mcp.manifest.sha256', (($rows -join "`n") + "`n"),
+                                  [Text.UTF8Encoding]::new($false))
+          Write-Host "file manifest: $($rows.Count) entries"
+
+      - name: Attach the assets to the release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ASSET_NAME }}
+          # The fixed name FIRST and always: the marketplace resolves
+          # /releases/latest/download/labview-mcp.zip, so a release missing it is a release no
+          # plugin install can fetch.
+          files: |
+            ${{ env.ASSET_NAME }}
+            labview-mcp-${{ steps.tag.outputs.tag }}.zip
+            labview-mcp.sha256
+            labview-mcp.manifest.sha256
           fail_on_unmatched_files: true

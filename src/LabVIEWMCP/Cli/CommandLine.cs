@@ -17,6 +17,7 @@ internal static class CommandLine
         ["--help"] = false,
         ["-h"] = false,
         ["-?"] = false,
+        ["--version"] = false,
         ["--selftest"] = false,
         ["--ensure-labview"] = false,
         ["--dump-schema"] = true, // the file is optional; the value test below handles that
@@ -123,6 +124,10 @@ internal static class CommandLine
           --no-annotate     --pylv-extract leaves primResID/parmIndex numbers unnamed
           --fields <spec>   --create-class private data, as <type>.<name> comma separated
           --parent <path>   --create-class parent .lvclass to derive from
+          --version         print this build's version, commit and exe path, and the release
+                            archive's VERSION.txt when there is one beside it. Needs no
+                            LabVIEW. This is how you tell a plugin install from a hand-
+                            extracted zip - or an older copy of either from a current one
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port, LABVIEWMCP_LVVERSION instead of
