@@ -220,6 +220,16 @@ jobs:
           Copy-Item -Path '.claude/settings.json' -Destination (Join-Path $staging 'bin/claude') -Force
           Copy-Item -Path 'CLAUDE.md'             -Destination (Join-Path $staging 'bin/claude') -Force
 
+          # README.md beside the exe, as bin/README.md. The .csproj stages it next to the exe in a
+          # LOCAL build (<None Include="..\..\README.md" Link="README.md">) and this step did not,
+          # so a plugin install was the one install route with no README at all - while CLAUDE.md
+          # asserted flatly that "the build copies all of docs\ and README.md next to the exe".
+          # True of the csproj, false of the release archive, and nothing compared the two. Found
+          # 2026-09-11 while auditing this file against build.ps1's output. `bin/` rather than the
+          # archive root for the same reason claude/ and docs/ are there: "beside the exe" is the
+          # layout invariant the rest of this step keeps.
+          Copy-Item -Path 'README.md' -Destination (Join-Path $staging 'bin/README.md') -Force
+
           Write-Host "Staging tree:"
           $root = (Resolve-Path $staging).Path
           # The bundle is 636 files of interpreter and stdlib; listing them buries everything else,
@@ -521,3 +531,27 @@ jobs:
             labview-mcp.sha256
             labview-mcp.manifest.sha256
           fail_on_unmatched_files: true
+
+      # 8. Read back what was actually PUBLISHED, over the network, as any user would. Every step
+      #    above checked the staging tree; this is the first one that checks the release - it
+      #    re-downloads labview-mcp.zip from the Releases page, verifies its digest against the
+      #    published labview-mcp.sha256 and every one of its ~800 entries against the published
+      #    manifest, and confirms the uploader is github-actions[bot].
+      #
+      #    Cheap insurance against a partial or reordered upload. The same script runs daily from
+      #    verify-release.yml, which is what catches an asset REPLACED by hand after the fact -
+      #    the failure this repository actually had, five times.
+      - name: Verify what was published
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Two attempts: an asset can still be settling immediately after the upload step.
+          for ($attempt = 1; $attempt -le 2; $attempt++) {
+            powershell -NoProfile -ExecutionPolicy Bypass `
+              -File scripts/Assert-PublishedRelease.ps1 `
+              -Repo '${{ github.repository }}' -Tag '${{ steps.tag.outputs.tag }}' -Token $env:GH_TOKEN
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -eq 1) { Write-Host 'retrying in 30s'; Start-Sleep -Seconds 30 }
+          }
+          throw 'the release was published but does not verify - see the FAIL lines above'

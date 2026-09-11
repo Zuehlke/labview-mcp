@@ -18,6 +18,13 @@ That is the asset on the Releases page. There is one build, one packaging path a
 a difference between a store install and a hand-extracted zip can only be **version skew** or a
 **damaged copy** — never a different build. The release workflow has no second branch.
 
+**That holds only for an asset the workflow actually produced, and five were not.** Read literally
+it says the packaging cannot differ, and §2a is five counterexamples: releases whose
+`labview-mcp.zip` was built locally and uploaded by hand. Nothing about the pipeline was wrong;
+the pipeline had simply not run. Corrected 2026-09-11, the same day this section was written —
+which is why `scripts/Assert-PublishedRelease.ps1` now checks the published artefact instead of
+reasoning about it from the workflow.
+
 Confirmed file by file over the same tag (v1.3.0), a plugin cache install against a `tar -xf`
 extract of the asset:
 
@@ -57,6 +64,89 @@ What that older copy was missing looks exactly like "the plugin ships less":
 
 The pylabview bundle was **not** among the differences. The fix is
 `claude plugin marketplace update zuehlke-labview` followed by `claude plugin update labview-mcp`.
+
+## 2a. And a second cause: five releases were cut by hand
+
+§2 explains the stale *catalogue*. It does not explain why a user who updated correctly could still
+get something broken, and this does. The GitHub API records who uploaded each asset, and the split
+is exact:
+
+| tag | uploader | asset | size |
+|---|---|---|---|
+| `v1.3.0`, `v1.1.1`, `v1.1.0`, `v1.0.7`, `v1.0.6` … | `github-actions[bot]` | `labview-mcp.zip` | 62.3–62.9 MB |
+| **`V1.1.5`, `V1.2.0`, `V1.2.2`, `V1.2.5`, `V1.2.8`** | **a person** | `labview-mcp.zip` | 19.3–20.9 MB |
+| `V0.8.5`, `V0.7.8`, `V0.7.0` | a person | `LabVIEWMCP_V<tag>.zip` | 2.8 MB |
+
+Every upper-case tag is a hand-cut release. The mechanism is the one `Assert-ReleaseTag.ps1` now
+blocks: the workflow triggers on `v*`, GitHub matches refs case-sensitively, so an upper-case tag
+built nothing — and the release was then produced locally and uploaded.
+
+**`V1.2.8`'s asset, downloaded and opened, is a zip of `src\LabVIEWMCP\bin\Debug\net8.0\`.**
+Measured 2026-09-11, 1 006 entries:
+
+| | the hand-cut archive | the workflow's archive |
+|---|---|---|
+| `.claude-plugin/plugin.json` | **absent** → not installable as a plugin | at the root |
+| `.mcp.json` | **absent** → nothing launches the server | at the root |
+| plugin-flavoured `agents/`, `hooks/` | **absent** | at the root |
+| the exe | at the **root**, a 151 kB apphost + **46 loose DLLs**, `.pdb`, `deps.json`, `runtimes/` — framework-dependent, so it does not start without the .NET 8 runtime | `bin/LabVIEWMCP.exe`, self-contained single file |
+| pylabview bundle | at `pylabview/`, **Python 3.14**, `provisionedFrom: C:\Users\<person>\AppData\Local\Programs\Python\Python314`, provisioned 2026-08-25 and reused for every later hand-cut release | `bin/pylabview/`, pinned **3.12**, provisioned per release from the runner tool cache |
+| `VERSION.txt` | absent | at the root |
+
+`plugin/.mcp.json` launches `${CLAUDE_PLUGIN_ROOT}/bin/LabVIEWMCP.exe`, which that layout does not
+have; and with no `plugin.json` at the root the archive cannot be installed at all. Between
+2026-09-07 and 2026-09-11 the newest published release was one of these, so
+`/releases/latest/download/labview-mcp.zip` — the URL the marketplace resolves — served it to every
+plugin install. **That is what the README's "there is currently a problem with the installer"
+banner was describing, and the banner was not wrong.**
+
+**The Python 3.14 row is the one that answers the original report.** `release.yml` pins 3.12 with
+the comment *"3.14 also works — measured — but emits three SyntaxWarnings from pylabview's own
+LVheap.py on every import, and those are noise in every `pylv_*` answer."* So the Python tooling
+really did behave differently between the two routes — not because the plugin route packaged less,
+but because a hand-cut release shipped a different interpreter.
+
+**Both installs measured in §1 happened to be CI-built, and that was luck.** They came from v1.3.0
+and v1.0.7, both `github-actions[bot]`. Had either been one of the five, §1's conclusion would have
+come out the other way — which is the argument for checking the uploader *first*, before hashing
+anything.
+
+## 2b. What now rejects a hand-cut release
+
+`scripts/Assert-PublishedRelease.ps1`, run by `.github/workflows/verify-release.yml` on every
+release event and on a **daily schedule**, and as the last step of `release.yml` against the
+release it has just cut. The daily run is the part that matters: an asset can be replaced on an
+existing release at any time, long after any workflow has finished.
+
+It downloads what is published and checks, in this order:
+
+| check | what it catches |
+|---|---|
+| the asset is named `labview-mcp.zip` | `LabVIEWMCP_V0.8.5.zip` — a 404 for every plugin install |
+| `labview-mcp.sha256`, `labview-mcp.manifest.sha256` and `labview-mcp-<tag>.zip` are present | an asset set the workflow does not produce |
+| the tag is a valid `vX.Y.Z` | the upper-case tag that left no CI asset to publish |
+| **the uploader is `github-actions[bot]`** | a hand-cut release, whatever the archive looks like |
+| the archive matches its published SHA-256 | an asset replaced after it was hashed |
+| `.claude-plugin/plugin.json`, `.mcp.json`, `VERSION.txt`, `bin/LabVIEWMCP.exe`, `bin/pylabview/python.exe`, `agents/*.md` are present | the plugin shape |
+| **no loose `*.dll`/`*.pdb`/`deps.json` and no `LabVIEWMCP.exe` at the archive root** | the direct signature of a zipped `bin\Debug\net8.0` |
+| `VERSION.txt`'s `tag:` and `version:` match the release; a 40-hex `commit:` | an archive from a different run |
+| `plugin.json`'s `version` is the tag and not `0.0.0` | the placeholder never substituted |
+| the bundle is Python **3.12** and `provisionedFrom` is not under `\Users\` | a bundle off somebody's workstation |
+| every archive entry matches the published manifest | any missing, extra or altered file |
+
+Against the live v1.4.1 it reports 21 checks green including all 807 entries; against the real
+V1.2.8 asset, 11 failures naming each cause. `-ZipPath` runs it offline against an archive on disk,
+which is what `PublishedReleaseTests` drives — a good fixture shaped from v1.4.1, a bad one shaped
+from V1.2.8, and one-change mutations for each individual check.
+
+Two things it found while being written, both worth keeping:
+
+- **`bundle.json` carries a UTF-8 BOM** (provision.ps1 writes it through `Out-File`) and Windows
+  PowerShell's `ConvertFrom-Json` rejects one with `Invalid JSON primitive: .`. It crashed on the
+  first run against the live archive while passing every BOM-less fixture, so the fixture now has
+  a BOM.
+- **`"a" + $array -join ', '`** binds as `("a" + $array) -join ', '` in PowerShell and silently
+  produces the wrong message text. Two of the failure messages had it.
 
 ## 3. The identifiers, and which of them already existed
 
@@ -191,3 +281,19 @@ answering "which build is this?" still took an afternoon — because nothing sur
 number that was surfaced (`1.0.0`) was the same for every build ever made. **A value that exists
 but is not reported is not an answer**, which is the same shape as this repository's
 embedded-but-unshipped documents: present in the artefact, reachable by nobody.
+
+**And the second lesson is sharper, because §1 was written confidently and was incomplete: a
+PIPELINE GUARANTEE IS NOT A PROPERTY OF THE ARTEFACT.** "There is one build and one packaging path"
+was true of the workflow and said nothing about what was on the Releases page, because five assets
+had never been through it. Reasoning from the pipeline is what made a four-day outage invisible for
+four days; the check that settled it in one call was reading `uploader.login` off the API. **Ask the
+artefact, not the process that is supposed to have made it** — the same rule this repository already
+records as "ask the file, not the session".
+
+**A corollary worth naming, since it caused the one gap found in the same audit: there are TWO
+lists of what ships.** The `.csproj` globs decide a local build's output; the staging step in
+`release.yml` decides the archive. `docs\` and `scripts\` are globbed in both, so a new file lands
+in both automatically — but everything named individually has to be added twice, and `README.md`
+had been added to only one. A plugin install was therefore the single route with no `README.md`
+while `CLAUDE.md` asserted flatly that "the build copies all of `docs\` and `README.md` next to the
+exe". Now staged as `bin/README.md`.
