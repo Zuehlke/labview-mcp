@@ -272,4 +272,56 @@ public sealed class WireEventToolsTests
     // This walk was already worktree-correct; it now shares one implementation with the rest,
     // so there is a single place to fix and a single place tested. See RepoTree.
     private static string RepoRoot() => RepoTree.Root;
+
+    /// <summary>
+    /// The whole answer as MEASURED on 2026-09-12 with the project deliberately closed, on a VI
+    /// that plainly has an Event Structure: RPC errorCode 91, the helper's own code never arrived,
+    /// the source names a Property Node, every array empty, the VI byte-identical, 28 ms.
+    ///
+    /// It used to come back `helperDidNotAnswer` beside `registrationNodesOnDiagram: 0` and an
+    /// empty `eventStructureTerminals`, which reads as "your diagram has no Event Structure" - a
+    /// statement about the caller's VI, and a false one. Two builds lost calls to it.
+    /// </summary>
+    [Fact]
+    public void NoActiveProjectIsNamedRatherThanBlamedOnTheDiagram()
+    {
+        var outcome = WireEventTools.Classify(
+            found: null, code: null, sourceFrom: "diagram",
+            wiredBefore: false, endsAfter: 0, broken: null,
+            helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            topClasses: [""]);
+
+        Assert.False(outcome.Ok);
+        Assert.Equal("noActiveProject", outcome.Kind);
+        Assert.Contains("lvai_open_file", outcome.Note);
+        // the note must disown the two readings that misled a caller
+        Assert.Contains("NOT a verdict", outcome.Note);
+    }
+
+    /// <summary>
+    /// The discriminator is the EMPTY class list, not the source string: the helper has 21
+    /// Property Nodes and LabVIEW names them all "Property Node in &lt;vi&gt;". A failure further
+    /// down the chain leaves the class list populated, because it is filled four nodes after the
+    /// project hop - so that case must stay `helperDidNotAnswer` rather than accusing the project.
+    /// </summary>
+    [Fact]
+    public void APropertyNodeFailureWithClassesReadIsNotBlamedOnTheProject()
+    {
+        var outcome = WireEventTools.Classify(
+            found: null, code: null, sourceFrom: "diagram",
+            wiredBefore: false, endsAfter: 0, broken: null,
+            helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            topClasses: ["WhileLoop", "EventStructure"]);
+
+        Assert.Equal("helperDidNotAnswer", outcome.Kind);
+    }
+
+    /// <summary>A helper that reported its OWN code is a different failure and keeps its verdict.</summary>
+    [Fact]
+    public void AnAnsweringHelperIsNeverReadAsAMissingProject()
+    {
+        Assert.False(WireEventTools.LooksLikeNoActiveProject(
+            code: 1055, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            topClasses: [""]));
+    }
 }

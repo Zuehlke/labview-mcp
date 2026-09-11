@@ -1541,3 +1541,44 @@ failed to reproduce this signature in seven closes and named "VIs generated whil
 open" as the surviving candidate — this run had that condition too, so it does not discriminate
 between the two. And n = 1, against the method note above: with counts that live in 0–3, one point
 separates nothing.
+## A SEVENTH signature, 2026-09-12: a HANG inside `lvai_wire_dynamic_events`, and NI's wire router is the suspect
+
+One occurrence, during a from-scratch build of a user-event producer/consumer. The first
+`lvai_wire_dynamic_events` call never returned and LabVIEW had to be killed.
+
+What was established at the time, before anything was restarted:
+
+| check | reading |
+|---|---|
+| a modal dialog | **none** - every window of the process enumerated, not one of class `#32770` |
+| `(Get-Process LabVIEW).Responding` | **False** |
+| CPU | flat, about 1 s consumed over 90 s of waiting |
+| every gRPC port | `DeadlineExceeded` |
+| NI's log, written by the hang | **nothing at all** |
+
+So this is the FOURTH mechanism's shape - a hang, not a fault - and it shares that
+mechanism's most annoying property: the crash handler never runs, so the log says nothing
+about the event itself. What the log *did* carry was its last entry, 40 s earlier, from our
+own `ConvertAIXMLToVI`: **14 events** of
+
+```
+source\diagramoutalgHelpers.cpp(267) : DWarnInternal 0x0BF7958D:
+    we should have intersected an obstacle!
+```
+
+`routalgHelpers` is LabVIEW's **wire-routing** algorithm, and wire routing is exactly what
+`lvai_wire_dynamic_events` exercises - its `Auto Route?` was TRUE on the call that hung.
+That is the whole reason to write this down. **It is suggestive and it is not established**,
+and the two obvious reasons why are worth stating so the next reader does not overrate it:
+the 14 events were logged by a DIFFERENT operation that completed normally, and n = 1.
+
+**It did not reproduce.** After `lvai_ensure_labview` and reopening the project, the
+identical call answered in **326 ms** with `sourceFrom: tunnel`, on the same VI, with the
+helper reused rather than regenerated in both attempts. The rest of that build then went
+through first time.
+
+What to do about it, given that: nothing yet, beyond recognising it. If a second occurrence
+turns up, the cheap discriminator is already implied - run the call with `Auto Route?`
+FALSE, which the tool defaults to anyway, and see whether the hang follows the routing or
+the call. Note the default is FALSE precisely because with it LabVIEW draws no wire, so the
+TRUE path is the less-travelled one and correspondingly less proven.

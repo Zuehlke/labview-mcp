@@ -180,7 +180,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
             var terminalNames = Strings(Text(outputs, "terminal names"));
             var registrationNodes = Dimsize(Text(outputs, "registration nodes"));
 
-            var outcome = Classify(found, chainCode, sourceFrom, wiredBefore, endsAfter, broken);
+            var outcome = Classify(found, chainCode, sourceFrom, wiredBefore, endsAfter, broken,
+                                   chainSource, topClasses);
 
             var payload = Json.Node(response).AsObject();
             payload.Remove("outputs");
@@ -446,6 +447,24 @@ internal sealed class WireEventTools(LvaiConnection connection)
     internal readonly record struct Outcome(bool Ok, string? Kind, bool AlreadyWired, string Note);
 
     /// <summary>
+    /// The measured signature of "no project is active": the helper's error chain names a Property
+    /// Node, its own error code never arrived, and the class list is empty or one empty string.
+    /// A failure further down the chain leaves that list POPULATED, because it is filled four
+    /// nodes after the project hop - which is what makes the emptiness the discriminator.
+    /// </summary>
+    internal static bool LooksLikeNoActiveProject(
+        int? code, string? helperErrorSource, IReadOnlyList<string>? topClasses)
+    {
+        if (code is not null) return false;
+        if (helperErrorSource is null ||
+            !helperErrorSource.Contains("Property Node", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return topClasses is null
+            || topClasses.Count == 0
+            || topClasses.All(string.IsNullOrWhiteSpace);
+    }
+
+    /// <summary>
     /// The verdict. Kept pure and separate from the RPC so it can be tested against the shapes
     /// really measured rather than the shapes it "should" produce.
     ///
@@ -455,8 +474,32 @@ internal sealed class WireEventTools(LvaiConnection connection)
     /// precondition rather than a failure here.
     /// </summary>
     internal static Outcome Classify(bool? found, int? code, string? sourceFrom,
-                                     bool? wiredBefore, int? endsAfter, bool? broken)
+                                     bool? wiredBefore, int? endsAfter, bool? broken,
+                                     string? helperErrorSource = null,
+                                     IReadOnlyList<string>? topClasses = null)
     {
+        // MEASURED 2026-09-12 with the project deliberately closed: errorCode 91 out of the RPC,
+        // helperErrorSource "Property Node in lvai_wire_dyn_events.vi", every array output empty,
+        // the VI byte-identical, 28 ms. The helper's FIRST node is a {LV.Application}
+        // `Project:Active Project` read, which answers Error 1055 when no project is active, and
+        // everything downstream is skipped - which is why the class list comes back empty.
+        //
+        // The source string alone does NOT identify it: the helper has 21 Property Nodes and
+        // LabVIEW names them all "Property Node in <vi>". So the EMPTY CLASS LIST is the
+        // discriminator and this verdict is an inference, which the note says outright.
+        if (LooksLikeNoActiveProject(code, helperErrorSource, topClasses))
+            return new(false, "noActiveProject", false,
+                "The helper could not reach the IDE's application instance, and the overwhelmingly " +
+                "likely cause is that NO PROJECT IS ACTIVE - open the VI's .lvproj with " +
+                "lvai_open_file and call this again. This tool reaches the VI through " +
+                "Application -> Project:Active Project, which answers Error 1055 with no project " +
+                "open, and that read is the FIRST node in the chain, so nothing downstream ran and " +
+                "every list here is empty. Your VI has not been read, let alone changed: a " +
+                "registrationNodesOnDiagram of 0 and an empty eventStructureTerminals are this " +
+                "failure talking, NOT a verdict that the diagram lacks an Event Structure. " +
+                "Inferred from the empty class list rather than read off the message - the helper " +
+                "has 21 Property Nodes and LabVIEW names them all alike.");
+
         if (code is null || found is null)
             return new(false, "helperDidNotAnswer", false,
                 "The helper ran but its indicators could not be read back - the raw flattened " +

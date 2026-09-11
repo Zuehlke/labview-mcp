@@ -27,6 +27,27 @@ public sealed class ViTerminalsTests
         </VI>
         """;
 
+    /// <summary>
+    /// A real LabVIEW 2026 export of a producer/consumer, trimmed in length only. The point is
+    /// the NESTING: `Stop` is two structures deep (an Event Structure frame inside the producer
+    /// loop) and `Current Count` one deep, and both carry a `conIdx` there. Reading direct
+    /// children of &lt;VI&gt; finds three of the five terminals this VI really has.
+    /// </summary>
+    private const string TerminalsInsideStructures = """
+        <VI _name="User Event Producer Consumer.vi" description="Fires a user event 50 times.">
+          <Control _name="Events To Send" conIdx="0" connection="recommended" type="int32" uid="4205" uid_parent="root" value="50"/>
+          <Control _name="error in (no error)" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4210" uid_parent="root" value="[false,0,]"/>
+          <Structure _name="While Loop" uid="4340" uid_parent="root">
+            <Tunnel _id="In3" outputs="value:" uid="4343" uid_parent="4340"/>
+            <Control _name="Stop" conIdx="5" connection="optional" outputs="value:" style="latched" type="bool" uid="4345" uid_parent="4340" value="false"/>
+          </Structure>
+          <Structure _name="While Loop" uid="4400" uid_parent="root">
+            <Indicator _name="Current Count" conIdx="4" connection="recommended" inputs="value:4404.element" type="int32" uid="4405" uid_parent="4400" value="0"/>
+          </Structure>
+          <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4272.error out" type="cluster{bool.status,int32.code,string.source}" uid="4273" uid_parent="root" value="[false,0,]"/>
+        </VI>
+        """;
+
     [Fact]
     public void APolymorphicWrapperYieldsItsInstances()
     {
@@ -158,5 +179,51 @@ public sealed class ViTerminalsTests
         Assert.Empty(result.Inputs);
         Assert.Empty(result.Outputs);
         Assert.Empty(result.Instances);
+    }
+
+    /// <summary>
+    /// The defect this fixture exists for: `Elements` found three terminals of five, so
+    /// `lvai_connector_pane` reported "3 of them assigned" and "Nothing to change" for a pane
+    /// whose binary held five `ConpaneConnection` entries. Measured 2026-09-12.
+    /// </summary>
+    [Fact]
+    public void ATerminalInsideAStructureIsStillOnTheConnectorPane()
+    {
+        var result = ViTerminals.Parse(TerminalsInsideStructures)!;
+
+        Assert.Equal(
+            new[] { "Events To Send", "error in (no error)", "Stop" },
+            result.Inputs.Select(t => t.Name).ToArray());
+        Assert.Equal(
+            new[] { "Current Count", "error out" },
+            result.Outputs.Select(t => t.Name).ToArray());
+    }
+
+    /// <summary>
+    /// The nested ones must carry their own `conIdx` and `connection`, not just their names -
+    /// the pane check reads exactly those two, and `Stop` is the deepest element in the file.
+    /// </summary>
+    [Fact]
+    public void ANestedTerminalKeepsItsConIdxAndConnection()
+    {
+        var result = ViTerminals.Parse(TerminalsInsideStructures)!;
+
+        var stop = result.Inputs.Single(t => t.Name == "Stop");
+        Assert.Equal(5, stop.ConIdx);
+        Assert.Equal("optional", stop.Connection);
+
+        var count = result.Outputs.Single(t => t.Name == "Current Count");
+        Assert.Equal(4, count.ConIdx);
+        Assert.Equal("recommended", count.Connection);
+    }
+
+    /// <summary>
+    /// Reading descendants must not turn a plain VI into a polymorphic wrapper. This VI has
+    /// front-panel terminals, so `Instances` stays empty however deep they sit.
+    /// </summary>
+    [Fact]
+    public void AViWithNestedTerminalsIsNotMistakenForAWrapper()
+    {
+        Assert.Empty(ViTerminals.Parse(TerminalsInsideStructures)!.Instances);
     }
 }

@@ -664,6 +664,13 @@ Everything here was verified before this agent was written. Treat it as fact.
   validation, conversion, the swap and LabVIEW's own export had all passed. `lvai_check_aixml`
   catches it now and `lvai_generate_vi` repairs outputs to `recommended`; the fix on a VI that
   already exists is `{LV.ConnectorPane}` `SetWireRule(conIdx, 2)`.
+- **A class METHOD carries `error in` and `error out` like any other VI, on the pane's
+  bottom row.** The user's standing rule of 2026-09-12. The class wire is not a substitute: it
+  carries the object, not the error. `error out` is ONE output carrying every error path in the
+  method — join forks with `Merge Errors` (`error in`, `error in` (252/324) → `error out`)
+  instead of adding a second error indicator, which a caller can only half wire. Accessors are
+  already covered: `lvai_create_accessors` drives NI's provider with `includeErrorTerminals: true`,
+  so this is about the methods you author yourself.
 
 - **An interface is a `.lvclass` with `NI.LVClass.IsInterface = true` and no private data item.**
   There is no `.lvinterface`. `lvai_describe_project` reports both kinds as `Type="LVClass"` and

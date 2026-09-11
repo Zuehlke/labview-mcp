@@ -494,6 +494,148 @@ frame is the case where "the frames are gone" and "the specs are gone" look
 identical, so the cheap experiment could not tell them apart - and the conclusion
 it produced sent the next reader to clone frames for a day.
 
+### The row's TYPE is not repointed with its index - measured 2026-09-13
+
+`lvai_set_event_data_fields` writes the Event Data Node row's field INDEX and leaves its TYPE
+alone. The symptom a user sees is a row with **no name** where `Source` and `Time` above and below
+it are labelled normally; clicking the row in the IDE makes the name appear, and saving then
+repairs the file.
+
+**Measured as a clean before/after on one VI** - the generated file, and the same file after a
+human selected that row and saved it. Exactly one entry of the VCTP's index table differs:
+
+```
+before   <TypeDesc Index="87" FlatTypeID="26" />      FlatTypeID 26 = Label="Type"  NumUInt32
+after    <TypeDesc Index="87" FlatTypeID="10" />      FlatTypeID 10 = Label="Tick"  NumInt32
+```
+
+and in the block-diagram heap the row's own pointer moves with it:
+
+```
+before   nmxDCO uid=4797   typeDesc TypeID(76)   <i>4</i>
+after    nmxDCO uid=4797   typeDesc TypeID(84)   <i>4</i>
+```
+
+So the row said "field 4" - the payload - while declaring the type of the event's **`Type`**
+field. The two disagreed, LabVIEW could resolve no name for the row, and drew nothing. The wire
+carried the wrong type with it: `signal uid=4876` went `lastSignalKind 16643 -> 259` and its
+`compressedWireTable` from `0208` to `04080100B839`.
+
+**A RUN PROVES NOTHING HERE, and that is the part worth carrying.** The VI ran correctly with the
+wrong type - `Current Count` reached 50, `error out` clean, 10.4 s for 50 x 200 ms.
+
+**The explanation this paragraph gave for that was WRONG, and a third pair settled it 2026-09-13.**
+It said the run passed only because placeholder and payload were both 32-bit integers, and
+predicted "a wrong type on a live wire" wherever they were not. Measured on a `double` payload fed
+through an `int32` placeholder - exactly that case - `Last Level` came back **3.5, undamaged**, and
+the type table shows why: the row pointed at FlatTypeID 33, an **unlabelled `NumFloat64`**, where
+the payload field is FlatTypeID 29, `Level | NumFloat64`. **Same type, missing label.** So the
+defect is not a type error on the wire; it is a row pointing at a type descriptor that carries no
+field name, which is precisely why LabVIEW can draw no name. The first pair's `Type | NumUInt32`
+against `Tick | NumInt32` was the unlucky variant, not the rule. Do not predict corrupted data
+from this defect - predict a nameless row, and check for it with the terminal-name rule below.
+
+**The human repair is one gesture**: open the VI, select the row so the name appears, save. Nothing
+else in the diagram changes.
+
+**The tool repair is NOT written yet**, and the reason is worth stating rather than leaving as a
+TODO: the row's pointer is a heap `TypeID(n)`, and **that numbering is not the VCTP's `FlatTypeID`
+and not its `Index` either** - measured, all three disagree on this file (`FlatTypeID` runs 0..43,
+the `Index` table reaches 89, the heap cites 76 and 84). Repointing the type means knowing which of
+those the heap indexes, and writing a repair against a guessed numbering is exactly the
+"plausible fixture" failure this repository has shipped three times. The next measurement is a
+controlled pair: generate one VI whose payload type DIFFERS from the placeholder's, fix it by hand
+as above, and diff - two examples pin the mapping where one cannot.
+
+#### What the repair writes, and what is still missing
+
+Settled 2026-09-13 over three hand-repaired pairs. **The value LabVIEW writes is the FlatTypeID of
+the `Event Data` cluster's member at the row's field index** - computable from the type table
+alone, with no heap involved:
+
+| pair | payload | `Event Data` members | field index | slot went |
+|---|---|---|---|---|
+| 1 | `Tick` NumInt32 | `25,26,27,28,`**`10`** | 4 | Index 87: FlatTypeID 26 -> **10** |
+| 3 | `Level` NumFloat64 | `34,35,36,37,`**`29`** | 4 | Index 110: FlatTypeID 33 -> **29** |
+
+Both land on `members[4]`. Pair 1 had been pointing at `members[1]` (`Type`); pair 3 at a type
+descriptor that is not a member at all - an unlabelled `NumFloat64`, i.e. the SINK's own type.
+
+**And with both sides in the same compile state the repair is ONE LINE.** Pair 3's before and after
+differ in exactly one line of the whole file - that index-table entry - and the block-diagram heap
+is byte-identical, the row still reading `typeDesc TypeID(35)`, `<i>4</i>`. Pair 1 looked bigger
+only because its two sides were not comparable; **force a LabVIEW save on the unrepaired file
+before diffing** (`lvai_set_vi_icon` does it), or the compile itself renumbers the type table and
+buries the one line that matters.
+
+**What is still missing is the ADDRESS, not the value.** The row's heap pointer is `TypeID(35)` in
+pair 3 while the slot repaired is `Index 110`; in pair 1 it is `TypeID(84)` against `Index 87`. No
+constant offset relates them (75 and 3), and the heap number is neither a `FlatTypeID` (they stop
+at 43) nor the `Index`. Until that bridge is measured the repair stays a hand gesture - and a tool
+that guessed it would write a correct type into the wrong slot, which is worse than the defect it
+replaces because nothing would then draw attention to it.
+#### Four pairs in, the VALUE is settled and the ADDRESS is not - stop looking this way
+
+The repair value rule held on every pair, including one VI carrying TWO payload fields:
+
+| pair | payload | field index | slot went to | = `members[index]`? |
+|---|---|---|---|---|
+| 1 | `Tick` NumInt32 | 4 | Index 87: 26 -> **10** | yes |
+| 3 | `Level` NumFloat64 | 4 | Index 110: 33 -> **29** | yes |
+| 4 | `Level`, `Rate` in ONE cluster | 4 and 5 | Index 125: 79 -> **30**, Index 126: 79 -> **31** | yes, both |
+
+So `EventData.members[fieldIndex]` is the value to write, on four rows across three files, and
+**consecutive rows repair to consecutive slots** (125, 126).
+
+**A CLUSTER PAYLOAD BECOMES SEPARATE ADJACENT FIELDS**, which is worth knowing on its own: a user
+event whose datatype is `cluster{double.Level,double.Rate}` gives an Event Data Node reading
+`fields="Source,Level,Rate"` with the two elements at indices 4 and 5, in one frame - not one
+cluster-valued field.
+
+**The address stayed unfindable, and these are the routes that were tried and failed:**
+
+- **A constant offset between the heap's `TypeID(n)` and the slot.** Pair 1 gives 87 against 84,
+  pair 3 gives 110 against 35, pair 4 gives 125/126 against 39/40. No offset fits two of them.
+- **The heap naming the slot at all.** In pairs 3 and 4 the block-diagram heap is byte-identical
+  across the repair - every `term` and every `nmxDCO` unchanged, at both levels - while the type
+  table changes. Whatever connects a row to its slot is not written in the heap that pylabview
+  parses.
+- **Finding the slot by the wrong value it holds.** In pair 4 SIX slots carried the stale
+  FlatTypeID 79 and only two of them were repaired, so "the slot holding the sink's type" is
+  ambiguous 3 : 1.
+- **`FlatTypeID` and the heap number being the same list.** They coincide in pair 4
+  (37, 38, 39, 40 = `members[0..3]`) and are off by one in pair 3 and far apart in pair 1. A
+  coincidence of small tables, not a rule.
+
+One real invariant did come out of it: **a node's row typeDescs are CONSECUTIVE**, and pair 1's
+repair restored exactly that (76 -> 84, giving 82, 83, 84, 85). Pairs 3 and 4 were already
+consecutive, which is why their heaps needed no repair at all. That is a cheap thing to check and
+it is NOT sufficient to locate a slot.
+
+**Recommendation: leave the repair a hand gesture.** It costs one selection and a save, the
+detection now names the row before anyone ships the VI, and a tool that guessed the slot would
+write a correct type into one of the other five - silently, with the nameless row repaired and
+nothing left to notice the damage. The next honest attempt needs a source of truth this
+investigation does not have: NI's own definition of what the heap TypeID indexes.
+### A ONE-FRAME event structure cannot be REGISTERED at all
+
+Measured 2026-09-12 while building a user-event producer/consumer from scratch:
+`pylv-set-event-spec.py` refuses a structure whose only frame is the user-event one, with
+`AssertionError: no dIdx on this event structure`. `dIdx` belongs to the frame SELECTOR
+list, and LabVIEW does not create one for a structure that has nothing to select between,
+so there is no slot to write a spec into. The script is right to stop rather than invent
+one.
+
+The fix costs nothing: **author at least TWO frames.** In that build the second was a
+static `"Stop": Value Change` on a front-panel boolean, which the VI wanted anyway as a
+manual stop; `lvai_generate_vi_with_events` then registered both first time.
+
+This compounds the "smallest case" lesson above rather than repeating it. There, one frame
+was the case whose measurement failed to generalise; here it is a case the toolchain
+**cannot complete at all**. It was hit once, on the first of three builds of the same VI,
+and then had to be carried in the task prompt of the other two because it was written down
+nowhere - which is exactly the cost this document exists to remove.
+
 ### A NEW event frame is authorable too - the frame count follows the input
 
 The last piece, and it makes the event structure fully AIXML-authorable.
@@ -1233,6 +1375,148 @@ four selectors back as `Value Change`.
 very first real run of the tool it was the one thing that mattered, and it is
 the one thing the tool cannot check for itself.
 
+
+### THE EVENT DATA NODE's FIELD SELECTION - measured 2026-09-11, and NOT solved
+
+The user's correction of a generated producer/consumer started this: its user-event frame took the
+payload out of **front-panel Local Variables** instead of off the Event Data Node, which is the
+whole point of a user event. Everything below is what one afternoon of measuring that established.
+The honest summary first: **the node itself is writable and the WIRE is not, and trying the wire
+killed LabVIEW.**
+
+**AIXML EXPRESSES IT PERFECTLY - the importer is what drops it.** LabVIEW's own export of the
+hand-corrected VI reads exactly what an author would write:
+
+```xml
+<Node _name="Event Data Node" fields="Source,Type,Time,Message,Value"
+      outputs="Source:,Type:,Time:,Message:51.Message,Value:51.Value" uid="51" uid_parent="46"/>
+<Node _name="Bundle By Name" fields="Command,Message,Value"
+      inputs="Command:55.value,Message:51.Message,Value:51.Value,input cluster:54.value" uid="56" .../>
+```
+
+Feed that same document to `ConvertAIXMLToVI` and the node comes back **`Source,Type,Time`** and
+**both wires are gone**, `errorCode 0`, no message anywhere. So "AIXML cannot author a field
+selection" - which is what a generated comment in the user's VI claimed, and what
+`lvai_generate_vi_with_events` says in its own note - is the wrong half of the sentence. The dialect
+expresses it; the importer discards it.
+
+**`Source,Type,Time` is what the FINISHED VI reads; mid-route the node is worse, and briefly
+looks like a different fault.** Re-measured 2026-09-11 over the whole route on the user's own
+corrected VI, re-generated as `Probe.vi`:
+
+| stage | the user-event frame's node | its consumer, `Bundle By Name` |
+|---|---|---|
+| the source document | `fields="Source,Type,Time,Message,Value"` | `Message:51.Message,Value:51.Value` |
+| after `lvai_generate_vi_with_events` | **`fields=",,"`** - three rows with NO names | `Message:,Value:` |
+| after `lvai_wire_dynamic_events` | `fields="Source,Type,Time"` | `Message:,Value:` |
+
+The `,,` is transient and means only that the frame has no registration yet, so LabVIEW cannot
+name the rows it is showing. It resolves to the documented three as soon as the user event is
+finished. **The wires never come back at either stage**, which is the part that matters.
+
+**AND THE DROPPED WIRES ARE WHY THE FINISHED VI IS `eBad` - the loss is not cosmetic.** Same run:
+wire plus finish completed, every step `exitCode 0`, and `execState` was still **0**, with
+`linkerErrors` saying only `The VI is not executable.` A `Bundle By Name` requires every input it
+shows, and two of its three were now unwired. So on this route a dropped field selection does not
+degrade the VI - it BREAKS it, and the one artefact that names the cause is the
+`dataFieldsDropped` list `lvai_generate_vi_with_events` now returns per frame. Read as a bare
+`execState 0` it looks exactly like the wiring having failed, which is the wrong place to look.
+
+**The cause is the ORDER the event route runs in.** At conversion time the frame carries no event
+registration - that is written afterwards, by `pylv-set-event-spec.py` - so the only fields LabVIEW
+can offer are the three every event has. It is not a parser gap and no spelling avoids it.
+
+**And there is no second AIXML pass to put it back.** `ApplyAIXMLToVI` is gated for third-party
+clients (§14 of `aixml-reference.md`) and `Apply code changes.vi` is a measured no-op, so
+`ConvertAIXMLToVI` - a whole-VI generation, always with unregistered frames - is the only write
+path AIXML has.
+
+**A WIRE AUTHORED FROM A DROPPED TERMINAL IS DROPPED IN SILENCE, and that is the trap for the
+author.** Measured on a second probe that wired the Bundle's `Message`/`Value` from the node's
+surviving `Type` and `Time` instead: the frame's `signalList` came back with **no signal touching
+the data node at all**. LabVIEW refuses a wire whose ends disagree on type and says nothing. So
+authoring `fields=` optimistically does not degrade to "the node is smaller than asked for" - it
+degrades to "the consumer's inputs are silently unwired".
+
+**VI SERVER CANNOT REACH THE NODE - this is the finding that closes the obvious route.**
+`{LV.EventStructure}` `Diagrams[]` returns one reference per frame and the objects on them cannot
+be read:
+
+| what was read | result |
+|---|---|
+| frame 0 `All Objects[]` | 13 references, and **every** `Class Name` read answers **`Error 1055`** |
+| frames 1 and 2 `All Objects[]` | **empty** |
+| the same through the IDE's application instance (`Project\3AActive Project` -> `Application`) | identical |
+| the same with `Diagrams[]` read as `{LV.Structure}` rather than `{LV.EventStructure}` | identical |
+
+The top-level diagram and a While Loop's diagram read perfectly in the same helper, so it is
+specific to an Event Structure's frames - the same family as the earlier measurement that
+`Terminals[]` on one returns ten entries of which only index 0 is readable. **With no reference
+there is no `Resize` to grow the node and no `Connect Wire` to wire it**, and
+`{LV.GrowableFunction}` `Resize` is otherwise exactly the method this would need.
+
+**THE HEAP HOLDS IT IN PLAIN TEXT, which is why the next part looked easy.** A/B of the user's
+corrected VI against its own predecessor - same lineage, same uids:
+
+| | before | after |
+|---|---|---|
+| `eventDataNode` 51 `termList` | 4 | **6** |
+| the rows' `<i>` | `-, 1, 2` | `-, 1, 2, **4**, **5**` |
+| signal 825 `termList` | `[396 (Message local), 818]` | `[**1149**, 818]` |
+| signal 828 `termList` | `[757 (Value local), 821]` | `[**1197**, 821]` |
+
+`<i>` is the index of the event-data field the row shows: `0` Source, `1` Type, `2` Time, `3` the
+payload cluster, **`4` and `5` its first two elements**. The signal uids and the sink terminal uids
+are IDENTICAL on both sides, so the IDE gesture is exactly "add two rows, move two wire ends".
+
+**SO THE ROW HALF WAS TRIED AS PURE SUBSTITUTION, AND IT WORKS.** Repurpose the rows LabVIEW
+already made instead of adding any - rewrite `<i>1</i>` to `<i>4</i>` and the row's `typeDesc` -
+and LabVIEW's own export then reads `fields="Source,Message,Value"` with both wires bound. Two
+payload fields per frame is the ceiling, because a converted frame has three rows and the `Source`
+row carries no `<i>` element to rewrite.
+
+**AND THE WIRE HALF CORRUPTS THE WIRE TABLE. MEASURED, WITH A CRASH.** Moving a `signal`'s source
+end onto the new row leaves its `compressedWireTable` describing the route to the OLD source, and
+LabVIEW notices:
+
+```
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF:
+    Wiring insanity found and fixed in WireTable::SanityCheck().
+    Wiretable nxt field disagreed with the joint coordinates.  UID:627
+[Executing: "lvai_wire_dyn_events.vi"]
+```
+
+Eight of those, first at 12:57:12 and **none before it in a log going back to 09:58**, and at
+13:02:52 **LabVIEW.exe was gone from the process table**. The two VIs that survived were left
+`execState 0` with a diagram that rendered correctly and exported exactly as intended - so nothing
+short of LabVIEW's own verdict saw it. Same shape as `pylv-conpane.py --reindex`, which was removed
+rather than shipped for this exact reason: **a heap edit that re-extracts cleanly and reads back as
+intended is not evidence that LabVIEW will accept it.**
+
+`compressedWireTable` is geometry, and "I am only substituting, not composing" was wrong the moment
+a wire END moved. The script is kept as evidence in
+`experiments/pylabview/event-data-fields/` - **not** under `scripts\`, because that folder ships.
+
+**One more thing the measurement settled, and it is the reason the VIs were eBad even before the
+crash: AN UNWIRED LOCAL VARIABLE IS A BROKEN VI, not an untidy one.** `ValidateAIXML` on a
+three-element probe:
+
+```
+Local Variable: This variable is not connected to anything.
+Either wire it or delete it.
+```
+
+Two full builds came back `execState 0` before that was probed, with the diagram rendering
+perfectly and the export exactly right. So taking a wire off a Local Variable means deleting the
+node in the same operation.
+
+**WHAT TO TELL AN AUTHOR TODAY.** For a **front-panel** event the existing advice holds - read the
+control's TERMINAL inside its own frame, which is what NI's templates do. For a **USER EVENT** that
+advice has no referent: the payload has no front-panel terminal, and a Local Variable is not it
+either, because it reads whatever the panel holds at that instant rather than what the event
+carried. Until this is solved the two IDE gestures - grow the node, drag two wires - stay with the
+person, and a generated frame should say so rather than quietly shipping a local-variable read that
+looks equivalent and is not.
 
 ## 6. What is still genuinely out of reach
 
