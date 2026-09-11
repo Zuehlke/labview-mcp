@@ -71,6 +71,26 @@ USER_EVENT = (('source', '1'), ('regFlags', '1'), ('eSource', '25'),
               ('type', '1000'), ('eFlags', '0'), ('ddoUID', '0'))
 
 
+def xml_text(value):
+    """Escape a string for an XML TEXT NODE.
+
+    The cached frame label goes into `<text>...</text>`, so `&`, `<` and `>`
+    have to be entities. A DOUBLE QUOTE must NOT be escaped - NI's own file
+    stores the quotes around a control name raw
+    (`<text>" [1] "Button 1": Value Change "</text>`), and pylabview reads the
+    content up to `</text>`.
+
+    MEASURED 2026-09-11, and it is why this function exists rather than being
+    inlined: the user-event label ` <Data Event>: User Event ` was written with
+    raw angle brackets, and `pylv_rebuild` then died with
+    `not well-formed (invalid token): line 4662, column 43` - AFTER all three
+    frames had registered successfully, so the failure named the rebuild and
+    not the label. The static path had the same hole for any control label
+    containing `&` or `<`; it was simply never exercised.
+    """
+    return value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
 def resolve_control(bundle, base, name):
     """A front-panel control's ddoUID, by its owned label.
 
@@ -200,7 +220,7 @@ def main(bundle, base, diagram_idx, control, label=None):
         # double quotes. Written for the same reason as the static case: the IDE
         # reads this text and not the spec, so without it the frame shows
         # " [N]  " however correct the spec is.
-        want = '" [%s] <%s>: User Event "' % (diagram_idx, user_event)
+        want = xml_text('" [%s] <%s>: User Event "' % (diagram_idx, user_event))
         m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
         assert m, "no selString on this event structure"
         s = s[:m.start(2)] + want + s[m.end(2):]
@@ -215,7 +235,7 @@ def main(bundle, base, diagram_idx, control, label=None):
         # Matching to the next quote stops inside the label and every further
         # call then APPENDS instead of replacing, which built up
         #   " [2] "Button 2": Value Change "Button 1": Value Change "stop": ... "
-        want = '" [%s] "%s": Value Change "' % (diagram_idx, label)
+        want = xml_text('" [%s] "%s": Value Change "' % (diagram_idx, label))
         m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
         assert m, "no selString on this event structure"
         s = s[:m.start(2)] + want + s[m.end(2):]

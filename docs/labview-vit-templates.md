@@ -891,80 +891,66 @@ missing. `pylv-set-event-spec.py` CAN supply it once the wire is in place - meas
 subsection. LabVIEW does not recompute it from the wire on its own, so both halves are needed: the
 wire, then the spec.
 
-#### THAT MEASUREMENT, TAKEN 2026-09-11: `pylv-set-event-spec.py` CAN SUPPLY IT
+#### THAT MEASUREMENT, TAKEN 2026-09-11: THE SPEC IS WRITABLE, BUT ONLY AFTER THE WIRE
 
-**With the wire in place, writing the user-event `EventSpec` WORKS, and it survives LabVIEW's own
-save.** Measured on `C:	emp\ProducerTest\Producer Consumer Events.vi` - a producer/consumer
-authored from scratch with two `Value Change` frames and one user-event frame, the registration
-refnum authored in as an ordinary `<Tunnel>` and branched onto the dynamic terminal by
-`lvai_wire_dynamic_events`. Writing NI's row into `diagramIdx 2`:
+**LabVIEW NORMALISES a user-event `EventSpec` when it LOADS the VI, against the dynamic-event wire
+present in the FILE at that moment.** That one sentence is the whole finding, and everything else
+here follows from it. The row to write is NI's own:
 
 | `diagramIdx` | `source` | `regFlags` | `eSource` | `type` | `eFlags` | `ddoUID` | `dynIndex` |
 |---|---|---|---|---|---|---|---|
 | 2 | 1 | 1 | 25 | 1000 | 0 | 0 | 1 |
 
-took the VI from `execState 0` to **`execState 1`**, confirmed three independent ways:
+Write it into a file that **already carries the wire** and LabVIEW keeps it: `execState` 1, the
+export reads the frame as ` <Data Event>\3A User Event `, and a later LabVIEW save leaves the row
+untouched. Write it **before** the wire and LabVIEW throws it away on its next load - `type`
+1000 -> 0, `dynIndex` 1 -> 2, the frame label back to `<#2>: Unknown Event (0x0)`. The spec is
+genuinely in the file in between, and it is inert.
 
-- **LabVIEW's own AIXML export** reads the frame as ` <Data Event>A User Event `, where it had
-  read ` <#2>A Unknown Event (0x0) `.
-- **`lvai_exec_state`** answers `1`, `broken: false`, empty `VILoadErr`.
-- **The frame's `eventDataNode` normalises.** Its `objFlags` went `1376260` -> `1376256` and its
-  three terminals `1048640` -> `64`, which is exactly what the working static frame carries. The
-  bit `0x100000` on those terminals is therefore a CONSEQUENCE of an unresolved event, not a second
-  defect - worth knowing, because it reads like one and sends you looking at the data node.
+**SO THE ROUTE IS THREE STEPS, and the middle one destroys the first one's work:**
 
-**And it is durable.** A LabVIEW save forced through `lvai_set_vi_icon` (`viResaved: true`) left
-`regFlags 1`, `type 1000` and `dynIndex 1` untouched. So the spec is LabVIEW's INPUT here, not only
-its output.
+1. `lvai_generate_vi_with_events` - converts, strips, shows the dynamic terminals, registers every
+   frame. The static frames are finished here. The user-event frame's spec is written and will be
+   lost, because the wire cannot exist yet.
+2. `lvai_wire_dynamic_events` - branches the refnum net onto the dynamic terminal and SAVES. That
+   save is a load-and-write, so it is what discards the spec from step 1.
+3. Write the user-event spec AGAIN onto the now-wired file and rebuild - strip the compiled code
+   first, because step 2's save added `VICD`/`GCDI` and pylabview copies those through unparsed.
 
-**THIS SECTION CLAIMED THE OPPOSITE FOR PART OF 2026-09-11, and the wrong version is worth
-recording.** It was headed *"IT IS NEITHER. THE SELECTION IS STILL AN IDE CLICK"* and carried a
-five-row table of `eBad` results whose last row was *"NI's row, field for field"* - the same row
-that works above. Its conclusion, that a user event is "scriptable but for its selection", was
-wrong and would have stopped the next reader from trying. **What made those five readings `eBad` is
-NOT established**; the bundles behind them are gone. The shape to suspect is a bundle extracted
-before `lvai_wire_dynamic_events` ran, which would mean the wire and the spec were never in the same
-file at once - but that is a hypothesis, not a measurement, and it is recorded as one.
+Measured end to end on two VIs, both `eBad` -> `eIdle` on exactly that third step, `type 1000` and
+`dynIndex 1` surviving every later LabVIEW save. Step 1 now says this in its own `note` when a
+document has user-event frames and verify comes back broken, rather than blaming the diagram.
 
-**What is NOT isolated: which of the three fields is decisive.** `regFlags`, `type` and `dynIndex`
-were changed together, from `0 / 0 / 2` to `1 / 1000 / 1`. `type 1000` is `0x03E8` and matches the
-`eventRegItem`'s own `code`, so it is the obvious candidate; `regFlags` is 0 on this VI's two
-working static frames, so it is probably not load-bearing. Neither is measured. Write the whole row.
+**THIS SECTION HAS NOW BEEN WRONG TWICE IN ONE DAY, in opposite directions, and both are worth
+keeping.** It first said *"THE SELECTION IS STILL AN IDE CLICK"*, with five `eBad` rows whose last
+was NI's row field for field - the conclusion being that a user event was scriptable except for its
+selection. Corrected to *"writing the row works"*, which was right about the row and **silent about
+the order**, so it read as a one-step fix. Both readings are explained by the sentence at the top:
+the five `eBad` rows were almost certainly written before the wire, which is exactly what step 1
+does and exactly what LabVIEW discards.
 
-**Two things that are NOT the problem, each checked before the spec was touched.** The dynamic
-terminal's type is already the fully specified one - `Refnum RefType="EventReg"` wrapping the
-`UserEvent` "Data Event" with `CField4="0x03E8"` - so AIXML does carry the registration's type
-through a round trip. And the bundle held **no `VICD` blocks**, so stale compiled code is not what
-made the earlier attempts inert either.
+**And the process lesson is the one that actually saved this.** The corrected version shipped with
+two items written down as NOT YET VERIFIED - the derived frame label, and the absence of an
+end-to-end run. **Both were wrong**, and the end-to-end run found both in one call: the label
+`" [N] <Name>: User Event "` went into an XML text node with RAW angle brackets and killed
+`pylv_rebuild` with `not well-formed (invalid token): line 4662, column 43` - a message naming the
+rebuild, two steps downstream of the cause. It is escaped now (`xml_text`), and the static path had
+the same hole for any control label containing `&` or `<`, never exercised. **Writing down what you
+have not checked is what makes the next run a test instead of a demonstration.**
 
-**A save did NOT prune the unregistered frame**, which qualifies "a SAVE prunes" above: the frame
-carried a spec - an unknown-event one - and survived two saves. Pruning was measured on frames with
-NO spec at all.
+#### WHAT THE TOOLS DO
 
-#### WHAT THE TOOLS DO WITH IT, AND THE TWO THINGS STILL UNVERIFIED
+`pylv-set-event-spec.py` takes `--user-event <Name>` and writes the row above. `EventFrames` reads
+the selector ` <Name>\3A User Event ` as a registerable frame instead of refusing the document
+(`unrecognisedSelector`), so `lvai_generate_vi_with_events` accepts an Event Structure mixing static
+and user-event frames; `Frame.SpecArguments` decides the arguments per kind so the call site cannot
+spell one wrongly. What is NOT automated is step 3 - it is the obvious next tool, because it never
+varies, and until it exists a user-event VI needs those two extra calls by hand.
 
-`pylv-set-event-spec.py` takes a third argument form - `--user-event <Name>` - and writes the row
-above. `EventFrames` reads the selector ` <Name>\3A User Event ` as a registerable frame instead of
-refusing the document (`unrecognisedSelector`), so `lvai_generate_vi_with_events` accepts a VI whose
-Event Structure mixes static and user-event frames. `EventFrames.Frame.SpecArguments` decides the
-arguments per kind, so the call site cannot spell one of them wrongly.
-
-**Verified without LabVIEW, against the real failure**: the script was run over the bundle that had
-been `eBad`, and its row came out IDENTICAL to the one LabVIEW itself kept across its own save,
-with both static frames untouched. That is the check that counts - the unit tests were written
-alongside the change and prove only that the argument parsing does what it says.
-
-**STILL UNVERIFIED, both needing a client restart to reach the rebuilt server:**
-
-1. **The cached frame text `" [N] <Name>: User Event "` is DERIVED, not measured.** It comes from
-   LabVIEW's export selector by analogy with the static form, because the user-event frame was not
-   the DISPLAYED one in the VI measured here, so LabVIEW never wrote its text. The IDE reads this
-   string and not the spec, so if the shape is wrong the frame shows a wrong label while `execState`
-   stays 1 and every render looks right - the same silent class as the static case this file already
-   records. **To settle it:** make the user-event frame the displayed one, let LabVIEW save, read
-   `selString` back. If LabVIEW rewrites it, its version is the answer.
-2. **`lvai_generate_vi_with_events` has not been run end to end over a user-event document.** Only
-   its two halves are checked.
+**`dynIndex` is the registration item's position and only `1` is measured** - a structure fed
+several user events needs the real one. Which of `regFlags`, `type` and `dynIndex` is decisive is
+also not isolated; they were changed together from `0 / 0 / 2`. `type 1000` is `0x03E8` and equals
+the `eventRegItem`'s own `code`, so it is the candidate. Write the whole row.
 
 **Do not resolve heap `TypeID(n)` against `VCTP`'s `TopLevel` list.** A VI that has a `DTHP` block
 indexes its diagram types there, and reading them out of `VCTP` produces confident nonsense - on

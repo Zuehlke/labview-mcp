@@ -236,6 +236,35 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             }
 
             var broken = Field(steps[^1]?["answer"]?.ToJsonString() ?? "", "broken") == "true";
+            var userEvents = toRegister.Count(f => f.UserEvent is not null);
+
+            // A USER-EVENT FRAME CANNOT BE FINISHED BY THIS TOOL ALONE, and saying so here is the
+            // difference between a two-call fix and a day of archaeology.
+            //
+            // MEASURED 2026-09-11, end to end, twice. LabVIEW NORMALISES a user-event EventSpec
+            // when it LOADS the VI, against the dynamic-event wire present in the FILE at that
+            // moment. The wire is what AIXML cannot express, so at this point in the pipeline it
+            // does not exist yet - and LabVIEW therefore throws the spec away on its next load:
+            // `type` 1000 -> 0, `dynIndex` 1 -> 2, and the frame label back to
+            // `<#2>: Unknown Event (0x0)`. The spec written above is real in the file and inert.
+            //
+            // So the route is THREE steps and this is the first: generate here, then
+            // lvai_wire_dynamic_events (which saves, discarding this spec), then write the spec
+            // AGAIN onto the now-wired file and rebuild - at which point LabVIEW keeps it and the
+            // VI is executable. Both measured VIs went eBad -> eIdle on exactly that third step.
+            if (verify && broken && userEvents > 0)
+                return Outcome(false, "verify", steps, frameList, total, viPath, directory,
+                    keepBundle,
+                    $"The {userEvents} user-event frame(s) are NOT FINISHED, and that is expected " +
+                    "at this step rather than a fault in your diagram. A user event fires through " +
+                    "the event registration refnum, and the wire from it onto the Event " +
+                    "Structure's DYNAMIC EVENT TERMINAL is the one thing AIXML cannot express - so " +
+                    "it is not in the file yet, and LabVIEW discards a user-event spec it cannot " +
+                    "resolve on its next load. NEXT: call lvai_wire_dynamic_events on this VI, " +
+                    "then write the user-event spec again onto the wired file " +
+                    "(pylv-set-event-spec.py <bundle> <base> <diagramIdx> --user-event <Name>) and " +
+                    "rebuild. Then execState reads 1. The static frames above are already done.");
+
             if (verify && broken)
                 return Outcome(false, "verify", steps, frameList, total, viPath, directory,
                     keepBundle,
@@ -247,7 +276,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
                 $"Registered {toRegister.Count} event(s) - " +
                 $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
-                $"{toRegister.Count(f => f.UserEvent is not null)} user event(s). " +
+                $"{userEvents} user event(s). " +
                 "LabVIEW can run the result. " +
                 "TWO THINGS THIS DOES NOT TELL YOU. Every Event Data Node came back as " +
                 "`Source,Type,Time` - conversion drops the field selection - so a frame needing " +
