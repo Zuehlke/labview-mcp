@@ -118,6 +118,24 @@ The general lesson, which is the repository's own: **a fix verified only by the 
 alongside it is not verified.** A plain `dotnet test` was green throughout; only a real
 `git push` from a worktree found either problem.
 
+**AND THE SAME LEAK REWROTE THE REPO'S IDENTITY, which is the symptom that actually reached a
+commit.** `core.bare` was the loud half; the quiet half is that the fixture also ran
+`git config user.email` / `user.name` / `commit.gpgsign`, so the real `.git/config` gained a
+`[user]` section reading `fixture <fixture@example.invalid>` and a `[commit] gpgsign = false` —
+**neither section existed before** — and the next two commits on the branch were authored by
+`fixture`. Nothing warns: `git commit` uses whatever identity resolves, and the repo-local value
+wins over the global one. **The repair is to UNSET the local keys, not to set a value**: the
+identity had always come from `~/.gitconfig`, so writing a guessed name would have pinned the repo
+to it for ever. `git config --unset user.name`, `--unset user.email`, `--unset commit.gpgsign`,
+then `git rebase <base> --exec "git commit --amend --no-edit --reset-author"` over the affected
+range. Check with `git config --show-origin --get user.name` — the *origin* is the answer, not the
+value.
+
+So one inherited `GIT_DIR` produced three distinct kinds of damage — a bare repo, a wrong author,
+and silently disabled commit signing — and only the first announced itself. **When a stray process
+has written to a repo's config, diff the whole file against what it should contain rather than
+fixing the symptom you noticed.**
+
 ## The .NET SDK preflight
 
 The gate checks for a usable SDK before building, and uses an SDK-bearing `dotnet` even when it is
