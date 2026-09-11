@@ -10,6 +10,24 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- stdio MCP server: a stray Console.Write would corrupt the protocol stream -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- 0.0.0 means "not a release build", and it is deliberately not 1.0.0.
+         The release workflow overrides it with the tag (-p:Version=X.Y.Z, from
+         scripts\Assert-ReleaseTag.ps1), so a stamped exe names the release it came from and an
+         unstamped one says so instead of impersonating one.
+
+         WHY: until 2026-09-11 nothing set Version at all, so every release ever published carried
+         the SDK default 1.0.0 - and a local debug build carried the identical number. Measured
+         over the three installs on one machine that day, all three read `1.0.0`, which is why
+         "which version is this?" could only be answered by hashing 800 files. The commit SHA was
+         in there the whole time (the SDK appends SourceRevisionId to InformationalVersion), so the
+         plumbing existed and only the semantic half was missing. docs\release-versioning.md. -->
+    <Version>0.0.0</Version>
+    <Product>LabVIEW MCP</Product>
+    <Company>Zühlke Engineering AG</Company>
+    <Authors>Zühlke Engineering AG</Authors>
+    <Description>Read, write and run LabVIEW code from an AI assistant over MCP.</Description>
+    <Copyright>Copyright (c) Zühlke Engineering AG</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

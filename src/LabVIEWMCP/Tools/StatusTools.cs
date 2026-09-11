@@ -68,6 +68,10 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["port"] = connection.Port,
                 ["discoveredVia"] = connection.DiscoveredVia,
                 ["applicationLanguage"] = config.Language,
+                // Which build of THIS server is answering. A `-dev` suffix means the exe did not
+                // come from the release workflow; `serverCommit` pins it exactly either way.
+                ["serverVersion"] = ServerVersion.Current.Display,
+                ["serverCommit"] = ServerVersion.Current.Commit,
                 ["scriptsDirectory"] = ScriptsDirectory(),
                 ["claudeAssetsDirectory"] = ClaudeAssetsDirectory(),
                 // The add-on build the export cache is keyed to. Reported because a dropped cache

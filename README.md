@@ -1,8 +1,3 @@
-> $${\color{orange}\Large\textsf{There is currently a problem with the installer.}}$$
-> $${\color{orange}\Large\textsf{Please use the repository or the ZIP file for the tag directly!}}$$
-> $${\color{orange}\Large\textsf{We apologise for the inconvenience!}}$$
->
->
 > ## 🧪 Read this before you let a robot touch your VIs
 >
 > **Not affiliated with, endorsed by, or supported by NI or Emerson.** Nobody at NI asked for
@@ -635,11 +630,50 @@ install has no repository root.
 What still has to exist on the target machine: LabVIEW with its AI feature, the .NET 8 runtime,
 and — only for the documentation generator — `python-docx` and a Chromium browser.
 
+### Which version am I running?
+
+Four places answer it, in descending order of convenience:
+
+```powershell
+LabVIEWMCP.exe --version              # version, commit, exe path, and the archive's VERSION.txt
+Get-Content <install root>\VERSION.txt # tag, version, commit, build time, workflow run
+claude plugin list                     # the plugin's version, from plugin.json
+```
+
+and from inside a session, `lvai_status` or — with **no LabVIEW running** — `pylv_status`, both of
+which report `serverVersion` and `serverCommit`.
+
+A version of `0.0.0-dev` means the exe was not built by the release workflow. On an install from
+**before v1.3.1** none of the above exists, and the only identifier is the commit the .NET SDK has
+always embedded:
+
+```powershell
+(Get-Item <install root>\bin\LabVIEWMCP.exe).VersionInfo.ProductVersion
+```
+
+which gives `<version>+<sha>`; `git describe --tags --exact-match <sha>` names the release. Every
+release before v1.3.1 reports version `1.0.0`, because the project set none — so on those copies the
+SHA is the *only* thing that distinguishes them.
+
+**The plugin install and the Releases-page download are the same bytes**, by construction: the
+marketplace declares the plugin as an `archive` source pointing at
+`/releases/latest/download/labview-mcp.zip`. Measured over one tag, 732 files, every hash equal,
+the pylabview bundle included. If two installs behave differently, compare what release each one
+reports before suspecting the packaging — and verify either one against the release's own manifest:
+
+```powershell
+.\scripts\Compare-Installs.ps1 -PluginRoot <install root> -ManifestPath .\labview-mcp.manifest.sha256
+```
+
+[`docs/release-versioning.md`](docs/release-versioning.md) has the measurements.
+
 ### Troubleshooting
 
 | Symptom | Cause and fix |
 |---|---|
 | Server does not appear at all | Config not loaded — restart Claude Code. For project scope, confirm you approved it. |
+| The plugin install seems to have **less** than the zip download — fewer agents, missing scripts, `pylv_*` unusable | Not a packaging difference: both routes take the same archive. It is a **stale marketplace catalogue** — it does not refresh on demand, so `claude plugin install` can fetch an archive several releases old. Measured 2026-09-11: a catalogue last updated 13 days earlier was serving a copy three releases behind, missing 5 of the 8 agents and all of `bin\claude\`. Fix with `claude plugin marketplace update zuehlke-labview` then `claude plugin update labview-mcp`, and restart. Confirm with `LabVIEWMCP.exe --version` on each install. |
+| A manually extracted install misbehaves — `python.exe` prompts, or the bundle fails to import | Explorer's "Extract All" propagates the Mark-of-the-Web `Zone.Identifier` stream onto every extracted file. Extract with `tar -xf labview-mcp.zip -C <dir>` (`tar` ships in `System32` on Windows 10+), or check with `Get-Item -Stream Zone.Identifier` and `Unblock-File`. |
 | Every `pylv_*` tool answers `notProvisioned` | The 38 MB pylabview bundle is not beside the exe. On a plugin or zip install that means the install predates **v0.9.2**, the first release to carry it (the asset went from 32 MB to 49 MB): `claude plugin update labview-mcp`, or re-extract the latest `labview-mcp.zip`, then restart the client. In a checkout, run `tools\pylabview\provision.ps1`. `LabVIEWMCP.exe --pylv-status` answers in one line from either, and `LABVIEWMCP_PYLABVIEW` points at a bundle kept elsewhere. |
 | Server fails to start | The `command` path is wrong or unbuilt. Run the `.exe` in a terminal: it should log two `info:` lines to stderr ("transport reading messages", "Application started") and then wait on stdin. Anything else is the real error. |
 | `ok: false`, `InvalidOperationException`, "Could not find a port serving lvai.LVAI" | LabVIEW is not running, or its AI feature is off. The message lists every port that was probed. |
@@ -920,42 +954,68 @@ git tag v0.9.0        # lowercase v + semver — this is the convention
 git push origin v0.9.0
 ```
 
-The tag must be a **lowercase `v`** followed by the version (`v0.9.0`, `v1.2.3`). The workflow
-triggers only on tags matching `v*`, and GitHub matches that **case-sensitively**, so an uppercase
-`V0.9.0` is silently ignored and no release is built.
+The tag must be **`vX.Y.Z`** — a lowercase `v` and exactly three decimal numbers. Check it before
+you push, which is the cheapest moment to be told:
 
-This is not hypothetical: `V0.8.5` was tagged uppercase, built nothing, was cut by hand instead —
-and since `/releases/latest/` follows the newest **published** release whether the workflow built it
-or not, that broke `claude plugin update` with a 404 for everyone until `v0.8.6` was cut from the
-same commit. Never publish a release by hand.
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/Assert-ReleaseTag.ps1 -Tag v1.4.0
+```
+
+The workflow runs the same script as its **first** step and refuses anything else with a diagnosis
+naming the actual mistake, the probable intended tag, and the delete-and-retag commands — so a bad
+tag costs seconds instead of a ten-minute build, and publishes nothing.
+
+Each refused shape is a distinct hazard. An uppercase `V0.9.0` is silently ignored, because the
+workflow triggers on `v*` and GitHub matches that **case-sensitively** — not hypothetical: `V0.8.5`
+was tagged uppercase, built nothing, was cut by hand instead, and since `/releases/latest/` follows
+the newest **published** release whether the workflow built it or not, that broke
+`claude plugin update` with a 404 for everyone until `v0.8.6` was cut from the same commit. Never
+publish a release by hand. A two-part tag such as `v10.4` also sorts **above** every three-part tag
+in `git tag --sort=-v:refname`, so it masks the real newest release in every listing. And a leading
+zero (`v1.02.3`) is refused because MSBuild reads `02` as `2`, so the tag and its zero-free twin
+would stamp an identical version into every artefact while remaining different git refs. The whole
+table is in [`docs/release-versioning.md`](docs/release-versioning.md) §4.
 
 On the tag push, the workflow runs on `windows-latest` and:
 
-1. runs the test suite;
-2. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
+1. validates the tag and parses it into a version, before anything else runs;
+2. runs the test suite;
+3. builds Release and verifies the embedded documentation is intact in the assembly — a plugin
    install is a binary-only install, so this is the only proof the knowledge tools still answer;
-3. publishes the self-contained, single-file, **untrimmed** `win-x64` exe;
-4. assembles the pylabview bundle with `tools\pylabview\provision.ps1`, from a pinned CPython plus
+4. publishes the self-contained, single-file, **untrimmed** `win-x64` exe, with the tag stamped
+   into its version resource (`-p:Version=`), and asserts the stamp landed — the csproj default is
+   `0.0.0`, which marks a build that did not come from the workflow;
+5. assembles the pylabview bundle with `tools\pylabview\provision.ps1`, from a pinned CPython plus
    a `pip install pillow` — the runtime is gitignored, so without this step the release carries no
    bundle at all and every `pylv_*` tool answers `notProvisioned` on a plugin install;
-5. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
+6. assembles the plugin staging tree (the exe at `bin\`, `scripts\` beside it at `bin\scripts\`,
    `docs\` at `bin\docs\` — some helper scripts read tables out of `docs\` at run time, and
    `scripts\..\docs` has to resolve on an install exactly as it does in the repository — the
    bundle at `bin\pylabview\`, which is where `PyLabview.Locate()` looks, and the `.claude\`
    assets at `bin\claude\`, which is where `Install-ClaudeAssets.ps1` looks: the agents at the zip
    root carry the plugin's tool-name prefix and are useless to an install that registers the
    server directly);
-6. asserts the plugin manifest sits at the tree root;
-7. asserts the staged bundle is locatable **and patched** — the patches in
+7. stamps the version into the artefact — `VERSION.txt` at the archive root (tag, version, commit,
+   build time, run URL) and `plugin.json`'s `version`, substituted from its `0.0.0` placeholder and
+   read back through a JSON parser. `VERSION.txt` is the one that matters for a hand-extracted
+   install: a file **name** dies at extraction, so without it an extracted folder cannot say what
+   it is;
+8. asserts the plugin manifest and `VERSION.txt` sit at the tree root;
+9. asserts the staged bundle is locatable **and patched** — the patches in
    `tools\pylabview\patches\patches.json` are applied when the bundle is assembled, so a stale
    runtime would ship the crash they fix while every log line still read "assembled" — and that
    **both agent flavours** are staged, complete, and naming the tool prefix their own install
    serves;
-8. smoke-tests the staged interpreter (`import PIL`, `from pylabview import LVblock`) and the exe
-   with `--help`;
-9. zips it and attaches `labview-mcp.zip` to a new GitHub Release for the tag.
+10. smoke-tests the staged interpreter (`import PIL`, `from pylabview import LVblock`) and the exe
+    with `--help` and with `--version`, the latter asserting the **output** names the tag, the
+    version and the commit — which also proves `VERSION.txt` is where the exe looks for it;
+11. zips it and attaches four assets: `labview-mcp.zip` (the fixed name the marketplace resolves,
+    never to be renamed), `labview-mcp-vX.Y.Z.zip` (the same bytes, self-identifying, for a human
+    download), `labview-mcp.sha256`, and `labview-mcp.manifest.sha256` — path plus SHA-256 of every
+    file in the archive, which is what lets any install be verified with no second install to
+    compare against.
 
-The asset is about 38 MB larger since step 4 was added.
+The asset is about 38 MB larger since step 5 was added.
 
 Nothing in the marketplace manifest needs editing between releases: it points at
 `releases/latest/download/labview-mcp.zip`, which GitHub redirects to the newest release, and no

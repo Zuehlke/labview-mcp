@@ -20,6 +20,14 @@ if (CommandLine.HasFlag(args, "--help") ||
     return 0;
 }
 
+// Before every other mode, and needing nothing to be running: "which build is this?" is asked
+// precisely when an install is suspected of being broken or stale. See ServerVersion.
+if (CommandLine.HasFlag(args, "--version"))
+{
+    Console.WriteLine(ServerVersion.CliText());
+    return 0;
+}
+
 // Reject a mistyped flag instead of falling through to the stdio server below. That server
 // waits on stdin forever, so "-selftest" with one hyphen looked exactly like a hang and was
 // reported as one (issue #7). Usage goes to stderr: stdout belongs to the MCP protocol.

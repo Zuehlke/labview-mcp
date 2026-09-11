@@ -1348,6 +1348,8 @@ literally it argued away 600 usable palette VIs.
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
+| WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |
+| What must a release TAG look like? | `docs/release-versioning.md` §4 | `scripts/Assert-ReleaseTag.ps1` |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
@@ -1510,6 +1512,35 @@ Measured twice on 2026-09-07: 1 627 648 bytes against 2 592 768, and `build.ps1`
 embedded agent definitions were missing, which is 40-odd failing tests pointing everywhere except
 at the cause. `-t:Compile` skips the resource-preparation targets; a redirected
 `BaseIntermediateOutputPath` collides with the generated protobuf and `AssemblyInfo`.
+
+**A RELEASE TAG IS `vX.Y.Z`, lower-case, three decimal components — and `scripts/Assert-ReleaseTag.ps1`
+is the first step of the release workflow so a bad one publishes nothing.** Check a tag *before*
+pushing it: `-Tag v1.4.0` costs a second and the refusal names the mistake, the intended tag and the
+retag commands. The rule exists because the tags did not agree: measured 2026-09-11, five of nine
+were upper-case `V` — which git treats as a *different ref* and the `v*` trigger therefore ignores
+outright — and `v10.4` had two components, which additionally sorts ABOVE every three-part tag in
+`git tag --sort=-v:refname`, so for ten days the newest-looking tag in the list was neither the
+newest release nor a valid version.
+
+**AND THE TAG IS THE ONLY THING THAT NAMES A BUILD, so do not hand-cut a release.** `<Version>` in
+the csproj is `0.0.0` — the marker for "not from the workflow" — and only `dotnet publish
+-p:Version=` stamps a real one. Until 2026-09-11 nothing set it at all, so every release ever
+published carried the SDK default `1.0.0` and was indistinguishable from a local debug build:
+identifying an install meant hashing 800 files. The commit SHA had been embedded the whole time
+(the SDK appends `SourceRevisionId` to `InformationalVersion`), which is the lesson worth keeping —
+**a value that exists but is not reported is not an answer**, the same shape as an embedded document
+nothing serves. It is now reported by `--version`, by `lvai_status` and by `pylv_status`, that last
+one because it is the only one that answers with no LabVIEW running.
+
+**THE PLUGIN AND THE RELEASE ZIP ARE THE SAME BYTES — stop looking for a packaging difference.**
+`.claude-plugin/marketplace.json` declares the plugin as an `archive` source pointing at
+`releases/latest/download/labview-mcp.zip`, so a store install IS that asset unpacked: one build,
+one packaging path. Measured over one tag, 732 files, every SHA-256 equal, the pylabview bundle
+byte-for-byte identical. A reported behaviour difference is **version skew**, and the usual cause is
+that a marketplace catalogue does not refresh itself — one 13 days stale was serving a copy three
+releases behind. `claude plugin marketplace update` then `claude plugin update`. The one real
+asymmetry is extraction: Explorer's "Extract All" propagates Mark-of-the-Web onto the bundled
+`python.exe`, so extract with `tar -xf`.
 
 **The recovery is `rm -rf src/LabVIEWMCP/obj src/LabVIEWMCP/bin tests/LabVIEWMCP.Tests/obj
 tests/LabVIEWMCP.Tests/bin` and a normal build.** If you want a type-check while the server holds
