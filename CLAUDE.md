@@ -591,6 +591,21 @@ convention only, which is why renumbering a uid need not touch a single net.
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
+**AND PUT NO XML COMMENT IN IT — A COMMENT BEFORE `<VI>` COSTS YOU THE WHOLE DIAGRAM, SILENTLY.**
+Measured 2026-09-11 as a clean A/B over one document: with the leading `<?xml … ?>` declaration only
+it came out **10 141 bytes**, full diagram, every event frame registered; with a leading **comment**
+only, **3 168 bytes and an empty block diagram** — `errorCode 0` both times, nothing in any answer.
+The declaration is harmless. A comment between children of `<VI>` is the *loud* case, `Error 42,
+Generic error`, which `docs/aixml-reference.md` has wrestled with since 2026-08-13.
+
+**That row could not find the discriminator because it was watching the wrong operation.** Its
+counter-example was `scripts/aixml-skeletons/accumulate-across-a-loop.xml`, which "still validates
+`errorCode 0` carrying two comments" — and converting it produced an empty 3 172-byte VI, with its
+own header recording that size as proof of success. **Validation is not conversion**, and a byte
+count copied from a passing run is not a test. Stripping both comments took it to a real 13 916-byte
+VI. Both skeletons now keep their prose in a sibling `.md`; the cheap tell in the field is the
+size, because a VI of about 3 170 bytes is empty whatever it was meant to hold.
+
 ## Which interface to reach for
 
 **The `lvai_*` RPCs are the normal way in. The VI Server route is the exception.** A generated
@@ -1002,6 +1017,20 @@ name and their Check B entries are belt and braces. The `[0] Timeout` detail bel
 alone and had drifted onto both. Corrected in `experiments/pylabview/ROUTING.md` §2, which
 contradicted `FINDINGS.md` §3.11 on this for two commits.
 
+**A USER EVENT CARRIES DATA AND THE HANDLER READS IT — that is the DEFAULT, not the ambitious
+version.** The user's rule of 2026-09-11, given twice. First by hand-correcting a generated
+producer/consumer whose user-event frame pulled its payload out of front-panel **Local Variables** —
+*"Es ist aber die Idee eines User Events, dass die Daten über das Event mitgegeben werden"* — and
+again after a demo was built that deliberately avoided the payload because generation could not
+express it. **Designing around the gap produced an example that misses the point of the construct.**
+A user event used only as a trigger is a real pattern and needs a reason; it is not the default.
+
+So: design the frame to read the payload, then make the toolchain reach it.
+`ConvertAIXMLToVI` drops the field selection, so the route is a labelled placeholder constant wired
+into a **prim** input plus `lvai_set_event_data_fields` as a third build step — and a front-panel
+Local Variable is never the substitute, because it holds what the panel has at that instant rather
+than what the event carried. `scripts/aixml-skeletons/user-event-two-loops.md` is the worked example.
+
 **SO WHEN YOU AUTHOR AN EVENT STRUCTURE, ALWAYS ROUTE THE EVENT REGISTRATION REFNUM INTO IT AS AN
 ORDINARY `<Tunnel>` — even when nothing inside the frames reads it.** This is the user's rule of
 2026-09-11 and it is the difference between a one-call repair and an impossible one. A `<Tunnel>` on
@@ -1323,6 +1352,7 @@ literally it argued away 600 usable palette VIs.
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I start from an NI `.vit` template? | `docs/labview-vit-templates.md` | — |
+| What does a working USER EVENT VI look like, end to end? | `scripts/aixml-skeletons/user-event-two-loops.md` | the `.xml` beside it — generated, run and verified, `Ticks Received = 5` |
 | How do I add a front-panel CONTROL and register its EVENT? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-control.py` |
 | How do I add a STANDALONE event case to an Event Structure? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-frame.py` |
 | How do I change a string CONSTANT on a diagram? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-set-string-constant.py` |
@@ -1330,6 +1360,7 @@ literally it argued away 600 usable palette VIs.
 | How do I register one event by hand, or strip a generated VI's compiled code? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-set-event-spec.py`, `scripts/pylv-strip-compiled.py` |
 | How do I show an Event Structure's dynamic event terminals? | `docs/labview-vit-templates.md` §5a | `scripts/pylv-show-dynamic-events.py` |
 | How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
+| How does the handler READ the user event's PAYLOAD? | `scripts/aixml-skeletons/user-event-two-loops.md`, `experiments/pylabview/event-data-fields/` (source tree only) | `lvai_set_event_data_fields` — third call of the route; author a labelled placeholder constant into a PRIM input first, and field index 4 is the first payload item |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
 | How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |

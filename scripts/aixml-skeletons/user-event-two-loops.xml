@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="User Event Demo.vi" description="Demonstrates a LabVIEW user event end to end. A For Loop fires the Tick user event once every 100 ms; a parallel While Loop handles it in an Event Structure and counts the ticks with its own iteration terminal, stopping when it has seen as many as were sent. The Stop button ends the handler early through a second, static event frame. The event is created, registered, generated, unregistered and destroyed on the diagram, so the whole lifetime is visible. The Tick event carries a boolean saying whether it is the last one, and the handler READS that payload off its Event Data Node and stops on it. AIXML cannot author that field selection - the third build step repoints the node in the object heap - so the Payload Placeholder constant marks where the wire starts before that step runs.">
+
+  <FreeLabel comment="Two parallel loops, joined only by the Tick event." uid="4200" uid_parent="root"/>
+
+  <Control _name="Ticks To Send" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="5" description="How many Tick user events the source loop fires. The handler loop stops after it has received this many."/>
+
+  <Constant _name="Tick" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+
+  <Node _name="Create User Event" inputs="user event datatype:4201.value,error in:" outputs="user event:4202.user event,error out:4202.error out" uid="4202" uid_parent="root"/>
+
+  <Node _name="Register For Events" inputs="event registration refnum:,error in (no error):4202.error out,event source:4202.user event" outputs="event registration refnum:4203.event registration refnum,error out:4203.error out" uid="4203" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="4210.value" maxin="4205.value" maxout="" label="Tick source" uid="4210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4202.user event" outputs="value:4211.value" uid="4211" uid_parent="4210"/>
+    <Constant outputs="value:4212.value" type="int32" uid="4212" uid_parent="4210" value="100"/>
+    <Node _name="Wait (ms)" inputs="milliseconds to wait:4212.value" outputs="millisecond timer value:" uid="4213" uid_parent="4210"/>
+    <Tunnel _id="In2" inputs="value:4205.value" outputs="value:4216.value" uid="4216" uid_parent="4210"/>
+    <Node _name="Increment" inputs="x:4210.value" outputs="x+1:4217.x+1" uid="4217" uid_parent="4210"/>
+    <Node _name="Greater Or Equal?" inputs="x:4217.x+1,y:4216.value" outputs="x &gt;= y?:4218.x &gt;= y?" uid="4218" uid_parent="4210"/>
+    <Node _name="Generate User Event" inputs="user event:4211.value,event data cluster:4218.x &gt;= y?,error in:,priority (normal):" outputs="user event out:,error out:" uid="4215" uid_parent="4210"/>
+  </Structure>
+
+  <Structure _name="While Loop" count="4220.value" label="Event handler" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4203.event registration refnum" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4205.value" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" inputs="value:4221.value" uid="4231" uid_parent="4230"/>
+      <Tunnel _id="In2" inputs="value:4222.value" uid="4232" uid_parent="4230"/>
+      <Tunnel _id="In3" inputs="value:4220.value" uid="4233" uid_parent="4230"/>
+
+      <CaseFrame selector=" &lt;Tick&gt;\3A User Event " uid="4240" uid_parent="4230">
+        <FreeLabel comment="One iteration of the handler loop per Tick. The count is the loop's own iteration terminal, so it needs no shift register." uid="4249" uid_parent="4240"/>
+        <Tunnel _id="In1" outputs="value:" uid="4241" uid_parent="4240"/>
+        <Tunnel _id="In2" outputs="value:4242.value" uid="4242" uid_parent="4240"/>
+        <Tunnel _id="In3" outputs="value:4243.value" uid="4243" uid_parent="4240"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="4244" uid_parent="4240"/>
+        <Node _name="Increment" inputs="x:4243.value" outputs="x+1:4245.x+1" uid="4245" uid_parent="4240"/>
+        <Indicator _name="Ticks Received" inputs="value:4245.x+1" type="int32" uid="4246" uid_parent="4240" value="0" description="How many Tick user events this handler has taken off the registration so far."/>
+        <Node _name="Greater Or Equal?" inputs="x:4245.x+1,y:4242.value" outputs="x &gt;= y?:4247.x &gt;= y?" uid="4247" uid_parent="4240"/>
+        <Constant _name="Payload Placeholder" outputs="value:4280.value" type="bool" uid="4280" uid_parent="4240" value="false"/>
+        <Node _name="Or" inputs="x:4247.x &gt;= y?,y:4280.value" outputs="x .or. y?:4290.x .or. y?" uid="4290" uid_parent="4240"/>
+        <Tunnel _id="Out1" inputs="value:4290.x .or. y?" uid="4248" uid_parent="4240"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="4250" uid_parent="4230">
+        <FreeLabel comment="The static frame beside the dynamic one. Both registration kinds live in this single Event Structure." uid="4258" uid_parent="4250"/>
+        <Tunnel _id="In1" outputs="value:" uid="4251" uid_parent="4250"/>
+        <Tunnel _id="In2" outputs="value:" uid="4252" uid_parent="4250"/>
+        <Tunnel _id="In3" outputs="value:" uid="4253" uid_parent="4250"/>
+        <Control _name="Stop" outputs="value:" style="latched" type="bool" uid="4254" uid_parent="4250" value="false" description="Ends the handler loop before all the ticks have arrived."/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="4255" uid_parent="4250"/>
+        <Constant outputs="value:4256.value" type="bool" uid="4256" uid_parent="4250" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4256.value" uid="4257" uid_parent="4250"/>
+      </CaseFrame>
+
+      <Tunnel _id="Out1" outputs="value:4260.value" uid="4260" uid_parent="4230"/>
+    </Structure>
+
+    <Condition inputs="value:4260.value" uid="4261" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4221.value" outputs="value:4262.value" uid="4262" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Unregister For Events" inputs="event registration refnum:4262.value,error in:4203.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+
+  <Node _name="Destroy User Event" inputs="user event:4202.user event,error in:4270.error out" outputs="error out:4271.error out" uid="4271" uid_parent="root"/>
+
+  <Indicator _name="Error Out" inputs="value:4271.error out" type="cluster{bool.status,int32.code,string.source}" uid="4272" uid_parent="root" value="[false,0,]" description="The error chain of the whole event lifetime, from Create through Destroy."/>
+
+</VI>

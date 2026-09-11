@@ -49,10 +49,19 @@ namespace LabVIEWMcp.Tools;
 ///   * passing AIXML through a shell, which eats `\3A` as an octal escape and surfaces as an XML
 ///     parse error somewhere else entirely.
 ///
-/// WHAT IS STILL NOT AUTOMATED, deliberately, because neither is mechanical: the Event Data Node's
-/// FIELD SELECTION does not survive the round trip (every node comes back `Source,Type,Time`, so
-/// `NewVal` has to be read from the control's terminal instead), and a clipped diagram comment is
-/// visible only in a rendered picture. Both are reported as notes rather than silently ignored.
+/// WHAT IS STILL NOT AUTOMATED, and one of the two is a real gap rather than a nicety:
+///
+///   * The Event Data Node's FIELD SELECTION does not survive conversion - every node comes back
+///     `Source,Type,Time` - and a wire authored from a dropped terminal is dropped WITH it,
+///     silently. The document's own request is now read back and reported per frame
+///     (`dataFieldsDropped`), because `errorCode 0`, a clean render and a plausible export all
+///     agree with the loss. Measured 2026-09-11 along with the two routes that do NOT fix it:
+///     VI Server cannot get a reference to the node at all (`Diagrams[]` yields frames whose
+///     objects answer `Error 1055`), and moving a wire end in the heap corrupts the wire table -
+///     `WireTable::SanityCheck()`, "Wiretable nxt field disagreed with the joint coordinates",
+///     and on the third such VI LabVIEW.exe left the process table.
+///     `docs/labview-vit-templates.md` has all of it.
+///   * A clipped diagram comment is visible only in a rendered picture.
 /// </summary>
 [McpServerToolType]
 internal sealed class EventStructureTools(LvaiConnection connection)
@@ -76,10 +85,17 @@ internal sealed class EventStructureTools(LvaiConnection connection)
         AN UNKNOWN TRIGGER IS REFUSED BY NAME rather than written as a Value Change, and so is a
         document with two Event Structures - `diagramIdx` is a position within ONE structure, so
         mapping two of them would be a guess.
-        TWO THINGS IT CANNOT DO FOR YOU, both reported as notes. The Event Data Node's field
-        selection does NOT survive conversion - every node comes back `Source,Type,Time`, so a
-        frame that needs `NewVal` must read the control's TERMINAL instead, which is what NI's own
-        templates do. And a diagram comment too long for its box is cut off in silence; only
+        THE EVENT DATA NODE'S FIELD SELECTION DOES NOT SURVIVE CONVERSION - every node comes back
+        `Source,Type,Time` - AND A WIRE AUTHORED FROM A DROPPED TERMINAL IS DROPPED WITH IT,
+        silently, leaving the consumer's input unwired at errorCode 0. AIXML is not the limitation:
+        LabVIEW's own export writes that attribute. The importer discards it, because the frame
+        carries no registration yet at that point. Whatever your document asked for is reported
+        back per frame as `dataFieldsDropped`, so this is visible instead of being something you
+        find weeks later. For a front-panel event, read the control's own TERMINAL in its frame
+        (what NI's templates do); for a USER EVENT there is no such terminal and the gesture stays
+        in the IDE - and a front-panel Local Variable is NOT a substitute, it holds what the panel
+        has at that instant rather than what the event carried.
+        A diagram comment too long for its box is also cut off in silence; only
         lvai_render_diagrams shows that.
         `ok: false` is never a rollback - the .vi on disk carries whatever got as far as it got, and
         `steps` holds each sub-answer whole.
@@ -132,13 +148,20 @@ internal sealed class EventStructureTools(LvaiConnection connection)
 
             var frameList = new JsonArray();
             foreach (var frame in reading.Frames)
+            {
+                var loss = reading.DataFieldLosses.FirstOrDefault(l => l.FrameIndex == frame.Index);
                 frameList.Add(new JsonObject
                 {
                     ["diagramIdx"] = frame.Index,
                     ["control"] = frame.Control,
                     ["userEvent"] = frame.UserEvent,
                     ["trigger"] = frame.Trigger,
+                    // null rather than an empty array, so the usual document stays quiet
+                    ["dataFieldsDropped"] = loss is null ? null : Strings(loss.Dropped),
+                    ["dataFieldsDroppedAndWired"] =
+                        loss is null || loss.Wired.Length == 0 ? null : Strings(loss.Wired),
                 });
+            }
 
             // 2. convert, deliberately WITHOUT validating
             var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
@@ -264,7 +287,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "this VI. It makes the wire and then finishes the frame itself: the spec is " +
                     "written again onto the wired file and rebuilt, which is the only order " +
                     "LabVIEW keeps, and it reads execState back. The static frames above are " +
-                    "already done.");
+                    "already done. " + DataFieldNote(reading, afterWiringWillStillBeBad: true));
 
             if (verify && broken)
                 return Outcome(false, "verify", steps, frameList, total, viPath, directory,
@@ -272,21 +295,101 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "Every event registered and the rebuild succeeded - and LabVIEW says the " +
                     "result is NOT EXECUTABLE. Nothing was rolled back. Read linkerErrors in the " +
                     "verify step: at this point the cause is the DIAGRAM rather than the events, " +
-                    "because validation was skipped and nothing here type-checks your wiring.");
+                    "because validation was skipped and nothing here type-checks your wiring. " +
+                    DataFieldNote(reading, afterWiringWillStillBeBad: false));
 
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
                 $"Registered {toRegister.Count} event(s) - " +
                 $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
                 $"{userEvents} user event(s). " +
                 "LabVIEW can run the result. " +
-                "TWO THINGS THIS DOES NOT TELL YOU. Every Event Data Node came back as " +
-                "`Source,Type,Time` - conversion drops the field selection - so a frame needing " +
-                "`NewVal` must read the control's terminal instead. And a diagram comment too " +
-                "long for its box is cut off in silence: call lvai_render_diagrams and look, " +
-                "which is the only check that sees it.");
+                DataFieldNote(reading, afterWiringWillStillBeBad: false) +
+                "A diagram comment too long for its box is cut off in silence: call " +
+                "lvai_render_diagrams and look, which is the only check that sees it.");
         });
 
     // ---------------------------------------------------------------- plumbing
+
+    private static JsonArray Strings(IEnumerable<string> values)
+    {
+        var array = new JsonArray();
+        foreach (var value in values)
+            array.Add(value);
+        return array;
+    }
+
+    /// <summary>
+    /// What the conversion threw away from the Event Data Nodes, named per frame.
+    ///
+    /// THIS USED TO BE ONE BLANKET SENTENCE ENDING "so a frame needing `NewVal` must read the
+    /// control's terminal instead", and that advice HAS NO REFERENT FOR A USER EVENT - the payload
+    /// has no front-panel terminal to read. Measured 2026-09-11: following it produced a generated
+    /// producer/consumer whose user-event frame took its data out of front-panel Local Variables,
+    /// which is not the same value - a local reads whatever the panel holds at that instant, not
+    /// what the event carried - and the user corrected it by hand. So the note is split by kind
+    /// now, and it names the frames instead of leaving the reader to find them.
+    ///
+    /// AND IT IS ON EVERY OUTCOME, NOT ONLY THE SUCCESS ONE. It was on the success note alone for
+    /// about an hour on 2026-09-11, which served it on the path a user-event document never takes:
+    /// such a document ends at the verify step by design, pointing at
+    /// <c>lvai_wire_dynamic_events</c>. Measured on the user's own producer/consumer - the
+    /// per-frame fields were right there in the answer and the sentence explaining them was not.
+    /// Same shape as an embedded document nothing serves.
+    ///
+    /// <param name="afterWiringWillStillBeBad">Set on the user-event outcome, whose note ends by
+    /// sending the reader to <c>lvai_wire_dynamic_events</c>. When a wired field was dropped that
+    /// call will NOT make the VI executable, and saying so here is the difference between one
+    /// more call and a hunt through a diagram. Measured end to end 2026-09-11: wire + finish left
+    /// `execState 0`, because the Bundle By Name those wires fed requires every element input.</param>
+    /// Empty when the document asked only for the common three, which is the usual case.
+    /// </summary>
+    internal static string DataFieldNote(EventFrames.Reading reading, bool afterWiringWillStillBeBad)
+    {
+        if (reading.DataFieldLosses.Count == 0)
+            return "";
+
+        var lines = reading.DataFieldLosses.Select(loss =>
+        {
+            var frame = reading.Frames.FirstOrDefault(f => f.Index == loss.FrameIndex);
+            var what = frame?.UserEvent is { } ue ? $"user event <{ue}>"
+                     : frame?.Control is { } control ? $"'{control}'"
+                     : $"frame {loss.FrameIndex}";
+            var wired = loss.Wired.Length == 0
+                ? ""
+                : $", and the wire(s) from {string.Join(", ", loss.Wired)} went with them";
+            return $"frame {loss.FrameIndex} ({what}): {string.Join(", ", loss.Dropped)}{wired}";
+        });
+
+        var anyUserEvent = reading.DataFieldLosses.Any(loss =>
+            reading.Frames.FirstOrDefault(f => f.Index == loss.FrameIndex)?.UserEvent is not null);
+
+        var anyWireLost = reading.DataFieldLosses.Any(loss => loss.Wired.Length > 0);
+
+        return "THE EVENT DATA NODE'S FIELD SELECTION WAS DISCARDED, and this is the only place " +
+               "that says so - " + string.Join("; ", lines) + ". " +
+               (afterWiringWillStillBeBad && anyWireLost
+                   ? "SO THE NEXT CALL WILL NOT MAKE THIS VI EXECUTABLE: the wire is only half of " +
+                     "what is missing. Measured end to end - wire plus finish left execState 0, " +
+                     "because the node those wires fed requires every input it shows. Expect " +
+                     "eBad again and fix the fields, rather than reading it as the wiring having " +
+                     "failed. "
+                   : "") +
+               "AIXML expresses the selection (LabVIEW's own export writes exactly that " +
+               "attribute); ConvertAIXMLToVI drops it, because at conversion time the frame " +
+               "carries no registration yet and only Source, Type and Time exist. A wire " +
+               "authored from a dropped terminal is dropped WITH it, silently, so the consumer's " +
+               "input is now unwired. " +
+               (anyUserEvent
+                   ? "For the user-event frame(s) there is no substitute to reach for: the " +
+                     "payload arrives only through this node, so growing it and drawing those " +
+                     "wires stays an IDE gesture. Do NOT read a front-panel Local Variable " +
+                     "instead - it holds whatever the panel has at that instant rather than what " +
+                     "the event carried, which is a different value that looks right. "
+                   : "") +
+               "For a front-panel event, read the control's own TERMINAL inside its frame, which " +
+               "is what NI's templates do. docs/labview-vit-templates.md has the measurements, " +
+               "including why the heap route was tried and withdrawn. ";
+    }
 
     private static JsonObject Step(string name, string answer) => new()
     {

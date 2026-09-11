@@ -1234,6 +1234,148 @@ very first real run of the tool it was the one thing that mattered, and it is
 the one thing the tool cannot check for itself.
 
 
+### THE EVENT DATA NODE's FIELD SELECTION - measured 2026-09-11, and NOT solved
+
+The user's correction of a generated producer/consumer started this: its user-event frame took the
+payload out of **front-panel Local Variables** instead of off the Event Data Node, which is the
+whole point of a user event. Everything below is what one afternoon of measuring that established.
+The honest summary first: **the node itself is writable and the WIRE is not, and trying the wire
+killed LabVIEW.**
+
+**AIXML EXPRESSES IT PERFECTLY - the importer is what drops it.** LabVIEW's own export of the
+hand-corrected VI reads exactly what an author would write:
+
+```xml
+<Node _name="Event Data Node" fields="Source,Type,Time,Message,Value"
+      outputs="Source:,Type:,Time:,Message:51.Message,Value:51.Value" uid="51" uid_parent="46"/>
+<Node _name="Bundle By Name" fields="Command,Message,Value"
+      inputs="Command:55.value,Message:51.Message,Value:51.Value,input cluster:54.value" uid="56" .../>
+```
+
+Feed that same document to `ConvertAIXMLToVI` and the node comes back **`Source,Type,Time`** and
+**both wires are gone**, `errorCode 0`, no message anywhere. So "AIXML cannot author a field
+selection" - which is what a generated comment in the user's VI claimed, and what
+`lvai_generate_vi_with_events` says in its own note - is the wrong half of the sentence. The dialect
+expresses it; the importer discards it.
+
+**`Source,Type,Time` is what the FINISHED VI reads; mid-route the node is worse, and briefly
+looks like a different fault.** Re-measured 2026-09-11 over the whole route on the user's own
+corrected VI, re-generated as `Probe.vi`:
+
+| stage | the user-event frame's node | its consumer, `Bundle By Name` |
+|---|---|---|
+| the source document | `fields="Source,Type,Time,Message,Value"` | `Message:51.Message,Value:51.Value` |
+| after `lvai_generate_vi_with_events` | **`fields=",,"`** - three rows with NO names | `Message:,Value:` |
+| after `lvai_wire_dynamic_events` | `fields="Source,Type,Time"` | `Message:,Value:` |
+
+The `,,` is transient and means only that the frame has no registration yet, so LabVIEW cannot
+name the rows it is showing. It resolves to the documented three as soon as the user event is
+finished. **The wires never come back at either stage**, which is the part that matters.
+
+**AND THE DROPPED WIRES ARE WHY THE FINISHED VI IS `eBad` - the loss is not cosmetic.** Same run:
+wire plus finish completed, every step `exitCode 0`, and `execState` was still **0**, with
+`linkerErrors` saying only `The VI is not executable.` A `Bundle By Name` requires every input it
+shows, and two of its three were now unwired. So on this route a dropped field selection does not
+degrade the VI - it BREAKS it, and the one artefact that names the cause is the
+`dataFieldsDropped` list `lvai_generate_vi_with_events` now returns per frame. Read as a bare
+`execState 0` it looks exactly like the wiring having failed, which is the wrong place to look.
+
+**The cause is the ORDER the event route runs in.** At conversion time the frame carries no event
+registration - that is written afterwards, by `pylv-set-event-spec.py` - so the only fields LabVIEW
+can offer are the three every event has. It is not a parser gap and no spelling avoids it.
+
+**And there is no second AIXML pass to put it back.** `ApplyAIXMLToVI` is gated for third-party
+clients (§14 of `aixml-reference.md`) and `Apply code changes.vi` is a measured no-op, so
+`ConvertAIXMLToVI` - a whole-VI generation, always with unregistered frames - is the only write
+path AIXML has.
+
+**A WIRE AUTHORED FROM A DROPPED TERMINAL IS DROPPED IN SILENCE, and that is the trap for the
+author.** Measured on a second probe that wired the Bundle's `Message`/`Value` from the node's
+surviving `Type` and `Time` instead: the frame's `signalList` came back with **no signal touching
+the data node at all**. LabVIEW refuses a wire whose ends disagree on type and says nothing. So
+authoring `fields=` optimistically does not degrade to "the node is smaller than asked for" - it
+degrades to "the consumer's inputs are silently unwired".
+
+**VI SERVER CANNOT REACH THE NODE - this is the finding that closes the obvious route.**
+`{LV.EventStructure}` `Diagrams[]` returns one reference per frame and the objects on them cannot
+be read:
+
+| what was read | result |
+|---|---|
+| frame 0 `All Objects[]` | 13 references, and **every** `Class Name` read answers **`Error 1055`** |
+| frames 1 and 2 `All Objects[]` | **empty** |
+| the same through the IDE's application instance (`Project\3AActive Project` -> `Application`) | identical |
+| the same with `Diagrams[]` read as `{LV.Structure}` rather than `{LV.EventStructure}` | identical |
+
+The top-level diagram and a While Loop's diagram read perfectly in the same helper, so it is
+specific to an Event Structure's frames - the same family as the earlier measurement that
+`Terminals[]` on one returns ten entries of which only index 0 is readable. **With no reference
+there is no `Resize` to grow the node and no `Connect Wire` to wire it**, and
+`{LV.GrowableFunction}` `Resize` is otherwise exactly the method this would need.
+
+**THE HEAP HOLDS IT IN PLAIN TEXT, which is why the next part looked easy.** A/B of the user's
+corrected VI against its own predecessor - same lineage, same uids:
+
+| | before | after |
+|---|---|---|
+| `eventDataNode` 51 `termList` | 4 | **6** |
+| the rows' `<i>` | `-, 1, 2` | `-, 1, 2, **4**, **5**` |
+| signal 825 `termList` | `[396 (Message local), 818]` | `[**1149**, 818]` |
+| signal 828 `termList` | `[757 (Value local), 821]` | `[**1197**, 821]` |
+
+`<i>` is the index of the event-data field the row shows: `0` Source, `1` Type, `2` Time, `3` the
+payload cluster, **`4` and `5` its first two elements**. The signal uids and the sink terminal uids
+are IDENTICAL on both sides, so the IDE gesture is exactly "add two rows, move two wire ends".
+
+**SO THE ROW HALF WAS TRIED AS PURE SUBSTITUTION, AND IT WORKS.** Repurpose the rows LabVIEW
+already made instead of adding any - rewrite `<i>1</i>` to `<i>4</i>` and the row's `typeDesc` -
+and LabVIEW's own export then reads `fields="Source,Message,Value"` with both wires bound. Two
+payload fields per frame is the ceiling, because a converted frame has three rows and the `Source`
+row carries no `<i>` element to rewrite.
+
+**AND THE WIRE HALF CORRUPTS THE WIRE TABLE. MEASURED, WITH A CRASH.** Moving a `signal`'s source
+end onto the new row leaves its `compressedWireTable` describing the route to the OLD source, and
+LabVIEW notices:
+
+```
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF:
+    Wiring insanity found and fixed in WireTable::SanityCheck().
+    Wiretable nxt field disagreed with the joint coordinates.  UID:627
+[Executing: "lvai_wire_dyn_events.vi"]
+```
+
+Eight of those, first at 12:57:12 and **none before it in a log going back to 09:58**, and at
+13:02:52 **LabVIEW.exe was gone from the process table**. The two VIs that survived were left
+`execState 0` with a diagram that rendered correctly and exported exactly as intended - so nothing
+short of LabVIEW's own verdict saw it. Same shape as `pylv-conpane.py --reindex`, which was removed
+rather than shipped for this exact reason: **a heap edit that re-extracts cleanly and reads back as
+intended is not evidence that LabVIEW will accept it.**
+
+`compressedWireTable` is geometry, and "I am only substituting, not composing" was wrong the moment
+a wire END moved. The script is kept as evidence in
+`experiments/pylabview/event-data-fields/` - **not** under `scripts\`, because that folder ships.
+
+**One more thing the measurement settled, and it is the reason the VIs were eBad even before the
+crash: AN UNWIRED LOCAL VARIABLE IS A BROKEN VI, not an untidy one.** `ValidateAIXML` on a
+three-element probe:
+
+```
+Local Variable: This variable is not connected to anything.
+Either wire it or delete it.
+```
+
+Two full builds came back `execState 0` before that was probed, with the diagram rendering
+perfectly and the export exactly right. So taking a wire off a Local Variable means deleting the
+node in the same operation.
+
+**WHAT TO TELL AN AUTHOR TODAY.** For a **front-panel** event the existing advice holds - read the
+control's TERMINAL inside its own frame, which is what NI's templates do. For a **USER EVENT** that
+advice has no referent: the payload has no front-panel terminal, and a Local Variable is not it
+either, because it reads whatever the panel holds at that instant rather than what the event
+carried. Until this is solved the two IDE gestures - grow the node, drag two wires - stay with the
+person, and a generated frame should say so rather than quietly shipping a local-variable read that
+looks equivalent and is not.
+
 ## 6. What is still genuinely out of reach
 
 Wires. Nothing here composes a `signal`, so the new terminal arrives **unwired** - the event fires
