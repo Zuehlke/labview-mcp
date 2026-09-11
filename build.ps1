@@ -22,6 +22,28 @@
     restart a killed MCP server inside a session: the lvai_* tools stay gone until the
     Claude client is restarted.
 
+    THIS OUTPUT IS A DEVELOPMENT BUILD AND MUST NEVER BE PUBLISHED AS A RELEASE.
+    Zipping bin\Debug\net8.0 and uploading it is not "the same thing built locally" — it
+    differs from the release archive in five ways that each break an install, measured
+    2026-09-11 by downloading a release that had been cut exactly that way:
+
+      - it carries NO .claude-plugin\plugin.json, NO .mcp.json, NO plugin-flavoured
+        agents\ and NO hooks\, so it is not installable as a plugin at all;
+      - the exe sits at the ROOT, while plugin\.mcp.json launches
+        ${CLAUDE_PLUGIN_ROOT}/bin/LabVIEWMCP.exe;
+      - the exe is FRAMEWORK-DEPENDENT (a 151 kB apphost plus ~46 loose DLLs), so it does
+        not start without the .NET 8 runtime installed, where the release exe is
+        self-contained and single-file;
+      - it is Debug, unstamped, and reports 0.0.0-dev from --version;
+      - the pylabview bundle is whatever this machine happens to have — the ItemGroup that
+        copies it is conditional on tools\pylabview\runtime existing at all, and the one
+        release cut this way shipped a Python 3.14 bundle that emits SyntaxWarnings from
+        LVheap.py on every pylv_* call, against the pinned 3.12 the workflow provisions.
+
+    Releases are cut ONLY by pushing a vX.Y.Z tag. scripts\Assert-PublishedRelease.ps1
+    and .github\workflows\verify-release.yml now reject a hand-cut one; see
+    docs\release-versioning.md.
+
 .PARAMETER NoKill
     Fail instead of stopping a running server.
 
@@ -158,4 +180,7 @@ if ($VerifyOnly) {
     Write-Host 'Embedded documentation verified. The binary-only install answers correctly.' -ForegroundColor Green
 } else {
     Write-Host 'Done. Restart the Claude client to pick the server back up.' -ForegroundColor Green
+    # Said where somebody about to zip this folder would be looking. Five releases were cut that
+    # way and none of them was installable as a plugin; see this script's .DESCRIPTION.
+    Write-Host 'This is a DEVELOPMENT build - never publish it as a release. Push a vX.Y.Z tag.' -ForegroundColor DarkGray
 }

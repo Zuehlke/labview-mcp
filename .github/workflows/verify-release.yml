@@ -1,0 +1,90 @@
+name: verify-release
+
+# Check that what is PUBLISHED is what the release workflow produced.
+#
+# WHY THIS IS A SEPARATE WORKFLOW. release.yml can only vouch for releases it cut. The failure it
+# cannot see is a release cut BY HAND, and that is the one that actually happened: measured
+# 2026-09-11 over this repository's own release history, five releases - V1.1.5, V1.2.0, V1.2.2,
+# V1.2.5, V1.2.8 - carry a `labview-mcp.zip` uploaded by a person rather than by
+# github-actions[bot], at 19-21 MB against CI's 62 MB. Opening V1.2.8's asset settles what it is:
+# a zip of src\LabVIEWMCP\bin\Debug\net8.0 - exe and 46 loose DLLs at the archive root, no
+# .claude-plugin/plugin.json, no .mcp.json, no agents/, and a pylabview bundle built from a
+# developer's own Python 3.14 (the version release.yml pins away from, because it emits three
+# SyntaxWarnings from LVheap.py on every import).
+#
+# Those tags are upper-case, which the `v*` filter on release.yml ignores case-sensitively, so no
+# CI asset ever existed to publish. scripts\Assert-ReleaseTag.ps1 now removes that trigger. This
+# removes the consequence: for four days /releases/latest/download/labview-mcp.zip - the URL the
+# marketplace resolves for every plugin install - pointed at a hand-cut archive, which is what the
+# README's "there is currently a problem with the installer" banner was describing.
+#
+# The daily schedule is the part that matters. An asset can be replaced on an existing release at
+# any time, long after any workflow ran, so the only reliable guard is to keep looking.
+
+on:
+  release:
+    # `published` covers a release created as published or promoted from draft; `edited` and
+    # `released` cover a later change to an existing one - which is exactly how an asset gets
+    # swapped after the fact.
+    types: [published, edited, released, created, prereleased]
+  schedule:
+    # Daily. Not on the hour, so it is not queued behind everyone else's cron.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to check (blank = whatever /releases/latest returns)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    # windows-latest for parity with release.yml and with every other script in this repository;
+    # the check itself is plain .NET and would run anywhere pwsh does.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The tag to check, by trigger:
+      #   release event      -> the release that fired it
+      #   workflow_dispatch  -> the input, if given
+      #   schedule           -> blank, so the script checks /releases/latest, which is what the
+      #                         marketplace resolves and therefore what every install receives
+      - name: Decide which release to check
+        id: which
+        shell: pwsh
+        run: |
+          $tag = '${{ github.event.release.tag_name }}'
+          if (-not $tag) { $tag = '${{ inputs.tag }}' }
+          if ($tag) { Write-Host "checking tag $tag" } else { Write-Host 'checking /releases/latest' }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      # Retried, because a release event can fire while the 63 MB assets are still uploading - the
+      # asset set would then be incomplete through no fault of the publisher. Three attempts a
+      # minute apart; a hand-cut release still fails all three, and this costs nothing when the
+      # first one passes.
+      - name: Verify the published release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tagArg = @()
+          if ('${{ steps.which.outputs.tag }}') { $tagArg = @('-Tag', '${{ steps.which.outputs.tag }}') }
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "--- attempt $attempt of 3"
+            powershell -NoProfile -ExecutionPolicy Bypass `
+              -File scripts/Assert-PublishedRelease.ps1 `
+              -Repo '${{ github.repository }}' -Token $env:GH_TOKEN @tagArg
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            if ($attempt -lt 3) {
+              Write-Host 'not yet - the assets may still be uploading; waiting 60s'
+              Start-Sleep -Seconds 60
+            }
+          }
+          throw 'the published release did not verify - see the FAIL lines above'

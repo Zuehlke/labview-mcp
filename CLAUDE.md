@@ -1350,6 +1350,7 @@ literally it argued away 600 usable palette VIs.
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |
 | What must a release TAG look like? | `docs/release-versioning.md` §4 | `scripts/Assert-ReleaseTag.ps1` |
+| Is what is PUBLISHED actually the workflow's artefact? | `docs/release-versioning.md` §2a, §2b | `scripts/Assert-PublishedRelease.ps1` |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
@@ -1402,6 +1403,15 @@ every row resolves. The eight served documents stay embedded as well: a tool ans
 on a file beside the exe surviving. Nothing about `docs\` needs a `.csproj` edit any more — the glob
 takes new files automatically, and `NoCustomerOrProductIdentifiersAnywhereInTheDocsFolder` walks the
 folder so a new document is covered by the confidentiality guard the moment it exists.
+
+**"THE BUILD" IN THAT SENTENCE MEANT THE `.csproj`, AND THE RELEASE ARCHIVE IS A SEPARATE LIST.**
+Audited 2026-09-11: the csproj stages `README.md` next to the exe and `release.yml`'s staging step
+did not, so a plugin install was the one route with no `README.md` at all — while the paragraph
+above asserted flatly that the build copies it. Fixed in the workflow (`bin/README.md`), and the
+lesson is the one this section already teaches one layer in: **there are now TWO lists of what
+ships** — the `.csproj` globs for a local build, and the staging step for the archive — and a file
+added to one is not in the other. `docs\` and `scripts\` are globbed in both; everything named
+individually (`README.md`, `CLAUDE.md`, `.claude\settings.json`) has to be added twice.
 
 **`experiments/` still ships nothing** — absent from the `.csproj`, embedded and copied alike, and
 `pylv_route`/`pylv_status` only *mention* `ROUTING.md` and `FINDINGS.md` in code comments rather than
@@ -1594,6 +1604,31 @@ identifying an install meant hashing 800 files. The commit SHA had been embedded
 nothing serves. It is now reported by `--version`, by `lvai_status` and by `pylv_status`, that last
 one because it is the only one that answers with no LabVIEW running.
 
+**NEVER PUBLISH `build.ps1`'s OUTPUT — and that is not a style rule, it happened five times.**
+Measured 2026-09-11 off the GitHub API: `V1.1.5`, `V1.2.0`, `V1.2.2`, `V1.2.5` and `V1.2.8` carry a
+`labview-mcp.zip` uploaded by a PERSON, 19-21 MB against CI's 62 MB, and V1.2.8's asset opened is a
+zip of `src\LabVIEWMCP\bin\Debug\net8.0` — exe and 46 loose DLLs at the archive ROOT, no
+`.claude-plugin\plugin.json`, no `.mcp.json`, no `agents\`, a framework-dependent apphost that does
+not start without the .NET 8 runtime, and a pylabview bundle off a workstation's **Python 3.14**,
+the version `release.yml` pins away from because it emits SyntaxWarnings from `LVheap.py` on every
+import. For four days `/releases/latest/download/labview-mcp.zip` served one of those to every
+plugin install, which is what the README's "problem with the installer" banner was describing.
+`scripts/Assert-PublishedRelease.ps1` rejects one now, run per release event and **daily** by
+`.github/workflows/verify-release.yml` — daily because an asset can be swapped long after any
+workflow ran.
+
+**The process lesson generalises past releases: A PIPELINE GUARANTEE IS NOT A PROPERTY OF THE
+ARTEFACT.** "There is one build and one packaging path" was true of the workflow and said nothing
+about what sat on the Releases page. Reading `uploader.login` off the API settled in one call what
+reasoning about the pipeline had hidden for four days. **Ask the artefact, not the process that is
+supposed to have made it** — the same rule as "ask the file, not the session".
+
+**AND THERE ARE TWO LISTS OF WHAT SHIPS.** The `.csproj` globs decide a local build's output; the
+staging step in `release.yml` decides the archive. `docs\` and `scripts\` are globbed in both, so a
+new file reaches both by itself — everything named individually (`README.md`, `CLAUDE.md`,
+`.claude\settings.json`) must be added TWICE. `README.md` was in only one, so a plugin install was
+the one route without it while this file asserted the opposite.
+
 **THE PLUGIN AND THE RELEASE ZIP ARE THE SAME BYTES — stop looking for a packaging difference.**
 `.claude-plugin/marketplace.json` declares the plugin as an `archive` source pointing at
 `releases/latest/download/labview-mcp.zip`, so a store install IS that asset unpacked: one build,
@@ -1603,6 +1638,11 @@ that a marketplace catalogue does not refresh itself — one 13 days stale was s
 releases behind. `claude plugin marketplace update` then `claude plugin update`. The one real
 asymmetry is extraction: Explorer's "Extract All" propagates Mark-of-the-Web onto the bundled
 `python.exe`, so extract with `tar -xf`.
+
+**QUALIFIED THE SAME DAY IT WAS WRITTEN: that holds for an asset the WORKFLOW produced, and five
+were not** — see the hand-cut releases above. Both installs behind the 732-file measurement came
+from bot-uploaded tags (v1.3.0 and v1.0.7), which was luck rather than method. So the order is:
+check the **uploader and the tag** first, and only then reach for a byte comparison.
 
 **The recovery is `rm -rf src/LabVIEWMCP/obj src/LabVIEWMCP/bin tests/LabVIEWMCP.Tests/obj
 tests/LabVIEWMCP.Tests/bin` and a normal build.** If you want a type-check while the server holds
