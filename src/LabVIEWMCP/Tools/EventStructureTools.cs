@@ -260,10 +260,11 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "the event registration refnum, and the wire from it onto the Event " +
                     "Structure's DYNAMIC EVENT TERMINAL is the one thing AIXML cannot express - so " +
                     "it is not in the file yet, and LabVIEW discards a user-event spec it cannot " +
-                    "resolve on its next load. NEXT: call lvai_wire_dynamic_events on this VI, " +
-                    "then write the user-event spec again onto the wired file " +
-                    "(pylv-set-event-spec.py <bundle> <base> <diagramIdx> --user-event <Name>) and " +
-                    "rebuild. Then execState reads 1. The static frames above are already done.");
+                    "resolve on its next load. NEXT: ONE CALL - lvai_wire_dynamic_events on " +
+                    "this VI. It makes the wire and then finishes the frame itself: the spec is " +
+                    "written again onto the wired file and rebuilt, which is the only order " +
+                    "LabVIEW keeps, and it reads execState back. The static frames above are " +
+                    "already done.");
 
             if (verify && broken)
                 return Outcome(false, "verify", steps, frameList, total, viPath, directory,

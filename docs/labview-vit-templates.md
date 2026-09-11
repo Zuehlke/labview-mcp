@@ -965,12 +965,23 @@ needed only for the cached label - executability comes from the spec row alone.
 feature: `dynIndex` is the registration item's position, only `1` is measured, and a wrong one
 gives a VI that loads, compiles and fires the WRONG event.
 
-**NOT YET VERIFIED: the C# orchestration has not been run against a real VI.** The script half is
-measured on real bundles in three states - unresolved, already finished, ambiguous - and five unit
-tests cover it, but the sequence extract -> finish -> strip -> close project -> rebuild -> verify
-has only been driven BY HAND, not by the tool. The hand-driven sequence is what took both measured
-VIs to `execState 1`. Written down rather than assumed, because the last two things recorded here
-as unverified were both wrong.
+**VERIFIED end to end 2026-09-11**, on a VI generated from scratch into a throwaway project:
+`lvai_generate_vi_with_events` left it `eBad` with the explanatory note, and one
+`lvai_wire_dynamic_events` call then reported `ok: true`, `okFrom: userEventStep.execState`,
+`userEventStep.execState: 1`, with extract, finish, strip, closeProject, rebuild and verify all
+green. An independent `lvai_exec_state` afterwards agreed.
+
+**AND THAT RUN FOUND A DEFECT NOTHING ELSE COULD, worth recording because the shape recurs.** Step 3
+was first gated on `outcome.Ok` - the obvious condition, and it made the automation **dead in the
+common case**. This helper very often ends `helperDidNotAnswer`: `RunVIAsTopLevel` cannot read its
+indicators back through a variant and returns `Error 91`, which is an artefact of the READ-BACK and
+says nothing about the VI - the tool's own note has said exactly that all along. In that state the
+wire was really there (`wireEndsAfter` 3, the file rewritten), so the gate skipped the finishing
+step on a VI that was ready for it, and `userEventStep` was simply absent from the answer. It is
+gated on `endsAfter >= 3` now - a source plus two sinks IS the branch - and a verified `execState 1`
+upgrades `ok`, because it is stronger evidence than the diagnostics that failed to arrive.
+**Five unit tests and three script-level measurements all passed while this was broken**, because
+every one of them tested a piece rather than the composition.
 
 **`dynIndex` is the registration item's position and only `1` is measured** - a structure fed
 several user events needs the real one. Which of `regFlags`, `type` and `dynIndex` is decisive is

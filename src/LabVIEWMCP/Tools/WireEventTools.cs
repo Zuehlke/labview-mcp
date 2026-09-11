@@ -213,7 +213,17 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
             // STEP 3. The wire is in the file now, so - and only now - a user-event EventSpec
             // will survive LabVIEW's next load. See FinishUserEventsAsync for the measurement.
-            if (finishUserEvents && outcome.Ok)
+            //
+            // GATED ON EVIDENCE OF THE WIRE, NOT ON `outcome.Ok` - measured 2026-09-11, and
+            // gating it on `ok` made this whole automation DEAD IN THE COMMON CASE. This helper
+            // very often ends `helperDidNotAnswer`: RunVIAsTopLevel cannot read its indicators
+            // back through a variant and returns Error 91, which is an artefact of the read-back
+            // and says nothing about the VI - the tool's own note has said so all along. The wire
+            // was really there in that state (`wireEndsAfter` 3, the file rewritten), so step 3
+            // must still run. `endsAfter >= 3` IS the evidence: a source plus two sinks is the
+            // branch this tool makes. Unit tests could not see this; only the end-to-end run did.
+            var wired = outcome.Ok || endsAfter >= 3;
+            if (finishUserEvents && wired)
             {
                 var finish = await FinishUserEventsAsync(viPath, timeoutSeconds, ct);
                 payload["userEventStep"] = finish;
@@ -233,11 +243,26 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 }
                 else if (finish["changed"]?.GetValue<bool>() is true)
                 {
+                    var executable = finish["execState"]?.GetValue<int>() == 1;
+
+                    // A VERIFIED execState OUTRANKS an unreadable helper output. If the frames are
+                    // finished and LabVIEW can run the VI, the deliverable is good and `ok` should
+                    // say so - `helperDidNotAnswer` only ever meant "the diagnostics did not come
+                    // back", and this is stronger evidence than those diagnostics would have been.
+                    if (executable && !outcome.Ok)
+                    {
+                        payload["ok"] = JsonValue.Create(true);
+                        payload["errorKind"] = null;
+                        payload["okFrom"] = JsonValue.Create("userEventStep.execState");
+                    }
+
                     payload["note"] = JsonValue.Create(
                         $"{payload["note"]?.GetValue<string>()} AND the user-event frame(s) were " +
                         "finished: the spec was written again onto the wired file and rebuilt, " +
-                        "which is the only order LabVIEW keeps. The active project was CLOSED " +
-                        "(and saved) to release the VI - reopen it if you were working in it.");
+                        "which is the only order LabVIEW keeps" +
+                        (executable ? ", and execState reads 1 - the VI is EXECUTABLE" : "") +
+                        ". The active project was CLOSED (and saved) to release the VI - reopen " +
+                        "it if you were working in it.");
                 }
             }
 
