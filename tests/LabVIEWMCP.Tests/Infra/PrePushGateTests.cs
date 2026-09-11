@@ -66,7 +66,27 @@ public sealed class PrePushGateTests : IDisposable
         return null;
     }
 
-    private static (int Code, string Output) Run(string exe, string workingDirectory, params string[] args)
+    private static (int Code, string Output) Run(string exe, string workingDirectory, params string[] args) =>
+        Run(exe, workingDirectory, null, args);
+
+    /// <summary>
+    /// Runs a child process with EVERY <c>GIT_*</c> VARIABLE STRIPPED, then applies
+    /// <paramref name="env"/>.
+    ///
+    /// THIS IS NOT HYGIENE, IT IS THE DIFFERENCE BETWEEN THESE TESTS WORKING AND ABORTING EVERY
+    /// PUSH. Git exports <c>GIT_DIR</c> - and, during a push, <c>GIT_INDEX_FILE</c>,
+    /// <c>GIT_PREFIX</c>, <c>GIT_QUARANTINE_PATH</c> and friends - into a hook's environment, and a
+    /// child inherits them. So when these tests run from inside the pre-push gate, the fixture's
+    /// own `git init` / `git add` / `git commit` were aimed at THE REAL REPOSITORY and failed with
+    /// exit 128, and the script under test resolved the real worktree instead of the fixture.
+    ///
+    /// MEASURED 2026-09-11 by the first real push through the fixed hook: 6 of these tests failed
+    /// inside the hook while all 1640 passed under a plain `dotnet test`. Nothing but running them
+    /// in their actual environment would have shown it - and left unfixed, the gate they verify
+    /// would have blocked every worktree push.
+    /// </summary>
+    private static (int Code, string Output) Run(
+        string exe, string workingDirectory, IDictionary<string, string>? env, params string[] args)
     {
         var psi = new ProcessStartInfo(exe)
         {
@@ -76,6 +96,14 @@ public sealed class PrePushGateTests : IDisposable
             UseShellExecute = false,
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+
+        foreach (var key in psi.Environment.Keys
+                     .Where(k => k.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase))
+                     .ToList())
+            psi.Environment.Remove(key);
+
+        if (env is not null)
+            foreach (var (k, v) in env) psi.Environment[k] = v;
 
         using var p = Process.Start(psi)!;
         var stdout = p.StandardOutput.ReadToEnd();
@@ -254,24 +282,13 @@ public sealed class PrePushGateTests : IDisposable
         var bare = Path.Combine(_root, "bare.git");
         Assert.Equal(0, Git(_root, "init", "-q", "--bare", bare).Code);
 
-        var psi = new ProcessStartInfo(PowerShell)
-        {
-            WorkingDirectory = worktree,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass",
-                                  "-File", Path.Combine(main, ".githooks", "run-tests.ps1") })
-            psi.ArgumentList.Add(a);
-        // What git itself exports to a hook, which is how the script knows it is one.
-        psi.Environment["GIT_DIR"] = bare;
+        // GIT_DIR is what git itself exports to a hook, and is how the script knows it is one.
+        var (code, output) = Run(PowerShell, workingDirectory: worktree,
+            new Dictionary<string, string> { ["GIT_DIR"] = bare },
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", Path.Combine(main, ".githooks", "run-tests.ps1"));
 
-        using var p = Process.Start(psi)!;
-        var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-        p.WaitForExit(120_000);
-
-        Assert.NotEqual(0, p.ExitCode);
+        Assert.NotEqual(0, code);
         Assert.Contains("could not name the work tree", output);
         // And it must not have reached a test run, let alone reported one.
         Assert.DoesNotContain("PASS:", output);

@@ -90,6 +90,34 @@ matches on `CLAUDE.md` beside `scripts\` — repository content, which is the sa
 clone and a CI checkout — rather than on `.git`, whose *kind* of filesystem object depends on how
 the tree was created.
 
+### A hook inherits `GIT_*`, and a child git process obeys it
+
+Anything the gate runs inherits the variables git exported: `GIT_DIR` always, and during a push
+`GIT_INDEX_FILE`, `GIT_PREFIX` and `GIT_QUARANTINE_PATH` as well. A child `git` obeys those in
+preference to its own working directory — so a test that shells out to `git` is, by default,
+operating on **the repository being pushed**.
+
+**Measured 2026-09-11, and it damaged the repo.** `PrePushGateTests` builds its fixture with
+`git init` / `git add` / `git commit`. Run under a plain `dotnet test` all 1640 tests passed; run
+from inside the hook, 6 failed with exit 128 — and `git init` with an inherited `GIT_DIR` and no
+work tree **set `core.bare = true` on the real repository**, after which every work-tree operation
+answered `fatal: this operation must be run in a work tree`. Repaired with
+`git config core.bare false`; `git fsck` was clean.
+
+Two things came out of it, and both are now in place:
+
+- The tests strip every `GIT_*` variable from their child processes (`PrePushGateTests.Run`). Any
+  future test that invokes `git` must do the same.
+- The gate no longer *guesses* when git cannot name the work tree. That broken state was what
+  revealed it: the first fixed script fell back to its own location, tested the main checkout and
+  printed **PASS** for a worktree's push — the original defect returning through the escape hatch.
+  `GIT_DIR` being set is how the script knows it is a hook, and as a hook git's answer is
+  mandatory.
+
+The general lesson, which is the repository's own: **a fix verified only by the test written
+alongside it is not verified.** A plain `dotnet test` was green throughout; only a real
+`git push` from a worktree found either problem.
+
 ## The .NET SDK preflight
 
 The gate checks for a usable SDK before building, and uses an SDK-bearing `dotnet` even when it is
