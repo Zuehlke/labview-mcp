@@ -1,4 +1,5 @@
 ﻿using LabVIEWMcp.Infra;
+using LabVIEWMcp.Tests.Support;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Infra;
@@ -535,13 +536,9 @@ public sealed class ShippedHelperAixmlTests
         }
     }
 
-    private static string RepoRoot(string leaf)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !Directory.Exists(Path.Combine(dir, ".git")))
-            dir = Path.GetDirectoryName(dir);
-        return Path.Combine(dir ?? ".", leaf);
-    }
+    // Was a walk for a directory called ".git", which in a linked worktree lands on the MAIN
+    // checkout and lints ITS scripts\ instead of the branch's. RepoTree explains the measurement.
+    private static string RepoRoot(string leaf) => RepoTree.Path(leaf);
 
     [Theory]
     [MemberData(nameof(Helpers))]
