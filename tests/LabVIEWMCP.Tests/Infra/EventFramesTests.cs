@@ -120,16 +120,57 @@ public sealed class EventFramesTests : IDisposable
     }
 
     /// <summary>
-    /// A dynamic user event - measured form ` &lt;MeinEvent&gt;\3A User Event ` - is not a static
-    /// front-panel control, so there is no control label to resolve and no ddoUID to write.
+    /// A dynamic user event - measured form ` &lt;MeinEvent&gt;\3A User Event ` - is READ,
+    /// and the name inside the angle brackets is the whole registration input: a user event has
+    /// no front-panel ddo, so there is no control label to resolve.
+    /// <para>
+    /// THIS TEST ASSERTED THE OPPOSITE UNTIL 2026-09-11. It was
+    /// <c>RefusesADynamicUserEventSelector</c> and expected <c>unrecognisedSelector</c>, on the
+    /// belief that the frame's event selection was an IDE gesture. It is not: writing
+    /// <c>source 1, regFlags 1, eSource 25, type 1000, eFlags 0, dynIndex 1</c> onto a structure
+    /// whose dynamic terminal is WIRED takes the VI from <c>execState 0</c> to 1, and survives a
+    /// LabVIEW save. <c>docs/labview-vit-templates.md</c> carries the measurement.
+    /// </para>
     /// </summary>
     [Fact]
-    public void RefusesADynamicUserEventSelector()
+    public void ReadsADynamicUserEventSelector()
     {
         var reading = EventFrames.Read(Document(" &lt;MeinEvent&gt;\\3A User Event "));
 
-        Assert.Equal("unrecognisedSelector", reading.RefusalKind);
-        Assert.Empty(reading.Frames);
+        Assert.Null(reading.RefusalKind);
+        var frame = Assert.Single(reading.Frames);
+        Assert.Equal("MeinEvent", frame.UserEvent);
+        Assert.Null(frame.Control);
+        Assert.Equal("User Event", frame.Trigger);
+        Assert.True(frame.NeedsRegistration);
+    }
+
+    /// <summary>
+    /// The script arguments are derived from the frame, so the two registerable kinds cannot
+    /// drift apart at the call site. A user event goes in behind <c>--user-event</c>; a control
+    /// goes in bare, because the script resolves a label to its ddoUID itself.
+    /// </summary>
+    [Fact]
+    public void SpellsTheSpecArgumentsPerKind()
+    {
+        var user = EventFrames.Read(Document(" &lt;MeinEvent&gt;\\3A User Event "));
+        Assert.Equal(["--user-event", "MeinEvent"], user.Frames[0].SpecArguments);
+
+        var control = EventFrames.Read(Document(" &quot;Setpoint&quot;\\3A Value Change "));
+        Assert.Equal(["Setpoint"], control.Frames[0].SpecArguments);
+    }
+
+    /// <summary>
+    /// A user event whose NAME contains what looks like the static form must still read as a
+    /// user event - the trigger at the end is what decides, not the presence of quotes.
+    /// </summary>
+    [Fact]
+    public void PrefersTheUserEventFormWhenTheNameLooksStatic()
+    {
+        var reading = EventFrames.Read(Document(" &lt;&quot;odd&quot; name&gt;\\3A User Event "));
+
+        Assert.Null(reading.RefusalKind);
+        Assert.Equal("\"odd\" name", Assert.Single(reading.Frames).UserEvent);
     }
 
     /// <summary>A filter event carries no control reference either.</summary>

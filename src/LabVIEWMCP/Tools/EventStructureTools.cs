@@ -136,6 +136,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 {
                     ["diagramIdx"] = frame.Index,
                     ["control"] = frame.Control,
+                    ["userEvent"] = frame.UserEvent,
                     ["trigger"] = frame.Trigger,
                 });
 
@@ -195,17 +196,21 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             //    rather than registering an event on whatever happened to be at that uid.
             foreach (var frame in toRegister)
             {
+                var what = frame.Control ?? $"<{frame.UserEvent}>";
                 var step = await RunScriptAsync(bundle, scripts, "pylv-set-event-spec.py",
-                    [directory, baseName, frame.Index.ToString(), frame.Control!],
-                    $"register[{frame.Index}] {frame.Control}", timeoutSeconds, ct);
+                    [directory, baseName, frame.Index.ToString(), .. frame.SpecArguments],
+                    $"register[{frame.Index}] {what}", timeoutSeconds, ct);
                 steps.Add(step);
                 if (step["exitCode"]?.GetValue<int>() != 0)
                     return Outcome(false, $"register[{frame.Index}]", steps, frameList, total,
                         viPath, directory, true,
-                        $"Registering frame {frame.Index} ('{frame.Control}') failed, so the " +
-                        "rebuild was NOT run and the .vi on disk still has its events stripped. " +
-                        "The usual cause is that no front-panel control carries that label - the " +
-                        "script lists the labels it did find.");
+                        $"Registering frame {frame.Index} ('{what}') failed, so the rebuild was " +
+                        "NOT run and the .vi on disk still has its events stripped. " +
+                        (frame.Control is not null
+                            ? "The usual cause is that no front-panel control carries that " +
+                              "label - the script lists the labels it did find."
+                            : "A user-event frame needs no control, so the cause is in the " +
+                              "bundle rather than in a label - read the script's output."));
             }
 
             // 6. rebuild
@@ -231,6 +236,36 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             }
 
             var broken = Field(steps[^1]?["answer"]?.ToJsonString() ?? "", "broken") == "true";
+            var userEvents = toRegister.Count(f => f.UserEvent is not null);
+
+            // A USER-EVENT FRAME CANNOT BE FINISHED BY THIS TOOL ALONE, and saying so here is the
+            // difference between a two-call fix and a day of archaeology.
+            //
+            // MEASURED 2026-09-11, end to end, twice. LabVIEW NORMALISES a user-event EventSpec
+            // when it LOADS the VI, against the dynamic-event wire present in the FILE at that
+            // moment. The wire is what AIXML cannot express, so at this point in the pipeline it
+            // does not exist yet - and LabVIEW therefore throws the spec away on its next load:
+            // `type` 1000 -> 0, `dynIndex` 1 -> 2, and the frame label back to
+            // `<#2>: Unknown Event (0x0)`. The spec written above is real in the file and inert.
+            //
+            // So the route is THREE steps and this is the first: generate here, then
+            // lvai_wire_dynamic_events (which saves, discarding this spec), then write the spec
+            // AGAIN onto the now-wired file and rebuild - at which point LabVIEW keeps it and the
+            // VI is executable. Both measured VIs went eBad -> eIdle on exactly that third step.
+            if (verify && broken && userEvents > 0)
+                return Outcome(false, "verify", steps, frameList, total, viPath, directory,
+                    keepBundle,
+                    $"The {userEvents} user-event frame(s) are NOT FINISHED, and that is expected " +
+                    "at this step rather than a fault in your diagram. A user event fires through " +
+                    "the event registration refnum, and the wire from it onto the Event " +
+                    "Structure's DYNAMIC EVENT TERMINAL is the one thing AIXML cannot express - so " +
+                    "it is not in the file yet, and LabVIEW discards a user-event spec it cannot " +
+                    "resolve on its next load. NEXT: ONE CALL - lvai_wire_dynamic_events on " +
+                    "this VI. It makes the wire and then finishes the frame itself: the spec is " +
+                    "written again onto the wired file and rebuilt, which is the only order " +
+                    "LabVIEW keeps, and it reads execState back. The static frames above are " +
+                    "already done.");
+
             if (verify && broken)
                 return Outcome(false, "verify", steps, frameList, total, viPath, directory,
                     keepBundle,
@@ -240,7 +275,10 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring.");
 
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
-                $"Registered {toRegister.Count} front-panel event(s). LabVIEW can run the result. " +
+                $"Registered {toRegister.Count} event(s) - " +
+                $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
+                $"{userEvents} user event(s). " +
+                "LabVIEW can run the result. " +
                 "TWO THINGS THIS DOES NOT TELL YOU. Every Event Data Node came back as " +
                 "`Source,Type,Time` - conversion drops the field selection - so a frame needing " +
                 "`NewVal` must read the control's terminal instead. And a diagram comment too " +
@@ -256,7 +294,11 @@ internal sealed class EventStructureTools(LvaiConnection connection)
         ["answer"] = Parsed(answer),
     };
 
-    private static async Task<JsonObject> RunScriptAsync(
+    /// <summary>Run one helper script over a bundle. Internal because
+    /// <see cref="WireEventTools"/> drives the same scripts for the step that can only
+    /// happen after the dynamic-event wire exists; a third copy of this is how they
+    /// would drift.</summary>
+    internal static async Task<JsonObject> RunScriptAsync(
         PyLabview.Bundle bundle, string scriptsDirectory, string script, string[] args,
         string label, int timeoutSeconds, CancellationToken ct)
     {

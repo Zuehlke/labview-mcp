@@ -357,7 +357,21 @@ The documentation is part of this file, not a later step:
 
 ### Phase 7 — Prove it still works
 
-Run it, and test **both** halves:
+**FIRST THE ABSOLUTE GATE: `lvai_exec_state` MUST READ `1`. AN EDIT THAT LEAVES THE VI
+NON-EXECUTABLE IS NOT DELIVERED.** `execState 1` (`eIdle`) is the only reading that lets you report
+success; `0` (`eBad`) means the edit is unfinished, and the answer is a `CANNOT PROCEED` block
+naming what is broken — **never a report carrying the breakage as a caveat or as a step left for
+the user.** `-1` means the reference never opened, which is not a verdict about the VI: read `code`
+and `source`.
+
+An edit is a full regeneration, so this is also the regression check that matters most: it catches
+a connector-pane contract broken by a retarget, which `callTargets` and a clean AIXML export both
+report as green. And it is the ONLY executability check available for a VI you cannot run — an
+interactive UI with a `While Loop` never terminates, so the run below is not available for it.
+Measured 2026-09-11 on a generated VI reported complete with an accurate render, a clean
+`describe_project` and every wire solid, at `execState 0`.
+
+Then run it, and test **both** halves:
 
 - the new behaviour from Phase 1,
 - at least one thing from the **Unchanged** column — a regression check, because a rewrite

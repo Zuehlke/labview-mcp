@@ -18,6 +18,7 @@ namespace LabVIEWMcp.Infra;
 /// authored-from-scratch documents:
 ///
 ///   ` "Name"\3A Value Change `   a static front-panel control event
+///   ` &lt;Name&gt;\3A User Event `      a DYNAMIC user event, through the refnum
 ///   `Timeout`                    needs no registration and survives conversion intact
 ///
 /// Note the leading and trailing spaces are part of the string, and that <c>\3A</c> is AIXML's own
@@ -31,10 +32,21 @@ internal static class EventFrames
 {
     /// <summary>One frame of an Event Structure, in document order.</summary>
     /// <param name="Index">Its <c>diagramIdx</c> - the position IS the index.</param>
-    /// <param name="Control">The front-panel control's label, or null for a Timeout frame.</param>
-    internal sealed record Frame(int Index, string Selector, string? Control, string Trigger)
+    /// <param name="Control">The front-panel control's label, or null for a Timeout frame
+    /// and for a user event.</param>
+    /// <param name="UserEvent">The user event's name for a dynamic frame, else null. A frame
+    /// carries a <paramref name="Control"/> or a <paramref name="UserEvent"/>, never both -
+    /// they are the two registerable kinds and they are written differently.</param>
+    internal sealed record Frame(int Index, string Selector, string? Control, string Trigger,
+                                 string? UserEvent = null)
     {
-        internal bool NeedsRegistration => Control is not null;
+        internal bool NeedsRegistration => Control is not null || UserEvent is not null;
+
+        /// <summary>The arguments <c>pylv-set-event-spec.py</c> takes for this frame, after
+        /// the bundle, base name and <see cref="Index"/>. Kept here so the two registerable
+        /// kinds cannot drift apart at the call site.</summary>
+        internal string[] SpecArguments =>
+            UserEvent is not null ? ["--user-event", UserEvent] : [Control!];
     }
 
     /// <summary>Every triggerable form this can register. Deliberately short.</summary>
@@ -44,6 +56,14 @@ internal static class EventFrames
 
     private static readonly Regex Static = new(
         @"^\s*""(?<control>.+)""\\3A\s*(?<trigger>.+?)\s*$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// A DYNAMIC user event: ` &lt;Data Event&gt;\3A User Event `. The name inside the
+    /// angle brackets is the user event's, and it is all the registration needs - a user
+    /// event has no front-panel ddo, so there is nothing to resolve out of the heap.
+    /// </summary>
+    private static readonly Regex Dynamic = new(
+        @"^\s*<(?<event>.+)>\\3A\s*User Event\s*$", RegexOptions.Compiled);
 
     internal static Reading Read(string aiXmlPath)
     {
@@ -106,30 +126,18 @@ internal static class EventFrames
                 continue;
             }
 
-            var dynamic = trimmed.StartsWith('<') && trimmed.EndsWith("User Event");
-            return new Reading([], dynamic
-                ? $"""
-                Frame {index} is a DYNAMIC user event ('{selector}'), and NOTHING here needs to
-                register it - the frame is finished by ONE WIRE in the IDE, and LabVIEW then writes
-                the whole registration itself.
-                Everything else converts: the four user-event nodes, the `eventRegNode` with all
-                five terminals, its `eventRegItem` already carrying the right `code` (03E8), and the
-                frame itself beside the static ones. What AIXML cannot express is the wire from
-                `Register For Events` into the structure's DYNAMIC EVENT TERMINAL - on NI's own
-                export the tunnel carrying that refnum has `inputs=` and no `outputs=`, so the net
-                simply ends.
-                AND WRITING THE SPEC IS INERT, measured 2026-09-10 as an A/B on one VI. Written
-                without the wire it is overwritten on LabVIEW's next SAVE (`eSource` became
-                73382408, `type` 0, which is the `Unknown Event (0x0)` in the frame label). Wired,
-                LabVIEW computes `source 1 eSource 25 type 1000 eFlags 0 dynIndex 1` by itself -
-                the same values, so the spec is LabVIEW's OUTPUT and not an input.
-                Whether the wire is there is readable: bit 15 on the dynamic terminal's `objFlags`,
-                0x008040 wired against 0x000040 shown-but-not.
-                """
-                : $"""
-                Frame {index} has the selector '{selector}', which is neither `Timeout` nor the
-                measured static form ` "Control"\3A Trigger `. A filter event (`Panel Close?`) is
-                one of these, and it carries no control reference to register.
+            if (Dynamic.Match(selector) is { Success: true } userEvent)
+            {
+                frames.Add(new Frame(index++, selector, null, "User Event",
+                                     userEvent.Groups["event"].Value));
+                continue;
+            }
+
+            return new Reading([], $"""
+                Frame {index} has the selector '{selector}', which is none of the three measured
+                forms: `Timeout`, ` "Control"\3A Trigger `, or ` <Name>\3A User Event `.
+                A filter event (`Panel Close?`) is one of these, and it carries neither a control
+                reference to register nor a user event to name.
                 """, "unrecognisedSelector");
         }
 

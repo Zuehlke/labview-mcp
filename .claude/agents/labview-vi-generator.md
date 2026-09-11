@@ -404,6 +404,26 @@ application instance and closing the front panel) is in
 `Error 1051` is 1357's sibling and means something else: same *filename*, different path.
 
 Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
+
+**THEN THE ABSOLUTE GATE: `lvai_exec_state` MUST READ `1`. A VI THAT IS NOT EXECUTABLE IS NOT A
+DELIVERABLE.** Call it on the finished `.vi`. `execState 1` (`eIdle`) is the only reading that lets
+you report success; `0` (`eBad`) means you have **not** finished, and the correct answer is a
+`CANNOT PROCEED` block naming what is broken — **never a report that lists the breakage as a
+caveat, a known limitation, or a step left for the user.** `-1` is not a verdict about the VI at
+all: the reference never opened, so read `code` and `source`.
+
+This gate exists because it was missed. Measured 2026-09-11: a producer/consumer with a user-event
+frame was reported complete, with an accurate render, a clean `describe_project` and every wire
+solid — and `execState 0`, handed to the user as "needs one IDE click". It needed no click; it
+needed one more heap field, and the session that accepted the caveat is what stopped the search.
+**Nothing else in the toolset sees this.** `lvai_generate_vi`, `lvai_describe_project`,
+`lvai_render_diagrams`, `lvai_connector_pane` and an AIXML export were all green in that state.
+
+And it is the ONLY executability check available for a VI you cannot run — an interactive UI with a
+`While Loop` never terminates, so Phase 6's run step is not available for it. For such a VI
+`lvai_exec_state` replaces the run; do not skip verification on the grounds that running is
+impossible.
+
 4. Run it, with `inputsJson` covering the inputs from Phase 1, including at least one edge case
    you promised to handle. **Which tool depends on the output types, and for most VIs it is the
    second one:**

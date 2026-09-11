@@ -887,9 +887,111 @@ compiled code through unparsed, which is how `Error 47, Unknown heap` was reache
 **What this does NOT yet establish.** The wire was added to a VI whose user-event FRAMES were
 already configured, so it says nothing about the order that matters for a full regeneration:
 AIXML writes the tunnel, this writes the wire, and the frame's event selection is then still
-missing. Whether `pylv-set-event-spec.py` can supply it once the wire is in place - or whether
-LabVIEW recomputes it, as the table above suggests it does - is the next measurement, not a
-conclusion.
+missing. `pylv-set-event-spec.py` CAN supply it once the wire is in place - measured, next
+subsection. LabVIEW does not recompute it from the wire on its own, so both halves are needed: the
+wire, then the spec.
+
+#### THAT MEASUREMENT, TAKEN 2026-09-11: THE SPEC IS WRITABLE, BUT ONLY AFTER THE WIRE
+
+**LabVIEW NORMALISES a user-event `EventSpec` when it LOADS the VI, against the dynamic-event wire
+present in the FILE at that moment.** That one sentence is the whole finding, and everything else
+here follows from it. The row to write is NI's own:
+
+| `diagramIdx` | `source` | `regFlags` | `eSource` | `type` | `eFlags` | `ddoUID` | `dynIndex` |
+|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 25 | 1000 | 0 | 0 | 1 |
+
+Write it into a file that **already carries the wire** and LabVIEW keeps it: `execState` 1, the
+export reads the frame as ` <Data Event>\3A User Event `, and a later LabVIEW save leaves the row
+untouched. Write it **before** the wire and LabVIEW throws it away on its next load - `type`
+1000 -> 0, `dynIndex` 1 -> 2, the frame label back to `<#2>: Unknown Event (0x0)`. The spec is
+genuinely in the file in between, and it is inert.
+
+**SO THE ROUTE IS THREE STEPS, and the middle one destroys the first one's work:**
+
+1. `lvai_generate_vi_with_events` - converts, strips, shows the dynamic terminals, registers every
+   frame. The static frames are finished here. The user-event frame's spec is written and will be
+   lost, because the wire cannot exist yet.
+2. `lvai_wire_dynamic_events` - branches the refnum net onto the dynamic terminal and SAVES. That
+   save is a load-and-write, so it is what discards the spec from step 1.
+3. Write the user-event spec AGAIN onto the now-wired file and rebuild - strip the compiled code
+   first, because step 2's save added `VICD`/`GCDI` and pylabview copies those through unparsed.
+
+Measured end to end on two VIs, both `eBad` -> `eIdle` on exactly that third step, `type 1000` and
+`dynIndex 1` surviving every later LabVIEW save. Step 1 now says this in its own `note` when a
+document has user-event frames and verify comes back broken, rather than blaming the diagram.
+
+**THIS SECTION HAS NOW BEEN WRONG TWICE IN ONE DAY, in opposite directions, and both are worth
+keeping.** It first said *"THE SELECTION IS STILL AN IDE CLICK"*, with five `eBad` rows whose last
+was NI's row field for field - the conclusion being that a user event was scriptable except for its
+selection. Corrected to *"writing the row works"*, which was right about the row and **silent about
+the order**, so it read as a one-step fix. Both readings are explained by the sentence at the top:
+the five `eBad` rows were almost certainly written before the wire, which is exactly what step 1
+does and exactly what LabVIEW discards.
+
+**And the process lesson is the one that actually saved this.** The corrected version shipped with
+two items written down as NOT YET VERIFIED - the derived frame label, and the absence of an
+end-to-end run. **Both were wrong**, and the end-to-end run found both in one call: the label
+`" [N] <Name>: User Event "` went into an XML text node with RAW angle brackets and killed
+`pylv_rebuild` with `not well-formed (invalid token): line 4662, column 43` - a message naming the
+rebuild, two steps downstream of the cause. It is escaped now (`xml_text`), and the static path had
+the same hole for any control label containing `&` or `<`, never exercised. **Writing down what you
+have not checked is what makes the next run a test instead of a demonstration.**
+
+#### WHAT THE TOOLS DO
+
+`pylv-set-event-spec.py` takes `--user-event <Name>` and writes the row above. `EventFrames` reads
+the selector ` <Name>\3A User Event ` as a registerable frame instead of refusing the document
+(`unrecognisedSelector`), so `lvai_generate_vi_with_events` accepts an Event Structure mixing static
+and user-event frames; `Frame.SpecArguments` decides the arguments per kind so the call site cannot
+spell one wrongly.
+
+**Step 3 is AUTOMATED inside `lvai_wire_dynamic_events`**, because it never varies and because a
+tool that leaves a VI `eBad` is not finished. After wiring it extracts the VI, runs
+`pylv-finish-user-events.py`, strips the compiled code LabVIEW's save just added, **closes the
+active project** to release the path, rebuilds and reads `execState` back. `userEventStep` holds
+each sub-answer whole and `changed` says whether there was anything to do; the project close and
+the rebuild are skipped entirely when there was not. `finishUserEvents: false` turns it off. So a
+user-event VI is **two** calls again - generate, wire - and ends executable.
+
+**How the frame and the name are found, since the caller passes neither.** A frame is
+`source == 1`, which is the dynamic source and - the part that makes it usable - the one field
+LabVIEW's normalisation LEAVES ALONE, so `source 1` with `type` != 1000 reads as "needs finishing"
+after the save. The name comes from `VCTP`'s own
+`<TypeDesc Type="Refnum" RefType="UserEvent" Label="...">`, survives the normalisation too, and is
+needed only for the cached label - executability comes from the spec row alone.
+
+**It REFUSES more than one user-event frame** rather than guessing, and that refusal is the
+feature: `dynIndex` is the registration item's position, only `1` is measured, and a wrong one
+gives a VI that loads, compiles and fires the WRONG event.
+
+**VERIFIED end to end 2026-09-11**, on a VI generated from scratch into a throwaway project:
+`lvai_generate_vi_with_events` left it `eBad` with the explanatory note, and one
+`lvai_wire_dynamic_events` call then reported `ok: true`, `okFrom: userEventStep.execState`,
+`userEventStep.execState: 1`, with extract, finish, strip, closeProject, rebuild and verify all
+green. An independent `lvai_exec_state` afterwards agreed.
+
+**AND THAT RUN FOUND A DEFECT NOTHING ELSE COULD, worth recording because the shape recurs.** Step 3
+was first gated on `outcome.Ok` - the obvious condition, and it made the automation **dead in the
+common case**. This helper very often ends `helperDidNotAnswer`: `RunVIAsTopLevel` cannot read its
+indicators back through a variant and returns `Error 91`, which is an artefact of the READ-BACK and
+says nothing about the VI - the tool's own note has said exactly that all along. In that state the
+wire was really there (`wireEndsAfter` 3, the file rewritten), so the gate skipped the finishing
+step on a VI that was ready for it, and `userEventStep` was simply absent from the answer. It is
+gated on `endsAfter >= 3` now - a source plus two sinks IS the branch - and a verified `execState 1`
+upgrades `ok`, because it is stronger evidence than the diagnostics that failed to arrive.
+**Five unit tests and three script-level measurements all passed while this was broken**, because
+every one of them tested a piece rather than the composition.
+
+**`dynIndex` is the registration item's position and only `1` is measured** - a structure fed
+several user events needs the real one. Which of `regFlags`, `type` and `dynIndex` is decisive is
+also not isolated; they were changed together from `0 / 0 / 2`. `type 1000` is `0x03E8` and equals
+the `eventRegItem`'s own `code`, so it is the candidate. Write the whole row.
+
+**Do not resolve heap `TypeID(n)` against `VCTP`'s `TopLevel` list.** A VI that has a `DTHP` block
+indexes its diagram types there, and reading them out of `VCTP` produces confident nonsense - on
+this VI it typed a `Register For Events` node's permanent terminals as `Boolean` and `NumInt32`.
+Two minutes went into a comparison built on that mapping before the `DTHP` block gave it away.
 
 #### `Auto Route? (F)` MUST BE WIRED TRUE, or the wire is connected and INVISIBLE
 

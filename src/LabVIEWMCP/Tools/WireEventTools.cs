@@ -83,6 +83,20 @@ internal sealed class WireEventTools(LvaiConnection connection)
         search did see.
         It needs a project OPEN AND ACTIVE in the IDE: the VI is opened through
         Application:Project:Active Project so the edit lands in the copy the user is looking at.
+        IT ALSO FINISHES A USER-EVENT FRAME, which nothing else can, and that is why a VI with one
+        ends this call EXECUTABLE instead of eBad. LabVIEW normalises a user-event EventSpec when
+        it LOADS the VI, against the wire present in the FILE at that moment - so the spec
+        lvai_generate_vi_with_events writes is necessarily discarded, by the very save this tool
+        performs. Afterwards it sticks, so the spec is written AGAIN here and the VI rebuilt:
+        measured 2026-09-11 on two VIs, both eBad -> eIdle on exactly that step. Read
+        userEventStep; `changed` says whether there was anything to do.
+        THAT STEP CLOSES THE ACTIVE PROJECT, saving it, because pylabview writes the file while
+        LabVIEW keeps serving its own copy - so without the release the verification reads the VI
+        it replaced. It is skipped entirely, project included, when the VI has no unresolved
+        user-event frame, and finishUserEvents: false turns it off.
+        IT REFUSES MORE THAN ONE USER-EVENT FRAME rather than guessing: dynIndex is the
+        registration item's position and only the value 1 is measured, and a wrong one gives a VI
+        that loads, compiles and fires the WRONG event.
         """)]
     public async Task<string> WireDynamicEventsAsync(
         [Description("Absolute path of the .vi to wire. It is SAVED in place on success.")]
@@ -99,6 +113,16 @@ internal sealed class WireEventTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists and is current")]
         bool regenerateHelper = false,
+        [Description("""
+            After wiring, write the VI's USER-EVENT EventSpecs again and rebuild - the step that
+            can only happen once the wire exists, because LabVIEW discards a user-event spec it
+            cannot resolve when it LOADS the VI. On by default: without it a VI with a user-event
+            frame is left eBad, which is not a deliverable. It CLOSES THE ACTIVE PROJECT (saving
+            it) to release the VI from LabVIEW's memory, because pylabview writes the file happily
+            while LabVIEW keeps serving its own copy. Skipped entirely, project included, when the
+            VI has no user-event frame to finish.
+            """)]
+        bool finishUserEvents = true,
         [Description("Local budget in seconds")]
         int timeoutSeconds = 300,
         CancellationToken ct = default) =>
@@ -187,6 +211,61 @@ internal sealed class WireEventTools(LvaiConnection connection)
             payload["note"] = JsonValue.Create(outcome.Note);
             payload["verifyBy"] = JsonValue.Create(VerifyHint);
 
+            // STEP 3. The wire is in the file now, so - and only now - a user-event EventSpec
+            // will survive LabVIEW's next load. See FinishUserEventsAsync for the measurement.
+            //
+            // GATED ON EVIDENCE OF THE WIRE, NOT ON `outcome.Ok` - measured 2026-09-11, and
+            // gating it on `ok` made this whole automation DEAD IN THE COMMON CASE. This helper
+            // very often ends `helperDidNotAnswer`: RunVIAsTopLevel cannot read its indicators
+            // back through a variant and returns Error 91, which is an artefact of the read-back
+            // and says nothing about the VI - the tool's own note has said so all along. The wire
+            // was really there in that state (`wireEndsAfter` 3, the file rewritten), so step 3
+            // must still run. `endsAfter >= 3` IS the evidence: a source plus two sinks is the
+            // branch this tool makes. Unit tests could not see this; only the end-to-end run did.
+            var wired = outcome.Ok || endsAfter >= 3;
+            if (finishUserEvents && wired)
+            {
+                var finish = await FinishUserEventsAsync(viPath, timeoutSeconds, ct);
+                payload["userEventStep"] = finish;
+                payload["viBytesAfter"] = JsonValue.Create(
+                    File.Exists(viPath) ? new FileInfo(viPath).Length : 0L);
+
+                if (finish["ok"]?.GetValue<bool>() is false)
+                {
+                    // The wire went in, so the VI is further along than it was - and it is still
+                    // not executable, and that is what `ok` has to report.
+                    payload["ok"] = JsonValue.Create(false);
+                    payload["errorKind"] = JsonValue.Create("userEventsNotFinished");
+                    payload["note"] = JsonValue.Create(
+                        "The wire went in, and the user-event frames were NOT finished, so the " +
+                        "VI is still not executable. Read userEventStep: it holds each sub-answer " +
+                        "whole. Nothing was rolled back.");
+                }
+                else if (finish["changed"]?.GetValue<bool>() is true)
+                {
+                    var executable = finish["execState"]?.GetValue<int>() == 1;
+
+                    // A VERIFIED execState OUTRANKS an unreadable helper output. If the frames are
+                    // finished and LabVIEW can run the VI, the deliverable is good and `ok` should
+                    // say so - `helperDidNotAnswer` only ever meant "the diagnostics did not come
+                    // back", and this is stronger evidence than those diagnostics would have been.
+                    if (executable && !outcome.Ok)
+                    {
+                        payload["ok"] = JsonValue.Create(true);
+                        payload["errorKind"] = null;
+                        payload["okFrom"] = JsonValue.Create("userEventStep.execState");
+                    }
+
+                    payload["note"] = JsonValue.Create(
+                        $"{payload["note"]?.GetValue<string>()} AND the user-event frame(s) were " +
+                        "finished: the spec was written again onto the wired file and rebuilt, " +
+                        "which is the only order LabVIEW keeps" +
+                        (executable ? ", and execState reads 1 - the VI is EXECUTABLE" : "") +
+                        ". The active project was CLOSED (and saved) to release the VI - reopen " +
+                        "it if you were working in it.");
+                }
+            }
+
             if (!outcome.Ok)
             {
                 payload["wireEndsAfterXml"] = JsonValue.Create(Text(outputs, "wire ends after"));
@@ -198,6 +277,159 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
+
+    /// <summary>
+    /// STEP 3 of the user-event route: write the spec again, onto the file that now carries the
+    /// wire, and rebuild.
+    ///
+    /// WHY IT CANNOT BE DONE ANY EARLIER. LabVIEW NORMALISES a user-event <c>EventSpec</c> when it
+    /// LOADS the VI, against the dynamic-event wire present in the FILE at that moment. The wire
+    /// is the one thing AIXML cannot express, so <c>lvai_generate_vi_with_events</c> necessarily
+    /// writes that spec into a file without it - and LabVIEW discards it on the next load
+    /// (<c>type</c> 1000 -&gt; 0, <c>dynIndex</c> 1 -&gt; 2, label back to
+    /// <c>&lt;#2&gt;: Unknown Event (0x0)</c>). The save this tool's own wiring performs IS that
+    /// load. So the spec has to be written again afterwards, and then it sticks: measured
+    /// 2026-09-11 end to end on two VIs, both eBad -&gt; eIdle on exactly this step, the row
+    /// surviving every later LabVIEW save.
+    ///
+    /// WHY IT CLOSES THE PROJECT. pylabview writes the .vi happily while LabVIEW keeps serving its
+    /// own in-memory copy, so a rebuild without releasing the path leaves the verification reading
+    /// the VI it REPLACED. Closing the active project is the documented release. It happens only
+    /// when there is really something to write, which is why the cheap read comes first and the
+    /// script's own <c>RESULT:</c> line decides.
+    ///
+    /// IT DOES NOT GUESS. The script refuses more than one user-event frame, because
+    /// <c>dynIndex</c> is the registration item's position and only the value 1 is measured; a
+    /// wrong one gives a VI that loads, compiles and fires the wrong event.
+    /// </summary>
+    private async Task<JsonObject> FinishUserEventsAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var step = new JsonObject { ["changed"] = false };
+
+        if (PyLabview.Locate() is not { } bundle)
+        {
+            step["ok"] = true;
+            step["skipped"] = "pylabviewNotProvisioned";
+            step["note"] = "pylabview is not provisioned, so a user-event frame cannot be "
+                + "finished here. If this VI has one it is still eBad - check with "
+                + "lvai_exec_state, and see pylv_status.";
+            return step;
+        }
+
+        if (StatusTools.ScriptsDirectory() is not { } scripts)
+        {
+            step["ok"] = true;
+            step["skipped"] = "noScriptsDirectory";
+            step["note"] = "No scripts folder next to the exe - lvai_status reports it as "
+                + "scriptsDirectory - so the helper scripts are unreachable.";
+            return step;
+        }
+
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "userevents",
+            Path.GetFileNameWithoutExtension(viPath) + "-" + Environment.ProcessId + "-"
+            + Guid.NewGuid().ToString("N")[..7]);
+        Directory.CreateDirectory(directory);
+        var steps = new JsonArray();
+        step["bundleDirectory"] = directory;
+        step["steps"] = steps;
+
+        // The VI is still loaded in LabVIEW here; READING the file is fine, and it is current
+        // because the wiring helper saved it.
+        var extractJson = await new PyLabviewTools(connection)
+            .ExtractAsync(viPath, directory, annotate: false, timeoutSeconds, ct);
+        var extract = JsonNode.Parse(extractJson)?.AsObject();
+        steps.Add(new JsonObject { ["step"] = "extract", ["answer"] = extract?.DeepClone() });
+        if (extract?["mainXml"]?.GetValue<string>() is not { Length: > 0 } mainXml)
+        {
+            step["ok"] = false;
+            step["note"] = "Could not extract the wired VI, so the user-event spec was not "
+                + "written. The wire itself is in the file.";
+            return step;
+        }
+
+        var baseName = Path.GetFileNameWithoutExtension(mainXml);
+
+        var finish = await EventStructureTools.RunScriptAsync(bundle, scripts,
+            "pylv-finish-user-events.py", [directory, baseName], "finishUserEvents",
+            timeoutSeconds, ct);
+        steps.Add(finish);
+        if (finish["exitCode"]?.GetValue<int>() != 0)
+        {
+            step["ok"] = false;
+            step["note"] = "The user-event spec could not be written - read this step's stderr. "
+                + "Nothing was rebuilt, so the .vi is the wired-but-unfinished one.";
+            return step;
+        }
+
+        var stdout = finish["stdout"]?.GetValue<string>() ?? "";
+        if (!stdout.Contains("RESULT: changed", StringComparison.Ordinal))
+        {
+            step["ok"] = true;
+            step["note"] = "Nothing to finish: this VI has no unresolved user-event frame. The "
+                + "project was left open and no rebuild was needed.";
+            try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+            step["bundleDirectory"] = null;
+            return step;
+        }
+
+        step["changed"] = true;
+
+        // LabVIEW's save added compiled code, and pylabview copies those blocks through UNPARSED -
+        // so a rebuild would carry compiled code describing the state before this edit.
+        var strip = await EventStructureTools.RunScriptAsync(bundle, scripts,
+            "pylv-strip-compiled.py", [directory, baseName], "strip", timeoutSeconds, ct);
+        steps.Add(strip);
+        if (strip["exitCode"]?.GetValue<int>() != 0)
+        {
+            step["ok"] = false;
+            step["note"] = "Stripping the compiled code failed, so nothing was rebuilt.";
+            return step;
+        }
+
+        // Release the path. Error 1055 means no project was active, which is the end state wanted.
+        var closeJson = await new CloseTools(connection).CloseActiveProjectAsync(
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+            ct: ct);
+        var close = JsonNode.Parse(closeJson)?.AsObject();
+        steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = close?.DeepClone() });
+        step["projectClosed"] = close?["closed"]?.DeepClone();
+
+        var rebuildJson = await new PyLabviewTools(connection)
+            .RebuildAsync(mainXml, viPath, timeoutSeconds, ct);
+        var rebuild = JsonNode.Parse(rebuildJson)?.AsObject();
+        steps.Add(new JsonObject { ["step"] = "rebuild", ["answer"] = rebuild?.DeepClone() });
+        if (rebuild?["ok"]?.GetValue<bool>() is not true)
+        {
+            step["ok"] = false;
+            step["note"] = "The spec was written but the rebuild failed, so the .vi on disk is "
+                + "the wired-but-unfinished one. The bundle is kept.";
+            return step;
+        }
+
+        // The only check that sees an unfinished frame.
+        var stateJson = await new ExecStateTools(connection).ExecStateAsync(
+            viPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
+            timeoutSeconds, ct: ct);
+        var state = JsonNode.Parse(stateJson)?.AsObject();
+        steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = state?.DeepClone() });
+        step["execState"] = state?["execState"]?.DeepClone();
+
+        if (state?["broken"]?.GetValue<bool>() is not false)
+        {
+            step["ok"] = false;
+            step["note"] = "The user-event spec was written and rebuilt, and LabVIEW still says "
+                + "the VI is NOT EXECUTABLE. At this point the cause is elsewhere in the diagram: "
+                + "read linkerErrors in the verify step.";
+            return step;
+        }
+
+        step["ok"] = true;
+        step["note"] = "The user-event frame(s) are finished and LabVIEW can run the VI.";
+        try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+        step["bundleDirectory"] = null;
+        return step;
+    }
 
     /// <summary>
     /// The one instruction that cannot be left out of this tool's answer. Every cheap check agrees
