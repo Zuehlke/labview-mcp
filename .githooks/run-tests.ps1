@@ -103,16 +103,38 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
     }
 }
 
+# Git EXPORTS GIT_DIR to a hook - measured with a probe hook in a linked worktree, where it
+# was `<main>/.git/worktrees/<name>`. So its presence is how this script knows it is running
+# as a hook rather than by hand, and that distinction decides whether a fallback is allowed.
+$invokedAsHook = -not [string]::IsNullOrEmpty($env:GIT_DIR)
+
 if ($treeFromGit) {
     $repoRoot = $treeFromGit
     $resolvedBy = 'git rev-parse --show-toplevel'
+} elseif ($invokedAsHook) {
+    # A GATE THAT CANNOT ESTABLISH WHAT IT IS TESTING MUST NOT SAY PASS.
+    #
+    # Found the hard way, 2026-09-11: with `core.bare` accidentally set to true on the shared
+    # config, `rev-parse --show-toplevel` answered "fatal: this operation must be run in a work
+    # tree" - and an earlier version of this script fell back to its own location, tested the
+    # MAIN checkout and printed PASS for a worktree's push. That is the exact defect this file
+    # exists to prevent, walking back in through the fallback. So when git is driving us and
+    # git cannot name the work tree, stop.
+    Write-Host ''
+    Write-Host '  ERROR: git could not name the work tree being pushed.' -ForegroundColor Red
+    Write-Host '         Refusing to guess: this gate must not report PASS for a tree it only' -ForegroundColor DarkGray
+    Write-Host '         assumed. Check the repository state - `git status` here, and' -ForegroundColor DarkGray
+    Write-Host '         `git config --show-origin --get core.bare` (it must be false for a' -ForegroundColor DarkGray
+    Write-Host '         normal checkout; true makes every work-tree operation fail).' -ForegroundColor DarkGray
+    Write-Host '         Then push again, or bypass in an emergency: git push --no-verify' -ForegroundColor DarkGray
+    exit 1
 } else {
-    # Only reachable with no git on PATH, or outside a repository (a bare
-    # `powershell -File .githooks\run-tests.ps1` in an exported tree). Then this
-    # script's location is the best evidence there is.
+    # Run by hand outside a repository - an exported tree, a zip, a CI checkout with no git
+    # metadata. No push is in flight, so the script's own location is the best evidence there
+    # is, and the header says plainly that it was used.
     $repoRoot = Convert-ToNativePath (Split-Path -Parent $PSScriptRoot)
-    $resolvedBy = if ($gitAvailable) { 'script location (not inside a git work tree)' }
-                  else               { 'script location (git not on PATH)' }
+    $resolvedBy = if ($gitAvailable) { 'script location - NOT inside a git work tree' }
+                  else               { 'script location - git not on PATH' }
 }
 
 $testProj = Join-Path $repoRoot $TestProjectRelativePath

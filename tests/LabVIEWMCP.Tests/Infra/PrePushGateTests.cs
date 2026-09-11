@@ -229,6 +229,84 @@ public sealed class PrePushGateTests : IDisposable
     }
 
     /// <summary>
+    /// THE FALLBACK MUST NOT REOPEN THE DEFECT. Found the hard way while verifying this very fix:
+    /// with <c>core.bare</c> accidentally true on the shared config, <c>rev-parse
+    /// --show-toplevel</c> answers "fatal: this operation must be run in a work tree" - and the
+    /// first version of the fixed script fell back to its own location, tested the MAIN checkout
+    /// and printed PASS for a worktree's push. The original defect, back through the escape hatch.
+    ///
+    /// So when git is driving (<c>GIT_DIR</c> is exported to a hook - measured) and git cannot name
+    /// the work tree, the gate must refuse rather than guess. The fixture reproduces the real
+    /// broken state, not a mocked one: <c>core.bare = true</c> on a repo that has a work tree.
+    /// </summary>
+    [Fact]
+    public void As_a_hook_it_refuses_to_guess_when_git_cannot_name_the_work_tree()
+    {
+        if (PowerShell is null) return;
+        var (main, worktree) = MakeRepoWithWorktree();   // worktree is the hook's cwd
+
+        // Reproduce the CONDITION rather than one cause of it: git driving, and no work tree it
+        // can name. A bare repository as GIT_DIR does that every time - `rev-parse
+        // --show-toplevel` answers "fatal: this operation must be run in a work tree", the same
+        // refusal the real accident produced. (Setting core.bare on the fixture was tried first
+        // and does NOT reproduce it: measured, a linked worktree still resolves fine that way, so
+        // the test would have passed without exercising the branch at all.)
+        var bare = Path.Combine(_root, "bare.git");
+        Assert.Equal(0, Git(_root, "init", "-q", "--bare", bare).Code);
+
+        var psi = new ProcessStartInfo(PowerShell)
+        {
+            WorkingDirectory = worktree,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var a in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                  "-File", Path.Combine(main, ".githooks", "run-tests.ps1") })
+            psi.ArgumentList.Add(a);
+        // What git itself exports to a hook, which is how the script knows it is one.
+        psi.Environment["GIT_DIR"] = bare;
+
+        using var p = Process.Start(psi)!;
+        var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+        p.WaitForExit(120_000);
+
+        Assert.NotEqual(0, p.ExitCode);
+        Assert.Contains("could not name the work tree", output);
+        // And it must not have reached a test run, let alone reported one.
+        Assert.DoesNotContain("PASS:", output);
+    }
+
+    /// <summary>
+    /// Run BY HAND outside a work tree - an exported zip, a CI checkout with no git metadata - the
+    /// script's own location is the best evidence there is and the fallback is legitimate, because
+    /// no push is in flight. It must say so rather than implying git answered.
+    /// </summary>
+    [Fact]
+    public void Run_by_hand_outside_a_work_tree_it_falls_back_and_says_so()
+    {
+        if (PowerShell is null) return;
+        var (main, _) = MakeRepoWithWorktree();
+
+        // A copy of the tree with no git metadata at all.
+        var exported = Path.Combine(_root, "exported");
+        Directory.CreateDirectory(Path.Combine(exported, ".githooks"));
+        Directory.CreateDirectory(Path.Combine(exported, "tests", "LabVIEWMCP.Tests"));
+        File.Copy(Path.Combine(main, ".githooks", "run-tests.ps1"),
+                  Path.Combine(exported, ".githooks", "run-tests.ps1"));
+        File.WriteAllText(
+            Path.Combine(exported, "tests", "LabVIEWMCP.Tests", "LabVIEWMCP.Tests.csproj"), "<Project/>");
+
+        var (code, output) = Run(PowerShell, workingDirectory: exported,
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", Path.Combine(exported, ".githooks", "run-tests.ps1"), "-ResolveOnly");
+
+        Assert.Equal(0, code);
+        Assert.Contains("script location", output);
+        Assert.StartsWith(exported, ResolvedTestProject(output), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Guards the shape of the fix, not just its behaviour: the primary resolution must come from
     /// git. Re-introducing <c>Split-Path -Parent $PSScriptRoot</c> as the main route is the exact
     /// regression, and it would pass every behavioural test above on a non-worktree machine.
