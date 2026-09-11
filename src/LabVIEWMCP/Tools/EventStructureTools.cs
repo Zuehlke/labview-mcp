@@ -136,6 +136,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 {
                     ["diagramIdx"] = frame.Index,
                     ["control"] = frame.Control,
+                    ["userEvent"] = frame.UserEvent,
                     ["trigger"] = frame.Trigger,
                 });
 
@@ -195,17 +196,21 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             //    rather than registering an event on whatever happened to be at that uid.
             foreach (var frame in toRegister)
             {
+                var what = frame.Control ?? $"<{frame.UserEvent}>";
                 var step = await RunScriptAsync(bundle, scripts, "pylv-set-event-spec.py",
-                    [directory, baseName, frame.Index.ToString(), frame.Control!],
-                    $"register[{frame.Index}] {frame.Control}", timeoutSeconds, ct);
+                    [directory, baseName, frame.Index.ToString(), .. frame.SpecArguments],
+                    $"register[{frame.Index}] {what}", timeoutSeconds, ct);
                 steps.Add(step);
                 if (step["exitCode"]?.GetValue<int>() != 0)
                     return Outcome(false, $"register[{frame.Index}]", steps, frameList, total,
                         viPath, directory, true,
-                        $"Registering frame {frame.Index} ('{frame.Control}') failed, so the " +
-                        "rebuild was NOT run and the .vi on disk still has its events stripped. " +
-                        "The usual cause is that no front-panel control carries that label - the " +
-                        "script lists the labels it did find.");
+                        $"Registering frame {frame.Index} ('{what}') failed, so the rebuild was " +
+                        "NOT run and the .vi on disk still has its events stripped. " +
+                        (frame.Control is not null
+                            ? "The usual cause is that no front-panel control carries that " +
+                              "label - the script lists the labels it did find."
+                            : "A user-event frame needs no control, so the cause is in the " +
+                              "bundle rather than in a label - read the script's output."));
             }
 
             // 6. rebuild
@@ -240,7 +245,10 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring.");
 
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
-                $"Registered {toRegister.Count} front-panel event(s). LabVIEW can run the result. " +
+                $"Registered {toRegister.Count} event(s) - " +
+                $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
+                $"{toRegister.Count(f => f.UserEvent is not null)} user event(s). " +
+                "LabVIEW can run the result. " +
                 "TWO THINGS THIS DOES NOT TELL YOU. Every Event Data Node came back as " +
                 "`Source,Type,Time` - conversion drops the field selection - so a frame needing " +
                 "`NewVal` must read the control's terminal instead. And a diagram comment too " +

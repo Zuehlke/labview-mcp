@@ -887,9 +887,89 @@ compiled code through unparsed, which is how `Error 47, Unknown heap` was reache
 **What this does NOT yet establish.** The wire was added to a VI whose user-event FRAMES were
 already configured, so it says nothing about the order that matters for a full regeneration:
 AIXML writes the tunnel, this writes the wire, and the frame's event selection is then still
-missing. Whether `pylv-set-event-spec.py` can supply it once the wire is in place - or whether
-LabVIEW recomputes it, as the table above suggests it does - is the next measurement, not a
-conclusion.
+missing. `pylv-set-event-spec.py` CAN supply it once the wire is in place - measured, next
+subsection. LabVIEW does not recompute it from the wire on its own, so both halves are needed: the
+wire, then the spec.
+
+#### THAT MEASUREMENT, TAKEN 2026-09-11: `pylv-set-event-spec.py` CAN SUPPLY IT
+
+**With the wire in place, writing the user-event `EventSpec` WORKS, and it survives LabVIEW's own
+save.** Measured on `C:	emp\ProducerTest\Producer Consumer Events.vi` - a producer/consumer
+authored from scratch with two `Value Change` frames and one user-event frame, the registration
+refnum authored in as an ordinary `<Tunnel>` and branched onto the dynamic terminal by
+`lvai_wire_dynamic_events`. Writing NI's row into `diagramIdx 2`:
+
+| `diagramIdx` | `source` | `regFlags` | `eSource` | `type` | `eFlags` | `ddoUID` | `dynIndex` |
+|---|---|---|---|---|---|---|---|
+| 2 | 1 | 1 | 25 | 1000 | 0 | 0 | 1 |
+
+took the VI from `execState 0` to **`execState 1`**, confirmed three independent ways:
+
+- **LabVIEW's own AIXML export** reads the frame as ` <Data Event>A User Event `, where it had
+  read ` <#2>A Unknown Event (0x0) `.
+- **`lvai_exec_state`** answers `1`, `broken: false`, empty `VILoadErr`.
+- **The frame's `eventDataNode` normalises.** Its `objFlags` went `1376260` -> `1376256` and its
+  three terminals `1048640` -> `64`, which is exactly what the working static frame carries. The
+  bit `0x100000` on those terminals is therefore a CONSEQUENCE of an unresolved event, not a second
+  defect - worth knowing, because it reads like one and sends you looking at the data node.
+
+**And it is durable.** A LabVIEW save forced through `lvai_set_vi_icon` (`viResaved: true`) left
+`regFlags 1`, `type 1000` and `dynIndex 1` untouched. So the spec is LabVIEW's INPUT here, not only
+its output.
+
+**THIS SECTION CLAIMED THE OPPOSITE FOR PART OF 2026-09-11, and the wrong version is worth
+recording.** It was headed *"IT IS NEITHER. THE SELECTION IS STILL AN IDE CLICK"* and carried a
+five-row table of `eBad` results whose last row was *"NI's row, field for field"* - the same row
+that works above. Its conclusion, that a user event is "scriptable but for its selection", was
+wrong and would have stopped the next reader from trying. **What made those five readings `eBad` is
+NOT established**; the bundles behind them are gone. The shape to suspect is a bundle extracted
+before `lvai_wire_dynamic_events` ran, which would mean the wire and the spec were never in the same
+file at once - but that is a hypothesis, not a measurement, and it is recorded as one.
+
+**What is NOT isolated: which of the three fields is decisive.** `regFlags`, `type` and `dynIndex`
+were changed together, from `0 / 0 / 2` to `1 / 1000 / 1`. `type 1000` is `0x03E8` and matches the
+`eventRegItem`'s own `code`, so it is the obvious candidate; `regFlags` is 0 on this VI's two
+working static frames, so it is probably not load-bearing. Neither is measured. Write the whole row.
+
+**Two things that are NOT the problem, each checked before the spec was touched.** The dynamic
+terminal's type is already the fully specified one - `Refnum RefType="EventReg"` wrapping the
+`UserEvent` "Data Event" with `CField4="0x03E8"` - so AIXML does carry the registration's type
+through a round trip. And the bundle held **no `VICD` blocks**, so stale compiled code is not what
+made the earlier attempts inert either.
+
+**A save did NOT prune the unregistered frame**, which qualifies "a SAVE prunes" above: the frame
+carried a spec - an unknown-event one - and survived two saves. Pruning was measured on frames with
+NO spec at all.
+
+#### WHAT THE TOOLS DO WITH IT, AND THE TWO THINGS STILL UNVERIFIED
+
+`pylv-set-event-spec.py` takes a third argument form - `--user-event <Name>` - and writes the row
+above. `EventFrames` reads the selector ` <Name>\3A User Event ` as a registerable frame instead of
+refusing the document (`unrecognisedSelector`), so `lvai_generate_vi_with_events` accepts a VI whose
+Event Structure mixes static and user-event frames. `EventFrames.Frame.SpecArguments` decides the
+arguments per kind, so the call site cannot spell one of them wrongly.
+
+**Verified without LabVIEW, against the real failure**: the script was run over the bundle that had
+been `eBad`, and its row came out IDENTICAL to the one LabVIEW itself kept across its own save,
+with both static frames untouched. That is the check that counts - the unit tests were written
+alongside the change and prove only that the argument parsing does what it says.
+
+**STILL UNVERIFIED, both needing a client restart to reach the rebuilt server:**
+
+1. **The cached frame text `" [N] <Name>: User Event "` is DERIVED, not measured.** It comes from
+   LabVIEW's export selector by analogy with the static form, because the user-event frame was not
+   the DISPLAYED one in the VI measured here, so LabVIEW never wrote its text. The IDE reads this
+   string and not the spec, so if the shape is wrong the frame shows a wrong label while `execState`
+   stays 1 and every render looks right - the same silent class as the static case this file already
+   records. **To settle it:** make the user-event frame the displayed one, let LabVIEW save, read
+   `selString` back. If LabVIEW rewrites it, its version is the answer.
+2. **`lvai_generate_vi_with_events` has not been run end to end over a user-event document.** Only
+   its two halves are checked.
+
+**Do not resolve heap `TypeID(n)` against `VCTP`'s `TopLevel` list.** A VI that has a `DTHP` block
+indexes its diagram types there, and reading them out of `VCTP` produces confident nonsense - on
+this VI it typed a `Register For Events` node's permanent terminals as `Boolean` and `NumInt32`.
+Two minutes went into a comparison built on that mapping before the `DTHP` block gave it away.
 
 #### `Auto Route? (F)` MUST BE WIRED TRUE, or the wire is connected and INVISIBLE
 

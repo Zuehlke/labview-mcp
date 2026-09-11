@@ -35,13 +35,40 @@ at the frame. Call the frames in order; the last one becomes the displayed one.
 
 usage:
   pylv-set-event-spec.py <bundle> <base> <diagramIdx> <controlLabel-or-ddoUid> [label]
+  pylv-set-event-spec.py <bundle> <base> <diagramIdx> --user-event <Name> [dynIndex]
 
 A CONTROL LABEL is the normal argument - it is what the event selector spells,
 and this resolves it to the ddoUID itself, so no caller has to read the heap.
+
+**A USER EVENT FRAME IS WRITABLE TOO, and this file used to say it was not.**
+Measured 2026-09-11 on a from-scratch producer/consumer whose registration
+refnum reached the structure as an AIXML `<Tunnel>` branched onto the dynamic
+terminal by `lvai_wire_dynamic_events`:
+
+    User Event     source 1   regFlags 1   eSource 25   type 1000
+                   eFlags 0   ddoUID 0     dynIndex 1
+
+took the VI from `execState 0` to **1**, LabVIEW's own AIXML export then read
+the frame as ` <Data Event>A User Event `, and a LabVIEW save left all of it
+untouched - so the spec is LabVIEW's INPUT here, not only its output.
+
+TWO PRECONDITIONS, both outside this script. The dynamic event terminal must be
+WIRED - `type 1000` alone on an unwired structure is what earlier measurements
+recorded as inert - and `ddoUID` stays 0 because a user event has no front-panel
+ddo to bind to.
+
+WHAT IS NOT ISOLATED: which of `regFlags`, `type` and `dynIndex` is decisive.
+They were changed together from `0 / 0 / 2`. `type 1000` is `0x03E8` and equals
+the `eventRegItem`'s own `code`, so it is the candidate; this writes the whole
+row rather than guessing. `dynIndex` defaults to 1 and only 1 is measured - it
+is the registration item's position, so a structure fed several user events
+needs the real one.
 """
 import io, re, sys
 
 VALUE_CHANGE = (('source', '3'), ('type', '1073741826'), ('eFlags', '4'))
+USER_EVENT = (('source', '1'), ('regFlags', '1'), ('eSource', '25'),
+              ('type', '1000'), ('eFlags', '0'), ('ddoUID', '0'))
 
 
 def resolve_control(bundle, base, name):
@@ -79,9 +106,17 @@ def resolve_control(bundle, base, name):
 
 
 def main(bundle, base, diagram_idx, control, label=None):
-    # `control` is a ddoUID when it is a number and a control LABEL otherwise.
-    # The label form is the one a caller can write without reading the heap.
-    if re.fullmatch(r'\d+', control):
+    # THREE argument forms, distinguished here so the rest of the function is
+    # shared: a control LABEL (the normal one), a bare ddoUID, and the
+    # --user-event flag, whose next argument is the USER EVENT's name.
+    user_event = None
+    dyn_index = None
+    if control == '--user-event':
+        if label is None:
+            raise SystemExit("--user-event needs the event's name")
+        user_event, label = label, None
+        ddo = '0'
+    elif re.fullmatch(r'\d+', control):
         ddo = control
     else:
         ddo, kind = resolve_control(bundle, base, control)
@@ -146,7 +181,11 @@ def main(bundle, base, diagram_idx, control, label=None):
         start, close, blk = target
     before = dict(re.findall(r'<(source|type|eFlags|ddoUID)>(-?\d+)</\1>', blk))
     new = blk
-    for tag, val in VALUE_CHANGE + (('ddoUID', str(ddo)),):
+    if user_event is not None:
+        fields = USER_EVENT + (('dynIndex', str(dyn_index or 1)),)
+    else:
+        fields = VALUE_CHANGE + (('ddoUID', str(ddo)),)
+    for tag, val in fields:
         new, n = re.subn(r'<%s>-?\d+</%s>' % (tag, tag), '<%s>%s</%s>' % (tag, val, tag), new)
         assert n == 1, "expected one <%s> in the EventSpec, got %d" % (tag, n)
 
@@ -154,7 +193,22 @@ def main(bundle, base, diagram_idx, control, label=None):
 
     # The CACHED frame label. Without this the IDE shows " [N]  " - an event
     # case with no event - however correct the EventSpec is.
-    if label is not None:
+    if user_event is not None:
+        # The cached text for a user-event frame. LabVIEW's own AIXML export
+        # spells the selector ` <Name>A User Event `, so the displayed form
+        # puts the event NAME IN ANGLE BRACKETS where a control label carries
+        # double quotes. Written for the same reason as the static case: the IDE
+        # reads this text and not the spec, so without it the frame shows
+        # " [N]  " however correct the spec is.
+        want = '" [%s] <%s>: User Event "' % (diagram_idx, user_event)
+        m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
+        assert m, "no selString on this event structure"
+        s = s[:m.start(2)] + want + s[m.end(2):]
+        m = re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es)
+        assert m, "no dIdx on this event structure"
+        s = s[:m.start()] + '<dIdx>%s</dIdx>' % diagram_idx + s[m.end():]
+        print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
+    elif label is not None:
         # The stored text CONTAINS raw double quotes - NI's own reads
         #   <text>" [1] "Button 1": Value Change "</text>
         # so the content must be taken up to </text>, never "to the next quote".
@@ -171,10 +225,13 @@ def main(bundle, base, diagram_idx, control, label=None):
         print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
 
     io.open(p, 'w', encoding='utf-8', newline='').write(s)
-    print("OK diagramIdx %s: %s -> Value Change on ddo %s"
-          % (diagram_idx,
-             'Timeout' if before.get('type') == '1073741825' else 'type ' + before.get('type', '?'),
-             ddo))
+    was = ('Timeout' if before.get('type') == '1073741825'
+           else 'type ' + before.get('type', '?'))
+    if user_event is not None:
+        print("OK diagramIdx %s: %s -> User Event <%s>, dynIndex %s"
+              % (diagram_idx, was, user_event, dyn_index or 1))
+    else:
+        print("OK diagramIdx %s: %s -> Value Change on ddo %s" % (diagram_idx, was, ddo))
 
 
 if __name__ == '__main__':
