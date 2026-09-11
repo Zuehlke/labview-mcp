@@ -1,4 +1,5 @@
 using LabVIEWMcp.Tools;
+using LabVIEWMcp.Tests.Support;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Tools;
@@ -268,15 +269,7 @@ public sealed class WireEventToolsTests
         Assert.Contains("value=\"diagram\"", text);
     }
 
-    private static string RepoRoot()
-    {
-        var directory = AppContext.BaseDirectory;
-        while (directory is { Length: > 0 })
-        {
-            if (Directory.Exists(Path.Combine(directory, "scripts"))
-                && File.Exists(Path.Combine(directory, "CLAUDE.md"))) return directory;
-            directory = Path.GetDirectoryName(directory) ?? string.Empty;
-        }
-        return AppContext.BaseDirectory;
-    }
+    // This walk was already worktree-correct; it now shares one implementation with the rest,
+    // so there is a single place to fix and a single place tested. See RepoTree.
+    private static string RepoRoot() => RepoTree.Root;
 }

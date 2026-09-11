@@ -1514,6 +1514,68 @@ Use the second one rather than a bare `dotnet test`: a running MCP server holds 
 exe, and the script stops it first. After either command the `lvai_*` tools are gone from the
 current session until the client is restarted — nothing is lost, but plan the restart.
 
+**THE PRE-PUSH GATE USED TO TEST THE WRONG TREE FROM A WORKTREE, and reported PASS for it.**
+Measured 2026-09-11. `run-tests.ps1` derived the tree under test from its own location, and
+`core.hooksPath` is git *config* — shared between a repository and every linked worktree, and stored
+here as an ABSOLUTE path in `.git/worktrees/<name>/config.worktree`. So a push from
+`.claude/worktrees/<name>` ran the MAIN checkout's script and tested whatever was at `main`: the hook
+printed `Passed: 1625` where the worktree's own run printed `1667`, the 42 difference being exactly
+the branch's two new test files. **A green gate for an unrelated tree is worse than no gate**, and the
+only tell was a count nobody compares. It now resolves with `git rev-parse --show-toplevel` — git runs
+a hook with the pushed worktree as its working directory, measured with a probe hook — prints the tree
+and the test project it resolved, and `-ResolveOnly` shows the aim without building.
+
+**The same question was asked wrong in two more places, both fixed, and the signal was always a GREEN
+result about someone else's code.** `AixmlCheckTests.RepoRoot` walked for a *directory* called `.git`
+— a linked worktree's `.git` is a **FILE**, so the walk went past it and linted `main`'s `scripts\`;
+`Directory.Build.targets` guarded on `Exists('.git')`, which MSBuild satisfies with that same file, so
+its one-time hook setup re-ran on every worktree build and emitted three `MSB3371` warnings per build
+for a marker it could never write. **Never identify this repository by `.git`** — its *kind* of
+filesystem object depends on how the tree was created. `tests/.../Support/RepoTree.cs` is the one
+resolver now, matching `CLAUDE.md` beside `scripts\`.
+
+**AND A HOOK'S CHILDREN INHERIT `GIT_*`, WHICH IS HOW THE GATE'S OWN TESTS SET `core.bare = true` ON
+THE REAL REPO.** Git exports `GIT_DIR` to every hook, plus `GIT_INDEX_FILE`, `GIT_PREFIX` and
+`GIT_QUARANTINE_PATH` during a push, and a child `git` obeys them over its own working directory —
+so `PrePushGateTests`' fixture-building `git init` ran against the repository being pushed, and with
+`GIT_DIR` set and no work tree `git init` marks it **bare**. Every later work-tree operation then
+answered `fatal: this operation must be run in a work tree`. Repaired with `git config core.bare
+false`, `git fsck` clean. **Any test that shells out to `git` must strip `GIT_*` first.** The gate
+also stops rather than guessing now: while that config was broken, the *fixed* script fell back to
+its own location, tested `main` and printed PASS — the original defect returning through its own
+escape hatch.
+
+**AND THE SAME LEAK REWROTE THE REPO'S IDENTITY, which is the symptom that actually reached a
+commit.** `core.bare` was the loud half; the quiet half is that the fixture also ran
+`git config user.email` / `user.name` / `commit.gpgsign`, so the real `.git/config` gained a
+`[user]` section reading `fixture <fixture@example.invalid>` and a `[commit] gpgsign = false` —
+**neither section existed before** — and the next two commits on the branch were authored by
+`fixture`. Nothing warns: `git commit` uses whatever identity resolves, and the repo-local value
+wins over the global one. **The repair is to UNSET the local keys, not to set a value**: the
+identity had always come from `~/.gitconfig`, so writing a guessed name would have pinned the repo
+to it for ever. `git config --unset user.name`, `--unset user.email`, `--unset commit.gpgsign`,
+then `git rebase <base> --exec "git commit --amend --no-edit --reset-author"` over the affected
+range. Check with `git config --show-origin --get user.name` — the *origin* is the answer, not the
+value.
+
+So one inherited `GIT_DIR` produced three distinct kinds of damage — a bare repo, a wrong author,
+and silently disabled commit signing — and only the first announced itself. **When a stray process
+has written to a repo's config, diff the whole file against what it should contain rather than
+fixing the symptom you noticed.**
+
+**A PLAIN `dotnet test` WAS GREEN THROUGH ALL OF THAT.** 1640 passing locally, 6 failing inside the
+hook, and the two config-corruption rounds invisible either way. Only a real `git push` from a
+worktree found any of it — the same rule this file states for LabVIEW tools, applied to our own
+tooling: **a fix verified only by the test written alongside it is not verified.**
+
+**AND `dotnet` ON THIS STATION NEEDS ITS PATH CHECKED BEFORE BLAMING ANYTHING ELSE.**
+`C:\Program Files\dotnet` holds a RUNTIME with no `sdk` directory and comes FIRST on `PATH`, while the
+SDK (8.0.424) is per-user in `%USERPROFILE%\.dotnet`. A bare `dotnet build` / `dotnet test` therefore
+dies with `No .NET SDKs were found` and a download link — for what is purely PATH order, and it
+aborted a push that way. The gate now finds a `dotnet` with an `sdk\` directory beside it, uses that
+one and says which; for a shell of your own, `$env:PATH = "$env:USERPROFILE\.dotnet;$env:PATH"`.
+`.githooks/README.md` has every measurement above.
+
 **NEVER RUN `dotnet msbuild -t:Compile` HERE, and do not build to a redirected output path either.**
 Both look like harmless ways to type-check around that exe lock, and both silently produce a DLL
 **with no embedded resources** — then mark it up to date, so the next full `build.ps1` inherits it.

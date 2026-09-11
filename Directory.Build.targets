@@ -11,10 +11,44 @@
        Runs exactly once per clone: the marker lives in .git/ (never tracked), so
        every fresh clone re-runs it, while an already-configured clone skips it.
        Everything is ContinueOnError so a git-less or non-clone build never breaks.
+
+       ============================================================================
+       WHY THE CONDITION TESTS `.git\config` AND NOT `.git` (measured 2026-09-11)
+
+       In a LINKED WORKTREE, `.git` is a FILE holding a `gitdir:` pointer, not a
+       directory. MSBuild's Exists() is true for a file, so the old condition
+       `Exists('$(MSBuildThisFileDirectory).git')` fired in every worktree — and
+       then the Touch could not create `<worktree>\.git\hooks-configured`, because
+       `.git` is not a directory to put a file in. So the marker was never stamped,
+       the target re-ran on EVERY build, and each build emitted three copies of
+
+           warning MSB3371: The file "...\.git\hooks-configured" cannot be created.
+
+       `.git\config` exists only where `.git` is a real directory, so it separates a
+       normal checkout from a linked worktree exactly, with no extra process launch.
+
+       SKIPPING IN A WORKTREE IS ALSO THE CORRECT BEHAVIOUR, not merely the quiet
+       one. `core.hooksPath` is *config*, and config is shared between a repository
+       and all of its linked worktrees — so the main checkout's build has already
+       set it for every worktree that will ever exist, and a worktree re-running it
+       can only write a value that is then shadowed: measured here, the stored value
+       comes from `.git/worktrees/<name>/config.worktree` (written with an ABSOLUTE
+       path by the worktree tooling), which takes precedence over the relative one
+       this target writes into `.git/config`.
+
+       That absolute value is why `.githooks\run-tests.ps1` must resolve the tree
+       under test from git rather than from its own location — see "the worktree
+       trap" in that file. The value written HERE is relative and always has been;
+       it is not the source of the absolute one.
+
+       A clone that only ever builds inside a worktree therefore never gets its
+       hooks configured by this target. That is the documented manual one-liner in
+       .githooks/README.md, and the worktree tooling in this repository sets
+       core.hooksPath itself, so the gap is not reachable in practice.
        ============================================================================ -->
   <Target Name="ConfigureGitHooks"
           BeforeTargets="Build"
-          Condition="Exists('$(MSBuildThisFileDirectory).git') And !Exists('$(MSBuildThisFileDirectory).git\hooks-configured')">
+          Condition="Exists('$(MSBuildThisFileDirectory).git\config') And !Exists('$(MSBuildThisFileDirectory).git\hooks-configured')">
 
     <Message Importance="high"
              Text="[git hooks] Setting core.hooksPath -> .githooks (one-time for this clone)" />
