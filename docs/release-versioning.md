@@ -113,10 +113,31 @@ anything.
 
 ## 2b. What now rejects a hand-cut release
 
-`scripts/Assert-PublishedRelease.ps1`, run by `.github/workflows/verify-release.yml` on every
-release event and on a **daily schedule**, and as the last step of `release.yml` against the
-release it has just cut. The daily run is the part that matters: an asset can be replaced on an
-existing release at any time, long after any workflow has finished.
+`scripts/Assert-PublishedRelease.ps1`, run in two places that cover different things:
+
+- as the **last step of `release.yml`**, against the release it has just cut. That step runs after
+  its own attach step, which is the only moment at which a freshly published release is complete.
+- **daily**, by `.github/workflows/verify-release.yml`. This covers what `release.yml` structurally
+  cannot — a release CI never published at all (all five hand-cut ones had no `release.yml` run, so
+  there was no final step to catch them), or an asset replaced on an existing release afterwards.
+
+**There is deliberately no `release:` trigger, and that was learned the hard way the same day.**
+The first version of `verify-release.yml` fired on five release event types, and measured over
+v1.5.0 and v1.5.1 **every automatically triggered run failed — 5 of 5**; the one green run in that
+history was a manual re-run. Two independent causes:
+
+| | |
+|---|---|
+| **the race is structural** | A release here is created in the GitHub UI, which creates the tag, which starts `release.yml` by push. So the release exists **with zero assets** about two seconds before the publishing run begins, and 3–5 minutes before it attaches anything. No retry window inside a release event closes that honestly, and the failure text — *"the release has no asset named labview-mcp.zip"* — is alarming and wrong. |
+| **it was redundant** | `release.yml`'s own final step already runs this script against the finished release, and was green on both v1.5.0 and v1.5.1 while the event-triggered runs were failing beside it. |
+
+A third, smaller reason not to bring it back: one publish fires `created`, `published` *and*
+`released`, so five event types produced **three concurrent racing runs per release**.
+
+The lesson is narrower than the earlier ones on this page but worth keeping: **a guard placed on an
+event that fires before the thing it checks exists does not measure the artefact, it measures the
+clock.** The correct trigger for "is the published release complete" is the step that publishes it;
+the correct trigger for "has it been tampered with since" is a schedule.
 
 It downloads what is published and checks, in this order:
 

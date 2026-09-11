@@ -1613,9 +1613,20 @@ not start without the .NET 8 runtime, and a pylabview bundle off a workstation's
 the version `release.yml` pins away from because it emits SyntaxWarnings from `LVheap.py` on every
 import. For four days `/releases/latest/download/labview-mcp.zip` served one of those to every
 plugin install, which is what the README's "problem with the installer" banner was describing.
-`scripts/Assert-PublishedRelease.ps1` rejects one now, run per release event and **daily** by
-`.github/workflows/verify-release.yml` — daily because an asset can be swapped long after any
-workflow ran.
+`scripts/Assert-PublishedRelease.ps1` rejects one now, run as `release.yml`'s **last step** against
+the release it just cut, and **daily** by `.github/workflows/verify-release.yml` — daily because an
+asset can be swapped long after any workflow ran, and because the five hand-cut releases had no
+`release.yml` run at all, so no final step could have caught them.
+
+**DO NOT ADD A `release:` TRIGGER TO THAT WORKFLOW — it was there, and it failed 5 of 5.** Measured
+2026-09-11 over v1.5.0 and v1.5.1: a release here is created in the GitHub UI, which creates the tag,
+which starts `release.yml` by push — so the release exists **with zero assets** about two seconds
+before the publishing run begins and 3-5 minutes before it attaches anything, and `3 x 60 s` of
+retrying cannot cover that. It was also redundant, because `release.yml`'s own final step was green
+on both releases while the event-triggered runs failed beside it; and one publish fires `created`,
+`published` *and* `released`, so five event types produced three concurrent racing runs per release.
+**A guard placed on an event that fires before the thing it checks exists measures the clock, not
+the artefact.**
 
 **The process lesson generalises past releases: A PIPELINE GUARANTEE IS NOT A PROPERTY OF THE
 ARTEFACT.** "There is one build and one packaging path" was true of the workflow and said nothing
