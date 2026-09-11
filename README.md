@@ -1013,7 +1013,35 @@ On the tag push, the workflow runs on `windows-latest` and:
     never to be renamed), `labview-mcp-vX.Y.Z.zip` (the same bytes, self-identifying, for a human
     download), `labview-mcp.sha256`, and `labview-mcp.manifest.sha256` — path plus SHA-256 of every
     file in the archive, which is what lets any install be verified with no second install to
-    compare against.
+    compare against;
+12. **re-downloads what it just published and verifies it**, over the network, as a user would —
+    digest against the published `labview-mcp.sha256`, every entry against the published manifest,
+    and the uploader against `github-actions[bot]`. Every step before this one checks the staging
+    tree; this is the first that checks the release.
+
+### Never cut a release by hand
+
+Not a style rule — it happened five times. `V1.1.5`, `V1.2.0`, `V1.2.2`, `V1.2.5` and `V1.2.8` each
+carry a `labview-mcp.zip` **uploaded by a person**, 19–21 MB against CI's 62 MB, because the
+uppercase tag meant the workflow never ran and the release was then built locally and uploaded.
+Opening `V1.2.8`'s asset: it is a zip of `src\LabVIEWMCP\bin\Debug\net8.0\` — the exe and 46 loose
+DLLs at the archive root, **no `.claude-plugin/plugin.json`, no `.mcp.json`, no `agents/`**, a
+framework-dependent apphost that will not start without the .NET 8 runtime, and a pylabview bundle
+off a workstation's **Python 3.14** (the version the workflow pins away from, because it emits
+SyntaxWarnings from `LVheap.py` on every import). For four days
+`/releases/latest/download/labview-mcp.zip` served it to every plugin install.
+
+[`.github/workflows/verify-release.yml`](.github/workflows/verify-release.yml) now rejects one — on
+every release event and on a **daily schedule**, because an asset can be replaced on an existing
+release long after any workflow has finished. Run the same check yourself at any time:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/Assert-PublishedRelease.ps1
+```
+
+With no arguments it checks whatever `/releases/latest` returns — the release the marketplace hands
+to every install. `-Tag vX.Y.Z` checks one, and `-ZipPath <file>` checks an archive on disk with no
+network at all. `docs/release-versioning.md` §2a–2b has the measurements.
 
 The asset is about 38 MB larger since step 5 was added.
 
