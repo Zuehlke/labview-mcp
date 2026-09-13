@@ -52,7 +52,31 @@ internal static class EventFrames
     /// <summary>Every triggerable form this can register. Deliberately short.</summary>
     private static readonly string[] Registerable = ["Value Change"];
 
-    internal sealed record Reading(List<Frame> Frames, string? Refusal, string? RefusalKind);
+    /// <summary>
+    /// The three fields EVERY event carries, and therefore the only ones a converted frame can
+    /// show. Measured 2026-09-11: whatever <c>fields=</c> asks for, <c>ConvertAIXMLToVI</c> hands
+    /// back exactly these three, because at conversion time the frame carries no event
+    /// registration yet and so LabVIEW has no event to take a field list from.
+    /// </summary>
+    private static readonly string[] CommonFields = ["Source", "Type", "Time"];
+
+    /// <summary>
+    /// An Event Data Node whose <c>fields=</c> asks for more than the three common fields, and
+    /// therefore loses them in conversion.
+    /// </summary>
+    /// <param name="Wired">The dropped fields that the document also WIRES somewhere. These are
+    /// the damaging ones: the terminal never exists, so LabVIEW drops the wire too and the
+    /// consumer's input is left unwired - silently, <c>errorCode 0</c>, measured on a
+    /// <c>Bundle By Name</c> whose two inputs came back with no signal touching them at all.</param>
+    internal sealed record DataFieldLoss(int FrameIndex, string? NodeUid, string[] Dropped,
+                                         string[] Wired);
+
+    internal sealed record Reading(List<Frame> Frames, string? Refusal, string? RefusalKind)
+    {
+        /// <summary>One entry per Event Data Node that asks for a field conversion will discard.
+        /// Empty for the usual document, which asks only for the common three.</summary>
+        internal List<DataFieldLoss> DataFieldLosses { get; init; } = [];
+    }
 
     private static readonly Regex Static = new(
         @"^\s*""(?<control>.+)""\\3A\s*(?<trigger>.+?)\s*$", RegexOptions.Compiled);
@@ -96,9 +120,14 @@ internal static class EventFrames
                 """, "severalEventStructures");
 
         var frames = new List<Frame>();
+        var frameUids = new Dictionary<string, int>(StringComparer.Ordinal);
+        var frameElements = new List<XElement>();
         var index = 0;
         foreach (var frame in structures[0].Elements("CaseFrame"))
         {
+            if ((string?)frame.Attribute("uid") is { Length: > 0 } frameUid)
+                frameUids[frameUid] = index;
+            frameElements.Add(frame);
             var selector = (string?)frame.Attribute("selector") ?? "";
             var trimmed = selector.Trim();
 
@@ -141,6 +170,84 @@ internal static class EventFrames
                 """, "unrecognisedSelector");
         }
 
-        return new Reading(frames, null, null);
+        return new Reading(frames, null, null)
+        {
+            DataFieldLosses = DataFieldLosses(document, frameUids, frameElements),
+        };
+    }
+
+    /// <summary>
+    /// Every Event Data Node asking for a field the conversion will throw away, and which of those
+    /// fields the document also wires.
+    ///
+    /// WHY THIS IS WORTH REPORTING RATHER THAN LEAVING IN A BLANKET NOTE. The loss is invisible
+    /// everywhere else: <c>errorCode 0</c>, a diagram that renders, and an export that simply
+    /// describes a smaller node. The wire is the part that hurts - it is dropped with the terminal,
+    /// so a <c>Bundle By Name</c> silently ends up with unwired inputs - and naming the frame and
+    /// the field is the difference between a two-minute fix and looking for a bug in the diagram.
+    ///
+    /// OWNERSHIP IS BY <c>uid_parent</c>, not by XML nesting, because document order carries no
+    /// meaning for a <c>Node</c> - one written at the top of the file with
+    /// <c>uid_parent="&lt;frame uid&gt;"</c> lands in that frame just the same. XML nesting is the
+    /// fallback for a document that gives no <c>uid_parent</c>.
+    /// </summary>
+    private static List<DataFieldLoss> DataFieldLosses(
+        XDocument document, Dictionary<string, int> frameUids, List<XElement> frameElements)
+    {
+        var losses = new List<DataFieldLoss>();
+
+        foreach (var node in document.Descendants("Node")
+                     .Where(n => (string?)n.Attribute("_name") == "Event Data Node"))
+        {
+            if ((string?)node.Attribute("fields") is not { Length: > 0 } fields)
+                continue;
+
+            var asked = fields.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                              .Select(f => f.Trim())
+                              .Where(f => f.Length > 0)
+                              .ToArray();
+            var dropped = asked.Where(f => !CommonFields.Contains(f, StringComparer.Ordinal))
+                               .ToArray();
+            if (dropped.Length == 0)
+                continue;
+
+            var wired = Wired(node);
+            losses.Add(new DataFieldLoss(
+                FrameOf(node, frameUids, frameElements),
+                (string?)node.Attribute("uid"),
+                dropped,
+                [.. dropped.Where(f => wired.Contains(f, StringComparer.Ordinal))]));
+        }
+
+        return losses;
+    }
+
+    /// <summary>The terminal names this node's <c>outputs=</c> actually attaches a net to.
+    /// An entry is <c>Terminal:net</c> and an EMPTY net means the terminal is left open, which
+    /// is how the three common fields are normally written.</summary>
+    private static HashSet<string> Wired(XElement node)
+    {
+        var wired = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var pair in ((string?)node.Attribute("outputs") ?? "")
+                     .Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var colon = pair.IndexOf(':');
+            if (colon <= 0 || colon == pair.Length - 1)
+                continue;
+            wired.Add(pair[..colon].Trim());
+        }
+        return wired;
+    }
+
+    private static int FrameOf(XElement node, Dictionary<string, int> frameUids,
+                               List<XElement> frameElements)
+    {
+        if ((string?)node.Attribute("uid_parent") is { Length: > 0 } parent
+            && frameUids.TryGetValue(parent, out var byUid))
+            return byUid;
+
+        var ancestor = node.Ancestors("CaseFrame").FirstOrDefault();
+        var byNesting = ancestor is null ? -1 : frameElements.IndexOf(ancestor);
+        return byNesting;
     }
 }

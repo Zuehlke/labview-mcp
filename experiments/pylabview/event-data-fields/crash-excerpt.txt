@@ -1,0 +1,420 @@
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01B1C802 - LabVIEW <unknown> + 0
+0x0100EBE0 - LabVIEW <unknown> + 0
+0x010102B5 - LabVIEW <unknown> + 0
+0x010121DB - LabVIEW <unknown> + 0
+0x01011794 - LabVIEW <unknown> + 0
+0x0100FB2A - LabVIEW <unknown> + 0
+0x021D8345 - LabVIEW <unknown> + 0
+0x019E9CB7 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 12:57:12.043
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f4948)]"]
+minidump id: ce3a569a-fd3b-4c68-7bd0-9ade9b04eda1
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01B1C802 - LabVIEW <unknown> + 0
+0x0100EBE0 - LabVIEW <unknown> + 0
+0x010102B5 - LabVIEW <unknown> + 0
+0x010121DB - LabVIEW <unknown> + 0
+0x01011794 - LabVIEW <unknown> + 0
+0x0100FB2A - LabVIEW <unknown> + 0
+0x021D8345 - LabVIEW <unknown> + 0
+0x019E9CB7 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 12:57:12.047
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f4948)]"]
+minidump id: 3e53e4e7-5aea-4674-c888-853f2717feb9
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01B1C802 - LabVIEW <unknown> + 0
+0x0100EBE0 - LabVIEW <unknown> + 0
+0x010102B5 - LabVIEW <unknown> + 0
+0x010121DB - LabVIEW <unknown> + 0
+0x01011794 - LabVIEW <unknown> + 0
+0x0100FB2A - LabVIEW <unknown> + 0
+0x021D8345 - LabVIEW <unknown> + 0
+0x019E9CB7 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 12:57:12.051
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f4948)]"]
+</DEBUG_OUTPUT>
+
+0x010A6C93 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01B1C802 - LabVIEW <unknown> + 0
+0x0100EBE0 - LabVIEW <unknown> + 0
+0x010102B5 - LabVIEW <unknown> + 0
+0x010121DB - LabVIEW <unknown> + 0
+0x01011794 - LabVIEW <unknown> + 0
+0x0100FB2A - LabVIEW <unknown> + 0
+0x021D8345 - LabVIEW <unknown> + 0
+0x019E9CB7 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+0x00F51968 - LabVIEW <unknown> + 0
+0x016BD6C3 - LabVIEW <unknown> + 0
+0x3C2B4D4A - <unknown> <unknown> + 0
+0x0306C931 - LabVIEW <unknown> + 0
+0x00FDC35B - LabVIEW <unknown> + 0
+0x02FBA63B - LabVIEW <unknown> + 0
+0x02FFF213 - LabVIEW <unknown> + 0
+0x02FBA531 - LabVIEW <unknown> + 0
+0x00FDB45C - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+*** Dumping Bread Crumb Stack ***
+*** LabVIEW Base Address: 0x00DF0000 ***
+#** compile: "C:\Temp\PCE_dn3\pce_dn3.vi"
+*** End Dump ***
+
+<DEBUG_OUTPUT>
+11.09.2026 12:59:46.103
+DWarn 0xEC238854: Going from bad to good after compiling.[LinkIdentity "pce_dn4.vi" [ NI.LV.Editor]
+source\vi\VirtualInstrument.cpp(5308) : DWarn 0xEC238854: Going from bad to good after compiling.[LinkIdentity "pce_dn4.vi" [ NI.LV.Editor]
+[ExecSys:0; Executing:"[VI "lvai_exec_state.vi" (0x251fb980)]"]
+minidump id: 5fba19cc-451d-4d8b-e445-8476181adfbd
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x019E9CB7 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+0x00F51968 - LabVIEW <unknown> + 0
+0x016BD6C3 - LabVIEW <unknown> + 0
+0x3BDC5943 - <unknown> <unknown> + 0
+0x0306C931 - LabVIEW <unknown> + 0
+0x00FDC35B - LabVIEW <unknown> + 0
+0x02FBA63B - LabVIEW <unknown> + 0
+0x02FFF213 - LabVIEW <unknown> + 0
+0x02FBA531 - LabVIEW <unknown> + 0
+0x00FDB45C - LabVIEW <unknown> + 0
+0x00FDB323 - LabVIEW <unknown> + 0
+0x00FDBA6E - LabVIEW <unknown> + 0
+0x03087B7E - LabVIEW <unknown> + 0
+0x00FDBA53 - LabVIEW <unknown> + 0
+0x76855D49 - KERNEL32 <unknown> + 0
+0x77B5E1FB - ntdll <unknown> + 0
+0x77B5E181 - ntdll <unknown> + 0
+0x00000000 - <unknown> <unknown> + 0
+
+VI call stack:
+- lvai_exec_state.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 13:02:52.621
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f3b08)]"]
+minidump id: 3c85ef42-d943-4233-3f90-e4cc09f465a6
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01C2E357 - LabVIEW <unknown> + 0
+0x01C3261A - LabVIEW <unknown> + 0
+0x01C25810 - LabVIEW <unknown> + 0
+0x01C2F475 - LabVIEW <unknown> + 0
+0x01C2F1AE - LabVIEW <unknown> + 0
+0x01C3329B - LabVIEW <unknown> + 0
+0x01C1AB96 - LabVIEW <unknown> + 0
+0x01B83554 - LabVIEW <unknown> + 0
+0x019E9708 - LabVIEW <unknown> + 0
+0x019E9B98 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 13:02:52.624
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:620
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f3b08)]"]
+minidump id: c3d37b7d-86e3-44cf-4079-9b5e15848985
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01C2E357 - LabVIEW <unknown> + 0
+0x01C3261A - LabVIEW <unknown> + 0
+0x01C25810 - LabVIEW <unknown> + 0
+0x01C2F475 - LabVIEW <unknown> + 0
+0x01C2F1AE - LabVIEW <unknown> + 0
+0x01C3329B - LabVIEW <unknown> + 0
+0x01C1AB96 - LabVIEW <unknown> + 0
+0x01B83554 - LabVIEW <unknown> + 0
+0x019E9708 - LabVIEW <unknown> + 0
+0x019E9B98 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 13:02:52.629
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f3b08)]"]
+minidump id: ab9ca315-2cb8-4321-7141-8e98a79fbcfb
+</DEBUG_OUTPUT>
+
+0x68EF2464 - nierclient <unknown> + 0
+0x68945307 - sentry <unknown> + 0
+0x68944E86 - sentry <unknown> + 0
+0x689458AD - sentry <unknown> + 0
+0x68EF784F - nierclient <unknown> + 0
+0x68EF2123 - nierclient <unknown> + 0
+0x68EEF71C - nierclient <unknown> + 0
+0x68EEC681 - nierclient <unknown> + 0
+0x02379123 - LabVIEW <unknown> + 0
+0x010A6C45 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01C2E357 - LabVIEW <unknown> + 0
+0x01C3261A - LabVIEW <unknown> + 0
+0x01C25810 - LabVIEW <unknown> + 0
+0x01C2F475 - LabVIEW <unknown> + 0
+0x01C2F1AE - LabVIEW <unknown> + 0
+0x01C3329B - LabVIEW <unknown> + 0
+0x01C1AB96 - LabVIEW <unknown> + 0
+0x01B83554 - LabVIEW <unknown> + 0
+0x019E9708 - LabVIEW <unknown> + 0
+0x019E9B98 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+
+<DEBUG_OUTPUT>
+11.09.2026 13:02:52.632
+DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+source\heapobjs\Wire.cpp(219) : DWarnInternal 0xB71DBFCF: Wiring insanity found and fixed in WireTable::SanityCheck().  Wiretable nxt field disagreed with the joint coordinates. UID:627
+[ExecSys:0; Executing:"[VI "lvai_wire_dyn_events.vi" (0x251f3b08)]"]
+</DEBUG_OUTPUT>
+
+0x010A6C93 - LabVIEW <unknown> + 0
+0x010A4071 - LabVIEW <unknown> + 0
+0x68BF1D36 - mgcore_SH_26_3 <unknown> + 0
+0x68BF2AE9 - mgcore_SH_26_3 <unknown> + 0
+0x0189B792 - LabVIEW <unknown> + 0
+0x0173292B - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x0188BDEF - LabVIEW <unknown> + 0
+0x012517A1 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01872808 - LabVIEW <unknown> + 0
+0x01946340 - LabVIEW <unknown> + 0
+0x01732A51 - LabVIEW <unknown> + 0
+0x01839E97 - LabVIEW <unknown> + 0
+0x01B1BC15 - LabVIEW <unknown> + 0
+0x01C2E357 - LabVIEW <unknown> + 0
+0x01C3261A - LabVIEW <unknown> + 0
+0x01C25810 - LabVIEW <unknown> + 0
+0x01C2F475 - LabVIEW <unknown> + 0
+0x01C2F1AE - LabVIEW <unknown> + 0
+0x01C3329B - LabVIEW <unknown> + 0
+0x01C1AB96 - LabVIEW <unknown> + 0
+0x01B83554 - LabVIEW <unknown> + 0
+0x019E9708 - LabVIEW <unknown> + 0
+0x019E9B98 - LabVIEW <unknown> + 0
+0x01F4AC96 - LabVIEW <unknown> + 0
+0x01F5191E - LabVIEW <unknown> + 0
+0x01EDF303 - LabVIEW <unknown> + 0
+0x00F533CB - LabVIEW <unknown> + 0
+0x00F51968 - LabVIEW <unknown> + 0
+0x016BD6C3 - LabVIEW <unknown> + 0
+0x3C5C4D4A - <unknown> <unknown> + 0
+0x0306C931 - LabVIEW <unknown> + 0
+0x00FDC35B - LabVIEW <unknown> + 0
+0x02FBA63B - LabVIEW <unknown> + 0
+0x02FFF213 - LabVIEW <unknown> + 0
+
+VI call stack:
+- lvai_wire_dyn_events.vi
+*** Dumping Bread Crumb Stack ***
+*** LabVIEW Base Address: 0x00DF0000 ***
+#** Loading: "C:\Temp\PCE_dn5\pce_dn5.vi"
+*** End Dump ***

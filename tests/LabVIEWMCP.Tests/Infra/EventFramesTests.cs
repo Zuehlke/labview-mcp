@@ -260,4 +260,113 @@ public sealed class EventFramesTests : IDisposable
         Assert.Null(reading.Refusal);
         Assert.Equal("Button 1", Assert.Single(reading.Frames).Control);
     }
+
+    // ------------------------------------------------- the Event Data Node's field selection
+
+    /// <summary>
+    /// A document whose frames carry bodies, so an Event Data Node can be put in one.
+    /// Frames get distinct uids, because ownership is resolved by <c>uid_parent</c>.
+    /// </summary>
+    private string DocumentWithBodies(params (string Selector, string Body)[] frames)
+    {
+        var text = string.Concat(frames.Select((f, i) =>
+            $"""
+                   <CaseFrame selector="{f.Selector}" uid="{100 + i}" uid_parent="61">
+                     {f.Body}
+                   </CaseFrame>
+             """ + "\n"));
+        var path = Path.Combine(Path.GetTempPath(),
+                                "eventframes-" + Guid.NewGuid().ToString("n")[..8] + ".xml");
+        File.WriteAllText(path, $"""
+            <VI _name="Probe.vi" description="fixture">
+              <Structure _name="Event Structure" uid="61" uid_parent="root">
+            {text}    </Structure>
+            </VI>
+            """);
+        _files.Add(path);
+        return path;
+    }
+
+    // Both lines are copied out of LabVIEW's own export of a hand-corrected producer/consumer -
+    // the one the whole finding came from - not composed to look plausible.
+    private const string DataNodeCommon =
+        """<Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="51" uid_parent="100"/>""";
+    private const string DataNodePayload =
+        """<Node _name="Event Data Node" fields="Source,Type,Time,Message,Value" outputs="Source:,Type:,Time:,Message:51.Message,Value:51.Value" uid="51" uid_parent="100"/>""";
+
+    private const string DataEvent = " &lt;Data Event&gt;\\3A User Event ";
+
+    /// <summary>The usual document asks for the three fields every event has, and conversion
+    /// keeps exactly those - so there is nothing to report and the answer stays quiet.</summary>
+    [Fact]
+    public void ReportsNothingWhenOnlyTheCommonFieldsAreAsked()
+    {
+        var reading = EventFrames.Read(DocumentWithBodies((DataEvent, DataNodeCommon)));
+
+        Assert.Null(reading.Refusal);
+        Assert.Empty(reading.DataFieldLosses);
+    }
+
+    /// <summary>
+    /// The measured case, and the reason this exists: the selection is discarded at conversion
+    /// AND the wires authored from those terminals go with it, silently. Both halves are reported,
+    /// because the wired ones are what leaves a consumer's input unwired.
+    /// </summary>
+    [Fact]
+    public void NamesTheFieldsConversionWillDiscardAndWhichOfThemAreWired()
+    {
+        var reading = EventFrames.Read(DocumentWithBodies((DataEvent, DataNodePayload)));
+
+        Assert.Null(reading.Refusal);
+        var loss = Assert.Single(reading.DataFieldLosses);
+
+        Assert.Equal(0, loss.FrameIndex);
+        Assert.Equal("51", loss.NodeUid);
+        Assert.Equal(["Message", "Value"], loss.Dropped);
+        Assert.Equal(["Message", "Value"], loss.Wired);
+    }
+
+    /// <summary>
+    /// An UNWIRED dropped field costs nothing but the display, so it must not be reported as
+    /// though a wire had been lost. `NewVal:` with an empty net is how the common three are
+    /// normally written, and that empty net is the whole discriminator.
+    /// </summary>
+    [Fact]
+    public void SeparatesADroppedFieldThatWasNeverWired()
+    {
+        var reading = EventFrames.Read(DocumentWithBodies((Button1,
+            """<Node _name="Event Data Node" fields="Source,Type,Time,NewVal" outputs="Source:,Type:,Time:,NewVal:" uid="23" uid_parent="100"/>""")));
+
+        var loss = Assert.Single(reading.DataFieldLosses);
+        Assert.Equal(["NewVal"], loss.Dropped);
+        Assert.Empty(loss.Wired);
+    }
+
+    /// <summary>
+    /// Document order carries no meaning for a <c>Node</c> - <c>uid_parent</c> does - so a data
+    /// node written at the top of the file still belongs to the frame it names. Getting this
+    /// wrong would report the loss against the wrong frame, which is worse than not reporting it.
+    /// </summary>
+    [Fact]
+    public void AssignsTheNodeToItsFrameByUidParentRatherThanByNesting()
+    {
+        var path = Path.Combine(Path.GetTempPath(),
+                                "eventframes-" + Guid.NewGuid().ToString("n")[..8] + ".xml");
+        File.WriteAllText(path, $"""
+            <VI _name="Probe.vi" description="fixture">
+              <Node _name="Event Data Node" fields="Source,Type,Time,Message" outputs="Source:,Type:,Time:,Message:51.Message" uid="51" uid_parent="101"/>
+              <Structure _name="Event Structure" uid="61" uid_parent="root">
+                <CaseFrame selector="{Button1}" uid="100" uid_parent="61"/>
+                <CaseFrame selector="{DataEvent}" uid="101" uid_parent="61"/>
+              </Structure>
+            </VI>
+            """);
+        _files.Add(path);
+
+        var reading = EventFrames.Read(path);
+
+        var loss = Assert.Single(reading.DataFieldLosses);
+        Assert.Equal(1, loss.FrameIndex);     // the user-event frame, not the button's
+        Assert.Equal(["Message"], loss.Dropped);
+    }
 }

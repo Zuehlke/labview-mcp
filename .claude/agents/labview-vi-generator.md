@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -101,6 +101,24 @@ it an icon.
      and methods rather than fixed labels.
   4. **Export a VI that uses the node** — the fallback, now only when §8 says `varies per
      instance` for a primitive, or you need a *mode* variant (§8 records terminals, not modes).
+- **EVERY VI YOU CREATE HAS `error in` AND `error out`, ON THE PANE'S BOTTOM ROW.** The
+  user's standing rule of 2026-09-12, and it is not conditional on the contract you settled in
+  Phase 1: a VI with no error terminals cannot join a caller's error chain, so the first thing
+  anyone does with it is regenerate it. **A top-level VI with no callers is NOT an exception** —
+  that exact reasoning produced `User Event Producer Consumer.vi` on 2026-09-12 with an `Error Out`
+  *indicator* on the panel, no `error in` at all, and not one `conIdx` in the whole document. Two
+  consequences for the diagram, not just for the pane - and note the LABEL: it is `error in`, not
+  NI's `error in (no error)`, by the user's correction of 2026-09-12. That governs the terminal you
+  NAME; a callee's terminal name inside an `inputs=` string stays exactly as that callee declares
+  it, or the wire is refused.
+  - **`error out` is ONE output carrying EVERY error path.** Where the diagram forks — parallel
+    loops, a case whose branches each touch a subVI, a cleanup chain beside the main one — join
+    them with `Merge Errors` (`error in`, `error in` (252/324) → `error out`) before the terminal.
+    A second error indicator is the defect this prevents: the caller can wire only one, so the other
+    branch's error is lost in silence.
+  - **`error in` is chained INTO the work**, not left dangling. It is the first link of the chain
+    whose last link is `error out` — that is what lets a caller stop the chain on a previous
+    error.
 - **Place the connector pane by NI's style guide — this is not cosmetic, it is the first thing a
   reviewer sees.** Inputs on the **left**, outputs on the **right**, `error in` **bottom left**,
   `error out` **bottom right**, nothing arranged so wires must cross. **Which `conIdx` sits where
@@ -111,9 +129,14 @@ it an icon.
      `LabVIEW.exe`**, and that key **overrides everything** — never assume a pattern when the file can
      be read. If the key is absent, LabVIEW's factory default **4815** applies. That file is read-only
      to us: read it, quote it, never write to it.
-  2. **Copy the WHOLE style-guide block the tool prints, not four numbers.** It gives six entries —
-     `first input`, **`more inputs`**, `error in`, `first output`, **`more outputs`**, `error out`.
-     The two in bold are the ones that get dropped, and dropping them is the actual bug below.
+  2. **The no-argument answer gives FOUR numbers, and a VI with more terminals needs the other
+     slots from somewhere else.** It prints `first input`, `error in`, `first output`, `error out` -
+     nothing more. This step said for weeks that it "gives six entries" including `more inputs` and
+     `more outputs`, and called dropping those "the actual bug"; measured 2026-09-12, the tool prints
+     no such rows and one agent spent a call hunting for them. For a VI with a second or third input,
+     ask the SAME tool with `pattern: 4833` (or whatever the no-argument answer reported as this
+     station's default) - that answer carries the full slot map, and on 4833 the left edge is
+     `0, 5, 7, 9` and the right `4, 6, 8, 10`.
   3. Author the AIXML with exactly those numbers.
   4. After generating, call it again with `viPath`. That confirms the pane you actually got and checks
      every terminal against the style guide. Read-only, about 1 s per call.
@@ -237,10 +260,10 @@ explicitly, so do it visibly and keep it in the final report.
 |---|---|
 | **Input** | Every terminal: name, LabVIEW data type, required/recommended/optional, default. |
 | **Processing** | One sentence of what happens, **plus what happens when it goes wrong** — empty input, missing file, out-of-range value. |
-| **Output** | Every terminal: name, type. Plus: does it carry `error out`? |
+| **Output** | Every terminal: name, type. `error out` is not one of the questions — every VI has one; state what feeds it. |
 
 Derive what is derivable. "Sort the lines of a text file" fully determines a path in, a string
-array out, and `error in`/`error out` by convention — do not ask about any of that.
+array out, and `error in`/`error out` by rule — do not ask about any of that.
 
 **Ask only when a different answer produces a different VI.** Return the block below, and write
 nothing to disk, when:
@@ -348,8 +371,10 @@ If you are building from scratch, read `lvai_aixml_reference` for the element gr
   front-panel-only control, which is almost never what a subVI wants.
 - `connection` is `required` / `recommended` / `optional`. Mark the terminals that must be
   wired as `required`; without it the caller has no way to know.
-- Follow the convention: `error in (no error)` as the second-to-last input, `error out` as the
-  second-to-last output, and the data terminals above them.
+- `error in` and `error out` are MANDATORY — the second-to-last input and the
+  second-to-last output, data terminals above them. Give both a `conIdx` from
+  `lvai_connector_pane` (bottom-left and bottom-right), and merge every error branch of the diagram
+  into the one `error out` with `Merge Errors`.
 
 ### Phase 5 — Project membership
 

@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_apply_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -106,6 +106,25 @@ instance holds its own copy of the VI.
   on an empty path, so an unguarded file name hangs the session on ordinary input. If the VI you
   are editing has one, guard it with `Equal?` + `Select` on a placeholder path, and run that test
   case last.
+- **DO NOT RETROFIT ERROR TERMINALS ONTO A VI THAT HAS NONE.** The error-cluster rule in
+  CLAUDE.md governs VIs we CREATE - the user narrowed it explicitly on 2026-09-12,
+  *"diese Regel ist nur gueltig fuer neu erstellte VIs"* - and this bullet said the opposite for a
+  few hours. Adding a terminal changes the connector pane, which is every caller's business, so it
+  is the user's call and not yours. **Name the gap in your report; leave the pane alone.** What you
+  DO owe the VI in front of you:
+  - **Preserve what is there.** A regeneration is lossy, so an `error in` / `error out` the VI
+    already had must come back with the same `conIdx`, or its callers break.
+  - **Any terminal you add for a reason the user DID ask for** follows the house naming: the error
+    input is labelled `error in`, never NI's `error in (no error)`. A callee's terminal name inside
+    an `inputs=` string is untouched by this - it stays exactly as that callee declares it. Adding a terminal at
+    a *free* `conIdx` does not move the others, so existing callers keep their wires — but
+    confirm that with `lvai_connector_pane viPath` afterwards, because a regeneration takes the
+    station's default pattern and that can renumber everything.
+  - **`error out` carries EVERY error path, not one branch of a forked diagram.** Join the branches
+    with `Merge Errors` (`error in`, `error in` (252/324) → `error out`) rather than leaving a
+    second error indicator the caller cannot wire.
+  - **They sit on the bottom row**, `error in` bottom-left and `error out` bottom-right, which is
+    what the next bullet is about.
 - **Keep the connector pane placed by NI's style guide, and fix it if it is not.** Inputs on the
   **left**, outputs on the **right**, `error in` **bottom left**, `error out` **bottom right**, no
   crossings. **Which `conIdx` is where depends on the pane pattern, so call `lvai_connector_pane`
@@ -118,9 +137,10 @@ instance holds its own copy of the VI.
   station's default pane, not the one the VI had** — that default is `DefaultConPane` in the
   `LabVIEW.ini` beside `LabVIEW.exe`, it **overrides everything**, and `lvai_connector_pane` with
   **no argument** reads it for you; if the key is absent, LabVIEW's factory default **4815** applies.
-  Read that file, quote it, never write to it. Second, **copy the whole style-guide block the tool
-  prints, not four numbers** — it gives `first input`, **`more inputs`**, `error in`, `first output`,
-  **`more outputs`**, `error out`, and the two `more` entries are the ones that get dropped.
+  Read that file, quote it, never write to it. Second, **the no-argument answer gives FOUR numbers**
+  — `first input`, `error in`, `first output`, `error out` — and this paragraph claimed six, including
+  `more inputs` / `more outputs`, until it was measured on 2026-09-12. For the middle slots ask the
+  same tool with `pattern: <the default it reported>`; that answer carries the full map.
   **Consecutive `conIdx` is not the left edge**: on 4833 that edge is `0, 5, 7, 9`, so a second input
   written as `1` lands in a middle column. That exact slip has shipped three times.
   That is what makes the check part of the edit rather than optional. Preserving an existing pane is the default — but a pane that

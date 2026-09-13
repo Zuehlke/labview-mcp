@@ -80,8 +80,23 @@ internal static class ViTerminals
         return new Result(name, controls, indicators, instances, description);
     }
 
+    /// <summary>
+    /// DESCENDANTS, not Elements - a Control or Indicator whose terminal sits inside a loop or a
+    /// case is a child of that <c>&lt;Structure&gt;</c> in the export, not of <c>&lt;VI&gt;</c>,
+    /// and it carries its <c>conIdx</c> there like any other. Reading direct children only made
+    /// <c>lvai_connector_pane</c> answer "3 of them assigned" and "Nothing to change" for a VI
+    /// with five occupied terminals, and <c>lvai_vi_terminals</c> omit them from the Call it
+    /// prints - measured 2026-09-12 on a producer/consumer whose `Stop` sat two structures deep.
+    /// The pane itself was correct: <c>ConvertAIXMLToVI</c> applies every <c>conIdx</c> wherever
+    /// the element is written, so this was only ever a reporting defect - but the style-guide
+    /// check is the one gate between a generated VI and a pane defect this repository has
+    /// shipped three times, and a verdict over a subset is not that gate.
+    ///
+    /// Crossing into another VI is not a risk to guard against: section 2 of the AIXML reference
+    /// has the root element as <c>VI</c>, one per document, and there is no nesting container.
+    /// </summary>
     private static List<Terminal> Read(XElement root, string element) =>
-        root.Elements(element)
+        root.Descendants(element)
             .Select(e => new Terminal(
                 (string?)e.Attribute("_name") ?? "",
                 (string?)e.Attribute("type") ?? "",

@@ -99,6 +99,52 @@ than merely not offering one, in case a later edit reintroduces one.
 values `lvai_connector_pane` prints ready to paste. That costs a regeneration and re-links callers,
 which is exactly why this script exists for the *other* half — but it works.
 
+## THE PANE CHECKER UNDERCOUNTS A TERMINAL THAT SITS INSIDE A STRUCTURE - measured 2026-09-12
+
+`lvai_connector_pane` answered *"3 of them assigned"* and *"Nothing to change"* for a VI
+with **five** occupied terminals, and `lvai_vi_terminals` shares the fault. The two it
+could not see were a `Stop` control inside a While Loop and a `Current Count` indicator
+inside the other one. Three independent sources disagreed with the tool:
+
+- the saved binary - `conPane class="conPane"` holds five `ConpaneConnection` entries at
+  indices 0, 4, 5, 11, 15, each with a valid `fPDCO` uid;
+- LabVIEW's own AIXML export - `<Control _name="Stop" conIdx="5" …>` and
+  `<Indicator _name="Current Count" conIdx="4" …>`;
+- a 6 kB controlled probe with four terminals and no pylabview anywhere: the two at root
+  appear, the two whose terminals sit inside a While Loop do not, while the probe's own
+  export carries both `conIdx` values.
+
+**The cause is one word**, in `src/LabVIEWMCP/Infra/ViTerminals.cs`:
+
+```csharp
+root.Elements(element)     // direct children of <VI> only
+```
+
+`Elements`, not `Descendants`. `lvpane_probe.xml` reads only `Pattern`, `Number of
+Connection Terminals` and `Terminal Bounds[]` off VI Server and never asks which control
+is on which terminal, so the whole name-to-`conIdx` mapping comes from the AIXML export
+parsed by `ViTerminals.Parse` - and nothing inside a `<Structure>` or `<CaseFrame>` is
+ever collected.
+
+**What this costs, and what it does not.** `ConvertAIXMLToVI` applies every `conIdx`
+correctly, so a VI authored with nested terminals is built right; the defect is entirely
+in the reporting. But a `paneViolations: 0` verdict on such a VI is **a verdict about a
+subset**, and the style-guide check is the one thing standing between a generated VI and
+the pane defect that this repository has now shipped three times. A `Call` element printed
+by `lvai_vi_terminals` for such a VI would silently omit those terminals too.
+
+**FIXED 2026-09-12** - `Descendants`, and the boundary question this paragraph raised turned
+out not to exist: section 2 of the AIXML reference has the root element as `VI`, one per
+document, with no nesting container, so there is nothing to cross into.
+
+**Verified by reproducing the defect, not by the test passing.** The fixture is a real
+LabVIEW export of the producer/consumer above, trimmed in length only, with `Stop` two
+structures deep and `Current Count` one. Reverting the one word makes 2 of the 3 new facts
+fail and restoring it returns 16/16; the third
+(`AViWithNestedTerminalsIsNotMistakenForAWrapper`) passes either way by construction - it
+guards the opposite regression, that reading descendants must not make a plain VI look like
+a polymorphic wrapper - and is kept for that, not counted as a reproduction.
+
 ## How far each mode is verified — 2026-08-24
 
 | mode | status |
