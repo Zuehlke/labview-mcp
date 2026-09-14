@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tests.Support;
@@ -106,6 +106,86 @@ public sealed class LUnitScaffoldTests
         Assert.Equal(Shape(FilledTemplate("defaults.xml")), Shape(emitted));
     }
 
+    // ----------------------------------------------------------------------------------------
+    // A TYPE WHOSE LITERAL CANNOT SURVIVE THE CONVERSION
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A class with one ordinary field and one `timestamp`, which ConvertAIXMLToVI empties -
+    /// measured 2026-09-15 against five types that keep their literal.
+    /// </summary>
+    private static readonly LUnitScaffold.Field[] Sensor =
+    [
+        new("Tag", "string", "wt.vi", "rt.vi", "PT-101"),
+        new("Last Seen", "timestamp", "wl.vi", "rl.vi", "3800000000"),
+    ];
+
+    /// <summary>
+    /// ONE FIELD IS THE DEGENERATE CASE, and this is the rule the fourth cold build found by
+    /// building a class that had it. With a single field there is no OTHER Write for an
+    /// independence test to catch, so the file restates the round trip beside it - and when that
+    /// field's literal is discarded as well, both sides are the default and it asserts nothing
+    /// while its description promises otherwise.
+    /// </summary>
+    [Fact]
+    public void IndependenceIsNotWorthGeneratingForASingleField()
+    {
+        Assert.False(LUnitScaffold.IndependenceAssertsSomething([Sensor[1]]));   // the timestamp
+        Assert.False(LUnitScaffold.IndependenceAssertsSomething([Sensor[0]]));   // an ordinary one
+        Assert.True(LUnitScaffold.IndependenceAssertsSomething(Sensor));         // the pair
+    }
+
+    /// <summary>
+    /// THE LOOP BETWEEN THE GENERATOR AND THE CHECKER, closed in one assertion. The real AlarmGate
+    /// suite shipped `tm_independence.xml` carrying `value="3800000000"` on the timestamp's write
+    /// constant AND on its Expected - both silently emptied, so the assertion compared empty with
+    /// empty. Whatever the generator emits must now pass the check that would have caught it.
+    /// </summary>
+    [Fact]
+    public void IndependenceAuthorsNoLiteralTheConverterWouldDiscard() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(LUnitScaffold.Independence("Sensor Test", "Sensor", Sensor)),
+            f => f.Code == "timestampValueDiscarded");
+
+    /// <summary>
+    /// And the SENTENCE has to move with the constant. Asserting the default while the description
+    /// still reads `must still read the value it was given` is a true result explained by a false
+    /// claim - which is how `must be 0` came to describe a path field one fix earlier.
+    /// </summary>
+    [Fact]
+    public void ItSaysWhatItIsActuallyAsserting()
+    {
+        var emitted = LUnitScaffold.Independence("Sensor Test", "Sensor", Sensor);
+
+        Assert.Contains("Tag must still read the value it was given", emitted);
+        Assert.DoesNotContain("Last Seen must still read the value it was given", emitted);
+        Assert.Contains("Last Seen must still be empty", emitted);
+    }
+
+    /// <summary>
+    /// The WRITE is kept, which is the opposite call from the round trip: this test's claim is that
+    /// no OTHER Write disturbed the field, and a Write storing where it does not own still puts a
+    /// non-default value here and fails the compare. Dropping the field would lose that.
+    /// </summary>
+    [Fact]
+    public void TheFieldIsStillWrittenAndStillAsserted()
+    {
+        var emitted = LUnitScaffold.Independence("Sensor Test", "Sensor", Sensor);
+
+        Assert.Contains("wl.vi", emitted);
+        Assert.Contains("Expected Last Seen", emitted);
+    }
+
+    /// <summary>The ordinary field is untouched by any of this.</summary>
+    [Fact]
+    public void AnOrdinaryFieldKeepsItsValueOnBothSides()
+    {
+        var emitted = LUnitScaffold.Independence("Sensor Test", "Sensor", Sensor);
+
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(emitted, "PT-101").Count);
+        Assert.DoesNotContain("3800000000", emitted);
+    }
+
     [Fact]
     public void TheIndependenceTestMatchesTheShippedSkeleton()
     {
@@ -186,13 +266,67 @@ public sealed class LUnitScaffoldTests
         Assert.Equal(@"\5C2C", LUnitScaffold.Escape(@"\2C"));
     }
 
+    /// <summary>
+    /// THE `path` ROW IS THE ONE THAT MATTERS, and it was wrong until 2026-09-14. This table used
+    /// to end `_ => "0"`, so the generated `Test Field Defaults.vi` asserted `Expected:0(Path)`
+    /// against a class whose default is the empty path - measured on a cold build, where the suite
+    /// reported a defect that did not exist. A generator that fails correct code is worse than one
+    /// that fails loudly, because it reads as a fault in the code under test.
+    ///
+    /// The compound rows are here to pin the DELEGATION: this now calls TestTools.DefaultFor
+    /// rather than keeping a second table, which is CLAUDE.md's rule about two implementations of
+    /// one rule applied to literals instead of to the uid base.
+    /// </summary>
+
+    /// <summary>
+    /// EVERY uid THIS GENERATOR EMITS MUST CLEAR LabVIEW's RESERVED PANEL-HEAP RANGE, and until
+    /// 2026-09-14 none of them did. The bands ran from 100, so a five-file suite over a three-field
+    /// class emitted 55 uids that LabVIEW logs `trying to override with non-reserved UID` for and
+    /// renumbers anyway - measured on a cold build, where scripts/aixml_lint.py flagged all five
+    /// files. `CLAUDE.md` records TestTools.UidBase = 4200 as numbering "everything the TOOLS
+    /// emit"; this generator was simply not reached by that change.
+    ///
+    /// Asserted over the GENERATED TEXT rather than against the constants, so moving a band back
+    /// under the floor fails here however it is spelled.
+    /// </summary>
+    [Fact]
+    public void EveryEmittedUidClearsLabVIEWsReservedRange()
+    {
+        string[] emitted =
+        [
+            LUnitScaffold.RoundTrip("Apfel Test", "Apfel", Apfel[1]),
+            LUnitScaffold.Defaults("Apfel Test", "Apfel", Apfel),
+            LUnitScaffold.Independence("Apfel Test", "Apfel", Apfel),
+        ];
+
+        var low = emitted
+            .SelectMany(x => System.Text.RegularExpressions.Regex.Matches(x, @"uid=""(\d+)"""))
+            .Select(m => int.Parse(m.Groups[1].Value))
+            .Where(uid => uid != 0 && uid < AixmlCheck.SafeUidBase)
+            .Distinct().Order().ToList();
+
+        Assert.Empty(low);
+    }
+
     [Theory]
     [InlineData("string", "")]
+    [InlineData("path", "")]
     [InlineData("bool", "false")]
     [InlineData("double", "0")]
     [InlineData("int32", "0")]
+    [InlineData("array{double.Samples}", "[]")]
+    [InlineData("cluster{bool.status,int32.code,string.source}", "[false,0,]")]
     public void DefaultsAreThePerTypeZero(string type, string expected)
         => Assert.Equal(expected, LUnitScaffold.DefaultFor(type));
+
+    [Theory]
+    [InlineData("string")]
+    [InlineData("path")]
+    [InlineData("bool")]
+    [InlineData("double")]
+    [InlineData("cluster{bool.status,int32.code,string.source}")]
+    public void TheScaffoldAndTheClassTestGeneratorAgree(string type)
+        => Assert.Equal(LabVIEWMcp.Tools.TestTools.DefaultFor(type), LUnitScaffold.DefaultFor(type));
 
     /// <summary>
     /// The distinction that decides whether the two whole-class tests mean anything: `defaults`

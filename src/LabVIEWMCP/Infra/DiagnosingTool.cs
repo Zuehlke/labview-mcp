@@ -31,9 +31,12 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
         // report: "you sent vi_path" is what lets the next call be right.
         var received = supplied is null ? [] : supplied.Keys.ToList();
 
+        var renames = supplied is { Count: > 0 }
+            ? ToolArguments.Renames(properties, received)
+            : [];
+
         if (request.Params is { } parameters && supplied is { Count: > 0 })
         {
-            var renames = ToolArguments.Renames(properties, received);
             if (renames.Count > 0)
             {
                 // A fresh dictionary rather than an in-place edit: `Arguments` is an IDictionary,
@@ -49,6 +52,14 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
                 supplied = folded;
             }
         }
+
+        // BEFORE the missing-required check, because it names the concrete mistake rather than its
+        // consequence: a stray `path` is usually WHY a required `viPath` looks absent, and on a tool
+        // whose parameters are all optional the required check has nothing to say at all. That was
+        // the measured hole - see ToolArguments.Unrecognised.
+        var unrecognised = ToolArguments.Unrecognised(properties, received, renames);
+        if (unrecognised.Count > 0)
+            return Failure(ToolArguments.UnrecognisedArguments(name, schema, unrecognised, received));
 
         var missing = ToolArguments.Missing(required, supplied?.Keys.ToList());
         if (missing.Count > 0)

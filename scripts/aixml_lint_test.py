@@ -565,6 +565,57 @@ def test_measured_against_labview(directory: str) -> None:
          '<Indicator _name="p" type="path" value="" inputs="value:4200.path" uid="4300" '
          'uid_parent="root"/>',
          "clean", None),
+        # MEASURED 2026-09-15 with a six-constant probe converted and exported back: string,
+        # path, double, int32 and bool all kept their literal; `timestamp` alone came back
+        # value="". LabVIEW ACCEPTS the document - errorCode 0, 4119 bytes - so this is a
+        # warning, and the damage is a generated round-trip test that compares the discarded
+        # value with the discarded Expected and passes while pinning nothing.
+        ("a timestamp carrying a value - ACCEPTED, and the value is DISCARDED",
+         '<Constant _name="t" type="timestamp" value="3800000000" uid="4200" '
+         'uid_parent="root" outputs="value:4200.value"/>',
+         "warning", "timestamp-value-discarded"),
+        ("an EMPTY timestamp is the correct spelling and must stay silent",
+         '<Constant _name="t" type="timestamp" value="" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>',
+         "clean", None),
+        # THE CONTROL. Scoped to the one type that was measured: a string keeping a non-empty
+        # literal is the majority case, and a check that fired on it would accuse every
+        # working document. "Looks similar to a timestamp" is the guess this repository keeps
+        # being caught by, so the probe that settled it is pinned here as a case.
+        ("a string carrying a value - KEPT, so nothing may fire",
+         '<Constant _name="s" type="string" value="PT-101" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>',
+         "clean", None),
+        # Error -2628, "An error occurred while parsing the document", and NOTHING is written -
+        # the whole document is lost for one missing attribute. Measured 2026-09-14.
+        ("an Indicator with no value at all",
+         '<Constant _name="c" type="double" value="0" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>'
+         '<Indicator _name="i" type="double" inputs="value:4200.value" uid="4300" '
+         'uid_parent="root"/>',
+         "error", "indicator-no-value"),
+        # ALL THREE ELEMENT KINDS, measured 2026-09-15 with a control arm. The check was scoped
+        # to Indicator alone until then, on the honest ground that only that had been measured -
+        # and the probe took three minutes and moved two of the three.
+        ("a Control with no value at all",
+         '<Control _name="a" type="double" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>'
+         '<Indicator _name="b" type="double" inputs="value:4200.value" value="0" uid="4300" '
+         'uid_parent="root"/>',
+         "error", "indicator-no-value"),
+        ("a Constant with no value at all",
+         '<Constant _name="c" type="double" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>'
+         '<Indicator _name="b" type="double" inputs="value:4200.value" value="0" uid="4300" '
+         'uid_parent="root"/>',
+         "error", "indicator-no-value"),
+        # THE CONTROL ARM. Same document, one attribute added - LabVIEW wrote 3968 bytes for it.
+        ("the same Control WITH a value - ACCEPTED",
+         '<Control _name="a" type="double" value="0" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>'
+         '<Indicator _name="b" type="double" inputs="value:4200.value" value="0" uid="4300" '
+         'uid_parent="root"/>',
+         "clean", None),
         ("a leading comma - ACCEPTED",
          NODE.format(attr='outputs=",path:4200.path"') +
          '<Indicator _name="p" type="path" value="" inputs="value:4200.path" uid="4300" '

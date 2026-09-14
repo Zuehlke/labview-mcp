@@ -303,6 +303,21 @@ internal sealed class AixmlTools(LvaiConnection connection)
         with NO `connection` attribute, which LabVIEW reads as REQUIRED rather than as unspecified.
         A required OUTPUT is the damaging one: it makes every CALLER non-executable with Error 1003
         while the VI itself validates, converts, runs and exports perfectly.
+        TWO MORE, measured 2026-09-14 and 2026-09-15. A `Control`, `Indicator` or `Constant` with NO
+        `value` attribute is an ERROR that costs the WHOLE document: ConvertAIXMLToVI answers
+        `Error -2628, An error occurred while parsing the document` and writes NOTHING, while the
+        file is perfectly well-formed XML - so that message is about the SCHEMA, not your quoting.
+        And a `timestamp` carrying a NON-EMPTY `value` is a WARNING, because LabVIEW accepts the
+        document and silently DISCARDS the literal; measured against five types that keep theirs.
+        That one matters most in a generated round-trip test, which authors the written value and
+        the expected value in one document: both vanish, and the assertion then compares empty with
+        empty and PASSES while pinning nothing.
+        WHAT `fix: true` WILL NOT DO is as deliberate as what it will. It writes the type's literal
+        for a Control or an Indicator, whose value is a default state the type decides - and leaves
+        a CONSTANT alone, naming it, because there the literal is the DATA: an author who omitted it
+        may have meant 42, and writing 0 turns a document that refuses to convert into one that
+        converts and computes the wrong answer. The discarded timestamp is likewise reported and
+        never repaired, since no non-empty timestamp literal exists to correct it to.
         WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
         are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
         failures off the round trip; lvai_validate_aixml is still required.

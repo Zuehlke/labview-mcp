@@ -1,4 +1,4 @@
-using Grpc.Core;
+﻿using Grpc.Core;
 using LabVIEWMcp.Lvai;
 using LabVIEWMcp.Tests.Fakes;
 using LabVIEWMcp.Tests.Support;
@@ -154,8 +154,13 @@ public class ActionOpenFileTests
     /// went to the disk, the XML and the URL resolution before reaching the argument name, while
     /// lvai_describe_project read the very same path with errorCode 0 the whole time.
     ///
-    /// The usual way in is not even a typo for `viPath`: there is no `filePath` parameter, and a
-    /// near-miss name is folded onto the closest declared one - which is `viPath`.
+    /// THE SECOND SENTENCE OF THIS COMMENT USED TO READ "there is no `filePath` parameter, and a
+    /// near-miss name is folded onto the closest declared one - which is `viPath`", AND THAT IS
+    /// FALSE. The fold normalises `_`, `-` and case only, so `vi_path` reaches `viPath` and
+    /// `filePath` reaches nothing at all - it is DROPPED, and the call then names no file. That is
+    /// a different fault with a different fix, now guarded separately (see OpenFilePrecheckTests),
+    /// and believing the old sentence in 2026-09-14 sent a session hunting for a path that had been
+    /// passed as a VI, which had not happened.
     /// </summary>
     [Fact]
     public async Task A_project_passed_as_a_vi_is_refused_with_the_right_parameter_named()
@@ -169,7 +174,6 @@ public class ActionOpenFileTests
         var message = Res.Str(result, "error");
         Assert.Contains("projectPath", message);
         Assert.Contains("projectName", message);
-        Assert.Contains("filePath", message);
         // And nothing reached LabVIEW, so the misleading Error 7 is never produced.
         Assert.Equal(0, server.Service.CountOf("OpenFile"));
     }
@@ -216,15 +220,27 @@ public class ActionOpenFileTests
         Assert.Equal("", request.ProjectName);
     }
 
+    /// <summary>
+    /// THIS TEST ASSERTED THE OPPOSITE UNTIL 2026-09-14: that a call naming no file "still round
+    /// trips" to LabVIEW. It does not any more, and the change is the fix rather than a regression.
+    ///
+    /// What that round trip actually produces is `Error 7, File not found` about a file nobody
+    /// named - measured five times over three real paths in one session, alongside a refuted
+    /// hypothesis about the foreground window and a LabVIEW kill and restart, before anyone
+    /// suspected the call itself. The old assertion only ever checked that nulls marshal as empty
+    /// strings, which `Omitted_fields_become_empty_strings_not_nulls` covers on a call that means
+    /// something; it was plumbing written down as a decision.
+    /// </summary>
     [Fact]
-    public async Task Calling_with_no_arguments_at_all_still_round_trips()
+    public async Task Calling_with_no_arguments_at_all_is_refused_before_labview()
     {
         await using var server = await LvaiTestServer.StartAsync();
 
         var result = await new ActionTools(server.Connection).OpenFileAsync();
 
-        Assert.Equal(0, Res.Int(result, "errorCode"));
-        Assert.Equal("", server.Service.Last<OpenFileRequest>("OpenFile").ViPath);
+        Assert.Equal("badArguments", Res.Str(result, "errorKind"));
+        Assert.Contains("nothing to open", Res.Str(result, "error"));
+        Assert.Equal(0, server.Service.CountOf("OpenFile"));
     }
 
     [Fact]

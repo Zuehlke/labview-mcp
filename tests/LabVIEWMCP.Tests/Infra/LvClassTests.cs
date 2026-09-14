@@ -322,6 +322,133 @@ public class LvClassTests : IDisposable
         Assert.Contains("named no .lvclass", info.AncestorSource, StringComparison.Ordinal);
     }
 
+    // ------------------------------------------- which parent link is the base CLASS
+
+    /// <summary>
+    /// A sibling class, written where a real one sits: one folder per class, the file inside it.
+    /// The <c>IsInterface</c> flag is the whole difference between a class and an interface in
+    /// this grammar.
+    /// </summary>
+    private string WriteSibling(string name, bool isInterface) =>
+        WriteClass(name, "", extraProperties:
+            $"""	<Property Name="NI.LVClass.IsInterface" Type="Bool">{(isInterface ? "true" : "false")}</Property>""");
+
+    /// <summary>
+    /// THE URL IS RELATIVE TO THE .lvclass ITSELF, treated as a directory - so a SIBLING class
+    /// takes two levels up, not one. Unwrapped from the real artefact rather than guessed:
+    /// ValveRig's `Test Valve/Test Valve.lvclass` links `../../ILoggable/ILoggable.lvclass`, and
+    /// NI's own `Mock Serial.lvclass` spells a sibling `../../Serial/Serial.lvclass/Serial.lvclass`
+    /// with the extension twice over, which is the tell. Resolving against the FOLDER instead left
+    /// every relative link not-found, and the first run of the probe read that as "the URL is not
+    /// usable" - which would have closed the only route there is.
+    /// </summary>
+    private static string SiblingUrl(string name) => $"../../{name}/{name}.lvclass";
+
+    /// <summary>
+    /// THE DEFECT: an interface link and a parent-class link are the same item type, so the first
+    /// entry is whichever LabVIEW happened to write first. Measured 2026-09-15 over every .lvclass
+    /// on this station - 46 of 437 classes with a parent link name a NON-CLASS, NI's own
+    /// `Caller A.lvclass` (`Abstraction` over `Actor`) and `Flathead.lvclass` (`Lever` over
+    /// `Rotating Tool`) among them. Here the interface is deliberately FIRST, which is the order
+    /// that used to decide the answer.
+    /// </summary>
+    [Fact]
+    public void TheBaseClassIsTheLinkThatOpensAsAClass()
+    {
+        WriteSibling("ILoggable", isInterface: true);
+        WriteSibling("Rotating Tool", isInterface: false);
+
+        var info = LvClass.Read(WriteClass("Flathead", $"""
+                <Item Name="Parent Libraries" Type="Parent Libraries">
+                    <Item Name="ILoggable.lvclass" Type="Parent" URL="{SiblingUrl("ILoggable")}"/>
+                    <Item Name="Rotating Tool.lvclass" Type="Parent" URL="{SiblingUrl("Rotating Tool")}"/>
+                </Item>
+            """));
+
+        Assert.Equal("Rotating Tool.lvclass", info.BaseClass?.Name);
+        Assert.Equal(["ILoggable.lvclass"], info.Interfaces.Select(i => i.Name));
+        Assert.True(info.ParentKindsAreComplete);
+        // The mixed list is still reported verbatim - nothing is dropped, it is only classified.
+        Assert.Equal(["ILoggable.lvclass", "Rotating Tool.lvclass"], info.Ancestors);
+    }
+
+    /// <summary>
+    /// `Test Valve` of docs/cold-build-valverig.md: two interfaces and no base class at all. It
+    /// reported `inheritsFrom: ILoggable.lvclass`, and the honest answer is that it is a root
+    /// class.
+    /// </summary>
+    [Fact]
+    public void AClassWhoseEveryLinkIsAnInterfaceIsARootClass()
+    {
+        WriteSibling("ILoggable", isInterface: true);
+        WriteSibling("IOpenable", isInterface: true);
+
+        var info = LvClass.Read(WriteClass("Test Valve", $"""
+                <Item Name="Parent Libraries" Type="Parent Libraries">
+                    <Item Name="ILoggable.lvclass" Type="Parent" URL="{SiblingUrl("ILoggable")}"/>
+                    <Item Name="IOpenable.lvclass" Type="Parent" URL="{SiblingUrl("IOpenable")}"/>
+                </Item>
+            """));
+
+        Assert.Null(info.BaseClass);
+        Assert.Equal(2, info.Interfaces.Count);
+        Assert.True(info.ParentKindsAreComplete);
+    }
+
+    /// <summary>
+    /// A LINK THAT CANNOT BE OPENED IS STILL REPORTED. Answering `LabVIEW Object` for a class that
+    /// plainly lists a parent would hide a real link, which is worse than the ambiguity it
+    /// replaces - so the link comes back with its kind unsettled and the flag false.
+    /// </summary>
+    [Fact]
+    public void AnUnopenableLinkIsReportedRatherThanDroppedForLabViewObject()
+    {
+        var info = LvClass.Read(WriteClass("Hochhaus", """
+                <Item Name="Parent Libraries" Type="Parent Libraries">
+                    <Item Name="Haus.lvclass" Type="Parent" URL="../../Haus/Haus.lvclass"/>
+                </Item>
+            """));
+
+        Assert.Equal("Haus.lvclass", info.BaseClass?.Name);
+        Assert.Equal("unresolved", info.BaseClass?.Kind);
+        Assert.False(info.ParentKindsAreComplete);
+    }
+
+    /// <summary>
+    /// The DECODED representations carry no URL, so nothing can be opened and the old rule - the
+    /// first ancestor that is not this class - is the only one available. A pre-2026 file must keep
+    /// answering exactly what it answered before; the one thing that changes is that the answer now
+    /// says its kind is not established.
+    /// </summary>
+    [Fact]
+    public void TheDecodedRouteKeepsItsOldAnswerAndAdmitsTheKindIsUnsettled()
+    {
+        var decoded = new List<byte> { 0x15 };
+        decoded.AddRange(Encoding.Latin1.GetBytes("Message Queue.lvclass"));
+        decoded.AddRange(Encoding.Latin1.GetBytes("PTH0"));
+        var encoded = LvClass.Encode([.. decoded])
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal);
+
+        var info = LvClass.Read(WriteClass("Derived",
+            $"""    <Property Name="NI.LVClass.ParentClassLinkInfo" Type="Bin">{encoded}</Property>"""));
+
+        Assert.Equal("Message Queue.lvclass", info.BaseClass?.Name);
+        Assert.Empty(info.ParentLinks);
+        Assert.False(info.ParentKindsAreComplete);
+    }
+
+    /// <summary>A root class is complete by having nothing to settle, not by accident.</summary>
+    [Fact]
+    public void ARootClassWithNoLinksAtAllCountsAsComplete()
+    {
+        var info = LvClass.Read(WriteClass("Auto", ""));
+
+        Assert.Null(info.BaseClass);
+        Assert.True(info.ParentKindsAreComplete);
+    }
+
     [Fact]
     public void ReadSaysLabViewObjectWhenNoParentIsRecorded()
     {

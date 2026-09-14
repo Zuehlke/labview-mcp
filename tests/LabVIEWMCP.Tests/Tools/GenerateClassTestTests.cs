@@ -1,4 +1,5 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -134,6 +135,38 @@ public sealed class GenerateClassTestTests
         Assert.Equal("0", TestTools.DefaultFor("double"));
         Assert.Equal("0", TestTools.DefaultFor("int32"));
         Assert.Equal("0", TestTools.DefaultFor("uint64"));
+    }
+
+    /// <summary>
+    /// A TIMESTAMP IS EMPTY, NOT ZERO, and this returned "0" until 2026-09-14 while
+    /// `LvClass.Literals` said "" - two implementations of one rule, disagreeing. Settled by
+    /// counting LabVIEW's own cached exports: 701 files, 40 elements carrying `type="timestamp"`,
+    /// every one of them `value=""` and not one "0". `LvClass` was right.
+    /// </summary>
+    [Fact]
+    public void ATimestampIsEmptyRatherThanZero()
+    {
+        Assert.Equal("", TestTools.DefaultFor("timestamp"));
+        Assert.Equal(LvClass.LiteralFor("timestamp"), TestTools.DefaultFor("timestamp"));
+    }
+
+    /// <summary>
+    /// THE GUARD AGAINST THE WHOLE CLASS OF DRIFT, not just the one row that was wrong. Two tables
+    /// carry the literal for a scalar type - LvClass.Literals for a class's private data, and
+    /// TestTools.DefaultFor for everything generated against it - and nothing compared them until
+    /// `timestamp` had been "0" on one side and "" on the other for long enough to ship.
+    /// A type LvClass cannot make a field of is not this test's business; a type it CAN must mean
+    /// the same thing on both sides.
+    /// </summary>
+    [Fact]
+    public void TheTwoLiteralTablesAgreeOnEveryTypeAClassCanHold()
+    {
+        var disagree = LvClass.KnownTypes
+            .Where(t => LvClass.LiteralFor(t) != TestTools.DefaultFor(t))
+            .Select(t => $"{t}: LvClass \"{LvClass.LiteralFor(t)}\" vs TestTools \"{TestTools.DefaultFor(t)}\"")
+            .ToList();
+
+        Assert.Empty(disagree);
     }
 
     // ---------------------------------------------------------- compound fields, the 2026-09-02 bug

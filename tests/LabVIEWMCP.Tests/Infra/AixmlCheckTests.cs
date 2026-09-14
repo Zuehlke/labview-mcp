@@ -20,6 +20,278 @@ public sealed class AixmlCheckTests
         return Assert.Single(findings).Code;
     }
 
+
+    // ------------------------------------------------- the one that loses the whole document
+
+    /// <summary>
+    /// VERBATIM FROM THE DOCUMENT THAT FAILED, 2026-09-14. Every Indicator carried `inputs`,
+    /// `type`, `conIdx` and `connection` and no `value`; ConvertAIXMLToVI answered
+    /// `Error -2628, An error occurred while parsing the document` and wrote NOTHING - viBytes 0.
+    /// Adding `value` to the three Indicators and changing nothing else converted clean at 6331
+    /// bytes. This checker and scripts/aixml_lint.py both answered clean at the time, which is the
+    /// whole reason the check exists.
+    /// </summary>
+    private const string IndicatorWithoutValue = """
+        <VI _name="Read Sample.vi" description="The shape that lost a document.">
+          <Control _name="ISampleSource in" conIdx="11" connection="required" type="path" uid="4210" uid_parent="root" outputs="value:4210.value" value=""/>
+          <Constant _name="Sample" type="double" uid="4230" uid_parent="root" outputs="value:4230.value" value="0"/>
+          <Indicator _name="ISampleSource out" conIdx="3" connection="recommended" type="path" uid="4240" uid_parent="root" inputs="value:4210.value"/>
+          <Indicator _name="Sample" conIdx="2" connection="recommended" type="double" uid="4250" uid_parent="root" inputs="value:4230.value"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnIndicatorWithoutAValueIsAnERROR_becauseTheConverterRefusesTheWholeDocument()
+    {
+        var findings = AixmlCheck.Check(IndicatorWithoutValue)
+            .Where(f => f.Severity == AixmlCheck.Severity.Error).ToList();
+
+        Assert.Equal(2, findings.Count);
+        Assert.All(findings, f => Assert.Equal("indicatorWithoutValue", f.Code));
+        Assert.Equal(["4240", "4250"], findings.Select(f => f.Uid).Order());
+    }
+
+    /// <summary>
+    /// The message has to carry the literal for THAT type, because the whole failure mode next
+    /// door is a generator that wrote `0` for a path. A reader who pastes what this says must get
+    /// a correct document.
+    /// </summary>
+    [Fact]
+    public void TheMessageNamesTheRightLiteralForTheType()
+    {
+        var findings = AixmlCheck.Check(IndicatorWithoutValue)
+            .Where(f => f.Code == "indicatorWithoutValue").ToList();
+
+        Assert.Contains(findings, f => f.Uid == "4240" && f.Message.Contains("value=\"\""));
+        Assert.Contains(findings, f => f.Uid == "4250" && f.Message.Contains("value=\"0\""));
+    }
+
+    [Fact]
+    public void AnIndicatorThatHasAValueIsClean() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(IndicatorWithoutValue.Replace(
+                "inputs=\"value:4210.value\"/>", "inputs=\"value:4210.value\" value=\"\"/>")
+                .Replace("inputs=\"value:4230.value\"/>", "inputs=\"value:4230.value\" value=\"0\"/>")),
+            f => f.Code == "indicatorWithoutValue");
+
+    /// <summary>
+    /// An EMPTY value is a value. `value=""` is the correct literal for a path or a string, so a
+    /// check that tested for non-emptiness would refuse exactly the documents it exists to produce.
+    /// </summary>
+    [Fact]
+    public void AnEmptyValueCounts() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check("""
+                <VI _name="P.vi">
+                  <Control _name="a" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+                  <Indicator _name="b" inputs="value:4200.value" type="path" uid="4210" uid_parent="root" value=""/>
+                </VI>
+                """),
+            f => f.Code == "indicatorWithoutValue");
+
+    /// <summary>
+    /// A Control and a Constant, each with no `value`, beside an Indicator that has one.
+    /// MEASURED 2026-09-15: each of the two refuses the whole document with `Error -2628` and
+    /// writes 0 bytes, while adding `value="0"` to the Control and changing nothing else
+    /// converts to 3968 bytes.
+    /// </summary>
+    private const string ControlAndConstantWithoutValue = """
+        <VI _name="P.vi">
+          <Control _name="a" type="double" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+          <Constant _name="c" type="double" uid="4210" uid_parent="root" outputs="value:4210.value"/>
+          <Indicator _name="b" type="double" uid="4220" uid_parent="root" inputs="value:4200.value" value="0"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AControlAndAConstantWithoutAValueAreErrorsToo()
+    {
+        var findings = AixmlCheck.Check(ControlAndConstantWithoutValue)
+            .Where(f => f.Code == "indicatorWithoutValue").ToList();
+
+        Assert.Equal(2, findings.Count);
+        Assert.All(findings, f => Assert.Equal(AixmlCheck.Severity.Error, f.Severity));
+        Assert.Equal(["4200", "4210"], findings.Select(f => f.Uid).Order());
+    }
+
+    /// <summary>
+    /// THE CONTROL ARM, kept as a test because it is the half that makes the pair a measurement:
+    /// the same document with the attribute present converted cleanly.
+    /// </summary>
+    [Fact]
+    public void TheSameElementsWithAValueAreClean() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(ControlAndConstantWithoutValue
+                .Replace("uid=\"4200\" uid_parent=\"root\" outputs", "uid=\"4200\" uid_parent=\"root\" value=\"0\" outputs")
+                .Replace("uid=\"4210\" uid_parent=\"root\" outputs", "uid=\"4210\" uid_parent=\"root\" value=\"0\" outputs")),
+            f => f.Code == "indicatorWithoutValue");
+
+    /// <summary>
+    /// THE ASYMMETRY IS DELIBERATE AND IS THE POINT OF THIS TEST. A Control's value is its default
+    /// state, so the type decides it and the repair is safe. A CONSTANT's value is the DATA - an
+    /// author who left it off may have meant 42, and writing 0 turns a document that refuses to
+    /// convert into one that converts and computes the wrong answer. Same reasoning as
+    /// timestampValueDiscarded: repair only where the type already decides the answer.
+    /// </summary>
+    [Fact]
+    public void TheControlIsRepairedAndTheConstantIsOnlyReported()
+    {
+        var repaired = AixmlCheck.Fix(ControlAndConstantWithoutValue);
+
+        var byName = System.Xml.Linq.XElement.Parse(repaired.Xml)
+            .Elements()
+            .ToDictionary(e => e.Attribute("_name")!.Value, e => e.Attribute("value")?.Value);
+
+        Assert.Equal("0", byName["a"]);      // Control - repaired
+        Assert.Null(byName["c"]);            // Constant - left alone
+        Assert.Equal(1, repaired.Repairs.Count(r => r.Code == "indicatorWithoutValue"));
+        Assert.Equal(1, repaired.Remaining.Count(f => f.Code == "indicatorWithoutValue"));
+    }
+
+    /// <summary>And the reader of a Constant finding is told not to wait for a fix.</summary>
+    [Fact]
+    public void TheConstantFindingSaysWhyItIsNotRepaired() =>
+        Assert.Contains(
+            AixmlCheck.Check(ControlAndConstantWithoutValue)
+                .Where(f => f.Code == "indicatorWithoutValue" && f.Uid == "4210"),
+            f => f.Message.Contains("NOT repaired automatically"));
+
+    // ----------------------------------------------------------------------------------------
+    // A NON-EMPTY `timestamp` VALUE IS DISCARDED
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The survival table, MEASURED 2026-09-15: one probe carrying six constants, converted and
+    /// exported back. string, path, double, int32 and bool all kept their literal; `timestamp`
+    /// alone came back `value=""`. errorCode 0 at every step, both cheap checkers clean.
+    /// </summary>
+    private const string TimestampWithAValue = """
+        <VI _name="Probe.vi">
+          <Constant _name="t" type="timestamp" value="3800000000" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+          <Indicator _name="Last Seen" type="timestamp" value="3800000000" inputs="value:4200.value" uid="4210" uid_parent="root"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void ATimestampCarryingAValueIsAWarning_becauseTheConverterAcceptsItAndDropsIt()
+    {
+        var findings = AixmlCheck.Check(TimestampWithAValue)
+            .Where(f => f.Code == "timestampValueDiscarded").ToList();
+
+        Assert.Equal(2, findings.Count);
+        Assert.All(findings, f => Assert.Equal(AixmlCheck.Severity.Warning, f.Severity));
+        Assert.Equal(["4200", "4210"], findings.Select(f => f.Uid).Order());
+    }
+
+    /// <summary>
+    /// `value=""` is the ONLY timestamp literal AIXML can express, so it is the shape this check
+    /// exists to leave alone - a checker that refused it would refuse every correct document.
+    /// </summary>
+    [Fact]
+    public void AnEmptyTimestampIsClean() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(TimestampWithAValue.Replace("3800000000", "")),
+            f => f.Code == "timestampValueDiscarded");
+
+    /// <summary>
+    /// THE CONTROL, and the reason this check is scoped to one type rather than to a family. The
+    /// same probe measured `string` KEEPING `PT-101` on both sides; widening the rule to a type
+    /// that merely looks similar is the guess this repository keeps being caught by.
+    /// </summary>
+    [Fact]
+    public void AStringCarryingAValueIsClean() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(TimestampWithAValue.Replace("timestamp", "string")
+                                                .Replace("3800000000", "PT-101")),
+            f => f.Code == "timestampValueDiscarded");
+
+    /// <summary>
+    /// DELIBERATELY NOT REPAIRED. Every other finding in this class has a `Fix`, and this one
+    /// cannot: there is no non-empty timestamp literal to correct it TO, and emptying the value
+    /// would silently produce exactly the vacuous test the finding is warning about.
+    /// </summary>
+    [Fact]
+    public void ItIsReportedRatherThanRepaired()
+    {
+        var repaired = AixmlCheck.Fix(TimestampWithAValue);
+
+        Assert.DoesNotContain(repaired.Repairs, r => r.Code == "timestampValueDiscarded");
+        Assert.Equal(2, repaired.Remaining.Count(f => f.Code == "timestampValueDiscarded"));
+        Assert.Contains("3800000000", repaired.Xml);
+    }
+
+    /// <summary>
+    /// THE SURVIVAL TABLE ITSELF, because this predicate decides more than one finding: the LUnit
+    /// scaffold asks it whether a field can be round-trip tested at all. Measured 2026-09-15 with
+    /// one probe carrying all six constants, converted and exported back:
+    ///
+    ///     string PT-101 -> PT-101   path run.csv -> run.csv   double 21.5 -> 21.5
+    ///     int32  7      -> 7        bool true    -> true      timestamp 3800000000 -> ""
+    /// </summary>
+    [Theory]
+    [InlineData("timestamp", true)]
+    [InlineData("string", false)]
+    [InlineData("path", false)]
+    [InlineData("double", false)]
+    [InlineData("int32", false)]
+    [InlineData("bool", false)]
+    public void TheSurvivalTableIsTheOneThatWasMeasured(string type, bool discards) =>
+        Assert.Equal(discards, AixmlCheck.DiscardsNonEmptyValue(type));
+
+    [Fact]
+    public void FixWritesTheTypesOwnLiteral()
+    {
+        var repaired = AixmlCheck.Fix(IndicatorWithoutValue);
+
+        // Asserted off the PARSED result, not off its serialised text: what matters is the value
+        // each indicator now carries, and pinning the spacing of `/>` would test XElement.
+        var indicators = System.Xml.Linq.XElement.Parse(repaired.Xml)
+            .Elements("Indicator")
+            .ToDictionary(e => e.Attribute("_name")!.Value, e => e.Attribute("value")?.Value);
+
+        Assert.Equal("", indicators["ISampleSource out"]);   // path
+        Assert.Equal("0", indicators["Sample"]);             // double
+        Assert.Equal(2, repaired.Repairs.Count(r => r.Code == "indicatorWithoutValue"));
+        Assert.DoesNotContain(repaired.Remaining, f => f.Code == "indicatorWithoutValue");
+    }
+
+    /// <summary>
+    /// A cluster's literal is its fields' literals - the same recursion TestTools.DefaultFor
+    /// documents. Pinned here because the error cluster is the Indicator this rule meets most.
+    /// </summary>
+    [Fact]
+    public void FixKnowsWhatAnErrorClusterIsEmptyAs()
+    {
+        var repaired = AixmlCheck.Fix("""
+            <VI _name="P.vi">
+              <Control _name="error in" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+              <Indicator _name="error out" inputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4210" uid_parent="root"/>
+            </VI>
+            """);
+
+        var repair = Assert.Single(repaired.Repairs, r => r.Code == "indicatorWithoutValue");
+        Assert.Equal("4210", repair.Uid);
+        Assert.Contains("[false,0,]", repair.Message);
+        Assert.DoesNotContain(repaired.Remaining, f => f.Code == "indicatorWithoutValue");
+    }
+
+    /// <summary>
+    /// An Indicator with NO `type` is REPORTED but not repaired: inventing a literal for a type
+    /// nobody declared is the catch-all that produced `value="0"` on a path field one file over.
+    /// </summary>
+    [Fact]
+    public void FixLeavesAnUntypedIndicatorAlone()
+    {
+        const string untyped = """
+            <VI _name="P.vi">
+              <Indicator _name="b" uid="4210" uid_parent="root"/>
+            </VI>
+            """;
+
+        Assert.DoesNotContain(AixmlCheck.Fix(untyped).Repairs, r => r.Code == "indicatorWithoutValue");
+        Assert.Contains(AixmlCheck.Check(untyped), f => f.Code == "indicatorWithoutValue");
+    }
+
     // ------------------------------------------------------------------ the damaging one
 
     /// <summary>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="lmock_generate_mock.vi" description="Drives LMock's own Mock Class Generator headlessly. Takes the interface path and the destination mock class path as strings, and returns the list of files LMock created.">
+  <FreeLabel comment="Paths arrive as strings because a VI Server control value cannot coerce a string into a path." uid="5000" uid_parent="root"/>
+  <Control _name="Source Class Path" conIdx="0" connection="required" description="Absolute path of the INTERFACE to mock. Must be a .lvclass whose NI.LVClass.IsInterface is true - an ordinary class is refused with Error 1704 and a modal dialog." outputs="value:5010.value" type="string" uid="5010" uid_parent="root" value=""/>
+  <Control _name="Destination Class Path" conIdx="5" connection="required" description="Absolute path of the mock .lvclass to create." outputs="value:5020.value" type="string" uid="5020" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5030.value" type="cluster{bool.status,int32.code,string.source}" uid="5030" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="Add to lvproj?" type="bool" uid="5035" uid_parent="root" outputs="value:5035.value" value="false"/>
+  <Node _name="String To Path" inputs="string:5010.value" outputs="path:5040.path" uid="5040" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:5020.value" outputs="path:5050.path" uid="5050" uid_parent="root"/>
+  <Call target="LMock Mock Class Generator.lvclass\3ALMock Generate Mock Class.vi" inputs="Source Class Path:5040.path,Destination Class Path:5050.path,Add to lvproj?:5035.value,error in (no error):5030.value" outputs="Created Files:5060.Created Files,error out:5060.error out" uid="5060" uid_parent="root"/>
+  <Indicator _name="Created Files" conIdx="4" connection="recommended" description="Every file LMock wrote." inputs="value:5060.Created Files" type="array{path}" uid="5070" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:5060.error out" type="cluster{bool.status,int32.code,string.source}" uid="5080" uid_parent="root" value="[false,0,]"/>
+</VI>

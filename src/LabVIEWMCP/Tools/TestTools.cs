@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -741,7 +741,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 ? LvClass.AddVisToProject(projectPath, folderName, entries)
                 : 0;
 
-            var (tidied, removed) = ClassTools.StripHelperItems(
+            var (tidied, removed, _) = ClassTools.StripHelperItems(
                 await File.ReadAllTextAsync(projectPath, ct), projectPath);
             if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
 
@@ -754,6 +754,10 @@ internal sealed class TestTools(LvaiConnection connection)
                 .Select(e => e.Name)
                 .Where(name => !listedNow.Contains(name))
                 .ToList();
+
+            // AND WHERE IT IS, not only that it is somewhere. See `ListedElsewhere`.
+            var elsewhere = ListedElsewhere(
+                entries.Select(e => e.Name), LvClass.ListedViPlaces(projectPath), folderName);
 
             var reopened = reopen
                 ? Read(await new ActionTools(connection).OpenFileAsync(
@@ -774,6 +778,9 @@ internal sealed class TestTools(LvaiConnection connection)
                 step["notOnDisk"] = new JsonArray([.. notOnDisk.Select(v => (JsonNode)v)]);
             if (notListed.Count > 0)
                 step["notListed"] = new JsonArray([.. notListed.Select(v => (JsonNode)v)]);
+            if (elsewhere.Count > 0)
+                step["listedElsewhere"] = new JsonArray([.. elsewhere.Select(e => (JsonNode)
+                    new JsonObject { ["name"] = e.Name, ["folder"] = e.Folder })]);
 
             var note = new List<string>();
             if (notOnDisk.Count > 0)
@@ -789,6 +796,14 @@ internal sealed class TestTools(LvaiConnection connection)
             if (added > 0) note.Add($"Listed under '{folderName}'.");
             else if (notOnDisk.Count == 0 && notListed.Count == 0)
                 note.Add("Already listed; nothing added.");
+            if (elsewhere.Count > 0)
+                note.Add("BUT NOT UNDER '" + folderName + "': " +
+                         string.Join(", ", elsewhere.Select(e => $"'{e.Name}' is in {e.Folder}")) +
+                         ". Left there deliberately - listing it twice would give the project two " +
+                         "items for one file, and an item inside a class or a library is owned by " +
+                         "it. LabVIEW's own save adopts a VI it has open and drops it at target " +
+                         "level, which is how a runner gets there. It is findable and it runs; " +
+                         "move it in the Project Explorer if the folder matters.");
             if (restored > 0)
                 note.Add($"{restored} entry/entries LabVIEW's close had deleted from the .lvproj " +
                          "were put back - anything above 0 means the close clobbered the file, " +
@@ -812,6 +827,47 @@ internal sealed class TestTools(LvaiConnection connection)
                            "saves over the file.";
             return step;
         }
+    }
+
+    /// <summary>
+    /// Which of the VIs we asked for are listed somewhere OTHER than the folder we asked for, and
+    /// where each one actually sits.
+    ///
+    /// THE DEFECT THIS ANSWERS, measured 2026-09-03 and reproduced by two agents independently
+    /// (<c>docs/class-method-tooling.md</c> D2): both Caraya runners sat at TARGET level while the
+    /// step reported <c>added: 0</c> and <c>"Already listed; nothing added."</c> Every word of that
+    /// was true and it reads as "the folder is correct". The cause is LabVIEW's own save adopting a
+    /// VI it has open and dropping it at target level, and <c>AddVisToProject</c> then correctly
+    /// declining to list the same file twice.
+    ///
+    /// IT REPORTS AND MOVES NOTHING, and <c>ok</c> does not turn on it. Moving an item would be a
+    /// change to the user's project nobody asked for, and an item inside a class or a library is
+    /// owned by that item - the runner is findable and it runs, so this is information, not a
+    /// verdict. Same rule as <c>wiringLost</c>, which gated <c>ok</c> for one day and was wrong
+    /// every time it fired.
+    ///
+    /// A folder chain that ENDS in the wanted name counts as the right place: the folder the caller
+    /// asked for may itself be nested, and <c>AddVisToProject</c> finds it by name at any depth.
+    /// </summary>
+    internal static List<(string Name, string Folder)> ListedElsewhere(
+        IEnumerable<string> names,
+        IReadOnlyList<(string Name, string Url, string Folder)> places,
+        string folderName)
+    {
+        var found = new List<(string, string)>();
+        foreach (var name in names)
+        {
+            var place = places.FirstOrDefault(
+                p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (place.Name is not { Length: > 0 }) continue;
+
+            var leaf = place.Folder.Split('/')[^1];
+            if (string.Equals(leaf, folderName, StringComparison.OrdinalIgnoreCase)) continue;
+
+            found.Add((place.Name,
+                       place.Folder.Length > 0 ? $"'{place.Folder}'" : "the target itself"));
+        }
+        return found;
     }
 
     /// <summary>
@@ -1228,7 +1284,15 @@ internal sealed class TestTools(LvaiConnection connection)
             t.StartsWith("{LV.", StringComparison.Ordinal) ||
             t.StartsWith("variant", StringComparison.Ordinal) ||
             t.StartsWith("string", StringComparison.Ordinal) ||
-            t.StartsWith("path", StringComparison.Ordinal))
+            t.StartsWith("path", StringComparison.Ordinal) ||
+            // A TIMESTAMP IS EMPTY, NOT ZERO - and this function said otherwise until 2026-09-14,
+            // while `LvClass.Literals` next door said "" with a measurement behind it. Two
+            // implementations of one rule disagreeing is what `CLAUDE.md` warns about for the uid
+            // base; this is the same shape, and the comment below was the wrong half - it listed
+            // timestamp among the numerics on assertion alone. Settled by counting LabVIEW's OWN
+            // exports, which needs no LabVIEW: across 701 cached exports, all 40 elements carrying
+            // `type="timestamp"` carry `value=""` and not one carries "0".
+            t.StartsWith("timestamp", StringComparison.Ordinal))
             return "";
 
         if (t.StartsWith("bool", StringComparison.Ordinal)) return "false";
@@ -1247,8 +1311,9 @@ internal sealed class TestTools(LvaiConnection connection)
                 SplitTopLevel(inner).Select(f => DefaultFor(FieldType(f)))) + "]";
         }
 
-        // Every int width, single, double, extended, timestamp - and an enum, whose braces carry
-        // item strings rather than types and whose base is numeric.
+        // Every int width, single, double and extended - and an enum, whose braces carry item
+        // strings rather than types and whose base is numeric. TIMESTAMP IS NOT HERE any more: it
+        // is handled with the empty literals above, counted off LabVIEW's own exports.
         return "0";
     }
 

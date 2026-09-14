@@ -38,21 +38,39 @@ internal static class LUnitScaffold
     // VI. These bands keep every element class in its own decade so no count of fields can collide -
     // the shipped templates grew organically and their independence test would have overlapped its
     // read and assert bands at six fields.
-    private const int ClassIn = 100, ErrorIn = 101, Seed = 110;
-    private const int ValueBase = 200, ExpectedBase = 300, DescriptionBase = 400;
-    private const int WriteBase = 500, ReadBase = 600, AssertBase = 700;
-    private const int ClassOut = 140, ErrorOut = 141;
+    // NUMBERED FROM AixmlCheck.SafeUidBase, not from 100 - added 2026-09-14. Every band here used
+    // to sit inside LabVIEW's reserved panel-heap range, so a five-file suite over a three-field
+    // class emitted 55 uids that LabVIEW logs `trying to override with non-reserved UID` for and
+    // renumbers anyway. `CLAUDE.md` records TestTools.UidBase = 4200 as numbering "everything the
+    // TOOLS emit"; this generator was not reached by that change, and `scripts/aixml_lint.py`
+    // flagged all five files of the first real build. The offsets are unchanged, so the decade
+    // independence the comment above describes is untouched.
+    private const int Base = AixmlCheck.SafeUidBase;
+    private const int ClassIn = Base + 100, ErrorIn = Base + 101, Seed = Base + 110;
+    private const int ValueBase = Base + 200, ExpectedBase = Base + 300, DescriptionBase = Base + 400;
+    private const int WriteBase = Base + 500, ReadBase = Base + 600, AssertBase = Base + 700;
+    private const int ClassOut = Base + 140, ErrorOut = Base + 141;
 
     private const string Assertion = @"Test Case.lvclass\3APass If Equal.vim";
     private const string ErrorCluster = "cluster{bool.status,int32.code,string.source}";
 
-    /// <summary>The default a field of this type reads before anything writes to it.</summary>
-    internal static string DefaultFor(string type) => type switch
-    {
-        "string" => "",
-        "bool" => "false",
-        _ => "0",
-    };
+    /// <summary>
+    /// The default a field of this type reads before anything writes to it.
+    ///
+    /// THIS WAS A THREE-CASE COPY ENDING <c>_ =&gt; "0"</c> UNTIL 2026-09-14, AND IT FAILED A
+    /// CORRECT CLASS. Measured on a cold build whose <c>Logger</c> carries a <c>path</c> field:
+    /// the generated <c>Test Field Defaults.vi</c> asserted <c>Expected:0(Path)</c> against a
+    /// class whose default is the empty path, so the suite reported a defect that did not exist -
+    /// the worst shape a generator can have, because it reads as a fault in the code under test.
+    /// The inconsistency was visible inside one generated file: the <c>Logger seed</c> constant,
+    /// same <c>path</c> type, correctly carried <c>value=""</c>.
+    ///
+    /// It is the SAME catch-all <see cref="Tools.TestTools.DefaultFor"/> records being fixed on
+    /// 2026-09-02, still present here because the rule had two implementations. It now has one:
+    /// <c>CLAUDE.md</c>'s rule for the uid base applies to this just as well - a second
+    /// implementation that disagrees is worse than either alone.
+    /// </summary>
+    internal static string DefaultFor(string type) => Tools.TestTools.DefaultFor(type);
 
     /// <summary>
     /// AIXML attribute escaping. Backslash FIRST or the escapes introduced below are re-escaped;
@@ -150,17 +168,33 @@ internal static class LUnitScaffold
             "disturbs a field written EARLIER in the chain; one that disturbs a LATER field is " +
             "masked because the later Write repairs it.";
 
+        // A FIELD WHOSE LITERAL CANNOT SURVIVE IS WRITTEN AND ASSERTED AT ITS DEFAULT, not at the
+        // value the caller supplied. Authoring the supplied value would put a constant on the
+        // diagram that ConvertAIXMLToVI silently empties on BOTH sides, so the assertion would read
+        // `must still read the value it was given` over a value nothing ever gave it - a true
+        // result reached through a false sentence, and two lint warnings on the generated file.
+        //
+        // THE ASSERTION IS KEPT rather than dropped, which is the opposite call from the round
+        // trip, and the difference is what each one claims. A round trip claims `Write stored it and
+        // Read returned it`, which a no-op Write satisfies at the default - nothing is left to
+        // assert. This test claims `no OTHER Write disturbed this field`, and that is still caught:
+        // a Write storing into a field it does not own puts a non-default value here and fails.
         var sb = Head(testClass, "Test Write Independence.vi", description);
         Constant(sb, Seed, $"{subjectClass} seed", "path", "");
         for (var i = 0; i < fields.Count; i++)
-            Constant(sb, ValueBase + i, fields[i].Name, fields[i].Type, fields[i].Value);
+            Constant(sb, ValueBase + i, fields[i].Name, fields[i].Type, Authorable(fields[i]));
         for (var i = 0; i < fields.Count; i++)
             Constant(sb, ExpectedBase + i, $"Expected {fields[i].Name}", fields[i].Type,
-                     fields[i].Value);
+                     Authorable(fields[i]));
         for (var i = 0; i < fields.Count; i++)
             Constant(sb, DescriptionBase + i, $"Description {fields[i].Name}", "string",
-                     $"After all {fields.Count} fields were written {fields[i].Name} must still " +
-                     "read the value it was given");
+                     AixmlCheck.DiscardsNonEmptyValue(fields[i].Type)
+                         ? $"After all {fields.Count} fields were written {fields[i].Name} must " +
+                           $"still be {Spoken(fields[i].Type)} - a {fields[i].Type.Trim()} literal " +
+                           "cannot be authored in AIXML, so this pins that no other Write stored " +
+                           "into it rather than that this one round-tripped"
+                         : $"After all {fields.Count} fields were written {fields[i].Name} must " +
+                           "still read the value it was given");
 
         for (var i = 0; i < fields.Count; i++)
             Call(sb, WriteBase + i, fields[i].WriteStub,
@@ -198,12 +232,48 @@ internal static class LUnitScaffold
                    description: DescriptionBase + i);
     }
 
-    private static string Spoken(string type) => type switch
+    /// <summary>
+    /// Whether an independence test over these fields asserts anything at all.
+    ///
+    /// ONE FIELD IS THE DEGENERATE CASE. That test's whole claim is "no OTHER Write disturbed this
+    /// field", and with a single field there is no other Write - so it writes a value, reads it
+    /// back and asserts it, which is what the round trip beside it already says, word for word.
+    /// When that single field's literal is DISCARDED as well it is worse than redundant: both
+    /// sides become the default and the assertion compares the default with the default, while the
+    /// generated description still promises that no other Write stored into it.
+    ///
+    /// MEASURED 2026-09-15 on a class whose only field is a `timestamp`: two green tests, one
+    /// assertion each, pinning nothing, and every cheap checker answering `[clean]` because
+    /// nothing in the document is malformed. The cut is on the COUNT rather than on the type,
+    /// because the redundancy is there for an ordinary single field too.
+    /// </summary>
+    internal static bool IndependenceAssertsSomething(IReadOnlyList<Field> fields) =>
+        fields.Count >= 2;
+
+    /// <summary>
+    /// The literal to put on the diagram for this field: the caller's value, unless the type
+    /// discards a non-empty one - see AixmlCheck.DiscardsNonEmptyValue for the measured table -
+    /// in which case the only literal AIXML can carry is the default, and authoring anything else
+    /// produces a constant LabVIEW empties behind your back.
+    /// </summary>
+    private static string Authorable(Field field) =>
+        AixmlCheck.DiscardsNonEmptyValue(field.Type) ? DefaultFor(field.Type) : field.Value;
+
+    /// <summary>
+    /// How the default reads in a test's own DESCRIPTION. Derived from the literal rather than
+    /// listed separately, because the two drifting apart is how `must be 0` came to describe a
+    /// path field - the assertion and the sentence explaining it were computed by different tables.
+    /// </summary>
+    private static string Spoken(string type)
     {
-        "string" => "the empty string",
-        "bool" => "false",
-        _ => "0",
-    };
+        var literal = DefaultFor(type);
+        if (literal.Length > 0) return literal;
+
+        var t = type.Trim();
+        if (t.StartsWith("string", StringComparison.Ordinal)) return "the empty string";
+        if (t.StartsWith("path", StringComparison.Ordinal)) return "the empty path";
+        return "empty";
+    }
 
     private static string Esc(string value) => Escape(value);
 

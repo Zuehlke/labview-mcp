@@ -162,13 +162,18 @@ public sealed class LUnitTemplateTests
             .Where(c => c.Attribute("target")!.Value.StartsWith("LVMCP Stub r"))
             .Select(c => c.Attribute("inputs")!.Value).ToList();
         Assert.Equal(4, defaultReads.Count);
-        Assert.All(defaultReads, i => Assert.Contains("Auto in:110.value", i));
+        // 4310 is the SEED, which is 110 past AixmlCheck.SafeUidBase. The bands moved out of
+        // LabVIEW's reserved range on 2026-09-14; the property under test - that every read here
+        // comes off the untouched seed rather than off a written object - is unchanged.
+        Assert.All(defaultReads, i => Assert.Contains("Auto in:4310.value", i));
 
         var writtenReads = independence.Elements("Call")
             .Where(c => c.Attribute("target")!.Value.StartsWith("LVMCP Stub r"))
             .Select(c => c.Attribute("inputs")!.Value).ToList();
         Assert.Equal(4, writtenReads.Count);
-        Assert.All(writtenReads, i => Assert.Contains("Auto in:123.Auto out", i));
+        // 4323 is the last WRITE's object output - 123 past AixmlCheck.SafeUidBase. Moved with the
+        // bands on 2026-09-14; what is pinned is that these reads come off the written object.
+        Assert.All(writtenReads, i => Assert.Contains("Auto in:4323.Auto out", i));
     }
 
     /// <summary>
