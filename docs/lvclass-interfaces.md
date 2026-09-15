@@ -123,11 +123,37 @@ accessors, which is the correct remedy and worth knowing in advance.
 
 **An interface link and a parent class link are the SAME kind of item.** Both arrive as
 `<Item Type="Parent">` inside `Parent Libraries`, so `ClassInfo.Ancestors` mixes them and its
-**order** decides what `inheritsFrom` reports — a class with one parent and one interface can read as
-inheriting from the interface. Nothing in the file distinguishes them; the only way to tell is to
-open each name and read its own `IsInterface`. Both verify checks in `lvai_create_class` are
-therefore membership tests, not "is it first"; the parent check used to be the latter and would have
-started failing the moment `parentInterfaces` was used alongside `parentClassPath`.
+**order** decides what a single-valued field can say — a class with one parent and one interface
+reads as inheriting from the interface. Nothing **in the owning file** distinguishes them; the only
+way to tell is to open each link and read its own `IsInterface`.
+
+**AND THAT IS WHAT THE READER DOES SINCE 2026-09-15 — the sentence above was a caveat for fifteen
+days and is a recipe.** Two measurements turned it into one:
+
+| | |
+|---|---|
+| **every `<Item Type="Parent">` carries a `URL`** | 432 of 432 across `vi.lib`, `user.lib`, `instr.lib` and `examples` |
+| **the URL is relative to the `.lvclass` ITSELF, treated as a directory** | a sibling is `../../Name/Name.lvclass`; NI's `Mock Serial.lvclass` writes one as `../../Serial/Serial.lvclass/Serial.lvclass`, the extension twice over, because LabVIEW addresses a member as `Serial.lvclass/Member.vi` |
+
+The second is why it looked closed: resolving against the class's FOLDER leaves every relative link
+not-found, which reads exactly like "the URL is not usable". Swept over the station afterwards —
+**449 links, all 449 resolved, 400 class and 49 interface**, and **46 of the 437 classes with a
+parent link were naming a NON-CLASS**, NI's own `Caller A.lvclass` (`Abstraction` over `Actor`) and
+`Flathead.lvclass` (`Lever` over `Rotating Tool`) among them.
+
+So `LvClass.ClassInfo` now carries `ParentLinks`, each with its kind, plus `BaseClass`,
+`Interfaces` and `ParentKindsAreComplete`. `lvai_describe_class` reports `parentLinks` and an
+`inheritsFrom` that is the base CLASS or `LabVIEW Object` and **never an interface**;
+`lvai_create_class` adds `interfacesImplemented`, read from the file, beside the `interfacesLinked`
+count read from the request. A link that cannot be opened is still NAMED — reporting
+`LabVIEW Object` over a parent the file lists would hide a real one — and `parentKindsAreComplete`
+is false there, which is the whole difference from the field this replaces: that one was a guess
+too and did not say so. The decoded representations (`ParentClassLinkInfo`, `Geneology`) carry no
+URL, so a pre-2026 file keeps exactly the answer it had.
+
+Both verify checks in `lvai_create_class` are membership tests, not "is it first"; the parent check
+used to be the latter and would have started failing the moment `parentInterfaces` was used
+alongside `parentClassPath`.
 
 ### 2.3 Verifying — from the file
 

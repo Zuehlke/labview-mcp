@@ -106,9 +106,71 @@ internal static class AixmlCheck
         CheckRings(root, findings);
         CheckEnums(root, findings);
         CheckTerminalWireRules(root, findings);
+        CheckIndicatorValues(root, findings);
+        CheckTimestampValues(root, findings);
         CheckReservedRange(elements, findings);
 
         return findings;
+    }
+
+    /// <summary>
+    /// An <c>&lt;Indicator&gt;</c> with no <c>value</c>. THIS LOSES THE WHOLE DOCUMENT, and until
+    /// 2026-09-14 nothing cheap saw it.
+    ///
+    /// MEASURED on two interface-method documents in one cold build:
+    /// <c>ConvertAIXMLToVI</c> answers <c>Error -2628, An error occurred while parsing the
+    /// document</c> and writes NOTHING - <c>viBytes 0</c>. Adding <c>value</c> to each Indicator
+    /// and changing nothing else converts clean, 6331 bytes. The file is well-formed XML with no
+    /// BOM, so <c>-2628</c> here means a SCHEMA-required attribute is missing rather than that the
+    /// XML is malformed, and both this checker and <c>scripts/aixml_lint.py</c> answered clean.
+    ///
+    /// AND THE STEP BEFORE IT POINTS ELSEWHERE, which is what made it expensive: inside
+    /// <c>lvai_add_class_method</c> the preceding validate refusal is classified
+    /// <c>classWireStrictness</c> - the documented case where the validator is stricter than the
+    /// converter - and converted through on purpose. So the real fault surfaced one step later
+    /// wearing a parser's message, after a verdict had already said "this refusal is expected".
+    ///
+    /// SCOPED TO <c>Indicator</c> UNTIL 2026-09-15, AND THE SCOPE WAS WRONG. The failing documents
+    /// happened to carry a <c>value</c> on every Control, so this said the Control case was
+    /// untested and told readers to widen it only when someone probed it. Probed, with a control
+    /// arm because a probe that detects nothing proves nothing - three one-element documents
+    /// differing in nothing but the attribute:
+    ///
+    ///     Control  no value    Error -2628, 0 bytes      Control  value="0"   errorCode 0, 3968 bytes
+    ///     Constant no value    Error -2628, 0 bytes
+    ///
+    /// So ALL THREE element kinds that carry <c>value</c> require it, and the narrow rule was
+    /// letting two thirds of the fault through. Worth noting how the gap survived: the restriction
+    /// was honest about what it had measured, which is right - what was missing is that nobody ran
+    /// the three-minute probe that would have settled it.
+    /// </summary>
+    private static void CheckIndicatorValues(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            var kind = element.Name.LocalName;
+            if (kind is not ("Indicator" or "Control" or "Constant")) continue;
+            if (element.Attribute("value") is not null) continue;
+
+            var name = element.Attribute("_name")?.Value ?? kind;
+            var uid = (string?)element.Attribute("uid");
+            var type = element.Attribute("type")?.Value;
+            var literal = type is { Length: > 0 } ? Tools.TestTools.DefaultFor(type) : "";
+
+            findings.Add(new Finding(Severity.Error, "indicatorWithoutValue",
+                $"{kind} \"{name}\" has no `value` attribute. ConvertAIXMLToVI refuses the "
+                + "WHOLE document for this - `Error -2628, An error occurred while parsing the "
+                + "document` - and writes nothing, measured 2026-09-14 on an Indicator and "
+                + "2026-09-15 on a Control and a Constant. The file is valid XML, so "
+                + "that message is about the SCHEMA, not about your quoting. Write "
+                + $"value=\"{literal}\"" + (type is { Length: > 0 } ? $" for type {type}." : ".")
+                + (kind == "Constant"
+                    ? " NOT repaired automatically, unlike an Indicator or a Control: on a "
+                      + "constant the literal is the DATA rather than a default state, so writing "
+                      + "the type default would convert cleanly and compute the wrong answer."
+                    : ""),
+                uid));
+        }
     }
 
     /// <summary>
@@ -315,6 +377,62 @@ internal static class AixmlCheck
     }
 
     /// <summary>
+    /// Types whose non-empty <c>value</c> literal does NOT survive <c>ConvertAIXMLToVI</c>.
+    ///
+    /// MEASURED 2026-09-15 with one six-constant probe, converted and exported back - the only way
+    /// to answer this, because the loss is silent at every other gate:
+    ///
+    /// <code>
+    ///   string "PT-101"        -> "PT-101"   kept
+    ///   path   "run.csv"       -> "run.csv"  kept
+    ///   double "21.5"          -> "21.5"     kept
+    ///   int32  "7"             -> "7"        kept
+    ///   bool   "true"          -> "true"     kept
+    ///   timestamp "3800000000" -> ""         DISCARDED
+    /// </code>
+    ///
+    /// **The list is exactly what was measured.** Five types were checked and kept theirs; adding a
+    /// type here on the grounds that it "looks similar" is the guess this repository has been caught
+    /// by before. Probe it the same way and extend the table with the measurement.
+    /// </summary>
+    internal static bool DiscardsNonEmptyValue(string? type) =>
+        type is { Length: > 0 } && type.Trim().StartsWith("timestamp", StringComparison.Ordinal);
+
+    /// <summary>
+    /// A <c>timestamp</c> carrying a non-empty <c>value</c>. The value cannot survive, so the author
+    /// asked for something that will not happen and nothing downstream says so.
+    ///
+    /// A WARNING rather than an error, matching `enumValueIsALabel` and `enumValueOutOfRange` - the
+    /// other two silently-discarded-value faults. And NOT repaired, unlike the enum label: there is
+    /// no non-empty timestamp literal to repair it to, which is the whole point.
+    ///
+    /// WHY IT MATTERS MORE THAN A LOST CONSTANT. Measured 2026-09-14 on a real LUnit suite: a
+    /// generated round-trip test authors the written value AND the Expected constant in the same
+    /// document, so BOTH are discarded and the assertion compares empty with empty and PASSES. A
+    /// green test that pins nothing is worse than a failing one, because nothing prompts a second
+    /// look. `docs/cold-build-alarmgate.md` §3.
+    /// </summary>
+    private static void CheckTimestampValues(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Name.LocalName is not ("Control" or "Indicator" or "Constant")) continue;
+            if (!DiscardsNonEmptyValue((string?)element.Attribute("type"))) continue;
+            if ((string?)element.Attribute("value") is not { Length: > 0 } value) continue;
+
+            findings.Add(new Finding(Severity.Warning, "timestampValueDiscarded",
+                $"\"{element.Attribute("_name")?.Value ?? element.Name.LocalName}\" is a timestamp "
+                + $"carrying value=\"{value}\", and ConvertAIXMLToVI DISCARDS it - measured, the "
+                + "export reads back value=\"\" with errorCode 0 throughout. There is no non-empty "
+                + "timestamp literal AIXML can express, so this cannot be repaired here. It matters "
+                + "because a generated round-trip test authors the written value and the expected "
+                + "value in the same document: both vanish, the assertion compares empty with empty "
+                + "and PASSES while pinning nothing.",
+                (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
     /// uids inside LabVIEW's reserved panel-heap range. INFORMATIONAL ONLY, and the wording says
     /// why: a three-object probe with uid 10 logs twelve `non-reserved UID` DWarn entries every
     /// time, while two of this repository's own shipped helpers carry controls at uid 10 and 11 and
@@ -481,6 +599,36 @@ internal static class AixmlCheck
                 + "`connection`, which LabVIEW reads as REQUIRED; set to \"recommended\". A "
                 + "required output makes every caller that leaves it unwired non-executable.",
                 (string?)indicator.Attribute("uid")));
+        }
+
+        // A MISSING `value` ON AN INDICATOR OR A CONTROL IS REPAIRABLE, because the type decides
+        // the literal and there is no intent to guess at: the value of either IS its default, and
+        // TestTools.DefaultFor is the one table that knows what a path, a cluster or an array is
+        // empty as. One with NO `type` is left alone - inventing a literal for an unknown
+        // type is exactly the catch-all that produced `value="0"` on a path field.
+        //
+        // A `Constant` IS REPORTED AND NOT REPAIRED, and the asymmetry is the point. All three
+        // kinds were measured refusing the document (2026-09-15), so the CHECK covers all three -
+        // but on a Constant the literal is the DATA, not a default state. An author who left it off
+        // may have meant 42; writing 0 produces a document that converts happily and computes the
+        // wrong answer, which is strictly worse than the refusal it replaces. Same reasoning as
+        // timestampValueDiscarded: report where the right value is unknowable, repair only where
+        // the type already decides it.
+        foreach (var terminal in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName is "Indicator" or "Control")
+                     .Where(e => e.Attribute("value") is null)
+                     .Where(e => (string?)e.Attribute("type") is { Length: > 0 })
+                     .ToList())
+        {
+            var kind = terminal.Name.LocalName;
+            var type = (string)terminal.Attribute("type")!;
+            var literal = Tools.TestTools.DefaultFor(type);
+            terminal.SetAttributeValue("value", literal);
+            repairs.Add(new Repair("indicatorWithoutValue",
+                $"{kind} \"{terminal.Attribute("_name")?.Value ?? kind}\" had no "
+                + $"`value`; set to \"{literal}\" for type {type}. Without it ConvertAIXMLToVI "
+                + "refuses the whole document with Error -2628 and writes nothing.",
+                (string?)terminal.Attribute("uid")));
         }
 
         // NOTHING REPAIRED MEANS NOTHING RESERIALISED. Handing back a re-rendered document would

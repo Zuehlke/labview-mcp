@@ -106,10 +106,24 @@ BARE_NET_ATTRS = {
 #: longer LabVIEW had been up. That also explains why the shipped helpers "log nothing": they
 #: are generated early, when the ceiling is still low.
 #:
-#: 5000 is used instead because it is MEASURED clear: a ten-VI build numbered from 5000 - 12
-#: pylabview rebuilds, 20+ runs, nine copies of a 43 kB VI - produced ZERO of these events,
-#: while the same documents at uids 10-30 produced one per element.
-LOW_UID_CEILING = 5000
+#: THE CEILING IS 4200, NOT 5000, AND THIS SAID 5000 UNTIL 2026-09-14 - which made the lint
+#: disagree with `AixmlCheck.SafeUidBase` and flag every file the generators themselves emit.
+#: The reasoning above is sound and the number drawn from it was not: the observed ceilings run
+#: 42 to 163, and 4200 is TWENTY-SIX TIMES the top of that range, so 5000 was a round number
+#: above the data rather than a threshold the data supports.
+#:
+#: Settled by measurement on a LabVIEW that had been up ~50 minutes, with a CONTROL - because a
+#: probe that detects nothing proves nothing:
+#:
+#:     four elements at uids 4200-4230    dwarnCount 7 -> 7     (no events)
+#:     four elements at uids 10-13        dwarnCount 7 -> 11    (one per element)
+#:
+#: and the control's own message named the live ceiling: `max: 69 sat: 67`. So 4200 is clear with
+#: room to spare, and warning about it only trained readers to ignore the check.
+#:
+#: KEEP THIS EQUAL TO AixmlCheck.SafeUidBase. Two implementations of one rule that disagree are
+#: worse than either alone - this one spent days telling people their compliant files were wrong.
+LOW_UID_CEILING = 4200
 
 #: uid="0" is a SENTINEL, not a number: it may be reused within one document and
 #: LabVIEW assigns the element an id of its own. Excluded from the duplicate and
@@ -1167,6 +1181,100 @@ def check_types(elements: list[_El]) -> list[Finding]:
 # --------------------------------------------------------------------------
 
 
+def check_indicator_values(elements: list[_El]) -> list[Finding]:
+    """An <Indicator> with no `value` - which loses the WHOLE document at convert time.
+
+    MEASURED 2026-09-14 on two interface-method documents in one cold build:
+    ConvertAIXMLToVI answers `Error -2628, An error occurred while parsing the document`
+    and writes NOTHING (viBytes 0). Adding `value` to each Indicator and changing nothing
+    else converts clean, 6331 bytes. The file is well-formed XML with no BOM, so -2628
+    there is about the SCHEMA, not about quoting - and both this linter and
+    lvai_check_aixml answered clean, which is why it cost a whole diagnosis.
+
+    SCOPED TO Indicator UNTIL 2026-09-15, AND THE SCOPE WAS WRONG. The failing documents
+    happened to carry a `value` on every Control, so this said the Control case was untested
+    and told readers to widen it only when someone probed it. Probed, with a control arm
+    because a probe that detects nothing proves nothing - three one-element documents
+    differing in nothing but the attribute:
+
+        Control  no value   Error -2628, 0 bytes     Control value="0"  errorCode 0, 3968 bytes
+        Constant no value   Error -2628, 0 bytes
+
+    So all three element kinds that carry `value` require it. The narrow rule was letting two
+    thirds of the fault through, and what was missing was not honesty about the measurement -
+    that part was right - but the three-minute probe that would have settled it.
+
+    Kept equal to AixmlCheck.CheckIndicatorValues on the C# side - CLAUDE.md's rule about two
+    implementations of one rule applies here exactly as it does to the uid base. The REPAIR
+    differs by kind on that side and there is none here, so nothing to mirror.
+    """
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag not in ("Indicator", "Control", "Constant") or e.el.get("value") is not None:
+            continue
+        findings.append(
+            Finding(
+                "error",
+                "indicator-no-value",
+                e.uid,
+                e.label(),
+                e.path,
+                f"this {e.tag} has no `value` attribute. ConvertAIXMLToVI refuses the WHOLE "
+                "document for it - Error -2628, 'An error occurred while parsing the document' - "
+                "and writes nothing. That message is about the schema, not about your quoting: "
+                "the file parses as XML. Give every Control, Indicator and Constant a value "
+                "literal for its type - "
+                'an empty one for string and path, "0" for a number, "false" for a bool, '
+                '"[]" for an array, and a cluster takes the literals of its own fields.',
+            )
+        )
+    return findings
+
+
+def check_timestamp_values(elements: list[_El]) -> list[Finding]:
+    """A `timestamp` carrying a non-empty `value` - which ConvertAIXMLToVI DISCARDS.
+
+    MEASURED 2026-09-15 with a six-constant probe converted and exported back: string,
+    path, double, int32 and bool all kept their literal; `timestamp` alone came back
+    value="". errorCode 0 at every step, lint clean, nothing anywhere reported it.
+
+    WHY IT IS WORSE THAN A LOST CONSTANT: a generated round-trip test authors the written
+    value AND the expected value in the same document, so both vanish and the assertion
+    compares empty with empty and PASSES. Measured on a real LUnit suite 2026-09-14 - a
+    green test that pins nothing, beside a string field in the same suite that kept its
+    value on both sides.
+
+    Kept equal to AixmlCheck.CheckTimestampValues on the C# side, and scoped to the one
+    type that was measured - extending it to a type that "looks similar" is the guess this
+    repository keeps being caught by.
+    """
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag not in ("Control", "Indicator", "Constant"):
+            continue
+        if not (e.el.get("type") or "").strip().startswith("timestamp"):
+            continue
+        value = e.el.get("value") or ""
+        if not value:
+            continue
+        findings.append(
+            Finding(
+                "warning",
+                "timestamp-value-discarded",
+                e.uid,
+                e.label(),
+                e.path,
+                f'this timestamp carries value="{value}" and ConvertAIXMLToVI discards it - the '
+                'export reads back value="" with errorCode 0 throughout. There is no non-empty '
+                "timestamp literal AIXML can express, so there is nothing to correct it to. It "
+                "matters because a generated round-trip test authors the written value and the "
+                "expected value in the same document: both vanish, and the assertion then "
+                "compares empty with empty and PASSES while pinning nothing.",
+            )
+        )
+    return findings
+
+
 def lint_file(path: str) -> list[Finding]:
     try:
         root = ET.parse(path).getroot()
@@ -1204,6 +1312,8 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_nets(produced, consumed)
     findings += check_uids(elements)
     findings += check_terminal_flags(elements)
+    findings += check_indicator_values(elements)
+    findings += check_timestamp_values(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)
     findings += check_type_grammar(elements)

@@ -137,9 +137,10 @@ internal static class Classes
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var (text, removed) = ClassTools.StripHelperItems(File.ReadAllText(projectPath));
+        var (text, removed, strayNames) = ClassTools.StripHelperItems(File.ReadAllText(projectPath));
         if (removed > 0) File.WriteAllText(projectPath, text);
         Console.Error.WriteLine($"  stripped {removed} helper item(s) from the .lvproj");
+        foreach (var stray in strayNames) Console.Error.WriteLine($"    - {stray}");
 
         var killed = 0;
         foreach (var lv in System.Diagnostics.Process.GetProcessesByName("LabVIEW"))

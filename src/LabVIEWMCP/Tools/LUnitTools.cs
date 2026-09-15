@@ -622,6 +622,12 @@ internal sealed class LUnitTools(LvaiConnection connection)
         A generator that invented them would produce six green tests that pin nothing, which is the
         one failure this route must not make easy. Every value must be NON-DEFAULT and distinct, or a
         Write that stores nothing - or into the wrong field - passes.
+        NO ROUND TRIP IS WRITTEN FOR A `timestamp` FIELD, and that is not a gap. ConvertAIXMLToVI
+        DISCARDS a non-empty literal of that type - measured 2026-09-15 against five types that keep
+        theirs - so a round trip would author the written value and Expected in one document, lose
+        both, compare empty with empty and PASS. The field is named under `roundTripsSkipped`; the
+        defaults and independence tests still cover it, and a real test of it has to set the value at
+        RUN TIME.
         WHAT IT DOES NOT DO: create the test case class, add the methods, swap the sockets or run
         anything. The order is lvai_create_class -> RESTART LabVIEW -> this -> the .lvproj entry ->
         lvai_lunit_add_test_method -> lvai_swap_subvis (all methods in ONE message) ->
@@ -767,13 +773,46 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 });
             }
 
-            foreach (var field in fields)
+            // NO ROUND TRIP FOR A TYPE WHOSE LITERAL CANNOT SURVIVE THE CONVERSION. A round trip
+            // authors the written value and the Expected constant in the SAME document, so for a
+            // type ConvertAIXMLToVI discards both vanish, the assertion compares empty with empty,
+            // and the test PASSES while pinning nothing. Measured 2026-09-14 on a real suite - the
+            // `string` field beside it kept its value on both sides - and again 2026-09-15 with a
+            // six-constant probe that scoped it to `timestamp` alone.
+            //
+            // THE OTHER TWO FILES STILL COVER THE FIELD, which is why this skips one file rather
+            // than refusing the call. `Defaults` asserts the field reads its DEFAULT off a fresh
+            // object, and the default is exactly what a discarded literal leaves behind.
+            // `Independence` authors the DEFAULT on both sides for such a field - see
+            // LUnitScaffold.Authorable - and still catches another Write storing a non-default
+            // value into it, which is the fault that test exists for. Only the round trip has
+            // nothing left to assert: its whole claim is `Write stored it and Read returned it`,
+            // which a Write that stores nothing satisfies at the default.
+            var vacuous = fields.Where(f => AixmlCheck.DiscardsNonEmptyValue(f.Type)).ToList();
+            foreach (var field in fields.Where(x => !AixmlCheck.DiscardsNonEmptyValue(x.Type)))
                 Emit($"tm_{Slug(field.Name)}", $"Test {field.Name} Round Trip.vi",
                      LUnitScaffold.RoundTrip(testClass, subject, field));
             Emit("tm_defaults", "Test Field Defaults.vi",
                  LUnitScaffold.Defaults(testClass, subject, fields));
-            Emit("tm_independence", "Test Write Independence.vi",
-                 LUnitScaffold.Independence(testClass, subject, fields));
+
+            // NO INDEPENDENCE TEST FOR A ONE-FIELD CLASS. That test's whole claim is "no OTHER
+            // Write disturbed this field", and with one field there is no other Write to disturb
+            // it - so it writes a value, reads it back and asserts it, which is the round trip it
+            // sits beside, and its generated description asserts a guarantee that cannot exist.
+            //
+            // MEASURED 2026-09-15 on a class whose single field is a `timestamp`, which makes both
+            // halves visible at once: the round trip is skipped because the literal cannot survive,
+            // and the independence test then wrote the DEFAULT on both sides and asserted it. Two
+            // green tests, one assertion each, pinning nothing - and the description said it pinned
+            // that no other Write had stored into the field.
+            //
+            // The cut is on the FIELD COUNT and not on the type, because the defect is there for an
+            // ordinary single field too: that file is then a byte-for-byte argument for the same
+            // thing the round trip already asserts.
+            var independenceSkipped = !LUnitScaffold.IndependenceAssertsSomething(fields);
+            if (!independenceSkipped)
+                Emit("tm_independence", "Test Write Independence.vi",
+                     LUnitScaffold.Independence(testClass, subject, fields));
 
             // The swap map, per method, so the caller pastes rather than derives. A round trip calls
             // two accessors; the two whole-class tests call every one.
@@ -802,10 +841,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
             // JSON STRINGS, not parsed arrays - the same shape as methodsJson and constantsJson, so
             // all three can be copied into the next call without re-serialising. The first version
             // mixed the two formats and only two of the three were paste-ready.
-            foreach (var f in fields)
+            foreach (var f in fields.Where(x => !AixmlCheck.DiscardsNonEmptyValue(x.Type)))
                 swaps[$"Test {f.Name} Round Trip.vi"] = Pairs([f], true, true).ToJsonString();
             swaps["Test Field Defaults.vi"] = Pairs(fields, false, true).ToJsonString();
-            swaps["Test Write Independence.vi"] = Pairs(fields, true, true).ToJsonString();
+            if (!independenceSkipped)
+                swaps["Test Write Independence.vi"] = Pairs(fields, true, true).ToJsonString();
 
             return Json.Document(new JsonObject
             {
@@ -818,6 +858,23 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     ["type"] = f.Type,
                     ["value"] = f.Value,
                     ["default"] = LUnitScaffold.DefaultFor(f.Type),
+                })]),
+                ["independenceSkipped"] = independenceSkipped
+                    ? "'" + subject + "' has one private data field, so there is no OTHER Write that "
+                      + "could disturb it and an independence test would assert what the round trip "
+                      + "already does - or, when the field's literal cannot survive the conversion, "
+                      + "assert nothing at all. No file was written for it."
+                    : null,
+                ["roundTripsSkipped"] = new JsonArray([.. vacuous.Select(f => (JsonNode)new JsonObject
+                {
+                    ["field"] = f.Name,
+                    ["type"] = f.Type,
+                    ["why"] = "ConvertAIXMLToVI DISCARDS a non-empty literal of this type - the "
+                            + "export reads back value=\"\" with errorCode 0 throughout. A round "
+                            + "trip authors the written value and Expected in the same document, so "
+                            + "both vanish and the assertion compares empty with empty and PASSES. "
+                            + "No file was written for it. Test this field through a route that "
+                            + "sets the value at RUN TIME, or leave it untested and say so.",
                 })]),
                 ["filesWritten"] = written,
                 ["methodsJson"] = methods.ToJsonString(),
@@ -835,7 +892,19 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 ["testMethodDirectory"] = methodFolder,
                 ["note"] =
                     $"{written.Count} AIXML file(s) for {fields.Count} field(s), with the test " +
-                    $"method .vi paths under '{methodFolder}'. Next: pass " +
+                    $"method .vi paths under '{methodFolder}'. " +
+                    (independenceSkipped
+                        ? "NO independence test was written - see `independenceSkipped`: with one "
+                          + "field there is no other Write for it to catch. "
+                        : "") +
+                    (vacuous.Count > 0
+                        ? "NO round trip was written for " +
+                          string.Join(", ", vacuous.Select(f => $"'{f.Name}'")) +
+                          " - see `roundTripsSkipped`: that type cannot carry a literal through the "
+                          + "conversion at all, so the test would have compared empty with empty and "
+                          + "passed. "
+                        : "") +
+                    "Next: pass " +
                     "`methodsJson` to lvai_lunit_add_test_method with this test class and the " +
                     ".lvproj, then one lvai_swap_subvis per method - ALL IN ONE MESSAGE - using " +
                     "`swapsJsonPerMethod` and the same `constantsJson` each time. THE VALUES ARE " +

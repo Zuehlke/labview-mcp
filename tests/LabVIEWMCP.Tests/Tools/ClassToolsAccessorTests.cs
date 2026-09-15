@@ -232,7 +232,7 @@ public class ClassToolsAccessorTests
 
         try
         {
-            var (text, removed) = ClassTools.StripHelperItems(xml, project);
+            var (text, removed, _) = ClassTools.StripHelperItems(xml, project);
 
             Assert.Equal(2, removed);
             Assert.Contains("Auto.lvclass", text);
@@ -252,7 +252,7 @@ public class ClassToolsAccessorTests
             </Project>
             """;
 
-        var (text, removed) = ClassTools.StripHelperItems(xml);
+        var (text, removed, _) = ClassTools.StripHelperItems(xml);
 
         Assert.Equal(0, removed);
         Assert.Contains("Gone.lvclass", text);

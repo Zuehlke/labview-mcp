@@ -225,6 +225,30 @@ internal static class ConnectorPane
         name.Contains("error out", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// The conIdx values in <paramref name="conIdx"/> that are NOT slots of
+    /// <paramref name="pattern"/>, sorted. Empty when the pattern is unmeasured, because an
+    /// unmeasured geometry cannot rule anything out and refusing on ignorance would be worse than
+    /// the failure this exists to catch.
+    ///
+    /// WHY IT EXISTS - MEASURED 2026-09-14 on a cold build. A class member is re-paned onto NI's
+    /// 4815 by <c>lvai_add_class_method</c> and <c>lvai_lunit_add_test_method</c>, while
+    /// <c>lvai_connector_pane</c> with NO ARGUMENT answers the STATION default - 4833 on this
+    /// machine, whose slots run to 15. Two interface methods authored from that answer validated,
+    /// converted, and then failed inside the pane repair with a script's stderr:
+    /// <c>pattern 4815 has no slot [15]</c> - after the .vi had already been written. The rule
+    /// "ask the tool, never assume" sent the author to the answer that is right for a plain VI and
+    /// wrong for a class member, and nothing in the chain said so until the repair ran.
+    /// </summary>
+    public static List<int> ConIdxNotOnPattern(IEnumerable<int> conIdx, int pattern)
+    {
+        var geometry = ConnectorPanePatterns.Find(pattern)?.Geometry;
+        if (geometry is null) return [];
+
+        var slots = geometry.Slots.Select(s => s.ConIdx).ToHashSet();
+        return [.. conIdx.Where(i => !slots.Contains(i)).Distinct().Order()];
+    }
+
+    /// <summary>
     /// The assignment NI's style guide asks for, for exactly these terminals on exactly this pane:
     /// inputs down the left edge, outputs down the right, `error in` bottom left, `error out`
     /// bottom right, and anything that no longer fits pushed into the middle columns.

@@ -248,6 +248,15 @@ internal static class LvClass
     public static IReadOnlyCollection<string> KnownTypes => Literals.Keys;
 
     /// <summary>
+    /// This table's literal for a scalar field type, or null for a type it does not carry.
+    /// Exposed so the OTHER implementation of this rule - <see cref="Tools.TestTools.DefaultFor"/>,
+    /// which also handles compound types - can be tested against it. The two disagreed about
+    /// `timestamp` until 2026-09-14, and nothing compared them.
+    /// </summary>
+    public static string? LiteralFor(string type) =>
+        Literals.TryGetValue(type, out var literal) ? literal : null;
+
+    /// <summary>
     /// Parse <c>string.Manufacturer, int32.Year Of Manufacture</c> into fields. The separator is a
     /// comma because that is what the AIXML cluster grammar uses, which also means a field NAME
     /// cannot contain one - said here rather than discovered from a malformed type string.
@@ -469,7 +478,101 @@ internal static class LvClass
     public sealed record ClassInfo(
         string Path, string ClassName, string? ContainingLibrary, string QualifiedName,
         IReadOnlyList<string> Ancestors, string AncestorSource, string? PrivateDataName,
-        int PrivateDataBytes, IReadOnlyList<Member> Members, bool IsInterface);
+        int PrivateDataBytes, IReadOnlyList<Member> Members, bool IsInterface,
+        IReadOnlyList<ParentLink> ParentLinks)
+    {
+        /// <summary>
+        /// THE ONE BASE CLASS, or null for a class that derives from <c>LabVIEW Object</c>. This is
+        /// what a single-valued <c>inheritsFrom</c> is allowed to say; see
+        /// <see cref="ParentLink"/> for why <c>Ancestors[0]</c> is not.
+        ///
+        /// THREE CASES, AND THE ORDER MATTERS - each fallback exists because skipping it reports
+        /// something worse than the defect this replaces:
+        /// <list type="number">
+        /// <item>a link that OPENED and is a class - the answer, whatever its position;</item>
+        /// <item>else a link that could NOT be opened, because it is the only candidate left and
+        /// answering <c>LabVIEW Object</c> over a link the file plainly lists would hide a real
+        /// parent. <see cref="ParentKindsAreComplete"/> is false there and says so;</item>
+        /// <item>else the first ancestor that is not this class. That is the old rule, and it is
+        /// still the only one available for the DECODED representations
+        /// (<c>ParentClassLinkInfo</c>, <c>Geneology</c>), which carry no URL - so a pre-2026 class
+        /// file keeps answering exactly what it answered before.</item>
+        /// </list>
+        /// A class whose every link resolved to an INTERFACE falls through all three and is
+        /// correctly a root class - which is the case that was being reported as inheriting from
+        /// an interface.
+        /// </summary>
+        public ParentLink? BaseClass
+        {
+            get
+            {
+                if (ParentLinks.FirstOrDefault(p => p.Kind == ParentLink.Class) is { } opened)
+                    return opened;
+                if (ParentLinks.FirstOrDefault(p => p.Kind == ParentLink.Unresolved) is { } blind)
+                    return blind;
+                // Past here every link OPENED and every one is an interface, so the class really
+                // is a root class - unless there are no links at all, which is the decoded route.
+                if (ParentLinks.Count > 0) return null;
+
+                var decoded = Ancestors.FirstOrDefault(
+                    a => !string.Equals(a, QualifiedName, StringComparison.OrdinalIgnoreCase));
+                return decoded is null ? null
+                    : new ParentLink(decoded, null, ParentLink.Unresolved,
+                                     "decoded ancestry - no URL to open, so the kind of this link "
+                                     + "is not established");
+            }
+        }
+
+        /// <summary>The interfaces this class implements, in file order.</summary>
+        public IReadOnlyList<ParentLink> Interfaces =>
+            [.. ParentLinks.Where(p => p.Kind == ParentLink.Interface)];
+
+        /// <summary>
+        /// True when every link was opened and its kind settled. False means <see cref="BaseClass"/>
+        /// is a GUESS rather than an answer - an unresolved link may be a class or an interface,
+        /// and the decoded representations carry no URL to open at all. Anything reporting a base
+        /// class has to report this beside it, which is the whole difference between this and the
+        /// field it replaces: that one was also a guess and did not say so.
+        /// </summary>
+        public bool ParentKindsAreComplete =>
+            ParentLinks.All(p => p.Kind != ParentLink.Unresolved)
+            && !Ancestors.Any(a => !string.Equals(a, QualifiedName,
+                                                  StringComparison.OrdinalIgnoreCase)
+                                   && !ParentLinks.Any(
+                                       p => string.Equals(p.Name, a, StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// ONE <c>&lt;Item Type="Parent"&gt;</c>, WITH ITS KIND SETTLED BY OPENING IT.
+    ///
+    /// AN INTERFACE LINK AND A PARENT-CLASS LINK ARE THE SAME ITEM TYPE, so
+    /// <see cref="ClassInfo.Ancestors"/> mixes the two and its ORDER decides what a single-valued
+    /// field can say. <c>docs/lvclass-interfaces.md</c> has recorded that from the other side since
+    /// 2026-08-31, ending "the only way to tell them apart is to open each and read its own
+    /// IsInterface" - and NOBODY DID, so both tools kept reporting <c>Ancestors[0]</c>.
+    /// **Measured 2026-09-15 over every .lvclass on this station: 46 of 437 classes with a parent
+    /// link name a NON-CLASS as their parent**, NI's own examples among them - `Caller A.lvclass`
+    /// reports `Abstraction.lvclass` where its base is `Actor.lvclass`, and `Flathead.lvclass`
+    /// reports the `Lever` interface where its base is `Rotating Tool`.
+    ///
+    /// **What made it fixable is that the item carries a <c>URL</c>** - 432 of 432 on this station,
+    /// which is the measurement that turns "cannot be told apart" into two file reads. The URL is
+    /// relative to THE .lvclass ITSELF TREATED AS A DIRECTORY, not to its folder: LabVIEW addresses
+    /// a member as <c>Serial.lvclass/Member.vi</c>, so a sibling class is
+    /// <c>../../Serial/Serial.lvclass/Serial.lvclass</c>. Resolving it against the folder instead
+    /// left every relative link unresolved and looked exactly like "the URL is not usable" - the
+    /// first run of the probe said so.
+    /// </summary>
+    /// <param name="Name">The item's <c>Name</c>, which is what <c>Ancestors</c> carries.</param>
+    /// <param name="Url">The item's <c>URL</c>, verbatim.</param>
+    /// <param name="Kind"><c>class</c>, <c>interface</c> or <c>unresolved</c>.</param>
+    /// <param name="ResolvedPath">The file the URL named, when it was found.</param>
+    public sealed record ParentLink(string Name, string? Url, string Kind, string? ResolvedPath)
+    {
+        public const string Class = "class";
+        public const string Interface = "interface";
+        public const string Unresolved = "unresolved";
+    }
 
     /// <summary>
     /// A class file's own account of itself. The reason this is worth a reader at all:
@@ -493,7 +596,7 @@ internal static class LvClass
         var className = System.IO.Path.GetFileNameWithoutExtension(full);
         var library = Property(root, "NI.Lib.ContainingLib");
 
-        var (ancestors, source) = Ancestors(root);
+        var (ancestors, source, rawLinks) = Ancestors(root);
 
         var privateData = root.Elements("Item")
             .FirstOrDefault(i => (string?)i.Attribute("Type") == "Class Private Data");
@@ -522,7 +625,87 @@ internal static class LvClass
             library is null ? $"{className}.lvclass" : $"{library}:{className}.lvclass",
             ancestors, source,
             (string?)privateData?.Attribute("Name"), blobBytes,
-            [.. Members(root)], isInterface);
+            [.. Members(root)], isInterface,
+            [.. rawLinks.Select(l => Classify(full, l.Name, l.Url))]);
+    }
+
+    /// <summary>
+    /// WHAT KIND OF LINK THIS IS, settled by opening the file the <c>URL</c> names and reading its
+    /// own <c>NI.LVClass.IsInterface</c>. Nothing in the OWNING file distinguishes an interface
+    /// link from a parent-class link, so this is the only route - see <see cref="ParentLink"/>.
+    ///
+    /// Defensive throughout: a link that cannot be resolved or read comes back
+    /// <see cref="ParentLink.Unresolved"/> with the reason in the path, because reporting a
+    /// GUESS here is the defect this replaces. Measured 2026-09-15 over 449 links on this
+    /// station - vi.lib, user.lib, instr.lib, examples and three generated builds - every one
+    /// resolved: 400 class, 49 interface, 0 unresolved.
+    /// </summary>
+    private static ParentLink Classify(string lvclassPath, string name, string? url)
+    {
+        if (url is not { Length: > 0 })
+            // No URL is what the DECODED routes give - they never reach here, but a hand-written
+            // Parent item without one would, and it is a real answer rather than a failure.
+            return new ParentLink(name, url, ParentLink.Unresolved, "the item carries no URL");
+
+        var resolved = Resolve(lvclassPath, url);
+        if (resolved is null)
+            return new ParentLink(name, url, ParentLink.Unresolved,
+                                  "the URL names an alias this reader does not map");
+        if (!File.Exists(resolved))
+            return new ParentLink(name, url, ParentLink.Unresolved, $"not found: {resolved}");
+
+        try
+        {
+            var parent = XDocument.Load(resolved).Root;
+            if (parent is null) return new ParentLink(name, url, ParentLink.Unresolved, resolved);
+            var isInterface = string.Equals(Property(parent, "NI.LVClass.IsInterface"), "true",
+                                            StringComparison.OrdinalIgnoreCase);
+            return new ParentLink(name, url,
+                                  isInterface ? ParentLink.Interface : ParentLink.Class, resolved);
+        }
+        catch (Exception failure) when (failure is System.Xml.XmlException or IOException
+                                                or UnauthorizedAccessException)
+        {
+            return new ParentLink(name, url, ParentLink.Unresolved,
+                                  $"{resolved} could not be read: {failure.Message}");
+        }
+    }
+
+    /// <summary>
+    /// THE URL IS RELATIVE TO THE <c>.lvclass</c> ITSELF TREATED AS A DIRECTORY, not to the folder
+    /// holding it - LabVIEW addresses a class member as <c>Serial.lvclass/Member.vi</c>, so a
+    /// sibling class reads <c>../../Serial/Serial.lvclass/Serial.lvclass</c> with the extension
+    /// twice over. Resolving against the folder leaves every relative link not-found, which looks
+    /// exactly like "the URL is not usable"; the first run of the probe concluded that.
+    ///
+    /// The <c>/&lt;alias&gt;/</c> forms are LabVIEW's install-relative paths. Only the ones that
+    /// name a real directory are mapped; anything else is refused by returning null rather than
+    /// guessed at, and the caller says so.
+    /// </summary>
+    private static string? Resolve(string lvclassPath, string url)
+    {
+        var match = Regex.Match(url, @"^/<([^>]+)>/(.*)$");
+        if (!match.Success)
+            return System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(lvclassPath, url.Replace('/', '\\')));
+
+        var folder = match.Groups[1].Value.ToLowerInvariant() switch
+        {
+            "vilib" => "vi.lib",
+            "userlib" => "user.lib",
+            "instrlib" => "instr.lib",
+            "resource" => "resource",
+            "lvaddons" => "LVAddons",
+            _ => null,
+        };
+        if (folder is null) return null;
+
+        var install = Grpc.LabViewLocator.Select(Grpc.LabViewLocator.Discover());
+        var root = install is null ? null : System.IO.Path.GetDirectoryName(install.ExePath);
+        return root is null
+            ? null
+            : System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                  root, folder, match.Groups[2].Value.Replace('/', '\\')));
     }
 
     /// <summary>
@@ -531,18 +714,23 @@ internal static class LvClass
     /// <c>ParentClassLinkInfo</c> (every version at or below 20xxxxxx). No file carried both, and
     /// 71 carried neither, which means <c>LabVIEW Object</c>.
     /// </summary>
-    private static (IReadOnlyList<string>, string) Ancestors(XElement root)
+    private static (IReadOnlyList<string>, string, IReadOnlyList<(string Name, string? Url)>)
+        Ancestors(XElement root)
     {
+        // THE URL COMES BACK WITH THE NAME, because the kind of link cannot be read off the name
+        // and can be read off the file the URL points at. See ParentLink.
         var plain = root.Elements("Item")
             .Where(i => (string?)i.Attribute("Type") == "Parent Libraries")
             .SelectMany(i => i.Elements("Item"))
             .Where(i => (string?)i.Attribute("Type") == "Parent")
-            .Select(i => (string?)i.Attribute("Name"))
-            .OfType<string>()
+            .Select(i => ((string?)i.Attribute("Name"), (string?)i.Attribute("URL")))
+            .Where(pair => pair.Item1 is not null)
+            .Select(pair => (Name: pair.Item1!, Url: pair.Item2))
             .ToList();
 
         // The entries are the whole chain, nearest first.
-        if (plain.Count > 0) return (plain, "Parent Libraries items (plain text)");
+        if (plain.Count > 0)
+            return ([.. plain.Select(l => l.Name)], "Parent Libraries items (plain text)", plain);
 
         // Older files: pull the names out of the decoded bytes with a regex rather than parsing the
         // PTH0 record layout, which was not worth reverse-engineering.
@@ -572,20 +760,22 @@ internal static class LvClass
             if (classes.Count > 0)
                 return property.EndsWith("ParentClassLinkInfo", StringComparison.Ordinal)
                     ? ([classes[^1]],
-                       $"{property} (decoded - one parent, taken as the last .lvclass in the record)")
+                       $"{property} (decoded - one parent, taken as the last .lvclass in the record)",
+                       [])
                     : (classes,
                        $"{property} (decoded - the WHOLE ancestry, and the order is not " +
                        "guaranteed, so which of these is the direct parent is not established " +
-                       "here. Only a Parent Libraries item or ParentClassLinkInfo says that.");
+                       "here. Only a Parent Libraries item or ParentClassLinkInfo says that.",
+                       []);
 
             // A record naming no class at all is not an ancestry answer, so say so rather than
             // handing back a library as if it were a parent.
             if (names.Count > 0)
                 return ([], $"{property} decoded but named no .lvclass - " +
-                            $"only {string.Join(", ", names)}; treat as LabVIEW Object");
+                            $"only {string.Join(", ", names)}; treat as LabVIEW Object", []);
         }
 
-        return ([], "no parent recorded - derives from LabVIEW Object");
+        return ([], "no parent recorded - derives from LabVIEW Object", []);
     }
 
     /// <summary>
@@ -794,6 +984,46 @@ internal static class LvClass
                 .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
                               Url: (string?)i.Attribute("URL") ?? ""))
                 .Where(v => v.Name.Length > 0 && v.Url.Length > 0)
+                .ToList();
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+        catch (System.Xml.XmlException) { return []; }
+    }
+
+    /// <summary>
+    /// The same VIs, plus WHERE each one sits: the chain of <c>&lt;Item&gt;</c> names between the
+    /// target and the VI, <c>/</c>-joined, and empty for one listed at target level.
+    ///
+    /// WHY THE PLACE IS WORTH A SECOND READ. <c>AddVisToProject</c> treats a VI listed at ANY depth
+    /// as listed and adds nothing, which is right - two items for one file is the worse outcome -
+    /// but it makes <c>added: 0</c> mean two different things, and one of them is wrong. Measured
+    /// 2026-09-03 and reproduced by two agents independently: LabVIEW adopts the runner it has open
+    /// during its own save and drops it at TARGET level, so the project held both runners outside
+    /// their folders while the answer read <c>"Already listed; nothing added."</c> Nothing moves the
+    /// item - an item inside a class or a library is owned by it - so the fix is to say where it is.
+    /// </summary>
+    public static List<(string Name, string Url, string Folder)> ListedViPlaces(string projectPath)
+    {
+        try
+        {
+            if (!File.Exists(projectPath)) return [];
+
+            var target = XDocument.Load(projectPath).Root?.Elements("Item")
+                .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
+            if (target is null) return [];
+
+            return target.Descendants("Item")
+                .Where(i => (string?)i.Attribute("Type") == "VI")
+                .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
+                              Url: (string?)i.Attribute("URL") ?? "",
+                              // Ancestors() is nearest-first, so this walks out to the target and
+                              // stops; reversing it reads the way the tree does, outermost first.
+                              Folder: string.Join("/", i.Ancestors("Item")
+                                  .TakeWhile(a => a != target)
+                                  .Select(a => (string?)a.Attribute("Name") ?? "")
+                                  .Reverse())))
+                .Where(v => v.Name.Length > 0)
                 .ToList();
         }
         catch (IOException) { return []; }

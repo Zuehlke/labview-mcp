@@ -482,6 +482,20 @@ cannot be predicted", each written from a real measurement that did not generali
 in a text file the whole time. When a behaviour looks unpredictable, check whether it is configured
 before concluding that it is arbitrary.
 
+**AND A CLASS MEMBER IS AUTHORED AGAINST 4815, NOT THE STATION DEFAULT.** `lvai_add_class_method`
+and `lvai_lunit_add_test_method` both re-pane every VI they touch onto **4815**, NI's 4-2-2-4
+accessor layout - so a method authored with the numbers `lvai_connector_pane` prints with NO
+ARGUMENT (this station's 4833) is authored into a pane that is about to shrink. Measured 2026-09-14
+on two interface methods: `error out` at conIdx 15 failed at the `conpane` step with
+`pattern 4815 has no slot [15]`, after validate and convert had both passed. **The numbers for a
+class member are: class wire in 11, more inputs 10/9, `error in` 8, class wire out 3, more outputs
+2/1, `error out` 0.** This is a trap rather than a detail precisely because the rule above - ask the
+tool, never assume - sends you to the answer that is right for a plain VI and wrong for a class one.
+Ask for `pattern 4815` explicitly whenever the VI is destined for either tool - and
+`lvai_add_class_method` now REFUSES a conIdx that is not a slot of the target pattern before it
+converts anything, as a `panePreCheck` step naming the right numbers.
+`docs/cold-build-datalogger.md` §3.
+
 **Prefer `viPath` over `pattern`.** A pane can be rotated or flipped, so a pattern id does not pin
 the orientation: 8 of the 32 turned up in two orientations across 1 449 VIs. The `pattern` answer is
 the majority one and marks the ambiguity; only a measurement of the VI in hand is certain.
@@ -628,6 +642,36 @@ index **past the last item** is CLAMPED (9 became 4 on a five-item enum). Both a
 whose symptom was `Error 7, file not found` - pointing at the path, not the enum. `lvai_check_aixml`
 repairs the label case to its index and reports the overshoot without touching it.
 
+**AND A SIXTH, measured 2026-09-14: a non-empty `timestamp` `value` is DISCARDED.** One probe, `type="timestamp" value="3800000000"` on a control and an indicator: the
+lint answered `[clean]`, `ConvertAIXMLToVI` answered `errorCode 0` and wrote 4 119 bytes, and the
+export read back `value=""` on both. **The damage is not a broken VI - it is a GREEN TEST THAT PINS
+NOTHING.** A generated round-trip test authors the written value and the Expected constant in the
+same document, so BOTH are discarded, and the assertion then compares empty with empty and passes.
+Measured on a real LUnit suite with a control in the same run: the `string` field kept `PT-101` on
+both sides, the `timestamp` field came back empty on both. So **a `timestamp` field cannot be
+round-trip tested through AIXML-authored constants at all** - test it through a route that sets the
+value at run time, or leave it out of the generated suite and say so.
+
+**BOTH CHEAP CHECKERS SEE IT SINCE 2026-09-15** - `lvai_check_aixml` answers `timestampValueDiscarded`
+and `scripts/aixml_lint.py` answers `timestamp-value-discarded`, both WARNINGS because LabVIEW accepts
+the document. **Deliberately NOT repaired**, unlike every other finding in that checker: there is no
+non-empty timestamp literal to correct it to, and emptying the value silently would manufacture the
+vacuous test the warning exists to prevent. **And the scope was MEASURED before it was written** - one
+probe carrying six constants, converted and exported back: `string`, `path`, `double`, `int32` and
+`bool` all KEPT their literal, `timestamp` alone came back empty. The previous day's
+`indicatorWithoutValue` had already been scoped too narrowly once by reasoning from a family rather
+than from a probe, so "widen it to the types that look similar" was the move not made.
+**`lvai_lunit_scaffold_class_tests` also stops writing the test**: a `timestamp` field gets no round
+trip and is named under `roundTripsSkipped`. It skips one FILE rather than refusing the call, and the
+reason is what each test CLAIMS. A round trip claims `the Write stored it and the Read returned it` -
+which a Write that stores nothing satisfies at the default, so there is nothing left. The defaults
+test claims the field reads its DEFAULT, which is exactly what a discarded literal leaves behind. The
+independence test claims **no OTHER `Write` disturbed this field**, and that is still caught - so it
+keeps the field, authors the DEFAULT on both sides instead of the caller's value, and says so in the
+assertion's own description. **The first version of this fix left that file alone and called it
+honest, and the new lint check promptly flagged two constants in it** - the generated file is the
+place a checker earns its keep. `docs/cold-build-alarmgate.md` §3.
+
 `lvai_check_aixml` catches all of these without LabVIEW, `lvai_generate_vi` blocks on the dangling
 parent and repairs the rest, and the two raw RPCs report them as `preCheck`. It does NOT check terminal names, types, wiring or cycles - LabVIEW does those well
 and a second implementation would drift.
@@ -638,6 +682,45 @@ its own id. Use it for anything no net and no `uid_parent` references. A uid Lab
 is one above its reserved ceiling; a low one is replaced and logged. What a `uid` is NOT is a wire:
 **a wire name is an arbitrary token** - `banana.value` validated and ran - and `<uid>.<terminal>` is
 convention only, which is why renumbering a uid need not touch a single net.
+
+**A `<Control>`, AN `<Indicator>` AND A `<Constant>` ALL REQUIRE `value` - and a missing one costs
+the WHOLE DOCUMENT, silently as far as every cheap check is concerned.** Measured 2026-09-14 on two documents:
+without `value` the converter answers `Error -2628, An error occurred while parsing the document`
+and writes NOTHING; adding `value=""` / `value="0"` / `value="[false,0,]"` and changing nothing else
+converts clean. The file is well-formed XML - a parser accepts it - so `-2628` means **a schema-
+required attribute is missing**, not that the XML is malformed. And inside `lvai_add_class_method`
+the step BEFORE it points elsewhere: the validate refusal is classified `classWireStrictness` and
+converted through on purpose, so the real fault surfaces one step later wearing a parser's message.
+
+**BOTH CHEAP CHECKERS SEE IT NOW** - `lvai_check_aixml` answers `indicatorWithoutValue` as an ERROR
+and `fix: true` writes the type's own literal, `scripts/aixml_lint.py` answers `indicator-no-value`.
+They were both silent when this was measured, which is what made it cost a diagnosis.
+
+**THE CHECK WAS SCOPED TO `Indicator` FOR A DAY, AND THE SCOPE WAS WRONG.** It said so honestly -
+in the failing documents every Control happened to carry a `value`, so this file recorded the
+Control case as untested and told the next reader to *"widen it when someone probes it, not
+before"*. Probed 2026-09-15, with a control arm because a probe that detects nothing proves
+nothing, on three one-element documents differing in nothing but the attribute:
+
+| document | result |
+|---|---|
+| `<Control>` with no `value` | **`Error -2628`, 0 bytes** |
+| `<Constant>` with no `value` | **`Error -2628`, 0 bytes** |
+| the same `<Control>` with `value="0"` | `errorCode 0`, 3 968 bytes |
+
+So all three element kinds that carry `value` require it, and the narrow rule was letting two
+thirds of the fault through. **The lesson is not that the restriction was dishonest - it was
+exactly right about what had been measured.** What was missing is that nobody spent the three
+minutes the probe actually costs. **When a rule documents its own untested edge, that edge is a
+cheap experiment, not a permanent caveat.**
+
+**The REPAIR stayed narrower than the check, deliberately.** `fix: true` writes the literal for a
+`Control` and an `Indicator`, whose value IS a default state the type decides - and leaves a
+`Constant` alone, naming it, because there the literal is the DATA. An author who omitted it may
+have meant `42`, and writing `0` turns a document that refuses to convert into one that converts
+and computes the wrong answer, which is strictly worse than the refusal it replaces. Same rule as
+`timestampValueDiscarded`: report where the right value is unknowable, repair only where the type
+already decides it. `docs/cold-build-datalogger.md` §2.
 
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
@@ -767,9 +850,25 @@ Three things about interfaces that cost a session each, all in `docs/lvclass-int
   a modal stops the whole gRPC service. A class that should implement an interface must be *created*
   with it — the remedy for getting it wrong is delete and rebuild, before the accessors.
 - **An interface link and a parent-class link are the SAME item type.** Both are
-  `<Item Type="Parent">` in `Parent Libraries`, so `Ancestors` mixes them and its **order** decides
-  what `inheritsFrom` reports; the only way to tell them apart is to open each and read its own
-  `IsInterface`. Check parents by MEMBERSHIP, never by "is it first".
+  `<Item Type="Parent">` in `Parent Libraries`, so `Ancestors` mixes them and its **order** used to
+  decide what `inheritsFrom` reported. Check parents by MEMBERSHIP, never by "is it first".
+  **THE ITEM CARRIES A `URL`, AND THAT SETTLES THE KIND — measured 2026-09-15, 432 of 432 on this
+  station.** Open it and read its own `IsInterface`: this file said "the only way to tell them apart
+  is to open each" for fifteen days and nobody did, while **46 of the 437 classes here reported a
+  NON-CLASS as their parent** — NI's own `Caller A.lvclass` naming `Abstraction` where its base is
+  `Actor`, `Flathead.lvclass` naming the `Lever` interface where its base is `Rotating Tool`. The
+  trap that made it look closed is that **the URL is relative to the `.lvclass` ITSELF, treated as a
+  directory** — a sibling is `../../Name/Name.lvclass`, and NI writes one
+  `../../Serial/Serial.lvclass/Serial.lvclass` with the extension twice, because a member is
+  addressed as `Serial.lvclass/Member.vi`. Against the FOLDER every relative link is not-found,
+  which reads exactly like "the URL is not usable"; the first probe run concluded that. Swept after
+  the fix: 449 links, 449 resolved, 400 class and 49 interface. `lvai_describe_class` now answers
+  `parentLinks` with a kind each and an `inheritsFrom` that is **never an interface**;
+  `lvai_create_class` adds `interfacesImplemented` read from the FILE beside `interfacesLinked`
+  counted from the request. An unopenable link is still NAMED, because `LabVIEW Object` over a
+  parent the file lists would hide a real one, and `parentKindsAreComplete` marks it — **that flag
+  is the whole difference from the field it replaces, which was also a guess and did not say so.**
+  `docs/cold-build-valverig.md` §3.
 - **A class must override EVERY method its interface declares** — measured with the flag set *and*
   cleared, both `Error 1003`. So `1073741824` on an interface member is behaviour-neutral and this
   test cannot show what it means; isolating it needs an ordinary class as parent. Do not repeat the
@@ -830,6 +929,32 @@ that check costs no LabVIEW. `docs/class-method-tooling.md` §4p.
 The 56002-only filter passed its unit test, validated against LabVIEW, and was inert. What found it
 was re-running the tool against a member that really existed — reproducing the original failure,
 which is the only thing that ever settles it.
+
+**AND "SAFE" WAS TOO STRONG — A RE-RUN DESTROYED THE CLASS, measured and then FIXED 2026-09-14.**
+A green class, re-run over ONE existing member: the call answered `ok: true`, `terminalsRetyped`,
+`verifiedOnDisk: true`, `memberAlreadyExisted: true`, and afterwards EVERY member was `eBad` **on
+disk** — accessors the call never named included — with `privateDataBytes` grown. It survived a
+full LabVIEW restart, and the method's own AIXML export was perfect throughout; the suite reported
+`Broken`, not `Failed`, which is the tell that nothing ran.
+
+**Reproduced on a minimal fixture and the obvious suspect was WRONG.** One field, two wizard
+accessors, one method with no subVI calls: `5454` → one re-run → `5466` and the untouched accessor
+`eBad`. A fresh class re-run with **`panePattern: 0`**, which skips the pylabview `conpane` rebuild
+entirely, broke identically — so that rebuild is not the cause, and the class does not need to have
+been RUN either. What is left is `AddItemFromMemory` answering `1004` for an item the class already
+lists. **A flawed arm is worth remembering**: the first `panePattern: 0` run was made against an
+already-broken class and showed only that `privateDataBytes` did not grow *further* — the growth
+metric is not the corruption metric, and reading it as one gave the opposite conclusion for a turn.
+
+**The tool now DROPS the class's entry first**, in the project-closed window, so a re-run takes the
+first-run path — the same `dropExistingMembers` step `lvai_lunit_add_test_method` already had. It
+therefore needs `projectPath`: without one the edit would be undone by LabVIEW's own save, so the
+re-run is REFUSED (`memberAlreadyListedWithoutProject`), and a class file the remover declines stops
+the call (`memberEntryCouldNotBeDropped`) instead of proceeding hopefully. Read `privateDataBytes`
+before and after anyway — it costs no LabVIEW and nothing else in the chain reports anything.
+Repair of an already-damaged class is a rebuild: `lvai_create_accessors` with an explicit
+`fromField` DUPLICATES rather than repairs (NI's wizard appends a number; the tool catches that
+itself and says so). `docs/cold-build-thermostat.md` §4.
 
 The manual route stays written up in §3 of that document — `Replace` on `.lvclass`,
 `AddItemFromMemory`, `SetWireRule` — with its four traps, of which the sharpest is that
@@ -987,6 +1112,43 @@ LabVIEW had held the `.lvproj` since before the edit — and the close then save
 the class's entry from disk. This is the `classEntriesRestored` guard in `lvai_create_class` seen
 from the other side. **Read the `.lvproj` after every close.**
 
+**AND ONE TOOL LEAVING THE PROJECT OPEN IS ENOUGH TO MAKE THE NEXT ONE LOSE ITS ENTRY — no human
+edit needed.** Measured 2026-09-14 on a cold build: `lvai_add_class_method` finishes with
+`projectLeftOpen: true`, two `lvai_create_class` calls then wrote their entries into that same
+`.lvproj` **as a file** (correctly, LabVIEW uninvolved), and the next close saved LabVIEW's older
+copy over it — **both class entries gone**, and `lvai_create_accessors` answered `Error 1055` with
+`classPathsSeen` listing only the one class LabVIEW still knew about. **So CLOSE THE PROJECT BEFORE
+ANY `lvai_create_class` OR `lvai_create_interface`**: those two edit the `.lvproj` directly, so
+nothing may be holding it. `docs/cold-build-thermostat.md` §2.
+
+**AND `lvai_generate_mock_class`'s `addToProject` IS THE SAME HAZARD FROM A THIRD SIDE - measured
+2026-09-15.** A mock generated with `addToProject: true` against an open, ACTIVE project writes all
+four of its files and then appears in the `.lvproj` **not at all**: the next close SAVES LabVIEW's
+in-memory copy over the file, and the mock is not in that copy. The tell that settles it is that the
+same save ALSO deleted an entry for an earlier mock that had been written into the file BY HAND - so
+nothing removed an entry, the whole file was replaced. `ok: true` and four `filesOnDisk` throughout,
+and a `strayVisRemoved: 5` from the NEXT tool sent the first diagnosis after the wrong step
+entirely. **Pass `projectPath` instead**: the entry is then written as a file edit with LabVIEW
+uninvolved, after closing the project - the same route `lvai_create_class` uses, and the two are
+mutually exclusive because LMock's terminal needs the project OPEN and a surviving edit needs it
+CLOSED. Verified as an A/B: written while LabVIEW holds the project it is deleted, written with the
+project closed it survives the next open and save, and it has now survived three such cycles.
+**The tool SAYS SO in the answer too** - `addToProject: true` without a `projectPath` comes back as
+`projectEntry: {action: "notWritten", warning: ...}`, because a warning that lives only in a
+description is read after the entry has already gone. **And `strayVisRemoved` names what it removed
+now**: that bare count is what sent this diagnosis after the wrong step, and a number cannot be
+checked against a hypothesis where a list can. `docs/cold-build-samplebench.md` §3.
+
+**`projectDidNotBecomeActive` IS AUTOMATABLE, and `lvai_open_file` NOW DOES IT.** The cause is
+LabVIEW not having the foreground, and this file called the remedy a human action ("bring its
+window to the front") until 2026-09-14 — which stops an unattended run dead. It is two Win32 calls:
+`ShowWindow(SW_RESTORE)` then `SetForegroundWindow` on LabVIEW's `MainWindowHandle`. The tool tries
+it as a RETRY once the cheap read has already said the open did not take, and reports
+`foregroundRetry` saying whether it ran and whether it helped; `Infra/LabViewWindow.cs` has it, and
+`docs/cold-build-thermostat.md` §3 has the PowerShell equivalent for a shell of your own. Fronting
+a window is visible to whoever is at the machine, which is why it is a retry and not a
+precondition.
+
 **A GENERATED METHOD CANNOT READ ITS OWN FIELDS THROUGH AN AIXML `Call`** — `Error 53, Unsupported
 SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured. So a generated method either takes
 its parameters on the connector pane, or reaches its accessors through `lvai_placeholder_subvi` plus
@@ -1004,6 +1166,27 @@ So a generated method CAN read its own fields, and a real HAL is reachable: meas
 methods that take only the class wire and the error cluster, `socketsLeft: 0` on all four. Choose the
 signature deliberately and say which — but never report that a method stores a value in the object
 when it returns it on a terminal instead.
+
+**AND ONE DIAGRAM MAY CALL THE SAME METHOD SEVERAL TIMES — it costs one swap call per node.** The
+uniqueness rule is on **`swapsJson`**, not on the diagram: two ENTRIES naming one socket cannot say
+which node gets which target, so they are refused (`badArguments`, naming the socket and the count).
+Two NODES are not. Measured 2026-09-15 on a two-call probe: one swap call answers `ok: false` with
+**`socketsLeft: 1`** and `nodesSwapped: 1`, the SAME call again answers `ok: true`, `socketsLeft: 0`
+and names the target, and the result runs — `execState 1` with a class constant feeding the chain.
+**IT COSTS ONE CALL PER NODE WHATEVER N IS** - measured to three on 2026-09-15 - but
+`socketsLeft` is NOT that counter - it counts how many `swapsJson` ENTRIES still occur in
+the export, so with one repeated socket it reads 1 until the last node goes and then 0.
+Measured at N=3 on 2026-09-15: after swaps 1, 2 and 3 it answered 1, 1, 0 while two, one
+and zero nodes were left. The two-call probe could not see that - at N=2 a count and a flag
+are the same numbers. **`diagramSubVis` is the per-node view**, because it lists the
+diagram's subVI names WITH REPETITION. `docs/cold-build-kilnrig.md` §2.
+
+Worth stating because **both texts said the opposite**. `lvai_swap_subvis`' own description read
+"EVERY SOCKET NAME MUST BE UNIQUE on the diagram", and `docs/cold-build-valverig.md` §4 copied that
+into "A GENERATED VI CANNOT CALL THE SAME CLASS METHOD TWICE" — an impossibility claim written in
+the same voice as the measurements around it, which is the shape `docs/tool-argument-errors.md`
+records as costing eighteen days. Both are corrected, and both now say what they used to claim.
+**When a description explains a MECHANISM, probe the mechanism** — this one cost four minutes.
 
 **A SWAP CAN LOSE A WIRE WITHOUT LOSING A LINK, and `lvai_swap_subvis` used to call that a clean
 restore.** Measured 2026-09-03: retargeting one accessor onto another whose pane differs in TYPE
@@ -1024,6 +1207,56 @@ fresh `no error` constant where the socket's were chained. No counting scheme se
 from the tool's own output. `ok: false` also suppressed the caller's `projectEntry` step, costing
 two agents ~135 s each on a correct diagram. It is REPORTING ONLY now; `callTargets` and
 `socketsLeft` are the verdict. `docs/class-method-tooling.md` section 4m and its retraction.
+
+**AND A SWAP'S `nodesSwapped` WAS THE REQUEST, NOT THE OUTCOME — three occurrences of one defect,
+fixed 2026-09-15.** It was `swaps.Count`, so it could never disagree with the caller, and the
+answer then contradicted itself exactly where a caller needs it: `nodesSwapped: 8` beside a
+`socketsNotOnDiagram` listing five of those eight, with the helper errored and the file correctly
+not saved. **`docs/class-method-tooling.md` D1 measured that at ~100 s of wall clock for ~3 s of
+LabVIEW and WROTE THE REMEDY DOWN** — *"`socketsNotOnDiagram` should not be populated when
+`nodesSwapped > 0`"* — and nothing changed for twelve days, so the identical contradiction turned
+up in a cold build as `nodesSwapped: 1` for a swap that matched nothing, and was written up there
+as a NEW finding. **A remedy recorded as a recommendation is not a fix; it is a note for someone
+who will not read it.** Same shape as `dwarnCount` being halved by hand in prose while the counter
+kept lying — *fix the thing that produces the number*.
+
+The rule now: **an errored helper landed NOTHING**, because a `Replace` that fails leaves its error
+on the wire and that stops `Save.Instrument`, so the file on disk is untouched whatever happened in
+memory; otherwise the count is the sockets the helper actually FOUND. `nodesAsked` keeps the
+request visible beside it.
+
+**TWO MORE THINGS THE SAME ANSWER NOW CARRIES, both of which had been re-derived by hand.** A node
+**already pointed at a class member carries its QUALIFIED name** — a second swap over one diagram
+must say `Centrifugal Pump.lvclass:Read Last Event.vi`, and the bare name matches nothing, measured
+twice before anyone wrote it into the tool. And **`diagramSubVis` lists what the diagram actually
+has**: the helper has reported those names all along as `node names found`, reachable only inside
+the swap step's sub-answer — which the default `verbose: false` STRIPS — while the note told the
+reader to take names from it. **The advice arrived inside the thing it was warning about**, the same
+shape `lvai_aixml_reference` section 8 was caught by. Finally, **`Error 1055` is
+`errorKind: noActiveProject`** rather than a bare number beside an Invoke Node's name, because
+`{LV.SubVI}` `Replace` is a silent no-op outside the IDE's own application instance — and
+**`lvai_run_lunit_tests` leaves NO active project**, so a swap issued straight after a test run
+lands there every time. `docs/cold-build-pumpstand.md` §4.
+
+**AN INTERFACE'S OVERRIDES BELONG IN THE SAME STRETCH OF WORK AS THE CLASS'S OTHER METHODS, and
+only ONE check sees it when they do not.** Measured 2026-09-15 on a cold build: a class implementing
+an interface whose override had not been written yet had `Add Sample.vi` answer **`execState 0`,
+eBad, "VI has an error of type 8"** - while `lvai_add_class_method` said `ok: true`,
+`terminalsRetyped: 2`, `verifiedOnDisk: true`, `lvai_swap_subvis` said `socketsLeft: 0` with all
+four `callTargets` correct, and the lint was clean. **A missing override breaks EVERY member of the
+class**, not the method you are looking at, so the broken VI does not name the cause. The A/B is
+clean - the same VI went 0 to 1 the moment the override landed and nothing else changed. The file-
+level checks are all right about what they check; **`lvai_exec_state` is the only cheap thing that
+answers the question they do not ask.** `docs/cold-build-filterbench.md` §2.
+
+**AND A CARAYA FAILURE NAMES THE CASE AND NOTHING ELSE - a real difference from LUnit, measured
+2026-09-15.** Caraya's JUnit report writes the literal string `"FAIL"` as the failure body, where
+LUnit's `Pass If Equal.vim` writes `Expected:… / Actual:…` into the same place - which is why
+`lvai_run_lunit_tests` can promise "there is nothing to look up" and nothing equivalent can be
+promised for Caraya. Not a defect in either tool; a property of the frameworks' own reports, and
+worth weighing when the framework is still open, because **a Caraya failure costs a diagnosis that
+the same failure under LUnit does not.** The runner's `error out` answers **7002** for a failed
+suite and `0` for a green one, which is the documented pass/fail signal rather than a fault.
 
 **A TOOL TESTED AGAINST A PLAUSIBLE FIXTURE IS NOT TESTED.** Both tools that failed on their first
 real use, 2026-09-03, failed this way and nothing else. `lvai_bind_class_fields` read
@@ -1268,6 +1501,38 @@ arrived, and every accepted name with its type. So **seeing the masked sentence 
 wrapper is not in place** — check that `WithArgumentDiagnostics()` still runs last in `Program.cs`,
 and read stderr. Detail and the re-measuring recipe in `docs/tool-argument-errors.md`.
 
+**AN ARGUMENT NAME THAT IS NOT DECLARED IS NOW REFUSED BY NAME — it used to be dropped in silence,
+and on an all-optional tool nothing downstream noticed.** The fold handles a NEAR miss (`vi_path` →
+`viPath`, by normalising `_`, `-` and case); a name that resembles nothing — `path`, `filePath` —
+matched no rule and simply vanished, so the tool ran with everything empty and LabVIEW answered
+about the wrong thing. Measured twice on `lvai_open_file`: 2026-08-27 with `filePath`, and
+2026-09-14 with `path`, the second costing **five `Error 7, File not found` answers over three paths
+that plainly exist, a refuted A/B on the foreground window, and a LabVIEW kill and restart.**
+`lvai_open_file` also refuses a call naming NO file, which is the one shape no argument layer can
+catch because there is nothing there to misspell.
+
+**AND THE SECOND HALF IS THE ONE THAT ACTUALLY FIRES HERE — measured on acceptance the same day.**
+**The Claude desktop client validates arguments against the served schema and DROPS an undeclared key
+before sending**, so the server never sees it: from the client the same `{"path": …}` call answers
+`received: {viPath: null, …}` from the TOOL's guard, while over raw stdio it answers
+`unrecognised: ["path"]` from the argument layer. So from a client a made-up name and an empty call
+are **indistinguishable**, and the argument-layer refusal is unreachable. It is still worth having —
+nothing in the MCP contract makes a client strip unknown keys — but **a tool whose parameters are
+ALL optional needs its own guard for "these arguments ask for nothing"**, because that is the shape
+no argument layer can reach. `docs/tool-argument-errors.md` has both routes side by side.
+
+**The process lesson is bigger than the fix, and it is about how this file is written.**
+`docs/tool-argument-errors.md` had described the 2026-08-27 failure exactly — and ended it *"this
+layer cannot do better on its own"*. **That impossibility claim was an inference, written in the same
+voice as the measurements around it, and it is what stopped anyone looking again for 18 days.** The
+wrapper holds the schema and the supplied keys in the same method; naming an unmatched key is four
+lines. **Write down what was measured and leave the "cannot" out** — a limit stated as a fact is
+read as one, and this file's whole method is that a documented measurement saves the next session.
+The tool's own description compounded it by explaining a mechanism that does not exist (`filePath`
+"is folded onto `viPath`" — it is not, it is dropped), which sends the reader hunting for a path that
+was never passed: **when a description explains a MECHANISM, check the mechanism**, because it is
+read at the moment someone is already confused.
+
 ## When LabVIEW disappears
 
 **Starting LabVIEW through our tools EMPTIES the auto-save store first.** Both
@@ -1287,6 +1552,17 @@ empty, validating an AIXML file naming an uncatalogued VI Server class still kil
 seconds, same two `OMAutoClasses` entries, zero new archives. The archives are written when LabVIEW
 *starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
 causing the next one - eight in one day looked exactly like a cause and was not.
+
+**THE UID BASE IS 4200, AND TWO IMPLEMENTATIONS OF THAT RULE DISAGREED FOR DAYS.**
+`AixmlCheck.SafeUidBase` is 4200 and `scripts/aixml_lint.py`'s `LOW_UID_CEILING` was 5000, so the
+lint flagged `uid-low` on every file the generators themselves emit — and its own comment argued
+the ceiling MOVES (42 to 163 observed over 132 blocks), which is true and does not support 5000.
+Settled 2026-09-14 by measurement on a LabVIEW up ~50 minutes, **with a control, because a probe
+that detects nothing proves nothing**: four elements at uids 4200-4230 moved `dwarnCount` 7 → 7,
+the same four at uids 10-13 moved it 7 → 11, one event per element, and the control's own message
+named the live ceiling — `max: 69 sat: 67`. So 4200 clears the highest observed ceiling by 26×; the
+lint is now 4200 too. **Keep the two equal**: a second implementation that disagrees is worse than
+either alone, and this one spent days telling readers their compliant files were wrong.
 
 **MOST OF A COLD BUILD'S DWARNS ARE OURS, and they come from uids inside LabVIEW's RESERVED RANGE.**
 Measured 2026-09-07 as a controlled pair — one socket-shaped VI through `ConvertAIXMLToVI` twice,
@@ -1425,6 +1701,15 @@ literally it argued away 600 usable palette VIs.
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
 | How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — three case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value` |
+| What does a cold build of the WHOLE chain look like, and what does it catch? | `docs/cold-build-thermostat.md` | — |
+| What does a SECOND cold build catch, and which generators are still wrong? | `docs/cold-build-datalogger.md` | — |
+| Do those fixes hold in a real build, and what is still silently wrong? | `docs/cold-build-alarmgate.md` | — |
+| What does a build aimed at the PREVIOUS fix's blind spot find? | `docs/cold-build-samplebench.md` | — |
+| Do MULTIPLE interfaces and a STATIC interface member really work? | `docs/cold-build-valverig.md` | — |
+| Does a fix made TODAY survive a build tomorrow, and what did the build find? | `docs/cold-build-pumpstand.md` | — |
+| Does a measurement taken at N=2 generalise to N=3? | `docs/cold-build-kilnrig.md` | — |
+| What does testing a class METHOD cost, and how does Caraya's report differ from LUnit's? | `docs/cold-build-filterbench.md` | — |
+| How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -54,6 +54,46 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// <summary>NI's accessor and method layout: 4-2-2-4, class terminals at 11 and 3.</summary>
     internal const int DefaultPanePattern = 4815;
 
+    /// <summary>
+    /// Every conIdx an authored document puts on the connector pane, or null when the file cannot
+    /// be read or parsed - in which case the later steps report that properly and this one stays
+    /// out of the way.
+    /// </summary>
+    internal static List<int>? AuthoredConIdx(string aixmlPath)
+    {
+        try
+        {
+            var root = XElement.Load(aixmlPath);
+            return [.. root.DescendantsAndSelf()
+                .Where(e => e.Name.LocalName is "Control" or "Indicator")
+                .Select(e => (string?)e.Attribute("conIdx"))
+                .Where(v => v is { Length: > 0 })
+                .Select(v => int.TryParse(v, out var n) ? n : -1)
+                .Where(n => n >= 0)];
+        }
+        catch (IOException) { return null; }
+        catch (System.Xml.XmlException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>The four numbers to write for a class member on this pattern, read off its own
+    /// measured geometry rather than from a table in a comment.</summary>
+    internal static string PaneAdvice(int pattern)
+    {
+        var geometry = ConnectorPanePatterns.Find(pattern)?.Geometry;
+        if (geometry is null) return $"pattern {pattern} has no measured geometry.";
+
+        var left = geometry.LeftEdge;
+        var right = geometry.RightEdge;
+        if (left.Count == 0 || right.Count == 0) return $"pattern {pattern} has no left/right edge.";
+
+        return $"class wire in {left[0].ConIdx}, more inputs "
+            + string.Join("/", left.Skip(1).Take(left.Count - 2).Select(s => s.ConIdx))
+            + $", error in {left[^1].ConIdx}; class wire out {right[0].ConIdx}, more outputs "
+            + string.Join("/", right.Skip(1).Take(right.Count - 2).Select(s => s.ConIdx))
+            + $", error out {right[^1].ConIdx}.";
+    }
+
     [McpServerTool(Name = "lvai_add_class_method", Destructive = true, OpenWorld = true,
                    Title = "Make generated VIs into dynamic dispatch class methods")]
     [Description("""
@@ -69,12 +109,21 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         fault then surfaces as Error 1003 at RUN time with every file-level check green - measured
         2026-09-07 on three overrides that all reported ok. `validateFirst: false` restores the old
         convert-blind behaviour.
-        RE-RUNNING OVER AN EXISTING MEMBER IS SAFE. AddItemFromMemory answers 56002 (already a
-        loose project item) or 1004 (already a member); either used to travel down the chain and
-        skip SetWireRule and both saves, discarding the retype while the new diagram was already on
-        disk - the member ended up worse than before. Both are tolerated now and reported as
-        `memberAlreadyExisted`, but ONLY when the .lvclass itself already lists the VI, because
-        1004 is also what a wrong `Name` input produces.
+        RE-RUNNING OVER AN EXISTING MEMBER USED TO DESTROY THE CLASS, and this tool said it was
+        SAFE until 2026-09-14. Measured on a minimal probe - one field, its two wizard accessors,
+        one method with no subVI calls: a single re-run left EVERY member eBad ON DISK, accessors
+        the call never named included, with privateDataBytes grown 5454 -> 5466. It survived a
+        LabVIEW restart, and the call reported ok: true, terminalsRetyped: 2, verifiedOnDisk: true
+        throughout. The pylabview conpane rebuild was the obvious suspect and is NOT the cause: the
+        same re-run with panePattern 0, which skips that step, broke it identically.
+        SO A RE-RUN NOW DROPS THE CLASS'S ENTRY FIRST, in the project-closed window, and takes the
+        first-run path that is measured clean - reported as the `dropExistingMembers` step. That
+        needs projectPath: editing the class file while LabVIEW holds the project open is undone by
+        LabVIEW's own save. Without it, a re-run is REFUSED (`memberAlreadyListedWithoutProject`)
+        rather than allowed to proceed with a green answer.
+        AddItemFromMemory's 56002 (already a loose project item) and 1004 (already a member) are
+        still tolerated and still reported as `memberAlreadyExisted`, gated on the .lvclass itself
+        listing the VI, because 1004 is also what a wrong `Name` input produces.
         methodsJson is a JSON ARRAY:
           [{"aixml":"C:\\x\\Initialize.xml","vi":"C:\\cls\\Initialize.vi",
             "classTerminals":["obj in","obj out"],"dispatchTerminals":["obj in","obj out"]}]
@@ -197,20 +246,104 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             // ---- PHASE ONE, PROJECT CLOSED. A convert or a pane repair while the project is open
             //      gets the VI adopted as a loose project item, and the membership step then
             //      answers Error 56002.
+            // A RE-RUN OVER AN EXISTING MEMBER DESTROYS THE CLASS, so the entry is dropped first
+            // and the ordinary first-run path handles it. Measured 2026-09-14 on a minimal probe -
+            // one double field, its two wizard accessors, and one method with no subVI calls:
+            //
+            //   create + accessors + add        privateDataBytes 5454, every member eIdle
+            //   ONE re-run of the same method   privateDataBytes 5466, and `Read Value.vi` -
+            //                                   an accessor the call never named - eBad, error 8
+            //
+            // On disk, not in memory: it survived a full LabVIEW kill and restart. The tool
+            // reported `ok: true`, `terminalsRetyped: 2`, `verifiedOnDisk: true` throughout, and
+            // the method's own AIXML export was perfect - nothing anywhere said the class had
+            // been damaged.
+            //
+            // THE pylabview CONPANE REBUILD WAS THE OBVIOUS SUSPECT AND IS NOT THE CAUSE: the
+            // same probe re-run with panePattern 0, which skips that step entirely, broke the
+            // accessor just the same. What is left is this path - AddItemFromMemory answering
+            // 1004 for an item the class already lists, which the tolerance filter below makes
+            // survivable but which evidently still mutates what the following class save writes.
+            // `memberAlreadyExisted` is the only input that separates the clean run from the
+            // destructive one, so that is what this removes.
+            var alreadyListed = MembersAlreadyListed(classPath, methods.Select(m => m.Vi));
+
             var needsConvert = methods.Any(m => m.Aixml is not null) || panePattern > 0;
-            if (projectPath is { Length: > 0 } && needsConvert)
+
+            // A RUNNING counter, not three literals. `dropExistingMembers` and `openProject` were
+            // both hardcoded `order: 2` - in the one place where the fix's correctness depends on
+            // the drop happening INSIDE the project-closed window, the report said the two steps
+            // were simultaneous. The drop is conditional, so the number cannot be a literal either:
+            // without it, openProject really is the second step.
+            var order = 0;
+
+            if (projectPath is { Length: > 0 } && (needsConvert || alreadyListed.Count > 0))
             {
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
                     timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject
                 {
-                    ["order"] = 1,
+                    ["order"] = ++order,
                     ["step"] = "closeProject",
                     ["answer"] = Read(closed),
                     ["note"] = "Error 1055 here means no project was active, which is the state " +
                                "this step is trying to reach.",
                 });
+
+                // STILL CLOSED, AND THIS IS THE ONLY WINDOW IT FITS IN - editing the class file
+                // while LabVIEW holds the project open is undone by LabVIEW's own save, silently.
+                var dropped = RemoveMemberEntries(classPath, methods.Select(m => Path.GetFullPath(m.Vi)));
+
+                // RemoveMemberEntries changes NOTHING when the file is not the shape it was
+                // measured against - which is right, but it would leave us walking into exactly
+                // the path this exists to avoid. Stop instead of proceeding hopefully.
+                if (alreadyListed.Count > 0 && dropped.Count == 0)
+                    return Json.Error("memberEntryCouldNotBeDropped",
+                        "The class lists " + string.Join(", ", alreadyListed) +
+                        " and the entry could not be removed, so this call would take the re-run " +
+                        "path that has been measured leaving every member of the class eBad on " +
+                        "disk. Nothing was changed.",
+                        new
+                        {
+                            lvclassPath = classPath,
+                            alreadyListed,
+                            hint = "The remover leaves a .lvclass alone unless it matches the " +
+                                   "one-item-per-block shape it was measured against. Remove the " +
+                                   "<Item> block for that VI by hand with the project CLOSED, or " +
+                                   "recreate the class.",
+                        });
+
+                if (dropped.Count > 0)
+                    prologue.Add(new JsonObject
+                    {
+                        ["order"] = ++order,
+                        ["step"] = "dropExistingMembers",
+                        ["thenWhat"] = "these are re-added by the member step, so the run takes " +
+                                       "the FIRST-RUN path that is measured clean",
+                        ["why"] = "A re-run over a member the class still lists was measured " +
+                                  "leaving every member eBad on disk, accessors included, with " +
+                                  "privateDataBytes grown - and reporting ok: true throughout.",
+                        ["removed"] = new JsonArray([.. dropped.Select(n => (JsonNode)n!)]),
+                    });
+            }
+            else if (alreadyListed.Count > 0)
+            {
+                // No project to close, so the entry cannot be dropped safely. Say so rather than
+                // walking into the destructive path with a green answer.
+                return Json.Error("memberAlreadyListedWithoutProject",
+                    "The class already lists " + string.Join(", ", alreadyListed) +
+                    ", and re-running over an existing member has been measured DESTROYING the " +
+                    "class - every member eBad on disk, accessors included, while the call " +
+                    "reports ok: true. The entry has to be dropped first, and that is only safe " +
+                    "with the project closed, so pass projectPath and this call will do it.",
+                    new
+                    {
+                        lvclassPath = classPath,
+                        alreadyListed,
+                        hint = "Pass projectPath so the class entry can be dropped in the " +
+                               "project-closed window, which turns the re-run into a first run.",
+                    });
             }
 
             foreach (var method in methods)
@@ -222,6 +355,37 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 if (method.Aixml is { } aixml)
                 {
+                    // THE PANE IS CHECKED BEFORE ANYTHING IS WRITTEN. A class member is re-paned
+                    // onto `panePattern` further down, so a conIdx that does not exist there is a
+                    // fault in the AUTHORING - and it used to surface only after validate and
+                    // convert had both passed and the .vi was on disk, as the pylabview script's
+                    // stderr `pattern 4815 has no slot [15]`. Measured 2026-09-14: the numbers came
+                    // from `lvai_connector_pane` with no argument, which answers the STATION
+                    // default (4833 here) and is the right answer for a plain VI and the wrong one
+                    // for a class member. Nothing in the chain said which was being authored.
+                    if (panePattern > 0 && AuthoredConIdx(aixml) is { Count: > 0 } authored)
+                    {
+                        var offPane = ConnectorPane.ConIdxNotOnPattern(authored, panePattern);
+                        if (offPane.Count > 0)
+                        {
+                            steps.Add(new JsonObject
+                            {
+                                ["step"] = "panePreCheck",
+                                ["panePattern"] = panePattern,
+                                ["conIdxNotOnPattern"] = new JsonArray(
+                                    [.. offPane.Select(i => (JsonNode)i!)]),
+                                ["why"] = $"A class member is put on pattern {panePattern}, NI's "
+                                    + "accessor layout - not on the station default that "
+                                    + "lvai_connector_pane answers with no argument. Ask it for "
+                                    + $"`pattern: {panePattern}` when authoring a class method.",
+                                ["writeThese"] = PaneAdvice(panePattern),
+                            });
+                            results.Add(Failed(method, viPath, "panePreCheck", steps, null));
+                            stoppedAt ??= "panePreCheck";
+                            continue;
+                        }
+                    }
+
                     // The validator is STRICTER than the generator for a class wire, which is why
                     // this call converts without it. But "stricter" is not "useless": it is also
                     // the only thing that sees an ORDINARY wiring mistake, and skipping it
@@ -309,7 +473,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     checkActive: true, timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject
                 {
-                    ["order"] = 2,
+                    ["order"] = ++order,
                     ["step"] = "openProject",
                     ["answer"] = Read(opened),
                     ["note"] = "Without this the helper's Replace is a SILENT no-op - it reports " +
@@ -735,6 +899,31 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// it needs the project OPEN, which is the opposite of what the convert needs, so it would buy a
     /// second open/close cycle per call in exchange for replacing an edit already measured to work.
     /// </summary>
+    /// <summary>
+    /// Which of <paramref name="viPaths"/> the class file ALREADY lists as members, by file name.
+    ///
+    /// Read from the `.lvclass` rather than asked of LabVIEW, for the reason every other check in
+    /// this file is: the file is the authority and it costs nothing. It is deliberately the same
+    /// name-only comparison <see cref="RemoveMemberEntries"/> makes, so the two can never disagree
+    /// about what is about to be dropped.
+    /// </summary>
+    internal static IReadOnlyList<string> MembersAlreadyListed(
+        string classPath, IEnumerable<string> viPaths)
+    {
+        var wanted = new HashSet<string>(
+            viPaths.Select(p => Path.GetFileName(p)), StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return [];
+
+        string text;
+        try { text = File.ReadAllText(classPath); }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+
+        return [.. wanted
+            .Where(name => text.Contains($"<Item Name=\"{name}\"", StringComparison.Ordinal))
+            .OrderBy(n => n, StringComparer.Ordinal)];
+    }
+
     internal static IReadOnlyList<string> RemoveMemberEntries(
         string classPath, IEnumerable<string> viPaths)
     {

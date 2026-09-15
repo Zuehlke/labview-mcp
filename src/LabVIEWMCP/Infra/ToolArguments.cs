@@ -91,6 +91,71 @@ internal static class ToolArguments
     }
 
     /// <summary>
+    /// Supplied keys that name nothing this tool declares, AFTER <see cref="Renames"/> has had its
+    /// say. These are the arguments the caller believes they passed and that never arrive anywhere.
+    ///
+    /// WHY THIS IS SEPARATE FROM THE FOLD - MEASURED 2026-09-14, and it cost about ten round trips
+    /// plus a needless LabVIEW kill and restart. `lvai_open_file` was called with `path`, which is
+    /// not a declared name and folds onto none of them, so it was dropped in silence; the tool then
+    /// asked LabVIEW to open nothing and LabVIEW answered `Error 7, File not found`. Five calls,
+    /// three different files, an A/B on the foreground and a restart all pointed at LabVIEW, which
+    /// was never at fault. The fold added in 2026-08-14 fixed the NEAR-miss (`vi_path`); a name
+    /// resembling nothing stayed exactly as silent as before, and on a tool whose parameters are all
+    /// optional nothing downstream notices either - the `required` check has nothing to report.
+    ///
+    /// A KEY WHOSE FOLD DOES MATCH A DECLARED NAME IS NOT REPORTED HERE, deliberately. That is the
+    /// caller who sent `viPath` AND `vi_path`: <see cref="Renames"/> declines to overwrite the
+    /// correctly spelled value and leaves the stray key alone, the intended value is present, and
+    /// the call is honoured as written. Refusing it would be churn. What this function catches is
+    /// the case where nothing the caller meant reached the tool at all.
+    /// </summary>
+    public static List<string> Unrecognised(
+        IReadOnlyCollection<string> properties,
+        IReadOnlyCollection<string>? supplied,
+        IReadOnlyDictionary<string, string>? renames = null)
+    {
+        if (supplied is null || supplied.Count == 0 || properties.Count == 0) return [];
+
+        var declared = new HashSet<string>(properties, StringComparer.Ordinal);
+        var declaredFolds = new HashSet<string>(properties.Select(Fold), StringComparer.Ordinal);
+
+        return [.. supplied
+            .Where(key => !declared.Contains(key)
+                          && !(renames?.ContainsKey(key) ?? false)
+                          && !declaredFolds.Contains(Fold(key)))];
+    }
+
+    /// <summary>
+    /// The answer for an argument that names nothing. It refuses rather than proceeding, because
+    /// proceeding means running the tool with something OTHER than what was asked for - and the
+    /// measured consequence of that was an error message about the filesystem for a call whose
+    /// arguments never left this process. <see cref="Unrecognised"/> has the measurement.
+    /// </summary>
+    public static string UnrecognisedArguments(
+        string toolName, JsonElement schema,
+        IReadOnlyCollection<string> unrecognised, IReadOnlyCollection<string> received)
+    {
+        var names = string.Join("', '", unrecognised);
+        var one = unrecognised.Count == 1;
+        return Json.Error(
+            "badArguments",
+            $"{toolName} was called with the argument{(one ? "" : "s")} '{names}', which " +
+            $"{(one ? "is not a name" : "are not names")} this tool declares. The call was REFUSED " +
+            "rather than run without it: an ignored argument makes the tool do something other " +
+            "than what was asked, and the error that follows describes the wrong thing.",
+            new
+            {
+                tool = toolName,
+                unrecognised,
+                received,
+                accepted = Accepted(schema),
+                hint = "Pick the intended name from 'accepted'. A snake_case or differently-cased " +
+                       "spelling of a declared name is folded onto it automatically; a name that " +
+                       "merely resembles one in meaning is not, which is what happened here.",
+            });
+    }
+
+    /// <summary>
     /// Does this binding failure mean "I wanted a string and got something else"? The SDK's binder
     /// throws <c>JsonException</c> with the target type in the message, so the test is on the
     /// message rather than on a type we cannot see from here.

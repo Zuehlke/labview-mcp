@@ -28,10 +28,42 @@ public class ClassToolsTidyTests
         </Project>
         """;
 
+    /// <summary>
+    /// AND IT SAYS WHICH ONES. The count alone was what this returned until 2026-09-15, and it cost
+    /// a wrong diagnosis: a `strayVisRemoved: 5` reported beside a class that had vanished from a
+    /// .lvproj read as the cause, while the real cause was LabVIEW's save-on-close replacing the
+    /// whole file one step earlier. A number cannot be checked against a hypothesis. This step
+    /// edits the USER's project, so naming what it deleted is the minimum it owes the reader.
+    /// </summary>
+    [Fact]
+    public void It_names_what_it_removed_rather_than_only_counting()
+    {
+        var (_, removed, names) = ClassTools.StripHelperItems(Project);
+
+        Assert.Equal(removed, names.Count);
+        Assert.Single(names);
+        Assert.Contains("lvai_create_accessors.vi", names[0], StringComparison.Ordinal);
+        Assert.DoesNotContain(names, n => n.Contains("Auto.lvclass", StringComparison.Ordinal));
+    }
+
+    /// <summary>A clean project names nothing, rather than an empty string.</summary>
+    [Fact]
+    public void A_clean_project_lists_no_removals()
+    {
+        var clean = Project.Replace(
+            """<Item Name="lvai_create_accessors.vi" Type="VI" URL="../../../../Users/jcm/AppData/Local/Temp/LabVIEWMCP/helpers/lvai_create_accessors.vi"/>""",
+            "", StringComparison.Ordinal);
+
+        var (_, removed, names) = ClassTools.StripHelperItems(clean);
+
+        Assert.Equal(0, removed);
+        Assert.Empty(names);
+    }
+
     [Fact]
     public void The_helper_item_is_removed_and_counted()
     {
-        var (text, removed) = ClassTools.StripHelperItems(Project);
+        var (text, removed, _) = ClassTools.StripHelperItems(Project);
 
         Assert.Equal(1, removed);
         Assert.DoesNotContain("lvai_create_accessors.vi", text, StringComparison.Ordinal);
@@ -40,7 +72,7 @@ public class ClassToolsTidyTests
     [Fact]
     public void Everything_else_survives_including_the_line_structure()
     {
-        var (text, _) = ClassTools.StripHelperItems(Project);
+        var (text, _, _) = ClassTools.StripHelperItems(Project);
 
         Assert.Contains("""<Item Name="Auto.lvclass" Type="LVClass" URL="../Auto/Auto.lvclass"/>""",
             text, StringComparison.Ordinal);
@@ -62,7 +94,7 @@ public class ClassToolsTidyTests
             "../../../../Users/jcm/AppData/Local/Temp/LabVIEWMCP/helpers/lvai_create_accessors.vi",
             "../tools/lvai_create_accessors.vi", StringComparison.Ordinal);
 
-        var (text, removed) = ClassTools.StripHelperItems(mine);
+        var (text, removed, _) = ClassTools.StripHelperItems(mine);
 
         Assert.Equal(0, removed);
         Assert.Equal(mine, text);
@@ -76,7 +108,7 @@ public class ClassToolsTidyTests
             """<Item Name="lvai_close_vi.vi" Type="VI" URL="../../../Temp/LabVIEWMCP/helpers/lvai_close_vi.vi"/>""",
             StringComparison.Ordinal);
 
-        var (text, removed) = ClassTools.StripHelperItems(two);
+        var (text, removed, _) = ClassTools.StripHelperItems(two);
 
         Assert.Equal(2, removed);
         Assert.DoesNotContain("LabVIEWMCP/helpers", text, StringComparison.Ordinal);
@@ -92,7 +124,7 @@ public class ClassToolsTidyTests
             </Project>
             """;
 
-        var (text, removed) = ClassTools.StripHelperItems(clean);
+        var (text, removed, _) = ClassTools.StripHelperItems(clean);
 
         Assert.Equal(0, removed);
         Assert.Equal(clean, text);

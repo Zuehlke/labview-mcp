@@ -44,7 +44,13 @@ extension point) and `Infra/ToolArguments.cs` holds the logic. Two steps, in ord
    the declared spelling. `vi_path` → `viPath`, `max_content_chars` → `maxContentChars`. A key that
    is already declared is never overwritten by a variant, and two declared names sharing a fold are
    left alone rather than guessed between.
-2. **Report.** A required key still absent answers with data:
+2. **Refuse an unrecognised name.** A supplied key that is not declared *and* whose fold matches no
+   declared name is the caller believing they passed something that never arrived. The call is
+   REFUSED by name rather than run without it — running it means doing something other than what was
+   asked, and the error that follows then describes the wrong thing. A key whose fold *does* match a
+   declared name is left alone, which is the caller who sent `viPath` **and** `vi_path`: the intended
+   value is present, so refusing would be churn.
+3. **Report a missing required key.** Still absent after all that, it answers with data:
 
 ```json
 { "ok": false, "errorKind": "badArguments",
@@ -102,29 +108,82 @@ original fix was written for the parameter that was broken and reached every par
   BytePositionInLine: 6.` — it does not name the argument. `received` plus `accepted` is how to find
   it; the types in `accepted` are the authority.
 - **Folding covers near-misses of declared names, not synonyms.** `vi_path` works because `viPath`
-  exists; `path` or `file` is still an unknown key, and an unknown key is still ignored - that is the
-  MCP contract, not something this layer overrides.
-- **On a tool whose parameters are ALL optional, a dropped key produces no diagnostic at all - and
-  the error that surfaces blames the wrong thing.** Measured 2026-08-27: `lvai_open_file` was called
-  with `filePath`, which is not a near-miss of `viPath` or `projectPath`, so it was dropped. Nothing
-  was missing - every parameter defaults to empty - so `badArguments` never fired, LabVIEW received
-  `<Not A Path>`, and the answer was
-
-  ```
-  Error 7 occurred at ... OpenFile.vi
-  LabVIEW: (Hex 0x7) File not found. The file might be in a different location or deleted.
-  ```
-
-  on a `.lvproj` that was present, well-formed and readable - `lvai_describe_project` read it in the
-  same minute. Two calls and a file inspection went into that before the argument name was checked.
-  **So a "file not found" from a path you can `ls` means read the tool's parameter names first**, and
-  the diagnostic to reach for is not the filesystem: it is the tool schema. This layer cannot do
-  better on its own - an unknown key is dropped by the MCP contract and an all-optional tool has
-  nothing to report as missing.
+  exists; `path` or `file` matches nothing, and until 2026-09-14 an unknown key was simply ignored.
+  It is now refused by name — see the section below, which is the whole reason this paragraph
+  changed.
 - **The wrapper must be registered last.** `WithArgumentDiagnostics()` rewrites the tool
   registrations that are already in the collection, so a tool registered after it is not wrapped.
   `DiagnosingToolTests` asserts that every served tool comes back wrapped, so an SDK upgrade that
   registers tools differently fails there rather than silently restoring the masked sentence.
+
+## AN UNKNOWN KEY WAS IGNORED FOR 18 DAYS BECAUSE THIS PAGE CALLED IT IMPOSSIBLE
+
+The bullet above used to end: *"This layer cannot do better on its own — an unknown key is dropped
+by the MCP contract and an all-optional tool has nothing to report as missing."* **That was wrong,
+and being written down as a limit is what kept anyone from looking again.**
+
+The wrapper holds the served schema and the supplied keys in the same method. Naming a key that
+matches nothing is four lines. Nothing in the MCP contract requires a server to *run* a call whose
+arguments it cannot honour — "an unknown key is ignored" describes the binder, not the tool.
+
+**What the cost of that sentence was, measured twice on the same tool:**
+
+| when | the key | what it cost |
+|---|---|---|
+| 2026-08-27 | `filePath` | two calls and a file inspection, spent on the disk and the XML |
+| 2026-09-14 | `path` | five `Error 7` answers over three real paths, an A/B on the foreground window that refuted a hypothesis nobody needed, and a LabVIEW kill and restart |
+
+The second session read this very page's 2026-08-27 bullet *after* the detour, and the paragraph it
+found was the one saying the situation was unfixable.
+
+**And the tool's own description compounded it with a false mechanism.** `lvai_open_file` said
+`filePath` "is folded onto the closest declared one, so it lands on `viPath`". It is not: `Fold`
+normalises `_`, `-` and case only, so `filePath` folds to `filepath`, which matches nothing and is
+dropped. The distinction matters because the two produce different searches — "my project was opened
+as a VI" sends you looking for a path that was passed, and nothing was passed at all. Corrected in
+`ActionTools.cs`, in `ActionToolsTests.cs`, and here.
+
+**Two rules come out of it, and they are the durable part:**
+
+- **A limit is a measurement, not a conclusion.** "This layer cannot do better" was an inference from
+  one failing case, written in the same voice as the measurements around it. Write what was measured
+  (`an unknown key is dropped by the binder`) and leave the impossibility claim out, because that is
+  the sentence that stops the next reader.
+- **When a tool's description explains a MECHANISM, check the mechanism.** A description is read at
+  the moment someone is already confused, so a wrong one costs more than no explanation would.
+
+Both holes are closed: the argument layer refuses an unrecognised name, and `lvai_open_file` refuses
+a call that names no file at all (`ActionTools.OpenFilePrecheck`, with `OpenFilePrecheckTests`
+covering all three of its doors — the third had neither a guard nor a test).
+
+### AND THE ARGUMENT LAYER NEVER FIRES FROM THE DESKTOP CLIENT — the tool guard is the only one that does
+
+Measured on acceptance, 2026-09-14, and it changes which of the two fixes matters. **The Claude
+desktop client validates arguments against the served schema and DROPS an undeclared key before
+sending**, so the server never sees it:
+
+| route | the same call, `{"path": "…RerunProbe.lvproj"}` |
+|---|---|
+| Claude desktop client | `received: {viPath: null, viName: null, projectPath: null, projectName: null}` — the tool's own **nothing-to-open** guard answers |
+| raw stdio, no client | `unrecognised: ["path"]`, `received: ["path"]` — the **argument layer** answers, naming the key |
+
+So from the client, a call with a made-up name and a call with no arguments are **indistinguishable**,
+and only the tool-level guard stands between either and LabVIEW's misleading `Error 7`. The argument
+layer is not redundant — it is what a client forwarding unknown keys gets, and the MCP contract does
+not require a client to strip them — but it cannot be relied on to be reached.
+
+**The rule that follows: a tool whose parameters are ALL optional needs its own guard for "these
+arguments ask for nothing".** No argument layer can supply it, because there is nothing there to
+misspell, and it is exactly the shape that produces a confident answer about the wrong thing.
+
+The regression cases were measured over stdio in the same run, because the new refusal sits directly
+in front of the fold it must not swallow:
+
+| sent | expected | got |
+|---|---|---|
+| `vi_path` | folded onto `viPath`, then the swap guard speaks | swap guard — so the fold ran |
+| `viPath` **and** `vi_path` | tolerated, the correct value wins | swap guard |
+| `filePath` | refused as unrecognised | refused, naming `filePath` |
 
 ## Re-measuring it
 
@@ -139,3 +198,8 @@ Before the fix that answered the masked sentence; after it, the call runs with `
 `{"name":"lvai_convert_vi_to_aixml","arguments":{"viPath":"C:\\x\\My.vi"}}` is the missing-argument
 case, and `{"timeoutSeconds":"soon"}` the wrong-type one. Read the server's **stderr** alongside: it
 is where the pre-fix detail always was.
+
+The unrecognised-name case is `{"name":"lvai_open_file","arguments":{"path":"C:\\x\\App.lvproj"}}`.
+Before 2026-09-14 that answered `Error 7, File not found` from LabVIEW; it now answers
+`badArguments` naming `path`. And `{"name":"lvai_open_file","arguments":{}}` — which no argument
+layer can catch, because there is nothing there to misspell — is refused by the tool itself.

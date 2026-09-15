@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using LabVIEWMcp.Infra;
 using Xunit;
 
@@ -320,6 +320,108 @@ public class ToolArgumentsTests
         Assert.Null(ToolArguments.Stringified(
             Args("""{"viPath":"C:\\x.vi","verify":false}"""),
             ToolArguments.StringTyped(Schema(SwapSubVisSchema))));
+    }
+
+    /// <summary>
+    /// THE MEASURED HOLE, 2026-09-14. `lvai_open_file` was called with `path` - not a declared
+    /// name, and it folds onto none of them, so it was dropped in silence. The tool then asked
+    /// LabVIEW to open nothing and LabVIEW answered `Error 7, File not found`; five calls over
+    /// three real paths, a refuted foreground A/B and a LabVIEW restart went into believing that
+    /// answer. The fold added in 2026-08-14 only ever fixed the NEAR miss.
+    /// </summary>
+    [Theory]
+    [InlineData("path")]
+    [InlineData("filePath")]
+    [InlineData("file_path")]
+    public void A_name_that_folds_onto_nothing_is_reported(string stray)
+    {
+        var (properties, _) = ToolArguments.Shape(Schema());
+        var supplied = new[] { stray };
+
+        var unrecognised = ToolArguments.Unrecognised(
+            properties, supplied, ToolArguments.Renames(properties, supplied));
+
+        Assert.Equal([stray], unrecognised);
+    }
+
+    [Fact]
+    public void A_declared_name_is_not_reported()
+    {
+        var (properties, _) = ToolArguments.Shape(Schema());
+
+        Assert.Empty(ToolArguments.Unrecognised(properties, ["viPath", "getNodesInfo"]));
+    }
+
+    /// <summary>
+    /// A near miss is the fold's business, not this one's: by the time Unrecognised runs, the
+    /// rename has been applied, so reporting it here would refuse the very call the fold exists to
+    /// rescue.
+    /// </summary>
+    [Fact]
+    public void A_name_the_fold_rescued_is_not_reported()
+    {
+        var (properties, _) = ToolArguments.Shape(Schema());
+        var supplied = new[] { "vi_path" };
+
+        Assert.Empty(ToolArguments.Unrecognised(
+            properties, supplied, ToolArguments.Renames(properties, supplied)));
+    }
+
+    /// <summary>
+    /// Both spellings supplied: <see cref="ToolArguments.Renames"/> deliberately leaves the stray
+    /// key alone rather than overwrite a correctly spelled value, and the caller's intent did
+    /// arrive. Refusing that would be churn, so this case stays exactly as it was.
+    /// </summary>
+    [Fact]
+    public void A_stray_variant_beside_the_declared_name_is_still_tolerated()
+    {
+        var (properties, _) = ToolArguments.Shape(Schema());
+        var supplied = new[] { "viPath", "vi_path" };
+
+        Assert.Empty(ToolArguments.Unrecognised(
+            properties, supplied, ToolArguments.Renames(properties, supplied)));
+    }
+
+    /// <summary>A tool with no parameters must pass anything through, as it always has.</summary>
+    [Fact]
+    public void An_empty_schema_reports_nothing()
+    {
+        var (properties, _) = ToolArguments.Shape(Schema("""{ "type": "object" }"""));
+
+        Assert.Empty(ToolArguments.Unrecognised(properties, ["whatever"]));
+    }
+
+    [Fact]
+    public void No_arguments_reports_nothing()
+    {
+        var (properties, _) = ToolArguments.Shape(Schema());
+
+        Assert.Empty(ToolArguments.Unrecognised(properties, null));
+        Assert.Empty(ToolArguments.Unrecognised(properties, []));
+    }
+
+    /// <summary>
+    /// The answer has to be actionable in ONE turn: what was rejected, what the caller sent, and
+    /// every name that would have worked - including the one they plainly meant.
+    /// </summary>
+    [Fact]
+    public void The_refusal_names_the_stray_key_and_the_accepted_ones()
+    {
+        var json = ToolArguments.UnrecognisedArguments(
+            "lvai_describe_vi", Schema(), ["path"], ["path", "viName"]);
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        Assert.False(root.GetProperty("ok").GetBoolean());
+        Assert.Equal("badArguments", root.GetProperty("errorKind").GetString());
+        Assert.Contains("'path'", root.GetProperty("error").GetString());
+        Assert.Contains("REFUSED", root.GetProperty("error").GetString());
+
+        var detail = root.GetProperty("detail");
+        Assert.Equal("path", detail.GetProperty("unrecognised")[0].GetString());
+        Assert.Equal("viPath, string, required",
+            $"viPath, {detail.GetProperty("accepted").GetProperty("viPath").GetString()}");
     }
 
     private static Dictionary<string, JsonElement>? Args(string? json)

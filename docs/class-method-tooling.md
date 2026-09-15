@@ -947,7 +947,7 @@ That is the run-6 orchestration fix holding for the third time.
 being right.** What matters is that the TYPE took, and the saved file agrees: `Task Reference` is
 `Refnum RefType=UsrDefndTag Ident=Task TypeName=NIDAQ` — a genuine DAQmx task refnum.
 
-### D1 — a swap answer that contradicts itself, and costs 100 s to disbelieve
+### D1 — a swap answer that contradicts itself, and costs 100 s to disbelieve — FIXED 2026-09-15
 
 ```
 "failedAtStep": "swap", "errorCode": "1055",
@@ -958,10 +958,35 @@ being right.** What matters is that the TYPE took, and the saved file agrees: `T
 Eight nodes swapped AND five sockets absent cannot both be true, and the export showed all eight
 present. This is the half-applied-`Replace` signature — `VI Name` reads back empty, so a node that IS
 there looks absent. **~100 s of wall clock for ~3 s of LabVIEW** went on proving the tool wrong about
-its own diagram. The file was correctly not saved. `socketsNotOnDiagram` should not be populated when
-`nodesSwapped > 0` and the call errored; the honest answer is "the Replace was half applied".
+its own diagram. The file was correctly not saved.
 
-### D2 — the runner lands at project ROOT and the tool calls it "already listed"
+**The cause was one line: `nodesSwapped` was `swaps.Count` — THE REQUEST, echoed back under an
+outcome's name.** So it could never disagree with the caller, and every contradiction it produced
+was the answer arguing with itself rather than with the diagram.
+
+**THIS PARAGRAPH SAID SO AND NOTHING CHANGED FOR TWELVE DAYS.** It ended *"`socketsNotOnDiagram`
+should not be populated when `nodesSwapped > 0` and the call errored; the honest answer is 'the
+Replace was half applied'"* — a correct remedy, written as a recommendation, in a document nothing
+reads at the moment the field is computed. The identical contradiction then turned up in a cold
+build on 2026-09-15, `nodesSwapped: 1` for a swap that matched nothing at all
+(`docs/cold-build-pumpstand.md` §4), and was written up there as a NEW finding because nobody
+connected the two. **Third occurrence of one defect, and the fix is four lines.**
+
+`SwapTools.NodesThatLanded` decides it now, and the rule is what the measurement always implied:
+**an errored helper landed NOTHING**, because a `Replace` that fails leaves its error on the wire
+and that stops `Save.Instrument`, so the file on disk is untouched whatever happened in memory.
+Otherwise the count is the sockets the helper actually FOUND. `nodesAsked` keeps the request
+visible beside it, so nothing is lost — only the two are no longer confused. A reply carrying no
+name list at all falls back to the request rather than inventing a zero.
+
+**The process lesson is the one this repository keeps paying for, and it is about where a fix is
+written.** `CLAUDE.md` already says it for a different field: *"When a measurement contradicts a
+number, fix the thing that PRODUCES the number, not just the paragraph you happen to be writing."*
+That was written after `dwarnCount` was corrected by hand in prose while the counter kept lying.
+This is the same shape with a twelve-day fuse. **A remedy recorded as a recommendation is not a
+fix; it is a note for someone who will not read it.**
+
+### D2 — the runner lands at project ROOT and the tool calls it "already listed" — FIXED 2026-09-15
 
 Reproduced identically by both agents, so it is systematic and not a collision:
 
@@ -974,6 +999,25 @@ The `.lvproj` has both test VIs correctly inside their folders and **both runner
 LabVIEW adopts the open runner during the save, and the tool's "already listed" test searches the
 WHOLE project rather than `testFolderName`, so it never moves it in. Cosmetic — the runner is
 findable and runs — but `added: 0` reads as "the folder is correct" when it is not.
+
+**FIXED as reporting, not as a move.** The answer now carries `listedElsewhere` —
+`[{name, folder}]`, the folder being the chain of `<Item>` names from the target down, or
+`the target itself` for one at root — and the note says where it went and why it stayed there.
+`LvClass.ListedViPlaces` is that read; `TestTools.ListedElsewhere` decides, and a folder chain
+ENDING in the wanted name counts as the right place, because `AddVisToProject` finds the folder by
+name at any depth.
+
+**Nothing moves, and `ok` does not turn on it — both deliberate.** The search that finds a VI at
+any depth is RIGHT: two items for one file is the worse outcome, and an item inside a class or a
+library is owned by that item, so moving it would be a change to the user's project nobody asked
+for. And the runner is findable and it runs, so this is information rather than a verdict — the
+same rule `wiringLost` earned the hard way, having gated `ok` for one day and been wrong every
+time it fired. **What was defective was the sentence, not the placement.**
+
+Four tests in `ProjectTestEntryTests` pin it, and the first reproduces the measured case without
+LabVIEW: a runner planted at target level beside the folder, `AddVisToProject` correctly answering
+`0`, and `listedElsewhere` naming it. This finding sat here as a description for twelve days beside
+D1, which is the fuse that entry is about — so it is closed in the code, not in the prose.
 
 ### The socket slot names are FIXED and the folder is GLOBAL
 

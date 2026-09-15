@@ -412,11 +412,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                         + "for; lvai_describe_class reads it back.");
 
                 var info = LvClass.Read(classPath);
-                // ClassInfo carries the ANCESTRY, not a single parent: a root class
-                // lists only itself, so the first entry that is not this class is the
-                // base. The describe tool derives its `inheritsFrom` the same way.
-                var inherits = info.Ancestors.FirstOrDefault(
-                    a => !string.Equals(a, info.QualifiedName, StringComparison.OrdinalIgnoreCase));
+                // THE BASE CLASS, WHICH IS NOT `Ancestors[0]`. Every parent link is opened and its
+                // own IsInterface read, so an implemented interface can no longer be reported as
+                // what this class inherits from. This read `Ancestors.First(a => a != self)` until
+                // 2026-09-15 and answered `ILoggable.lvclass` for a class that implements two
+                // interfaces and derives from LabVIEW Object - the build that found it is
+                // docs/cold-build-valverig.md §3.
+                var inherits = info.BaseClass?.Name;
                 var wantedParent = parentClassPath is { Length: > 0 }
                     ? Path.GetFileNameWithoutExtension(parentClassPath) + ".lvclass" : null;
                 // AN INTERFACE LINK SITS IN THE SAME `Parent Libraries` LIST AS THE PARENT CLASS,
@@ -446,6 +448,12 @@ internal sealed class ClassTools(LvaiConnection connection)
                     // not tell it apart from a parent link that failed to take. Nothing about the
                     // class was ever wrong; only this rendering was.
                     ["inheritsFrom"] = string.IsNullOrEmpty(inherits) ? "LabVIEW Object" : inherits,
+                    // AND THE INTERFACES SEPARATELY, so neither field has to stand for the other.
+                    // `interfacesLinked` is a COUNT of what was asked for; this is what the file
+                    // says, which is the half that catches a link nobody asked for.
+                    ["interfacesImplemented"] = new JsonArray(
+                        [.. info.Interfaces.Select(i => (JsonNode)i.Name)]),
+                    ["parentKindsAreComplete"] = info.ParentKindsAreComplete,
                     ["fieldsAsked"] = parsed.Count,
                     ["fieldsAdded"] = provider.FieldsAdded,
                     ["interfacesAsked"] = interfacePaths.Count,
@@ -495,7 +503,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                 return Outcome(true, null, steps, total, classPath, null,
                     $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
                     + $"{info.PrivateDataBytes} bytes of private data, inherits from "
-                    + $"'{inherits}'{interfaceNote}. The private data control is LabVIEW's own - "
+                    + $"'{inherits ?? "LabVIEW Object"}'{interfaceNote}. The private data control "
+                    + "is LabVIEW's own - "
                     + "NI's provider VIs built it - so it carries a real type space and compiles.");
             }
             finally
@@ -538,11 +547,16 @@ internal sealed class ClassTools(LvaiConnection connection)
         NO FIELDS PARAMETER, and that is not an omission: an interface cannot hold private data, so
         there is no carrier VI and no call to add-member-data - the two steps that make up most of
         `lvai_create_class`. If you want data, you want a class.
-        WHAT IT DOES NOT DO: interface METHODS. NI's dynamic-dispatch template is an IDE gesture and
-        the provider that retypes its terminals (`CLSUIP_ReplaceLVClassControls.vi`) is private
-        scope, so a method's class-typed connector pane cannot be reached from here yet. Create the
-        interface, then add methods in the IDE with `New >> VI from Dynamic Dispatch Template`.
-        docs/lvclass-interfaces.md has the measurements and the manual steps.
+        INTERFACE METHODS ARE SCRIPTABLE - use `lvai_add_class_method`. This description said they
+        were an IDE gesture until 2026-09-14, which was already wrong when written: CLAUDE.md
+        corrected it on 2026-09-07, measured over five VIs on IVehicle.lvclass. An interface IS a
+        `.lvclass`, so LVClass.Open, AddItemFromMemory, {LV.Control} Replace and SetWireRule all
+        behave the same on one, and the tool does not inspect NI.LVClass.IsInterface at all.
+        Following this paragraph cost one agent a hand-built duplicate of a tool that worked.
+        FINISH THE INTERFACE - the .lvclass AND every method - BEFORE the first class that
+        implements it. `lvai_create_class` takes the interface list at CREATION time only, and a
+        declared method breaks every implementing class until that class's override exists.
+        docs/lvclass-interfaces.md has the measurements.
         NAMING, from NI's manual: avoid a leading capital `I`. LabVIEW distinguishes interfaces and
         classes by GLYPH, most of the IDE treats them identically, and callers do not care which
         they have - so avoiding the `I` lets a class become an interface, or the reverse, without
@@ -761,12 +775,19 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 return Outcome(true, null, steps, total, interfacePath, null,
                     $"Created and verified from the file: IsInterface is true, no private data "
-                    + $"item, {parentNote}. It has NO METHODS yet - AIXML cannot author a "
-                    + "class-typed connector pane and NI's retyping provider is private scope, so "
-                    + "add them in the IDE with New >> VI from Dynamic Dispatch Template. Any "
-                    + "class implementing this interface must OVERRIDE every method it declares, "
-                    + "measured 2026-08-31: a missing override is Error 1003 on the whole class, "
-                    + "with or without the require-override flag.");
+                    + $"item, {parentNote}. It has NO METHODS yet - add them with "
+                    + "lvai_add_class_method, which works on an interface exactly as on a class "
+                    + "because an interface IS a .lvclass. THIS SENTENCE SAID 'add them in the IDE "
+                    + "with New >> VI from Dynamic Dispatch Template' until 2026-09-15, eight days "
+                    + "after that claim was measured false over five VIs on IVehicle.lvclass - the "
+                    + "tool's DESCRIPTION was corrected and this runtime note was not, so the "
+                    + "answer a caller actually reads still sent them to the IDE. "
+                    + "FINISH THE INTERFACE - the .lvclass AND every method - BEFORE creating the "
+                    + "first class that implements it: the interface list is a CREATION-TIME input "
+                    + "to lvai_create_class, and any class implementing this interface must "
+                    + "OVERRIDE every method it declares. Measured 2026-08-31: a missing override "
+                    + "is Error 1003 on the whole class, with or without the require-override "
+                    + "flag.");
             }
             finally
             {
@@ -935,6 +956,16 @@ internal sealed class ClassTools(LvaiConnection connection)
             var ancestors = new JsonArray();
             foreach (var ancestor in info.Ancestors) ancestors.Add(ancestor);
 
+            var parentLinks = new JsonArray();
+            foreach (var link in info.ParentLinks)
+                parentLinks.Add(new JsonObject
+                {
+                    ["name"] = link.Name,
+                    ["kind"] = link.Kind,
+                    ["url"] = link.Url,
+                    ["resolvedPath"] = link.ResolvedPath,
+                });
+
             return new JsonObject
             {
                 ["ok"] = true,
@@ -950,17 +981,27 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["containingLibrary"] = info.ContainingLibrary,
                 ["ancestors"] = ancestors,
                 ["ancestorSource"] = info.AncestorSource,
+                // EVERY PARENT LINK, WITH ITS KIND - and this is the field to read, not the
+                // one-line summary below it. A class may link one base class and any number of
+                // INTERFACES, the file records both as `<Item Type="Parent">`, and `ancestors`
+                // therefore mixes them in an order nobody chose.
+                ["parentLinks"] = parentLinks,
                 // SKIP THE CLASS ITSELF. `NI.LVClass.Geneology` lists the class among its own
                 // ancestors when there is no parent, so taking Ancestors[0] blindly reported a root
                 // class as inheriting from ITSELF - `Haus.lvclass` inheriting from `Haus.lvclass`,
-                // caught 2026-08-28 by two independent runs of the class agent. `ancestorSource`
-                // did flag the uncertainty, so it was never silently wrong, but a caller reading
-                // this field alone would draw a false conclusion. lvai_create_class's own verify
-                // step already filtered it out; the two now agree.
-                ["inheritsFrom"] = info.Ancestors.FirstOrDefault(
-                                       a => !string.Equals(a, info.QualifiedName,
-                                                           StringComparison.OrdinalIgnoreCase))
-                                   ?? "LabVIEW Object",
+                // caught 2026-08-28 by two independent runs of the class agent.
+                //
+                // AND SKIPPING THE CLASS ITSELF WAS NOT ENOUGH, measured 2026-09-15: the next
+                // entry is whichever link LabVIEW wrote first, which is an INTERFACE in 46 of the
+                // 437 classes on this station - NI's own `Caller A.lvclass` reported
+                // `Abstraction.lvclass` where its base is `Actor.lvclass`. It is `parentLinks`
+                // that settles it, by opening each link and reading its own IsInterface, so this
+                // field is now the base CLASS or the LabVIEW Object fallback and never an
+                // interface. `parentKindsAreComplete` says whether every link could be opened;
+                // when it is false this is a lower bound, because an unresolved link may be the
+                // real parent.
+                ["inheritsFrom"] = info.BaseClass?.Name ?? "LabVIEW Object",
+                ["parentKindsAreComplete"] = info.ParentKindsAreComplete,
                 ["privateDataItem"] = info.PrivateDataName,
                 ["privateDataBytes"] = info.PrivateDataBytes,
                 // THE FIELDS THEMSELVES, and this used to be the one thing missing. Measured
@@ -1239,7 +1280,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             // helper and carrier end up listed in the user's project. Measured on the first live
             // run of this route: three stray VIs, one of them from an earlier session. They are
             // stripped here rather than left for the reader to notice.
-            var (tidied, removed) = StripHelperItems(File.ReadAllText(projectPath), projectPath);
+            var (tidied, removed, strayNames) = StripHelperItems(
+                File.ReadAllText(projectPath), projectPath);
             if (removed > 0) File.WriteAllText(projectPath, tidied);
 
             return new JsonObject
@@ -1249,6 +1291,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["projectPath"] = projectPath,
                 ["url"] = url,
                 ["strayVisRemoved"] = removed,
+                ["strayVisRemovedNames"] = new JsonArray([.. strayNames.Select(n => (JsonNode)n!)]),
                 ["classEntriesRestored"] = restored,
                 ["note"] = "NI's provider writes the class FILE but does not list it - that is what "
                          + "its New Class Owner input would do, and it is left unwired on purpose. "
@@ -2065,7 +2108,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         {
             try
             {
-                var (stripped, count) = StripHelperItems(File.ReadAllText(project), project);
+                var (stripped, count, _) = StripHelperItems(File.ReadAllText(project), project);
                 removed = count;
                 if (removed > 0) File.WriteAllText(project, stripped);
             }
@@ -2112,9 +2155,17 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// <c>..</c> pops the .lvproj's own name rather than a directory - the rule from
     /// lvproj-structure.md section 5, and getting it wrong here would delete live items.
     /// </summary>
-    internal static (string Text, int Removed) StripHelperItems(
+    internal static (string Text, int Removed, List<string> Names) StripHelperItems(
         string projectXml, string? projectPath = null)
     {
+        // WHAT WAS REMOVED, NOT JUST HOW MANY. This returned a bare count until 2026-09-15, and
+        // that count sent a diagnosis after the wrong mechanism entirely: a `strayVisRemoved: 5`
+        // reported beside a mock that had vanished from the .lvproj read as the cause, and the
+        // real cause was LabVIEW's save-on-close replacing the whole file one step earlier. A
+        // number cannot be checked against a hypothesis; a list can, and would have ruled this
+        // step out in one read. This edits the USER's project - saying which items it deleted is
+        // the minimum it owes the reader.
+        var names = new List<string>();
         // BOTH of our temp trees, not just helpers/: a class run's carrier VI lives under
         // classes/<work>/ and LabVIEW adopts it exactly the same way. Caught here as well as by
         // the dangling pass below, because the work directory is deleted only after this runs -
@@ -2131,13 +2182,15 @@ internal sealed class ClassTools(LvaiConnection connection)
             "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*(?:LabVIEWMCP/(?:helpers|classes)" +
             "|(?:&lt;userlib&gt;|<userlib>)/LV_MCP)/[^\"]*\"\\s*/>";
 
-        var removed = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem).Count;
+        var helperMatches = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem);
+        var removed = helperMatches.Count;
+        names.AddRange(helperMatches.Select(m => NameOf(m.Value) + " (helper tree)"));
         var text = removed == 0
             ? projectXml
             : System.Text.RegularExpressions.Regex.Replace(
                 projectXml, "\\r?\\n\\s*" + helperItem, "");
 
-        if (projectPath is not { Length: > 0 }) return (text, removed);
+        if (projectPath is not { Length: > 0 }) return (text, removed, names);
 
         // Now the dangling ones. Only a SELF-CLOSING item carries a URL and no children, which is
         // every item a generator writes; a container with nested items is left alone.
@@ -2161,11 +2214,17 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return match.Value;
 
                 dangling++;
+                names.Add(match.Groups["name"].Value + " (file not there: " + url + ")");
                 return "";
             });
 
-        return (text, removed + dangling);
+        return (text, removed + dangling, names);
     }
+
+    /// <summary>The Name attribute of one matched item, for the removal listing.</summary>
+    private static string NameOf(string itemXml) =>
+        System.Text.RegularExpressions.Regex.Match(itemXml, "Name=\"(?<n>[^\"]*)\"")
+            is { Success: true } m ? m.Groups["n"].Value : itemXml.Trim();
 
     /// <summary>The nearest .lvproj at or above a class file, or null when there is no single one.</summary>
     private static string? FindProjectNear(string lvclassPath)

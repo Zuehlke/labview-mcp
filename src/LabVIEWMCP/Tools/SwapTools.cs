@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -53,11 +53,42 @@ internal sealed class SwapTools(LvaiConnection connection)
         NODES ARE SWAPPED FIRST AND CONSTANTS LAST, always. A dynamic dispatch input is a REQUIRED
         terminal, so a class chain needs a class value; with the nodes already swapped that wire has
         a class sink and Replace re-types it, where the other order breaks it.
-        EVERY SOCKET NAME MUST BE UNIQUE on the diagram, and this refuses duplicates rather than
-        letting them through: matching is by VI Name, so two nodes calling the same socket are
-        indistinguishable and the wrong subject lands in the wrong case WITH NO ERROR AT ALL. A name
-        that is not on the diagram is refused for the same reason - the helper's array search answers
-        -1 and Index Array then clamps to element 0, silently swapping a node you did not name.
+        EVERY SOCKET NAME MUST BE UNIQUE IN `swapsJson` - this refuses a name given twice, because
+        matching is by VI Name and two ENTRIES for one name cannot say which node gets which target.
+        A name that is not on the diagram is refused too: the helper's array search answers -1 and
+        Index Array then clamps to element 0, silently swapping a node you did not name. WHEN THAT
+        HAPPENS THE ANSWER NAMES EVERY subVI THE DIAGRAM HAS, in `diagramSubVis`, so the correction
+        costs no round trip - the names were always in the helper's reply and were reachable only
+        inside the swap step's sub-answer, which `verbose: false` strips.
+        AND A NODE ALREADY POINTED AT A CLASS MEMBER CARRIES ITS QUALIFIED NAME. A second swap over
+        the same diagram must say `Centrifugal Pump.lvclass:Read Last Event.vi`, not
+        `Read Last Event.vi` - the bare name matches nothing. Measured twice, on
+        `DAQmxAnalogInput.lvclass:Start.vi` and again 2026-09-15 while setting up a negative control.
+        `nodesSwapped` IS AN OUTCOME, NOT AN ECHO OF THE REQUEST - `nodesAsked` is the request. It
+        WAS the request, and the answer then contradicted itself: `nodesSwapped: 8` beside a
+        `socketsNotOnDiagram` listing five of those eight, which cost ~100 s of wall clock to
+        disbelieve (docs/class-method-tooling.md D1). Nothing landed when the helper errored,
+        because the error on the wire stops Save.Instrument and the file is untouched.
+        ERROR 1055 MEANS NO ACTIVE PROJECT, and it is reported as `errorKind: noActiveProject`
+        rather than as a bare number beside an Invoke Node's name. `{LV.SubVI}` Replace is a silent
+        no-op outside the IDE's own application instance, so this tool needs the project OPEN.
+        MEASURED 2026-09-15: `lvai_run_lunit_tests` leaves no active project behind, so a swap
+        issued straight after a test run lands here every time - call `lvai_open_file` between them.
+        THE DIAGRAM IS A DIFFERENT QUESTION, and this said "EVERY SOCKET NAME MUST BE UNIQUE on the
+        diagram" until 2026-09-15, which is FALSE and read as "a generated VI cannot call the same
+        method twice". Measured on a two-call probe: one call swaps ONE node, answers `ok: false`
+        with `socketsLeft: 1`, and the SAME call again swaps the other and answers `socketsLeft: 0`.
+        The result is executable - `execState 1` with a class constant feeding the chain. So a
+        diagram MAY call one method several times, and it costs ONE CALL PER NODE whatever N is -
+        measured to three on 2026-09-15.
+        `socketsLeft` IS NOT A NODE COUNTER, and this said it was. It counts how many of the
+        `swapsJson` ENTRIES still occur in the export, so with one entry naming a repeated socket it
+        reads 1 until the last node goes and then 0 - measured over three swaps as 1, 1, 0 while
+        two, one and zero nodes remained. The two-call probe this was written from could not see
+        that: at N=2 a count and a flag are the same two numbers. `callTargets` is de-duplicated by
+        name and cannot answer it either. READ `diagramSubVis`, which lists the diagram's subVI
+        names WITH REPETITION - it shows the state BEFORE the swap it accompanies, so it says what
+        this call was working on rather than what is left afterwards.
         NOTHING IS READ BACK FROM A REPLACED OBJECT, because the reference does not survive it -
         Error 1055 - and that error would travel down the wire and stop the save. `verify` therefore
         re-exports the VI through LabVIEW afterwards and reports its call targets; that export is the
@@ -354,6 +385,23 @@ internal sealed class SwapTools(LvaiConnection connection)
                                .Where(n => !present.Contains(n, StringComparer.OrdinalIgnoreCase))
                                .ToList();
 
+            // HOW MANY NODES REALLY CHANGED, WHICH IS NOT HOW MANY WERE ASKED FOR. This field was
+            // `swaps.Count` - the REQUEST echoed back under an outcome's name - and the answer then
+            // contradicted itself in the one case that matters: `nodesSwapped: 8` beside
+            // `socketsNotOnDiagram` listing five of those eight, with the helper errored and the
+            // file correctly not saved. docs/class-method-tooling.md D1 measured that at ~100 s of
+            // wall clock for ~3 s of LabVIEW, spent proving the tool wrong about its own diagram,
+            // and wrote down the remedy - "socketsNotOnDiagram should not be populated when
+            // nodesSwapped > 0"; NOBODY CHANGED THE CODE, and the same contradiction turned up
+            // again on 2026-09-15 in docs/cold-build-pumpstand.md as `nodesSwapped: 1` for a swap
+            // that matched nothing. Third occurrence of one defect that a four-line fix retires.
+            //
+            // The count is now: nothing landed if the helper errored, because a Replace that fails
+            // leaves its error on the wire and that stops Save.Instrument - so the file on disk is
+            // untouched whatever happened in memory. Otherwise it is the swaps whose socket the
+            // helper actually FOUND. `nodesAsked` keeps the request visible beside it.
+            var nodesSwapped = NodesThatLanded(swapped, present, swaps.Select(s => s.Socket));
+
             JsonNode? targets = null;
             var socketsLeft = -1;
             JsonArray? wiringLost = null;
@@ -428,36 +476,88 @@ internal sealed class SwapTools(LvaiConnection connection)
                 ["viPath"] = Path.GetFullPath(viPath),
                 ["wiringChecked"] = wiringChecked,
                 ["wiringLost"] = wiringLost,
-                ["nodesSwapped"] = swaps.Count,
-                ["constantsSwapped"] = constants.Count,
+                ["nodesSwapped"] = nodesSwapped,
+                ["nodesAsked"] = swaps.Count,
+                ["constantsSwapped"] = swapped ? constants.Count : 0,
                 ["socketsLeft"] = socketsLeft < 0 ? null : socketsLeft,
                 ["socketsNotOnDiagram"] = missing.Count == 0
                     ? null : new JsonArray([.. missing.Select(m => (JsonNode)m!)]),
+                // WHAT IS ON THE DIAGRAM, so a socket that did not match can be corrected without
+                // another round trip. The helper has reported this all along as `node names found`
+                // and it was reachable only inside the swap step's sub-answer - which `verbose:
+                // false` strips - while the note told the reader to take names from it. So the
+                // advice arrived inside the thing it was warning about, the same shape
+                // lvai_aixml_reference section 8 was caught by. Measured 2026-09-15: one extra
+                // turn, on a node whose name had become class-qualified after an earlier swap.
+                ["diagramSubVis"] = present.Count == 0
+                    ? null : new JsonArray([.. present.Select(n => (JsonNode)n!)]),
                 ["callTargets"] = targets,
                 ["helperGenerated"] = helperGenerated,
                 ["errorCode"] = code,
                 ["errorSource"] = source,
+                // 1055 IS NOT AN OPAQUE NUMBER - it is LabVIEW's "no active project", and this
+                // tool cannot work without one because {LV.SubVI} Replace is a SILENT NO-OP
+                // outside the IDE's own application instance. The answer used to report the bare
+                // code beside `Invoke Node in lvai_swap_subvis.vi`, which names the node rather
+                // than the cause and reads like an internal fault.
+                ["errorKind"] = code == "1055" ? "noActiveProject" : null,
                 ["steps"] = steps,
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
-                ["note"] = Note(ok, swapped, missing, socketsLeft, verify),
+                ["note"] = Note(ok, swapped, missing, socketsLeft, verify, code, present),
             });
         });
 
-    private static string Note(bool ok, bool swapped, List<string> missing, int socketsLeft,
-                               bool verify)
+    /// <summary>
+    /// HOW MANY NODES REALLY CHANGED. Three cases, and the first is the one that retires the
+    /// defect: a helper that ERRORED saved nothing, because the error travels down the wire and
+    /// stops <c>Save.Instrument</c>, so the count is zero however many were asked for. Otherwise it
+    /// is the sockets the helper actually FOUND on the diagram. A reply carrying no name list at
+    /// all - an older helper - falls back to the request rather than inventing a zero.
+    /// </summary>
+    internal static int NodesThatLanded(bool swapped, IReadOnlyList<string> present,
+                                        IEnumerable<string> sockets)
     {
+        var asked = sockets.ToList();
+        if (!swapped) return 0;
+        if (present.Count == 0) return asked.Count;
+        return asked.Count(s => present.Contains(s, StringComparer.OrdinalIgnoreCase));
+    }
+
+    internal static string Note(bool ok, bool swapped, List<string> missing, int socketsLeft,
+                               bool verify, string? code, List<string> present)
+    {
+        // WHICH NAMES ARE AVAILABLE, appended wherever a name did not match. The old text said
+        // "take names from `node names found`" and that field is inside the swap step's slimmed
+        // sub-answer, so the reader could not see it - advice pointing at something the answer
+        // hides. They are in `diagramSubVis` now, and named here too.
+        var onDiagram = present.Count == 0 ? ""
+            : " THE DIAGRAM'S OWN NAMES ARE IN `diagramSubVis`: "
+              + string.Join(", ", present.Select(n => $"'{n}'")) + ".";
+
         if (!swapped)
-            return "The helper reported an error and the VI was NOT saved - a Replace that fails " +
-                   "leaves its error on the wire, which also stops Save.Instrument. Read the swap " +
-                   "step's `source`.";
+            return (code == "1055"
+                ? "NO PROJECT IS ACTIVE - Error 1055. {LV.SubVI} Replace is a silent no-op outside "
+                  + "the IDE's own application instance, so the helper cannot reach the VI and the "
+                  + "file was NOT saved. Open the project with lvai_open_file and call again. "
+                  + "MEASURED 2026-09-15: lvai_run_lunit_tests leaves NO active project behind, so "
+                  + "a swap issued straight after a test run lands here every time."
+                : "The helper reported an error and the VI was NOT saved - a Replace that fails "
+                  + "leaves its error on the wire, which also stops Save.Instrument. Read the swap "
+                  + "step's `source`.") + onDiagram;
         if (missing.Count > 0)
             return "The VI was saved, but " + string.Join(", ", missing.Select(m => $"'{m}'")) +
                    " is not among the diagram's subVI names, so the helper's array search answered " +
                    "-1 and Index Array clamped to element 0 - A NODE YOU DID NOT NAME WAS SWAPPED. " +
-                   "Regenerate the VI and swap again with names taken from `node names found`.";
+                   "Regenerate the VI and swap again with a name that is on the diagram. A NODE " +
+                   "ALREADY POINTED AT A CLASS MEMBER CARRIES ITS QUALIFIED NAME - " +
+                   "`Centrifugal Pump.lvclass:Read Last Event.vi`, not `Read Last Event.vi` - " +
+                   "which is what a second swap over the same diagram has to use." + onDiagram;
         if (socketsLeft > 0)
             return $"{socketsLeft} socket name(s) are STILL in LabVIEW's own export of the VI, so " +
-                   "that many swaps did not land. The export is the only proof; read `callTargets`.";
+                   "that many ENTRIES did not land. IT IS NOT A NODE COUNT: it counts swapsJson " +
+                   "entries still present in the export, so one entry naming a repeated socket " +
+                   "reads 1 until the LAST node is swapped. `diagramSubVis` lists the diagram's " +
+                   "names with repetition and is the per-node view." + onDiagram;
         return verify
             ? "Swapped, and verified against LabVIEW's own export: no socket name survives in "
               + "it, and `callTargets` is what the diagram now calls. `wiringLost` is REPORTING "
