@@ -2089,8 +2089,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         // operation is fine on its own; back to back they are not.
         var close = closeProject
             ? await new CloseTools(connection).CloseActiveProjectAsync(
-                helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
-                ct)
+                helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds: timeoutSeconds,
+                ct: ct)
             : null;
 
         // RELEASING THE HELPER FROM MEMORY IS NOT REACHABLE, and the attempt was removed rather
@@ -2201,7 +2201,53 @@ internal sealed class ClassTools(LvaiConnection connection)
             "URL=\"(?<url>[^\"]*)\"\\s*/>",
             match =>
             {
+                // ONLY THE ITEM KINDS OUR OWN TOOLING CREATES. This pass exists to take back out
+                // a VI or a class that we wrote and then deleted - nothing here ever writes a
+                // `Document`, a `Library` or an `LVLibp` entry, so judging one is all risk and no
+                // purpose. Measured 2026-09-15 on two real production projects: the four entries
+                // still being removed after the guards below were a .dll not installed on this
+                // machine, a second .dll, an .exe and a .bat, every one of them `Type="Document"`
+                // and every one a real declared dependency that simply is not present here.
+                // The type comes from LabVIEW's own attribute rather than from guessing at file
+                // extensions, which is the same reason the symbolic guard tests for the angle
+                // bracket instead of listing token names.
+                var type = match.Groups["type"].Value;
+                if (!string.Equals(type, "VI", StringComparison.Ordinal)
+                    && !string.Equals(type, "LVClass", StringComparison.Ordinal))
+                    return match.Value;
+
                 var url = match.Groups["url"].Value.Replace('\\', '/');
+
+                // A URL THIS PASS CANNOT RESOLVE IS ONE IT MUST NOT JUDGE. `File.Exists` answers
+                // `false` for two forms that are perfectly fine, and `false` is what deletes the
+                // entry - so both are skipped rather than resolved. Measured 2026-09-15, against
+                // fixtures taken from real projects on this station rather than invented:
+                //
+                //  - A LabVIEW SYMBOLIC path, `/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass`.
+                //    `<vilib>` is a token LabVIEW expands, not a directory, so Path.Combine
+                //    produces a path that cannot exist - and .NET 8 does NOT throw on the angle
+                //    brackets, it resolves them happily. A three-item probe lost 3 of 3: an LUnit
+                //    project's `Test Case.lvclass` and two `/<vilib>/Utility/error.llb/` VIs, all
+                //    of them required dependencies. Every cold build so far used a freshly created
+                //    project with no such entry, which is why nothing caught it.
+                //  - A UNC path whose server is unreachable. Measured: `File.Exists` on a bogus
+                //    host returns `false` after 1.16 s - no error to catch, and indistinguishable
+                //    from a file that is genuinely gone. An offline share would cost the user
+                //    every entry pointing at it.
+                //
+                // The test is the ANGLE BRACKET itself rather than a list of token names
+                // (`vilib`, `userlib`, `instrlib`, `resource`, …): those are not enumerable from
+                // here, and `<` and `>` are invalid in a Windows filename anyway, so a URL
+                // carrying one is never a local path. Enumerating a vendor's vocabulary is the
+                // mistake `scripts/pylv-place-labels.py` records for node classes.
+                //
+                // The LV_MCP sockets are NOT protected by this: they carry `&lt;userlib&gt;` too,
+                // and the helper pass above has already removed them by the time this runs.
+                if (url.Contains('<')
+                    || url.Contains("&lt;", StringComparison.Ordinal)
+                    || url.StartsWith("//", StringComparison.Ordinal))
+                    return match.Value;
+
                 string resolved;
                 try { resolved = Path.GetFullPath(Path.Combine(projectPath, url)); }
                 catch (Exception failure)
@@ -2212,6 +2258,31 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 if (File.Exists(resolved) || System.IO.Directory.Exists(resolved))
                     return match.Value;
+
+                // A PATH THAT RUNS THROUGH A CONTAINER FILE CANNOT BE CHECKED WITH File.Exists,
+                // AND MOST OF A REAL PROJECT'S ENTRIES DO. LabVIEW addresses a member INSIDE a
+                // packed library, an .llb or a .lvclass as though the container were a directory -
+                // `ZE_BuildHelper.lvlibp/1abvi3w/vi.lib/Utility/error.llb/Clear Errors.vi` - and
+                // every one of those resolves to nothing on disk.
+                //
+                // Measured 2026-09-15 against two real production projects on this station, which
+                // is what found this: with only the symbolic-URL guard above, the pass still
+                // removed 454 of one project's entries and 1261 of the other's. The synthetic
+                // fixture, and all six of this repository's own cold-build projects, were far too
+                // small to show it - the biggest had ONE entry this pass could get wrong.
+                //
+                // So: walk up from the resolved path. An ancestor that exists as a FILE means the
+                // rest of the URL points inside it, and nothing here can see in - skip. An ancestor
+                // that exists as a DIRECTORY means the chain is ordinary and the file really is
+                // missing, which is the case this pass exists for (a class whose work directory
+                // was deleted under it). Finding neither, keep walking.
+                for (var parent = Path.GetDirectoryName(resolved);
+                     parent is { Length: > 0 };
+                     parent = Path.GetDirectoryName(parent))
+                {
+                    if (File.Exists(parent)) return match.Value;
+                    if (System.IO.Directory.Exists(parent)) break;
+                }
 
                 dangling++;
                 names.Add(match.Groups["name"].Value + " (file not there: " + url + ")");
@@ -2415,15 +2486,24 @@ internal sealed class ClassTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// A histogram of <c>NI.ClassItem.Flags</c> across the class's members: <c>0</c> is dynamic
-    /// dispatch and <c>16777216</c> (<c>0x1000000</c>) is static, so <c>{"0": 8}</c> means eight
-    /// members and all of them dynamic.
+    /// A histogram of <c>NI.ClassItem.Flags</c> across the class's members, as raw counts.
     ///
-    /// WHY A HISTOGRAM AND NOT A BOOLEAN. The flag word carries more than dispatch - values of 8
-    /// and 11 have both been seen on real members and what their low bits mean is NOT established
-    /// (docs/lvclass-interfaces.md 3.0.3). Reporting the raw counts says exactly what is on disk
-    /// without asserting a reading of it; the static bit is the only one this repository has
-    /// measured, and its absence is what "all dynamic" rests on.
+    /// THIS IS NOT A DISPATCH READING, AND THE KEY NAME OVERSTATES IT. The head of this comment
+    /// said "<c>0</c> is dynamic dispatch and <c>16777216</c> is static" until 2026-09-15, which is
+    /// the same two-valued table the class-generator agent printed and which does not survive
+    /// contact with a third member kind: a GENERATED OVERRIDE reads <c>33554432</c>
+    /// (<c>0x2000000</c>), measured twice; a genuinely static interface member reads
+    /// <c>1073741832</c> with the <c>0x1000000</c> bit CLEAR; an interface declaration
+    /// <c>1073741824</c>; hand-built dynamic members <c>8</c> and <c>11</c>. LabVIEW writes all of
+    /// them itself. <b>Dispatch is settled by <c>connection=</c> in the VI's export</b> -
+    /// <c>dynamic</c> against <c>required</c> - through <c>lvai_vi_terminals</c>, or
+    /// <c>lvai_convert_vis_to_aixml</c> for a whole class in one call.
+    ///
+    /// WHY THE HISTOGRAM STAYS ANYWAY. What the code does has always been right: it reports the
+    /// raw counts and asserts no reading of them, which is exactly what a value nobody has decoded
+    /// deserves. Only the comment above it drew the conclusion. The key keeps its name because
+    /// two shipped documents quote it and renaming an answer field to fix a comment would break
+    /// readers to no purpose - see docs/cold-build-weighbridge.md 3.
     /// </summary>
     private static JsonNode? DispatchFlagsOnDisk(string lvclassPath)
     {

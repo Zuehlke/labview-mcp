@@ -947,6 +947,17 @@ becomes the wizard's `vi type` - **0 for dynamic, 1 for static** - and the diffe
 | `0` | dynamic |
 | `16777216` (`0x1000000`) | static |
 
+> **RETRACTED AS A DISPATCH TABLE, 2026-09-15.** Both rows above were really measured on wizard
+> accessors built both ways, and they do not generalise one step past that fixture. The word is not
+> a dispatch field: a generated override reads **`33554432`** (`0x2000000`), a genuinely static
+> interface member **`1073741832`** (`0x40000008`) with the `0x1000000` bit CLEAR, an interface
+> declaration `1073741824`, and hand-built dynamic members `8` and `11`. LabVIEW wrote every one of
+> them. Read **`connection=`** out of the VI's export instead — `dynamic` against `required` —
+> through `lvai_vi_terminals` for one VI or `lvai_convert_vis_to_aixml` for a whole class in one
+> call. The table is kept because it is what was measured; it is fenced because four sessions have
+> now tried to make this word answer a question it does not answer.
+> `docs/cold-build-weighbridge.md` §3.
+
 **The obvious place to look is the wrong one.** A dynamic dispatch accessor's own
 `Execution.DynamicDispatch` reads `"0"` in its extracted bundle - checked on a confirmed-correct
 one - so that attribute means something else and taking it for the dispatch marker would report

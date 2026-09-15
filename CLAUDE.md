@@ -722,6 +722,34 @@ and computes the wrong answer, which is strictly worse than the refusal it repla
 `timestampValueDiscarded`: report where the right value is unknowable, repair only where the type
 already decides it. `docs/cold-build-datalogger.md` §2.
 
+**AND THE RULE IS NOT THREE ATTRIBUTES - THE SCHEMA IS CLOSED, AND `ValidateAIXML` NAMES EVERY
+BREACH WHILE `ConvertAIXMLToVI` NAMES NONE.** `docs/cold-build-shakerrig.md` §2 added `outputs` on a
+`<Control>` and `inputs` on an `<Indicator>` as required even when the terminal is UNWIRED - the
+spelling for that case is `outputs="value:"`, the attribute present and the net empty. Widened
+2026-09-15 over eight one-element probes: `<Constant>` needs `outputs` too, and **an attribute the
+schema does not DECLARE costs the whole document wherever it appears** - `foo="bar"` on an otherwise
+legal `<Control>`, or `<FreeLabel text=…>` in place of `comment=`, are each `-2628` with 0 bytes
+written. So a missing attribute and a misspelt one are one fault, not two.
+
+**The practical half: every `-2628` names its own cause on the VALIDATE path.** Measured on the same
+files, 5-8 ms each - `lvai_validate_aixml` returns an `Errors:` block giving the attribute, the line
+and the column (`missing required attribute 'outputs'`, `attribute 'text' is not declared for
+element 'FreeLabel'`), and `lvai_convert_aixml_to_vi` returns the identical error code with that
+block ABSENT. A `-2628` is therefore a mystery only to whoever converted without validating - which
+is a real route, because `lvai_add_class_method` converts without validating on purpose.
+
+**BOTH CHEAP CHECKERS SEE THE MISSING ATTRIBUTE NOW, AND NEITHER LOOKS FOR AN UNDECLARED ONE.**
+`lvai_check_aixml` answers `terminalWithoutNetAttribute` as an ERROR and `fix: true` writes the
+spelling - the empty net where nothing reads the terminal, the real net where exactly one thing
+does, and NOTHING where several do, because there the document does not decide it.
+`scripts/aixml_lint.py` answers `terminal-no-net-attribute`. The undeclared half is deliberately
+left to `ValidateAIXML`: catching it cheaply would need a copy of NI's attribute list per element,
+and a list one entry short REFUSES A WORKING DOCUMENT - worse than the silence it replaces, and not
+something to guess at when the real schema answers in 6 ms. `lvai_convert_aixml_to_vi` now says so
+itself, in a `schemaHint` that appears only on `-2628`. That gap was queued after ShakerRig and the
+NEXT build re-derived the rule from scratch the same afternoon, which is the argument for not
+queueing this kind of thing. `docs/cold-build-conveyorrig.md` §2.
+
 **Author AIXML by writing the file directly.** Passing it through a shell or a string literal eats
 the `\3A` and `\5C` escapes, and the failure arrives disguised as an XML parse error.
 
@@ -890,10 +918,27 @@ and a terminal on one may be typed on another class: write it as
 gaps in the tool until 2026-09-07 — a static member was refused outright, with a unit test passing
 the whole time because it stopped at the argument parse.
 
-**And do NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Three sessions have tried.
+**And do NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Four sessions have tried.
 Measured on this pair: the dynamic member reads `0`, the static one reads `1073741832`, neither
 carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
-`lvai_vi_terminals` is the answer.
+`lvai_vi_terminals` is the answer — or out of a batch `lvai_convert_vis_to_aixml`, which settles a
+whole class in one call for the price of the one `grep` this replaces.
+
+**The fourth attempt was OURS, and it shipped in three documents, an agent and a code comment.**
+Measured 2026-09-15: a generated interface override reads **`33554432`** (`0x2000000`) against `0`
+on all sixteen accessors of the same two classes — a THIRD value, where
+`.claude/agents/labview-class-generator.md` Phase 4 printed a table of two (`0` dynamic,
+`16777216` static) and told the reader to grep for it. So the agent's own verification step
+classified a correct dynamic override as neither, while Phase 2 of the same file said not to read
+the flag at all — **a definition that contradicts itself is worse than either half.** The observed
+value space is `0`, `8`, `11`, `16777216`, `33554432`, `1073741824`, `1073741832`, every one written
+by LabVIEW; it is not a dispatch field at any of them. `docs/lvclass-interfaces.md` had recorded
+`33554432` as "unexplained, no observed consequence" **fifteen days earlier and nothing changed** —
+same shape as `dwarnCount` being halved by hand in prose while the counter kept lying. **When a
+measurement contradicts a table, fix the table**, and check whether the claim also sits in code: it
+did, as `DispatchFlagsOnDisk`'s comment. That one needed no behaviour change — the function returns
+raw counts and asserts nothing, which is exactly right for a value nobody has decoded, and only the
+comment above it drew the conclusion. `docs/cold-build-weighbridge.md` §3.
 
 **AN INTERFACE IS FINISHED — `.lvclass` AND EVERY METHOD — BEFORE THE FIRST CLASS THAT IMPLEMENTS
 IT.** Being scriptable is not the same as being schedulable anywhere, and the ordering is the
@@ -1120,6 +1165,57 @@ copy over it — **both class entries gone**, and `lvai_create_accessors` answer
 `classPathsSeen` listing only the one class LabVIEW still knew about. **So CLOSE THE PROJECT BEFORE
 ANY `lvai_create_class` OR `lvai_create_interface`**: those two edit the `.lvproj` directly, so
 nothing may be holding it. `docs/cold-build-thermostat.md` §2.
+
+**AND THE SWEEP THAT TIDIES THE PROJECT WAS DELETING REAL DEPENDENCY ENTRIES — found and fixed
+2026-09-15 while trying to add it to a THIRD call site.** `StripHelperItems` removes any
+self-closing `<Item …/>` whose URL does not resolve to a file, and it resolves with
+`Path.Combine(projectPath, url)`. **That arithmetic is right** — a `.lvproj` URL is relative to the
+project FILE treated as a directory, verified on a real project where a class one folder down reads
+`URL="../LoadCell/LoadCell.lvclass"`, the same convention as a `.lvclass` parent link. What is not a
+path at all is a **LabVIEW SYMBOLIC URL**: `/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass` is how a
+project lists LUnit, and `/&lt;vilib&gt;/Utility/error.llb/…` is how it lists half of `vi.lib`.
+**.NET 8 does not throw on the angle brackets** — it resolves them, `File.Exists` says false, and the
+entry goes. A three-item probe built from real lines lost **3 of 3**. Live in `lvai_create_class`'s
+`projectEntry` and the Caraya runner's ever since — and `FilterBench`, `ValveRig` and `KilnRig` each
+carry that LUnit entry **right now**, surviving only because no sweep happened to run after it was
+added. An **unreachable UNC path** is the same shape: `false` after 1.16 s, no exception,
+indistinguishable from a deleted file. Both are skipped on the **angle bracket itself** rather than a
+list of `vilib`/`userlib`/`instrlib` token names, because a vendor's vocabulary is not enumerable
+from here and `<` is an invalid filename character anyway.
+
+**AND THAT FIX WAS NOWHERE NEAR ENOUGH — verifying it against REAL projects is what showed it.** Run
+read-only over six `.lvproj` files on this station, two of them production-sized, the pre-fix pass
+would have deleted **783** and **2447** entries; with the symbolic guard alone, still **454** and
+**1261**. Two more forms, neither visible in a small project:
+
+- **A URL running through a CONTAINER FILE.** LabVIEW addresses a member inside a packed library as
+  if it were a directory — `ZE_BuildHelper.lvlibp/1abvi3w/vi.lib/Utility/error.llb/Clear Errors.vi`
+  — and a `.lvlibp` is a **file**, as is an `.llb`, as is a `.lvclass` holding `Member.vi`. That was
+  the bulk of both counts. Walk up from the resolved path: an ancestor existing as a **file** means
+  the rest is inside a container and cannot be seen into; one existing as a **directory** means the
+  chain is ordinary and the file really is gone, which is the case the pass exists for.
+- **The ITEM KIND.** The four still going after that were a `.dll` not installed here, a second
+  `.dll`, an `.exe` and a `.bat` — every one `Type="Document"`, every one a real declared
+  dependency. Judge only `VI` and `LVClass`, the kinds we create, and take the kind from **LabVIEW's
+  own attribute** rather than from a file extension. Both production projects then went to **0**.
+
+**This is the fixture lesson with a number on it.** Every guard passed its synthetic test before the
+real projects were tried, and all six cold-build projects were too small to disagree — the largest
+had **one** entry the pass could get wrong, against 2447. **The control is the half that matters**:
+a guard buys safety cheaply by making the pass inert, so the suite asserts an ordinary dangling `VI`
+still goes in the same document that preserves a symbolic URL, a container path and a `Document`.
+
+**AND THE SWEEP BELONGS ON THE CLOSE, NOT ON THE TOOL WHERE THE STRAY IS NOTICED.**
+`lvai_swap_subvis` was blamed for leaving `user.lib\LV_MCP` stubs in a `.lvproj` and it never touches
+the file — it has no `projectPath` at all. LabVIEW adopts every open VI when it **SAVES**, and the
+save is `lvai_close_active_project`'s first step, so that is where the entries appear and the only
+place a sweep can see them. It now takes an optional `projectPath` and reports `projectSweep` with
+the names it removed — and `swept: false` plus the reason when it was given no path, because a step
+that is silent when skipped is one the reader assumes ran. **What it cannot reach it says outright**:
+a VI adopted from a directory OUTSIDE every one of our trees stays, since nothing distinguishes it
+from one the user shares from a sibling folder on purpose, and a rule wide enough to catch it would
+delete those. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
+noticed is not the step that caused it.** `docs/cold-build-weighbridge.md` §3a, §4, §8.
 
 **AND `lvai_generate_mock_class`'s `addToProject` IS THE SAME HAZARD FROM A THIRD SIDE - measured
 2026-09-15.** A mock generated with `addToProject: true` against an open, ACTIVE project writes all
@@ -1521,6 +1617,67 @@ nothing in the MCP contract makes a client strip unknown keys — but **a tool w
 ALL optional needs its own guard for "these arguments ask for nothing"**, because that is the shape
 no argument layer can reach. `docs/tool-argument-errors.md` has both routes side by side.
 
+**AND THE SAME SILENCE LIVES ONE LAYER IN, INSIDE ANY `casesJson`.** The argument wrapper guards a
+tool's **MCP arguments**; a case list arrives as a JSON STRING it never inspects, so an unknown key
+there was exactly as silent as an undeclared argument used to be. Measured 2026-09-15: two test
+agents independently reached for a plausible `expectFieldValue` on `lvai_generate_method_test`, had
+it discarded, and got **`ok: true`** for a suite whose assertion asserted the OPPOSITE of the one
+asked for — `writeField`+`value` pins that the field SURVIVED the call, and the method under test was
+a `Zero` whose whole job is to overwrite it, so the suite pinned `12.5 == 0`. Both fell back to
+hand-authored AIXML for the one test in each suite that mattered most.
+
+Unknown keys are refused by name there now, with the accepted set listed, and **deliberately not
+folded onto a near miss** — folding is a second behaviour that can itself be wrong, and the measured
+defect is the silence. A **recognised** key with the wrong value kind was the same fault from
+another side: `expectErrorCode` was read only as a JSON number, so a quoted `"-200099"` vanished,
+and every other value in a case IS a string. **Refusing a key that names a real capability would
+only move the cost**, so `expectFieldValue` became a fourth case shape at the same time — fifteen
+lines, because the generator already authored the expected literal and merely reused the written
+constant on purpose, which is right for a round trip and wrong for a method that changes the field.
+The default LABEL had to move with it (`Reading survives Zero` would document the opposite), and a
+Caraya failure body is the literal `"FAIL"`, so the label is very nearly all a reader gets.
+**ALL THREE `casesJson` TOOLS REFUSE AN UNKNOWN KEY NOW** — `lvai_generate_test` accepts
+`label`/`inputs`/`expect`, `lvai_generate_class_test` accepts `field`/`value`/`label`/`type`, and
+the check is **one** implementation, `TestTools.RejectUnknownCaseKeys`, with the method-test tool
+moved onto it. Three copies of one rule drift, and this repository has paid for that already:
+`AixmlCheck.SafeUidBase` and the lint's ceiling disagreed for days while telling readers their
+compliant files were wrong. Two things made the extension safe rather than a new defect. **The
+accepted set was read out of each parser IN FULL, never grepped** — a set one key short refuses a
+legitimate call, which is worse than the silence it replaces, and two grep patterns had already
+given two different answers. And **each refusal carries a hint naming the tool that CAN do the
+thing** (the class-test one points at `expectFieldValue`), because refusing without saying where to
+go only moves the cost. Nothing has been measured going wrong on those two; the rule is applied
+where the same hole exists so the three answer alike. `docs/cold-build-torquebench.md` §4.
+
+**AND A NEW PARAMETER CANNOT BE ACCEPTANCE-TESTED IN THE SESSION THAT ADDED IT.** Measured
+2026-09-15 on `lvai_close_active_project`'s new `projectPath`: seven closes, every one answering
+`reason: "noProjectPathGiven"`, **not one sweep run** — while the DLL carried the new strings and
+the server process had started two minutes AFTER that build. The server was never the problem. A
+client fetches the tool list **once, at session start**, and validates against that copy, so a key
+declared later is stripped before sending and the server sees a call that never had it. Restarting
+the server changes nothing; only a new session re-fetches the schema. Two consequences worth
+carrying: a `reason` naming a missing argument must also say that **a session older than the
+argument cannot send one**, because it is read exactly when someone is already confused; and the
+first diagnosis — "the server process predates the rebuild" — was **refuted by the timestamps while
+recommending the right remedy anyway**, which is the `"only a restart fixes it"` shape all over
+again. Plan the acceptance test for after the restart, and until then say the wiring is untested
+rather than implying it works.
+
+**ACCEPTED in the next session, and the control is the half that made it mean anything.** With the
+client restarted the parameter appeared in the served schema, and three arms settled it: with
+`projectPath` the sweep answered `swept: true` and removed the `<userlib>/LV_MCP` socket by name
+while the `/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass` entry survived a real LabVIEW
+`Save` -> `Close` -> sweep; **without** it a re-added stray SURVIVED, proving the sweep is gated on
+the argument rather than accidentally always-on; and with nothing active it answered
+`nothingWasClosed` and left the file alone. That first arm is also **the first time the `<vilib>`
+data-loss fix has been exercised against a live LabVIEW save** — every earlier check was read-only.
+**Build the fixture out of files that EXIST**: a project entry whose file is missing opens a modal
+search dialog on load, and a modal stops the whole gRPC service, so the dangling case stays in the
+unit tests and never goes in front of a live LabVIEW. The `noProjectPathGiven` note now says
+outright that a session older than the parameter cannot send one — which had been written down as a
+recommendation and changed nothing until it was put in the code.
+`docs/cold-build-torquebench.md` §2.
+
 **The process lesson is bigger than the fix, and it is about how this file is written.**
 `docs/tool-argument-errors.md` had described the 2026-08-27 failure exactly — and ended it *"this
 layer cannot do better on its own"*. **That impossibility claim was an inference, written in the same
@@ -1709,6 +1866,11 @@ literally it argued away 600 usable palette VIs.
 | Does a fix made TODAY survive a build tomorrow, and what did the build find? | `docs/cold-build-pumpstand.md` | — |
 | Does a measurement taken at N=2 generalise to N=3? | `docs/cold-build-kilnrig.md` | — |
 | What does testing a class METHOD cost, and how does Caraya's report differ from LUnit's? | `docs/cold-build-filterbench.md` | — |
+| Do TWO sibling classes behind ONE interface behave, and where do strays come from? | `docs/cold-build-weighbridge.md` | — |
+| Why could a fix made this morning not be tested this afternoon? | `docs/cold-build-torquebench.md` | — |
+| What does a whole AGENT-driven build cost, and what DWarns does it leave? | `docs/cold-build-coolantloop.md` | — |
+| Which attribute is required even on an UNWIRED terminal? | `docs/cold-build-shakerrig.md` | — |
+| Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |

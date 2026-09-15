@@ -390,7 +390,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
         // Release the path. Error 1055 means no project was active, which is the end state wanted.
         var closeJson = await new CloseTools(connection).CloseActiveProjectAsync(
-            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds: timeoutSeconds,
             ct: ct);
         var close = JsonNode.Parse(closeJson)?.AsObject();
         steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = close?.DeepClone() });

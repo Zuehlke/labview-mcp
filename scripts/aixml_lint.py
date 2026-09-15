@@ -855,6 +855,70 @@ def check_property_nodes(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+def check_net_attributes(elements: list[_El]) -> list[Finding]:
+    """A Control or Constant must carry `outputs`, an Indicator `inputs` - WIRED OR NOT.
+
+    The same -2628 family as a missing `value`, one attribute over. Measured as one-element
+    documents differing in nothing else (docs/cold-build-shakerrig.md section 2 for Control and
+    Indicator, docs/cold-build-conveyorrig.md section 2 widening it to Constant):
+
+        Control   no outputs   Error -2628, 0 bytes    Control  outputs=...  errorCode 0, 3792 bytes
+        Indicator no inputs    Error -2628, 0 bytes
+        Constant  no outputs   Error -2628, 0 bytes    Constant outputs=...  errorCode 0, 3584 bytes
+
+    An UNWIRED terminal is the normal case - an interface declaration passes its class wire
+    through and leaves the payload alone - and its spelling is the attribute present with an
+    EMPTY net, `outputs="value:"`, measured on all three kinds in one document at 4216 bytes.
+    That spelling is deliberately not flagged by check_terminal_lists, which counts empty
+    ENTRIES and sees one non-empty entry here; the two rules were read together rather than
+    assumed compatible.
+
+    ValidateAIXML names this fault with a line and a column, which the missing-`value` case
+    does not get - so the round trip is cheap. It is here because a real route converts WITHOUT
+    validating: lvai_add_class_method does it on purpose, the validator being genuinely
+    stricter for a class wire.
+    """
+    required = {"Control": "outputs", "Constant": "outputs", "Indicator": "inputs"}
+    #: Every net the document mentions, by the uid it names, so an unwired terminal can be told
+    #: apart from one whose net something already reads.
+    by_uid: dict[str, set[str]] = {}
+    for e in elements:
+        for attr in ("inputs", "outputs"):
+            raw = e.el.get(attr)
+            if not raw:
+                continue
+            for entry in split_unescaped(raw, ","):
+                _, _, net = entry.partition(":")
+                if "." in net:
+                    by_uid.setdefault(net.split(".", 1)[0], set()).add(net)
+
+    findings: list[Finding] = []
+    for e in elements:
+        attr = required.get(e.tag)
+        if attr is None or e.el.get(attr) is not None:
+            continue
+        nets = sorted(by_uid.get(e.uid or "", set()))
+        if not nets:
+            spelling = f'{attr}="value:"  (the attribute must be there, the net behind it need not)'
+        elif len(nets) == 1:
+            spelling = f'{attr}="value:{nets[0]}"  ({nets[0]} is already read elsewhere here)'
+        else:
+            spelling = f'{attr}="value:<one of {", ".join(nets)}>"'
+        findings.append(
+            Finding(
+                "error",
+                "terminal-no-net-attribute",
+                e.uid,
+                e.label(),
+                e.path,
+                f"{e.tag} has no `{attr}` attribute. ConvertAIXMLToVI refuses the WHOLE "
+                f"document for this - Error -2628, nothing written - even when the terminal "
+                f"is deliberately unwired. Write {spelling}.",
+            )
+        )
+    return findings
+
+
 def check_terminal_lists(elements: list[_El]) -> list[Finding]:
     """An inputs=/outputs= attribute must be absent rather than empty or ragged.
 
@@ -1319,6 +1383,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_type_grammar(elements)
     findings += check_property_nodes(elements)
     findings += check_terminal_lists(elements)
+    findings += check_net_attributes(elements)
     findings += check_types(elements)
     findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.code, f.uid or ""))
     return findings

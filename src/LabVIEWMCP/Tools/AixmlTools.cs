@@ -312,12 +312,25 @@ internal sealed class AixmlTools(LvaiConnection connection)
         That one matters most in a generated round-trip test, which authors the written value and
         the expected value in one document: both vanish, and the assertion then compares empty with
         empty and PASSES while pinning nothing.
+        AND ONE MORE, measured 2026-09-15: the NET attribute is required too, and on an UNWIRED
+        terminal as much as a wired one - `outputs` on a Control or a Constant, `inputs` on an
+        Indicator. Same -2628, same whole-document loss, one attribute over. An interface
+        declaration passes its class wire through and leaves the payload alone, so its own payload
+        terminals are deliberately unwired and this is their normal shape; the spelling is the
+        attribute present with an EMPTY net, `outputs="value:"`.
+        WHAT THIS DOES NOT CHECK, and will not: an attribute the schema does not DECLARE at all -
+        `text` on a FreeLabel where the name is `comment`. Same -2628, but catching it cheaply
+        needs a copy of NI's attribute list per element, and a list one entry short would refuse a
+        WORKING document. ValidateAIXML names that one with a line and a column in about 6 ms,
+        which is the right place for it.
         WHAT `fix: true` WILL NOT DO is as deliberate as what it will. It writes the type's literal
         for a Control or an Indicator, whose value is a default state the type decides - and leaves
         a CONSTANT alone, naming it, because there the literal is the DATA: an author who omitted it
         may have meant 42, and writing 0 turns a document that refuses to convert into one that
         converts and computes the wrong answer. The discarded timestamp is likewise reported and
-        never repaired, since no non-empty timestamp literal exists to correct it to.
+        never repaired, since no non-empty timestamp literal exists to correct it to. A missing NET
+        attribute is repaired only where the document decides it: the empty net when nothing reads
+        the terminal, the real net when exactly ONE thing does, and nothing at all when several do.
         WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
         are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
         failures off the round trip; lvai_validate_aixml is still required.
@@ -460,6 +473,32 @@ internal sealed class AixmlTools(LvaiConnection connection)
     /// The pre-check reduced to what belongs in another tool's answer: nothing at all when the file
     /// is clean, so a passing call is not made noisier by a check that found nothing.
     /// </summary>
+    /// <summary>
+    /// What to do about a <c>-2628</c>, said where it is read rather than in a document.
+    ///
+    /// MEASURED 2026-09-15 over eight one-element probes: <c>ValidateAIXML</c> answers this error
+    /// with an <c>Errors:</c> block naming the attribute, the line and the column - <c>missing
+    /// required attribute 'outputs'</c>, <c>attribute 'text' is not declared for element
+    /// 'FreeLabel'</c> - in 5 to 8 ms, and <c>ConvertAIXMLToVI</c> answers the SAME error code with
+    /// that block absent. So every <c>-2628</c> names its own cause on one path and none of them do
+    /// on the other, and a caller who converted without validating is left with "an error occurred
+    /// while parsing the document" over a file that is perfectly well-formed XML.
+    ///
+    /// That is not a hypothetical route: <c>lvai_add_class_method</c> converts without validating
+    /// ON PURPOSE, the validator being genuinely stricter for a class wire, and it is exactly where
+    /// docs/cold-build-datalogger.md §2 paid to diagnose a missing <c>value</c> by hand.
+    /// </summary>
+    private static JsonNode? SchemaHint(int errorCode) => errorCode != -2628 ? null
+        : JsonValue.Create(
+            "-2628 is a SCHEMA refusal, not a quoting or encoding problem: the whole document was "
+            + "rejected and nothing was written. This call cannot say which attribute, but "
+            + "lvai_validate_aixml on the same file answers in about 6 ms with the attribute, the "
+            + "line and the column. Run it before changing anything. The three commonest causes "
+            + "are a missing `value`, a missing `outputs` on a Control or Constant or `inputs` on "
+            + "an Indicator - required even when the terminal is unwired, spelled `outputs=\"value:\"` "
+            + "- and an attribute the schema does not declare at all, such as `text` on a FreeLabel "
+            + "where the name is `comment`.");
+
     internal static JsonNode? PreCheckIfInteresting(string aixmlPath)
     {
         var answer = PreCheck(aixmlPath);
@@ -597,6 +636,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  // method - convert WITHOUT validating, because ValidateAIXML is stricter than the
                  // converter for a class wire - so nothing else looks at the file at all.
                  ("preCheck", PreCheckIfInteresting(aiXmlFilePath)),
+                 ("schemaHint", SchemaHint(response.ErrorCode)),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
 

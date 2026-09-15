@@ -281,7 +281,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             {
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds: timeoutSeconds, ct: ct);
                 prologue.Add(new JsonObject
                 {
                     ["order"] = ++order,

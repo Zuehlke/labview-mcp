@@ -616,6 +616,27 @@ def test_measured_against_labview(directory: str) -> None:
          '<Indicator _name="b" type="double" inputs="value:4200.value" value="0" uid="4300" '
          'uid_parent="root"/>',
          "clean", None),
+        # THE NET ATTRIBUTE, one over from `value` and the same -2628 family. Required even when
+        # the terminal is UNWIRED, which is the normal shape of an interface declaration.
+        # Measured over one-element documents: docs/cold-build-shakerrig.md section 2 for Control
+        # and Indicator, docs/cold-build-conveyorrig.md section 2 widening it to Constant.
+        ("an unwired Control with no outputs attribute",
+         '<Control _name="a" type="double" value="0" uid="4200" uid_parent="root"/>',
+         "error", "terminal-no-net-attribute"),
+        ("an unwired Indicator with no inputs attribute",
+         '<Indicator _name="b" type="double" value="0" uid="4300" uid_parent="root"/>',
+         "error", "terminal-no-net-attribute"),
+        ("an unwired Constant with no outputs attribute",
+         '<Constant _name="c" type="double" value="0" uid="4400" uid_parent="root"/>',
+         "error", "terminal-no-net-attribute"),
+        # THE CONTROL ARM, and the one that decides whether the rule is safe: the EMPTY-NET
+        # spelling is what an unwired terminal looks like, and LabVIEW wrote 4216 bytes for a
+        # document carrying all three of these. Flagging it would refuse working code.
+        ("the empty-net spelling on all three kinds - ACCEPTED",
+         '<Control _name="a" type="double" value="0" uid="4200" uid_parent="root" outputs="value:"/>'
+         '<Indicator _name="b" type="double" value="0" uid="4300" uid_parent="root" inputs="value:"/>'
+         '<Constant _name="c" type="double" value="0" uid="4400" uid_parent="root" outputs="value:"/>',
+         "clean", None),
         ("a leading comma - ACCEPTED",
          NODE.format(attr='outputs=",path:4200.path"') +
          '<Indicator _name="p" type="path" value="" inputs="value:4200.path" uid="4300" '

@@ -107,6 +107,7 @@ internal static class AixmlCheck
         CheckEnums(root, findings);
         CheckTerminalWireRules(root, findings);
         CheckIndicatorValues(root, findings);
+        CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
         CheckReservedRange(elements, findings);
 
@@ -169,6 +170,89 @@ internal static class AixmlCheck
                       + "constant the literal is the DATA rather than a default state, so writing "
                       + "the type default would convert cleanly and compute the wrong answer."
                     : ""),
+                uid));
+        }
+    }
+
+    /// <summary>
+    /// The NET attribute a terminal or constant must carry: <c>outputs</c> on a
+    /// <c>&lt;Control&gt;</c> or <c>&lt;Constant&gt;</c>, <c>inputs</c> on an
+    /// <c>&lt;Indicator&gt;</c>. THE SAME <c>-2628</c> FAMILY AS THE MISSING <c>value</c>, one
+    /// attribute over, and required EVEN WHEN THE TERMINAL IS UNWIRED.
+    ///
+    /// MEASURED as one-element documents differing in nothing but the attribute -
+    /// <c>docs/cold-build-shakerrig.md</c> §2 for Control and Indicator,
+    /// <c>docs/cold-build-conveyorrig.md</c> §2 widening it to Constant:
+    ///
+    ///     Control  no outputs   Error -2628, 0 bytes     Control  outputs=…   errorCode 0, 3792 bytes
+    ///     Indicator no inputs   Error -2628, 0 bytes
+    ///     Constant no outputs   Error -2628, 0 bytes     Constant outputs=…   errorCode 0, 3584 bytes
+    ///
+    /// AN UNWIRED TERMINAL IS THE NORMAL CASE, not an exotic one: an interface declaration passes
+    /// its class wire and error cluster through and leaves the payload alone, so its own payload
+    /// control and indicator are deliberately unwired. The spelling for that is the attribute
+    /// present with an EMPTY net - <c>outputs="value:"</c> - measured on all three kinds in one
+    /// document, 4 216 bytes, and accepted by <c>scripts/aixml_lint.py</c>'s terminal-list rule,
+    /// which counts empty ENTRIES and sees one non-empty one here.
+    ///
+    /// WHY THIS IS IN A CHEAP CHECKER AT ALL, given that <c>ValidateAIXML</c> names it outright
+    /// with a line and a column in 5-8 ms: because a real route converts WITHOUT validating.
+    /// <c>lvai_add_class_method</c> does it on purpose - the validator is genuinely stricter for a
+    /// class wire - and that is where the missing-<c>value</c> case cost a diagnosis. This costs
+    /// 0.05 ms and no LabVIEW.
+    /// </summary>
+    private static void CheckNetAttributes(XElement root, List<Finding> findings)
+    {
+        // Every net any element mentions, so the repair can tell an unwired terminal from one whose
+        // attribute is missing while something already reads its net. Both halves of a
+        // `terminal:net` pair matter here only for the net, which is the part after the colon.
+        var referenced = root.DescendantsAndSelf()
+            .SelectMany(e => new[] { (string?)e.Attribute("inputs"), (string?)e.Attribute("outputs") })
+            .Where(list => list is { Length: > 0 })
+            .SelectMany(list => list!.Split(','))
+            .Select(entry => entry.Split(':', 2))
+            .Where(parts => parts.Length == 2 && parts[1].Length > 0)
+            .Select(parts => parts[1])
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            var kind = element.Name.LocalName;
+            var attribute = kind switch
+            {
+                "Control" or "Constant" => "outputs",
+                "Indicator" => "inputs",
+                _ => null,
+            };
+            if (attribute is null || element.Attribute(attribute) is not null) continue;
+
+            var name = element.Attribute("_name")?.Value ?? kind;
+            var uid = (string?)element.Attribute("uid");
+            var nets = uid is { Length: > 0 }
+                ? referenced.Where(net => net.StartsWith(uid + ".", StringComparison.Ordinal))
+                            .Distinct(StringComparer.Ordinal).ToList()
+                : [];
+
+            var spelling = nets.Count switch
+            {
+                0 => $"{attribute}=\"value:\"",
+                1 => $"{attribute}=\"value:{nets[0]}\"",
+                _ => $"{attribute}=\"value:<one of {string.Join(", ", nets)}>\"",
+            };
+
+            findings.Add(new Finding(Severity.Error, "terminalWithoutNetAttribute",
+                $"{kind} \"{name}\" has no `{attribute}` attribute. ConvertAIXMLToVI refuses the "
+                + "WHOLE document for this - `Error -2628, An error occurred while parsing the "
+                + "document` - and writes nothing, even when the terminal is deliberately unwired. "
+                + $"Write {spelling}"
+                + (nets.Count == 0
+                    ? " - the attribute must be there, the net behind it need not."
+                    : nets.Count == 1
+                        ? $", because \"{nets[0]}\" is already read elsewhere in this document."
+                        : " - several nets in this document name this uid, so which one belongs "
+                          + "here is the author's call and nothing is repaired.")
+                + " ValidateAIXML names this one with a line and a column; ConvertAIXMLToVI does "
+                + "not, which is why it is worth catching before either.",
                 uid));
         }
     }
@@ -507,6 +591,21 @@ internal static class AixmlCheck
                           .Where(e => (string?)e.Attribute("uid") is { Length: > 0 })
                           .ToList();
 
+        // Which nets this document already mentions, grouped by the uid they name. The net is the
+        // half after the colon in a `terminal:net` entry; `<uid>.<terminal>` is the convention every
+        // generator follows, and the prefix is all that is needed to tell an unwired terminal from
+        // one somebody is already reading.
+        var netsByUid = root.DescendantsAndSelf()
+            .SelectMany(e => new[] { (string?)e.Attribute("inputs"), (string?)e.Attribute("outputs") })
+            .Where(list => list is { Length: > 0 })
+            .SelectMany(list => list!.Split(','))
+            .Select(entry => entry.Split(':', 2))
+            .Where(parts => parts.Length == 2 && parts[1].Contains('.'))
+            .Select(parts => parts[1])
+            .Distinct(StringComparer.Ordinal)
+            .GroupBy(net => net[..net.IndexOf('.')], StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+
         // Numbering starts clear of everything already present, so a new number can never collide
         // with one the author chose - the same rule SymbolicUids uses, for the same reason.
         var highest = withUid
@@ -629,6 +728,36 @@ internal static class AixmlCheck
                 + $"`value`; set to \"{literal}\" for type {type}. Without it ConvertAIXMLToVI "
                 + "refuses the whole document with Error -2628 and writes nothing.",
                 (string?)terminal.Attribute("uid")));
+        }
+
+        // A MISSING NET ATTRIBUTE IS REPAIRED ONLY WHERE THE DOCUMENT DETERMINES IT, which is both
+        // of the cases that can actually arise. Nothing references the element's uid: the terminal
+        // is unwired and the spelling is the empty net, measured. Exactly one net does: that is the
+        // net, and writing anything else would leave a reader dangling. SEVERAL nets naming one uid
+        // is left alone and named - picking one would be a guess, and the same reasoning keeps the
+        // repair off a Constant's `value`.
+        foreach (var element in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName is "Control" or "Constant" or "Indicator")
+                     .ToList())
+        {
+            var attribute = element.Name.LocalName == "Indicator" ? "inputs" : "outputs";
+            if (element.Attribute(attribute) is not null) continue;
+
+            var uid = (string?)element.Attribute("uid");
+            var nets = uid is { Length: > 0 }
+                ? netsByUid.TryGetValue(uid, out var found) ? found : []
+                : [];
+            if (nets.Count > 1) continue;
+
+            var net = nets.Count == 1 ? nets[0] : "";
+            element.SetAttributeValue(attribute, $"value:{net}");
+            repairs.Add(new Repair("terminalWithoutNetAttribute",
+                $"{element.Name.LocalName} \"{element.Attribute("_name")?.Value ?? "terminal"}\" "
+                + $"had no `{attribute}`; set to \"value:{net}\""
+                + (net.Length == 0 ? " - the unwired spelling." : ".")
+                + " Without it ConvertAIXMLToVI refuses the whole document with Error -2628 and "
+                + "writes nothing.",
+                uid));
         }
 
         // NOTHING REPAIRED MEANS NOTHING RESERIALISED. Handing back a re-rendered document would

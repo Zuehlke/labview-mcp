@@ -486,4 +486,41 @@ public sealed class GenerateClassTestTests
             "these uids sit in LabVIEW's reserved range and cost two log lines each per "
             + "generation: " + string.Join(", ", low));
     }
+
+    /// <summary>
+    /// AN UNKNOWN CASE KEY IS REFUSED BY NAME HERE TOO, and the hint points at the tool that can
+    /// actually do what the stray key was reaching for. This tool does ONE ROUND TRIP per field;
+    /// "the value the field should hold after a method ran" is lvai_generate_method_test's
+    /// <c>expectFieldValue</c>, which is exactly the key two agents invented on 2026-09-15.
+    /// </summary>
+    [Theory]
+    [InlineData("""[{"field":"Hersteller","value":"Fluke","expectFieldValue":"0"}]""")]
+    [InlineData("""[{"field":"Hersteller","value":"Fluke","readField":"Hersteller"}]""")]
+    [InlineData("""[{"field":"Hersteller","value":"Fluke","Type":"string"}]""")]
+    public void AnUnknownCaseKeyIsRefused(string json)
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => TestTools.ClassCaseRequest.ParseAll(json));
+
+        Assert.Contains("Accepted:", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("field", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// THE CONTROL. Both documented shapes - the bare pair and the fully specified case - must
+    /// still parse, or the guard has bought its safety by refusing the tool's own examples.
+    /// </summary>
+    [Fact]
+    public void TheDocumentedCaseShapesAreUnchanged()
+    {
+        var bare = TestTools.ClassCaseRequest.ParseAll(
+            """[{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]""");
+        Assert.Equal(2, bare.Count);
+        Assert.Null(bare[0].Type);
+
+        var full = TestTools.ClassCaseRequest.ParseAll(
+            """[{"field":"Phasenzahl","value":"3","type":"int32","label":"drei Phasen"}]""");
+        Assert.Equal("int32", full[0].Type);
+        Assert.Equal("drei Phasen", full[0].Label);
+    }
 }
