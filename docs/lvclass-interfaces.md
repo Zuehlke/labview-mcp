@@ -211,8 +211,11 @@ dynamic dispatch. Four traps came with it:
 - **An override's wire rules must match the parent's.** AIXML terminals come out as rule **1**
   (optional); NI's wizard makes rule **2** (recommended). A mismatch is `Error 1003`, not
   executable. `SetWireRule(…, 2)` on the pane fixed it.
-- `HasThrall` is **not** the dynamic dispatch marker — `Read Name.vi` has `HasThrall="0"`. The
-  marker is flag bit `0x8000`; static dispatch reads `0x1000000` in `NI.ClassItem.Flags`.
+- `HasThrall` is **not** the dynamic dispatch marker — `Read Name.vi` has `HasThrall="0"`. ~~The
+  marker is flag bit `0x8000`; static dispatch reads `0x1000000` in `NI.ClassItem.Flags`.~~
+  **The struck half is wrong and §3.0.3 of this same file already measured it so** — a static
+  interface member reads `1073741832` with `0x1000000` CLEAR, and a generated override reads
+  `33554432`. Read `connection=` from the export: `dynamic` against `required`.
 
 > ## ✅ §3 WORKS — AND ONLY IN THE SAVE ORDER BELOW. A RESOLVED DEFECT, KEPT BECAUSE IT COST TWO RUNS
 >
@@ -496,6 +499,15 @@ the next experiment, not a conclusion.
 
 Also unexplained: LabVIEW writes `NI.ClassItem.Flags = 33554432` (`0x2000000`) onto generated
 overrides by itself. NI's own overrides in `Basic Interfaces` carry `0`. No observed consequence.
+
+**REPRODUCED 2026-09-15 on two overrides of two unrelated classes, and it had a consequence after
+all — not in LabVIEW, in this repository.** `.claude/agents/labview-class-generator.md` Phase 4 was
+still printing a two-valued dispatch table (`0` dynamic, `16777216` static) while this paragraph sat
+here recording a third value, so the agent's own verification step classified a correct dynamic
+override as neither. The paragraph was right and changed nothing for fifteen days — the same shape
+as `dwarnCount` being halved by hand in prose while the counter kept lying. **When a measurement
+contradicts a table, fix the table.** Both are corrected; the full observed value space is in that
+Phase 4 step and in `docs/cold-build-weighbridge.md` §3.
 
 ### 3.2 Overrides need their own subfolder
 

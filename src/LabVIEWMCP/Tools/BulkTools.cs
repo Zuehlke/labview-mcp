@@ -655,7 +655,7 @@ internal sealed class BulkTools(LvaiConnection connection)
     private async Task<JsonObject> CloseStepAsync(int timeoutSeconds, CancellationToken ct)
     {
         var answer = await new CloseTools(connection).CloseActiveProjectAsync(
-            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds: timeoutSeconds, ct: ct);
 
         // 1055 is "no project was active", which is the desired end state, not a problem.
         var code = ErrorCode(answer);

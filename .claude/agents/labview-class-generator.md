@@ -261,10 +261,11 @@ it again.
    - A terminal typed on ANOTHER class is an object rather than a bare name:
      `"classTerminals":["obj in","obj out",{"terminal":"Engine in","class":"C:\x\Engine.lvclass"}]`.
 
-   **DO NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Three sessions have tried.
+   **DO NOT read `NI.ClassItem.Flags` to tell dispatch from static.** Four sessions have tried.
    Measured on one such pair: the dynamic member reads `0`, the static one `1073741832`, neither
-   carries the static bit `0x1000000`, and LabVIEW wrote both itself. `connection=` from
-   `lvai_vi_terminals` is the answer.
+   carries the static bit `0x1000000`, and LabVIEW wrote both itself. A generated override reads
+   a third thing again, `33554432`. `connection=` from `lvai_vi_terminals`, or out of a batch
+   export, is the answer — the full value space is in Phase 4.
 
 6. **An interface member CANNOT call the parent through `Call Parent Class Method` in AIXML.** The
    node name is recognised, but it exposes no terminals for a VI that is not yet a class member, so
@@ -310,9 +311,25 @@ interface declares or the whole class is `Error 1003`. Measured with the require
 set and cleared — the requirement holds either way, so do not describe that flag as what enforces it.
 
 So from the moment a class is created against an interface that declares methods, that class is
-**not executable** until Phase 2a has run. Nothing may run against it in between: not the typedef
-binding, not the accessor wizard. That is why overrides come first and accessors last, and it is not
-a stylistic preference.
+**not executable** until Phase 2a has run. That is why the overrides come as early as they can, and
+it is not a stylistic preference.
+
+**BUT "accessors last" IS UNSATISFIABLE FOR AN OVERRIDE THAT READS ITS OWN FIELDS — and that is the
+common shape.** This passage used to continue *"Nothing may run against it in between: not the
+typedef binding, not the accessor wizard"*, which cannot be obeyed at all when the override reaches
+its fields through `lvai_placeholder_subvi`: the placeholder **clones the accessor's pane**, so there
+has to be an accessor to clone. Measured 2026-09-15 on `C:\temp\ShakerRig` — accessors first, then
+overrides, green end to end, and cloning a pane from an `eBad` accessor worked.
+
+| the override takes its inputs… | order |
+|---|---|
+| on the **connector pane** | Phase 2a, then Phase 3 — as written above |
+| by **reading its own fields** | **Phase 3 first, then Phase 2a** — and say so in your report |
+
+The detour through `eBad` is safe and self-healing: all 14 accessors of that build read `execState 0`
+while the override was missing and went to `1` the moment it landed, with nothing else changed. What
+has NOT been measured on an `eBad` class is the typedef binding of Phase 2b — keep that after the
+overrides either way.
 
 **Do NOT go back and add a method to an interface after its implementers are built.** It breaks all
 of them at once, and each then needs its override before anything works again. Settle the interface's
@@ -345,14 +362,15 @@ parent** → add it first. **The project DOES list it** → something is still h
 memory, which is a bug, not a workflow step: that exact case was a leaked refnum in the helper, and
 the answer names it. Report it rather than restarting your way past it.
 
-### Phase 2a — The interface overrides, IMMEDIATELY after the classes
+### Phase 2a — The interface overrides, immediately after the classes — OR after Phase 3
 
 Skip this phase entirely when no interface declares a method.
 
 Otherwise every class created in Phase 2 against such an interface is `Error 1003` right now, and it
-stays that way until it overrides **every** method its interfaces declare. Do that here, before
-anything else touches the class — the typedef binding of Phase 2b and the accessor wizard of Phase 3
-both run against the class, and neither should be asked to work on one that is not executable.
+stays that way until it overrides **every** method its interfaces declare. Do that here, before the
+typedef binding of Phase 2b — **unless an override reads its own fields**, in which case Phase 3 runs
+first and this phase clears the `eBad` afterwards. The table at the end of Phase 1b decides which,
+and the accessor wizard demonstrably works on a class that is not yet executable.
 
 Same route as the interface methods themselves, §3 of `docs/lvclass-interfaces.md`, with one addition
 that is easy to miss and produces the same `Error 1003` you are trying to clear:
@@ -369,8 +387,11 @@ that is easy to miss and produces the same `Error 1003` you are trying to clear:
 - Derive the override FROM the parent method you just built rather than authoring it independently.
   The panes must agree, and copying the one you have is the cheap way to guarantee that.
 
-Verify by running: read `Execution:State` on each override and on the class, and report both. A class
-that is still `Error 1003` here must not be carried into Phase 3 — say so and stop.
+Verify by running: read `Execution:State` on each override and on the class, and report both. **Every
+member must read `1` once this phase is done** — that is the check, in either order. In the
+overrides-first order a class still at `Error 1003` must not be carried into Phase 3: say so and stop.
+In the accessors-first order the accessors were *expected* to be `eBad` until now, so read them again
+here and stop if any of them stayed at `0`.
 
 ### Phase 2b — Typedef fields, BEFORE the accessors
 
@@ -475,20 +496,36 @@ A child class gets accessors for **its own** fields only. It inherits the parent
    2026-08-28 it reported its own name, i.e. inheriting from itself, which two runs of this agent
    caught and flagged.
 2. **Confirm the dispatch, because `describe_class` reports `dynamicDispatch: null`** — the class
-   file does not carry it under that name. Read `NI.ClassItem.Flags` instead:
+   file does not carry it under that name. **Read `connection=` per terminal**, which is what
+   actually says it:
 
-   | `NI.ClassItem.Flags` | dispatch |
-   |---|---|
-   | `0` | dynamic |
-   | `16777216` (`0x1000000`) | static |
-
-   ```bash
-   grep -o 'NI.ClassItem.Flags" Type="Int">[0-9]*' Haus.lvclass | sort | uniq -c
+   ```
+   lvai_convert_vis_to_aixml   <- one call, every member, then read connection= in the exports
+   lvai_vi_terminals           <- one VI at a time, when you only need one
    ```
 
-   The obvious place to look is the wrong one: a dynamic accessor's own
-   `Execution.DynamicDispatch` reads `"0"`, so it is not the marker and would report every
-   accessor as static.
+   A dynamic dispatch terminal reads `connection="dynamic"`; a static one reads `required`.
+
+   **DO NOT read `NI.ClassItem.Flags`, and do not let a table tempt you back.** This step used to
+   print one saying `0` = dynamic and `16777216` (`0x1000000`) = static, contradicting the rule in
+   Phase 2 of this same file. It is not a dispatch field, and the observed value space is nothing
+   like two-valued — every one of these was written by LabVIEW itself:
+
+   | observed | on what |
+   |---|---|
+   | `0` | dynamic accessors; and NI's OWN overrides in `Basic Interfaces` |
+   | `8`, `11` | dynamic members of a hand-built hierarchy |
+   | `16777216` (`0x1000000`) | recorded 2026-08-28 for static wizard accessors — the only sighting |
+   | `33554432` (`0x2000000`) | **generated overrides**, measured 2026-08-31 and again 2026-09-15 |
+   | `1073741824` (`0x40000000`) | interface declarations in `Basic Interfaces` |
+   | `1073741832` (`0x40000008`) | a genuinely STATIC interface member |
+
+   So a table of two values classifies a generated override — `33554432`, dynamic, confirmed by
+   `connection=` — as neither, and four sessions have now tried to make this word answer the
+   question. It does not.
+
+   The other obvious place is wrong too: a dynamic accessor's own `Execution.DynamicDispatch`
+   reads `"0"`, so it is not the marker and would report every accessor as static.
 3. Read the `.lvproj` and confirm it lists every class and **no stray VIs**. Any item whose URL
    points into `%TEMP%\LabVIEWMCP` is a helper LabVIEW adopted; it should already be gone.
 
@@ -634,8 +671,9 @@ State, in this order:
 2. The **hierarchy**, and for each child the `inheritsFrom` you read back — not the one you asked
    for.
 3. Paths: every `.lvclass`, the `.lvproj`, and whether this run created the project.
-4. **Accessor count and dispatch**, with the `NI.ClassItem.Flags` evidence, not "dynamic dispatch
-   as requested".
+4. **Accessor count and dispatch**, with the `connection=` evidence out of the exports, not
+   "dynamic dispatch as requested" — and never with a `NI.ClassItem.Flags` value, which does not
+   answer this question and whose observed value space is in Phase 4.
 5. **Any LabVIEW restart you made, and why** — the expected number is ZERO. The user is sitting in
    front of it, and a restart here means something is wrong that they should know about.
 6. **The unit tests**: which agent you handed off to, which framework and whether it was the default,

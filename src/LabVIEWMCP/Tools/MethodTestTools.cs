@@ -55,14 +55,21 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         THE COMPANION TO lvai_generate_class_test, which does accessors. Measured 2026-09-02:
         authoring a method suite by hand was the largest single item of that run - ~80 s of wall
         clock for 0 s inside LabVIEW, because the shape never varies.
-        casesJson is a JSON ARRAY, one object per case, in one of THREE shapes:
+        casesJson is a JSON ARRAY, one object per case, in one of FOUR shapes:
           [{"method":"Describe","expectOutput":"description",
             "expectValue":"Bicycle - a human-powered two-wheeled vehicle.",
             "label":"Describe names the class"},
            {"method":"Initialize","expectErrorCode":-200099,
             "label":"Initialize with no device reports invalid physical channel"},
            {"method":"Start","writeField":"Timeout","value":"10.0",
-            "label":"Timeout survives Start"}]
+            "label":"Timeout survives Start"},
+           {"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0",
+            "label":"Zero sets Reading to 0"}]
+        AN UNKNOWN CASE KEY IS REFUSED BY NAME, with the accepted ones listed. It used to be
+        dropped in silence: measured 2026-09-15, two test agents independently reached for
+        `expectFieldValue` before it existed, had it discarded, and got `ok: true` for a suite
+        whose assertion asserted the OPPOSITE of the one asked for. `expectErrorCode` must be an
+        unquoted NUMBER, and a quoted one is refused rather than discarded.
         `expectOutput` + `expectValue` assert a value the method RETURNS on a named terminal -
         which is what a `Describe.vi`, a formatter or any non-accessor getter needs, and what this
         tool could NOT express until 2026-09-07. The gap cost a cold build's test phase 634 s ->
@@ -74,7 +81,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         value - an interface declaration body returning "" is the normal case.
         `expectErrorCode` asserts the `code` of the method's own error cluster. `writeField` +
         `value` writes a field, calls the method, and reads the field back OFF THE RETURNED OBJECT -
-        pass `readField` when it differs. A case may carry any combination.
+        pass `readField` when it differs. That shape asserts the field SURVIVED the call unchanged,
+        which is the one assertion a dynamic dispatch mistake fails. For a method whose JOB is to
+        change the field - a Zero, a Reset, an Increment - add `expectFieldValue`: the seed still
+        comes from `value`, and the read-back is asserted against `expectFieldValue` instead. Its
+        absence meant such a method could not be tested at all, because seeding 12.5 into a `Zero`
+        asserted `12.5 == 0`. A case may carry any combination.
         WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
         you the value. Say which in your report - a measured string asserted as if it were the spec
         freezes whatever the method happens to do today.
@@ -196,6 +208,25 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 var request = requested[i];
                 var methodVi = Path.Combine(folder, $"{request.Method}.vi");
+
+                // A `.vi` SUFFIX IN `method` IS THE ARGUMENT'S FAULT, NOT THE CLASS'S, and saying
+                // so is the whole fix. `"method":"Read Tag.vi"` used to fall through to the
+                // refusal below, which then reported that the class has no `Read Tag.vi.vi` and
+                // advised running lvai_add_class_method - blaming the filesystem for a doubled
+                // extension and offering the one remedy that cannot help, on a method that is
+                // sitting right there. Measured 2026-09-15; docs/cold-build-conveyorrig.md §3b.
+                if (NameCarriesExtension(folder, request.Method))
+                    return Json.Error("methodNameCarriesExtension",
+                        $"\"method\" is '{request.Method}', and it is the member's NAME rather " +
+                        "than its file name - drop the '.vi'. The method itself is there; only " +
+                        "the argument needs changing.",
+                        new
+                        {
+                            method = request.Method,
+                            write = request.Method[..^3],
+                            looksFor = methodVi,
+                        });
+
                 if (!File.Exists(methodVi))
                     return Json.Error("methodMissing",
                         $"'{request.Method}' has no .vi beside the class - expected " +
@@ -277,7 +308,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                          readField, readAccessor, dataType, request.Value,
                                          request.ExpectErrorCode, seed, required!,
                                          request.ExpectOutput, request.ExpectValue,
-                                         outputType, outputConIdx));
+                                         outputType, outputConIdx,
+                                         request.ExpectFieldValue));
             }
 
             // ---- 1. the sockets: one per method call, plus an accessor pair per wire-survival case
@@ -709,8 +741,30 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                               $"inputs=\"obj in:{call}.obj out\" " +
                               $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
 
-                // Expected IS what was written, the same constant - the two cannot drift apart.
-                assertions.Add(Assert(sb, ref uid, define, written, $"{read}.value", test.Label));
+                // BY DEFAULT expected IS what was written, the same constant - the two cannot drift
+                // apart, which is the whole point of a wire-survival case.
+                //
+                // `expectFieldValue` is the other half, and its absence had a measured cost. A
+                // method whose JOB is to change the field - a `Zero`, a `Reset`, an `Increment` -
+                // could not be tested at all: the only field shape asserted that the value SURVIVED
+                // the call, so pointing it at a `Zero` seeded with 12.5 asserted `12.5 == 0`.
+                // Measured 2026-09-15, two test agents independently reached for this key, had it
+                // silently discarded, and hand-authored the AIXML instead - for the one test in
+                // each suite that mattered most.
+                //
+                // The seed still comes from `value`, so the case reads as "seed 12.5, call Zero,
+                // expect 0" rather than needing a separate setup step.
+                var expectedUid = written;
+                if (test.ExpectFieldValue is { } wantedField)
+                {
+                    expectedUid = uid++;
+                    sb.AppendLine(TestTools.Constant(expectedUid, test.DataType,
+                        TestTools.ValueFor(test.DataType, wantedField),
+                        $"expected {test.ReadField} {test.Slot}"));
+                }
+
+                assertions.Add(Assert(sb, ref uid, define, expectedUid, $"{read}.value",
+                                      test.Label));
             }
         }
 
@@ -850,7 +904,14 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     private static string DefaultLabel(MethodCaseRequest request) =>
         request.WriteField is { } field
-            ? $"{field} survives {request.Method}"
+            // A DEFAULT LABEL THAT DESCRIBES THE WRONG ASSERTION IS WORSE THAN A DULL ONE - it
+            // reaches the JUnit report, which is what a reader diagnoses a failure from, and
+            // Caraya writes the literal "FAIL" as the body so the label is very nearly all there
+            // is. "Reading survives Zero" on a case asserting that Zero CHANGED Reading would be
+            // documentation of the opposite.
+            ? request.ExpectFieldValue is { } wanted
+                ? $"{request.Method} leaves {request.ReadField ?? field} at {wanted}"
+                : $"{field} survives {request.Method}"
             : request.ExpectOutput is { } output
                 ? $"{request.Method} returns {output}"
                 : $"{request.Method} reports {request.ExpectErrorCode}";
@@ -896,7 +957,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                       string? ExpectOutput = null,
                                       string? ExpectValue = null,
                                       string? OutputType = null,
-                                      int? OutputConIdx = null)
+                                      int? OutputConIdx = null,
+                                      string? ExpectFieldValue = null)
     {
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
@@ -907,14 +969,70 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         public string SeedLabel => $"Seed{Slot}";
     }
 
+    /// <summary>
+    /// Is <paramref name="method"/> the member's FILE NAME where its plain name was wanted?
+    ///
+    /// Its own predicate rather than an inline condition so a test can reach it: the call site is
+    /// inside the RPC, which needs a live connection and a real class folder. Measured 2026-09-15 -
+    /// <c>"method":"Read Tag.vi"</c> fell through to <c>methodMissing</c>, which reported that the
+    /// class has no <c>Read Tag.vi.vi</c> and advised adding the method, on a method that was
+    /// sitting in the folder. The third condition is what keeps this honest: it fires only when the
+    /// file the author named REALLY EXISTS, so a genuinely missing <c>Something.vi</c> still gets
+    /// the ordinary refusal rather than a lecture about extensions.
+    /// </summary>
+    internal static bool NameCarriesExtension(string folder, string method) =>
+        method.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)
+        && !File.Exists(Path.Combine(folder, $"{method}.vi"))
+        && File.Exists(Path.Combine(folder, method));
+
     internal sealed record MethodCaseRequest(string Method, string? WriteField, string? ReadField,
                                              string? Value, string? Type, int? ExpectErrorCode,
                                              string? Label,
                                              IReadOnlyDictionary<string, string>? Inputs,
                                              string? ExpectOutput = null,
                                              string? ExpectValue = null,
-                                             string? OutputType = null)
+                                             string? OutputType = null,
+                                             string? ExpectFieldValue = null)
     {
+        /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
+        private static readonly HashSet<string> Accepted = new(StringComparer.Ordinal)
+        {
+            "method", "writeField", "readField", "value", "expectFieldValue", "type",
+            "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
+        };
+
+        /// <summary>
+        /// The JSON kind each accepted key's value must have. Everything a case carries is a
+        /// string except the error code, which is a number, and the input map, which is an object.
+        /// </summary>
+        private static readonly Dictionary<string, JsonValueKind> Kinds = new(StringComparer.Ordinal)
+        {
+            ["method"] = JsonValueKind.String,
+            ["writeField"] = JsonValueKind.String,
+            ["readField"] = JsonValueKind.String,
+            ["value"] = JsonValueKind.String,
+            ["expectFieldValue"] = JsonValueKind.String,
+            ["type"] = JsonValueKind.String,
+            ["expectErrorCode"] = JsonValueKind.Number,
+            ["label"] = JsonValueKind.String,
+            ["inputs"] = JsonValueKind.Object,
+            ["expectOutput"] = JsonValueKind.String,
+            ["expectValue"] = JsonValueKind.String,
+            ["outputType"] = JsonValueKind.String,
+        };
+
+        /// <summary>Why a particular wrong kind is worth a sentence of its own.</summary>
+        private static readonly Dictionary<string, string> KindNotes = new(StringComparer.Ordinal)
+        {
+            ["expectErrorCode"] =
+                "Every other value in a case is a string, so this one is easy to quote by habit, " +
+                "and a quoted one used to be discarded without a word.",
+            ["writeField"] =
+                "A case seeds ONE field. Seeding two - which is what a Read that divides one " +
+                "field by another needs - is not expressible here at all, and the test for it " +
+                "has to be authored through lvai_placeholder_subvi plus lvai_swap_subvis.",
+        };
+
         public static List<MethodCaseRequest> ParseAll(string json)
         {
             JsonNode? parsed;
@@ -935,12 +1053,48 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 if (element is not JsonObject o)
                     throw new ArgumentException("Every entry in casesJson must be an object.");
 
+                // AN UNKNOWN KEY IS REFUSED BY NAME. It used to be dropped in silence, and on a
+                // case that carried another assertion nothing downstream noticed: measured
+                // 2026-09-15, TWO test agents independently reached for a plausible
+                // `expectFieldValue`, had it discarded, and got `ok: true` back for a suite whose
+                // generated assertion asserted the OPPOSITE of the one they asked for - because
+                // `writeField`+`value` asserts the field still holds what was written, and the
+                // method under test was a `Zero` whose whole job is to overwrite it. So the suite
+                // pinned `12.5 == 0`.
+                //
+                // This is the argument-diagnostics lesson one layer in. That wrapper guards a
+                // tool's MCP ARGUMENTS; these cases arrive inside a JSON string it never looks at,
+                // so an unknown key here was exactly as silent as an undeclared argument used to
+                // be - and docs/tool-argument-errors.md records what that costs.
+                //
+                // NOT folded onto a near miss the way the argument layer folds `vi_path` onto
+                // `viPath`. Folding is a second behaviour that can itself be wrong, and the
+                // measured defect is the silence, not the absence of a fold - naming the key and
+                // listing the accepted ones settles a typo just as well and cannot mis-aim.
+                // The check itself is TestTools.RejectUnknownCaseKeys, shared with the other two
+                // casesJson tools rather than copied into each - three copies of one rule drift,
+                // and this repository has paid for that already.
+                TestTools.RejectUnknownCaseKeys(o, all.Count, Accepted,
+                    "If you meant \"seed a field, call the method, and assert the field now holds " +
+                    "something ELSE\", that is \"expectFieldValue\" beside \"writeField\" and " +
+                    "\"value\" - note that \"writeField\"+\"value\" alone asserts the field " +
+                    "SURVIVES the call unchanged.");
+
+                // A RECOGNISED KEY WITH THE WRONG VALUE KIND IS THE SAME SILENCE ONE STEP IN,
+                // and it used to be checked for `expectErrorCode` alone - correctly, and far too
+                // narrowly. Every other key was read with GetValue<string>(), which throws a raw
+                // InvalidOperationException for an array or an object: measured 2026-09-15,
+                // `"writeField":["Last Count","Pulses Per Revolution"]` answered "The node must be
+                // of type 'JsonValue'" with no case index and no key name.
+                TestTools.RejectWrongCaseValueKinds(o, all.Count, Kinds, KindNotes);
+
                 var method = o["method"]?.GetValue<string>();
                 if (string.IsNullOrWhiteSpace(method))
                     throw new ArgumentException("Every case needs a \"method\".");
 
                 var writeField = o["writeField"]?.GetValue<string>();
                 var value = o["value"]?.GetValue<string>();
+
                 int? expect = o["expectErrorCode"] is { } n
                               && n.GetValueKind() is JsonValueKind.Number ? n.GetValue<int>() : null;
 
@@ -975,6 +1129,16 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                         "Name the method's output TERMINAL to assert on - exactly as the method " +
                         "spells it, because the socket swap re-attaches wires by terminal name.");
 
+                // `expectFieldValue` needs a field to seed and read back, and that is `writeField`.
+                var expectFieldValue = o["expectFieldValue"]?.GetValue<string>();
+                if (expectFieldValue is not null && string.IsNullOrWhiteSpace(writeField))
+                    throw new ArgumentException(
+                        $"Case for '{method}' gives \"expectFieldValue\" with no \"writeField\". " +
+                        "This shape seeds a field, calls the method and reads that field back off " +
+                        "the returned object, so it needs the field to seed - name it in " +
+                        "\"writeField\" with the seed in \"value\". Use \"readField\" as well " +
+                        "when the field read back is a different one.");
+
                 Dictionary<string, string>? inputs = null;
                 if (o["inputs"] is JsonObject given)
                 {
@@ -988,7 +1152,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                               o["type"]?.GetValue<string>(), expect,
                                               o["label"]?.GetValue<string>(), inputs,
                                               expectOutput, expectValue,
-                                              o["outputType"]?.GetValue<string>()));
+                                              o["outputType"]?.GetValue<string>(),
+                                              expectFieldValue));
             }
 
             return all;

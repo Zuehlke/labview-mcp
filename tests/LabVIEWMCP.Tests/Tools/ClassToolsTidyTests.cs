@@ -129,4 +129,180 @@ public class ClassToolsTidyTests
         Assert.Equal(0, removed);
         Assert.Equal(clean, text);
     }
+
+    /// <summary>
+    /// A LabVIEW SYMBOLIC URL IS NOT A FILESYSTEM PATH, AND THE DANGLING PASS MUST NOT JUDGE ONE.
+    ///
+    /// Fixture taken from real projects on this station rather than invented: an LUnit project
+    /// lists <c>Test Case.lvclass</c> as <c>/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass</c>, and
+    /// a production library lists dozens of <c>/&lt;vilib&gt;/Utility/error.llb/…</c> dependencies.
+    /// Every one is a self-closing Item with a URL - the exact shape the dangling pass matches -
+    /// and none of them resolves through <c>Path.Combine(projectPath, url)</c>, because
+    /// <c>&lt;vilib&gt;</c> is a token LabVIEW expands, not a directory. Removing one deletes a
+    /// required dependency from the user's project.
+    /// </summary>
+    [Fact]
+    public void A_symbolic_labview_url_is_never_removed()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-sym-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = Path.Combine(root, "P.lvproj");
+
+        var xml = """
+            <Project Type="Project">
+            	<Item Name="My Computer" Type="My Computer">
+            		<Item Name="Test Case.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass"/>
+            		<Item Name="BuildHelpPath.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/BuildHelpPath.vi"/>
+            		<Item Name="Caraya.lvlib" Type="Library" URL="/&lt;vilib&gt;/Caraya/Caraya.lvlib"/>
+            	</Item>
+            </Project>
+            """;
+
+        try
+        {
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(0, removed);
+            Assert.Empty(names);
+            Assert.Equal(xml, text);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// AN UNREACHABLE UNC PATH IS NOT AN ABSENT FILE, AND THIS PASS CANNOT TELL THEM APART.
+    ///
+    /// Measured 2026-09-15: <c>File.Exists</c> against a bogus host returns <c>false</c> after
+    /// 1.16 s - no exception to catch, the same answer a deleted file gives. So a project whose
+    /// share is offline for a moment would lose every entry pointing at it. Skipped rather than
+    /// resolved, for the same reason as a symbolic URL: the question cannot be answered here.
+    /// </summary>
+    [Fact]
+    public void A_unc_url_is_never_removed()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-unc-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = Path.Combine(root, "P.lvproj");
+
+        var xml = """
+            <Project Type="Project">
+            	<Item Name="Shared.vi" Type="VI" URL="\\no-such-host-xyzzy\share\Shared.vi"/>
+            </Project>
+            """;
+
+        try
+        {
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(0, removed);
+            Assert.Empty(names);
+            Assert.Equal(xml, text);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// The guard above must not have bought safety by making the pass inert. This is the control:
+    /// an ordinary relative URL whose file is genuinely gone still goes, in the same call that
+    /// preserves a symbolic one.
+    /// </summary>
+    [Fact]
+    public void An_ordinary_dangling_url_still_goes_beside_a_symbolic_one()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-ctl-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var project = Path.Combine(root, "P.lvproj");
+
+        var xml = """
+            <Project Type="Project">
+            	<Item Name="Test Case.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass"/>
+            	<Item Name="Gone.vi" Type="VI" URL="../Gone/Gone.vi"/>
+            </Project>
+            """;
+
+        try
+        {
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(1, removed);
+            Assert.Contains("Test Case.lvclass", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("Gone.vi", text, StringComparison.Ordinal);
+            Assert.Contains(names, n => n.Contains("Gone.vi", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// A URL THAT RUNS THROUGH A CONTAINER FILE IS NOT JUDGED. LabVIEW addresses a member inside a
+    /// packed library, an .llb or a .lvclass as though the container were a directory, so
+    /// <c>File.Exists</c> sees nothing and every such entry looks dangling.
+    ///
+    /// Measured 2026-09-15 against two real production projects on this station: with only the
+    /// symbolic-URL guard in place the pass still removed <b>454</b> of one project's entries and
+    /// <b>1261</b> of the other's, nearly all of them VIs inside a <c>.lvlibp</c>. Neither this
+    /// repository's synthetic fixtures nor any of its six cold-build projects could show it - the
+    /// largest of those had ONE entry this pass could get wrong.
+    /// </summary>
+    [Fact]
+    public void A_url_through_a_container_file_is_never_removed()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-cnt-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "Lib"));
+        // A packed library is a FILE. The project addresses VIs inside it by path.
+        File.WriteAllText(Path.Combine(root, "Lib", "Packed.lvlibp"), "not a directory");
+        var project = Path.Combine(root, "P.lvproj");
+
+        var xml = """
+            <Project Type="Project">
+            	<Item Name="Clear Errors.vi" Type="VI" URL="../Lib/Packed.lvlibp/1abvi3w/vi.lib/Utility/error.llb/Clear Errors.vi"/>
+            </Project>
+            """;
+
+        try
+        {
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(0, removed);
+            Assert.Empty(names);
+            Assert.Equal(xml, text);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// ONLY THE ITEM KINDS WE CREATE. Nothing in this repository writes a <c>Document</c>,
+    /// <c>Library</c> or <c>LVLibp</c> entry, so judging one is all risk and no purpose.
+    ///
+    /// Measured on the same two production projects: after the container guard, the four entries
+    /// still going were a .dll that is not installed on this machine, a second .dll, an .exe and a
+    /// .bat - every one <c>Type="Document"</c>, and every one a real declared dependency. The type
+    /// comes from LabVIEW's own attribute rather than from guessing at extensions.
+    /// </summary>
+    [Fact]
+    public void A_document_entry_is_never_removed_even_when_its_file_is_gone()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-doc-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "Tools"));
+        var project = Path.Combine(root, "P.lvproj");
+
+        // The parent directory EXISTS and the file does not, so nothing but the item type keeps
+        // this entry: it is exactly the shape the pass removes for a VI.
+        var xml = """
+            <Project Type="Project">
+            	<Item Name="AbortVI.bat" Type="Document" URL="../Tools/AbortVI.bat"/>
+            	<Item Name="Gone.vi" Type="VI" URL="../Tools/Gone.vi"/>
+            </Project>
+            """;
+
+        try
+        {
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(1, removed);
+            Assert.Contains("AbortVI.bat", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("Gone.vi", text, StringComparison.Ordinal);
+            Assert.Contains(names, n => n.Contains("Gone.vi", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 }

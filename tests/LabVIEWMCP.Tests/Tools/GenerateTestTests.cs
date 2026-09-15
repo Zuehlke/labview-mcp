@@ -182,4 +182,50 @@ public sealed class GenerateTestTests
         Assert.Equal("100", one.Inputs["celsius"]);
         Assert.Equal("212", one.Expect["fahrenheit"]);
     }
+
+    /// <summary>
+    /// AN UNKNOWN CASE KEY IS REFUSED BY NAME HERE TOO. Extended from lvai_generate_method_test,
+    /// where the silence was actually measured: two test agents reached for a key that did not
+    /// exist, had it discarded, and got <c>ok: true</c> for a suite that asserted the opposite of
+    /// what they asked. Nothing has been measured going wrong on THIS tool - the guard is here so
+    /// the three casesJson tools answer the same way, not because this one has failed.
+    /// </summary>
+    [Theory]
+    [InlineData("""[{"label":"x","inputs":{"a":"1"},"expect":{"b":"2"},"expects":{"c":"3"}}]""")]
+    [InlineData("""[{"label":"x","expect":{"b":"2"},"field":"Reading"}]""")]
+    [InlineData("""[{"label":"x","expect":{"b":"2"},"expectValue":"2"}]""")]
+    public void AnUnknownCaseKeyIsRefused(string json)
+    {
+        var refusal = Assert.Throws<ArgumentException>(() => TestTools.Case.ParseAll(json));
+
+        Assert.Contains("Accepted:", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("label", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// THE CONTROL. A guard buys safety cheaply by refusing everything, so the documented case
+    /// shape - the one in the agent definition and in docs/labview-unit-testing.md - must still
+    /// come through with all three keys.
+    /// </summary>
+    [Fact]
+    public void TheDocumentedCaseShapeIsUnchanged()
+    {
+        var parsed = TestTools.Case.ParseAll(
+            """[{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]""");
+
+        Assert.Single(parsed);
+        Assert.Equal("boiling point", parsed[0].Label);
+        Assert.Equal("100", parsed[0].Inputs["celsius"]);
+        Assert.Equal("212", parsed[0].Expect["fahrenheit"]);
+    }
+
+    /// <summary>A case with no "inputs" at all is legal - a subject that takes none.</summary>
+    [Fact]
+    public void ACaseWithoutInputsStillParses()
+    {
+        var parsed = TestTools.Case.ParseAll("""[{"label":"x","expect":{"out":"1"}}]""");
+
+        Assert.Empty(parsed[0].Inputs);
+        Assert.Equal("1", parsed[0].Expect["out"]);
+    }
 }

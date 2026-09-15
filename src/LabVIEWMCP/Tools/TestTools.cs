@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
@@ -54,6 +55,10 @@ internal sealed class TestTools(LvaiConnection connection)
         an object heap.
         casesJson is a JSON ARRAY, one object per test case:
           [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
+        The only case keys are `label`, `inputs` and `expect`; ANY OTHER IS REFUSED BY NAME, with
+        the accepted set listed. It used to be dropped in silence - measured on the sibling tool
+        lvai_generate_method_test, where two agents invented a key, had it discarded and got
+        `ok: true` for a suite that asserted the opposite of what they asked.
         `inputs` and `expect` are keyed by the SUBJECT's own terminal names - lvai_vi_terminals
         prints them, and so does this tool's placeholder step. Values are written verbatim into an
         AIXML constant of that terminal's type, so "100" is a double if the terminal is a double;
@@ -184,6 +189,10 @@ internal sealed class TestTools(LvaiConnection connection)
         Replace, which RE-TYPES THE WIRES where a pylabview link retarget cannot.
         casesJson is a JSON ARRAY, one object per field:
           [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
+        The only case keys are `field`, `value`, `label` and `type`; ANY OTHER IS REFUSED BY NAME,
+        with the accepted set listed and a pointer to the tool that can do what the stray key was
+        reaching for. In particular a value the field should hold AFTER some method ran is
+        lvai_generate_method_test's `expectFieldValue`, not a case key here.
         `label` is optional and names the case in the JUnit report. `type` is optional too - when
         omitted the field's type is read off the Write accessor's own export, which is authoritative
         and costs one export per field.
@@ -598,10 +607,24 @@ internal sealed class TestTools(LvaiConnection connection)
                                                 or UnauthorizedAccessException) { }
             }
 
+            // THE SUITES GO IN TOO, NOT ONLY THE RUNNER. This listed `[runnerViPath]` alone while
+            // holding every suite path in `tests` two statements up - invisible for a suite built
+            // entirely by the generators, because each of those lists its own test VI as it goes,
+            // and reached the moment ONE test VI is hand-authored. Measured 2026-09-15: a case
+            // needing two seeded fields cannot be expressed in lvai_generate_method_test at all, so
+            // both agents of that build hand-wrote their most valuable test and then had to edit
+            // the closed .lvproj themselves - the failure `projectEntry` exists to prevent,
+            // reachable by stepping one foot off the generated path.
+            //
+            // A path already listed is not listed twice: ListInProjectAsync reads what the project
+            // holds before the close and re-asserts it, so passing a generated suite again is a
+            // no-op rather than a duplicate entry.
+            //
             // reopen: TRUE here, and deliberately — the caller's next move is to RUN this runner,
             // which needs the project's classes linked.
             if (projectPath is { Length: > 0 })
-                steps.Add(await ListInProjectAsync(projectPath, testFolderName, [runnerViPath],
+                steps.Add(await ListInProjectAsync(projectPath, testFolderName,
+                                                   [runnerViPath, .. tests],
                                                    timeoutSeconds, ct, reopen: true));
 
             return RunnerOutcome(true, null, steps, total, runnerViPath,
@@ -713,7 +736,7 @@ internal sealed class TestTools(LvaiConnection connection)
             var listedBefore = LvClass.ListedVis(projectPath);
 
             var closed = await new CloseTools(connection)
-                .CloseActiveProjectAsync(null, null, false, timeoutSeconds, ct: ct);
+                .CloseActiveProjectAsync(null, null, false, timeoutSeconds: timeoutSeconds, ct: ct);
             step["closed"] = Read(closed);
 
             // A VI THAT IS NOT ON DISK IS REFUSED RATHER THAN LISTED. It used to be added, counted
@@ -770,6 +793,17 @@ internal sealed class TestTools(LvaiConnection connection)
             step["added"] = added;
             step["restored"] = restored;
             step["folder"] = folderName;
+            // THE REQUESTED FOLDER, AS A FIELD RATHER THAN A SENTENCE. Measured 2026-09-15 on the
+            // WeighBridge build: two calls with identical arguments (`testFolderName: "Tests"`)
+            // produced two different layouts - one runner under `Tests`, the other left at target
+            // level, because LabVIEW's save had already adopted it there and this step declines to
+            // list it twice. Both answered `ok: true`, and the only field that disagreed was
+            // `added: 0` sitting beside a populated `listed`, which reads as "already fine".
+            // The note below has always SAID it; a caller comparing two runs was left diffing
+            // prose. `ok` is deliberately NOT gated on this - the same move was made on
+            // `wiringLost` and retracted a day later after it suppressed the caller's own steps on
+            // correct diagrams, costing two agents ~135 s each. Report it; do not decide with it.
+            step["inRequestedFolder"] = elsewhere.Count == 0;
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
@@ -943,6 +977,19 @@ internal sealed class TestTools(LvaiConnection connection)
 
     internal sealed record ClassCaseRequest(string Field, string Value, string? Label, string? Type)
     {
+        /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
+        private static readonly HashSet<string> CaseKeys =
+            new(StringComparer.Ordinal) { "field", "value", "label", "type" };
+
+        /// <summary>Every value here is a string; the round trip has nothing structural in it.</summary>
+        private static readonly Dictionary<string, JsonValueKind> Kinds = new(StringComparer.Ordinal)
+        {
+            ["field"] = JsonValueKind.String,
+            ["value"] = JsonValueKind.String,
+            ["label"] = JsonValueKind.String,
+            ["type"] = JsonValueKind.String,
+        };
+
         public static List<ClassCaseRequest> ParseAll(string? json)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -962,6 +1009,14 @@ internal sealed class TestTools(LvaiConnection connection)
             {
                 if (entry is not JsonObject o)
                     throw new ArgumentException($"casesJson[{i}] is not an object.");
+
+                RejectUnknownCaseKeys(o, i, CaseKeys,
+                    "This tool does ONE ROUND TRIP per field - write \"value\" into \"field\", " +
+                    "read it back, assert they match - so there is nothing to give it beyond the " +
+                    "field, the value, an optional \"type\" and an optional \"label\". A value " +
+                    "the class should hold AFTER some method ran is lvai_generate_method_test's " +
+                    "\"expectFieldValue\", not a case key here.");
+                RejectWrongCaseValueKinds(o, i, Kinds);
 
                 var field = o["field"]?.GetValue<string>();
                 if (string.IsNullOrWhiteSpace(field))
@@ -1631,9 +1686,123 @@ internal sealed class TestTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ inputs
 
+    /// <summary>
+    /// Refuse a case key this tool does not understand, by name, listing the ones it does.
+    ///
+    /// WHY THIS EXISTS AT ALL. The argument wrapper guards a tool's MCP ARGUMENTS; a case list
+    /// arrives as a JSON string it never inspects, so an unknown key inside one was exactly as
+    /// silent as an undeclared argument used to be - and docs/tool-argument-errors.md records that
+    /// the silent version cost eighteen days. Measured 2026-09-15 on
+    /// <c>lvai_generate_method_test</c>: two test agents independently reached for a plausible
+    /// <c>expectFieldValue</c>, had it discarded, and got <c>ok: true</c> back for a suite whose
+    /// assertion asserted the OPPOSITE of the one they asked for.
+    ///
+    /// WHY IT IS SHARED RATHER THAN COPIED. Three tools take a <c>casesJson</c> and each read a
+    /// small fixed key set. Three copies of this rule would drift, and this repository has already
+    /// paid for that once - <c>AixmlCheck.SafeUidBase</c> and the lint's own ceiling disagreed for
+    /// days and spent them telling readers their compliant files were wrong.
+    ///
+    /// NOT FOLDED ONTO A NEAR MISS, deliberately, the way the argument layer folds <c>vi_path</c>
+    /// onto <c>viPath</c>. Folding is a second behaviour that can itself be wrong; what was
+    /// measured is the silence, and naming the key with the accepted set beside it settles a typo
+    /// just as well and cannot mis-aim.
+    /// </summary>
+    /// <param name="hint">
+    /// Appended to the refusal. Use it where an unknown key names something the tool really can do
+    /// under another spelling - refusing without saying so just moves the caller's cost.
+    /// </param>
+    internal static void RejectUnknownCaseKeys(
+        JsonObject o, int index, IReadOnlyCollection<string> accepted, string? hint = null)
+    {
+        foreach (var key in o.Select(pair => pair.Key))
+            if (!accepted.Contains(key))
+                throw new ArgumentException(
+                    $"casesJson[{index}] carries \"{key}\", which is not a case key. Accepted: " +
+                    string.Join(", ", accepted) + "."
+                    + (hint is { Length: > 0 } ? " " + hint : ""));
+    }
+
+    /// <summary>
+    /// Refuse a RECOGNISED case key whose value is of the wrong JSON kind, by name, saying which
+    /// kind arrived and which is wanted.
+    ///
+    /// THE SAME SILENCE AS AN UNKNOWN KEY, ONE STEP IN, and the half the 2026-09-15 work left open.
+    /// A key that passes <see cref="RejectUnknownCaseKeys"/> is then read with
+    /// <c>GetValue&lt;string&gt;()</c>, which throws <c>InvalidOperationException: The node must be
+    /// of type 'JsonValue'</c> for anything that is not a scalar. Measured 2026-09-15 on
+    /// <c>lvai_generate_method_test</c>: <c>"writeField":["Last Count","Pulses Per Revolution"]</c>
+    /// - the spelling an author reaches for on discovering that a case cannot seed two fields -
+    /// answered with that exception type and nothing else. No case index, no key name, no accepted
+    /// shape: a .NET internal surfacing as a tool result, which is precisely what
+    /// <c>docs/tool-argument-errors.md</c> exists to stop.
+    ///
+    /// The older sibling of this check was written for ONE key: <c>expectErrorCode</c> had to be an
+    /// unquoted number, because a quoted one was read as nothing and discarded. That was right and
+    /// too narrow - every other key had the same hole with a louder failure. It is folded in here
+    /// through <paramref name="notes"/> rather than kept beside this as a second implementation.
+    /// </summary>
+    /// <param name="expected">Key to the JSON kind its value must have.</param>
+    /// <param name="notes">
+    /// Optional per-key sentence appended to the refusal, for a key whose wrong kind has a reason
+    /// worth naming - quoting a number out of habit, say.
+    /// </param>
+    internal static void RejectWrongCaseValueKinds(
+        JsonObject o, int index, IReadOnlyDictionary<string, JsonValueKind> expected,
+        IReadOnlyDictionary<string, string>? notes = null)
+    {
+        foreach (var (key, node) in o)
+        {
+            if (node is null) continue;
+            if (!expected.TryGetValue(key, out var want)) continue;
+            var got = node.GetValueKind();
+            if (got == want) continue;
+
+            // NOTHING IS TOLERATED, INCLUDING A NUMBER WHERE A STRING BELONGS, and that is a
+            // deliberate second thought rather than strictness for its own sake. `"value":12.5`
+            // reads naturally for a numeric field and the author's meaning is obvious - but the
+            // reader below is GetValue<string>(), which throws on a number node just as it does on
+            // an array. Tolerating the kind here without changing every read site would move the
+            // raw exception rather than remove it, which is the defect this guard exists for.
+            var wanted = want switch
+            {
+                JsonValueKind.String => "a STRING",
+                JsonValueKind.Number => "a NUMBER - unquoted",
+                JsonValueKind.Object => "an OBJECT",
+                _ => want.ToString(),
+            };
+            throw new ArgumentException(
+                $"casesJson[{index}] gives \"{key}\" as {got}, and it must be {wanted}. "
+                + (got is JsonValueKind.Array
+                    ? "A case describes ONE assertion, so no key takes a list; write one case per "
+                      + "thing you want to assert. "
+                    : got is JsonValueKind.Number && want == JsonValueKind.String
+                        ? "Quote it - every value in a case is a string, whatever the field's own "
+                          + "type is. "
+                        : "")
+                + (notes is not null && notes.TryGetValue(key, out var note) ? note : ""));
+        }
+    }
+
     internal sealed record Case(string Label, Dictionary<string, string> Inputs,
                                Dictionary<string, string> Expect)
     {
+        /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
+        private static readonly HashSet<string> CaseKeys =
+            new(StringComparer.Ordinal) { "label", "inputs", "expect" };
+
+        /// <summary>
+        /// Only <c>label</c>. <c>inputs</c> and <c>expect</c> are deliberately absent: <see
+        /// cref="Map"/> already refuses a non-object for those with a BETTER message - it names
+        /// them as maps of terminal name to value, which is the thing the author has to picture -
+        /// and it is covered by its own test. The shared guard exists to close a hole, not to win
+        /// a turf war with a check that is doing the job properly; adding it here would only
+        /// replace a specific message with a generic one.
+        /// </summary>
+        private static readonly Dictionary<string, JsonValueKind> Kinds = new(StringComparer.Ordinal)
+        {
+            ["label"] = JsonValueKind.String,
+        };
+
         public static List<Case> ParseAll(string? json)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -1657,6 +1826,13 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             if (entry is not JsonObject o)
                 throw new ArgumentException($"casesJson[{index}] is not an object.");
+
+            RejectUnknownCaseKeys(o, index, CaseKeys,
+                "This tool tests a PLAIN VI: a case names the terminals to set in \"inputs\" and " +
+                "the ones to assert in \"expect\", both as terminal-name-to-value objects. To " +
+                "test a class's accessors use lvai_generate_class_test, and for its methods " +
+                "lvai_generate_method_test - those take different case shapes.");
+            RejectWrongCaseValueKinds(o, index, Kinds);
 
             var label = o["label"]?.GetValue<string>();
             if (string.IsNullOrWhiteSpace(label))

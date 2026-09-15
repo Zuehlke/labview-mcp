@@ -215,9 +215,16 @@ used it only for the tidy step, so every caller spent a turn on `lvai_open_file`
 the project on the way in. And it reports `memberNames` plus a `dispatchFlags` histogram off the class
 file, which is what the two closing turns (`lvai_describe_class` plus a shell grep for
 `NI.ClassItem.Flags`) existed to get. `describe_class` reports `dynamicDispatch: null` — the class file
-does not carry it under that name — so `0` versus `16777216` in the flags is what actually settles
-dispatch, and now the tool says it. A histogram rather than a boolean, because the flag word carries
+does not carry it under that name — ~~so `0` versus `16777216` in the flags is what actually settles
+dispatch, and now the tool says it.~~ A histogram rather than a boolean, because the flag word carries
 more than dispatch and what its low bits mean is not established.
+
+**The struck clause is wrong, corrected 2026-09-15.** The flag word does not settle dispatch at any
+value: a generated override reads `33554432`, a static interface member `1073741832` with
+`0x1000000` clear. **`connection=` out of the export settles it** — one
+`lvai_convert_vis_to_aixml` call for a whole class. The histogram is still worth having and the
+tool was never the problem: it reports raw counts and asserts nothing. The saved turn stands; the
+reading of it did not. `docs/cold-build-weighbridge.md` §3.
 
 **Item 4 was NOT implementable as stated, and the reason is worth recording.** The proposal was an
 internal retry in `lvai_ensure_labview`, on the observation that the first call always spends its

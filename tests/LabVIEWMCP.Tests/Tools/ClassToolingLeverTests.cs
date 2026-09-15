@@ -1,4 +1,4 @@
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using System.Text.Json.Nodes;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tools;
@@ -1106,5 +1106,162 @@ public sealed class ClassToolingLeverTests
             .Count(c => ((string?)c.Attribute("target"))?.Contains("Assert", StringComparison.Ordinal) == true);
 
         Assert.Equal(3, asserts);
+    }
+
+    // ---------- expectFieldValue, and the silence that hid its absence ----------
+
+    /// <summary>
+    /// AN UNKNOWN CASE KEY IS REFUSED BY NAME. It used to be dropped in silence, and on a case
+    /// carrying another assertion nothing downstream noticed. Measured 2026-09-15: two test agents
+    /// independently reached for <c>expectFieldValue</c> before it existed, had it discarded, and
+    /// got <c>ok: true</c> for a suite whose assertion asserted the OPPOSITE of the one asked for -
+    /// <c>writeField</c>+<c>value</c> pins that the field SURVIVED, and the method under test was a
+    /// Zero whose whole job is to overwrite it. The suite pinned <c>12.5 == 0</c>.
+    /// </summary>
+    [Theory]
+    [InlineData("""[{"method":"Zero","writeField":"Reading","value":"12.5","expectFeildValue":"0"}]""")]
+    [InlineData("""[{"method":"Start","writeField":"Timeout","value":"10.0","expect_value":"3"}]""")]
+    [InlineData("""[{"method":"Start","expectErrorCode":-1,"notAKey":"x"}]""")]
+    public void AnUnknownCaseKeyIsRefused(string json)
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => MethodTestTools.MethodCaseRequest.ParseAll(json));
+
+        // Named, not merely rejected - and the accepted set is listed, because the whole cost of
+        // the original defect was that the author never learned the key had not been understood.
+        Assert.Contains("expectFieldValue", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Accepted:", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A RECOGNISED KEY WITH THE WRONG VALUE KIND IS THE SAME SILENCE. The parser read a number and
+    /// dropped anything else, so a QUOTED error code vanished - and every other value in a case is
+    /// a string, so quoting it is the natural mistake.
+    /// </summary>
+    [Fact]
+    public void AQuotedExpectErrorCodeIsRefusedRatherThanDiscarded()
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Start","expectErrorCode":"-200099","writeField":"T","value":"1"}]"""));
+
+        Assert.Contains("expectErrorCode", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("NUMBER", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The shape needs a field to seed and read back, and that is <c>writeField</c>.</summary>
+    [Fact]
+    public void ExpectFieldValueWithoutAWriteFieldIsRefused()
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Zero","expectFieldValue":"0","expectErrorCode":0}]"""));
+
+        Assert.Contains("writeField", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExpectFieldValueIsCarriedAndDoesNotDisturbTheSeed()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0"}]""");
+
+        Assert.Equal("Reading", parsed[0].WriteField);
+        Assert.Equal("12.5", parsed[0].Value);            // still the SEED
+        Assert.Equal("0", parsed[0].ExpectFieldValue);    // the assertion is the other one
+    }
+
+    /// <summary>
+    /// THE CONTROL. A guard buys safety cheaply by making the default path stricter than it was, so
+    /// this asserts the ordinary wire-survival case is untouched: no expectFieldValue, and the
+    /// expected value is still the written one.
+    /// </summary>
+    [Fact]
+    public void AnOrdinaryWireSurvivalCaseIsUnchanged()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll(
+            """[{"method":"Start","writeField":"Timeout","readField":"Timeout","value":"10.0","type":"double","label":"Timeout survives Start"}]""");
+
+        Assert.Null(parsed[0].ExpectFieldValue);
+        Assert.Equal("10.0", parsed[0].Value);
+        Assert.Equal("Timeout", parsed[0].ReadField);
+        Assert.Equal("double", parsed[0].Type);
+        Assert.Equal("Timeout survives Start", parsed[0].Label);
+    }
+
+    // ---------- the wrong value KIND on a recognised key ----------
+
+    /// <summary>
+    /// A LIST WHERE A STRING BELONGS USED TO SURFACE A .NET INTERNAL. Measured 2026-09-15:
+    /// <c>"writeField":["Last Count","Pulses Per Revolution"]</c> - the spelling an author reaches
+    /// for on finding that a case cannot seed two fields - answered
+    /// <c>InvalidOperationException: The node must be of type 'JsonValue'</c>, with no case index,
+    /// no key name and no accepted shape. The unknown-KEY guard added the day before could not see
+    /// it, because <c>writeField</c> is a perfectly good key.
+    /// </summary>
+    [Theory]
+    [InlineData("""[{"method":"Read Speed","writeField":["Last Count","PPR"],"value":"12.5"}]""", "writeField")]
+    [InlineData("""[{"method":"Start","writeField":"T","value":{"a":"1"}}]""", "value")]
+    [InlineData("""[{"method":"Start","expectErrorCode":0,"inputs":"Tag"}]""", "inputs")]
+    public void ARecognisedKeyWithTheWrongValueKindIsRefusedByName(string json, string key)
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => MethodTestTools.MethodCaseRequest.ParseAll(json));
+
+        Assert.Contains(key, refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("casesJson[0]", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A list is refused with the reason rather than only the kind - a case IS one assertion, and
+    /// an author who wanted two fields needs to know no spelling gets them, not to try another.
+    /// </summary>
+    [Fact]
+    public void TheRefusalForAListSaysACaseDescribesOneAssertion()
+    {
+        var refusal = Assert.Throws<ArgumentException>(
+            () => MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Read Speed","writeField":["A","B"],"value":"1"}]"""));
+
+        Assert.Contains("ONE assertion", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("lvai_swap_subvis", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// THE CONTROL for the kind guard. A guard that refuses everything is no guard, and every one
+    /// of these shapes is ordinary.
+    /// </summary>
+    [Theory]
+    [InlineData("""[{"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0"}]""")]
+    [InlineData("""[{"method":"Start","expectErrorCode":-200099,"inputs":{"Channel":"Dev1/ai0"}}]""")]
+    [InlineData("""[{"method":"Describe","expectOutput":"description","expectValue":""}]""")]
+    public void OrdinaryCasesStillParse(string json)
+        => Assert.NotEmpty(MethodTestTools.MethodCaseRequest.ParseAll(json));
+
+    // ---------- a method name carrying its own extension ----------
+
+    /// <summary>
+    /// Measured 2026-09-15: <c>"method":"Read Tag.vi"</c> was answered with
+    /// <c>'Read Tag.vi' has no .vi beside the class - expected 'Read Tag.vi.vi'</c> plus advice to
+    /// add the method - the filesystem blamed for the argument, and the one remedy that cannot
+    /// help offered for a method already on disk.
+    /// </summary>
+    [Fact]
+    public void AMethodNameCarryingItsOwnExtensionIsRecognised()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "lvmcp-ext-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "Read Tag.vi"), "");
+
+            Assert.True(MethodTestTools.NameCarriesExtension(folder, "Read Tag.vi"));
+            // The plain name is what the tool wants, and it is not the fault being reported.
+            Assert.False(MethodTestTools.NameCarriesExtension(folder, "Read Tag"));
+            // THE CONTROL: a member that genuinely is not there keeps the ordinary refusal, which
+            // is the one that tells the author to add it.
+            Assert.False(MethodTestTools.NameCarriesExtension(folder, "Absent.vi"));
+        }
+        finally { Directory.Delete(folder, recursive: true); }
     }
 }

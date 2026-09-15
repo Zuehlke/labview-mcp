@@ -159,6 +159,15 @@ internal sealed class CloseTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
+        [Description("""
+            The .lvproj being closed. OPTIONAL, and the only way this tool can tidy: the helper
+            closes whatever project is ACTIVE and never learns its path, so without this there is
+            nothing to read back. Given one, the saved file is swept for items LabVIEW adopted into
+            it - helper VIs out of our temp trees, sockets under <userlib>/LV_MCP, and entries whose
+            file is not there - and the answer NAMES every one it removed. The save this tool
+            performs is what writes those entries, so this is the step where they appear.
+            """)]
+        string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -189,8 +198,78 @@ internal sealed class CloseTools(LvaiConnection connection)
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
             return DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
-                                        wall.ElapsedMilliseconds);
+                                        wall.ElapsedMilliseconds, projectPath);
         });
+
+    /// <summary>
+    /// Sweep the project LabVIEW has just saved and closed.
+    ///
+    /// WHY HERE. The two tools that WRITE the project - <c>lvai_create_class</c>'s projectEntry
+    /// step and the Caraya runner's - already tidy, and a build that only SWAPS and closes had no
+    /// sweep anywhere. Measured 2026-09-15 on the WeighBridge build: after two override swaps,
+    /// two <c>&lt;userlib&gt;/LV_MCP</c> sockets were listed in the user's .lvproj, with
+    /// <c>lvai_swap_subvis</c> answering <c>ok: true</c> and <c>socketsLeft: 0</c> throughout.
+    /// The swap is not where they came from - it never touches the file. LabVIEW adopts every VI
+    /// it has open when it SAVES the project, and the save is this tool's first step, so this is
+    /// the step that writes them and the right place to take them back out.
+    ///
+    /// ONLY AFTER A CLOSE THAT HAPPENED. On 1055 - nothing was active - and on a raised error the
+    /// file is not ours to rewrite: nothing was saved, so nothing was adopted, and editing it
+    /// would be acting on a run that did not occur.
+    /// </summary>
+    private static JsonObject SweepClosedProject(string projectPath)
+    {
+        var full = Path.GetFullPath(projectPath);
+        if (!File.Exists(full))
+            return new JsonObject
+            {
+                ["swept"] = false,
+                ["reason"] = "noSuchProject",
+                ["projectPath"] = full,
+            };
+
+        try
+        {
+            var (tidied, removed, names) = ClassTools.StripHelperItems(
+                File.ReadAllText(full), full);
+            if (removed > 0) File.WriteAllText(full, tidied);
+
+            return new JsonObject
+            {
+                ["swept"] = true,
+                ["projectPath"] = full,
+                ["strayVisRemoved"] = removed,
+                ["strayVisRemovedNames"] = new JsonArray([.. names.Select(n => (JsonNode)n!)]),
+                // WHAT IT DOES NOT REACH, said plainly rather than left to be discovered. The same
+                // WeighBridge close also adopted a VI from a directory OUTSIDE the project tree
+                // (`../../wb-negctl/Neg Control.vi`), and that one stays: the file exists and sits
+                // in none of our trees, so nothing here can tell it from a VI the user deliberately
+                // shares from a sibling folder - which real projects do constantly. A rule wide
+                // enough to catch it would delete those, and deleting a user's own entry is a worse
+                // failure than leaving a stray. Read the .lvproj after the close; that rule stands.
+                ["note"] = removed > 0
+                    ? "Items LabVIEW adopted into the project during this session were removed - "
+                    + "see strayVisRemovedNames. This sweep reaches our own temp trees, "
+                    + "<userlib>/LV_MCP sockets, and entries whose file is not there. A VI adopted "
+                    + "from any OTHER directory is left alone and is not reported, because nothing "
+                    + "here can distinguish it from one the user listed on purpose."
+                    : "Nothing to remove.",
+            };
+        }
+        catch (Exception failure)
+            when (failure is IOException or UnauthorizedAccessException)
+        {
+            // A project we cannot read back is reported, never guessed at. The close itself
+            // already succeeded, so this must not turn into a failed close.
+            return new JsonObject
+            {
+                ["swept"] = false,
+                ["reason"] = "projectNotReadable",
+                ["projectPath"] = full,
+                ["detail"] = failure.Message,
+            };
+        }
+    }
 
     /// <summary>
     /// The project helper's verdict. Kept apart from <see cref="Describe"/> because the same code
@@ -200,7 +279,7 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// </summary>
     internal static string DescribeProjectClose(
         string runnerAnswer, string helperVi, string aixml, bool helperGenerated,
-        long? elapsedMs = null)
+        long? elapsedMs = null, string? projectPath = null)
     {
         if (Verdict(runnerAnswer) is not { } verdict) return runnerAnswer;
         var (status, code, source) = verdict;
@@ -237,6 +316,44 @@ internal sealed class CloseTools(LvaiConnection connection)
                           "the helper VI generated correctly."
                         : "The chain raised an error, so the project was probably not closed.",
         };
+
+        // The sweep is reported ALWAYS, including when it did not run and why. A step that is
+        // silent when it is skipped is one the reader assumes happened - the shape
+        // `lvai_generate_mock_class`'s addToProject was caught by, where a warning that lived only
+        // in a parameter description was read after the entry had already gone.
+        result["projectSweep"] = closed
+            ? projectPath is { Length: > 0 }
+                ? SweepClosedProject(projectPath)
+                : new JsonObject
+                {
+                    ["swept"] = false,
+                    ["reason"] = "noProjectPathGiven",
+                    ["note"] = "This tool closes whatever project is ACTIVE and is never told "
+                             + "which file that was, so it cannot read one back. LabVIEW adopts "
+                             + "every VI it has open into the project it SAVES, and the save is "
+                             + "this tool's first step - so pass projectPath to have those entries "
+                             + "removed and named. Without it, read the .lvproj yourself. "
+                             // SAID HERE BECAUSE IT IS READ WHEN SOMEONE IS ALREADY CONFUSED.
+                             // Measured 2026-09-15: an agent passed projectPath on seven closes and
+                             // got this reason every time, because its session had begun before the
+                             // parameter existed - a client fetches the tool list ONCE at session
+                             // start and strips a key that list does not declare, so the server saw
+                             // a call that never had one. It then spent the diagnosis on the server
+                             // process, which the timestamps refuted. A reason that names a missing
+                             // argument and stops there invites exactly that hunt.
+                             + "IF YOU DID PASS IT: a client validates against the tool list it "
+                             + "fetched at session start and drops a key that list does not "
+                             + "declare, so a session older than this parameter cannot send one - "
+                             + "the server genuinely received no path. Restarting the SERVER does "
+                             + "not help; a new session does.",
+                }
+            : new JsonObject
+            {
+                ["swept"] = false,
+                ["reason"] = nothingToClose ? "nothingWasClosed" : "closeDidNotSucceed",
+                ["note"] = "Nothing was saved, so nothing was adopted and there is nothing to "
+                         + "tidy. The file is not rewritten on a close that did not happen.",
+            };
 
         return Json.Document(result);
     }

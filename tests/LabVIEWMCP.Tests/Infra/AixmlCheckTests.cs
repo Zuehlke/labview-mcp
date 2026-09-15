@@ -824,4 +824,101 @@ public sealed class ShippedHelperAixmlTests
             $"{Path.GetFileName(path)}: " +
             string.Join(" | ", findings.Select(f => $"{f.Severity} {f.Code} uid={f.Uid}")));
     }
+
+    // ---------------------------------------------------------------- net attributes
+
+    /// <summary>
+    /// The shape measured refusing the whole document: an UNWIRED interface-declaration pane, which
+    /// is the normal shape of an interface member rather than an exotic one. Every element here
+    /// carries its `value`, so nothing but the net attribute is missing.
+    /// </summary>
+    private const string TerminalsWithoutNetAttributes = """
+        <VI _name="Read Speed.vi" description="An interface declaration, payload unwired.">
+          <Control _name="Raw Counts" conIdx="10" connection="recommended" type="double" uid="4210" uid_parent="root" value="0"/>
+          <Constant _name="Zero" type="double" uid="4220" uid_parent="root" value="0"/>
+          <Indicator _name="Speed RPM" conIdx="2" connection="recommended" type="double" uid="4230" uid_parent="root" value="0"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AMissingNetAttributeIsAnERROR_onAllThreeElementKinds()
+    {
+        var findings = AixmlCheck.Check(TerminalsWithoutNetAttributes)
+            .Where(f => f.Code == "terminalWithoutNetAttribute").ToList();
+
+        Assert.Equal(3, findings.Count);
+        Assert.All(findings, f => Assert.Equal(AixmlCheck.Severity.Error, f.Severity));
+        Assert.Equal(["4210", "4220", "4230"], findings.Select(f => f.Uid).Order());
+    }
+
+    /// <summary>
+    /// The control arm, and the half that decides whether the rule is worth having: a document
+    /// carrying the EMPTY-NET spelling must pass. That spelling was measured converting cleanly on
+    /// all three kinds in one document (4 216 bytes), so flagging it would refuse working code -
+    /// the way to buy a quiet checker cheaply is to make it inert, and this is where that shows.
+    /// </summary>
+    [Fact]
+    public void TheEmptyNetSpellingIsAccepted_becauseItIsWhatAnUnwiredTerminalLooksLike()
+    {
+        var withSpelling = TerminalsWithoutNetAttributes
+            .Replace("type=\"double\" uid=\"4210\"", "outputs=\"value:\" type=\"double\" uid=\"4210\"")
+            .Replace("type=\"double\" uid=\"4220\"", "outputs=\"value:\" type=\"double\" uid=\"4220\"")
+            .Replace("type=\"double\" uid=\"4230\"", "inputs=\"value:\" type=\"double\" uid=\"4230\"");
+
+        Assert.DoesNotContain(AixmlCheck.Check(withSpelling),
+                              f => f.Code == "terminalWithoutNetAttribute");
+    }
+
+    /// <summary>
+    /// A terminal whose net something ALREADY reads is a different repair from an unwired one, and
+    /// the message has to say which - pasting `outputs="value:"` there would leave the reader
+    /// dangling.
+    /// </summary>
+    [Fact]
+    public void TheMessageNamesTheNetWhenTheDocumentDeterminesIt()
+    {
+        const string xml = """
+            <VI _name="Pass.vi" description="A control whose net is read, with no outputs attribute.">
+              <Control _name="In" conIdx="11" connection="required" type="double" uid="4200" uid_parent="root" value="0"/>
+              <Indicator _name="Out" conIdx="3" connection="recommended" inputs="value:4200.value" type="double" uid="4210" uid_parent="root" value="0"/>
+            </VI>
+            """;
+
+        var finding = Assert.Single(AixmlCheck.Check(xml),
+                                    f => f.Code == "terminalWithoutNetAttribute");
+        Assert.Contains("outputs=\"value:4200.value\"", finding.Message);
+    }
+
+    [Fact]
+    public void FixWritesTheUnwiredSpelling_andTheRepairedDocumentIsClean()
+    {
+        var fixedUp = AixmlCheck.Fix(TerminalsWithoutNetAttributes);
+
+        Assert.Equal(3, fixedUp.Repairs.Count(r => r.Code == "terminalWithoutNetAttribute"));
+        Assert.Contains("outputs=\"value:\"", fixedUp.Xml);
+        Assert.Contains("inputs=\"value:\"", fixedUp.Xml);
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "terminalWithoutNetAttribute");
+    }
+
+    /// <summary>
+    /// SEVERAL nets naming one uid is the case where the document does NOT determine the answer, so
+    /// it is reported and left alone - the same line the missing-`value` repair draws around a
+    /// Constant, and for the same reason: a guess that converts cleanly is worse than a refusal.
+    /// </summary>
+    [Fact]
+    public void FixLeavesATerminalAloneWhenSeveralNetsNameItsUid()
+    {
+        const string xml = """
+            <VI _name="Ambiguous.vi" description="Two nets name uid 4200.">
+              <Control _name="In" conIdx="11" connection="required" type="double" uid="4200" uid_parent="root" value="0"/>
+              <Indicator _name="A" conIdx="3" connection="recommended" inputs="value:4200.value" type="double" uid="4210" uid_parent="root" value="0"/>
+              <Indicator _name="B" conIdx="2" connection="recommended" inputs="value:4200.other" type="double" uid="4220" uid_parent="root" value="0"/>
+            </VI>
+            """;
+
+        var fixedUp = AixmlCheck.Fix(xml);
+
+        Assert.DoesNotContain(fixedUp.Repairs, r => r.Code == "terminalWithoutNetAttribute");
+        Assert.Contains(fixedUp.Remaining, f => f.Code == "terminalWithoutNetAttribute");
+    }
 }
