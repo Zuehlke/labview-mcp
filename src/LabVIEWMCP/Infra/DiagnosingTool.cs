@@ -18,12 +18,50 @@ namespace LabVIEWMcp.Infra;
 /// </summary>
 internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerTool(inner)
 {
+    private Tool? _served;
+
+    /// <summary>
+    /// What the CLIENT is shown: the inner tool with every parameter default folded into its
+    /// description. <see cref="ClientSchema"/> has the measurement - a client that reads `default`
+    /// as "this field is mandatory" refuses the call before the server sees it, so this is the only
+    /// layer that can answer it. Built once; the inner tool's descriptor does not change at run
+    /// time, and the SDK asks for this on every tools/list.
+    /// </summary>
+    public override Tool ProtocolTool => _served ??= Served(base.ProtocolTool);
+
+    private static Tool Served(Tool inner)
+    {
+        if (inner.InputSchema.ValueKind != JsonValueKind.Object) return inner;
+
+        var rewritten = ClientSchema.WithoutDefaults(inner.InputSchema);
+
+        // Same instance back when nothing changed: a tool with no defaulted parameter should not
+        // get a second, equal copy of its descriptor.
+        if (rewritten.GetRawText() == inner.InputSchema.GetRawText()) return inner;
+
+        return new Tool
+        {
+            Name = inner.Name,
+            Title = inner.Title,
+            Description = inner.Description,
+            InputSchema = rewritten,
+            OutputSchema = inner.OutputSchema,
+            Annotations = inner.Annotations,
+            Icons = inner.Icons,
+            Meta = inner.Meta,
+        };
+    }
+
     public override async ValueTask<CallToolResult> InvokeAsync(
         RequestContext<CallToolRequestParams> request,
         CancellationToken cancellationToken = default)
     {
         var name = ProtocolTool.Name;
-        var schema = ProtocolTool.InputSchema;
+        // The ORIGINAL schema, not the one served: the defaults were removed for the client's
+        // benefit, and ToolArguments.Accepted reads them to print `type, default 180` in a refusal.
+        // Diagnosing an argument against a schema stripped for someone else is how a report starts
+        // telling the reader less than the tool knows.
+        var schema = base.ProtocolTool.InputSchema;
         var (properties, required) = ToolArguments.Shape(schema);
 
         var supplied = request.Params?.Arguments;

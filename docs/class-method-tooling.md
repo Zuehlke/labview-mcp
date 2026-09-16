@@ -1397,3 +1397,116 @@ Honest limits, so nobody reads this document as a warranty:
   to them. Creating those stubs is now a `lvai_add_class_method` call away and was out of scope.
 - **Nothing here has run against real DAQmx hardware.** Every DAQmx assertion is a no-device error
   code.
+
+---
+
+## 4q. `lvai_swap_subvis` could not see a call inside a loop or a case frame
+
+**Measured 2026-09-16, and fixed the same day.** The helper collected its candidates from
+`{LV.Diagram}` `SubVIs[]` on the block diagram. That property lists the nodes of the diagram it is
+*asked about* and does not descend into structures, so every call nested inside a `While Loop` or a
+`Case Structure` was invisible to it.
+
+The failure did not look like a missing traversal. It looked like a wrong name. Measured on a VI
+with five subVI calls, three on the top-level diagram and two inside the True frame of a Case
+Structure:
+
+```
+nodesAsked: 5        nodesSwapped: 0
+socketsNotOnDiagram: ["LVMCP Stub ef4e460823.vi", "LVMCP Stub 21f035556d.vi"]
+diagramSubVis:       [the three top-level names only]
+```
+
+(`nodesSwapped: 0` because that same run also hit `Error 1055`, no active project. The number that
+matters here is the LISTING, not the count.)
+
+`socketsNotOnDiagram` says the name is not on the diagram. Both nodes were plainly there, one case
+frame down. A caller reading that field does what its text tells them to do — check the spelling
+against `diagramSubVis` — and finds the two names genuinely absent from the listing, because the
+listing has the same blind spot.
+
+### Why it had not been noticed
+
+Every call the toolchain places in a real application is nested, because a generated top-level VI is
+a loop. The tool therefore worked on unit-test suites, whose sockets sit on the top-level diagram,
+and failed on the first application — a generated ATM main VI holding its whole controller in one
+`While Loop`, six subVI calls, two of them additionally inside frames of the state Case Structure.
+
+### Why the documented fallback did not help
+
+`pylv_apply {"op":"retarget"}` reaches a nested node without trouble: it edits link records and
+never walks a diagram. It also produces a VI that LabVIEW will not load.
+
+| what the retarget reported | what LabVIEW said |
+|---|---|
+| `callTargets` naming all five real subVIs | |
+| AIXML export clean, `errorCode 0` | |
+| | `execState 0` — eBad |
+| | `Missing subVI Get Accounts File Path.vi in VI PT Probe.vi` (and four more) |
+
+Measured twice, the second time on a caller sitting in the **same folder** as every target, so
+LabVIEW's usual search beside the caller does not rescue it. Whatever the rewritten path record
+lacks, it is not something the file layout supplies.
+
+So before the fix there was **no route at all** from a generated main VI to its own subVIs, and the
+symptom on each route pointed somewhere else: at a misspelt socket on one, at a missing file on the
+other.
+
+### The fix
+
+`Traverse for GObjects.vi` walks the whole block diagram:
+
+```xml
+<Constant _name="SubVI Class Name" type="string" value="SubVI" .../>
+<Constant _name="Block Diagram"    type="uint16{FP,BD,Other}" value="1" .../>
+<Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi"
+      inputs="VI Refnum:22.vi reference,Class Name:27.value,error in (no error):26.error out,
+              Traverse Target:28.value,Other Refnum:,Traverse Generated Code (F):"
+      outputs="dup VI Refnum:29.dup,References:29.subvis,# of Refs:,error out:29.error out" .../>
+```
+
+Three things about it are not optional:
+
+- **It returns `GObject` references, not `{LV.SubVI}` ones.** Each must go through
+  `To More Specific Class` with a `ref{LV.SubVI}` constant before `VI Name` is read or `Replace` is
+  invoked. A helper that traversed without the cast fails on the first node.
+- **`Traverse Target` is `1`, the block diagram.** Index 0 is the front panel and finds no subVI
+  node at all — an empty candidate list, which reads exactly like the bug being replaced.
+- **Do not close `dup VI Refnum` separately.** It duplicates the refnum the helper already holds;
+  closing both gives `Error 1026` after the save has happened, which looks like a failure and is
+  not.
+
+The VI lives in an `.llb` (`vi.lib\Utility\traverseref.llb`), so `lvai_vi_terminals` cannot read it
+and a bare name does not resolve. The qualifier and every terminal name above came from exporting
+NI's own `Obtaining Unknown Object References.vi`, which is the documented route for any
+library-owned VI.
+
+### What it changed
+
+The two columns are DIFFERENT VIs, and saying so matters: the blind spot was found on the
+five-call `Perform Transaction.vi` above, and the fix was verified on the six-call main VI, which
+had never been swapped by this tool at all because no route to it existed.
+
+| | before the fix, 5-call VI | after the fix, 6-call main VI |
+|---|---|---|
+| calls nested in a structure | 2 of 5 | 6 of 6 |
+| names in `diagramSubVis` | 3 | **6** |
+| entries swapped in one call | 0 of 5 (also `Error 1055`) | **5 of 5** |
+| `socketsNotOnDiagram` | two nodes that were on the diagram | none |
+
+The remaining `socketsLeft: 1` after the fix is the documented duplicate-name case — the main VI
+calls `Verify Account.vi` twice and `swapsJson` cannot say which node gets which target — and it
+costs a second call, exactly as `docs/cold-build-kilnrig.md` §2 records.
+
+The end-to-end check is the one that counts: the main VI was regenerated to sockets, linked by one
+swap call plus the duplicate's second, and its scripted customer session then ran green through all
+six steps.
+
+### The regression guard
+
+`SwapTraversalTests` asserts against the shipped `scripts/lvai_swap_subvis.xml`, not a fixture copy:
+the claim is about what the helper does, and a fixture would keep passing while the helper drifted
+back. **Its control arm matches `read+SubVIs[]`, the property-node spelling, not the bare name** —
+the first version matched the bare name, failed, and was right to: the helper's own description
+contains `SubVIs[]` where it explains why that property is not used. A whole-file substring check
+was asserting against prose.

@@ -637,13 +637,50 @@ public class AixmlConvertAixmlToViTests
 
 public class AixmlApplyToViTests
 {
+    /// <summary>
+    /// The path is closed (CLAUDE.md, "THERE IS A FIFTH DOOR AND IT IS NAILED SHUT"). The refusal
+    /// has to happen BEFORE the RPC, because the RPC's own answer is a silent errorCode 0 that
+    /// reads as success - measured 2026-09-16, with the VI closed and again with it open.
+    /// </summary>
+    [Fact]
+    public async Task Refuses_without_the_user_opt_in_and_makes_no_rpc_call()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        var result = await new AixmlTools(server.Connection)
+            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml");
+
+        Assert.False(Res.Bool(result, "ok"));
+        Assert.Equal("applyPathIsClosed", Res.Str(result, "errorKind"));
+        Assert.Contains("lvai_generate_vi", Res.Str(result, "error"));
+        Assert.Equal(0, server.Service.CountOf("ApplyAIXMLToVI"));
+    }
+
+    /// <summary>
+    /// The opt-in is the whole gate - a caller that passes it gets the RPC, and gets told that
+    /// its answer decides nothing.
+    /// </summary>
+    [Fact]
+    public async Task The_opt_in_call_warns_that_errorCode_is_not_the_outcome()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        var result = await new AixmlTools(server.Connection)
+            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml",
+                                 userAskedForThisByName: true);
+
+        Assert.Contains("Export", Res.Str(result, "verifyNote"));
+        Assert.Contains("errorCode 0", Res.Str(result, "verifyNote"));
+    }
+
     [Fact]
     public async Task Maps_the_vi_and_xml_paths()
     {
         await using var server = await LvaiTestServer.StartAsync();
 
         await new AixmlTools(server.Connection)
-            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml");
+            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml",
+                                 userAskedForThisByName: true);
 
         var request = server.Service.Last<ApplyAIXMLToVIRequest>("ApplyAIXMLToVI");
         Assert.Equal(@"C:\p\Target.vi", request.ViPath);
@@ -658,7 +695,7 @@ public class AixmlApplyToViTests
         await File.WriteAllTextAsync(viPath, "1234567890");
 
         var result = await new AixmlTools(server.Connection)
-            .ApplyAixmlToViAsync(viPath, @"C:\p\change.xml");
+            .ApplyAixmlToViAsync(viPath, @"C:\p\change.xml", userAskedForThisByName: true);
 
         Assert.Equal(10, Res.Long(result, "viBytesBefore"));
         Assert.Equal(10, Res.Long(result, "viBytesAfter"));
@@ -671,7 +708,8 @@ public class AixmlApplyToViTests
         await using var server = await LvaiTestServer.StartAsync();
 
         var result = await new AixmlTools(server.Connection)
-            .ApplyAixmlToViAsync(@"C:\definitely\missing.vi", @"C:\p\change.xml");
+            .ApplyAixmlToViAsync(@"C:\definitely\missing.vi", @"C:\p\change.xml",
+                                 userAskedForThisByName: true);
 
         Assert.Equal(0, Res.Long(result, "viBytesBefore"));
         Assert.Equal(0, Res.Long(result, "viBytesAfter"));
@@ -685,7 +723,8 @@ public class AixmlApplyToViTests
         server.Service.ErrorMessage = "cannot apply";
 
         var result = await new AixmlTools(server.Connection)
-            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml");
+            .ApplyAixmlToViAsync(@"C:\p\Target.vi", @"C:\p\change.xml",
+                                 userAskedForThisByName: true);
 
         Assert.Equal(42, Res.Int(result, "errorCode"));
         Assert.Equal("cannot apply", Res.Str(result, "errorMessage"));

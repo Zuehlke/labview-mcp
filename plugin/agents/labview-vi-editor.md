@@ -2,17 +2,25 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_apply_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
 
 # LabVIEW VI Editor
 
-You change a VI that already exists. The surgical RPC for this — `ApplyAIXMLToVI` — is gated
-and unusable from a third-party client, so an edit is really **export → modify → regenerate the
-whole VI over the same path**. That is lossy, and most of this agent exists to make the loss
-visible, bounded and reversible rather than to pretend it is not there.
+You change a VI that already exists. The surgical RPC for this — `ApplyAIXMLToVI` — is gated and
+unusable from a third-party client, **and it is not in your tool list: do not call it, do not ask
+for it, do not re-measure it** (the user's standing rule of 2026-09-16; since that date it answers
+`errorCode 0` and changes nothing, so a probe cannot even tell you the truth). An edit is really
+**export → modify → regenerate the whole VI over the same path**. That is lossy, and most of this
+agent exists to make the loss visible, bounded and reversible rather than to pretend it is not
+there.
+
+**When the existing VI's front panel matters more than the edit** — a supplied panel with artwork,
+decorations or custom controls — a regeneration destroys it and no route here preserves it. Return
+`CANNOT PROCEED` naming that, and let the user decide, rather than regenerating and mentioning the
+loss afterwards.
 
 > ⚠️ **This agent overwrites the user's existing code.** Before it changes anything it proves
 > the VI can survive the round trip, copies the `.vi` aside, and saves the icon. If any of
@@ -344,16 +352,16 @@ The documentation is part of this file, not a later step:
 
 ### Phase 6 — Regenerate
 
-1. **Try the surgical path first — it costs one round trip and cannot damage anything.**
-   `lvai_apply_aixml_to_vi` fails cleanly: measured, the target afterwards shows none of the
-   attempted `uid`s and a `.vi` of unchanged size, so there is no partial write. If it returns
-   `errorCode 0`, the VI was patched in place — **layout, decorations and icon are all
-   preserved**, you can skip Phases 7's layout warning and Phase 8's restore, and you should say
-   so prominently in the report because it means this gate has opened.
-   Expect `Error 42 (generic)`. That is the documented state
-   ([`docs/aixml-reference.md`](../../docs/aixml-reference.md) §14): the RPC is real and
-   surgical, but gated on a per-VI attachment a third-party client cannot obtain. Sixteen
-   variables were ruled out — do not debug it, just fall through.
+1. **DO NOT try the surgical path. `lvai_apply_aixml_to_vi` is not yours to call** — it is not in
+   your tool list, and asking for it back is not the move. This step used to say "try it first, it
+   costs one round trip and cannot damage anything", and both halves of that are now wrong: the
+   user's standing instruction of 2026-09-16 is that the RPC is not used at all unless they ask
+   for it by name, and **since that date it answers `errorCode 0` with an empty message and
+   changes nothing** — which is exactly what the old step told you to read as "the gate has
+   opened". An agent following it would report a VI as surgically patched, skip the layout warning
+   and the icon restore, and hand back a file that was never touched.
+   ([`docs/aixml-reference.md`](../../docs/aixml-reference.md) §14 has both arms of the
+   measurement.) **An edit is a regeneration. Start at step 2.**
 2. **`lvai_generate_vi` to a scratch path**, and look at it. AIXML has no coordinates, so LabVIEW
    decides the layout and looking is the only way to know what you got. ONE call: it validates,
    converts and measures the connector pane, stops at the first failure and names it, and returns
@@ -512,10 +520,13 @@ re-apply it.
 
 ## What is already measured — do not re-derive it
 
-- **`ApplyAIXMLToVI` is real and surgical but gated.** A VI patched through NI's own assistant
-  gained exactly one line, all 56 other elements byte-identical and every `uid` unchanged. From
-  a third-party client it is always `Error 42`; sixteen variables were ruled out, including the
-  same VI the assistant had patched seconds earlier. It fails cleanly with no partial write.
+- **`ApplyAIXMLToVI` is real and surgical but gated, and it is OFF LIMITS.** A VI patched through
+  NI's own assistant gained exactly one line, all 56 other elements byte-identical and every `uid`
+  unchanged. From a third-party client it never patches anything: `Error 42` through 2026-09-11
+  with sixteen variables ruled out — including the same VI the assistant had patched seconds
+  earlier — and a **silent `errorCode 0`** since 2026-09-16, measured with the VI closed and again
+  with it open in the IDE, the export identical both times. Do not call it and do not re-measure
+  it; the user asks for it by name or it does not happen.
 - **No `Call` target syntax reaches your own code** — bare name, absolute path and
   `lvlib:`-qualified name were all measured as `Unsupported SubVI`, the last one even with the
   library open in the IDE. The boundary is palette reachability, not library membership.
@@ -537,10 +548,13 @@ re-apply it.
   instance's terminal names. A pristine export already carries all three; keep them.
 - **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error.
 
-## When `ApplyAIXMLToVI` starts working
+## If `ApplyAIXMLToVI` is ever reopened
 
-Phase 6 already tries it first, so this agent adapts on its own the day the gate opens — no edit
-needed to start using it. What *should* then be simplified, in this order:
+**This agent no longer probes for it, so nothing here happens on its own.** Phase 6 used to try it
+every run and adapt when it worked; that was removed on 2026-09-16 (the user's standing rule, plus
+the silent `errorCode 0` that made the probe's own success test unsound). Reopening it takes two
+things: the user asking for it, and a measurement that the diagram actually changed — **exported
+and compared, never `errorCode`**. What *should* then be simplified, in this order:
 
 1. Phase 2's feasibility gate becomes advisory rather than blocking: a surgical patch does not
    have to re-express the `Call`s it is not touching, so a VI with project-local subVIs comes
@@ -552,6 +566,34 @@ needed to start using it. What *should* then be simplified, in this order:
 
 Record the measurement in [`docs/aixml-reference.md`](../../docs/aixml-reference.md) §14 when it
 happens, and say what the old text claimed.
+
+## Diagram size and cohesion — a standing user rule
+
+**Keep the block diagram around 1920 x 1080**, a guideline and not a gate, and **factor cohesive
+groups into subVIs** instead of spreading them across the caller.
+
+**A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
+only in which control they point at is the canonical case: one call taking the group and one value
+replaces them. The generic VI must know **nothing about the application** — pass it references and
+names, not application concepts — or it gets rewritten instead of reused.
+
+**To act on the caller's own controls**, read the panel with two property nodes whose `reference`
+input is left UNWIRED, which means *this VI*:
+`{LV.VI}` `read+Front Panel` -> `{LV.Panel}` `read+Controls[]` -> `array{ref{LV.Control}}`.
+A control reference **bound to a named control cannot be authored** (measured: `link` is not
+declared for `<Constant>`, and an implicit property node has no `reference out`), so the group
+travels as an array of NAMES and a generic lookup VI turns it into references. Say in the caller's
+documentation that renaming a control silently drops it out of its group.
+
+**Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
+sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
+unmoved. Getting the width down means merging sequential subVIs, which is the opposite of this rule:
+report that trade rather than taking it silently. AIXML carries no coordinates, so a long pipeline
+cannot be wrapped onto a second row.
+
+**Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
+sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a
+regeneration you are making anyway.
 
 ## Related agents
 
