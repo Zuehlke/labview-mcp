@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -682,6 +682,48 @@ cannot be wrapped onto a second row.
 **Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
 sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a
 regeneration you are making anyway.
+
+## Diagram comments, event data, and sharing one LabVIEW - standing rules
+
+**KEEP A DIAGRAM COMMENT UNDER ABOUT 45 CHARACTERS.** A `<FreeLabel>` box does not auto-grow, and
+LabVIEW sizes it from the space it happens to find rather than from your text, so a long caption is
+cut off MID-SENTENCE in silence. Measured 2026-09-16: a 79-character comment landed in a five-line
+box and shipped as `... it reports which control the user`, losing its last word - through
+`lvai_check_aixml`, `lvai_validate_aixml`, the convert, nine subVI swaps and `execState 1`. **Only
+the rendered picture sees it**, and the repair is a full regeneration plus the whole swap cycle plus
+the icon. The same three comments cut to 30, 43 and 44 characters all rendered complete. Fewer and
+shorter wins twice.
+
+**FOR A FRONT-PANEL EVENT, READ THE CONTROL'S OWN TERMINAL RATHER THAN AN `Event Data Node`.** A
+control terminal placed inside its event frame already carries the value the event just produced, so
+a `Not` on the control does the work with no data node at all. That matters because
+`ConvertAIXMLToVI` DROPS an `Event Data Node`'s field selection: measured 2026-09-16, wiring
+`NewVal` into a subVI `Call` came back as `dataFieldsDroppedAndWired: ["NewVal","OldVal"]` with
+validation answering `required input 'new value' is not wired`. Reading the terminal removes the
+third build step entirely.
+
+**THAT HOLDS ONLY WHERE A CONTROL EXISTS, AND FOR A USER EVENT IT DOES NOT.** The user's correction
+of 2026-09-16. A user event's payload has no front-panel control behind it - the data exists only in
+the `Event Data Node` - so there the documented route stands: a labelled placeholder constant wired
+into a PRIM input, plus `lvai_set_event_data_fields` as a third build step. Do not generalise the
+shortcut past front-panel events; the two cases look alike on a diagram and are not.
+
+**`lvai_placeholder_subvi` PLUS `lvai_swap_subvis` IS THE ONLY ROUTE BY WHICH A GENERATED VI CALLS
+PROJECT-LOCAL CODE.** AIXML refuses a project VI as a `Call` target outright (`Error 53, Unsupported
+SubVI`), in every spelling. Do not hand-build a stand-in: the clone must match the subject's pane
+terminal for terminal, and an inexact one is `Error 7, Bad Linkage` with nothing in the message
+about panes. Measured 2026-09-16 - an agent whose roster lacked the tool built its own socket VI
+from AIXML, correctly but by luck, with no way to know the rule it was re-deriving.
+
+**WHEN SEVERAL AGENTS SHARE ONE LabVIEW, DO NOT OPEN OR CLOSE A PROJECT AND DO NOT SWAP.** One
+LabVIEW serves every agent at once, and `lvai_open_file` / `lvai_close_active_project` change state
+the others depend on - a close SAVES LabVIEW's in-memory copy over the `.lvproj`, which is how two
+class entries were lost in one measured build. `lvai_swap_subvis` needs an ACTIVE project, because
+`{LV.SubVI}` `Replace` is a silent no-op outside the IDE's own application instance, so it cannot be
+shared either. When the task prompt says other agents are running: author the `Call` against its
+placeholder, STOP, and report the socket name for the orchestrator to swap centrally. Measured
+2026-09-16 - four agents built ten subVIs in about 11 minutes of wall clock against about 32 minutes
+of summed agent time, with no project contention at all.
 
 ## Related agents
 

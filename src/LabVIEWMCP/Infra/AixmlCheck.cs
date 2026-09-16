@@ -440,25 +440,64 @@ internal static class AixmlCheck
             // No conIdx, no terminal: `connection` without one is dropped on export anyway, so an
             // off-pane control has no wire rule to get wrong.
             if ((string?)element.Attribute("conIdx") is not { Length: > 0 }) continue;
-            if ((string?)element.Attribute("connection") is { Length: > 0 }) continue;
 
             var name = element.Attribute("_name")?.Value ?? kind;
             var uid = (string?)element.Attribute("uid");
+            var connection = (string?)element.Attribute("connection");
 
-            if (kind == "Indicator")
-                findings.Add(new Finding(Severity.Warning, "outputTerminalDefaultsToRequired",
-                    $"Output \"{name}\" is on the connector pane with no `connection`, which "
-                    + "LabVIEW reads as REQUIRED. An output must never be required: every caller "
-                    + "that leaves it unwired becomes non-executable (Error 1003), and nothing "
-                    + "reports it in THIS VI. Write connection=\"recommended\".", uid));
-            else
-                findings.Add(new Finding(Severity.Info, "inputTerminalDefaultsToRequired",
-                    $"Input \"{name}\" is on the connector pane with no `connection`, which "
-                    + "LabVIEW reads as REQUIRED - not as \"unspecified\". Say which you mean: "
-                    + "`required`, `recommended` or `optional`. Left alone here because a "
-                    + "required input is a legitimate choice.", uid));
+            if (connection is not { Length: > 0 })
+            {
+                if (kind == "Indicator")
+                    findings.Add(new Finding(Severity.Warning, "outputTerminalDefaultsToRequired",
+                        $"Output \"{name}\" is on the connector pane with no `connection`, which "
+                        + "LabVIEW reads as REQUIRED. An output must never be required: every caller "
+                        + "that leaves it unwired becomes non-executable (Error 1003), and nothing "
+                        + "reports it in THIS VI. Write connection=\"recommended\".", uid));
+                else
+                    findings.Add(new Finding(Severity.Info, "inputTerminalDefaultsToRequired",
+                        $"Input \"{name}\" is on the connector pane with no `connection`, which "
+                        + "LabVIEW reads as REQUIRED - not as \"unspecified\". Say which you mean: "
+                        + "`required`, `recommended` or `optional`. Left alone here because a "
+                        + "required input is a legitimate choice.", uid));
+                continue;
+            }
+
+            // THE ATTRIBUTE IS PRESENT AND CAN STILL BE WRONG, which is the half this check was
+            // blind to until 2026-09-17. It returned early on any `connection`, so it caught only
+            // the omitted case and waved through a flag that says the wrong thing outright.
+            if (kind == "Indicator" && IsRequired(connection))
+                findings.Add(new Finding(Severity.Warning, "outputTerminalIsRequired",
+                    $"Output \"{name}\" is connection=\"required\". That is the same defect as "
+                    + "omitting the attribute, only stated on purpose: LabVIEW enforces the flag "
+                    + "at the CALL SITE, so every caller that leaves it unwired is Error 1003 "
+                    + "while this VI compiles, runs and exports perfectly. Write "
+                    + "\"recommended\".", uid));
+            else if (kind == "Control" && IsHouseErrorIn(name) && !IsRecommended(connection))
+                findings.Add(new Finding(Severity.Warning, "errorInNotRecommended",
+                    $"`error in` is connection=\"{connection}\"; the house rule is "
+                    + "\"recommended\". Both `optional` and `required` behave differently from it "
+                    + "where it matters: `required` forces every caller to wire the chain, and "
+                    + "`optional` hides the terminal from Context Help's simple view. Measured "
+                    + "2026-09-16 over one build: four agent-built VIs said `recommended` and six "
+                    + "said `optional`, every pane passed lvai_connector_pane with 0 violations, "
+                    + "and the only visible consequence was five placeholder sockets cloned "
+                    + "afresh because PlaceholderTools.Signature carries the flag.", uid));
         }
     }
+
+    /// <summary>
+    /// The house error-input label, and ONLY that spelling. `error in (no error)` is NI's own
+    /// default and belongs to a CALLEE we do not own, so matching it here would police somebody
+    /// else's pane; CLAUDE.md's rule is explicit that the house name governs the terminal WE name.
+    /// </summary>
+    private static bool IsHouseErrorIn(string name) =>
+        string.Equals(name, "error in", StringComparison.Ordinal);
+
+    private static bool IsRecommended(string connection) =>
+        string.Equals(connection, "recommended", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRequired(string connection) =>
+        string.Equals(connection, "required", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Types whose non-empty <c>value</c> literal does NOT survive <c>ConvertAIXMLToVI</c>.
@@ -698,6 +737,50 @@ internal static class AixmlCheck
                 + "`connection`, which LabVIEW reads as REQUIRED; set to \"recommended\". A "
                 + "required output makes every caller that leaves it unwired non-executable.",
                 (string?)indicator.Attribute("uid")));
+        }
+
+        // AN OUTPUT WRITTEN `required` ON PURPOSE IS THE SAME DEFECT, and it used to travel
+        // through untouched because the pass above only looked for an ABSENT attribute. There is
+        // still no intent to preserve: NI's style guide has no required output at all.
+        foreach (var indicator in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName == "Indicator")
+                     .Where(e => (string?)e.Attribute("conIdx") is { Length: > 0 })
+                     .Where(e => (string?)e.Attribute("connection") is { Length: > 0 } c
+                                 && IsRequired(c)))
+        {
+            indicator.SetAttributeValue("connection", "recommended");
+            repairs.Add(new Repair("outputTerminalIsRequired",
+                $"Output \"{indicator.Attribute("_name")?.Value ?? "Indicator"}\" was "
+                + "connection=\"required\"; set to \"recommended\". LabVIEW enforces the flag at "
+                + "the call site, so a required output is Error 1003 in every caller that leaves "
+                + "it unwired.", (string?)indicator.Attribute("uid")));
+        }
+
+        // `error in` IS `recommended`, AND THIS IS REPAIRABLE FOR THE SAME REASON THE OUTPUT CASE
+        // IS: the house rule already decides it, so there is no author intent to guess at. It is
+        // narrow on purpose - only a Control labelled exactly `error in`, which by that same rule
+        // is a terminal WE named. A callee's `error in (no error)` is not ours to touch.
+        //
+        // Measured 2026-09-16: two of four agents building the same application chose `optional`
+        // and two chose `recommended`, with nothing anywhere reporting the divergence - every pane
+        // passed the connector-pane check, and the lint was silent because the attribute was
+        // present. A rule nothing enforces is a rule agents diverge on, which is why this is a
+        // checker entry and not another sentence in CLAUDE.md: an agent's system prompt is its own
+        // definition, and CLAUDE.md is not in it.
+        foreach (var control in root.DescendantsAndSelf()
+                     .Where(e => e.Name.LocalName == "Control")
+                     .Where(e => (string?)e.Attribute("conIdx") is { Length: > 0 })
+                     .Where(e => IsHouseErrorIn(e.Attribute("_name")?.Value ?? ""))
+                     .Where(e => (string?)e.Attribute("connection") is { Length: > 0 } c
+                                 && !IsRecommended(c)))
+        {
+            var was = (string?)control.Attribute("connection");
+            control.SetAttributeValue("connection", "recommended");
+            repairs.Add(new Repair("errorInNotRecommended",
+                $"`error in` was connection=\"{was}\"; set to \"recommended\", which is the house "
+                + "rule. `required` would force every caller to wire the chain; `optional` hides "
+                + "the terminal from Context Help's simple view.",
+                (string?)control.Attribute("uid")));
         }
 
         // A MISSING `value` ON AN INDICATOR OR A CONTROL IS REPAIRABLE, because the type decides

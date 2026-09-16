@@ -600,6 +600,38 @@ def check_terminal_flags(elements: list[_El]) -> list[Finding]:
             )
             continue
 
+        # `error in` IS `recommended`. The house rule names the terminal and the bottom-row slot
+        # and says nothing about the flag, so agents choose - measured 2026-09-16 over one
+        # application build where two of four agents wrote `optional` and two wrote `recommended`,
+        # with every pane passing the connector-pane check and this lint silent, because the
+        # attribute was PRESENT. `required` would force every caller to wire the chain; `optional`
+        # hides the terminal from Context Help's simple view. Narrow on purpose: only the exact
+        # house label, because `error in (no error)` belongs to a callee we do not own.
+        if (
+            e.tag == "Control"
+            # `e.name`, NOT `e.label()` - the latter renders as "Control 'error in'", so comparing
+            # it against the bare label silently matches nothing. The rule shipped dead for one
+            # revision that way: its C# twin's tests were green and no file under scripts/ carries
+            # the fault, so nothing exercised it until it was run against a real generated stub.
+            and e.name == "error in"
+            and e.el.get("conIdx") is not None
+            and e.el.get("connection") not in (None, "recommended")
+        ):
+            findings.append(
+                Finding(
+                    "warning",
+                    "conn-error-in-not-recommended",
+                    e.uid,
+                    e.label(),
+                    e.path,
+                    'error in carries connection="%s"; the house rule is "recommended". '
+                    "Nothing else reports the divergence, and it silently changes the "
+                    "placeholder signature, so two VIs with the same pane stop sharing a "
+                    "socket." % e.el.get("connection"),
+                )
+            )
+            continue
+
         if e.el.get("conIdx") is None or e.el.get("connection") is not None:
             continue
         if e.tag == "Indicator":

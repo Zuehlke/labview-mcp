@@ -1,0 +1,111 @@
+<VI _name="lvai_run_and_read_typed.vi" description="Run a VI and read back EVERY control and indicator value it holds afterwards\2C rendered as XML text - and set its inputs ACCORDING TO EACH CONTROL'S OWN TYPE rather than as strings only.\0A\0AThe predecessor\2C lvai_run_and_read.vi\2C wires the incoming string straight into Ctrl Val.Set\2C whose Value terminal is a Variant. A string variant only matches a STRING control\2C so a path\2C numeric or boolean control could not be set at all - measured repeatedly\2C where five separate agents each worked around it by generating throwaway copies of the VI under test with the values baked into the control defaults.\0A\0AThis helper reads the target's front panel first\2C matches each requested name against the control labels\2C and asks the control what it is through the Class Name property. LabVIEW answers String\2C Path\2C Digital (for every numeric representation\2C DBL and I32 alike)\2C Boolean\2C Array or Cluster - measured 2026-09-16 on one control of each type. The case structure converts the incoming string accordingly and only then calls Ctrl Val.Set.\0A\0AArray and Cluster controls still fall to the string case and therefore still cannot be set\3A there is no general string-to-composite conversion without a runtime type\2C and inventing one per shape is not something a helper can do. Say so rather than appearing to support them.\0A\0AA name that matches no control on the target's panel produces an INVALID REFNUM error from the Class Name property rather than LabVIEW's own control-name message\2C because the lookup happens before the set. The error still names the property node and still stops the run before Run VI.\0A\0AInput Names and Input Values are two newline-separated lists\2C paired by position. Driven by RunVIAsTopLevel\2C which marshals strings only - which is why every input here is a string and the typing happens inside.">
+  <Control _name="VI Path" conIdx="1" connection="required" description="Absolute path of the VI to run\2C as a string. Converted to a path inside." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
+  <Control _name="Input Names" conIdx="2" connection="optional" description="Names of the target's controls to set before running\2C one per line. Empty to run with whatever the VI already holds." outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
+  <Control _name="Input Values" conIdx="3" connection="optional" description="Values for Input Names\2C one per line\2C paired by position. Always written as text here\2C and converted inside to whatever type the named control actually is." outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
+
+  <Constant _name="newline" outputs="value:30.value" type="string" uid="30" uid_parent="root" value="\0A"/>
+  <Constant _name="1D string array type" outputs="value:31.value" type="array{string}" uid="31" uid_parent="root" value="[]"/>
+  <Constant _name="string format" outputs="value:37.value" type="string" uid="37" uid_parent="root" value="%s"/>
+  <Constant _name="wait until done" outputs="value:150.value" type="bool" uid="150" uid_parent="root" value="true"/>
+
+  <Node _name="Spreadsheet String To Array" inputs="format string:37.value,spreadsheet string:11.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:32.array" uid="32" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:37.value,spreadsheet string:12.value,array type (2D Dbl):31.value,delimiter (Tab):30.value" outputs="array:34.array" uid="34" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:20.vi reference,error in (no error):20.error out" outputs="Front Panel:40.Front Panel,error out:40.error out" type="{LV.VI}" uid="40" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:40.Front Panel,error in (no error):40.error out" outputs="Controls[]:41.Controls[],error out:41.error out" type="{LV.Panel}" uid="41" uid_parent="root"/>
+
+  <FreeLabel comment="The first loop reads every control's label." uid="90" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="50" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:41.Controls[]" mode="index" outputs="value:51.value" uid="51" uid_parent="50"/>
+    <Node _name="Property Node" fields="read+Label.Text" inputs="reference:51.value,error in (no error):53.value" outputs="Label.Text:52.Label.Text,reference out:,error out:52.error out" type="{LV.Control}" uid="52" uid_parent="50"/>
+    <ShiftReg uid="54" uid_parent="50">
+      <Left inputs="value:41.error out" outputs="value:53.value" uid="53" uid_parent="54"/>
+      <Right inputs="value:52.error out" outputs="value:55.value" uid="55" uid_parent="54"/>
+    </ShiftReg>
+    <Tunnel _id="Out1" inputs="value:52.Label.Text" mode="index" outputs="value:56.value" uid="56" uid_parent="50"/>
+  </Structure>
+
+  <FreeLabel comment="The second loop sets one control per name, by its own type." uid="91" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>
+    <Tunnel _id="In2" inputs="value:34.array" mode="index" outputs="value:102.value" uid="102" uid_parent="100"/>
+    <Tunnel _id="In3" inputs="value:56.value" outputs="value:103.value" uid="103" uid_parent="100"/>
+    <Tunnel _id="In4" inputs="value:41.Controls[]" outputs="value:104.value" uid="104" uid_parent="100"/>
+    <Tunnel _id="In5" inputs="value:20.vi reference" outputs="value:105.value" uid="105" uid_parent="100"/>
+
+    <Node _name="Search 1D Array" inputs="1D array:103.value,element:101.value,start index (0):" outputs="index of element:106.index of element" uid="106" uid_parent="100"/>
+    <Node _name="Index Array" inputs="array:104.value,index:106.index of element" outputs="element:107.element" uid="107" uid_parent="100"/>
+    <Node _name="Property Node" fields="read+Class Name" inputs="reference:107.element,error in (no error):120.value" outputs="Class Name:108.Class Name,reference out:,error out:108.error out" type="{LV.Control}" uid="108" uid_parent="100"/>
+
+    <Structure _name="Case Structure" selectin="108.Class Name" uid="200" uid_parent="100">
+      <Tunnel _id="In1" inputs="value:105.value" uid="201" uid_parent="200"/>
+      <Tunnel _id="In2" inputs="value:101.value" uid="202" uid_parent="200"/>
+      <Tunnel _id="In3" inputs="value:102.value" uid="203" uid_parent="200"/>
+      <Tunnel _id="In4" inputs="value:108.error out" uid="204" uid_parent="200"/>
+      <Tunnel _id="Out1" outputs="value:205.value" uid="205" uid_parent="200"/>
+
+      <CaseFrame selector="&quot;Path&quot;" selectout="" uid="210" uid_parent="200">
+        <Tunnel _id="In1" outputs="value:211.value" uid="211" uid_parent="210"/>
+        <Tunnel _id="In2" outputs="value:212.value" uid="212" uid_parent="210"/>
+        <Tunnel _id="In3" outputs="value:213.value" uid="213" uid_parent="210"/>
+        <Tunnel _id="In4" outputs="value:214.value" uid="214" uid_parent="210"/>
+        <Node _name="String To Path" inputs="string:213.value" outputs="path:215.path" uid="215" uid_parent="210"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:211.value,error in (no error):214.value,Control Name:212.value,Value:215.path" outputs="reference out:,error out:216.error out" uid="216" uid_parent="210"/>
+        <Tunnel _id="Out1" inputs="value:216.error out" uid="217" uid_parent="210"/>
+      </CaseFrame>
+
+      <CaseFrame selector="&quot;Digital&quot;" selectout="" uid="220" uid_parent="200">
+        <Tunnel _id="In1" outputs="value:221.value" uid="221" uid_parent="220"/>
+        <Tunnel _id="In2" outputs="value:222.value" uid="222" uid_parent="220"/>
+        <Tunnel _id="In3" outputs="value:223.value" uid="223" uid_parent="220"/>
+        <Tunnel _id="In4" outputs="value:224.value" uid="224" uid_parent="220"/>
+        <Node _name="Fract/Exp String To Number" inputs="string:223.value" outputs="number:225.number" uid="225" uid_parent="220"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:221.value,error in (no error):224.value,Control Name:222.value,Value:225.number" outputs="reference out:,error out:226.error out" uid="226" uid_parent="220"/>
+        <Tunnel _id="Out1" inputs="value:226.error out" uid="227" uid_parent="220"/>
+      </CaseFrame>
+
+      <CaseFrame selector="&quot;Boolean&quot;" selectout="" uid="230" uid_parent="200">
+        <Tunnel _id="In1" outputs="value:231.value" uid="231" uid_parent="230"/>
+        <Tunnel _id="In2" outputs="value:232.value" uid="232" uid_parent="230"/>
+        <Tunnel _id="In3" outputs="value:233.value" uid="233" uid_parent="230"/>
+        <Tunnel _id="In4" outputs="value:234.value" uid="234" uid_parent="230"/>
+        <Constant _name="True Text" outputs="value:235.value" type="string" uid="235" uid_parent="230" value="TRUE"/>
+        <Constant _name="One Text" outputs="value:236.value" type="string" uid="236" uid_parent="230" value="1"/>
+        <Node _name="To Upper Case" inputs="string:233.value" outputs="all upper case string:237.all upper case string" uid="237" uid_parent="230"/>
+        <Node _name="Equal?" inputs="x:237.all upper case string,y:235.value" outputs="x = y?:238.x = y?" uid="238" uid_parent="230"/>
+        <Node _name="Equal?" inputs="x:237.all upper case string,y:236.value" outputs="x = y?:239.x = y?" uid="239" uid_parent="230"/>
+        <Node _name="Or" inputs="x:238.x = y?,y:239.x = y?" outputs="x .or. y?:240.x .or. y?" uid="240" uid_parent="230"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:231.value,error in (no error):234.value,Control Name:232.value,Value:240.x .or. y?" outputs="reference out:,error out:241.error out" uid="241" uid_parent="230"/>
+        <Tunnel _id="Out1" inputs="value:241.error out" uid="242" uid_parent="230"/>
+      </CaseFrame>
+
+      <CaseFrame selector="Default" selectout="" uid="250" uid_parent="200">
+        <Tunnel _id="In1" outputs="value:251.value" uid="251" uid_parent="250"/>
+        <Tunnel _id="In2" outputs="value:252.value" uid="252" uid_parent="250"/>
+        <Tunnel _id="In3" outputs="value:253.value" uid="253" uid_parent="250"/>
+        <Tunnel _id="In4" outputs="value:254.value" uid="254" uid_parent="250"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:251.value,error in (no error):254.value,Control Name:252.value,Value:253.value" outputs="reference out:,error out:255.error out" uid="255" uid_parent="250"/>
+        <Tunnel _id="Out1" inputs="value:255.error out" uid="256" uid_parent="250"/>
+      </CaseFrame>
+    </Structure>
+
+    <ShiftReg uid="130" uid_parent="100">
+      <Left inputs="value:55.value" outputs="value:120.value" uid="120" uid_parent="130"/>
+      <Right inputs="value:205.value" outputs="value:140.value" uid="140" uid_parent="130"/>
+    </ShiftReg>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:20.vi reference,error in (no error):140.value,Wait until done:150.value" outputs="reference out:151.reference out,error out:151.error out" uid="151" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:151.reference out,error in (no error):151.error out" outputs="reference out:160.reference out,error out:160.error out,Controls:160.Controls" uid="160" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:160.Controls" outputs="xml string:170.xml string" uid="170" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:160.reference out,error in (no error):160.error out" outputs="error out:180.error out" uid="180" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:180.error out" outputs="xml string:181.xml string" uid="181" uid_parent="root"/>
+
+  <Indicator _name="values xml" conIdx="0" connection="recommended" description="Every control and indicator of the target after the run\2C name and value\2C as flattened XML. A STRING deliberately - that is what survives RunVIAsTopLevel." inputs="value:170.xml string" type="string" uid="60" uid_parent="root" value=""/>
+  <Indicator _name="error xml" conIdx="4" connection="recommended" description="This helper's own error cluster\2C flattened to XML. Flattened rather than passed as a cluster so that it too can be marshalled back." inputs="value:181.xml string" type="string" uid="61" uid_parent="root" value=""/>
+</VI>
