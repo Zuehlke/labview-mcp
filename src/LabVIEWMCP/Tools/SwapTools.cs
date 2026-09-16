@@ -53,6 +53,16 @@ internal sealed class SwapTools(LvaiConnection connection)
         NODES ARE SWAPPED FIRST AND CONSTANTS LAST, always. A dynamic dispatch input is a REQUIRED
         terminal, so a class chain needs a class value; with the nodes already swapped that wire has
         a class sink and Replace re-types it, where the other order breaks it.
+        A CALL INSIDE A LOOP OR A CASE FRAME IS REACHED, and that is new as of 2026-09-16. The
+        helper collected from {LV.Diagram} SubVIs[], which lists the diagram it is asked about and
+        does NOT descend into structures, so a nested call came back under `socketsNotOnDiagram`
+        while sitting plainly on the diagram - measured on a VI with three calls at the top level
+        and two inside a Case frame, where `diagramSubVis` listed three of five. It traverses the
+        whole block diagram now, verified on a main VI whose six calls all sit inside its event
+        loop: all six listed, five of five swapped in one call. The pylabview fallback was no
+        answer either: a
+        {"op":"retarget"} on the same VI rewrote the links and LabVIEW then refused to load it with
+        `Missing subVI`, while callTargets and the AIXML export were both green.
         EVERY SOCKET NAME MUST BE UNIQUE IN `swapsJson` - this refuses a name given twice, because
         matching is by VI Name and two ENTRIES for one name cannot say which node gets which target.
         A name that is not on the diagram is refused too: the helper's array search answers -1 and

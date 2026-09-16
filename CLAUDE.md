@@ -615,6 +615,46 @@ exist. **So finish by rendering the diagram and reading it** — `Print.VI To HT
 answers `Error 118` without creating it. Every programmatic check in the chain passed the clipped
 comment; only the picture disagreed.
 
+**A BLOCK DIAGRAM STAYS AROUND 1920 x 1080, AND A REPEATED OPERATION BECOMES ONE GENERIC SUBVI.**
+The user's standing rule of 2026-09-16, given three times over one build and sharpened each time.
+Diagrams have been coming out too large; factor cohesive groups out rather than spreading them
+across the caller. The size is a GUIDELINE, not a gate.
+
+**The worked example is the one to copy.** Six `Property Node`s writing `Disabled`, one per
+front-panel object, chained across the middle of a loop, became one call taking a group of controls
+and one boolean. The user's correction when the first version filtered the whole panel by label
+INSIDE that VI is the part that matters: **a helper that repeats one operation takes an ARRAY and
+knows nothing about the application it serves**, or it gets rewritten instead of reused. `Set
+Controls Disabled.vi` is the shape - references plus names plus one boolean, no ATM in it anywhere.
+
+**THE CALLER READS ITS OWN PANEL WITH TWO PROPERTY NODES AND AN UNWIRED `reference`.**
+`{LV.VI}` `read+Front Panel` -> `{LV.Panel}` `read+Controls[]`, and the `reference` input of the
+first is left EMPTY, which means *the VI it sits on*. That is the only way a generated VI gets its
+own control references, and NI's own exports carry the shape. `array{ref{LV.Control}}` and
+`ref{LV.Control}` are valid AIXML type literals.
+
+**A BOUND CONTROL REFERENCE CANNOT BE AUTHORED, so the group travels as an array of NAMES.** Measured
+twice: `link` is not declared for `<Constant>` (the schema is closed), and an implicitly linked
+property node has NO `reference out` terminal. The user approved names as the workaround. Keep the
+lookup in its own generic VI - `Get Controls By Label.vi` - rather than welding it into the worker,
+and say in the caller's documentation that RENAMING A CONTROL SILENTLY DROPS IT OUT OF ITS GROUP,
+because nothing checks the list against the panel. `docs/control-reference-binding.md` has the heap
+structure for the day the creation route is settled.
+
+**WIDTH FOLLOWS THE LONGEST DEPENDENCY CHAIN; HEIGHT FOLLOWS WHAT SITS IN PARALLEL.** Measured over
+three rounds on one main VI: pulling ten parallel nodes into subVIs took the height from 1094 to
+880 px and moved the width by 23 px. Then replacing ONE call with two sequential ones put 131 px of
+width straight back. So **factoring parallel work is what the size rule can buy**; width only comes
+down by making the chain SHORTER, which means merging sequential subVIs back together - the opposite
+of the rule. Put that trade to the caller rather than optimising it silently, and note that AIXML
+carries no coordinates, so a long pipeline cannot be wrapped onto a second row the way a developer
+would. `docs/cold-build-atm-cld.md` section 11.
+
+**AND A REGENERATION COSTS THE WHOLE SWAP CYCLE, so do not regenerate for a comment.** Rewriting a
+generated subVI from AIXML puts its placeholder sockets back and destroys its icon - measured on a
+description-only change, which cost `Error 1357`, two `lvai_swap_subvis` calls and an icon reset for
+one sentence. Batch documentation changes into a regeneration you are making anyway.
+
 **Everything you write INTO a VI is English by default — descriptions, terminal descriptions and
 diagram comments alike. A German request does not imply German text.** Only an explicit wish
 ("auf Deutsch", "in French") changes it, and then everything in that VI follows it.
@@ -799,6 +839,30 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 | a `.ctl`, an icon, layout, decorations | pylabview. NI's list puts `.ctl` outside the generator entirely |
 | a class, its private data, an accessor | **neither — call NI's OWN provider VIs**, see below |
 | a DQMH module, or anything a vendor toolkit under `project\` scripts | **neither — VI Server BY PATH**, see below |
+
+**THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
+unless the user asks for it by name, in that session.** The user's standing instruction of
+2026-09-16, and it is a rule about *not spending turns*, not a claim anybody still needs to
+establish: §14 of `lvai_aixml_reference` is four pages of ruled-out variables, and every one of
+them cost a session. The RPC is real and surgical for NI's own assistant and gated on a per-VI
+attachment bound to the CALLER, which no third-party client can obtain.
+
+**And the refusal went SILENT, which is why this is a rule in CLAUDE.md rather than a footnote.**
+Measured 2026-09-16 on one copy of one VI, two arms — closed, then open in the IDE — it answers
+**`errorCode 0` with an empty `errorMessage` and changes nothing**; the AIXML export is identical
+on both sides. Through 2026-09-11 it answered `Error 42`, which announced itself. So every piece
+of advice of the shape "try it first, it costs one round trip" now resolves to *report a VI as
+surgically patched when the file was never touched* — `.claude/agents/labview-vi-editor.md` Phase 6
+said exactly that, and it has been removed rather than qualified, along with the tool from that
+agent's list and from `labview-vi-generator`'s.
+
+**The consequence for the work, which is the part that bites: AN EDIT IS A FULL REGENERATION, so a
+VI whose EXISTING FRONT PANEL must survive cannot be edited at all.** Layout, decorations, custom
+control styling and the icon are re-decided by LabVIEW every time. Where that panel is the point —
+a customer's supplied panel, an exam template, anything with artwork — **say so and let the user
+choose the route**; do not go hunting for a way in, and do not quietly regenerate and list the loss
+afterwards. The only other doors are VI Server diagram scripting (unmeasured here) and a rebuild of
+the panel, and both are the user's call, not yours.
 
 **There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
 The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
@@ -1284,6 +1348,41 @@ the same voice as the measurements around it, which is the shape `docs/tool-argu
 records as costing eighteen days. Both are corrected, and both now say what they used to claim.
 **When a description explains a MECHANISM, probe the mechanism** — this one cost four minutes.
 
+**A CALL INSIDE A LOOP OR A CASE FRAME WAS INVISIBLE TO THE SWAP, and that is FIXED as of
+2026-09-16.** The helper collected its candidates from `{LV.Diagram}` `SubVIs[]`, which lists the
+nodes of the diagram it is ASKED ABOUT and does not descend into structures — so a nested call came
+back under `socketsNotOnDiagram`, a field whose own text says the name is not on the diagram while
+the node was plainly there — and `diagramSubVis`, which that field's hint sends you to, has the same
+blind spot, so the listing agrees that the name is absent. Measured on a VI with five calls, three
+on the top-level diagram and two inside a Case frame: the three were listed, the two were not.
+Verified after the fix on a generated main VI whose six calls all sit inside its event loop, two of
+them additionally inside Case frames — all six listed, five of five entries swapped in ONE call.
+`Traverse for GObjects.vi`
+(`VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi`, `Class Name` = `SubVI`,
+`Traverse Target` = 1 for the block diagram) walks the whole diagram; it hands back GObject
+references, so each needs `To More Specific Class` onto `ref{LV.SubVI}` before `VI Name` is read or
+`Replace` is invoked.
+
+**THE PYLABVIEW FALLBACK IS NOT AN ANSWER FOR THIS, and it fails LOUDLY only on the second look.**
+`pylv_apply {"op":"retarget"}` reaches a nested node — it edits link records and never walks a
+diagram — and on the same VI it produced `callTargets` naming all five real subVIs, a clean AIXML
+export, and a VI LabVIEW then refused to load: `execState 0`, `Missing subVI <name> in VI <caller>`.
+Measured twice, once on a caller sitting in the SAME folder as its targets, so the usual
+"LabVIEW searches beside the caller" does not rescue it. **Generation is `lvai_swap_subvis`; the
+retarget op is for a pane-compatible swap of something already linked.**
+
+**AND A TOP-LEVEL UI VI MUST NEVER BE RUN THROUGH THE UNTIMED HELPER — it blocks the whole gRPC
+service, not just the call.** `lvai_run_and_read.vi` wires `Wait until done` = TRUE, so a VI that
+never ends is waited on for ever, and because the service is what runs the helper every later
+`lvai_*` call answers `DeadlineExceeded` until LabVIEW is killed. `runForMs` exists precisely for
+that VI and selects `lvai_run_for_ms.vi` instead — but the selection was
+`helperAixmlPath ?? default`, so **a client that sends every declared parameter defeated it on
+every call** and the feature was unreachable from one. Fixed 2026-09-16: a `helperAixmlPath` with
+no `run for ms` control is corrected rather than obeyed, and the answer says so in
+`helperOverridden`. Diagnosing it cost two LabVIEW restarts. The general shape is the one
+`docs/tool-argument-errors.md` already records — **a parameter that one mode ignores must not be
+able to defeat that mode.**
+
 **A SWAP CAN LOSE A WIRE WITHOUT LOSING A LINK, and `lvai_swap_subvis` used to call that a clean
 restore.** Measured 2026-09-03: retargeting one accessor onto another whose pane differs in TYPE
 left the value wire attached to the CLASS terminal - both are refnums, so LabVIEW's `Replace`
@@ -1649,6 +1748,21 @@ thing** (the class-test one points at `expectFieldValue`), because refusing with
 go only moves the cost. Nothing has been measured going wrong on those two; the rule is applied
 where the same hole exists so the three answer alike. `docs/cold-build-torquebench.md` §4.
 
+**AND A `default` IN THE SERVED SCHEMA MADE THE CLIENT DEMAND THE ARGUMENT - measured 2026-09-16,
+fixed the same day.** `MCP error -32602 ... "expected": "nonoptional"` on a parameter that has a C#
+default and was omitted, six times in one build across five tools. **The schema was RIGHT**: dumped
+over raw stdio, `required` held only the genuinely required names and **not one defaulted parameter
+appeared in any `required` array across all 75 tools** - so `required` was never what the client was
+reading. The discriminator is the `default` KEY, and the session carried its own control: the
+`lvai_*` tools were the only ones emitting `default` and the only ones refusing an omitted optional,
+while `Bash` (`timeout`) and `Agent` (`model`) declare theirs with no `default` and take an omitted
+one happily. `ClientSchema.WithoutDefaults` now strips it from what is served and folds the value
+into the DESCRIPTION instead - `default` is an annotation in JSON Schema, so this constrains nothing
+and `required` is untouched, and the wrapper keeps diagnosing against the ORIGINAL schema so a
+refusal still prints `integer, default 180`. **A client-side refusal never reaches the server**,
+which is why no argument layer or tool guard could ever have answered this one.
+`docs/tool-argument-errors.md`.
+
 **AND A NEW PARAMETER CANNOT BE ACCEPTANCE-TESTED IN THE SESSION THAT ADDED IT.** Measured
 2026-09-15 on `lvai_close_active_project`'s new `projectPath`: seven closes, every one answering
 `reason: "noProjectPathGiven"`, **not one sweep run** — while the DLL carried the new strings and
@@ -1871,6 +1985,8 @@ literally it argued away 600 usable palette VIs.
 | What does a whole AGENT-driven build cost, and what DWarns does it leave? | `docs/cold-build-coolantloop.md` | — |
 | Which attribute is required even on an UNWIRED terminal? | `docs/cold-build-shakerrig.md` | — |
 | Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
+| How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
+| Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |

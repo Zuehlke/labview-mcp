@@ -3040,6 +3040,18 @@ name (section 8) or a `Call` target (section 9) before suspecting the structure 
 
 ## 14. `ApplyAIXMLToVI` works — but not for you
 
+> **STANDING RULE, the user's instruction of 2026-09-16: DO NOT CALL IT. Not as a first try, not
+> as a cheap probe, not "to check whether the gate has opened" — only when the user asks for it
+> explicitly, by name, in that session.** It is settled: every configuration anyone here controls
+> has been measured, and the whole of this section is the evidence. Re-measuring a settled
+> negative costs turns and teaches nobody anything. **And since 2026-09-16 it no longer even
+> announces itself** — the refusal is a silent `errorCode 0` with the diagram unchanged, so the
+> old "expect `Error 42` and fall through" advice now reads as success. See the last subsection.
+>
+> The consequence for editing: **an AIXML edit is a full regeneration**, and where an existing
+> VI's front panel must survive that, say so and let the user choose the route. Do not go looking
+> for a way in through this RPC.
+
 This RPC patches an existing VI *surgically*, and that is worth knowing before writing it off.
 Measured on a VI patched through NI's own assistant:
 
@@ -3367,6 +3379,41 @@ Nothing here unlocks Apply, but these are the VIs to read next and they cost one
   `FeatureToggleEnabled` call asks for `Wiring.CodeCompletionTarget.DebugRequest`, which only
   reveals a debug window. So the apply decision is inside the packed `Apply code changes.vi`, whose
   diagram NI ships stripped (§15).
+
+### The refusal went SILENT on 2026-09-16 — `errorCode 0`, and nothing written
+
+Everything above says the RPC "fails cleanly" with `Error 42`, and one sentence of it is now
+dangerous rather than merely stale: **`lvai_apply_aixml_to_vi` answers `errorCode 0` with an empty
+`errorMessage` and changes nothing.** Measured on LabVIEW 2026 Q3 (`26.3.1f1`), add-on fingerprint
+`208881B49233C81461F3E0B4`, server `0.0.0-dev (4a7aa8df)`, two arms on one copy of one VI:
+
+| arm | answer | the VI's own AIXML export afterwards |
+|---|---|---|
+| VI **closed**, never opened in the IDE | `errorCode 0`, `errorMessage ""`, `viBytesBefore` = `viBytesAfter` | identical to before — no `Constant`, no net |
+| same VI **open in the IDE** via `lvai_open_file`, applied again | `errorCode 0`, `errorMessage ""` | identical again |
+
+The payload was a two-element document — one labelled string `Constant` wired into an `Indicator`
+that already existed, referenced by the uid its own export had just given it. Neither element
+appeared afterwards.
+
+**Why this matters more than the error code it replaced.** `Error 42` was self-announcing: a caller
+saw a refusal and fell through to regeneration. `errorCode 0` is what *success* looks like
+everywhere else in this interface, so a caller that trusts it will report a VI as surgically
+patched — layout, decorations and icon preserved — when the file was never touched. The editor
+agent used to instruct exactly that ("if it returns `errorCode 0`, the VI was patched in place"),
+and that instruction has been removed rather than qualified.
+
+**Two things NOT established, and they are left as observations rather than dressed up.** The file
+shrank from 7 050 to 5 586 bytes somewhere between the two arms — something saved the VI, and the
+open is the obvious suspect, but the export was byte-equal on both sides of it, so whatever moved
+was compiled code and not the diagram. And nothing here says *why* the code changed from 42 to 0:
+the add-on version, the payload shape and the client are all different from the runs above, and
+separating them would mean more calls on a question the standing rule closes. **What is settled is
+the outcome — the diagram does not change — and that is the only part a caller needs.**
+
+**The check that decides it, whatever the code says: export the VI afterwards and compare.** Not
+the byte size (it moved without the diagram moving), not `errorCode` (0 now means nothing), not
+`errorMessage` (empty). This is the same rule as "ask the file, not the session", one layer down.
 
 ## 15. Reach
 

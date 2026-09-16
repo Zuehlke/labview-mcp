@@ -203,3 +203,136 @@ The unrecognised-name case is `{"name":"lvai_open_file","arguments":{"path":"C:\
 Before 2026-09-14 that answered `Error 7, File not found` from LabVIEW; it now answers
 `badArguments` naming `path`. And `{"name":"lvai_open_file","arguments":{}}` — which no argument
 layer can catch, because there is nothing there to misspell — is refused by the tool itself.
+
+---
+
+## A parameter that one mode ignores must not be able to DEFEAT that mode
+
+**Measured 2026-09-16 on `lvai_run_vi_and_read_values`, and it cost two LabVIEW restarts.**
+
+The tool ships two runners. `lvai_run_and_read.vi` wires `Wait until done` = TRUE and waits for the
+target to finish. `lvai_run_for_ms.vi` starts it, waits a budget, reads the front panel and
+**aborts** — it is the only way to look at a VI that never ends, which is every event loop and
+therefore every real application. `runForMs > 0` selects the second one:
+
+```csharp
+var timed = runForMs > 0;
+var aixml = helperAixmlPath ?? DefaultHelperAixmlPath(timed);   // the defect
+```
+
+A caller-supplied path wins over the timed default. So a call that asks for `runForMs` **and** names
+the untimed helper waits for a VI that never ends — and because the gRPC service is what runs the
+helper, that does not time out one call. Every later `lvai_*` call answers `DeadlineExceeded`.
+LabVIEW keeps answering the OS, `Responding` is `True`, no modal dialog is up, and the only cure is
+killing the process.
+
+### Why this is not a caller mistake
+
+The Claude desktop client **validates arguments against the served schema and sends every declared
+parameter**, so `helperAixmlPath` arrives on every call whether or not the caller meant anything by
+it. Through such a client the `??` default never applies and `runForMs` is **unreachable** — the
+parameter is declared, documented, described at length, and cannot work.
+
+That is the same shape this document already records one layer up, where an undeclared argument was
+dropped in silence: a value the caller never intended is doing the deciding. The lesson generalises
+past both instances — **when a mode has its own resource, a parameter naming the other one is a
+mistake in every case, not a preference.**
+
+### The fix, and why it is a content check
+
+```csharp
+if (timed && !CanHonourRunForMs(helperAixmlPath)) { helperAixmlPath = null; helperViPath = null; }
+```
+
+`CanHonourRunForMs` reads the file and looks for a `run for ms` control. **The file name does not
+decide it**: a renamed copy of the untimed helper has the identical defect, and a name match would
+have let it through. An unreadable path is treated as capable, because substituting a helper on a
+failed read is worse than the status quo.
+
+**Both paths are cleared, not just the AIXML one.** Clearing only the source would generate the
+timed helper into the untimed helper's cached VI path and poison every later untimed call — a fix
+that creates a second, quieter bug.
+
+The answer says what happened, in `helperOverridden`. A silent correction would leave the caller
+believing their helper ran.
+
+### The guard
+
+`RunForMsHelperTests` asserts against the two shipped helpers rather than fixtures, so the claim
+stays true as they change. **The control arm is the half that matters**: a guard that accepted
+everything would still pass "the timed helper is capable" and still wedge the service, so the test
+that earns its keep is the one asserting the shipped *untimed* helper is refused — plus a renamed
+copy of it, which is what makes the check about content rather than about spelling.
+
+## A `default` IN THE SCHEMA MADE THE CLIENT DEMAND THE ARGUMENT — measured 2026-09-16
+
+The refusal looks like ours and is not. It arrives as
+
+```
+MCP error -32602: Input validation error: Invalid arguments for tool lvai_vi_terminals: [
+  { "code": "invalid_type", "expected": "nonoptional", "path": ["refresh"] },
+  { "code": "invalid_type", "expected": "nonoptional", "path": ["timeoutSeconds"] } ]
+```
+
+for a call that omitted two parameters which have C# defaults. It fired **six times in one ATM
+build** across five different tools, and the working assumption each time was that those parameters
+had ended up in `required`.
+
+**They had not, and the schema was right.** Dumped over raw stdio with no client in between — the
+recipe under "Re-measuring it" — `lvai_vi_terminals` served `required: ["viPath"]` and nothing else,
+and across **all 75 tools not one defaulted parameter appeared in any `required` array**. So
+`required` was never what the client was reading.
+
+**The discriminator is the `default` key itself, and the session contained its own control.** The
+LabVIEW tools were the only ones in that session whose schemas emit `default` — 187 of 386
+properties — and the only ones that refused an omitted optional. `Bash` (`timeout`,
+`run_in_background`) and `Agent` (`model`, `isolation`) declare their optionals with **no `default`
+key** and accept an omitted one without complaint. The one apparent counter-example confirmed it
+rather than breaking it: `viName` on `lvai_convert_vi_to_aixml` was omitted and never flagged,
+because it is not in that tool's served schema at all.
+
+So the client turns a property carrying a `default` into a non-optional field and then rejects the
+call for the value it was about to supply itself.
+
+### The fix is in what we SERVE, because nothing else can reach it
+
+A client-side refusal never arrives at the server, so `WithArgumentDiagnostics` cannot see it and no
+tool-side guard can. `ClientSchema.WithoutDefaults` removes each top-level property's `default` from
+the served input schema and appends it to that property's **description** instead
+(`Local budget in seconds (default: 180)`), applied in `DiagnosingTool.ProtocolTool` — the wrapper
+that already sits in front of every tool.
+
+Three things make this a documentation change rather than a contract change:
+
+- **`default` is an annotation in JSON Schema.** It constrains nothing; removing it changes no
+  instance's validity. `required` is untouched — 79 required properties before and after.
+- **The value never came from the schema.** It is the C# optional parameter that applies it,
+  server-side, and that is unchanged.
+- **Nothing is lost for a reader**, because the same call writes the value into the description. A
+  `null` default is the exception and is dropped silently: `(default: null)` on all 118 nullable
+  properties is noise, and the `["string","null"]` type union already says the parameter may be
+  omitted.
+
+The wrapper keeps diagnosing against the **original** schema, so `ToolArguments.Accepted` still
+prints `integer, default 180` in a refusal rather than degrading to `integer, optional`.
+
+After the change every served property is shaped exactly like `Bash`'s and `Agent`'s:
+
+```
+ 118  {"type": ["string", "null"]}      90  {"type": "integer"}      90  {"type": "string"}
+  86  {"type": "boolean"}                2  {"type": ["integer", "null"]}
+```
+
+`ClientSchemaTests.No_served_input_schema_carries_a_default_anywhere` walks every served tool and
+searches the whole schema tree, not just the top level — the transform deliberately only rewrites
+top-level properties, so a nested default fails the suite rather than quietly reaching a client that
+would then demand it.
+
+### IT COULD NOT BE ACCEPTANCE-TESTED IN THE SESSION THAT MADE IT
+
+The same rule as `lvai_close_active_project`'s `projectPath`: a client fetches the tool list **once,
+at session start**, and validates against that copy. So the session that changed the schema is
+validating against the old one, and the first call that proves the refusals are gone is in the
+**next** session. What IS established here is what the server now serves — 0 of 75 schemas carry a
+`default` — and that the cause is client-side reading of that key. Until a fresh session has made
+one call omitting an optional parameter, say the wiring is verified and the cure is not.

@@ -641,18 +641,48 @@ internal sealed class AixmlTools(LvaiConnection connection)
         });
 
     [McpServerTool(Name = "lvai_apply_aixml_to_vi", Destructive = true, OpenWorld = true,
-                   Title = "Apply AIXML to an existing VI (modifies it)")]
+                   Title = "Apply AIXML to an existing VI (CLOSED - does nothing from here)")]
     [Description("""
-        RPC ApplyAIXMLToVI. MUTATING: applies an AIXML description onto an EXISTING VI,
-        changing its block diagram. This is the RPC behind LabVIEW's AI code completion.
-        There is no undo through this interface - keep a copy of the VI, or work on a copy.
+        RPC ApplyAIXMLToVI. MUTATING in principle: applies an AIXML description onto an EXISTING
+        VI. This is the RPC behind LabVIEW's AI code completion.
+        DO NOT CALL IT. It is gated on a per-VI attachment bound to the CALLER, which no
+        third-party client can obtain, and from here it has never patched anything: `Error 42`
+        through 2026-09-11 with sixteen variables ruled out, and a SILENT `errorCode 0` since
+        2026-09-16 - measured on one VI twice, closed and then open in the IDE, with the AIXML
+        export identical both times.
+        THE SILENCE IS THE WHOLE PROBLEM: `errorCode 0` is what success looks like everywhere else
+        in this interface, so "try it, it costs one round trip" now means reporting a VI as
+        surgically patched when the file was never touched.
+        So this tool REFUSES unless userAskedForThisByName is true - the user's standing rule of
+        2026-09-16. An edit is a full REGENERATION (lvai_generate_vi over the same path), and a VI
+        whose existing front panel must survive cannot be edited at all: say so and let the user
+        choose the route. docs/aixml-reference.md section 14 has the evidence.
         """)]
     public async Task<string> ApplyAixmlToViAsync(
         [Description(@"Absolute path to the .vi to modify")] string viPath,
         [Description(@"Absolute path to the AIXML .xml describing the change")] string aiXmlFilePath,
         [Description("Local budget in seconds")] int timeoutSeconds = 240,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description("""
+            The user asked for THIS RPC, by name, in THIS session. Without it the call is refused
+            and no RPC is made. It is not a force flag for an agent that thinks it knows better:
+            the path is closed because it does not work, and because re-establishing that costs
+            turns and teaches nobody anything.
+            """)] bool userAskedForThisByName = false,
+        CancellationToken ct = default)
+    {
+        if (!userAskedForThisByName)
+            return Json.Error("applyPathIsClosed",
+                "lvai_apply_aixml_to_vi is not called in this repository. It has never patched a "
+                + "VI from a third-party client, and since 2026-09-16 it says so with errorCode 0 "
+                + "and an empty message rather than with Error 42 - so its answer cannot be "
+                + "trusted as evidence either way. Edit by REGENERATING: author the AIXML and call "
+                + "lvai_generate_vi over the same path. If the VI's existing front panel must "
+                + "survive that, no route here preserves it - tell the user and let them choose. "
+                + "Only the user can reopen this, by asking for the RPC by name; then pass "
+                + "userAskedForThisByName.",
+                new { doc = "docs/aixml-reference.md, section 14", viPath, aiXmlFilePath });
+
+        return await Rpc.GuardAsync(async () =>
         {
             var before = File.Exists(viPath) ? new FileInfo(viPath).Length : 0;
             var symbolic = SymbolicUids.Prepare(aiXmlFilePath);
@@ -671,8 +701,15 @@ internal sealed class AixmlTools(LvaiConnection connection)
                      File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
                  ("note", JsonValue.Create(
                      "A byte size that did not change may simply mean LabVIEW has the VI open " +
-                     "in memory and has not saved it yet."))]);
+                     "in memory and has not saved it yet.")),
+                 ("verifyNote", JsonValue.Create(
+                     "DO NOT READ errorCode AS THE OUTCOME. Measured 2026-09-16: this RPC answers " +
+                     "errorCode 0 with an empty message and leaves the diagram untouched. The " +
+                     "byte size is no better - it moved once while the diagram did not. Export " +
+                     "the VI with lvai_convert_vi_to_aixml and compare, or you have measured " +
+                     "nothing."))]);
         });
+    }
 
     /// <summary>
     /// What to add to a response when the source used symbolic uids - nothing at all when it did

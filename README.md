@@ -70,6 +70,8 @@ claude plugin marketplace add Zuehlke/labview-mcp
 claude plugin install labview-mcp@zuehlke-labview
 ```
 
+**If you want to update the plugin, see: Updating the plugin**
+
 That's the whole setup — no clone, no build, no config file to edit. Claude Code downloads a
 prebuilt Windows binary from the [latest release](https://github.com/Zuehlke/labview-mcp/releases/latest),
 and you get the MCP server, eight LabVIEW agents (`labview-vi-generator`, `labview-vi-editor`,
@@ -823,7 +825,7 @@ resources rather than call tools.
 | Tool | RPC | What it changes |
 |---|---|---|
 | `lvai_convert_aixml_to_vi` | `ConvertAIXMLToVI` | **creates/overwrites a `.vi`** |
-| `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **edits an existing `.vi`** |
+| `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **CLOSED** — refuses unless `userAskedForThisByName`. It has never patched a VI from a third-party client, and since 2026-09-16 it says so with a silent `errorCode 0` instead of `Error 42`. Edit by regenerating |
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
 | `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
 | `lvai_render_diagrams` | — (same composition) | **renders block diagrams to PNG**, several VIs in one call, and reports the images per VI - top-level diagram first, then one per Case frame. Creates the image directory, which LabVIEW does not (`Error 118`). The only check that sees a clipped or occluded diagram comment; measured saving about 100 s of a 1000 s run against driving the print helper by hand |
@@ -1085,8 +1087,8 @@ The working loop:
 2. `lvai_convert_vi_to_aixml` on a VI that already resembles the target → study the dialect
 3. edit the XML
 4. `lvai_validate_aixml` — the cheap failure path, always do this
-5. `lvai_convert_aixml_to_vi` to a scratch path (`lvai_apply_aixml_to_vi` does **not** work,
-   see Caveats)
+5. `lvai_convert_aixml_to_vi` to a scratch path — `lvai_apply_aixml_to_vi` does **not** work and
+   is refused by default, see Caveats
 6. `--diagram` on the result — AIXML has no coordinates, so LabVIEW picks the whole layout and
    looking is the only way to know what you got
 
@@ -1208,13 +1210,19 @@ nesting, the file on disk and a freshly reopened tree are the only evidence.
   machine that can reach the port can drive LabVIEW.
 - **What the mutating RPCs actually do, measured against a live LabVIEW:**
   `ConvertAIXMLToVI` works — it generated real, runnable VIs. `OpenFile` works. But
-  **`ApplyAIXMLToVI` is unusable**: it failed with `Error 42 (generic)` in six distinct
+  **`ApplyAIXMLToVI` is unusable, and the tool now refuses it by default** (pass
+  `userAskedForThisByName` only when the user asked for the RPC by name). It failed with
+  `Error 42 (generic)` in six distinct
   configurations — delta and full-state XML, a clean VI and a VI containing an Express VI, the
   VI open and closed, and with LabVIEW's own byte-exact canonical export as input. The sixth,
   on LabVIEW 2026 (26.3f0), was constructed to be the best possible case and still failed:
   a three-element self-contained VI whose AIXML round-trips byte-for-byte, an additive change
   (one `FreeLabel`, one fan-out `Indicator`) that `ValidateAIXML` accepts with `errorCode 0`,
   the VI closed, outside any library. `viBytesBefore == viBytesAfter` — nothing was written.
+  **Since 2026-09-16 it answers `errorCode 0` with an empty message and still writes nothing** —
+  measured twice on one VI, closed and then open in the IDE, the AIXML export identical both
+  times. That is worse than the refusal it replaced: `errorCode 0` is what success looks like
+  everywhere else here, so the only sound check is to export the VI afterwards and compare.
 
   **The likely reason, and the one untried route.** This RPC is the one behind LabVIEW's own AI
   code completion, which does work — so it is plausibly not broken but *session-bound*, usable

@@ -88,6 +88,11 @@ internal sealed class RunTools(LvaiConnection connection)
             not a stop button - it kills the VI where it stands and runs NO cleanup the diagram may
             contain, so a VI that closes files or releases hardware on its normal path does not do
             that here.
+            IT PICKS ITS OWN HELPER, and a helperAixmlPath naming the untimed one is corrected
+            rather than obeyed - the answer says so in `helperOverridden`. Only lvai_run_for_ms.vi
+            has a `run for ms` control; lvai_run_and_read.vi waits for the target to finish, so
+            aiming this at it while asking for runForMs waits for a VI that never ends and BLOCKS
+            THE WHOLE SERVICE until LabVIEW is killed. Measured 2026-09-16; it cost two restarts.
             """)]
         int runForMs = 0,
         CancellationToken ct = default) =>
@@ -105,6 +110,31 @@ internal sealed class RunTools(LvaiConnection connection)
                     new { controlName = offender });
 
             var timed = runForMs > 0;
+
+            // A CALLER-SUPPLIED HELPER PATH USED TO DEFEAT runForMs SILENTLY, and what it cost was
+            // not a wrong answer but a WEDGED SERVICE. lvai_run_and_read.vi wires
+            // `Wait until done` = TRUE, so aiming this call at it while asking for runForMs makes
+            // the helper wait for a VI that never ends - and since the gRPC service is what runs
+            // the helper, every later lvai_* call then answers DeadlineExceeded until LabVIEW is
+            // killed. Measured 2026-09-16 on a top-level UI loop, which is the shape runForMs
+            // exists for, so the trap sat exactly where the feature is useful.
+            // IT IS NOT A CALLER MISTAKE THAT CAN BE LEFT TO THE CALLER: a client that treats every
+            // declared parameter as required sends helperAixmlPath on every call, so the default
+            // never applies and runForMs is unreachable through that client.
+            // The check is on CONTENT rather than on the file name, because the fact that decides
+            // it is whether the helper has a `run for ms` control at all - a renamed copy of the
+            // untimed helper has the same defect and a matching name would have missed it.
+            string? helperOverriddenBecause = null;
+            if (timed && !CanHonourRunForMs(helperAixmlPath))
+            {
+                helperOverriddenBecause =
+                    $"'{Path.GetFileName(helperAixmlPath)}' has no 'run for ms' control, so it " +
+                    $"cannot stop the target - it waits for a VI that never ends and blocks this " +
+                    $"service. {TimedHelperAixmlFileName} was used instead.";
+                helperAixmlPath = null;
+                helperViPath = null;   // both, or the timed helper overwrites the untimed VI cache
+            }
+
             var aixml = helperAixmlPath ?? DefaultHelperAixmlPath(timed)
                 ?? throw new FileNotFoundException(
                     $"The helper's AIXML source could not be located: no scripts folder next to " +
@@ -180,6 +210,7 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["inputsSent"] = JsonValue.Create(inputs.Count);
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
+            if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["note"] = JsonValue.Create(
                 "errorCode here is the HELPER's. A target VI that itself reported an error " +
                 "shows that in its own error out under values - read it there, not from " +
@@ -250,6 +281,26 @@ internal sealed class RunTools(LvaiConnection connection)
 
     /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>
     internal const string TimedHelperAixmlFileName = "lvai_run_for_ms.xml";
+
+    /// <summary>The control the timed runner takes its budget on; its presence is the test.</summary>
+    internal const string RunForMsControlName = "run for ms";
+
+    /// <summary>
+    /// Whether a caller-named helper can honour runForMs at all. A null path means the default
+    /// applies and the timed default is already the right one; an unreadable file is treated as
+    /// capable, because refusing a helper this cannot read would be worse than the status quo.
+    /// </summary>
+    internal static bool CanHonourRunForMs(string? helperAixmlPath)
+    {
+        if (helperAixmlPath is not { Length: > 0 }) return true;
+        try
+        {
+            return File.ReadAllText(helperAixmlPath)
+                .Contains($"_name=\"{RunForMsControlName}\"", StringComparison.Ordinal);
+        }
+        catch (IOException) { return true; }
+        catch (UnauthorizedAccessException) { return true; }
+    }
 
     private static string? DefaultHelperAixmlPath(bool timed = false) =>
         StatusTools.ScriptsDirectory() is { } scripts
