@@ -524,11 +524,11 @@ classes to a library that already exists, instead of rebuilding it.
 `Actor.lvclass`, no `projectPath`, so it gets no class entry of its own) → a helper running
 `Library.Create` + `AddItem` folder + `AddItem` class + `Save` + `Save All This Library` → the
 `.lvlib` written into the `.lvproj` by hand with the project CLOSED → `lvai_create_accessors` →
-`lvai_add_class_method` → `lvai_swap_subvis` → **a forced LabVIEW resave** → one
+`lvai_add_class_method` → `lvai_swap_subvis` → the icon (a resave, wanted anyway — NOT required, see 8b) → one
 `lvai_create_message_class` per method. Result: `Aquarium.lvlib` holding the actor and three message
 classes, every VI `execState 1` after a project close.
 
-### 8a. A SWAPPED VI IS NOT FINISHED UNTIL LabVIEW HAS SAVED IT — the `LIvi` block
+### 8a. RETRACTED — see 8b. The claim below did not survive a clean probe
 
 Measured on `Hund.lvclass:Bellen.vi`, and it is the reason the section above insists on a resave.
 The file `lvai_swap_subvis` leaves behind was missing its `LIvi` block, the one carrying subVI
@@ -607,3 +607,41 @@ to the project through its library, not beside it.
 (`Library.Open` → `AddItem` → `Save All This Library`), with `Type` as an input so it serves
 `LVClass` and `VI` alike. Both need a project open and ACTIVE, because they reach LabVIEW through
 `Project:Active Project`. Neither is wrapped in an `lvai_*` tool yet.
+
+### 8b. The `LIvi` claim is REFUTED — probed 2026-09-17, same day
+
+§8a said `lvai_swap_subvis` leaves a VI without its `LIvi` block, warm-green and cold-broken, and
+that a forced LabVIEW save is what repairs it. **A clean probe does not reproduce any of it**, and
+the section is wrong. It is left standing above, struck through, because the observations in it are
+real — it is the CONCLUSION that does not follow.
+
+The probe, on `Aquarium.lvclass:Licht Schalten.vi` — a VI built from scratch the same day, whose
+whole history is known, and which had never been near the library experiment:
+
+| step | `LIvi` | bytes |
+|---|---|---|
+| after `lvai_add_class_method` | **present** | 9 502 |
+| after `lvai_swap_subvis` | **present** | 8 758 |
+| project closed, read back cold | — | `execState 1`, and its message `Do.vi` too |
+
+So the swap neither strips the block nor leaves a VI that fails a cold load, and **no forced resave
+was needed**. `lvai_swap_subvis` needs no fix, and none was made.
+
+**What the two VIs differ in is what they CALL**, which is the likeliest reason `Bellen.vi` had no
+`LIvi` and `Licht Schalten.vi` does: Bellen calls only members of its OWN class, whose links live in
+the `LIbd`/`LIfp` UDClass-API blocks, while Licht Schalten also calls `Append To Log.vi`, an ordinary
+subVI. On that reading the missing block was NORMAL for that VI and never a defect at all. Not
+established — `Counter.lvclass:Increment.vi` also calls only class members and does carry `LIvi`,
+though its own parse warning names `VIPI`, which may be a different kind of link. Nobody has decoded
+these blocks and this file should not pretend otherwise.
+
+**What survives from §8a is only this**: `Hund.lvclass:Bellen.vi` was `eBad` after a LabVIEW restart
+with every file-level check green, and `lvai_set_vi_icon`'s forced resave made it executable again.
+That is a real measurement. Its CAUSE is unknown, and the library round trip that VI had been through
+remains the only candidate that the `Licht Schalten` probe does not rule out.
+
+**The process lesson is the one this file keeps paying for.** A correlation found while chasing a
+failure — the block appeared in the same step that fixed the VI — was written up as a mechanism, with
+a remedy, a `grep` recipe and a queued tool change, on n = 1, on a VI whose history was already known
+to be contaminated. §8a said so itself in its last line and recommended a probe; the probe took four
+tool calls and refuted it. **Run the probe before writing the mechanism down, not after.**
