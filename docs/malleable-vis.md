@@ -68,21 +68,23 @@ The mechanism is the one NI's list implies elsewhere — **"non-default VI prope
 `description`"**. A malleable VI must be configured to inline into its callers, and AIXML cannot
 write VI properties.
 
-## 3. The four flags, each one bisected
+## 3. The flags, bisected
 
 The repair is a pylabview edit of the `LVSR` block — the LabView Save Record — which
 `pylv_extract` parses into named attributes, so this is an attribute substitution and not an
 opaque blob patch.
 
-| block | attribute | a `.vim` needs |
-|---|---|---|
-| `Execution2` | `ShouldInline` | `1` |
-| `Unknown` | `InlineStg` | `2` |
-| `Instrument` | `DebugCapable` | `0` |
-| `Execution` | `SaveParallel` | `1` |
+| block | attribute | written | necessary? |
+|---|---|---|---|
+| `Unknown` | `InlineStg` | `2` | **yes** |
+| `Instrument` | `DebugCapable` | `0` | **yes** |
+| `Execution` | `SaveParallel` | `1` | **yes**, for a pylabview-written file — see below |
+| `Execution2` | `ShouldInline` | `1` | **no** — written to match NI, see below |
 
-**All four are necessary.** Eight arms, same diagram, one `pylv_rebuild` and one `lvai_exec_state`
-each, every rebuild to a path LabVIEW had never loaded:
+**THREE of the four are necessary; `ShouldInline` is not.** Ten arms, same diagram, one
+`pylv_rebuild` and one `lvai_exec_state` each, every rebuild to a path LabVIEW had never loaded.
+Arms A–H were the first pass, and they left the inline PAIR unseparated because those two had only
+ever moved together — I and J are that separation, measured a day later:
 
 | arm | set beyond the generator's defaults | `execState` |
 |---|---|---|
@@ -96,9 +98,26 @@ each, every rebuild to a path LabVIEW had never loaded:
 | F | `DebugCapable`+`BadNode` (+ inline pair) | 0 |
 | G | `DebugCapable`+`SaveParallel` (+ inline pair) | **1** |
 | H | `DebugCapable`+`SaveParallel`, inline pair left at defaults | 0 |
+| I | `ShouldInline` ALONE of the pair, + `DebugCapable`+`SaveParallel` | 0 |
+| J | `InlineStg` ALONE of the pair, + `DebugCapable`+`SaveParallel` | **1** |
 
-G is the minimal working set. Removing any one group from it breaks the VI: **H** drops the inline
-pair, **D** drops `DebugCapable`, **C** and **F** drop `SaveParallel`.
+G is a working set. Removing any one group from it breaks the VI: **H** drops the inline pair,
+**D** drops `DebugCapable`, **C** and **F** drop `SaveParallel`.
+
+**But G is not MINIMAL, and I/J are what showed it.** `InlineStg` does the work on its own;
+`ShouldInline` does not, and is not needed beside it. Arm J's VI is eIdle and computes correctly —
+run directly with `value in = 41` it answered `42`. So the necessary set is **three**:
+`InlineStg=2`, `DebugCapable=0`, `SaveParallel=1`.
+
+**`ShouldInline=1` is written anyway, on purpose.** NI's own VIMs carry it, it is what LabVIEW
+writes for itself, and a file that disagrees with the IDE's own Execution page is a puzzle for
+whoever opens VI Properties next. *Necessary* and *correct* are different questions; the tool
+answers the second.
+
+The lesson is the one this file keeps relearning in miniature: **two things that always moved
+together were reported as one requirement for a day.** The note that said so — "not separated,
+pending a probe, set both" — was honest, and what was missing is that nobody spent the four minutes
+the probe costs.
 
 **Two things that look like they matter and do NOT.** `BadNode` is a cached verdict — G works with
 it left at `1`. And the four undecoded `InStBit4 / 18 / 23 / 30` flags, which also differ from NI's
@@ -107,8 +126,8 @@ were the obvious suspects — "one of these unnamed bits is the malleable marker
 patch of all seven differing flags would have shipped them as part of the recipe. There is no
 malleable bit. There is only inlining.
 
-**Not separated:** `ShouldInline` and `InlineStg` were always moved together, so which of the two
-does the work is unmeasured. They describe one IDE setting, so pending a probe, set both.
+This paragraph said **"not separated: … pending a probe, set both"** until 2026-09-17. Arms I and J
+above are that probe, and the answer is `InlineStg`.
 
 **AND `SaveParallel` IS NOT A PROPERTY OF MALLEABILITY — it is what pylabview's OUTPUT needs.**
 Measured 2026-09-17, a day after the bisect, and it qualifies the table above rather than
@@ -400,3 +419,31 @@ document alone. An agent's system prompt is its own definition, and neither this
 
 `Infra/MalleableVi.cs` is the single implementation both sides share — three copies of one rule
 drift, and `AixmlCheck.SafeUidBase` against the lint's ceiling is the precedent.
+
+## 12. A `.vim` IS directly runnable, and that makes it directly testable
+
+Measured 2026-09-17, because the answer decides how a VIM gets unit-tested at all. The common
+belief — and the expectation this repository was working from — is that a malleable VI cannot run
+standalone, so it could only be exercised through a caller.
+
+**It runs.** `lvai_run_vi_and_read_values` on a `.vim`, no caller involved:
+
+| VI | input | output |
+|---|---|---|
+| `Accept Increment.vim` | `value in = 41` | **`value out = 42`** |
+| `Accept Increment.vi`, the same diagram, as a control | `value in = 41` | `42` |
+
+**The scalar input is the whole point of that probe.** The first attempt ran a `.vim` whose input
+is an ARRAY, got `errorCode 0` and an empty array back, and that settles nothing: an empty array
+reversed is an empty array, so "it ran" and "the helper read the defaults back" produce identical
+answers. `lvai_run_vi_and_read_values` cannot set an array control, so the discriminator had to be
+a VI with a terminal it *can* set. A probe that cannot distinguish its two outcomes is not a probe.
+
+**What a direct run does NOT test is adaptation.** Run top-level, the VIM executes at its own
+DECLARED terminal types — `double` here — so this exercises the logic and says nothing about
+whether the thing adapts. Malleability still needs a caller wiring two genuinely different types,
+as §5 and §7 do. So the two checks answer different questions and a suite wants both:
+
+- **the logic** — call the `.vim` directly, cheapest possible, no placeholder and no swap;
+- **the adaptation** — one caller, two element types, through `lvai_placeholder_subvi` plus
+  `lvai_swap_subvis` when the VIM lives inside a project.

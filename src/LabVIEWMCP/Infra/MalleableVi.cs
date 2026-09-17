@@ -79,10 +79,22 @@ internal static class MalleableVi
     /// <c>AixmlCheck.SafeUidBase</c> against the lint's ceiling cost days of telling readers their
     /// compliant files were wrong.
     ///
-    /// Each one was bisected over eight arms on 2026-09-17; dropping any single one puts the VI
-    /// back to <c>execState 0</c>. <c>BadNode</c> and the undecoded <c>InStBit*</c> flags also
-    /// differ from NI's file and are NOT here: setting only those leaves the VI broken, and a VI
-    /// with none of them set runs.
+    /// Bisected over ten arms on 2026-09-17. THREE of these are necessary - drop
+    /// <c>InlineStg</c>, <c>DebugCapable</c> or <c>SaveParallel</c> and the VI is back to
+    /// <c>execState 0</c>. <c>BadNode</c> and the undecoded <c>InStBit*</c> flags also differ from
+    /// NI's file and are NOT here: setting only those leaves the VI broken, and a VI with none of
+    /// them set runs.
+    ///
+    /// <c>ShouldInline</c> IS THE FOURTH AND IT IS NOT NECESSARY - measured, after eight arms in
+    /// which it and <c>InlineStg</c> had only ever moved together. Separated on the ninth and
+    /// tenth: <c>ShouldInline=1</c> with <c>InlineStg=1</c> is eBad, and <c>InlineStg=2</c> with
+    /// <c>ShouldInline=0</c> is eIdle and runs correctly (41 -> 42 through a direct call). So
+    /// <c>InlineStg</c> does the work.
+    ///
+    /// It is KEPT anyway, deliberately: NI's own VIMs carry <c>ShouldInline=1</c>, it is what
+    /// LabVIEW writes for itself, and a file that disagrees with the IDE's own Execution page is a
+    /// puzzle for whoever opens VI Properties next. Necessary and correct are different questions,
+    /// and this table answers the second.
     ///
     /// <c>SaveParallel</c> is the one with a caveat worth knowing before anybody "fixes" it:
     /// LabVIEW's OWN save resets it to 0 and the VIM stays <c>execState 1</c>. So it is what
