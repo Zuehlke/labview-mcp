@@ -892,6 +892,15 @@ authoring AIXML - `path` terminals that are not named in `classTerminals` - repo
 handed over as an existing `vi`), because demanding zero there would re-create the false negative
 for exactly the callers who cannot see why.
 
+**ACCEPTED 2026-09-17 against a live LabVIEW, in the session after the fix** - a tool change cannot
+be exercised in the session that makes it, because the client fetches the schema once at start.
+`Waage.lvclass:Kalibrieren.vi`, the same shape as `Drucken` (two class terminals plus a `Datei`
+input that really is a path), answered **`pathStandInsLeft: 1`, `expectedPathStandInsLeft: 1`,
+`ok: true`**. **The control arm is what makes that mean anything**: `Wiegen.vi` in the same call,
+same class, no path payload, answered `expectedPathStandInsLeft: 0` - so the expectation is
+computed per method from its own document, where a function hardcoded to 1 would have passed the
+first arm alone.
+
 ### 13d. Two ordering facts this build paid for
 
 **`lvai_create_accessors` needs the class in the ACTIVE project; `lvai_add_class_field` does not.**
@@ -908,3 +917,38 @@ state.
 helper beside it. The file still exists, so the dangling pass cannot catch it either. **A new tool
 that writes into a new directory has to teach that pattern about it**; nothing else in the chain
 notices.
+
+**ACCEPTED 2026-09-17**: the Waage build ran `lvai_add_class_field` the same way, and the close
+answered `strayVisRemovedNames: [..., "Waage-add-20260917152105.vi (helper tree)"]` beside the
+three sockets. The `.lvproj` afterwards holds no `carriers/` entry at all, where the Drucker build
+needed that line removed by hand.
+
+## 14. Waage - the acceptance build, and what a clean run looks like
+
+Built 2026-09-17 in the session after §13's two fixes shipped, because neither could be exercised
+where it was written. `Waage.lvclass` (`Name` String, `Letztes Gewicht` Double, plus
+`Kalibrierdatei` Path added afterwards), two methods, two messages, every VI `execState 1` cold.
+Both acceptances are recorded in §13c and §13d rather than here, with their control arms.
+
+**`lvai_add_class_field` TAKES A `path` FIELD** - it had only ever been given `bool`.
+`fieldsBefore` 2 -> `fieldsAfter` 3, `fieldsLost: []`, member count unmoved. Nothing special was
+needed, which is the useful part: the field type travels through `LvClass.CarrierAixml` like any
+other, so the tool's type coverage is the same allowlist `lvai_create_class` has.
+
+**AND THE RUN WAS UNEVENTFUL, WHICH IS THE POINT WORTH RECORDING.** No `Error 56002`, no transient
+validator failure, no hand edit beyond the one library entry - against the Drucker build, which
+paid for all three. The difference is ONE ordering decision taken from §13d: **the library's entry
+goes into the `.lvproj`, with the project closed, BEFORE `lvai_create_accessors` runs.** The
+sequence that works, end to end:
+
+1. `lvai_create_class` - project closed, scratch project, no `projectPath`
+2. generate `Append To Log.vi` - before anything can adopt it loose
+3. open the project -> `scripts/lvai_create_actor_library.xml` -> `lvai_add_to_library` at the ROOT
+4. **close, write the `<Item ... Type="Library">` line, reopen**
+5. `lvai_add_class_field` for anything the class still needs
+6. `lvai_create_accessors` with an explicit `fromField 0` and the full field count
+7. placeholders -> author -> `lvai_add_class_method` -> `lvai_swap_subvis` -> icons
+8. `lvai_create_message_class` per method -> `lvai_add_to_library` with the folder
+9. close with `projectPath` (the sweep runs here) -> `lvai_exec_state` cold
+
+Steps 4 and 5 are the two this file learned the hard way, in that order.
