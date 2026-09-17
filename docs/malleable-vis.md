@@ -224,6 +224,15 @@ declares `array{double}`: `execState 1`, and it ran `[Uwe, Ann, Nat, Fox]`. So `
 each call site adapts independently. One `.vim` in the project, two element types, no copy in
 `user.lib`.
 
+**AND A REPEATED SOCKET DEFEATS `editsJson` BATCHING** - measured 2026-09-17 on the sorting proof.
+`lvai_swap_subvis` costs one call per NODE, which is documented; what is not obvious is how that
+interacts with the several-VIs-in-one-call form. A batch STOPS at the first VI that comes back
+`ok: false`, and a VI with two calls to one socket is `ok: false` after the first pass - so the
+second VI in the batch was never touched at all. Two demo VIs with two calls each therefore cost
+three calls, not two, and the first attempt reported `swapped: 0` with the second VI untouched.
+Batch only where every VI's sockets are distinct; otherwise call them one at a time and read
+`socketsLeft`.
+
 Two honest caveats. The **placeholder** still lands in `user.lib\LV_MCP\` — that is the socket
 cache every project-local call uses, not something specific to VIMs. And the swap needs the project
 **ACTIVE**, because `{LV.SubVI}` `Replace` is a silent no-op outside the IDE's own application
