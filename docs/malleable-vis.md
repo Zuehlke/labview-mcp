@@ -153,7 +153,35 @@ A VIM that is ALSO polymorphic does need both — `docs/labview-lmock-mocking.md
 like the project it serves. Measured as an A/B on one unchanged caller document: with the `.vim`
 in a project folder, `Unsupported SubVI: Swap Array Elements.vim`; with the identical file under
 `user.lib\`, the name resolves. A `.vim` must live in `vi.lib`, `user.lib`, `instr.lib` or an
-LVAddon to be callable from generated AIXML, exactly like any other target.
+LVAddon to be callable **by name** from generated AIXML, exactly like any other target.
+
+**BUT IT DOES NOT HAVE TO LIVE THERE — the placeholder route reaches a project-local `.vim`, and
+malleability SURVIVES it.** This section said for one session that a VIM "must" live in a findable
+tree, which is the impossibility-claim shape this repository has paid for before: it was true of
+the by-name route and got written as a property of VIMs. The user asked whether the ordinary
+`lvai_placeholder_subvi` + `lvai_swap_subvis` swap would not simply do it. It does. Measured
+2026-09-17 under `C:\temp\VIM_Tests`:
+
+| step | result |
+|---|---|
+| `.vim` built in the project folder | `execState 1` |
+| placeholder minted off its `.vi` (pane clone) | `LVMCP Stub 8666ec7156.vi` |
+| caller authored against the socket, generated | `ok`, pane clean |
+| `lvai_swap_subvis` onto the project-local `.vim` | `callTargets: ["Swap Local.vim"]`, `socketsLeft: 0` |
+| run | `[40.5, 20.5, 30.5, 10.5]` |
+
+**And the second arm is the one that matters**, because a swap that merely links would give a
+fixed-type subVI call and look identical at this point. A SECOND caller was authored against a
+placeholder with a **`array{string}`** pane and swapped onto the SAME `.vim`, whose own pane
+declares `array{double}`: `execState 1`, and it ran `[Uwe, Ann, Nat, Fox]`. So `{LV.SubVI}`
+`Replace` re-types the wires onto a malleable target exactly as it does onto a class accessor, and
+each call site adapts independently. One `.vim` in the project, two element types, no copy in
+`user.lib`.
+
+Two honest caveats. The **placeholder** still lands in `user.lib\LV_MCP\` — that is the socket
+cache every project-local call uses, not something specific to VIMs. And the swap needs the project
+**ACTIVE**, because `{LV.SubVI}` `Replace` is a silent no-op outside the IDE's own application
+instance.
 
 The tell that the second refusal is progress, not a new fault: it changes from
 `Unsupported SubVI` — the name resolved to nothing — to `SubVI is not executable`, which is
