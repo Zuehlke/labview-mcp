@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Length Of Demo.vi" description="Calls Length Of.vim with an array and with a string, so each call site selects a different frame of the Type Specialization Structure.">
+  <FreeLabel comment="Each call picks its own frame" uid="4200" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4210.value" type="cluster{bool.status,int32.code,string.source}" uid="4210" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="doubles" outputs="value:4220.value" type="array{double}" uid="4220" uid_parent="root" value="[10.5,20.5,30.5,40.5,50.5,60.5,70.5]"/>
+  <Constant _name="text" outputs="value:4230.value" type="string" uid="4230" uid_parent="root" value="Malleable"/>
+  <Call target="Length Of.vim" inputs="value in:4220.value,error in:4210.value" outputs="length:4240.length,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Call target="Length Of.vim" inputs="value in:4230.value,error in:4240.error out" outputs="length:4250.length,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="array length" conIdx="4" connection="recommended" inputs="value:4240.length" type="int32" uid="4260" uid_parent="root" value="0"/>
+  <Indicator _name="string length" conIdx="6" connection="recommended" inputs="value:4250.length" type="int32" uid="4270" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4280" uid_parent="root" value="[false,0,]"/>
+</VI>

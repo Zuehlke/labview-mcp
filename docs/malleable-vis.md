@@ -12,8 +12,21 @@ controls.
 ## 1. `lvai_example_index` does not find them, and that is not "no such example"
 
 `lvai_example_index` answers **no match** for `malleable`, with `includeSpecialised=true` as well —
-while NI's own Example Finder lists four projects. The entries are `.lvproj` files, and a `.lvproj`
-carries no in-VI metadata, so it reaches the index only through the external registration path.
+while NI's own Example Finder lists four projects.
+
+**Why, measured rather than assumed.** §2 of `docs/example-corpus.md` says the `<Title>` /
+`<Description>` block inside the `.vi` **is also the filter**. Grepped the three lesson VIs: not one
+carries `<ExampleProgram>`, `<Title>` or `<Description>`, while the control
+`State Machine Fundamentals.vi` carries two of the three. And the other registration path is empty
+too — **no `.bin3` or `.bin4` anywhere in the installation mentions "malleable"**. So these four
+projects are registered by neither mechanism this index reads, and there is nothing to repair in the
+scanner: the metadata is not in the files. NI's Example Finder knows them from its own catalogue.
+
+The size of the hole, if anyone wants to close it: **198 `.lvproj` files live under `examples\`** and
+the index lists 29. Indexing an `examples\` `.lvproj` by its own file and folder name — no metadata
+needed — would make all four Malleable projects findable. That is a real enhancement and is NOT
+done.
+
 The lesson is the one `docs/example-corpus.md` already states from the other side: **a miss in the
 example index is not evidence that NI shipped nothing.** Look on disk:
 
@@ -157,10 +170,9 @@ adapts. What the terminal type in the file decides is what the diagram is compil
   `Increment Array Element.vim` does this and still adapts to an `int32` array at the call site.
 
 A `Type Specialization Structure` lets one VIM carry several implementations and have the compiler
-pick the first that has no syntax errors. It is authorable in principle — it exports as a `<Node>`
-whose `<Diagram>` children carry LabVIEW's own computed `selector` (` [0] Accepted `,
-` [1] Ignored `) — but it is listed in `docs/aixml-node-gaps.tsv`, and nothing here has generated
-one. Untested; do not promise it.
+pick the first that has no syntax errors. **It is authorable, generated and run — section 9.** This
+paragraph said "untested; do not promise it" for the length of one session, on the strength of the
+entry in `docs/aixml-node-gaps.tsv`; the probe cost about four minutes.
 
 ## 7. The worked example
 
@@ -208,3 +220,61 @@ were left alone deliberately: `CLAUDE.md` says not to regenerate for a comment, 
 mean re-running the whole four-step route for both files and then being unable to verify either,
 because LabVIEW holds both paths in memory and would serve its stale copy to every check. The
 sources are correct; the next build picks the short captions up.
+
+## 9. The Type Specialization Structure IS authorable in AIXML
+
+`docs/aixml-node-gaps.tsv` lists `Type Specialization Structure` (1 occurrence in 900 VIs), and that
+file is the "silently unsupported" list `pylv_route` scans — families that validate with
+`errorCode 0` and then come back **gutted**. That is a reason to check, not a reason to conclude.
+Checked on 2026-09-17: **it survives the round trip intact.**
+
+`Length Of.vim` returns the element count of a 1D array OR the character count of a string. Two
+frames, one input:
+
+```xml
+<Node _name="Type Specialization Structure" uid="4300" uid_parent="root">
+  <Tunnel _id="In1" cond="true" inputs="value:4210.value" uid="4310" uid_parent="4300"/>
+  <Diagram selector=" [0] Accepted " uid="4320" uid_parent="4300">
+    <Tunnel _id="In1" outputs="value:4330.value" uid="4330" uid_parent="4320"/>
+    <Node _name="Array Size" inputs="array:4330.value" outputs="size(s):4340.size(s)" uid="4340" uid_parent="4320"/>
+    <Tunnel _id="Out1" inputs="value:4340.size(s)" uid="4350" uid_parent="4320"/>
+  </Diagram>
+  <Diagram selector=" [1] Ignored " uid="4360" uid_parent="4300">
+    <Tunnel _id="In1" outputs="value:4370.value" uid="4370" uid_parent="4360"/>
+    <Node _name="String Length" inputs="string:4370.value" outputs="length:4380.length" uid="4380" uid_parent="4360"/>
+    <Tunnel _id="Out1" inputs="value:4380.length" uid="4390" uid_parent="4360"/>
+  </Diagram>
+  <Tunnel _id="Out1" cond="true" outputs="value:4400.value" uid="4400" uid_parent="4300"/>
+</Node>
+```
+
+**The shape, which is not guessable and was copied from NI's `Increment Array Element.vim`:**
+
+- It is a `<Node>`, not a `<Structure>` — like `Diagram Disable Structure`.
+- Each tunnel is declared **twice**: once on the `<Node>` with the OUTER net, and again inside
+  **every** `<Diagram>` with the same `_id` and the inner net. An input tunnel carries `inputs=`
+  outside and `outputs=` inside; an output tunnel is the other way round.
+- `selector` is LabVIEW's own **computed verdict**, not an instruction. Author
+  ` [0] Accepted ` / ` [1] Ignored ` with the surrounding spaces and let the compiler decide; it
+  re-evaluates per call site anyway.
+
+Round-tripped after generation: both `<Diagram>` frames present, both node bodies present, all six
+tunnels present, both selectors preserved. **One attribute is dropped** — `cond="true"` on the
+OUTER input tunnel comes back absent, while the outer output tunnel keeps it. Nothing observably
+depends on it.
+
+**Verified by execution, not by `execState`.** One caller, two call sites:
+
+```
+array length   7      from a 7-element array{double}   -> frame [0], Array Size
+string length  9      from the string "Malleable"      -> frame [1], String Length
+```
+
+A string wired into a terminal declared `array{variant.Variant}` is a type error for an ordinary
+VI; here each call site compiled its own frame. The rendered `.vim` confirms it from the other
+side: LabVIEW draws frame `[0] Accept` normally and frame `[1] Ignore` with **red X terminals**,
+because inside the VIM — where the declared type is an array — the string frame genuinely does not
+compile. That is the mechanism working, not a defect.
+
+**The malleable route is unchanged**: generate as `.vi`, patch the four flags, rebuild as `.vim`.
+The structure adds nothing to it.
