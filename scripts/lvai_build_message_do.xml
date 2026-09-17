@@ -1,0 +1,70 @@
+<VI _name="lvai_build_message_do.vi" description="Rewires a message class's template Do.vi to call one actor method\2C reproducing Message Maker.lvlib\3ABuild Concrete Do.vi's recipe WITHOUT its FP.Open step - that one answers Error 2 from the addon application instance. Needs a project open and ACTIVE.">
+  <FreeLabel comment="NI's Build Concrete Do recipe\2C no FP.Open" uid="4001" uid_parent="root"/>
+  <Control _name="do path" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
+  <Control _name="actor method path" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value"/>
+  <Control _name="actor class path" type="string" uid="4102" uid_parent="root" value="" outputs="value:4102.value"/>
+  <Control _name="class name" type="string" uid="4103" uid_parent="root" value="" outputs="value:4103.value"/>
+  <Constant _name="GObj Class Name" type="string" uid="4110" uid_parent="root" value="LabVIEWClassConstant" outputs="value:4110.value"/>
+  <Constant _name="Traverse Target" type="uint16{FP,BD,Other}" uid="4111" uid_parent="root" value="1" outputs="value:4111.value"/>
+  <Constant _name="Dummy Method Name" type="string" uid="4112" uid_parent="root" value="Dummy Actor Method.vi" outputs="value:4112.value"/>
+  <Constant _name="Dummy Attribute Name" type="string" uid="4113" uid_parent="root" value="Dummy Read Attributes.vi" outputs="value:4113.value"/>
+  <Constant _name="SubVI Class Name" type="string" uid="4114" uid_parent="root" value="SubVI" outputs="value:4114.value"/>
+  <Constant _name="Save a Copy" type="bool" uid="4115" uid_parent="root" value="false" outputs="value:4115.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4200.proj,reference out:,error out:4200.error out" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4200.proj,error in (no error):4200.error out" outputs="Application:4210.app,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4101.value" outputs="path:4222.path" uid="4222" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4102.value" outputs="path:4224.path" uid="4224" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4210.app,vi path:4220.path,error in (no error):4210.error out" outputs="vi reference:4230.viref,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Indicator _name="open vi error" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+  <Call target="Message Maker.lvlib\3AFind and Replace GObj.vi" inputs="vi reference in:4230.viref,Class Path:4224.path,error in (no error):4230.error out,Traverse Target:4111.value,GObj Class Name:4110.value" outputs="vi reference out:4240.viref,Replace:,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Indicator _name="replace class constant error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4502" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4222.path" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4112.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4111.value" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4240.viref" outputs="value:4311.value" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4320.viref" outputs="value:4312.value" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <ShiftReg uid="4315" uid_parent="4300">
+      <Left inputs="value:4240.error out" outputs="value:4316.value" uid="4316" uid_parent="4315"/>
+      <Right inputs="value:4322.error out" outputs="value:4317.value" uid="4317" uid_parent="4315"/>
+    </ShiftReg>
+    <Call target="Message Maker.lvlib\3AFind and Replace SubVI.vi" inputs="vi reference in:4311.value,New VI Path:4301.value,Old VI Name:4302.value,error in (no error):4316.value,Traverse Target:4303.value" outputs="vi reference out:4320.viref,Replace:4320.replace,error out:4320.error out" uid="4320" uid_parent="4300"/>
+    <Call target="Message Maker.lvlib\3ARewire Do.vi" inputs="Replace:4320.replace,error in (no error):4320.error out" outputs="done?:4322.done,error out:4322.error out" uid="4322" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4322.error out" outputs="status:4324.status" uid="4324" uid_parent="4300"/>
+    <Node _name="Or" inputs="x:4322.done,y:4324.status" outputs="x .or. y?:4326.or" uid="4326" uid_parent="4300"/>
+    <Condition inputs="value:4326.or" uid="4328" uid_parent="4300" value="stop"/>
+  </Structure>
+  <Indicator _name="replace method error" inputs="value:4317.value" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
+  <Call target="TRef Find Object By Label.vi" inputs="VI Ref:4312.value,Class Name:4114.value,error in (no error):4317.value,Traverse Target:4111.value,Label:4113.value" outputs="dup VI Ref:4340.viref,Found Obj Ref:4340.obj,Found?:4340.found,error out:4340.error out" uid="4340" uid_parent="root"/>
+  <Indicator _name="dummy attribute found" inputs="value:4340.found" type="bool" uid="4506" uid_parent="root" value="false"/>
+  <Structure _name="Case Structure" selectin="4340.found" uid="4350" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4340.obj" uid="4351" uid_parent="4350"/>
+    <Tunnel _id="In2" inputs="value:4340.error out" uid="4352" uid_parent="4350"/>
+    <CaseFrame selector="True" selectout="" uid="4360" uid_parent="4350">
+      <Tunnel _id="In1" outputs="value:4361.value" uid="4361" uid_parent="4360"/>
+      <Tunnel _id="In2" outputs="value:4362.value" uid="4362" uid_parent="4360"/>
+      <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4361.value,error in (no error):4362.value" outputs="reference out:,error out:4363.error out" uid="4363" uid_parent="4360"/>
+      <Tunnel _id="Out1" inputs="value:4363.error out" uid="4364" uid_parent="4360"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4370" uid_parent="4350">
+      <Tunnel _id="In1" outputs="value:" uid="4371" uid_parent="4370"/>
+      <Tunnel _id="In2" outputs="value:4372.value" uid="4372" uid_parent="4370"/>
+      <Tunnel _id="Out1" inputs="value:4372.value" uid="4373" uid_parent="4370"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4380.value" uid="4380" uid_parent="4350"/>
+  </Structure>
+  <Call target="Message Maker.lvlib\3AWire FP Controls to Accessor UnBundler.vi" inputs="vi reference in:4340.viref,Target Actor Method Path:4222.path,error in (no error):4380.value" outputs="vi reference out:4390.viref,Open Block Diagram?:,error out:4390.error out" uid="4390" uid_parent="root"/>
+  <Indicator _name="wire controls error" inputs="value:4390.error out" type="cluster{bool.status,int32.code,string.source}" uid="4508" uid_parent="root" value="[false,0,]"/>
+  <Call target="Message Maker.lvlib\3ASet Class Control Label.vi" inputs="vi reference in:4390.viref,Class Name:4103.value,error in (no error):4390.error out" outputs="vi reference out:4392.viref,error out:4392.error out" uid="4392" uid_parent="root"/>
+  <Call target="Apply New VI Tools-Options Settings.vi" inputs="VI Refnum:4392.viref,error in (no error):4392.error out" outputs="dup VI Refnum:4394.viref,error out:4394.error out" uid="4394" uid_parent="root"/>
+  <Node _name="Invoke Node" target="BD.CleanUp" type="{LV.VI}" inputs="reference:4394.viref,error in (no error):4394.error out" outputs="reference out:4396.viref,error out:4396.error out" uid="4396" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4396.viref,error in (no error):4396.error out,Path to saved file:4220.path,Save a Copy:4115.value,Without Diagram:" outputs="reference out:4398.viref,error out:4398.error out" uid="4398" uid_parent="root"/>
+  <Indicator _name="save error" inputs="value:4398.error out" type="cluster{bool.status,int32.code,string.source}" uid="4510" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4398.viref,error in (no error):4398.error out" outputs="error out:4400.error out" uid="4400" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4400.error out" outputs="error out:4402.error out" uid="4402" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4402.error out" outputs="error out:4404.error out" uid="4404" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4404.error out" type="cluster{bool.status,int32.code,string.source}" uid="4512" uid_parent="root" value="[false,0,]"/>
+</VI>

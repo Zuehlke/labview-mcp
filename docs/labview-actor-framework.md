@@ -283,10 +283,61 @@ instead of silently doing nothing.
 10. `{LV.VI}` `BD.CleanUp`
 11. `Save.Instrument` to the Do Method path
 
-So the next experiment is to run steps 3-11 ourselves and **omit step 2**. The open question is
-whether LabVIEW's scripting of those replacements needs the panel or diagram window open at all; if
-it does, the remaining option is to reach the IDE's own application instance for the whole helper
-rather than only for the VI reference.
+### It works — `scripts/lvai_build_message_do.xml`, measured 2026-09-17
+
+Running steps 3-11 ourselves and omitting step 2 produces a **working override with a generated
+body**. On `Increment Msg` against `Counter.lvclass:Increment.vi`, every stage reported 0 and the
+result is:
+
+```
+Increment Msg.lvclass:Do.vi        execState 1
+  Increment Msg   conIdx 11  dynamic      (renamed from DNL_Message Template)
+  Actor in / Actor out                    class-typed
+call targets: Counter.lvclass:Increment.vi, Casting Utility For Actors.vim
+"Dummy" occurrences left in the diagram: 0
+```
+
+So the whole of the previous section's problem is gone: the override comes from NI's template and
+the body is wired by NI's own scripting. Nothing is authored in AIXML.
+
+**Two corrections to what this document said an hour earlier.**
+
+`FP.Open` was **not** the blocker, and blaming the application instance was wrong. The Error 2 was a
+**stale in-memory path**: an earlier run had left `Increment Msg.lvclass:Do.vi` registered against a
+folder that no longer existed, and LabVIEW resolved the new VI to that ghost — the give-away was the
+error naming `C:\Temp\ActorFW_first\Increment Msg\Do.vi` when the file passed in was at the top
+level. After `lvai_close_active_project` and copying the class into its own subfolder, `FP.Open`
+went through. The lesson is this repository's own: a failure inside somebody else's VI is not
+evidence about that VI until the state around it is clean.
+
+What NI's `Build Concrete Do.vi` then fails on is **`Replace Actor if Using PPL.vi` → `Find Item in
+PPL.vi`, Error 1055** — its `Target` input is a `ref{LV.TargetItem}` we cannot construct, because
+the only public route to one is `mxLvGetItem.vi` and its `NIIM` is a typedef. Our reimplementation
+omits that step, which is sound here: it only matters when the actor lives in a packed library.
+
+**The recipe that works**, all of it public `Message Maker.lvlib`:
+
+1. `Copy Class.vi` — clone `Concrete Message Template.lvclass`, parent `Message.lvclass`.
+   **Give it its own subfolder**: the class lands directly in `Destination Directory`.
+2. `Open VI Reference` on the new `Do.vi` through the IDE's `AppInst`
+3. `Find and Replace GObj.vi` — `GObj Class Name` = `LabVIEWClassConstant`, `Traverse Target` = BD
+4. a While loop of `Find and Replace SubVI.vi` (`Old VI Name` = `Dummy Actor Method.vi`) plus
+   `Rewire Do.vi`, stopping on `done?` or an error. **The loop is essential**: the template carries
+   **six** `Dummy Actor Method.vi` nodes in a six-frame case ("a".."f"), one per wiring variant, and
+   `Rewire Do.vi` keeps the frame that fits the method's pane and deletes the rest
+5. `TRef Find Object By Label.vi` + `{LV.GObject}` `Delete` for `Dummy Read Attributes.vi`
+6. `Wire FP Controls to Accessor UnBundler.vi`, `Set Class Control Label.vi`,
+   `Apply New VI Tools-Options Settings.vi`, `BD.CleanUp`, `Save.Instrument`
+
+### What is still missing: the payload
+
+The generated call is `Counter.lvclass:Increment.vi` with **`Amount:` unwired**, because the message
+class has no private data yet — `Copy Class.vi` clones an empty template. The remaining step is
+`Add Member Data to Private Data Control.vi` (which `lvai_create_class` already drives) plus
+`Add Controls to Method.vi`, to give the message a field per non-class, non-error input of the actor
+method; `Wire FP Controls to Accessor UnBundler.vi` then has controls to wire. `Build Send.vi`
+produces the `Send` VI and wants `Controls` (an array of `ref{LV.Control}`) and `Wiring Rules` read
+off that same pane.
 
 ## 5. LabVIEW died creating the second AF class, and the log named the site
 
