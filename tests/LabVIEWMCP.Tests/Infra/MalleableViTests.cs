@@ -1,4 +1,7 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using LabVIEWMcp.Infra;
+using LabVIEWMcp.Tests.Support;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Infra;
@@ -98,5 +101,120 @@ public sealed class MalleableViTests
         var repaired = AixmlCheck.Fix(NameEndsInVim);
         Assert.DoesNotContain(repaired.Repairs, r => r.Code == "malleableNameDeclared");
         Assert.Contains("Swap Local.vim", repaired.Xml);
+    }
+
+    // --------------------------------------------------------------- the bundle patch
+
+    /// <summary>
+    /// The shape <c>pylv_extract</c> produces, cut down to the four attributes this touches plus
+    /// the section name. UNWRAPPED FROM A REAL BUNDLE rather than invented: the values here are
+    /// what the generator actually emits, which is why they are the "wrong" ones in every case.
+    /// A fixture built to look plausible is the failure mode this repository has paid for twice.
+    /// </summary>
+    private const string BundleAsGenerated = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <RSRC>
+          <LVSR>
+            <Section Index="0" Name="Swap Local.vi" Format="inline">
+              <Execution State="0" BadNode="1" IsReentrant="0" SaveParallel="0" />
+              <Execution2 InlinableDiagram="1" SourceOnly="1" ShouldInline="0" DoNotClone="0" />
+              <Instrument Type="Standard" DebugCapable="1" PrintAfterExec="0" />
+              <Unknown AlignGridFP="12" InlineStg="1" Field8C="4294967295" />
+            </Section>
+          </LVSR>
+        </RSRC>
+        """;
+
+    private static string PatchToTempFile(string bundle, string? newName,
+                                          out MalleableVi.BundlePatch patch)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"lvmcp-malleable-{Guid.NewGuid():N}.xml");
+        File.WriteAllBytes(path, new UTF8Encoding(false).GetBytes(bundle));
+        try
+        {
+            patch = MalleableVi.PatchBundle(path, newName);
+            return new UTF8Encoding(false).GetString(File.ReadAllBytes(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void PatchingABundleSetsAllFourFlagsAndRenamesTheSection()
+    {
+        var patched = PatchToTempFile(BundleAsGenerated, "Swap Local.vim", out var patch);
+
+        Assert.Contains(@"ShouldInline=""1""", patched);
+        Assert.Contains(@"InlineStg=""2""", patched);
+        Assert.Contains(@"DebugCapable=""0""", patched);
+        Assert.Contains(@"SaveParallel=""1""", patched);
+        Assert.Contains(@"Name=""Swap Local.vim""", patched);
+
+        Assert.Empty(patch.FlagsNotFound);
+        Assert.Equal(4, patch.FlagsSet.Length);
+        Assert.Equal("Swap Local.vi", patch.OldName);
+    }
+
+    /// <summary>
+    /// THE CONTROL that keeps the patch honest: it must change the four attributes it names and
+    /// nothing else. <c>BadNode</c> and <c>IsReentrant</c> are in the fixture precisely because
+    /// they were candidates during the bisect and were measured NOT to be needed - a patch that
+    /// quietly widened to them would be the shotgun the bisect exists to avoid.
+    /// </summary>
+    [Fact]
+    public void PatchingTouchesNothingElse()
+    {
+        var patched = PatchToTempFile(BundleAsGenerated, "Swap Local.vim", out _);
+
+        Assert.Contains(@"BadNode=""1""", patched);
+        Assert.Contains(@"IsReentrant=""0""", patched);
+        Assert.Contains(@"InlinableDiagram=""1""", patched);
+        Assert.Contains(@"State=""0""", patched);
+        Assert.Contains(@"Field8C=""4294967295""", patched);
+    }
+
+    /// <summary>
+    /// A bundle missing an attribute is REPORTED rather than half-patched. The tool stops there:
+    /// writing the rest would leave a file whose state nobody can reason about.
+    /// </summary>
+    [Fact]
+    public void AMissingAttributeIsNamedAndNotInvented()
+    {
+        var withoutInlineStg = BundleAsGenerated.Replace(@" InlineStg=""1""", "");
+        PatchToTempFile(withoutInlineStg, null, out var patch);
+
+        Assert.Equal(["InlineStg"], patch.FlagsNotFound);
+        Assert.DoesNotContain("InlineStg", patch.FlagsSet);
+    }
+
+    // --------------------------------------------------------------- the two implementations
+
+    /// <summary>
+    /// THE DRIFT GUARD. <c>scripts/pylv-make-malleable.py</c> carries the same four flags for hand
+    /// and CI use, and a second implementation that disagrees is worse than either alone - this
+    /// repository lost days to <c>AixmlCheck.SafeUidBase</c> and the lint's ceiling disagreeing
+    /// while telling readers their compliant files were wrong.
+    ///
+    /// It parses the script rather than importing it, because the test host has no Python. That is
+    /// a weaker check than executing it, and it is the one that fails when somebody edits the table
+    /// - which is the drift this exists to catch.
+    /// </summary>
+    [Fact]
+    public void TheScriptAndTheToolAgreeOnTheFourFlags()
+    {
+        var script = File.ReadAllText(RepoTree.Path("scripts", "pylv-make-malleable.py"));
+        var table = Regex.Match(script, @"FLAGS\s*=\s*\{(?<body>[^}]*)\}", RegexOptions.Singleline);
+        Assert.True(table.Success, "scripts/pylv-make-malleable.py has no FLAGS = { ... } table.");
+
+        var fromScript = Regex.Matches(table.Groups["body"].Value,
+                                       @"""(?<name>\w+)""\s*:\s*""(?<value>[^""]*)""")
+                              .Select(m => (m.Groups["name"].Value, m.Groups["value"].Value))
+                              .OrderBy(p => p.Item1)
+                              .ToArray();
+
+        var fromTool = MalleableVi.RequiredFlags.OrderBy(f => f.Attribute)
+                                                .Select(f => (f.Attribute, f.Value))
+                                                .ToArray();
+
+        Assert.Equal(fromTool, fromScript);
     }
 }

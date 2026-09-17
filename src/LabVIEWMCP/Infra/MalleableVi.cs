@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.RegularExpressions;
+
 namespace LabVIEWMcp.Infra;
 
 /// <summary>
@@ -67,4 +70,72 @@ internal static class MalleableVi
         the only cheap thing that sees this failure.
         docs/malleable-vis.md has the four LVSR flags and the bisect showing each one is needed.
         """;
+
+    /// <summary>
+    /// THE FOUR LVSR ATTRIBUTES A REBUILT <c>.vim</c> NEEDS, and this array is the AUTHORITY.
+    /// <c>scripts/pylv-make-malleable.py</c> carries the same table for hand and CI use, and
+    /// <c>MalleableViTests</c> parses that file and fails when the two disagree - because a second
+    /// implementation that drifts is worse than either alone, which is what
+    /// <c>AixmlCheck.SafeUidBase</c> against the lint's ceiling cost days of telling readers their
+    /// compliant files were wrong.
+    ///
+    /// Each one was bisected over eight arms on 2026-09-17; dropping any single one puts the VI
+    /// back to <c>execState 0</c>. <c>BadNode</c> and the undecoded <c>InStBit*</c> flags also
+    /// differ from NI's file and are NOT here: setting only those leaves the VI broken, and a VI
+    /// with none of them set runs.
+    ///
+    /// <c>SaveParallel</c> is the one with a caveat worth knowing before anybody "fixes" it:
+    /// LabVIEW's OWN save resets it to 0 and the VIM stays <c>execState 1</c>. So it is what
+    /// pylabview's output needs to be accepted, not a property of malleability. Check execState,
+    /// never this table, when asking whether a VIM on disk is sound.
+    /// </summary>
+    internal static readonly (string Attribute, string Value)[] RequiredFlags =
+    [
+        ("ShouldInline", "1"),   // Execution2  - inline this subVI into its callers
+        ("InlineStg", "2"),      // Unknown     - inline setting
+        ("DebugCapable", "0"),   // Instrument  - an inlined VI may not be debuggable
+        ("SaveParallel", "1"),   // Execution
+    ];
+
+    /// <summary>What <see cref="PatchBundle"/> did, so the tool can report it rather than assert it.</summary>
+    internal sealed record BundlePatch(
+        string? OldName, string? NewName, string[] FlagsSet, string[] FlagsNotFound);
+
+    /// <summary>
+    /// Set the four flags in a <c>pylv_extract</c> bundle's main XML, and rename the LVSR section
+    /// so the VI's own name matches the <c>.vim</c> file it is about to become.
+    ///
+    /// BYTES IN, BYTES OUT. The bundle is 20 000 lines of heap dump whose line endings and BOM are
+    /// not ours to normalise - reading it as text and writing it back through a default encoder
+    /// rewrites every line and hides the four that changed, which is the trap
+    /// <c>CLAUDE.md</c> records for the Python side of exactly this edit.
+    /// </summary>
+    internal static BundlePatch PatchBundle(string mainXmlPath, string? newViFileName)
+    {
+        var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var text = utf8.GetString(File.ReadAllBytes(mainXmlPath));
+
+        List<string> set = [], notFound = [];
+        foreach (var (attribute, value) in RequiredFlags)
+        {
+            var pattern = $@"\b{Regex.Escape(attribute)}=""[^""]*""";
+            if (!Regex.IsMatch(text, pattern)) { notFound.Add(attribute); continue; }
+            text = Regex.Replace(text, pattern, $"{attribute}=\"{value}\"");
+            set.Add(attribute);
+        }
+
+        // The LVSR section carries the VI's own name. A .vim whose section still says ".vi" loads
+        // and runs, so this is tidiness rather than a gate - but a VI whose internal name disagrees
+        // with its file name is exactly the shape that produces Error 1051, same filename different
+        // path, once two of them are in memory together.
+        string? oldName = null;
+        var section = Regex.Match(text, @"<Section\b[^>]*?\bName=""([^""]*)""");
+        if (section.Success) oldName = section.Groups[1].Value;
+
+        if (newViFileName is not null && oldName is not null && oldName != newViFileName)
+            text = text.Replace($"Name=\"{oldName}\"", $"Name=\"{newViFileName}\"");
+
+        File.WriteAllBytes(mainXmlPath, utf8.GetBytes(text));
+        return new BundlePatch(oldName, newViFileName, [.. set], [.. notFound]);
+    }
 }

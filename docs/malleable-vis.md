@@ -124,7 +124,22 @@ LabVIEW saves it, and that is not a defect** — check `execState`, not the flag
 
 ## 4. The route, end to end
 
-`scripts/pylv-make-malleable.py` is step 3.
+**`lvai_make_malleable` does all of it in one call** — pass the AIXML and the `.vim` path. It is
+the normal way in; the five steps below are what it composes, and are worth reading because the
+failure modes are still yours to recognise.
+
+It adds two things a hand-driven run does not. It **gates on the intermediate `.vi` being
+executable** before patching anything, so a broken diagram fails with its own message instead of
+arriving later as a malleable VI that will not load. And it **keeps the intermediate `.vi`** beside
+the `.vim`, because that file is what you regenerate from and is the pane donor
+`lvai_placeholder_subvi` needs for the caller-side swap in §5.
+
+It deliberately does **not** close the project. A close SAVES LabVIEW's in-memory copy over the
+`.lvproj` and is forbidden to an agent sharing one instance, so where the target already existed
+the answer carries `staleReadRisk` and names the remedy instead of taking it.
+
+`scripts/pylv-make-malleable.py` remains for hand and CI use, and is step 3. The flag table lives
+in `Infra/MalleableVi.cs`; a test parses the script and fails if the two ever disagree.
 
 1. Author the VI in AIXML **as an ordinary `.vi`** — normal terminals, normal connector pane.
    Generate it with `lvai_generate_vi` and confirm `execState 1`. A diagram that is broken as a
