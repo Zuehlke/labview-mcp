@@ -471,3 +471,89 @@ LabVIEW through `Project:Active Project`. One name, two meanings, across tools a
 same breath — which is the shape CLAUDE.md records as costing eighteen days when a description
 explains a mechanism that is not the one in play. Until it writes an entry, add the message class to
 the project by hand, with the project CLOSED.
+
+## 8. The AddActor provider: how to create an actor INSIDE a library, 2026-09-17
+
+§4 records `AddActor` as unusable because `Add Actor.lvlib:Add Actor.vi` is a DIALOG whose
+`OK Button`, `Name of Actor` and `Inherit from:` are not on the connector pane. That is true of the
+dialog and **false as a conclusion about the provider**, exactly as it was for the Message Maker: the
+work is done by two `Support\` VIs with clean panes, and the dialog only collects arguments for them.
+
+| worker | pane |
+|---|---|
+| `Add Actor Library to Project.vi` | `Library Path`, `Target Item` (`ref{LV.TargetItem}`), `Application` → `Library out` |
+| `Create Child Actor.vi` | `Library in` (`ref{LV.Library}`), `Actor Name`, `Parent Class` (`ref{LV.LVClassLibrary}`), `App Inst` → `Library out` |
+
+**`ref{LV.TargetItem}` IS NOT THE BLOCKER IT LOOKS LIKE.** §4 rules the item-handle layer out because
+`NIIM` is a typedef AIXML cannot build, and that still holds — but reading
+`Add Actor Library to Project.vi` shows the TargetItem is used by exactly ONE node, the last one:
+
+```
+{LV.Application} Library.Create            -> Create Library      (no TargetItem)
+{LV.Library}     AddItem  Name="Messages for this Actor", Path=<empty>, Type="Folder"
+{LV.Library}     Save     Path=<library path>                     (library now on disk)
+{LV.TargetItem}  AddItem  Name, Path, Type="Library"              <- the only TargetItem use
+```
+
+That last node lists the library in the project, which we already do as an ordinary `.lvproj` file
+edit with the project closed. So **the whole chain is reachable without an item handle.**
+
+**`{LV.Library}` `AddItem` WITH `Type="LVClass"` IS THE GESTURE THAT PUTS A CLASS IN A LIBRARY**, and
+that is the finding that matters. `Create Child Actor.vi` ends with it, followed by
+`Edit LVLibs.lvlib:Save All This Library.vi`. Driving those two against an EXISTING class writes BOTH
+halves of the membership: the `.lvlib` gains its `<Item … Type="LVClass">` and the `.lvclass` gains
+`NI.Lib.ContainingLib` plus a `ContainingLibPath` at the right depth — `../../` for a class one folder
+down, `../../../` for one two down.
+
+**HAND-WRITING THOSE TWO PROPERTIES IS NOT THE SAME THING, and it is a silent wrecker.** Measured the
+same day on `Hund`: writing the `.lvlib` and inserting `NI.Lib.ContainingLib` into the class by hand
+gave a file that every cheap check passed — `lvai_describe_class` read `qualifiedName`
+`Hund.lvlib:Hund.lvclass` and `containingLibrary: Hund.lvlib`, both XML files parsed, BOM and CRLF
+intact — and **all three VIs went from `execState 1` to `eBad`**, because the property changes the
+class's QUALIFIED NAME while nothing relinks the members that call each other by it. Reverting the
+files restored the classes; the eBad survived a project close AND a full LabVIEW restart, which is
+how it was finally traced to the file rather than to memory. The A/B is clean: only the library
+membership changed.
+
+**`Library.Open` EXISTS, though the VI Server catalogue lists neither it nor `LVClass.Open`.** It is
+an `{LV.Application}` Invoke Node with `Path`, output `Library.Open`, shaped exactly like
+`LVClass.Open` in NI's own dialog. Validated 2026-09-17; that is what lets a second run add more
+classes to a library that already exists, instead of rebuilding it.
+
+**The route, end to end, as built for `Aquarium`:** `lvai_create_class` (fields + parent
+`Actor.lvclass`, no `projectPath`, so it gets no class entry of its own) → a helper running
+`Library.Create` + `AddItem` folder + `AddItem` class + `Save` + `Save All This Library` → the
+`.lvlib` written into the `.lvproj` by hand with the project CLOSED → `lvai_create_accessors` →
+`lvai_add_class_method` → `lvai_swap_subvis` → **a forced LabVIEW resave** → one
+`lvai_create_message_class` per method. Result: `Aquarium.lvlib` holding the actor and three message
+classes, every VI `execState 1` after a project close.
+
+### 8a. A SWAPPED VI IS NOT FINISHED UNTIL LabVIEW HAS SAVED IT — the `LIvi` block
+
+Measured on `Hund.lvclass:Bellen.vi`, and it is the reason the section above insists on a resave.
+The file `lvai_swap_subvis` leaves behind was missing its `LIvi` block, the one carrying subVI
+linkage:
+
+| stage | blocks |
+|---|---|
+| after `lvai_add_class_method` | 11 files, no `LIvi`, no `LIbd`/`LIfp` |
+| after `lvai_swap_subvis` | 13 files, `LIbd`+`LIfp` added, **still no `LIvi`** |
+| after `lvai_set_vi_icon` (forces a real save, `viResaved: true`) | 15 files, **`LIvi` present** |
+
+**In the no-`LIvi` state every check in this repository was green**: `lvai_exec_state` answered
+`execState 1` while LabVIEW held the VI, the AIXML export carried all three Calls with correct
+class-qualified targets and dynamic dispatch at 11/3, `socketsLeft` was 0 with correct `callTargets`,
+and `pylv_apply`'s pane check said the pane follows NI's style guide. After a LabVIEW **restart** the
+same VI was `eBad`, and the message `Do.vi` that calls it was eBad transitively — while
+`Send Bellen.vi`, which touches no actor class, stayed fine. The control is
+`Counter.lvclass:Increment.vi`: same shape, built the same way, HAS `LIvi`, survives a cold LabVIEW —
+and it had been given an icon in an earlier session, which is the resave this one never got.
+
+So a warm `execState 1` taken straight after a swap is worth nothing, which is this file's
+`Execution:State = 1 IS NOT EVIDENCE` rule reaching one layer further: it is not enough to ask the
+FILE either, unless you ask it after LabVIEW has written it. **`grep -a -c LIvi <file>.vi` is the
+cheap check**, and `lvai_set_vi_icon` is the cheap fix — it is wanted anyway, and the icon is the
+last step of every generation route here.
+
+n = 1, and that VI had also been through an unrelated library experiment, so the attribution is
+strong rather than clean; a minimal probe is queued.
