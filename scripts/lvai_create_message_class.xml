@@ -111,7 +111,11 @@
   <Call target="Message Maker.lvlib\3AClean Up Panel.vi" inputs="VI Refnum:4484.sendref,Conpane:4484.conpane,error in (no error):4484.error out" outputs="error out:4486.error out" uid="4486" uid_parent="root"/>
   <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4484.sendref,error in (no error):4486.error out,Path to saved file:4410.newsend,Save a Copy:4116.value,Without Diagram:" outputs="reference out:4488.sendref,error out:4488.error out" uid="4488" uid_parent="root"/>
   <Indicator _name="build send error" inputs="value:4488.error out" type="cluster{bool.status,int32.code,string.source}" uid="4520" uid_parent="root" value="[false,0,]"/>
-  <Node _name="Close Reference" inputs="reference:4488.sendref,error in (no error):4488.error out" outputs="error out:4490.err" uid="4490" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.newclass,error in (no error):4488.error out" outputs="reference out:,error out:4700.err,LVClass.Open:4700.cls" uid="4700" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4700.cls,error in (no error):4700.err" outputs="reference out:,error out:4702.err" uid="4702" uid_parent="root"/>
+  <Indicator _name="save class error" inputs="value:4702.err" type="cluster{bool.status,int32.code,string.source}" uid="4704" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4700.cls,error in (no error):4702.err" outputs="error out:4706.err" uid="4706" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4488.sendref,error in (no error):4706.err" outputs="error out:4490.err" uid="4490" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4240.methodref,error in (no error):4490.err" outputs="error out:4492.err" uid="4492" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4492.err" outputs="error out:4494.err" uid="4494" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4494.err" outputs="error out:4496.err" uid="4496" uid_parent="root"/>

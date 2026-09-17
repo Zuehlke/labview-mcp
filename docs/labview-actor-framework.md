@@ -329,15 +329,59 @@ omits that step, which is sound here: it only matters when the actor lives in a 
 6. `Wire FP Controls to Accessor UnBundler.vi`, `Set Class Control Label.vi`,
    `Apply New VI Tools-Options Settings.vi`, `BD.CleanUp`, `Save.Instrument`
 
-### What is still missing: the payload
+### The complete pipeline, payload and Send VI included
 
-The generated call is `Counter.lvclass:Increment.vi` with **`Amount:` unwired**, because the message
-class has no private data yet — `Copy Class.vi` clones an empty template. The remaining step is
-`Add Member Data to Private Data Control.vi` (which `lvai_create_class` already drives) plus
-`Add Controls to Method.vi`, to give the message a field per non-class, non-error input of the actor
-method; `Wire FP Controls to Accessor UnBundler.vi` then has controls to wire. `Build Send.vi`
-produces the `Send` VI and wants `Controls` (an array of `ref{LV.Control}`) and `Wiring Rules` read
-off that same pane.
+`scripts/lvai_create_message_class.xml` now generates a whole message class. Measured on
+`Increment Msg` against `Counter.lvclass:Increment.vi`, every stage reports 0:
+
+| step | VI |
+|---|---|
+| clone the template | `Copy Class.vi` — **`Message Template.lvclass`**, parent `Message.lvclass` |
+| read the method's parameters | `Copy Member Data from Target.vi` → `Wiring Rules`, `Controls[]` |
+| give the message its payload | `Add Member Data to Private Data Control.vi` |
+| rewire `Do.vi` | `Find and Replace GObj` → loop of `Special Replace of SubVI Node` + `Rewire Do` → `Wire FP Controls to UnBundler` → `Set Class Control Label` → `BD.CleanUp` → `Save.Instrument` |
+| create the Send VI | `Create Send Method.vi` |
+| build the Send VI | `Add Controls to Method` → `Find and Replace GObj` (label `Message Type`) → then ONE of two frames → `BD.CleanUp` → `Clean Up Panel` → `Save.Instrument` |
+| **save the class** | `{LV.Application}` `LVClass.Open` → `{LV.LVClassLibrary}` `Save` |
+
+Result: `Do.vi` at `execState 1` calling `Counter.lvclass:Increment.vi` with `Amount` wired from the
+message's own private data, and `Send Increment.vi` at `execState 1` whose pane is
+`Message Enqueuer` (11, required), `Amount` (10, int32), `Message Priority (Normal)` (7),
+`error in (no error)` (8) → `error out` (0), `Message Enqueuer out` (3) — byte for byte the shape of
+NI's own `Send Increase Count.vi`.
+
+**Which template you pick decides which builder you must follow.** `Concrete Message Template` ships
+`Do.vi` and `Dummy Read Attributes.vi` but **no `Send Template.vi`**, so `Create Send Method.vi`
+answers `Error 7` naming a file that was never copied; it belongs to the coupled abstract/concrete
+pair and its builder is `Build Concrete Do.vi`, which uses `Wire FP Controls to **Accessor**
+UnBundler`. `Message Template` ships `Do.vi`, `Dummy Actor Method.vi` and `Send Template.vi`, and its
+builder is `Build Do.vi`, which uses `Special Replace of SubVI Node` and
+`Wire FP Controls to UnBundler`. Mixing the two answers 1055 from a `To More Specific Class` inside
+the wrong wiring VI.
+
+**`Build Send.vi`'s two halves are ALTERNATIVES, not a sequence.** Its case structure selects on
+`Array Size(Controls out)`: with **no** payload it runs `Wire Class to Enqueue` + `BD.Remove Bad
+Wires`, with **one or more** it runs `Controls to Connector Pane` + `Wire FP Controls to Bundler`.
+Running both in a row invalidates the control references and answers 1055 — measured, because that
+is what a first reading of the call list produces.
+
+### The class must be SAVED, and nothing says so until the project closes
+
+The first complete run reported 0 at every stage and produced two VIs at `execState 1`. After a
+`lvai_close_active_project` / reopen cycle **both were `eBad`** — errors of type 8, 300008, 100008 —
+and the class on disk still listed `Send Template.vi` with no `Amount` field. The Message Maker's
+changes to the CLASS (its private data control, and the renamed member) live in memory; only
+`Save.Instrument` on the two VIs had been called. This is CLAUDE.md's rule for
+`lvai_add_class_method` — *the owning class must be saved in the same run* — arriving from a new
+direction, and the window in which it looks fine is the whole session up to the close.
+
+Adding `{LV.Application}` `LVClass.Open` + `{LV.LVClassLibrary}` `Save` at the end fixed it:
+`lvai_describe_class` now reads `Amount` (NumInt32) and members `Send Increment.vi`, `Do.vi` off the
+saved file, and all three VIs survive the cycle at `execState 1`.
+
+**Build this AIXML with a file tool, not a Python heredoc.** Doing the latter turned `\3A` and `\2C`
+into the bytes `0x03` and `0x02` — seven and one occurrence — and the file was refused as not
+well-formed XML. That is exactly the octal-escape trap CLAUDE.md records, met in practice.
 
 ## 5. LabVIEW died creating the second AF class, and the log named the site
 
