@@ -1,0 +1,22 @@
+<VI _name="lvai_create_actor_library.vi" description="Creates an Actor Framework library the way NI's AddActor provider does\2C and puts an existing actor class into it. Library.Create needs no TargetItem\2C so the whole chain is reachable without the IDE's item handle.">
+  <FreeLabel comment="NI's AddActor chain\2C without the dialog" uid="4200" uid_parent="root"/>
+  <Control _name="library path" type="path" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="messages folder" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Control _name="class path" type="path" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
+  <Control _name="class item name" type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]" outputs="value:4205.value"/>
+  <Constant _name="Empty Path" type="path" uid="4206" uid_parent="root" value="" outputs="value:4206.value"/>
+  <Constant _name="Folder Type" type="string" uid="4207" uid_parent="root" value="Folder" outputs="value:4207.value"/>
+  <Constant _name="Class Type" type="string" uid="4208" uid_parent="root" value="LVClass" outputs="value:4208.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4205.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4215.app,reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Library.Create" type="{LV.Application}" inputs="reference:4215.app,error in (no error):4215.err,Create.Default Palette:" outputs="Create Library:4220.lib,reference out:,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AddItem" type="{LV.Library}" inputs="reference:4220.lib,error in (no error):4220.err,Name:4202.value,Path:4206.value,Type:4207.value" outputs="reference out:4230.ref,error out:4230.err,AddItem:" uid="4230" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.Library}" inputs="reference:4230.ref,error in (no error):4230.err,Path:4201.value" outputs="reference out:4240.ref,error out:4240.err" uid="4240" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AddItem" type="{LV.Library}" inputs="reference:4240.ref,error in (no error):4240.err,Name:4204.value,Path:4203.value,Type:4208.value" outputs="reference out:4250.ref,error out:4250.err,AddItem:" uid="4250" uid_parent="root"/>
+  <Call target="Edit LVLibs.lvlib\3ASave All This Library.vi" inputs="Library in:4250.ref,Save Only Modified VIs and Libraries? (F):,error in (no error):4250.err" outputs="Library out:4260.lib,error out:4260.err" uid="4260" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Path" type="{LV.Library}" inputs="reference:4260.lib,error in (no error):4260.err" outputs="Path:4270.path,reference out:4270.ref,error out:4270.err" uid="4270" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4270.ref,error in (no error):4270.err" outputs="error out:4280.err" uid="4280" uid_parent="root"/>
+  <Indicator _name="library saved path" type="path" uid="4290" uid_parent="root" value="" inputs="value:4270.path"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4291" uid_parent="root" value="[false,0,]" inputs="value:4280.err"/>
+</VI>

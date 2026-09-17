@@ -557,3 +557,53 @@ last step of every generation route here.
 
 n = 1, and that VI had also been through an unrelated library experiment, so the attribution is
 strong rather than clean; a minimal probe is queued.
+
+## 9. The launcher, and two things it re-measured — 2026-09-17
+
+`Launcher Aquarium.vi` drives the whole chain from outside: clear the log, `Launch Root Actor`, four
+`Send` VIs, `Send Normal Stop`, wait 800 ms for the queue to drain, read the log back. Measured
+output, twice, `error out` 0 both times and the same four lines in `aquarium-log.txt`:
+
+```
+Temperatur = 24.5 C
+Licht = an
+Futter gesamt = 3
+Futter gesamt = 5
+```
+
+**`3` then `5` is the assertion that matters** — two separate `Fuettern` messages, and the actor kept
+its running total between them. A single send would have proved delivery but not state.
+
+**`lvai_generate_vi` CANNOT BUILD THIS VI, and the refusal names the right thing for the wrong
+reason.** Validation answered three times *"You have connected two terminals of different types …
+the type of the source is file path, the type of the sink is Actor Framework.lvlib:Message
+Enqueuer.lvclass"* — all three are the placeholder stand-in pattern, not faults. This is CLAUDE.md's
+class-wire strictness rule reaching the launcher: `lvai_convert_aixml_to_vi` on the same file wrote
+11 889 bytes without complaint, and the swap then repaired the types. **Check the byte count**, since
+an empty generated VI is about 3 170 bytes.
+
+**ONE SOCKET ON TWO NODES COSTS TWO SWAP CALLS, confirmed again.** Both `Fuettern` sends use one
+stub, and the first call answered `nodesSwapped: 3`, `constantsSwapped: 1`, **`socketsLeft: 1`** with
+`diagramSubVis` listing the stub twice; the second call took it to 0. `socketsLeft` counts
+`swapsJson` ENTRIES still in the export, not nodes — exactly as §*swap* of CLAUDE.md records.
+
+**`{LV.Library}` `AddItem` TAKES `Type="VI"` TOO, and it relinks a plain VI's CALLERS.** `Append To
+Log.vi` — the one generic VI the three actor methods log through, factored out under the user's
+repeated-operation rule — was moved into `Aquarium.lvlib` after the fact. That changes its qualified
+name to `Aquarium.lvlib:Append To Log.vi`, which is the same kind of change that left every `Hund`
+VI `eBad` in §8. Through NI's `AddItem` plus `Save All This Library` it did not: after a project
+close the three methods, the launcher and the VI itself all read `execState 1`, and the launcher
+produced the identical log. **So the difference between the two routes is now measured on the same
+kind of change twice — hand-edited property: broken; NI's AddItem: sound.**
+
+Its standalone `.lvproj` entry was removed first, with the project closed: a library member belongs
+to the project through its library, not beside it.
+
+### Helpers
+
+`scripts/lvai_create_actor_library.xml` creates the library and puts one existing class in it
+(`Library.Create` → `AddItem` folder → `Save` → `AddItem` class → `Save All This Library`).
+`scripts/lvai_add_one_to_library.xml` adds ONE further item to a library that already exists
+(`Library.Open` → `AddItem` → `Save All This Library`), with `Type` as an input so it serves
+`LVClass` and `VI` alike. Both need a project open and ACTIVE, because they reach LabVIEW through
+`Project:Active Project`. Neither is wrapped in an `lvai_*` tool yet.
