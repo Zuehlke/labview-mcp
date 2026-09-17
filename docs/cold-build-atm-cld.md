@@ -730,7 +730,7 @@ the pipeline cannot be wrapped onto a second row.
   answered `socketsLeft: 2` and a second call finished it — exactly as `docs/cold-build-kilnrig.md`
   section 2 measured, and still two avoidable calls.
 - **The controller rewrites `ATM accounts.txt` with CRLF** where the supplied file uses LF
-  (107 to 111 bytes). `Array To Spreadsheet String` emits the platform EOL. The data reads back
+  (107 to 111 bytes). `Array To Spreadsheet String` emits the platform's line ending. The data reads back
   correctly either way; flagged rather than changed, because the exam says nothing about it.
 
 ### 14h. THE SUPPLIED PANEL, UNCHANGED AFTER FOUR RUNS
