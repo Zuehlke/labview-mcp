@@ -430,3 +430,44 @@ lines changed and `grep -c $'\r'` still answered 51 for both files and hid it. `
 is the honest measure: 51 against 0. Use PowerShell's `[System.IO.File]::ReadAllText` /
 `WriteAllText` with `UTF8Encoding($true)` to keep the BOM and the line endings, and verify the byte
 count. This is CLAUDE.md's heap-payload line-ending rule one layer out, on the class file.
+
+## 7. Accepted through the MCP client, 2026-09-17 — and one gap the acceptance found
+
+`lvai_create_message_class` was built in the session that could not call it: a client fetches the
+tool list once at session start, so the tool that was added after that start was unreachable, exactly
+as CLAUDE.md records for `lvai_close_active_project`'s `projectPath`. With LabVIEW and the client
+restarted it was called for the first time, **on a method it had never seen** — `Write Count.vi`, the
+accessor, rather than the `Increment.vi` the pipeline was developed against.
+
+| arm | result |
+|---|---|
+| `actorMethodName: "Decrement"` | `notAClassMember`, listing `Increment.vi`, `Read Count.vi`, `Write Count.vi` |
+| `actorMethodName: "Increment"` | `messageClassExists`, naming `…\Increment Msg\Increment Msg.lvclass` |
+| `actorMethodName: "Write Count"` | **`ok: true`**, all nine stages 0, **3 461 ms** inside LabVIEW |
+
+The second arm is worth keeping as an arm rather than a nuisance: the refusal reports the path it was
+about to write, so it pins **both** defaults — `<method> Msg` and a folder beside the actor's own —
+on the real call path rather than in a unit test.
+
+What the created class is, read back off disk: private data `Count`, `NumInt32`, lifted from the
+accessor's own input; members `Send Write Count.vi` and `Do.vi`, with no `Send Template.vi` left; and
+`Do.vi`'s export carries `Call target="Counter.lvclass\3AWrite Count.vi"` with
+`Count:151.value` wired out of the message's own `Unbundle` — so the payload really does travel.
+`Send Write Count.vi`'s pane is NI's shape with the payload at conIdx 10:
+`Message Enqueuer` (11, required), `Count` (10, required), `Message Priority (Normal)` (7),
+`error in (no error)` (8) → `error out` (0), `Message Enqueuer out` (3).
+
+**THE SAVE FIX HOLDS.** Both VIs read `execState 1` before the project close AND after it — the exact
+cycle that used to leave both `eBad` with the class on disk still listing `Send Template.vi`. The
+existing `Increment` example ran unchanged afterwards (`Count = 1 / 6 / 16`, `error out` 0), so a
+second message class in the same folder disturbs neither the first nor the actor.
+
+**THE GAP: the new class is NOT written into the `.lvproj`, and `projectPath` does not mean what it
+means on the sibling tools.** Measured on the same run — the project's item list was identical before
+and after, and `lvai_close_active_project`'s sweep answered `strayVisRemoved: 0`, so nothing added the
+class and nothing removed it either. On `lvai_create_class` the `projectPath` argument is the file the
+tool EDITS; here it is only the project the tool OPENS, because every Message Maker step reaches
+LabVIEW through `Project:Active Project`. One name, two meanings, across tools a caller uses in the
+same breath — which is the shape CLAUDE.md records as costing eighteen days when a description
+explains a mechanism that is not the one in play. Until it writes an entry, add the message class to
+the project by hand, with the project CLOSED.
