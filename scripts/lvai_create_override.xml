@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<VI _name="lvai_create_override.vi" description="Creates an override of a parent class method in a child class by driving NI's own CLSUIP_CreateOverride provider\2C then saves the new member to disk. Needs a project open and ACTIVE - it reaches LabVIEW through Project\3AActive Project and answers Error 1055 otherwise.">
+  <FreeLabel comment="NI's own override provider" uid="4001" uid_parent="root"/>
+  <Control _name="class path" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
+  <Control _name="parent method path" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value"/>
+  <Control _name="new vi path" type="string" uid="4102" uid_parent="root" value="" outputs="value:4102.value"/>
+  <Control _name="vi name in memory" type="string" uid="4103" uid_parent="root" value="" outputs="value:4103.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4200.proj,reference out:,error out:4200.error out" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4200.proj,error in (no error):4200.error out" outputs="Application:4210.app,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4101.value" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4230.path" uid="4230" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4102.value" outputs="path:4232.path" uid="4232" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4210.app,vi path:4220.path,error in (no error):4210.error out" outputs="vi reference:4240.vi reference,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Indicator _name="open vi error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.path,error in (no error):4240.error out" outputs="reference out:,error out:4250.error out,LVClass.Open:4250.LVClass.Open" uid="4250" uid_parent="root"/>
+  <Indicator _name="class open error" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4310" uid_parent="root" value="[false,0,]"/>
+  <Call target="MemberVICreation.lvlib\3ACLSUIP_CreateOverride.vi" inputs="Child class:4250.LVClass.Open,Parent Method:4240.vi reference,error in (no error):4250.error out" outputs="NewItemID:4260.NewItemID,Child class out:4260.child,Parent Method out:,error out:4260.error out" uid="4260" uid_parent="root"/>
+  <Indicator _name="NewItemID" inputs="value:4260.NewItemID" type="string" uid="4320" uid_parent="root" value=""/>
+  <Indicator _name="create override error" inputs="value:4260.error out" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4210.app,vi path:4103.value,error in (no error):4260.error out" outputs="vi reference:4264.vi reference,error out:4264.error out" uid="4264" uid_parent="root"/>
+  <Indicator _name="open new vi error" inputs="value:4264.error out" type="cluster{bool.status,int32.code,string.source}" uid="4360" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4264.vi reference,error in (no error):4264.error out,Path to saved file:4232.path,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4266.error out" uid="4266" uid_parent="root"/>
+  <Indicator _name="save new vi error" inputs="value:4266.error out" type="cluster{bool.status,int32.code,string.source}" uid="4370" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4264.vi reference,error in (no error):4266.error out" outputs="error out:4268.error out" uid="4268" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4260.child,error in (no error):4268.error out" outputs="reference out:,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Indicator _name="save class error" inputs="value:4270.error out" type="cluster{bool.status,int32.code,string.source}" uid="4340" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4250.LVClass.Open,error in (no error):4270.error out" outputs="error out:4280.error out" uid="4280" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4240.vi reference,error in (no error):4280.error out" outputs="error out:4281.error out" uid="4281" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4281.error out" outputs="error out:4282.error out" uid="4282" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4282.error out" outputs="error out:4283.error out" uid="4283" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4283.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

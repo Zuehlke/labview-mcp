@@ -169,12 +169,48 @@ OUTPUTS  error out  conIdx 0   NewItemID  string  conIdx 1
 So this is CLAUDE.md's **fourth interface** — ask whether LabVIEW *compiles* the thing before trying
 to write it, and drive NI's own provider when it does.
 
-**But creating the override is only half the problem.** The provider makes a correctly linked VI
-with an empty body, and there is then no way to give it one: any AIXML regeneration overwrites the
-file and destroys the link again, `lvai_apply_aixml_to_vi` is inert from this client, and
-`lvai_swap_subvis` can only repoint nodes that already exist. Closing this gap properly needs
-`lvai_add_class_method` to gain an override mode that converts the diagram **and then** establishes
-the link — not a caller-side workaround.
+**Driving it works — measured 2026-09-17.** `scripts/lvai_create_override.xml` opens the child class
+with `LVClass.Open` and the parent method with `Open VI Reference`, both in the IDE's application
+instance, calls the provider, saves the new member with `Save.Instrument` and then saves the class.
+Result on `Increment Msg.lvclass`: `Do.vi` on disk, listed in the class, `NI.ClassItem.Flags`
+**16777344** — NI's own value — and **`execState 1`**. Its pane reads back as
+`Increment Msg.lvclass:Do.vi` with `Increment Msg` conIdx 11 `dynamic` and class-typed
+`Actor in`/`Actor out`. So a correct override *can* be produced by tooling.
+
+Two ordering details that are not optional. The provider leaves the new VI **untitled in memory**;
+saving the class before giving it a path answers **Error 1019**, so `Save.Instrument` with an
+explicit `Path to saved file` has to come first. And the provider's VI never reaches disk if
+anything later fails, so a killed LabVIEW loses it silently — the class file is untouched.
+
+### But the override still cannot be given a generated body
+
+That is the half that remains blocked, and two candidate architectures were tested and **refuted**:
+
+| architecture | test | result |
+|---|---|---|
+| provider creates the override, then `ConvertAIXMLToVI` writes our diagram over it | converted, killed and restarted LabVIEW, re-read | **the VI stops being a member.** It exports as plain `Do.vi`, its class terminals are back to `path`, and `execState 1` only because a standalone VI with path terminals is trivially valid |
+| generate ours, then graft the override link | copied the provider VI's `LIvi` block (the one carrying `VIPI`) into our bundle and rebuilt | **still eBad.** `LIvi` is not sufficient |
+
+**The first result is the one to be careful with.** `execState 1` after that convert looks like
+success and is not: it is a green reading about a *different artefact* — a VI that stopped claiming
+to be an override. `lvai_exec_state` alone cannot tell the two apart; `lvai_vi_terminals` can,
+because a member reports its qualified name and its class-typed terminals. **Check what you
+measured, not just that it was green.**
+
+Block-diffing the two files past that point does not help either: the working override carries
+`VICD`, `TM80`, `DFDS`, `BNID`, `NUID`, `SUID` and more, and those are compiled-code and data-space
+blocks that exist *because* LabVIEW compiled it — consequences of being valid, not causes.
+
+So the blocker is narrower and harder than "establish the link": **nothing available can write a
+block diagram into an existing VI.** `ConvertAIXMLToVI` always writes a whole new file,
+`lvai_apply_aixml_to_vi` is inert from this client, `lvai_swap_subvis` can only repoint nodes that
+already exist, and pylabview cannot compose a diagram from nothing. An override mode on
+`lvai_add_class_method` therefore cannot be finished by re-ordering the existing steps.
+
+The one route not yet tried is **VI Server diagram scripting** — `New VI Object` to drop a single
+subVI call into the provider-made override and wire its five terminals, with the real body
+generated as an ordinary class method beside it. That is a new capability rather than a re-ordering,
+and it is unmeasured in this repository.
 
 ## 5. LabVIEW died creating the second AF class, and the log named the site
 
