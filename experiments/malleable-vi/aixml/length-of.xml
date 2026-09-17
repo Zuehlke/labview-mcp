@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Length Of.vi" description="Returns the number of elements in a 1D array or the number of characters in a string. A Type Specialization Structure picks the frame that compiles for the wired type.">
+  <FreeLabel comment="Array frame first, string second" uid="4200" uid_parent="root"/>
+  <Control _name="value in" conIdx="0" connection="required" outputs="value:4210.value" type="array{variant.Variant}" uid="4210" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4220.value" type="cluster{bool.status,int32.code,string.source}" uid="4220" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Type Specialization Structure" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" cond="true" inputs="value:4210.value" uid="4310" uid_parent="4300"/>
+    <Diagram selector=" [0] Accepted " uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4330.value" uid="4330" uid_parent="4320"/>
+      <Node _name="Array Size" inputs="array:4330.value" outputs="size(s):4340.size(s)" uid="4340" uid_parent="4320"/>
+      <Tunnel _id="Out1" inputs="value:4340.size(s)" uid="4350" uid_parent="4320"/>
+    </Diagram>
+    <Diagram selector=" [1] Ignored " uid="4360" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4370.value" uid="4370" uid_parent="4360"/>
+      <Node _name="String Length" inputs="string:4370.value" outputs="length:4380.length" uid="4380" uid_parent="4360"/>
+      <Tunnel _id="Out1" inputs="value:4380.length" uid="4390" uid_parent="4360"/>
+    </Diagram>
+    <Tunnel _id="Out1" cond="true" outputs="value:4400.value" uid="4400" uid_parent="4300"/>
+  </Node>
+  <Indicator _name="length" conIdx="4" connection="recommended" inputs="value:4400.value" type="int32" uid="4410" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4220.value" type="cluster{bool.status,int32.code,string.source}" uid="4420" uid_parent="root" value="[false,0,]"/>
+</VI>

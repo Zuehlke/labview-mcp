@@ -110,6 +110,7 @@ internal static class AixmlCheck
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
         CheckReservedRange(elements, findings);
+        CheckMalleableName(root, findings);
 
         return findings;
     }
@@ -553,6 +554,44 @@ internal static class AixmlCheck
                 + "and PASSES while pinning nothing.",
                 (string?)element.Attribute("uid")));
         }
+    }
+
+    /// <summary>
+    /// A document whose <c>_name</c> ends in <c>.vim</c>. WARNING, not an error, and deliberately
+    /// NOT repaired.
+    ///
+    /// AIXML cannot produce a working malleable VI - <see cref="MalleableVi"/> has the five-arm
+    /// measurement - so a document that names itself <c>.vim</c> is almost always about to be
+    /// generated to a <c>.vim</c> path, which <c>lvai_generate_vi</c> and
+    /// <c>lvai_convert_aixml_to_vi</c> now refuse outright. This checker never sees the output
+    /// path, so <c>_name</c> is the only tell it has, and catching it here costs no LabVIEW at all.
+    ///
+    /// WHY IT IS ONLY A WARNING: <c>_name</c> does not decide the file name - <c>viPath</c> does -
+    /// so a document with this name generated to an ordinary <c>.vi</c> is merely mislabelled, not
+    /// broken. That is exactly what step 1 of the working route does, and turning it into an error
+    /// would block the route this warning exists to point at.
+    ///
+    /// AND NOT REPAIRED, for the reason <c>timestampValueDiscarded</c> is not: rewriting the name
+    /// to <c>.vi</c> would silently discard what the author meant. Report where the intent is the
+    /// unknown; repair only where the type already decides the answer.
+    /// </summary>
+    private static void CheckMalleableName(XElement root, List<Finding> findings)
+    {
+        var name = (string?)root.Attribute("_name");
+        if (name is null
+            || !name.EndsWith(MalleableVi.Extension, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        findings.Add(new Finding(Severity.Warning, "malleableNameDeclared",
+            $"`_name` is \"{name}\", so this document describes a MALLEABLE VI. AIXML cannot "
+            + "create a working one: LabVIEW decides malleability from the file extension at load "
+            + "and then requires the VI to be inlined, which is a VI property AIXML cannot write. "
+            + "Generating this to a .vim path yields execState 0 with every cheap check green, and "
+            + "both lvai_generate_vi and lvai_convert_aixml_to_vi refuse such a path now. The route "
+            + "that works: generate to an ordinary .vi, then pylv_extract, "
+            + "scripts/pylv-make-malleable.py --apply, pylv_rebuild to the .vim. Nothing is changed "
+            + "here - `_name` does not decide the file name, and rewriting it would discard what "
+            + "you meant. docs/malleable-vis.md."));
     }
 
     /// <summary>

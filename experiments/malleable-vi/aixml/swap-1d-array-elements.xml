@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Swap 1D Array Elements.vi" description="Swaps the elements at two indices of a 1D array. Saved as a malleable VI so the array terminal adapts to whatever element type the caller wires.">
+  <FreeLabel comment="Read both, then write both" uid="4200" uid_parent="root"/>
+  <Control _name="array in" conIdx="0" connection="required" outputs="value:4210.value" type="array{variant.Variant}" uid="4210" uid_parent="root" value="[]"/>
+  <Control _name="index A" conIdx="5" connection="required" outputs="value:4220.value" type="int32" uid="4220" uid_parent="root" value="0"/>
+  <Control _name="index B" conIdx="7" connection="required" outputs="value:4230.value" type="int32" uid="4230" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4240.value" type="cluster{bool.status,int32.code,string.source}" uid="4240" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Index Array" inputs="array:4210.value,index:4220.value" outputs="element:4250.element" uid="4250" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4210.value,index:4230.value" outputs="element:4260.element" uid="4260" uid_parent="root"/>
+  <Node _name="Replace Array Subset" inputs="array:4210.value,index:4220.value,new element/subarray:4260.element" outputs="output array:4270.output array" uid="4270" uid_parent="root"/>
+  <Node _name="Replace Array Subset" inputs="array:4270.output array,index:4230.value,new element/subarray:4250.element" outputs="output array:4280.output array" uid="4280" uid_parent="root"/>
+  <Indicator _name="array out" conIdx="4" connection="recommended" inputs="value:4280.output array" type="array{variant.Variant}" uid="4290" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4240.value" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -94,6 +94,28 @@ internal sealed class BulkTools(LvaiConnection connection)
             var steps = new JsonArray();
             var aixml = new AixmlTools(connection);
 
+            // A .vim TARGET IS REFUSED BEFORE ANYTHING IS WRITTEN. ConvertAIXMLToVI accepts one
+            // and produces a BROKEN malleable VI while this tool reports ok: true with
+            // paneViolations: 0 - measured 2026-09-17, with NI's own VIM as the control. The
+            // refusal has to come first: the point is that no broken file is left on disk for
+            // someone to find later and believe. MalleableVi.Refusal names the four-step route
+            // that does work.
+            if (MalleableVi.IsMalleableTarget(viPath))
+            {
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "malleableTarget",
+                    ["errorCode"] = 1,
+                    ["answer"] = new JsonObject
+                    {
+                        ["refused"] = true,
+                        ["viPath"] = Path.GetFullPath(viPath),
+                    },
+                });
+                return Outcome(false, "malleableTarget", steps, total, viPath, null,
+                               MalleableVi.Refusal);
+            }
+
             // THE CHECK GOES FIRST BECAUSE IT COSTS NOTHING AND LabVIEW CANNOT DO IT. It covers the
             // three faults ValidateAIXML was measured to accept, of which a dangling `uid_parent`
             // is the damaging one: LabVIEW silently reparents that element to the top-level

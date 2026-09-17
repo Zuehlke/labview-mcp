@@ -608,6 +608,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            // THE SAME GUARD AS lvai_generate_vi's, one layer down. This RPC is what a caller
+            // reaches for when they want LabVIEW's own tolerance - and here there is none worth
+            // having: a .vim target is accepted, answers errorCode 0, and writes a VI that is
+            // eBad. MalleableVi carries the measurement and the route that works.
+            if (MalleableVi.IsMalleableTarget(viPath))
+                return Json.Error("malleableTarget", MalleableVi.Refusal,
+                                  new { viPath = Path.GetFullPath(viPath) });
+
             var existedBefore = File.Exists(viPath);
 
             // This is the number people actually ask for - "how long does generating a VI take" -

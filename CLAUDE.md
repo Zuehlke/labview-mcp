@@ -2057,6 +2057,7 @@ literally it argued away 600 usable palette VIs.
 | Which VIs may a `Call` target? | — (read at run time from the installation) | `lvai_palette_index` |
 | Has NI already built this diagram? | `docs/example-corpus.md` (formats; the list is read at run time) | `lvai_example_index` |
 | How do I start from an NI `.vit` template? | `docs/labview-vit-templates.md` | — |
+| How do I create a MALLEABLE VI (`.vim`)? | `docs/malleable-vis.md` | `lvai_make_malleable` — AIXML alone writes a BROKEN `.vim` and every cheap check stays green, measured with NI's own VIM as control; `lvai_generate_vi` refuses a `.vim` path now |
 | What does a working USER EVENT VI look like, end to end? | `scripts/aixml-skeletons/user-event-two-loops.md` | the `.xml` beside it — generated, run and verified, `Ticks Received = 5` |
 | How do I add a front-panel CONTROL and register its EVENT? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-control.py` |
 | How do I add a STANDALONE event case to an Event Structure? | `docs/labview-vit-templates.md` §5 | `scripts/pylv-add-event-frame.py` |

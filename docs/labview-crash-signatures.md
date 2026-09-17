@@ -1641,3 +1641,52 @@ The process lesson is the one this page keeps earning: **an absence of evidence 
 once you know the thing writes evidence when it is working.** Reading one log and concluding "no
 fault" was the same shape as the Windows-event-log mistake at the top of this document, one layer
 further in.
+
+## AN EIGHTH signature, 2026-09-17: `DestroyPlatformEvent` with a MINIDUMP, during a project close
+
+The first time this family has been caught **fatal**, and the first time the crash log was copied
+before a restart overwrote it — which had failed the day before, when the evidence was already gone
+by the time anyone looked.
+
+`lvai_close_active_project` never returned. LabVIEW.exe was gone from the process table, and the
+three logs agree for once:
+
+```
+17.09.2026 11:08:17.581
+DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42.
+source\ThEvent.cpp(213) : DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42.
+[ExecSys:0; NOT InExec]
+minidump id: 377b0fec-a4b7-4fd5-7663-55cdacd1d5a4
+```
+
+- **LabVIEW's own log**: one DWarn event, one minidump, and a native call stack whose top frames are
+  `nierclient` and `sentry` — NI's own error reporting — ending in `No VI call stack.`
+- **The Nigel log** at `11:08:55`: five `Stopped monitoring` lines, one per feature, this time with a
+  detail the earlier ones did not carry — `An existing connection was forcibly closed by the remote
+  host`. That is the service watching its peer die, rather than shutting down with it.
+- `lvai_status` afterwards listed **no `LabVIEW.exe listener` at all**, only stale loopback ports.
+  That absence is itself the tell: when LabVIEW is up but Nigel is not, the same call names
+  LabVIEW.exe listeners and answers `Unavailable`.
+
+### What this does and does NOT establish
+
+`DestroyPlatformEvent failed with MgErr 42` is the signature already recorded here fifteen times in
+one class build, every one tagged `[Executing: lvai_close_active_project.vi]` — and the A/B in that
+analysis showed the close's **wiring** is not the cause, because the pre-fix and fixed helpers
+produced the same counts. Nothing about this occurrence overturns that.
+
+What is new is only that the family has now been seen **with a minidump and a dead process**, and
+that this one carries **no `Executing:` tag and `NOT InExec`** — so no VI was running when it fired.
+One occurrence is not a diagnosis. Whether the close *causes* it or merely runs at the moment
+LabVIEW tears event objects down is still open, and settling it needs the same thing as last time:
+an A/B over repeated closes, not a fix written from one sample.
+
+### What survived, which is the practical half
+
+Everything. The close's **`Save` step had completed** before the crash — the `.lvproj` on disk
+carries LabVIEW's own normalisation (`specify.custom.address`, items re-sorted) — and every
+generated file was intact and correct afterwards, verified by size and content with no LabVIEW
+involved. The **sweep did not run**, because the tool never returned; in this case it had nothing to
+remove, checked by reading the `.lvproj` back. That is the rule this page and `CLAUDE.md` both
+state, and it is what made the check cheap: **read the `.lvproj` after every close**, because the
+answer that would have told you is exactly the one a crash takes away.

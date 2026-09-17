@@ -96,3 +96,9 @@ __pycache__/
 # do not belong in git, and a runtime built from the local Python is more honest than a pinned copy
 # that silently rots. The pylabview SOURCES are committed, under tools/pylabview/vendor/.
 /tools/pylabview/runtime/
+
+# LabVIEW per-machine IDE state, never source
+*.aliases
+*.lvlps
+*.lvprojstate
+.*.UserState/

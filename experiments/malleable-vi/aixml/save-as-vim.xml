@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="lvvim_save_as_vim.vi" description="Opens a standard VI through VI Server and saves it to a .vim path, so LabVIEW's own save logic performs the conversion to a malleable VI. AIXML cannot mark a VI malleable; this reaches the capability that can.">
+  <FreeLabel comment="LabVIEW's own save does the conversion" uid="4200" uid_parent="root"/>
+  <Control _name="Source VI Path" conIdx="0" connection="required" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Control _name="Target VIM Path" conIdx="5" connection="required" outputs="value:4220.value" type="string" uid="4220" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4230.value" type="cluster{bool.status,int32.code,string.source}" uid="4230" uid_parent="root" value="[false,0,]"/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4240.path" uid="4240" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4220.value" outputs="path:4250.path" uid="4250" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4240.path,error in (no error):4230.value" outputs="vi reference:4260.vi reference,error out:4260.error out" uid="4260" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save\3AInstrument" type="{LV.VI}" inputs="reference:4260.vi reference,error in (no error):4260.error out,Path to saved file:4250.path" outputs="reference out:4270.reference out,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4270.reference out,error in (no error):4270.error out" outputs="error out:4280.error out" uid="4280" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4280.error out" outputs="status:4290.status,code:4290.code,source:4290.source" uid="4290" uid_parent="root"/>
+  <Indicator _name="status" conIdx="4" connection="recommended" inputs="value:4290.status" type="bool" uid="4300" uid_parent="root" value="false"/>
+  <Indicator _name="code" conIdx="6" connection="recommended" inputs="value:4290.code" type="int32" uid="4310" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="8" connection="recommended" inputs="value:4290.source" type="string" uid="4320" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4280.error out" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+</VI>
