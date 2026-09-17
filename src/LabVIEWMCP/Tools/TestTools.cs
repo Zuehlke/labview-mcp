@@ -1711,13 +1711,20 @@ internal sealed class TestTools(LvaiConnection connection)
     /// Appended to the refusal. Use it where an unknown key names something the tool really can do
     /// under another spelling - refusing without saying so just moves the caller's cost.
     /// </param>
+    /// <param name="arrayName">
+    /// The argument the array arrived in, so the refusal names what the caller actually passed.
+    /// Defaults to <c>casesJson</c>, which is what the three test tools take; <c>lvai_add_to_library</c>
+    /// passes <c>itemsJson</c>. It is a parameter rather than a fourth copy of this method for the
+    /// reason in the summary - the copies drift, and only the message ever differed.
+    /// </param>
     internal static void RejectUnknownCaseKeys(
-        JsonObject o, int index, IReadOnlyCollection<string> accepted, string? hint = null)
+        JsonObject o, int index, IReadOnlyCollection<string> accepted, string? hint = null,
+        string arrayName = "casesJson")
     {
         foreach (var key in o.Select(pair => pair.Key))
             if (!accepted.Contains(key))
                 throw new ArgumentException(
-                    $"casesJson[{index}] carries \"{key}\", which is not a case key. Accepted: " +
+                    $"{arrayName}[{index}] carries \"{key}\", which is not a case key. Accepted: " +
                     string.Join(", ", accepted) + "."
                     + (hint is { Length: > 0 } ? " " + hint : ""));
     }

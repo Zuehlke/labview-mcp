@@ -2052,6 +2052,7 @@ literally it argued away 600 usable palette VIs.
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
 | What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` |
+| How do I put a class or VI INTO a `.lvlib`? | `docs/labview-actor-framework.md` §8 | `lvai_add_to_library` — NEVER write `NI.Lib.ContainingLib` by hand: it changes the class's QUALIFIED NAME without relinking the members that call each other by it, and every file-level check stays green while every VI goes `eBad`. NI's `{LV.Library}` `AddItem` + `Save All This Library.vi` writes both halves and relinks |
 | How do I create an Actor Framework MESSAGE? | `docs/labview-actor-framework.md` | `lvai_create_message_class` — NEVER author `Do.vi`: a GENERATED override of `Message.lvclass:Do.vi` is `eBad` whatever its diagram, measured down to a pass-through with zero nodes. The tool drives NI's own Message Maker instead |
 | How is a `.lvproj` structured? | `docs/lvproj-structure.md` | `lvai_lvproj_reference` |
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |

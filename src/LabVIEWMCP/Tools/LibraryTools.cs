@@ -1,0 +1,414 @@
+using System.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using LabVIEWMcp.Grpc;
+using LabVIEWMcp.Infra;
+using LabVIEWMcp.Lvai;
+using ModelContextProtocol.Server;
+
+namespace LabVIEWMcp.Tools;
+
+/// <summary>
+/// Library MEMBERSHIP - putting a class or a VI that already exists into a `.lvlib`.
+///
+/// WHY THIS IS NOT A FILE EDIT. A `.lvlib` is plain XML and a `.lvclass` carries its owning library
+/// as two ordinary properties, so writing both by hand looks like the whole job. It is not, and the
+/// failure is silent up to the point where everything is broken: measured 2026-09-17, hand-writing
+/// `NI.Lib.ContainingLib` + `ContainingLibPath` into `Hund.lvclass` and listing it in a hand-written
+/// `.lvlib` took all three of that class's VIs from `execState 1` to `eBad`, while
+/// `lvai_describe_class` reported `qualifiedName Hund.lvlib:Hund.lvclass`, both files parsed, and
+/// the encodings were intact. The property changes the class's QUALIFIED NAME; nothing relinks the
+/// members that call each other by it.
+///
+/// WHAT DOES THE JOB is NI's own `{LV.Library}` `AddItem` followed by
+/// `Edit LVLibs.lvlib:Save All This Library.vi` - the pair `Create Child Actor.vi` ends with. Driven
+/// against an existing file it writes BOTH halves and relinks the callers. Verified on the same kind
+/// of change the hand edit broke: `Append To Log.vi`, called by three class methods, moved into
+/// `Aquarium.lvlib` and every caller still `execState 1` after a project close.
+///
+/// IT DOES NOT TOUCH THE `.lvproj`, ON PURPOSE. `AddItem` needs the project OPEN and ACTIVE, and a
+/// surviving `.lvproj` edit needs it CLOSED - the mutual exclusion this repository already records
+/// for `lvai_generate_mock_class`'s `addToProject`. A member that was listed in the project on its
+/// own should lose that entry, because it now belongs through its library; the answer NAMES it
+/// rather than editing it behind a call that cannot safely do both.
+/// </summary>
+[McpServerToolType]
+internal sealed class LibraryTools(LvaiConnection connection)
+{
+    private const string HelperAixmlFileName = "lvai_add_one_to_library.xml";
+
+    /// <summary>Item keys accepted in <c>itemsJson</c>, read out of the parser below in full.</summary>
+    private static readonly string[] ItemKeys = ["path", "name", "type"];
+
+    [McpServerTool(Name = "lvai_add_to_library", Destructive = true, OpenWorld = true,
+        Title = "Add existing classes or VIs to a LabVIEW library")]
+    [Description("""
+        MUTATING: adds files that ALREADY EXIST to a `.lvlib`, through NI's own `{LV.Library}`
+        `AddItem` plus `Save All This Library.vi` - the gesture that RELINKS, which writing
+        `NI.Lib.ContainingLib` by hand does not.
+        THE HAND EDIT IS THE TRAP THIS EXISTS FOR. Measured 2026-09-17: hand-writing that property
+        and a matching `.lvlib` took all three VIs of a class from execState 1 to eBad, with
+        lvai_describe_class reporting the right qualifiedName and containingLibrary throughout,
+        both files well-formed, BOM and CRLF intact. Through AddItem the same kind of change left
+        every caller executable after a project close.
+        NEEDS A PROJECT OPEN AND ACTIVE: the helper reaches LabVIEW through Project:Active Project
+        and answers Error 1055 without one. Pass projectPath and this call opens it.
+        IT DOES NOT EDIT THE .lvproj. A file that was listed in the project on its own should lose
+        that entry once it belongs through a library - the answer names it under
+        `projectEntriesToRemove`, and you remove it with the project CLOSED. Doing both in one call
+        is not possible: AddItem wants the project open and a surviving .lvproj edit wants it shut.
+        ONE HELPER RUN PER ITEM, all inside this one call, so a five-item library costs one round
+        trip rather than five.
+        VERIFIED FROM THE SAVED .lvlib, which is re-read afterwards - `verify.items` is what is on
+        disk, not what the runs reported.
+        """)]
+    public async Task<string> AddToLibraryAsync(
+        [Description("Absolute path to the .lvlib the items should belong to. It must already exist")]
+        string libraryPath,
+        [Description("""
+            JSON array of items to add, e.g.
+            [{"path":"C:\\p\\Pump\\Pump.lvclass"},{"path":"C:\\p\\Log.vi","type":"VI"}]
+            `path` is required and the file must exist. `name` defaults to the file's own name,
+            which is what NI writes. `type` defaults to `LVClass` for a .lvclass and `VI` for a .vi;
+            any other extension must say its own type, because guessing one is how a library gets an
+            item LabVIEW then cannot bind.
+            """)]
+        string itemsJson,
+        [Description("""
+            The .lvproj to open first. Without an active project every AddItem answers Error 1055.
+            Omit only when you have opened one yourself. This file is never EDITED here.
+            """)]
+        string? projectPath = null,
+        [Description("Where to keep the generated helper VI")] string? helperViPath = null,
+        [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
+        string? helperAixmlPath = null,
+        [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
+        [Description("Local budget in seconds, per item")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(libraryPath))
+                return Json.Error("libraryMissing",
+                    $"No .lvlib at '{libraryPath}'. This tool adds to a library that already " +
+                    "exists; scripts/lvai_create_actor_library.xml creates one.",
+                    new { libraryPath });
+
+            var library = Path.GetFullPath(libraryPath);
+            if (!library.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase))
+                return Json.Error("notALibrary",
+                    $"'{library}' is not a .lvlib.", new { libraryPath = library });
+
+            List<Item> items;
+            try { items = ParseItems(itemsJson); }
+            catch (Exception e) when (e is ArgumentException or JsonException)
+            {
+                return Json.Error("badArguments", e.Message, new { itemsJson });
+            }
+
+            if (items.Count == 0)
+                return Json.Error("badArguments",
+                    "itemsJson is an empty array, so this call asks for nothing.", new { itemsJson });
+
+            // EVERY CHECK BELOW RUNS BEFORE LABVIEW. AddItem on a library LabVIEW holds open is not
+            // a step that undoes cleanly, so the answerable questions - does the file exist, is the
+            // type knowable, is it in there already - are settled from the files first.
+            foreach (var item in items)
+                if (!File.Exists(item.Path))
+                    return Json.Error("itemFileMissing",
+                        $"No file at '{item.Path}'. A library item is a file that already exists.",
+                        new { path = item.Path });
+
+            if (items.Select(i => i.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                != items.Count)
+                return Json.Error("badArguments",
+                    "itemsJson names the same path more than once. Adding a file twice is not a " +
+                    "thing a library can hold, and which entry won would not be decidable here.",
+                    new { paths = new JsonArray([.. items.Select(i => (JsonNode)i.Path)]) });
+
+            foreach (var item in items)
+                if (item.Type is null)
+                    return Json.Error("typeNotDerivable",
+                        $"'{Path.GetFileName(item.Path)}' has extension " +
+                        $"'{Path.GetExtension(item.Path)}', for which no library item type is " +
+                        "known here - only .lvclass (LVClass) and .vi (VI) are measured. Pass " +
+                        "`type` for this item. Guessing is how a library gets an entry LabVIEW " +
+                        "cannot bind.",
+                        new { path = item.Path });
+
+            Existing existing;
+            try { existing = ReadLibrary(library); }
+            catch (Exception e) when (e is IOException or System.Xml.XmlException)
+            {
+                return Json.Error("libraryUnreadable",
+                    $"'{library}' could not be read as XML: {e.Message}", new { libraryPath = library });
+            }
+
+            foreach (var item in items)
+                if (existing.Holds(item))
+                    return Json.Error("itemAlreadyInLibrary",
+                        $"'{library}' already lists '{item.Name}'. AddItem on an item the library " +
+                        "already holds is not a repair, and this call would not tell you which of " +
+                        "the two entries you ended up with.",
+                        new JsonObject
+                        {
+                            ["libraryPath"] = library,
+                            ["name"] = item.Name,
+                            ["path"] = item.Path,
+                            ["itemsAlreadyThere"] =
+                                new JsonArray([.. existing.Names.Select(n => (JsonNode)n)]),
+                        });
+
+            var aixml = helperAixmlPath ?? (StatusTools.ScriptsDirectory() is { } scripts
+                ? Path.Combine(scripts, HelperAixmlFileName) : null)
+                ?? throw new FileNotFoundException(
+                    "The helper's AIXML source could not be located: no scripts folder next to " +
+                    "the exe (lvai_status reports it as scriptsDirectory). Pass helperAixmlPath " +
+                    $"explicitly, pointing at {HelperAixmlFileName}.");
+            if (!File.Exists(aixml))
+                throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
+
+            var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
+                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_one_to_library.vi"));
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } folder)
+                Directory.CreateDirectory(folder);
+
+            var steps = new JsonArray();
+            var helperGenerated = false;
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
+            {
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+                    return failure;
+                helperGenerated = true;
+            }
+
+            if (projectPath is { Length: > 0 })
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath),
+                    checkActive: true, timeoutSeconds, ct: ct);
+                steps.Add(new JsonObject { ["step"] = "openProject", ["answer"] = Read(opened) });
+                if ((Read(opened) as JsonObject)?["projectBecameActive"]?.GetValue<bool>() is false)
+                    return Json.Error("projectDidNotBecomeActive",
+                        "The project did not become active, and AddItem reaches LabVIEW through " +
+                        "Project:Active Project - every item would answer Error 1055. The measured " +
+                        "cause is LabVIEW not having the foreground.",
+                        new JsonObject { ["steps"] = steps });
+            }
+
+            // ONE RUN PER ITEM. The helper adds one item and saves the library, which keeps it
+            // simple enough to read; the loop lives here so the CALLER still spends one turn.
+            var added = new JsonArray();
+            foreach (var item in items)
+            {
+                var inputs = new JsonObject
+                {
+                    ["library path"] = library,
+                    ["item name"] = item.Name,
+                    ["item path"] = item.Path,
+                    ["item type"] = item.Type,
+                };
+
+                var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                    helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "addItem",
+                    ["name"] = item.Name,
+                    ["answer"] = Read(answer),
+                });
+
+                if (ErrorCode(Values(answer)) is { } code && code != 0)
+                    return Json.Document(new JsonObject
+                    {
+                        ["ok"] = false,
+                        ["failedAtItem"] = item.Name,
+                        ["errorCode"] = code,
+                        ["errorSource"] = ErrorSource(Values(answer)),
+                        ["libraryPath"] = library,
+                        ["itemsAdded"] = added.DeepClone(),
+                        ["steps"] = steps,
+                        ["note"] = "AddItem stopped at this item. The items before it are already " +
+                            "in the library and saved - re-run with only the ones that are left, " +
+                            "because re-adding one is refused.",
+                    });
+
+                added.Add(new JsonObject
+                {
+                    ["name"] = item.Name, ["path"] = item.Path, ["type"] = item.Type,
+                });
+            }
+
+            // ASK THE FILE. Every run reporting 0 is also what an AddItem that reached a different
+            // copy of the library would produce, so the member list is read back off disk.
+            var verify = new JsonObject();
+            var verified = false;
+            try
+            {
+                var after = ReadLibrary(library);
+                var missing = items.Where(i => !after.Holds(i)).Select(i => i.Name).ToArray();
+                verified = missing.Length == 0;
+                verify["items"] = new JsonArray([.. after.Names.Select(n => (JsonNode)n)]);
+                verify["missing"] = new JsonArray([.. missing.Select(n => (JsonNode)n)]);
+                verify["source"] = "the saved .lvlib, re-read as XML - no LabVIEW involved";
+            }
+            catch (Exception e) when (e is IOException or System.Xml.XmlException)
+            {
+                verify["note"] = $"The library could not be re-read: {e.Message}";
+            }
+
+            return Json.Document(new JsonObject
+            {
+                ["ok"] = verified,
+                ["libraryPath"] = library,
+                ["itemsAdded"] = added,
+                ["helperViPath"] = helperVi,
+                ["helperAixmlPath"] = Path.GetFullPath(aixml),
+                ["helperGenerated"] = helperGenerated,
+                ["verify"] = verify,
+                ["projectEntriesToRemove"] =
+                    new JsonArray([.. items.Select(i => (JsonNode)i.Name)]),
+                ["steps"] = steps,
+                ["note"] = verified
+                    ? "Added and verified from the .lvlib. Each item now belongs to the project " +
+                      "THROUGH this library, so remove any entry it had in the .lvproj on its own - " +
+                      "with the project CLOSED, or LabVIEW's own save undoes the edit. Check the " +
+                      "members with lvai_exec_state afterwards: library membership changes an " +
+                      "item's qualified name, and that is exactly what a bad route breaks."
+                    : "Every run reported 0 but the .lvlib does not list every item asked for. " +
+                      "Treat this as a failure and read verify.missing.",
+            });
+        });
+
+    private sealed record Item(string Path, string Name, string? Type);
+
+    /// <summary>What the library holds now, by name and by resolved path.</summary>
+    private sealed record Existing(IReadOnlyList<string> Names, IReadOnlySet<string> Paths)
+    {
+        public bool Holds(Item item) =>
+            Names.Any(n => string.Equals(n, item.Name, StringComparison.OrdinalIgnoreCase))
+            || Paths.Contains(System.IO.Path.GetFullPath(item.Path));
+    }
+
+    private static List<Item> ParseItems(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonArray array)
+            throw new ArgumentException("itemsJson must be a JSON array of items.");
+
+        var items = new List<Item>();
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonObject o)
+                throw new ArgumentException($"itemsJson[{i}] is not a JSON object.");
+
+            TestTools.RejectUnknownCaseKeys(o, i, ItemKeys, arrayName: "itemsJson");
+
+            if (o["path"]?.GetValue<string>() is not { Length: > 0 } path)
+                throw new ArgumentException($"itemsJson[{i}] has no \"path\".");
+
+            var full = Path.GetFullPath(path);
+            var name = o["name"]?.GetValue<string>() is { Length: > 0 } n
+                ? n : Path.GetFileName(full);
+            var type = o["type"]?.GetValue<string>() is { Length: > 0 } t ? t : TypeFor(full);
+            items.Add(new Item(full, name, type));
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// The library item type for a file, for the two extensions that were MEASURED. Anything else
+    /// answers null and is refused by name, rather than guessed at.
+    /// </summary>
+    private static string? TypeFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".lvclass" => "LVClass",
+        ".vi" => "VI",
+        _ => null,
+    };
+
+    /// <summary>
+    /// Reads a <c>.lvlib</c>'s items, descending into its virtual folders. A URL is relative to the
+    /// <c>.lvlib</c> ITSELF TREATED AS A DIRECTORY - the same convention a <c>.lvclass</c> parent
+    /// link uses - so a sibling folder reads <c>../Thing/Thing.lvclass</c>. A LabVIEW SYMBOLIC url
+    /// (<c>/&lt;vilib&gt;/…</c>) is kept out of the path set rather than resolved wrongly.
+    /// </summary>
+    private static Existing ReadLibrary(string libraryPath)
+    {
+        var root = XDocument.Load(libraryPath).Root
+            ?? throw new System.Xml.XmlException($"'{libraryPath}' has no root element.");
+
+        var names = new List<string>();
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var basis = libraryPath;
+
+        foreach (var element in root.Descendants("Item"))
+        {
+            if (element.Attribute("Type")?.Value is "Folder") continue;
+            if (element.Attribute("Name")?.Value is { Length: > 0 } name) names.Add(name);
+            if (element.Attribute("URL")?.Value is not { Length: > 0 } url) continue;
+            if (url.Contains('<')) continue;
+
+            try { paths.Add(Path.GetFullPath(Path.Combine(basis, url.Replace('/', '\\')))); }
+            catch (ArgumentException) { }
+        }
+
+        return new Existing(names, paths);
+    }
+
+    private async Task<string?> GenerateHelperAsync(
+        string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
+    {
+        var validation = await connection.InvokeAsync((c, t) =>
+            c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aixml },
+                deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+
+        if (validation.ErrorCode != 0)
+            return Json.Error("helperAixmlInvalid",
+                $"The helper AIXML at '{aixml}' does not validate: {validation.ErrorMessage}",
+                new { aiXmlPath = Path.GetFullPath(aixml), errorCode = validation.ErrorCode });
+
+        var generation = await connection.InvokeAsync((c, t) =>
+            c.ConvertAIXMLToVIAsync(new ConvertAIXMLToVIRequest
+            {
+                AiXMLFilePath = aixml,
+                ViPath = helperVi,
+                OpenVI = false,
+            }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+
+        if (generation.ErrorCode == 0 && File.Exists(helperVi)) return null;
+
+        return Json.Error("helperGenerationFailed",
+            $"Could not generate the helper VI at '{helperVi}': {generation.ErrorMessage}",
+            new { helperViPath = helperVi, errorCode = generation.ErrorCode });
+    }
+
+    private static JsonNode? Read(string answer)
+    {
+        try { return JsonNode.Parse(answer); }
+        catch (JsonException) { return JsonValue.Create(answer); }
+    }
+
+    private static JsonObject? Values(string answer) =>
+        (Read(answer) as JsonObject)?["values"] as JsonObject;
+
+    private static int? ErrorCode(JsonObject? values)
+    {
+        if ((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>() is not { } xml)
+            return null;
+        var match = Regex.Match(xml, "<Name>code</Name>\\s*<Val>(-?\\d+)</Val>");
+        return match.Success && int.TryParse(match.Groups[1].Value, out var code) ? code : null;
+    }
+
+    private static string? ErrorSource(JsonObject? values)
+    {
+        if ((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>() is not { } xml)
+            return null;
+        var match = Regex.Match(xml, "<Name>source</Name>\\s*<Val>(.*?)</Val>", RegexOptions.Singleline);
+        return match.Success && match.Groups[1].Value.Length > 0 ? match.Groups[1].Value : null;
+    }
+}
