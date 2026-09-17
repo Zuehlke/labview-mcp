@@ -110,6 +110,18 @@ malleable bit. There is only inlining.
 **Not separated:** `ShouldInline` and `InlineStg` were always moved together, so which of the two
 does the work is unmeasured. They describe one IDE setting, so pending a probe, set both.
 
+**AND `SaveParallel` IS NOT A PROPERTY OF MALLEABILITY — it is what pylabview's OUTPUT needs.**
+Measured 2026-09-17, a day after the bisect, and it qualifies the table above rather than
+contradicting it. After `lvai_set_vi_icon` — which drives `{LV.VI}` `Save:Instrument`, so LabVIEW
+writes the file itself — the VIM reads `ShouldInline="1"`, `InlineStg="2"`, `DebugCapable="0"` and
+**`SaveParallel="0"`**, and is `execState 1`. Arm F had exactly that flag combination from a
+`pylv_rebuild` and was eBad.
+
+So both measurements stand and the difference is the PRODUCER, not the flag: a file pylabview
+writes needs `SaveParallel="1"` to be accepted, and one LabVIEW writes does not. Why is not
+established. The practical consequence is only that **a VIM stops matching the recipe the moment
+LabVIEW saves it, and that is not a defect** — check `execState`, not the flags.
+
 ## 4. The route, end to end
 
 `scripts/pylv-make-malleable.py` is step 3.
@@ -319,3 +331,57 @@ compile. That is the mechanism working, not a defect.
 
 **The malleable route is unchanged**: generate as `.vi`, patch the four flags, rebuild as `.vim`.
 The structure adds nothing to it.
+
+## 10. Two questions a maintainer asks first, both measured 2026-09-17
+
+### Does an icon — or any IDE save — break the VIM?
+
+**No.** This mattered because the house rule gives every generated VI an icon, `lvai_set_vi_icon`
+re-saves the VI through `Save:Instrument`, and if LabVIEW's own save dropped the inline
+configuration the VIM would break silently *after* every green answer.
+
+Measured on `Swap Elements.vim`: icon applied, `verified: true`, `viResaved: true`, 6 798 → 7 318
+bytes, an `icl4` resource appearing in the bundle that was not there before — and afterwards
+`execState 1`. The three flags that matter survived; `SaveParallel` was reset to `0`, which §3 now
+explains. **So set the icon last, exactly as for any other VI, and judge by `execState`.**
+
+### Does a caller survive the VIM being regenerated?
+
+**Yes, and it picks the new version up by itself.** This is the question that decides whether the
+route is usable for real work or only for a demo, because an edit to a VIM is a full regeneration
+plus a re-patch.
+
+The probe changes the VIM's BEHAVIOUR rather than only its bytes, because a byte change cannot
+tell "the caller reloaded" from "LabVIEW served a stale copy":
+
+| | |
+|---|---|
+| v1 of the VIM | swaps the elements at two indices |
+| v2, regenerated over the same path | `Reverse 1D Array` — reverses the whole array |
+| the caller, swapped onto v1 and **not touched since** | `execState 1` |
+| what it returns after the regeneration | `[40.5, 30.5, 20.5, 10.5]` — **reversed**, not `[40.5, 20.5, 30.5, 10.5]` |
+
+So the link is by PATH and survives; no second `lvai_swap_subvis` is needed, and the caller is not
+regenerated. The whole edit cycle is: change the AIXML, generate to the `.vi`, extract, patch,
+rebuild to the `.vim`. Measured with the project CLOSED, which is what releases both files from
+LabVIEW's memory — with it open, the stale-copy trap of §4 applies to this check as much as to any
+other.
+
+## 11. The toolchain refuses a `.vim` target now
+
+Everything above describes a failure that was silent at every cheap gate, which is the shape this
+repository has paid for repeatedly — so the guard went into the CODE rather than into this
+document alone. An agent's system prompt is its own definition, and neither this file nor
+`CLAUDE.md` is in it.
+
+- **`lvai_generate_vi`** and **`lvai_convert_aixml_to_vi`** refuse a `viPath` ending in `.vim`
+  BEFORE writing anything, with `failedAtStep: malleableTarget` / `errorKind: malleableTarget`, and
+  the refusal names the four-step route. Refusing first is deliberate: the point is that no broken
+  file is left on disk for someone to find later and believe.
+- **`lvai_check_aixml`** warns `malleableNameDeclared` when a document's `_name` ends in `.vim`.
+  That is the only tell it has, since it never sees the output path. It is a WARNING and is
+  **not repaired**: `_name` does not decide the file name, step 1 of the working route generates
+  this very document to a `.vi`, and rewriting the name would discard what the author meant.
+
+`Infra/MalleableVi.cs` is the single implementation both sides share — three copies of one rule
+drift, and `AixmlCheck.SafeUidBase` against the lint's ceiling is the precedent.
