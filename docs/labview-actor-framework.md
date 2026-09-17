@@ -331,7 +331,19 @@ omits that step, which is sound here: it only matters when the actor lives in a 
 
 ### The complete pipeline, payload and Send VI included
 
-`scripts/lvai_create_message_class.xml` now generates a whole message class. Measured on
+**This is `lvai_create_message_class`.** It takes the actor's `.lvclass` and a method NAME — the
+extension is optional — and defaults everything else: the class is `<method> Msg`, the folder sits
+beside the actor's own, and the template and `Message.lvclass` come from the LabVIEW installation
+the actor's **own parent links** land in, so they can never be from a different install than the
+actor. That walk doubles as the check that the class really is an actor.
+
+Four things are refused before LabVIEW is touched at all, because `Copy Class.vi` is the first step
+and a half-built class cannot simply be re-run over: a method that is not a member (the answer names
+the members), a member whose file is missing, a class that does not descend from `Actor.lvclass`,
+and a destination that already holds a class of that name. The `verify` block is read back off the
+saved `.lvclass` with pylabview — `fields` and `members`, not the run's own account of itself.
+
+`scripts/lvai_create_message_class.xml` is the helper it drives. Measured on
 `Increment Msg` against `Counter.lvclass:Increment.vi`, every stage reports 0:
 
 | step | VI |
