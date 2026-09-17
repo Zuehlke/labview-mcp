@@ -1,0 +1,31 @@
+
+<VI _name="lvai_create_message_class.vi" description="Creates an Actor Framework message class for one public method of an actor by driving NI's own Message Maker. Copy Class.vi clones NI's Concrete Message Template - whose Do.vi is already a real override - and Build Concrete Do.vi rewires that Do.vi to call the actor method. Needs a project open and ACTIVE.">
+  <FreeLabel comment="NI's Message Maker\2C driven directly" uid="4001" uid_parent="root" />
+  <Control _name="destination directory" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value" />
+  <Control _name="class name" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value" />
+  <Control _name="template path" type="string" uid="4102" uid_parent="root" value="" outputs="value:4102.value" />
+  <Control _name="parent class path" type="string" uid="4103" uid_parent="root" value="" outputs="value:4103.value" />
+  <Control _name="actor class path" type="string" uid="4104" uid_parent="root" value="" outputs="value:4104.value" />
+  <Control _name="actor method path" type="string" uid="4105" uid_parent="root" value="" outputs="value:4105.value" />
+  <Constant _name="Do Name" type="string" uid="4110" uid_parent="root" value="Do.vi" outputs="value:4110.value" />
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4200.proj,reference out:,error out:4200.error out" uid="4200" uid_parent="root" />
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4200.proj,error in (no error):4200.error out" outputs="Application:4210.app,reference out:,error out:4210.error out" uid="4210" uid_parent="root" />
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4220.path" uid="4220" uid_parent="root" />
+  <Node _name="String To Path" inputs="string:4102.value" outputs="path:4222.path" uid="4222" uid_parent="root" />
+  <Node _name="String To Path" inputs="string:4103.value" outputs="path:4224.path" uid="4224" uid_parent="root" />
+  <Node _name="String To Path" inputs="string:4104.value" outputs="path:4226.path" uid="4226" uid_parent="root" />
+  <Node _name="String To Path" inputs="string:4105.value" outputs="path:4228.path" uid="4228" uid_parent="root" />
+  <Call target="Message Maker.lvlib\3ACopy Class.vi" inputs="Destination Directory:4220.path,Class Name:4101.value,Template Path:4222.path,AppInst:4210.app,Parent Class Path:4224.path,error in (no error):4210.error out" outputs="New Class Path:4230.newclass,error out:4230.error out" uid="4230" uid_parent="root" />
+  <Indicator _name="copy class error" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]" />
+  <Node _name="Path To String" inputs="path:4230.newclass" outputs="string:4232.string" uid="4232" uid_parent="root" />
+  <Indicator _name="new class path" inputs="value:4232.string" type="string" uid="4302" uid_parent="root" value="" />
+  <Node _name="Strip Path" inputs="path:4230.newclass" outputs="stripped path:4234.stripped path,name:" uid="4234" uid_parent="root" />
+  <Node _name="Build Path" inputs="base path:4234.stripped path,name or relative path:4110.value" outputs="appended path:4236.appended path" uid="4236" uid_parent="root" />
+  <Node _name="Path To String" inputs="path:4236.appended path" outputs="string:4238.string" uid="4238" uid_parent="root" />
+  <Indicator _name="do path" inputs="value:4238.string" type="string" uid="4304" uid_parent="root" value="" />
+  <Call target="Message Maker.lvlib\3ABuild Concrete Do.vi" inputs="Do Method path:4236.appended path,Target Actor Method path:4228.path,Actor class path:4226.path,Class Name:4101.value,AppInst:4210.app,error in (no error):4230.error out" outputs="error out:4240.error out" uid="4240" uid_parent="root" />
+  <Indicator _name="build do error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4310" uid_parent="root" value="[false,0,]" />
+  <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root" />
+  <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4250.error out" outputs="error out:4252.error out" uid="4252" uid_parent="root" />
+  <Indicator _name="error out" inputs="value:4252.error out" type="cluster{bool.status,int32.code,string.source}" uid="4320" uid_parent="root" value="[false,0,]" />
+</VI>

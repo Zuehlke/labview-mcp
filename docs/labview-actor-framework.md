@@ -207,10 +207,86 @@ block diagram into an existing VI.** `ConvertAIXMLToVI` always writes a whole ne
 already exist, and pylabview cannot compose a diagram from nothing. An override mode on
 `lvai_add_class_method` therefore cannot be finished by re-ordering the existing steps.
 
-The one route not yet tried is **VI Server diagram scripting** — `New VI Object` to drop a single
-subVI call into the provider-made override and wire its five terminals, with the real body
-generated as an ordinary class method beside it. That is a new capability rather than a re-ordering,
-and it is unmeasured in this repository.
+### The right answer is NI's Message Maker — do not author `Do.vi` at all
+
+The premise above ("we must generate the body") is wrong, and the IDE says so: right-clicking an
+actor gives **Actor Framework → Create Messages for Actor**, which writes the message class, its
+`Do.vi` override *and* the `Send` VI, all derived from a public method of the actor. There is
+nothing for us to author.
+
+The provider landscape, measured 2026-09-17:
+
+| provider | entry point | usable? |
+|---|---|---|
+| `AddActor` — "New → Actor" | `Add Actor.lvlib:Add Actor.vi` | **no — it is a DIALOG.** `OK Button`, `Cancel Button`, `Name of Actor` and `Inherit from:` are front-panel controls that are NOT on the connector pane. `lvai_create_class` with `parentClassPath` = `Actor.lvclass` already does this job |
+| `ActorMessageMaker` — "Create Messages for Actor" | `Create Message Classes for Actor.vi` | takes `Object` (uint64), the IDE's own item handle |
+| `MessageMakerProvider` | `Create Message Class for Method.vi` | clean pane — `Item Refnum` + `Target` → `New Class Path`, `New Send Method` |
+| `Message Maker.lvlib` | `Copy Class.vi`, `Build Concrete Do.vi`, `Build Send.vi`, … | **path-based and public — this is the layer to drive** |
+
+**The item-handle layer is a dead end for us.** `Get Item Info.vi` derives both refnums a provider
+needs from one uint64 `Item`, via `mxLvGetProjectPath.vi`, `mxLvGetTarget.vi` and
+`mxLvGetItemRef.vi`. The only public way to make that handle is `mxLvGetItem.vi`, which takes an
+`NIIM` cluster — and **`NIIM` is a typedef (`mxLvNIIM.ctl`)**, which AIXML cannot express. Measured:
+an authored `cluster{string.Item URL,…}` constant arrives at `Bundle By Name` as *"a cluster of 0
+elements"*, the same limit this repository already records for error clusters. `CLSUIP_GetProjItemOfMemberVI.vi`
+is not a way round it either — it is **private scope**, so `ValidateAIXML` refuses the call.
+
+Reading that private VI is still worth it: it is built entirely from public calls —
+`{LV.LVClassLibrary}` `Get All Descendents` (`Type` = `"VI"`) then `{LV.ProjectItem}` `Name` in a
+loop — so a ProjectItem for a class member is reachable without it.
+
+### What works, and the one step that does not
+
+`scripts/lvai_create_message_class.xml` drives `Message Maker.lvlib` directly, and the first half is
+measured working:
+
+**`Copy Class.vi`** (`Destination Directory`, `Class Name`, `Template Path`, `AppInst`,
+`Parent Class Path` → `New Class Path`) clones NI's `Concrete Message Template.lvclass`. On
+`Increment Msg` it produced a 41 KB `.lvclass` listing `Increment Msg.ctl` and **`Do.vi`**, and that
+`Do.vi` reads back as `Increment Msg.lvclass:Do.vi` with its dynamic dispatch terminal at conIdx 11
+and class-typed `Actor in`/`Actor out`. **So the override comes free, from NI's template** — the
+whole problem the previous section describes simply does not arise. It is `eBad` only because the
+dispatch terminal is still the template's `DNL_Message Template`, which is exactly what the next
+step retypes. Note the class lands *directly* in `Destination Directory`, not in a subfolder.
+
+**`Build Concrete Do.vi` fails in our execution context.** Reproduced in isolation, twice, with
+LabVIEW fronted and responding:
+
+```
+Error 2, Invoke Node in Message Maker.lvlib:Build Concrete Do.vi
+Method Name: Front Panel:Open
+```
+
+Its exported diagram says why: it opens the Do.vi through `AppInst` and then calls **`FP.Open` with
+`Activate = true`, `State = Standard`** — it wants the window actually shown. Our helper runs under
+`RunVIAsTopLevel` in the ADDON's application instance, and showing a window for a VI in the IDE's
+instance from there is refused. This is the same application-instance boundary this repository
+already records for `FP.Close` and `Front Panel Window:Open`, in the one form where it errors
+instead of silently doing nothing.
+
+### NI's recipe, so the next step is mechanical
+
+`Build Concrete Do.vi`'s No Error frame, in order, all of them public `Message Maker.lvlib` VIs:
+
+1. `Open VI Reference` (AppInst, Do Method path)
+2. **`FP.Open`** (Activate, State = Standard) ← the blocker
+3. `Find and Replace GObj.vi` — `GObj Class Name` = `LabVIEWClassConstant`, `Traverse Target` = BD,
+   `Class Path` = the actor class: swaps the template's class constant for the actor's
+4. `Replace Actor if Using PPL.vi`
+5. a While loop of `Find and Replace SubVI.vi` (`Old VI Name` = **`Dummy Actor Method.vi`**,
+   `New VI Path` = the actor method) plus `Rewire Do.vi`, until `done?`
+6. `Check if File or Folder Exists.vi` on `Read Attributes.vi`, then either replace
+   `Dummy Read Attributes.vi` or find it by label and `{LV.GObject}` `Delete` it
+7. `Wire FP Controls to Accessor UnBundler.vi`
+8. `Set Class Control Label.vi` (`Class Name`)
+9. `Apply New VI Tools-Options Settings.vi`
+10. `{LV.VI}` `BD.CleanUp`
+11. `Save.Instrument` to the Do Method path
+
+So the next experiment is to run steps 3-11 ourselves and **omit step 2**. The open question is
+whether LabVIEW's scripting of those replacements needs the panel or diagram window open at all; if
+it does, the remaining option is to reach the IDE's own application instance for the whole helper
+rather than only for the VI reference.
 
 ## 5. LabVIEW died creating the second AF class, and the log named the site
 
