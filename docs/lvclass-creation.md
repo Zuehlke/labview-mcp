@@ -1759,3 +1759,45 @@ It also explains the shared-`.lvproj` hazard between two concurrent test agents 
 it is not only that both write the file, it is that either one's close can roll the file back to
 whatever LabVIEW was holding.
 
+
+## 9. Adding a FIELD to a class that already has members - measured 2026-09-17
+
+`lvai_create_class` is the only thing here that touches private data, and it CREATES. Its
+`overwrite` is refused by default and says why: it would drop the class's members. So "add one
+field to a finished class" looked unreachable, and the first instinct was to design around it -
+a method that takes the value and does not store it.
+
+**It is reachable, through the same provider `lvai_create_class` already drives.**
+`Message Maker.lvlib:Add Member Data to Private Data Control.vi` takes a `Target Path`, an
+`AppInst` and an array of front-panel CONTROL REFERENCES from a carrier VI - it does not care
+whether the class was made one second or one week ago. `scripts/lvai_add_class_field.xml` is that
+call plus the wiring to reach it, lifted from `scripts/lvai_create_class.xml`.
+
+**THE QUESTION THAT DECIDED IT: does it APPEND or REPLACE?** Nothing says, and getting it wrong
+costs the class. Measured on a throwaway fixture built to the same shape as the real thing - a
+class with two fields AND their four wizard accessors:
+
+| before | after adding one carrier control `Rechtslauf` |
+|---|---|
+| fields `Alpha` String, `Beta` I32 | **`Alpha`, `Beta`, `Rechtslauf`** - appended |
+| 4 members | 4 members, unchanged |
+| `Read Alpha.vi` execState 1 | **execState 1** |
+| privateDataBytes 6078 | 6486 |
+
+Then run for real on `Ventilator.lvclass`, 3 fields and 9 members: 4 fields, 9 members, and after a
+project close every method, an accessor and a message's `Do.vi` still `execState 1`.
+
+**Two traps, both hit before the fixture existed.**
+
+- **The probe must not be a COPY OF THE SAME CLASS.** Copying `Ventilator` to a scratch folder and
+  running against the copy answers `Error 1` from `LabVIEW Class:Open` inside the provider, because
+  the real one is already in memory through the open project and two classes cannot share the
+  qualified name `Ventilator.lvlib:Ventilator.lvclass`. Copying only the inner folder fails even
+  earlier - `NI.Lib.ContainingLibPath` is `../../Ventilator.lvlib`, so the library has to come with
+  it. A FRESH class under a different name avoids both and tests the same property.
+- **The carrier's controls are the NEW fields, not the full list.** One control per field to add.
+
+**It should be a tool.** The operation is repeatable, the guard set is obvious (class exists, is a
+`.lvclass`, field name not already present, project active), and the `describe_class` before/after
+is exactly the verify block `lvai_add_to_library` already has. Until then the helper ships under
+`scripts/` and is driven with `lvai_run_vi_and_read_values`: `class path`, `carrier path`.
