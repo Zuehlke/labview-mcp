@@ -1,0 +1,123 @@
+<VI _name="lvai_create_message_class.vi" description="Creates a COMPLETE Actor Framework message class for one public method of an actor by driving NI's own Message Maker: clone Message Template.lvclass\2C copy the method's parameters into the message's private data\2C rewire the template Do.vi onto the method\2C then create and build the Send VI. Follows Build Do.vi's and Build Send.vi's chains\2C omitting their FP.Open and their PPL steps - the latter need a TargetItem refnum that cannot be built from AIXML. Needs a project open and ACTIVE.">
+  <FreeLabel comment="NI's Message Maker\2C driven directly" uid="4001" uid_parent="root"/>
+  <Control _name="destination directory" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
+  <Control _name="class name" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value"/>
+  <Control _name="template path" type="string" uid="4102" uid_parent="root" value="" outputs="value:4102.value"/>
+  <Control _name="parent class path" type="string" uid="4103" uid_parent="root" value="" outputs="value:4103.value"/>
+  <Control _name="actor class path" type="string" uid="4104" uid_parent="root" value="" outputs="value:4104.value"/>
+  <Control _name="actor method path" type="string" uid="4105" uid_parent="root" value="" outputs="value:4105.value"/>
+  <Control _name="actor method name" type="string" uid="4106" uid_parent="root" value="" outputs="value:4106.value"/>
+  <Constant _name="Do Name" type="string" uid="4110" uid_parent="root" value="Do.vi" outputs="value:4110.value"/>
+  <Constant _name="GObj Class Name" type="string" uid="4111" uid_parent="root" value="LabVIEWClassConstant" outputs="value:4111.value"/>
+  <Constant _name="Traverse Target" type="uint16{FP,BD,Other}" uid="4112" uid_parent="root" value="1" outputs="value:4112.value"/>
+  <Constant _name="Dummy Method Name" type="string" uid="4113" uid_parent="root" value="Dummy Actor Method.vi" outputs="value:4113.value"/>
+  <Constant _name="Save a Copy" type="bool" uid="4116" uid_parent="root" value="false" outputs="value:4116.value"/>
+  <Constant _name="Class Type" type="uint16{Concrete,Abstract}" uid="4117" uid_parent="root" value="0" outputs="value:4117.value"/>
+  <Constant _name="Message Type Label" type="string" uid="4118" uid_parent="root" value="Message Type" outputs="value:4118.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4200.proj,reference out:,error out:4200.error out" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4200.proj,error in (no error):4200.error out" outputs="Application:4210.app,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4102.value" outputs="path:4222.path" uid="4222" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4103.value" outputs="path:4224.path" uid="4224" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4104.value" outputs="path:4226.path" uid="4226" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4105.value" outputs="path:4228.path" uid="4228" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3ACopy Class.vi" inputs="Destination Directory:4220.path,Class Name:4101.value,Template Path:4222.path,AppInst:4210.app,Parent Class Path:4224.path,error in (no error):4210.error out" outputs="New Class Path:4230.newclass,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Indicator _name="copy class error" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Path To String" inputs="path:4230.newclass" outputs="string:4232.string" uid="4232" uid_parent="root"/>
+  <Indicator _name="new class path" inputs="value:4232.string" type="string" uid="4502" uid_parent="root" value=""/>
+  <Call target="Message Maker.lvlib\3ACopy Member Data from Target.vi" inputs="Target Method path:4228.path,AppInst:4210.app,error in (no error):4230.error out" outputs="Wiring Rules:4240.rules,Controls[]:4240.controls,Target Method Ref:4240.methodref,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Indicator _name="read member data error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Array Size" inputs="array:4240.controls" outputs="size(s):4242.size" uid="4242" uid_parent="root"/>
+  <Indicator _name="payload control count" inputs="value:4242.size" type="int32" uid="4506" uid_parent="root" value="0"/>
+  <Call target="Message Maker.lvlib\3AAdd Member Data to Private Data Control.vi" inputs="Target Path:4230.newclass,AppInst:4210.app,Controls:4240.controls,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="add member data error" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4508" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Strip Path" inputs="path:4230.newclass" outputs="stripped path:4260.stripped path,name:" uid="4260" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:4260.stripped path,name or relative path:4110.value" outputs="appended path:4262.appended path" uid="4262" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4210.app,vi path:4262.appended path,error in (no error):4250.error out" outputs="vi reference:4270.viref,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3AFind and Replace GObj.vi" inputs="vi reference in:4270.viref,Class Path:4226.path,error in (no error):4270.error out,Traverse Target:4112.value,GObj Class Name:4111.value" outputs="vi reference out:4280.viref,Replace:,error out:4280.error out" uid="4280" uid_parent="root"/>
+  <Indicator _name="replace class constant error" inputs="value:4280.error out" type="cluster{bool.status,int32.code,string.source}" uid="4510" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4228.path" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4113.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4280.viref" outputs="value:4311.value" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4320.viref" outputs="value:4312.value" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <ShiftReg uid="4315" uid_parent="4300">
+      <Left inputs="value:4280.error out" outputs="value:4316.value" uid="4316" uid_parent="4315"/>
+      <Right inputs="value:4322.error out" outputs="value:4317.value" uid="4317" uid_parent="4315"/>
+    </ShiftReg>
+    <Call target="Message Maker.lvlib\3ASpecial Replace of SubVI Node.vi" inputs="vi reference in:4311.value,Class Path:4301.value,GObj Label:4302.value,error in (no error):4316.value" outputs="vi reference out:4320.viref,Replace:4320.replace,error out:4320.error out" uid="4320" uid_parent="4300"/>
+    <Call target="Message Maker.lvlib\3ARewire Do.vi" inputs="Replace:4320.replace,error in (no error):4320.error out" outputs="done?:4322.done,error out:4322.error out" uid="4322" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4322.error out" outputs="status:4324.status" uid="4324" uid_parent="4300"/>
+    <Node _name="Or" inputs="x:4322.done,y:4324.status" outputs="x .or. y?:4326.or" uid="4326" uid_parent="4300"/>
+    <Condition inputs="value:4326.or" uid="4328" uid_parent="4300" value="stop"/>
+  </Structure>
+  <Indicator _name="replace method error" inputs="value:4317.value" type="cluster{bool.status,int32.code,string.source}" uid="4512" uid_parent="root" value="[false,0,]"/>
+  <Call target="Message Maker.lvlib\3AWire FP Controls to UnBundler.vi" inputs="vi reference in:4312.value,error in (no error):4317.value" outputs="vi reference out:4390.viref,error out:4390.error out" uid="4390" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3ASet Class Control Label.vi" inputs="vi reference in:4390.viref,Class Name:4101.value,error in (no error):4390.error out" outputs="vi reference out:4392.viref,error out:4392.error out" uid="4392" uid_parent="root"/>
+  <Call target="Apply New VI Tools-Options Settings.vi" inputs="VI Refnum:4392.viref,error in (no error):4392.error out" outputs="dup VI Refnum:4394.viref,error out:4394.error out" uid="4394" uid_parent="root"/>
+  <Node _name="Invoke Node" target="BD.CleanUp" type="{LV.VI}" inputs="reference:4394.viref,error in (no error):4394.error out" outputs="reference out:4396.viref,error out:4396.error out" uid="4396" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4396.viref,error in (no error):4396.error out,Path to saved file:4262.appended path,Save a Copy:4116.value,Without Diagram:" outputs="reference out:4398.viref,error out:4398.error out" uid="4398" uid_parent="root"/>
+  <Indicator _name="build do error" inputs="value:4398.error out" type="cluster{bool.status,int32.code,string.source}" uid="4514" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4398.viref,error in (no error):4398.error out" outputs="error out:4400.error out" uid="4400" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3ACreate Send Method.vi" inputs="New Class:4230.newclass,Target Method:4106.value,AppInst:4210.app,error in (no error):4400.error out" outputs="New Send Method:4410.newsend,error out:4410.error out" uid="4410" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:4410.newsend" outputs="string:4412.string" uid="4412" uid_parent="root"/>
+  <Indicator _name="new send method" inputs="value:4412.string" type="string" uid="4516" uid_parent="root" value=""/>
+  <Indicator _name="create send error" inputs="value:4410.error out" type="cluster{bool.status,int32.code,string.source}" uid="4518" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4210.app,vi path:4410.newsend,error in (no error):4410.error out" outputs="vi reference:4440.sendref,error out:4440.error out" uid="4440" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3AAdd Controls to Method.vi" inputs="vi ref in:4440.sendref,Controls in:4240.controls,error in (no error):4440.error out" outputs="vi ref out:4442.sendref,Controls out:4442.controls,error out:4442.error out" uid="4442" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3AFind and Replace GObj.vi" inputs="vi reference in:4442.sendref,Class Path:4230.newclass,error in (no error):4442.error out,Traverse Target:4112.value,GObj Class Name:4111.value,GObj Label:4118.value" outputs="vi reference out:4444.sendref,Replace:4444.msgobj,error out:4444.error out" uid="4444" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4442.controls" outputs="size(s):4446.size" uid="4446" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4446.size" uid="4450" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4444.sendref" uid="4601" uid_parent="4450"/>
+    <Tunnel _id="In2" inputs="value:4444.error out" uid="4602" uid_parent="4450"/>
+    <Tunnel _id="In3" inputs="value:4442.controls" uid="4603" uid_parent="4450"/>
+    <Tunnel _id="In4" inputs="value:4240.rules" uid="4604" uid_parent="4450"/>
+    <Tunnel _id="In5" inputs="value:4117.value" uid="4605" uid_parent="4450"/>
+    <Tunnel _id="In6" inputs="value:4444.msgobj" uid="4606" uid_parent="4450"/>
+    <CaseFrame selector="0" selectout="" uid="4460" uid_parent="4450">
+      <FreeLabel comment="No payload - just wire the class" uid="4461" uid_parent="4460"/>
+      <Tunnel _id="In1" outputs="value:4611.value" uid="4611" uid_parent="4460"/>
+      <Tunnel _id="In2" outputs="value:4612.value" uid="4612" uid_parent="4460"/>
+      <Tunnel _id="In3" outputs="value:" uid="4613" uid_parent="4460"/>
+      <Tunnel _id="In4" outputs="value:" uid="4614" uid_parent="4460"/>
+      <Tunnel _id="In5" outputs="value:4615.value" uid="4615" uid_parent="4460"/>
+      <Tunnel _id="In6" outputs="value:4616.value" uid="4616" uid_parent="4460"/>
+      <Call target="Message Maker.lvlib\3AWire Class to Enqueue.vi" inputs="vi reference:4611.value,Message Object:4616.value,Class Type:4615.value,error in (no error):4612.value" outputs="dup VI Refnum:4462.sendref,error out:4462.error out" uid="4462" uid_parent="4460"/>
+      <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:4462.sendref,error in (no error):4462.error out" outputs="reference out:4464.sendref,error out:4464.error out" uid="4464" uid_parent="4460"/>
+      <Tunnel _id="Out1" inputs="value:4464.sendref" uid="4617" uid_parent="4460"/>
+      <Tunnel _id="Out2" inputs="value:4464.error out" uid="4618" uid_parent="4460"/>
+    </CaseFrame>
+    <CaseFrame selector="1\2C Default" selectout="" uid="4470" uid_parent="4450">
+      <FreeLabel comment="Payload - pane it and bundle it" uid="4471" uid_parent="4470"/>
+      <Tunnel _id="In1" outputs="value:4621.value" uid="4621" uid_parent="4470"/>
+      <Tunnel _id="In2" outputs="value:4622.value" uid="4622" uid_parent="4470"/>
+      <Tunnel _id="In3" outputs="value:4623.value" uid="4623" uid_parent="4470"/>
+      <Tunnel _id="In4" outputs="value:4624.value" uid="4624" uid_parent="4470"/>
+      <Tunnel _id="In5" outputs="value:" uid="4625" uid_parent="4470"/>
+      <Tunnel _id="In6" outputs="value:" uid="4626" uid_parent="4470"/>
+      <Call target="Message Maker.lvlib\3AControls to Connector Pane.vi" inputs="vi ref in:4621.value,Controls:4623.value,Wiring Rules:4624.value,error in (no error):4622.value" outputs="vi ref out:4472.sendref,error out:4472.error out" uid="4472" uid_parent="4470"/>
+      <Call target="Message Maker.lvlib\3AWire FP Controls to Bundler.vi" inputs="vi reference in:4472.sendref,Controls:4623.value,error in (no error):4472.error out" outputs="vi reference out:4474.sendref,error out:4474.error out" uid="4474" uid_parent="4470"/>
+      <Tunnel _id="Out1" inputs="value:4474.sendref" uid="4627" uid_parent="4470"/>
+      <Tunnel _id="Out2" inputs="value:4474.error out" uid="4628" uid_parent="4470"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4631.value" uid="4631" uid_parent="4450"/>
+    <Tunnel _id="Out2" outputs="value:4632.value" uid="4632" uid_parent="4450"/>
+  </Structure>
+  <Call target="Apply New VI Tools-Options Settings.vi" inputs="VI Refnum:4631.value,error in (no error):4632.value" outputs="dup VI Refnum:4480.sendref,error out:4480.error out" uid="4480" uid_parent="root"/>
+  <Node _name="Invoke Node" target="BD.CleanUp" type="{LV.VI}" inputs="reference:4480.sendref,error in (no error):4480.error out" outputs="reference out:4482.sendref,error out:4482.error out" uid="4482" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Connector Pane\3AReference" type="{LV.VI}" inputs="reference:4482.sendref,error in (no error):4482.error out" outputs="Connector Pane\3AReference:4484.conpane,reference out:4484.sendref,error out:4484.error out" uid="4484" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3AClean Up Panel.vi" inputs="VI Refnum:4484.sendref,Conpane:4484.conpane,error in (no error):4484.error out" outputs="error out:4486.error out" uid="4486" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4484.sendref,error in (no error):4486.error out,Path to saved file:4410.newsend,Save a Copy:4116.value,Without Diagram:" outputs="reference out:4488.sendref,error out:4488.error out" uid="4488" uid_parent="root"/>
+  <Indicator _name="build send error" inputs="value:4488.error out" type="cluster{bool.status,int32.code,string.source}" uid="4520" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.newclass,error in (no error):4488.error out" outputs="reference out:,error out:4700.err,LVClass.Open:4700.cls" uid="4700" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4700.cls,error in (no error):4700.err" outputs="reference out:,error out:4702.err" uid="4702" uid_parent="root"/>
+  <Indicator _name="save class error" inputs="value:4702.err" type="cluster{bool.status,int32.code,string.source}" uid="4704" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4700.cls,error in (no error):4702.err" outputs="error out:4706.err" uid="4706" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4488.sendref,error in (no error):4706.err" outputs="error out:4490.err" uid="4490" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4240.methodref,error in (no error):4490.err" outputs="error out:4492.err" uid="4492" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4492.err" outputs="error out:4494.err" uid="4494" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4494.err" outputs="error out:4496.err" uid="4496" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4496.err" type="cluster{bool.status,int32.code,string.source}" uid="4522" uid_parent="root" value="[false,0,]"/>
+</VI>

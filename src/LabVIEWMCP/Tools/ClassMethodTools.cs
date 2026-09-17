@@ -76,6 +76,40 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         catch (UnauthorizedAccessException) { return null; }
     }
 
+    /// <summary>
+    /// How many <c>path</c> terminals the authored document declares that are NOT class stand-ins -
+    /// that is, the method's own genuine path parameters. The heap check downstream counts every
+    /// <c>stdPath</c> object it finds, and without this number it reads each of these as a stand-in
+    /// the repair failed to convert.
+    ///
+    /// MEASURED 2026-09-17, and the case was already known and left unfixed once: the
+    /// <c>VerifyFailureDetail</c> comment records "a method asking to retype one of three
+    /// <c>path</c> stand-ins, so two were legitimately left" from 2026-09-07, and the remedy then
+    /// was only to stop that branch throwing. `Drucken.vi` - two class terminals plus a `Datei`
+    /// input that is a real path - duly answered <c>ok: false</c> with <c>pathStandInsLeft: 1</c>
+    /// while the file was correct and ran. Same shape as `nodesSwapped` and `dwarnCount`: a remedy
+    /// written into a comment is not a fix.
+    ///
+    /// Null when the document cannot be read, and then nothing is gated on the count.
+    /// </summary>
+    internal static int? GenuinePathTerminals(string aixmlPath,
+                                              IReadOnlyCollection<ClassTerminal> classTerminals)
+    {
+        try
+        {
+            var standIns = classTerminals.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+            return root(aixmlPath).DescendantsAndSelf()
+                .Where(e => e.Name.LocalName is "Control" or "Indicator")
+                .Where(e => (string?)e.Attribute("type") == "path")
+                .Count(e => (string?)e.Attribute("_name") is { } name && !standIns.Contains(name));
+        }
+        catch (IOException) { return null; }
+        catch (System.Xml.XmlException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+
+        static XElement root(string path) => XElement.Load(path);
+    }
+
     /// <summary>The four numbers to write for a class member on this pattern, read off its own
     /// measured geometry rather than from a table in a comment.</summary>
     internal static string PaneAdvice(int pattern)
@@ -550,11 +584,28 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var verified = true;
                 if (verify)
                 {
+                    // A `path` TERMINAL IS NOT ALWAYS A STAND-IN. The heap check counts every
+                    // `stdPath` object, and for weeks that was read as "stand-ins left over" - so
+                    // a method with a genuine `path` PARAMETER always answered ok: false. Measured
+                    // 2026-09-17 on `Drucken.vi`, three payload inputs one of which is a file
+                    // path: `pathStandInsLeft: 1` with both class terminals correctly retyped, the
+                    // member added, the class saved and `execState 1` afterwards. The control arm
+                    // is the sibling method with no path payload, which answered 0 in the same run.
+                    // The expectation comes from the AUTHORING AIXML, which is the only thing that
+                    // knows which path terminals were meant to be stand-ins.
+                    var genuinePaths = method.Aixml is { } authored
+                        ? GenuinePathTerminals(authored, method.ClassTerminals)
+                        : null;
                     evidence = await VerifyOnDiskAsync(viPath, method.ClassTerminals.Count,
-                                                       timeoutSeconds, ct: ct);
+                                                       genuinePaths, timeoutSeconds, ct: ct);
                     verified = evidence["classTypedTerminals"]?.GetValue<int>()
                                == method.ClassTerminals.Count
-                               && evidence["pathStandInsLeft"]?.GetValue<int>() == 0;
+                               // NOT GATED when the expectation is unknown - a method handed over
+                               // as an existing `vi` has no AIXML to count, and demanding 0 there
+                               // would re-create the false negative for exactly the callers who
+                               // cannot see why. `pathStandInsLeft` is still reported.
+                               && (genuinePaths is not { } want
+                                   || evidence["pathStandInsLeft"]?.GetValue<int>() == want);
                     steps.Add(new JsonObject { ["step"] = "verify", ["answer"] = evidence });
                 }
 
@@ -613,6 +664,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// LabVIEW running at all.
     /// </summary>
     private static async Task<JsonObject> VerifyOnDiskAsync(string viPath, int expected,
+                                                            int? genuinePaths,
                                                             int timeoutSeconds, CancellationToken ct)
     {
         var bundle = PyLabview.Locate();
@@ -623,6 +675,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 ["why"] = PyLabview.NotProvisionedMessage(),
                 ["classTypedTerminals"] = -1,
                 ["pathStandInsLeft"] = -1,
+                ["expectedPathStandInsLeft"] = genuinePaths,
             };
 
         var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "method",
@@ -640,6 +693,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["why"] = $"pylabview exited {run.ExitCode}.",
                     ["classTypedTerminals"] = -1,
                     ["pathStandInsLeft"] = -1,
+                    ["expectedPathStandInsLeft"] = genuinePaths,
                 };
 
             // The front panel heap is the sidecar, not the main file.
@@ -652,6 +706,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 ["frontPanelHeap"] = heap is null ? null : Path.GetFileName(heap),
                 ["classTypedTerminals"] = Count(text, "class=\"udClassDDO\""),
                 ["pathStandInsLeft"] = Count(text, "class=\"stdPath\""),
+                // How many `stdPath` objects are LEGITIMATE - the method's own path parameters,
+                // counted from the authoring AIXML. null when there was none to count, and then
+                // nothing is gated on the number.
+                ["expectedPathStandInsLeft"] = genuinePaths,
                 ["expected"] = expected,
                 ["source"] = "the saved .vi, read with pylabview - no LabVIEW was involved",
             };
@@ -780,19 +838,30 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     {
         var typed = evidence["classTypedTerminals"]?.GetValue<int>() ?? -1;
         var left = evidence["pathStandInsLeft"]?.GetValue<int>() ?? -1;
+        var want = evidence["expectedPathStandInsLeft"]?.GetValue<int?>();
         return new JsonObject
         {
             ["classTypedTerminals"] = typed,
             ["pathStandInsLeft"] = left,
+            ["expectedPathStandInsLeft"] = want,
             ["expected"] = expected,
             ["ran"] = evidence["ran"]?.GetValue<bool>() ?? true,
             ["hint"] = typed == -1
                 ? "The check could not run at all, so this says nothing about the file - see `ran` "
                   + "and `why` in the verify step."
-                : left > 0
-                    ? $"{left} `path` stand-in(s) are still on the pane. Either a terminal was left "
-                      + "out of classTerminals, or its name is spelled differently there than on "
-                      + "the pane - compare with `terminal names seen` in the member step."
+                // COMPARED AGAINST THE EXPECTATION, not against zero. A method may declare genuine
+                // `path` parameters of its own, and counting those as leftover stand-ins is the
+                // false negative this hint used to produce. An UNKNOWN expectation still reads as
+                // zero HERE - the historical wording is the best guess available and the number is
+                // printed beside it - it just does not gate `ok` any more.
+                : left > (want ?? 0)
+                    ? $"{left - (want ?? 0)} `path` stand-in(s) are still on the pane"
+                      + (want is { } p and > 0
+                            ? $", over the {p} the document declares as real path terminals"
+                            : "")
+                      + ". Either a terminal was left out of classTerminals, or its name is "
+                      + "spelled differently there than on the pane - compare with `terminal "
+                      + "names seen` in the member step."
                     : $"{typed} of {expected} terminals are class-typed in the SAVED file. The "
                       + "retype may have stayed in memory: that is the 2026-09-02 failure this "
                       + "check exists for.",

@@ -1690,3 +1690,54 @@ involved. The **sweep did not run**, because the tool never returned; in this ca
 remove, checked by reading the `.lvproj` back. That is the rule this page and `CLAUDE.md` both
 state, and it is what made the check cheap: **read the `.lvproj` after every close**, because the
 answer that would have told you is exactly the one a crash takes away.
+
+## `Save All This Library.vi`, 2026-09-17 - one VI call stack, cause not established
+
+LabVIEW disappeared inside one `lvai_add_to_library` call, adding `Append To Log.vi` to
+`Lampe.lvlib` at the library ROOT. What is established is the timing and the call; the cause is
+not, and this section is written to keep those apart.
+
+**The evidence.** The log (`LabVIEW_32_26.3.1f1_interactive_jcm_cur.txt`, copied before the
+restart) holds three `<DEBUG_OUTPUT>` blocks and **exactly one VI call stack, at the end**:
+
+```
+17.09.2026 16:13:06.686
+DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42.
+source\ThEvent.cpp(213) : DWarn 0xECE53844: DestroyPlatformEvent failed with MgErr 42.
+[ExecSys:0; Executing:"[VI "Edit LVLibs.lvlib:Save All This Library.vi" (0x2002b260)]"]
+minidump id: b5576063-8845-4002-34cf-be2f96aeb057
+
+VI call stack:
+- Edit LVLibs.lvlib:Save All This Library.vi
+- lvai_add_one_to_library.vi
+```
+
+**WHY THAT IS NOT A DIAGNOSIS.** `DestroyPlatformEvent failed with MgErr 42` is the signature this
+document has already spent a long investigation on and concluded is **not a fault** on its own -
+and the same log carries two more of them, at 16:12:41 and 16:12:42, during VIPM's JKI SDP
+out-of-order close at start-up, before any call of ours. The `Executing:` tag names where the
+warning was emitted, not what caused it, which this file records as its own lesson. So the reading
+is: LabVIEW exited during that call, and nothing in the log says why.
+
+**The one clean difference available.** In the same and the previous session, `AddItem` +
+`Save All This Library` ran four times against the same library:
+
+| items added | a loose `<Item>` for it in the `.lvproj`? | outcome |
+|---|---|---|
+| `Umbenennen Msg`, `Dimmen Msg`, `Schalten Msg` | no - message classes were never listed | 3x fine |
+| `Append To Log.vi` | **yes**, listed on its own since it was generated | **LabVIEW gone** |
+
+And the `.lvproj` shows LabVIEW doing exactly that reconciliation in the failing call: the loose
+line was removed and six strays adopted, with no close in the session. n=1 against n=3 is a
+difference worth a probe and is not a cause; the A/B is a throwaway VI listed loosely and added to
+a library, against the same VI not listed.
+
+**What was NOT the cause, checked rather than assumed.** No file of the three kinds was edited by
+us with the project open: `Lampe.lvlib` and `Lampe.lvclass` were written only through NI's API, and
+both hand edits of the `.lvproj` happened with the project closed - the second one with LabVIEW
+already dead. The rule that would otherwise fit - `tidyProject`, *"LabVIEW does not survive having
+the project file changed under it"* - is about OUR writes, and there were none.
+
+**Recovery cost nothing on disk.** The library had been saved before the exit, every file survived,
+and after a restart all six VIs of the class - three methods, the log VI whose qualified name had
+just changed, and one message's `Do.vi` and `Send` - read `execState 1` cold.
