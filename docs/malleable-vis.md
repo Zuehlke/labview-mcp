@@ -223,10 +223,23 @@ sources are correct; the next build picks the short captions up.
 
 ## 9. The Type Specialization Structure IS authorable in AIXML
 
-`docs/aixml-node-gaps.tsv` lists `Type Specialization Structure` (1 occurrence in 900 VIs), and that
-file is the "silently unsupported" list `pylv_route` scans — families that validate with
-`errorCode 0` and then come back **gutted**. That is a reason to check, not a reason to conclude.
 Checked on 2026-09-17: **it survives the round trip intact.**
+
+**And the reason it looked doubtful was a mistake of mine, corrected the same day.** The paragraph
+above this one said `docs/aixml-node-gaps.tsv` "is the 'silently unsupported' list `pylv_route`
+scans", which is how `CLAUDE.md` describes that file and is **not what the code does**. Read out of
+`src/LabVIEWMCP/Infra/PyLabview.cs:251`:
+
+```csharp
+public static readonly string[] SilentlyUnsupportedFamilies = ["Event Structure", "Timed Loop"];
+```
+
+Two hardcoded names, and `Type Specialization Structure` was never one of them — so `pylv_route`
+has never flagged it and nothing was ever contradicted. The TSV is a **census**: 302 rows of node
+family against occurrence and VI counts, and the row `Type Specialization Structure  1  1` means
+*this family was seen once, in one VI*, not *this family is broken*. Reading a frequency table as a
+defect list is what made a four-minute probe look like a risky one. **Check which artefact actually
+drives a behaviour before repeating a document's description of it.**
 
 `Length Of.vim` returns the element count of a 1D array OR the character count of a string. Two
 frames, one input:
