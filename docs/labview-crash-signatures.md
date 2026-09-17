@@ -1582,3 +1582,62 @@ turns up, the cheap discriminator is already implied - run the call with `Auto R
 FALSE, which the tool defaults to anyway, and see whether the hang follows the routing or
 the call. Note the default is FALSE precisely because with it LabVIEW draws no wire, so the
 TRUE path is the less-travelled one and correspondingly less proven.
+
+## THERE IS A SECOND LOG, AND THIS DOCUMENT DID NOT KNOW ABOUT IT
+
+`%ProgramData%\National Instruments\AIAssistants\Logs` — the user's pointer, 2026-09-17, and it
+fills a gap this page's title creates. "Read NI's own log" has meant `%TEMP%\LabVIEW_32_…_cur.txt`
+throughout, which is **LabVIEW's** log. The gRPC service does not run in LabVIEW: it belongs to the
+**Nigel Local Service**, a separate process whose content root is
+`C:\Program Files\National Instruments\Shared\Services\NigelLocalService`, and that process keeps
+its own log here.
+
+**Format**, one line per event, no wrapping:
+
+```
+===== 09/16/2026 22:57:30 ===== INF: Now listening on: https://[::1]:50773
+===== 09/16/2026 22:57:34 ===== INF: [LabVIEW2026Q3_x86] [Discuss VI] Started monitoring for requests.
+===== 09/08/2026 15:55:53 ===== WRN: [LabVIEW2026Q3_x86] [Code Completion] Stopped monitoring due to exception. Status(StatusCode="Unavailable", Detail="Cancelling all calls")
+```
+
+Levels are `INF:`, `WRN:` and, by their counts in the active file, error and exception lines too. The
+first bracket is the HOST (`LabVIEW2026Q3_x86`, `TestStand2026Q1_64`, …), the second the FEATURE.
+It rotates at 2 MiB: `AIAssistant.txt` was frozen at exactly 2 097 301 bytes and
+`AIAssistant_001.txt` is the live one, so **take the newest mtime, not the base name**.
+
+### What it answers that nothing else does
+
+**Whether the service started, and when** — `Initializing Nigel Local Service`, then
+`Now listening on:` twice, then one `Started monitoring for requests.` per feature. That is the
+direct answer to `lvai_status`'s `Unavailable` triage ("the IDE is up and the service has not
+started — open Nigel"), and it needs no gRPC call at all.
+
+**The ports.** Measured twice on 2026-09-16: the service logged https `52948` while `lvai_status`
+reported the lvai port as `52949`, and https `50773` against lvai `50774`. **That is a hint, not a
+rule** — an earlier start the same file records logged http `54966` and https `54971`, five apart,
+so the pair is not always adjacent and neither is anything else. Read the real port from
+`lvai_status`; use the log to see whether a service came up at all.
+
+**That the connection to LabVIEW was lost** — `Stopped monitoring due to exception.
+Status(StatusCode="Unavailable", Detail="Cancelling all calls")`, one line per feature.
+
+### AND ITS SILENCE CORRECTED A DIAGNOSIS THE SAME DAY
+
+On 2026-09-16 LabVIEW disappeared mid-session. LabVIEW's own log stopped at `21:50:14`, no minidump
+was written after the last successful call at `21:54:34`, and this was read at the time as *"no
+crash evidence — it looks like a clean exit rather than a fault."*
+
+The Nigel log makes that reading weaker, not stronger. Its last entry before the gap is `21:40:10`,
+and the next is a fresh `Initializing Nigel Local Service` at `22:15:41`. **It logged nothing at
+all for the disappearance** — while for the shutdown forty-five minutes earlier, at `21:09:11`, it
+logged six `Stopped monitoring` lines, one per feature, exactly as it should.
+
+So the two shutdowns that day left *different* traces: one was recorded by the service, the other by
+neither log. The honest statement is not "clean exit" but **"unlike the shutdown this service did
+record, and unexplained"** — most consistent with the Local Service going away at the same moment as
+LabVIEW, since a process that is gone cannot log the loss of its peer.
+
+The process lesson is the one this page keeps earning: **an absence of evidence is only informative
+once you know the thing writes evidence when it is working.** Reading one log and concluding "no
+fault" was the same shape as the Windows-event-log mistake at the top of this document, one layer
+further in.

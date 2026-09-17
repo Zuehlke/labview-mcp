@@ -408,8 +408,54 @@ Two details that cost a round trip each:
   `Flatten To XML`. This also keeps the two apart cleanly: a target VI that *reports* an error is
   a successful harness run, and only `error xml` says whether the harness itself worked.
 
-Inputs are unchanged by any of this — they still cross as strings, so only string controls can be
-set. The asymmetry is the point: the way **out** is now unrestricted.
+### The way IN: typed since 2026-09-16, and why it only needs four cases
+
+This section read "inputs are unchanged by any of this — they still cross as strings, so only string
+controls can be set" until the limit was measured as a *cost* rather than a caveat: in one build
+**five separate agents each generated throwaway copies of the VI under test**, with the values baked
+into the control defaults, because a VI taking a path or a number could not be driven at all. The
+asymmetry was not the point; it was the largest recurring tax of the run.
+
+`lvai_run_and_read_typed.vi` is now the default helper. Values still arrive as TEXT — the wire
+format is unchanged, two newline-separated lists paired by position — and the helper types them:
+
+1. `{LV.VI}` `Front Panel` → `{LV.Panel}` `Controls[]`, then one loop reading `Label.Text`.
+2. A second loop matches each requested name with `Search 1D Array` and reads the control's
+   `Class Name`.
+3. A Case structure converts, then calls `Ctrl Val.Set`.
+
+**What `Class Name` actually answers, measured on one control of each type:**
+
+| control | `Class Name` | conversion |
+|---|---|---|
+| string | `String` | none (the `Default` frame) |
+| path | `Path` | `String To Path` |
+| double **and** int32 | **`Digital`** | `Fract/Exp String To Number` → DBL |
+| boolean | `Boolean` | `To Upper Case`, then `= "TRUE"` or `= "1"` |
+| array / cluster | `Array` / `Cluster` | none — see below |
+
+**One numeric case suffices because `Ctrl Val.Set` COERCES.** Both representations answer `Digital`,
+and an I32 control fed a DBL variant read back `42`. Without that measurement the case structure
+would have needed a `Representation` branch per numeric type — twelve frames instead of one.
+
+**Array and cluster controls remain unreachable, and they fail LOUDLY.** There is no general
+text-to-composite conversion without a runtime type. They fall to the string frame, and
+`Control Value:Set` answers **`Error 91`** with the target never run — measured by passing
+`"[true,true,,]"` to a cluster control. That is the right failure: silently leaving a compound
+control at its default is what the caller could not have detected.
+
+**A name that matches nothing is `Error 1055`**, from the `Class Name` property node — so it fires
+in the LOOKUP, before any control is set, and the target does not run. Note the lookup happens first,
+which is why this is a refnum error rather than LabVIEW's own control-name message.
+
+**Read `helperFailed`, not `errorCode`.** `errorCode` on the tool's answer is `RunVIAsTopLevel`'s,
+and it reads **0** for both refusals above; the only other tells were an empty `values` and a number
+buried in `helperErrorXml`. `helperErrorCode` and `helperFailed` now surface it directly.
+
+`lvai_run_and_read.vi` still ships as the string-only fallback and is reachable through
+`helperAixmlPath`. `lvai_run_for_ms.vi`, the `runForMs` runner, has **not** been given the typed
+setter — its use case is a top-level UI VI, which usually takes no inputs at all — and the tool's
+answer says so when inputs are passed alongside `runForMs`.
 
 ## Reading where a VI's terminals actually sit: `Connector Pane:Reference`
 

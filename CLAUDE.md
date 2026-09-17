@@ -391,8 +391,25 @@ the whole sequence against three round trips. `docs/bulk-operations.md`.
 almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
 plain call. The tool sets the inputs, runs the target and reads every control and indicator back
 through VI Server, so the values arrive intact — measured on a VI whose waveform, boolean and
-error cluster were all empty under the plain call and complete under this one. Inputs are
-unchanged: still strings only, so keep taking numbers and paths in as strings.
+error cluster were all empty under the plain call and complete under this one.
+
+**AND SINCE 2026-09-16 THE INPUT SIDE IS NO LONGER STRING-ONLY — this clause said the opposite for
+weeks and the cost was not an error but a WORKAROUND.** The helper used to wire the incoming string
+straight into `Ctrl Val.Set`, whose `Value` terminal is a Variant, so a string variant matched only
+a STRING control; in one measured build **five separate agents each generated throwaway copies of
+the VI under test with the values baked into the control defaults**, because that was the only way
+to drive a VI taking a path or a number. The default helper now reads the target's panel, asks each
+named control what it is (`Class Name`), and converts first. Values still go IN as text — `"42"`,
+`"12.5"`, `"true"`, `"C:\data\in.csv"` — and land as the control's own type.
+
+**The measurement that keeps it to four cases: a DBL and an I32 control BOTH answer `Digital`, and
+`Ctrl Val.Set` COERCES** — an I32 control fed a DBL variant read back `42`. So there is one numeric
+case, not one per representation. **ARRAY AND CLUSTER CONTROLS ARE STILL UNREACHABLE** and fail
+loudly rather than silently: `Error 91` from `Control Value:Set`, with the target not run. A control
+name matching nothing on the panel is `Error 1055` from the helper's own property node, also before
+the run — **and `errorCode` on the answer is `RunVIAsTopLevel`'s, which reads 0 for both**, so read
+`helperFailed` / `helperErrorCode` instead. `lvai_run_for_ms.vi`, the `runForMs` helper, has NOT had
+the typed setter and is still string-only; the answer says so when inputs are passed with `runForMs`.
 
 This clause used to say "write the result to a file and inspect that". That worked, and it cost
 about eight minutes of hand-built VI Server harness per VI — measured, twice, before the harness
@@ -450,6 +467,21 @@ code, not a preference about one VI. Three parts, each a separate defect when dr
   NI's style guide and what `lvai_connector_pane` checks; this rule makes it mandatory rather than
   conventional. Ask that tool for the numbers, never the table: on this station's 4833 they are
   `11` and `15`, on 4815 `8` and `0`.
+- **AND BOTH ARE `connection="recommended"` - the rule said nothing about the flag for a day, and
+  agents duly diverged.** Measured 2026-09-16 over one application build: of ten agent-built subVIs,
+  four declared `error in` as `recommended` and six as **`optional`**, and NOTHING reported it -
+  every pane passed `lvai_connector_pane` with 0 violations, and both cheap checkers were silent
+  because the attribute was PRESENT and they only looked for a missing one. `required` would force
+  every caller to wire the chain; `optional` hides the terminal from Context Help's simple view. The
+  visible cost was the placeholder cache: `PlaceholderTools.Signature` carries the flag, so five of
+  eleven sockets were cloned afresh for panes that already had one. **Both checkers enforce it now**
+  - `lvai_check_aixml` answers `errorInNotRecommended` and repairs it, `scripts/aixml_lint.py`
+  answers `conn-error-in-not-recommended` - and that is deliberately where the fix went rather than
+  into this file alone, because **an agent's system prompt is its own definition and CLAUDE.md is
+  not in it.** The same pass closed a real gap beside it: an output written `required` ON PURPOSE
+  was travelling through the C# checker untouched, because it returned early on any `connection` at
+  all and only ever caught the omitted case. The lint had had that one since 2026-09-15; the two
+  had drifted, which is the failure this file already records for `SafeUidBase`.
 
 **A TOP-LEVEL VI WITH NO CALLERS IS NOT AN EXCEPTION**, and that is the reasoning the rule exists to
 override. `C:\temp\UserEventsFinal\User Event Producer Consumer.vi` was generated 2026-09-12 with an
@@ -614,6 +646,17 @@ exist. **So finish by rendering the diagram and reading it** — `Print.VI To HT
 `scripts/lvdoc_print.xml`, one PNG per diagram, and **create the image directory first** or LabVIEW
 answers `Error 118` without creating it. Every programmatic check in the chain passed the clipped
 comment; only the picture disagreed.
+
+**SO KEEP A DIAGRAM COMMENT UNDER ABOUT 45 CHARACTERS — that is the defence, and it is free.** The
+clip came back on 2026-09-16 on a comment nobody placed: 79 characters landed in a five-line box and
+shipped as `… it reports which control the user`, one word short, past `lvai_check_aixml`,
+`lvai_validate_aixml`, the convert, nine subVI swaps and `execState 1`. The box is sized from the
+space LabVIEW finds, not from the text, so no authoring-side arithmetic predicts it. **And there is
+no cheap in-place repair** — a `<FreeLabel>`'s text cannot be edited through pylabview the way a
+string constant can, so the fix is a full regeneration plus the whole swap cycle plus the icon,
+which is the one thing the regeneration rule below says not to spend on a comment. The same three
+comments cut to 30, 43 and 44 characters all rendered complete. This is the "fewer and shorter wins
+twice" rule with a number on it.
 
 **A BLOCK DIAGRAM STAYS AROUND 1920 x 1080, AND A REPEATED OPERATION BECOMES ONE GENERIC SUBVI.**
 The user's standing rule of 2026-09-16, given three times over one build and sharpened each time.
@@ -1205,6 +1248,31 @@ the other's half-written file. A failure report that names the wrong culprit is 
 Give each test agent `<project>\Tests\<ClassName>\` and say in the prompt that it is theirs;
 `labview-class-generator` Phase 6 and `labview-caraya-unit-test` both carry the rule now.
 
+**AND PARALLEL AGENTS SHARE ONE LabVIEW, SO NO AGENT MAY OPEN OR CLOSE A PROJECT OR SWAP.** The
+other half of the same lesson, measured 2026-09-16 over a four-agent cold build. A project is
+global to the instance, and `lvai_close_active_project` SAVES LabVIEW's in-memory copy over the
+`.lvproj` — the mechanism that has already deleted two class entries in one build — so one agent
+closing a project silently rewrites what every other agent is writing into. `lvai_swap_subvis` is
+the same hazard from the other side: it needs an ACTIVE project, because `{LV.SubVI}` `Replace` is
+a silent no-op outside the IDE's own application instance.
+
+**The protocol that works: agents GENERATE, the orchestrator SWAPS.** Say in each task prompt that
+`lvai_open_file` and `lvai_close_active_project` are forbidden and that other agents are running;
+have each agent author its `Call` against a placeholder, stop, and report the socket name; then do
+every swap centrally in one project session afterwards. Measured on that build: four agents
+produced ten subVIs in about **11 minutes of wall clock against about 32 minutes of summed agent
+time**, with no project contention at all — and the swaps then cost two calls, because a socket
+that appears on N nodes needs N calls whatever N is.
+
+**Two roster gaps surfaced doing it, both now closed.** `labview-vi-generator` and
+`labview-vi-editor` had neither `lvai_placeholder_subvi` nor `lvai_swap_subvis`, while this file
+calls that pair the only route by which a generated VI calls project-local code — so an agent told
+to author such a call answered `No such tool available` and **hand-built a socket VI from AIXML
+instead**. It was exact and it worked, and an inexact clone is `Error 7, Bad Linkage` with nothing
+in the message about panes. **A capability the definition describes and the roster withholds reads
+as a capability that does not exist**, which is the same shape as an embedded document nothing
+serves.
+
 **`No Error` FROM `lvai_open_file` DOES NOT MEAN A PROJECT BECAME ACTIVE.** Measured 2026-09-03:
 three opens in a row answered `No Error` for a `.lvproj` that plainly exists and left no active
 project, so `lvai_close_active_project` answered `Error 1055, nothing to close` after each and
@@ -1509,6 +1577,23 @@ So: design the frame to read the payload, then make the toolchain reach it.
 into a **prim** input plus `lvai_set_event_data_fields` as a third build step — and a front-panel
 Local Variable is never the substitute, because it holds what the panel has at that instant rather
 than what the event carried. `scripts/aixml-skeletons/user-event-two-loops.md` is the worked example.
+
+**FOR A FRONT-PANEL EVENT THERE IS A CHEAPER ROUTE, AND IT DOES NOT GENERALISE TO A USER EVENT.**
+A control terminal placed inside its own event frame already carries the value the event just
+produced, so a front-panel frame needs **no `Event Data Node` at all** — measured 2026-09-16, a
+`Not` on the control and a subVI call taking the cluster both worked with every data node deleted,
+and that removes `lvai_set_event_data_fields` from the build entirely. It is worth reaching for
+because wiring `NewVal` into a subVI `Call` is not reachable at all: the same measurement answered
+`dataFieldsDroppedAndWired: ["NewVal","OldVal"]` with validation saying
+`required input 'new value' is not wired`, since the field selection is dropped and the documented
+repair wants a **prim** input.
+
+**But it is the user's correction of 2026-09-16 that makes this safe to write down: the shortcut
+holds ONLY where a control exists, and A USER EVENT HAS NONE.** Its payload lives in the
+`Event Data Node` and nowhere else, so for a user event the placeholder-constant plus
+`lvai_set_event_data_fields` route above is not one option of two — it is the only one. The two
+cases look alike on a diagram, which is exactly why the shortcut has to be stated with its
+boundary rather than as a general rule about event structures.
 
 **SO WHEN YOU AUTHOR AN EVENT STRUCTURE, ALWAYS ROUTE THE EVENT REGISTRATION REFNUM INTO IT AS AN
 ORDINARY `<Tunnel>` — even when nothing inside the frames reads it.** This is the user's rule of
@@ -1901,6 +1986,28 @@ nothing.
 
 `_cur.txt` is overwritten on the next start, so **copy it before restarting**. Grep it for `DWarn`,
 `minidump id` and `Executing:`.
+
+**AND THERE IS A SECOND LOG — the gRPC service is not in LabVIEW, so LabVIEW's log is not its log.**
+`%ProgramData%\National Instruments\AIAssistants\Logs`, the user's pointer of 2026-09-17. The
+service belongs to the **Nigel Local Service**, a separate process, and it records its own
+lifecycle: `Initializing Nigel Local Service`, two `Now listening on:` lines with the ports, one
+`Started monitoring for requests.` per feature, and — when it loses LabVIEW —
+`Stopped monitoring due to exception. Status(StatusCode="Unavailable", …)` per feature. **That is
+the direct answer to `lvai_status`'s `Unavailable` triage without a single gRPC call.** It rotates
+at 2 MiB, so take the newest mtime rather than the base name.
+
+**The ports it logs are a hint and not a rule**: measured twice on 2026-09-16 the lvai port was one
+above the logged https port (52948→52949, 50773→50774), but an earlier start in the same file logged
+its own http and https five apart. Read the real port from `lvai_status`.
+
+**Its SILENCE is evidence too, and it corrected a diagnosis the same day.** When LabVIEW vanished
+mid-session, LabVIEW's log stopped four minutes before the last successful call and no minidump
+followed, which was read as "no crash evidence, so a clean exit". The Nigel log shows **nothing at
+all** for that moment — while it logged six `Stopped monitoring` lines for a shutdown forty-five
+minutes earlier. Two shutdowns, two different traces: the right conclusion is *unlike the one this
+service did record, and unexplained*, most consistent with the Local Service going too. **An absence
+of evidence is only informative once you know the thing writes evidence when it works** — the same
+mistake as trusting an empty Windows event log, one layer in.
 
 **And validation is not risk-free, which contradicts how this file describes it elsewhere.** The
 signature found twice was NI's own code:

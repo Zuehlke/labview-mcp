@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
@@ -28,8 +29,24 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class RunTools(LvaiConnection connection)
 {
-    /// <summary>Name of the helper's AIXML source inside the scripts folder.</summary>
-    internal const string HelperAixmlFileName = "lvai_run_and_read.xml";
+    /// <summary>
+    /// Name of the helper's AIXML source inside the scripts folder.
+    /// THE TYPED ONE IS THE DEFAULT since 2026-09-16. Its predecessor wired the incoming string
+    /// straight into Ctrl Val.Set, whose Value terminal is a Variant, so only a STRING control
+    /// could be set - and five separate agents each worked around that by generating throwaway
+    /// copies of the VI under test with the values baked into the control defaults. The typed
+    /// helper asks each control what it is (Class Name: String, Path, Digital, Boolean) and
+    /// converts before setting. Measured on one control of each type: path, DBL, I32 and boolean
+    /// all set correctly, the I32 from a DBL variant, which is why numerics need one case rather
+    /// than one per representation.
+    /// </summary>
+    internal const string HelperAixmlFileName = "lvai_run_and_read_typed.xml";
+
+    /// <summary>
+    /// The string-only predecessor. Still shipped and still reachable through helperAixmlPath,
+    /// because it is the fallback if the typed helper ever refuses to generate on a station.
+    /// </summary>
+    internal const string LegacyHelperAixmlFileName = "lvai_run_and_read.xml";
 
     [McpServerTool(Name = "lvai_run_vi_and_read_values", Destructive = true, OpenWorld = true,
                    Title = "Run a VI and read every control and indicator value back")]
@@ -41,18 +58,28 @@ internal sealed class RunTools(LvaiConnection connection)
         helper reads them through VI Server and flattens them to XML before they cross back.
         Values are returned per control name with a type and, for scalars, a plain text value;
         compound values keep their flattened XML.
-        The limit is on the way IN, not out: inputs still cross as STRINGS, so only string
-        controls can be set - take numbers and paths in as strings and convert them on the
-        diagram. A newline in a name or value is rejected, because the helper's wire format
-        separates them by newlines.
+        INPUTS ARE STILL WRITTEN AS TEXT, BUT THEY ARE NO LONGER LIMITED TO STRING CONTROLS.
+        The helper reads the target's panel, asks each named control what it is, and converts
+        before setting - so a path, a double, an integer and a boolean can all be set by passing
+        their text ("C:\\data\\in.csv", "12.5", "42", "true"). Measured 2026-09-16 on one control
+        of each type. ARRAY AND CLUSTER CONTROLS STILL CANNOT BE SET: there is no general
+        text-to-composite conversion, they fall through to the string case, and the call then
+        fails rather than silently leaving them at their defaults.
+        A newline in a name or value is rejected, because the helper's wire format separates
+        them by newlines.
+        A control name that matches nothing on the target's panel is Error 1055 and the target
+        does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
         Reading is done through a VI REFERENCE, which is released afterwards, so this does not
         burn the target's path for a later lvai_convert_aixml_to_vi.
         """)]
     public async Task<string> RunViAndReadValuesAsync(
         [Description(@"Absolute path to the .vi to run")] string viPath,
         [Description("""
-            Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv"}. Keys are
-            control labels. String controls only. Omit for a VI that needs no inputs.
+            Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv","count":"42"}.
+            Keys are control labels, values are always TEXT - the helper converts each one to
+            whatever type the named control actually is. String, path, numeric and boolean
+            controls all work; array and cluster controls do not. Omit for a VI that needs no
+            inputs.
             """)]
         string? inputsJson = null,
         [Description("""
@@ -204,6 +231,9 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["valueCount"] = JsonValue.Create(values.Count);
             payload["valuesXml"] = keepRaw ? JsonValue.Create(valuesXml) : null;
             payload["helperErrorXml"] = JsonValue.Create(errorXml);
+            var helperCode = HelperErrorCode(errorXml);
+            payload["helperErrorCode"] = helperCode is { } hc ? JsonValue.Create(hc) : null;
+            payload["helperFailed"] = JsonValue.Create(helperCode is not null and not 0);
             payload["helperViPath"] = JsonValue.Create(helperVi);
             payload["helperAixmlPath"] = JsonValue.Create(Path.GetFullPath(aixml));
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
@@ -212,12 +242,22 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["note"] = JsonValue.Create(
-                "errorCode here is the HELPER's. A target VI that itself reported an error " +
-                "shows that in its own error out under values - read it there, not from " +
-                "errorCode." +
+                "errorCode here is RunVIAsTopLevel's, NOT the helper's - read helperErrorCode " +
+                "for that, and helperFailed when you want one flag. A target VI that itself " +
+                "reported an error shows that in its own error out under values." +
+                (helperCode is not null and not 0
+                    ? $" helperFailed is TRUE ({helperCode}): the helper stopped before the " +
+                      "target ran, so `values` is empty and nothing was set. Error 1055 here " +
+                      "means a control name matched nothing on the target's panel."
+                    : "") +
                 (timed
                     ? $" These values are a SNAPSHOT taken {runForMs} ms after the VI started, and " +
-                      "the VI was then ABORTED - no cleanup on its diagram ran."
+                      "the VI was then ABORTED - no cleanup on its diagram ran." +
+                      (inputs.Count > 0
+                          ? " AND THE TIMED HELPER STILL SETS STRINGS ONLY - it has not been given " +
+                            "the typed setter, so a path, numeric or boolean control named here " +
+                            "keeps its own default instead."
+                          : "")
                     : ""));
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
@@ -313,5 +353,22 @@ internal sealed class RunTools(LvaiConnection connection)
     /// </summary>
     private static string DefaultHelperViPath(bool timed = false) =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
-            timed ? "lvai_run_for_ms.vi" : "lvai_run_and_read.vi");
+            timed ? "lvai_run_for_ms.vi" : "lvai_run_and_read_typed.vi");
+
+    /// <summary>
+    /// The helper's OWN error code, read out of the error cluster it flattens to XML.
+    /// Worth surfacing separately because `errorCode` on the answer is RunVIAsTopLevel's, and
+    /// that is 0 for a run the helper refused: measured 2026-09-16, a control name that matches
+    /// nothing on the target's panel gives the typed helper Error 1055 from its Class Name
+    /// property node, the target never runs, and the only tells were an empty `values` and a
+    /// number buried in `helperErrorXml`. A caller reading errorCode alone would call that a
+    /// success.
+    /// </summary>
+    internal static int? HelperErrorCode(string? errorXml)
+    {
+        if (errorXml is not { Length: > 0 }) return null;
+        var match = Regex.Match(errorXml,
+            @"<I32>\s*<Name>code</Name>\s*<Val>(-?\d+)</Val>", RegexOptions.IgnoreCase);
+        return match.Success && int.TryParse(match.Groups[1].Value, out var code) ? code : null;
+    }
 }

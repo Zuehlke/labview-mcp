@@ -687,6 +687,83 @@ public sealed class AixmlCheckTests
                               f => f.Code == "outputTerminalDefaultsToRequired");
     }
 
+    // ---- the flag that is PRESENT and still wrong -------------------------------------------
+    //
+    // The checks above all turn on a MISSING `connection`, and the method returned early on any
+    // attribute at all - so a flag that says the wrong thing outright travelled through untouched.
+    // `scripts/aixml_lint.py` had caught the required-output case since 2026-09-15 and the C# side
+    // had not: two implementations of one rule, drifted, which is the failure this repository
+    // already paid for with `SafeUidBase`.
+
+    private const string FlagsPresentButWrong = """
+        <VI _name="Probe.vi" description="d">
+          <Control _name="error in" conIdx="11" connection="optional" outputs="value:4400.value" type="cluster{bool.status,int32.code,string.source}" uid="4400" uid_parent="root" value="[false,0,]"/>
+          <Indicator _name="error out" conIdx="15" connection="required" inputs="value:4400.value" type="cluster{bool.status,int32.code,string.source}" uid="4410" uid_parent="root" value="[false,0,]"/>
+          <Control _name="ok error in" conIdx="9" connection="recommended" outputs="value:4420.value" type="cluster{bool.status,int32.code,string.source}" uid="4420" uid_parent="root" value="[false,0,]"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void AnOutputWrittenRequiredONPURPOSEIsStillAWarning()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(FlagsPresentButWrong),
+                                    f => f.Code == "outputTerminalIsRequired");
+
+        Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
+        Assert.Equal("4410", finding.Uid);
+        Assert.Contains("1003", finding.Message);
+    }
+
+    [Fact]
+    public void ErrorInThatIsNotRecommendedIsAWarning()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(FlagsPresentButWrong),
+                                    f => f.Code == "errorInNotRecommended");
+
+        Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
+        Assert.Equal("4400", finding.Uid);
+        // The message names the flag it found, because the attribute is present and the reader is
+        // looking at a pane that passed every other check.
+        Assert.Contains("optional", finding.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// THE CONTROL ARM. An `error in` that already says `recommended` must produce nothing - a
+    /// check that fired on every error terminal would pass the two tests above and be useless.
+    /// </summary>
+    [Fact]
+    public void AnErrorInThatAlreadySaysRecommendedIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(FlagsPresentButWrong), f => f.Uid == "4420");
+
+    /// <summary>
+    /// Narrow on purpose: `error in (no error)` is NI's own label on a CALLEE we do not own, and
+    /// CLAUDE.md's rule governs the terminal we name. Policing somebody else's pane would be the
+    /// damaging half of an otherwise harmless sweep.
+    /// </summary>
+    [Fact]
+    public void TheNIErrorLabelIsNotPoliced() =>
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="X.vi" description="d">
+              <Control _name="error in (no error)" conIdx="11" connection="optional" outputs="value:4500.value" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+            </VI>
+            """), f => f.Code == "errorInNotRecommended");
+
+    [Fact]
+    public void BothWrongFlagsAreREPAIRED_toRecommended()
+    {
+        var fixedUp = AixmlCheck.Fix(FlagsPresentButWrong);
+
+        Assert.Single(fixedUp.Repairs, r => r.Code == "outputTerminalIsRequired");
+        Assert.Single(fixedUp.Repairs, r => r.Code == "errorInNotRecommended");
+
+        Assert.DoesNotContain("connection=\"optional\"", fixedUp.Xml, StringComparison.Ordinal);
+        Assert.DoesNotContain("connection=\"required\"", fixedUp.Xml, StringComparison.Ordinal);
+
+        // Repaired means gone from what is left, or the caller sees the same fault twice.
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "outputTerminalIsRequired");
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "errorInNotRecommended");
+    }
+
     [Fact]
     public void ARequiredINPUTIsNotRepairedAway()
     {

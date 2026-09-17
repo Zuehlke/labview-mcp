@@ -386,7 +386,7 @@ through the project to give it a window, then `lvai_close_vi`, which then answer
 and the regeneration went through. The second is the one to use for an ordinary regeneration; the
 first is the only one for a name burned by a failure.
 
-### 12c. AN EVENT DATA NODE'S FIELDS CANNOT FEED A SUBVI CALL — and the control's own terminal is better
+### 12c. AN EVENT DATA NODE'S FIELDS CANNOT FEED A SUBVI CALL — and for a FRONT-PANEL event the control's own terminal replaces it
 
 `ConvertAIXMLToVI` drops an `Event Data Node`'s field selection, and the repair route
 (`lvai_set_event_data_fields`) wants a labelled placeholder constant on a **prim** input. Wiring
@@ -407,7 +407,26 @@ The one thing this gives up is `OldVal`. A helper that wanted *which button chan
 that reports *which button is TRUE*, which is correct for latched buttons and not for switches.
 That is a design consequence, so say it in the VI's own description rather than leaving it implied.
 
-### 12d. THE AGENT ROSTER GAP: `labview-vi-generator` CANNOT REACH `lvai_placeholder_subvi`
+**AND THE SHORTCUT STOPS AT THE FRONT PANEL — the user's correction of 2026-09-16.** This section
+was written as a general statement about event structures, and it is not one. The control terminal
+only carries the event's value because there IS a control; **a USER EVENT has none.** Its payload
+exists solely in the `Event Data Node`, so for a user event the route this section calls "the repair
+route" is the only route there is: a labelled placeholder constant wired into a **prim** input, plus
+`lvai_set_event_data_fields` as a third build step.
+
+So the two halves are:
+
+| frame kind | how the handler gets the data |
+|---|---|
+| front-panel event (`"Control": Value Change`) | the control's own terminal inside the frame — no data node, no third build step |
+| **user event** (`<RegRef.Field>: User Event`) | placeholder constant on a prim input + `lvai_set_event_data_fields` — **the terminal route does not exist** |
+
+The two frames look alike on a diagram, which is why the boundary has to be written down rather than
+left to be inferred. Generalising the shortcut would have produced exactly the failure
+`CLAUDE.md` already records for user events: a handler that reads the panel instead of the event,
+and therefore reads what the panel holds at that instant rather than what the event carried.
+
+### 12d. THE AGENT ROSTER GAP: `labview-vi-generator` COULD NOT REACH `lvai_placeholder_subvi` — FIXED 2026-09-16
 
 An agent told to author a `Call` to a sibling project VI answered `No such tool available` for
 `lvai_placeholder_subvi` and **hand-built a socket VI from AIXML that cloned the subject's pane**,
@@ -422,6 +441,20 @@ missing capability**, which is the same shape as an embedded document nothing se
 used here was to have the agents author the `Call` and STOP, and to do every swap centrally
 afterwards — which is worth doing anyway when several agents share one LabVIEW, because a swap needs
 an active project and agents cannot share one.
+
+**Closed the same day.** `lvai_placeholder_subvi` and `lvai_swap_subvis` are now in the `tools:`
+roster of `labview-vi-generator`, `labview-vi-editor` and `labview-vitester-unit-test` — the three
+that author a `Call` to project code and lacked them; the other unit-test agents and
+`labview-class-generator` already had the pair. `labview-doc-generator` and `labview-dqmh-module`
+are deliberately left without, because neither authors a call to project-local code. A stale
+duplicate entry in `labview-class-generator`'s list was removed in the same pass. **The
+generate-then-swap protocol is now a written rule rather than a workaround**, in `CLAUDE.md` beside
+"ONE AGENT, ONE OUTPUT DIRECTORY" and in an identical block in all eight agent definitions.
+
+**The acceptance test is a restart, not this session.** Agent definitions are read at SESSION
+START, so an agent spawned before the edit still carries the old roster — the same shape as the
+served-schema finding in §7. Until a client restart, the correct claim is that the files are right
+and the wiring is untested.
 
 ### 12e. DIAGRAM SIZE, SECOND DATA POINT: WIDTH STILL FOLLOWS THE CHAIN
 
@@ -450,3 +483,262 @@ text.
 One practical note: this station has no PIL, so the crop was done with `zlib` and `struct` out of the
 standard library — PNG colour type 3 (palette), unfilter, crop, nearest-neighbour upscale, re-emit.
 About 25 lines, and it is the only way the last word was ever going to be read.
+
+## 13. THE THIRD COLD BUILD, 2026-09-16 — what the previous day's fixes were worth
+
+The same exam rebuilt a third time, into `C:\Temp\CLD-ATM-3`, in the first session after the
+agent-roster and typed-input changes of §12d landed. Agent definitions are read at SESSION START and
+a client fetches the tool schema once, so this run is their acceptance test as much as a build.
+
+**The design was not re-derived.** The four leaf agents built their ten subVIs from scratch, but the
+three VIs the orchestrator owns - `Apply ATM Transaction`, `Handle ATM Action` and the producer/
+consumer main VI - were generated from run 2's AIXML rather than re-authored. Their cost is
+therefore not comparable and is excluded from every figure below.
+
+### 13a. THE TYPED-INPUT FIX PAID OFF EXACTLY WHERE IT APPLIES, AND NOWHERE ELSE
+
+Four agents, same four scopes as run 2, measured end to end:
+
+| agent scope | run 2 | run 3 | tool calls |
+|---|---|---|---|
+| messages + menus | 416 s | **219 s** | 34 → 22 |
+| decision tables | 632 s | **306 s** | 63 → 34 |
+| file layer | 493 s | **493 s** | 40 → 46 |
+| control references | 408 s (3 VIs) | 503 s (**5** VIs) | 37 → 56 |
+
+The two that halved are the two whose subjects take only strings, numbers and paths: both drove the
+VI under test DIRECTLY, where run 2 had to generate throwaway copies with the values baked into the
+control defaults. The file-layer agent did not move at all, and its own report says why - `records`
+is a **2D array control**, which the typed setter still cannot reach, so it built scratch copies
+exactly as before. The control-reference agent was given five VIs instead of three; per VI it went
+from 136 s to 101 s.
+
+**Stopping after the first two would have produced "a factor of two" and that would have been
+wrong.** The honest statement is narrower and more useful: the fix removes the workaround for path,
+numeric and boolean inputs, and changes nothing for array or cluster inputs — which is precisely
+what its own limits say, now confirmed from the cost side rather than from a probe.
+
+### 13b. THE ROSTER FIX IS ACCEPTED
+
+The control-reference agent called `lvai_placeholder_subvi` and reported a socket
+(`LVMCP Stub 7433359d5c.vi`) for the orchestrator to swap. In run 2 the same agent answered
+`No such tool available` and **hand-built a socket VI from AIXML**. Nothing else about the task
+changed, so this is the roster entry and not the prompt.
+
+### 13c. `Bundle` DOES NOT EXPAND FROM AIXML — a second node with fixed arity
+
+Measured by an agent building a three-element cluster: `Bundle` with three repeated `element:`
+inputs produced a **two**-element cluster and validation refused the document. The working shape is
+`Bundle By Name`, fields first and `input cluster` last, seeded from an empty cluster constant of
+the target type.
+
+This is the same class of trap as `Format Into String`, whose arity §8 of the AIXML reference
+already records as fixed at one `input 1`. **The generalisation to carry is that "expandable in the
+IDE" does not imply "expandable from AIXML"**, and the failure is a wrong-sized value rather than an
+error naming the node — the refusal that follows names the *wire*, one step downstream.
+
+### 13d. THE `error in` FLAG IS NOT PINNED BY ANY RULE, AND AGENTS DIVERGE ON IT
+
+Of the ten agent-built subVIs, the four from two agents declared `error in` as `recommended` and the
+six from the other two declared it **`optional`** — one agent also marked `button index` optional.
+Every pane passed `lvai_connector_pane` with 0 violations, and `lvai_check_aixml` is silent, because
+the house rule requires `connection=` to be PRESENT on a `conIdx` terminal and only repairs a
+missing one on an **output**. Both values behave identically at the call site.
+
+**The visible consequence is the placeholder cache.** `PlaceholderTools.Signature` includes the
+connection flag, so `error in: optional` and `error in: recommended` hash differently: five of the
+eleven sockets this run were fresh clones of a pane that already had one, and the orchestrator's
+carried-over AIXML had to be re-pointed at the new names. Harmless here, and it would not stay
+harmless in a build that reused stubs deliberately.
+
+Not fixed in this run — normalising it means regenerating seven VIs for a cosmetic flag, which the
+"do not regenerate for a comment" rule argues against just as strongly. The cheap repair is one
+sentence in the error-cluster rule naming `recommended` for `error in`, so that agents stop choosing.
+
+### 13e. A SWAP CAN REPORT `Error 1055` FOR WORK IT ALREADY DID
+
+One of five swaps answered `ok: false`, `errorCode 1055`, `errorKind: noActiveProject`,
+`nodesSwapped: 0` — with a project demonstrably active, because the four calls issued alongside it
+succeeded. Re-running it alone gave the identical answer. The tell is in the same payload:
+`diagramSubVis` listed **`Get Controls By Label.vi`**, the real target, so the swap had landed and
+saved; the 1055 comes from the traversal that runs afterwards, on a diagram with no socket left to
+find. `lvai_exec_state` on the VI answered 1.
+
+So the rule this file already states applied cleanly: **ask the file, not the tool's verdict.**
+`socketsNotOnDiagram` naming a socket while `diagramSubVis` names the real target is the signature
+of a swap that succeeded, not one that failed.
+
+### 13f. THE `error in` FLAG IS ENFORCED NOW — and the Python half shipped DEAD for one revision
+
+§13d recorded the divergence and proposed one sentence in `CLAUDE.md`. **That would not have fixed
+it**, and the reason is already in this repository's own notes: an agent's system prompt is its own
+definition, and `CLAUDE.md` is not in it. The four agents diverged precisely because the rule they
+were meant to follow is invisible to them. So the fix went where every route passes:
+
+| | |
+|---|---|
+| `lvai_check_aixml` | `errorInNotRecommended`, Warning, and `fix: true` repairs it |
+| `scripts/aixml_lint.py` | `conn-error-in-not-recommended`, warning |
+| `CLAUDE.md` | one bullet, for the direct route that spawns no agent |
+
+**A second, larger gap fell out of reading the code for it.** `CheckTerminalWireRules` returned early
+on *any* `connection` attribute, so it only ever caught an OMITTED one — an output written
+`connection="required"` **on purpose** travelled through untouched. `scripts/aixml_lint.py` had
+caught exactly that since 2026-09-15 (`conn-required-output`). So the two implementations of one
+rule had drifted again, in the same direction and for the same reason as `SafeUidBase`: nobody
+compared them. The C# side now has `outputTerminalIsRequired`, warned and repaired.
+
+**AND THE NEW LINT RULE SHIPPED DEAD, which is the part worth keeping.** It compared
+`e.label() == "error in"`, and `label()` renders as `Control 'error in'` — so it matched nothing,
+ever. Everything around it was green: five new C# tests passed including a control arm, the C# twin
+worked, and `aixml_lint.py` over all 45 shipped scripts was unchanged. **Nothing exercised the
+Python rule at all**, because no file under `scripts/` carries the fault it looks for, and the
+repository has no unit test for the lint's rules — only a pass that lints the folder.
+
+What caught it was running it against a **real artefact of the build it came from**: the placeholder
+stub `lvai_placeholder_subvi` had cloned from `Plan ATM Response.vi`'s actual pane, carrying
+`error in: optional`. The lint said `[clean]`. Fixed to compare `e.name`, it warns, and the stub
+cloned from a `recommended` pane stays clean — a control arm made of two real files rather than two
+fixtures.
+
+This is "a tool tested against a plausible fixture is not tested" one step further on: **the Python
+rule was not tested against anything**, and its C# twin being green is what made that invisible.
+The Python half still has no unit test — verified here by real-artefact runs, and said plainly
+rather than implied.
+
+## 14. THE FOURTH COLD BUILD, 2026-09-17 — what a documented design is worth
+
+The same exam rebuilt into `C:\Temp\CLD-ATM-4`, agent-driven, with the notes above available and
+nothing else carried over: no `.vi`, no `.lvproj` and no AIXML file from any earlier run was
+copied. What *was* reused is the DESIGN — the 14-VI split and every connector pane — and
+harvesting it is the single largest change in the numbers.
+
+| phase | wall | calls | output tok | new input tok |
+|---|---|---|---|---|
+| P0 spec reading (PDF to text) | 1:01 | 9 | 3 091 | 23 345 |
+| P1 design + contract harvest | 3:35 | 11 | 15 745 | 35 754 |
+| P2 build, 14 VIs, 4 agents in parallel | 10:50 | 24 | 56 534 | 98 680 |
+| P3 integration, 11 swaps, smoke run | 2:44 | 21 | 8 779 | 23 951 |
+| P4 verification (Caraya agent + one correction) | 39:41 | 43 | 20 545 | 36 335 |
+| **orchestrator total** | **57:51** | **108** | **104 694** | **218 065** |
+
+Sub-agents, all concurrent inside their phase: presentation 204 618 tok / 33 calls / 255 s,
+decision 210 397 / 33 / 326 s, control references 209 707 / 40 / 419 s, file layer 249 563 / 55 /
+617 s — **874 285 tokens and 1 617 s of agent time inside 650 s of wall clock**. The Caraya agent
+cost 475 497 tokens over 195 calls in P4.
+
+**Application complete and executable in 18:10**, against run 1's 114:34 (42:57 active). The suite
+is `55 assertions, 0 failures, 0 errors` over 13 test VIs, with a negative control run and
+reverted.
+
+### 14a. THE CONTRACT HARVEST IS TWO CALLS AND IT REPLACES A DESIGN PHASE
+
+`lvai_convert_vis_to_aixml` over the previous build's 14 VIs answered in **400 ms**, and one
+`grep` for the `Control`/`Indicator` elements carrying a `conIdx` printed every connector pane with
+its type literals, `connection` flags and terminal descriptions — about 90 lines. That is the whole
+interface contract of the application, with no implementation read and no design re-derived.
+
+It is worth naming as a move because the obvious alternative is worse in two ways.
+`lvai_vi_terminals` is the tool that looks right for it and **cannot do it**: it declares `viPaths`
+(plural) but *requires* `viPath`, and given both it answers for `viPath` alone — 14 paths in, 1
+answered, no note that the other 13 were dropped. Same shape as the `runForMs` finding of
+2026-09-16: **a parameter that one mode ignores must not silently defeat that mode.** And even if
+it worked, its output carries terminal names and types but not the `value` literals, which the
+batch export does.
+
+### 14b. THE PANE SIGNATURES CAME BACK IDENTICAL — 9 OF 10 PLACEHOLDERS REUSED
+
+Four agents, working from contracts alone and never seeing each other's or the previous build's
+code, produced connector panes whose `PlaceholderTools.Signature` matched a stub already in
+`user.lib\LV_MCP` in **9 of 10** cases. The tenth, `Resolve ATM Action.vi`, differed because run 3
+had authored `error in` as `optional` and the `errorInNotRecommended` check added on 2026-09-16 now
+forces `recommended`.
+
+That is the check of section 13f measured from the cost side: 13d recorded four agents diverging on
+that flag and five of eleven sockets being cloned afresh for panes that already had one. With the
+rule enforced in `lvai_check_aixml` rather than only in `CLAUDE.md`, the divergence is gone —
+**because an agent's system prompt is its own definition, and a check is in every route.**
+
+### 14c. FIRST-TRY GENERATION ON BOTH HAND-AUTHORED VIs
+
+`Handle ATM Action.vi` (11 kB of AIXML, a 2-frame case over 10 tunnels, three placeholder calls):
+validate + convert + pane in **800 ms**, `paneViolations: 0`, no retry.
+
+`ATM Main.vi` (18 kB, two While loops, an Event Structure with four frames, three shift registers,
+two nested Case structures, seven placeholder calls): `lvai_validate_aixml` returned **only** the
+four expected pre-registration complaints — three `Event Data Node: Cluster is invalid or empty`
+and one `Event Structure: One or more event cases have no events defined` — and nothing else.
+`lvai_generate_vi_with_events` then registered 4 of 4 and answered `execState 1`.
+
+Run 1 needed 3 validate/fix rounds on its main VI and run 2 met the `selectout` trap on an event
+frame (12a). Nothing new was learned here, which is the point: the traps in 2, 3, 4, 12a and 12c
+were all avoided by reading them, and each had cost a round trip when it was first met.
+
+### 14d. THE DEPOSIT PROMPT IS TWO LINES, AND THE TEST BRIEF IS WHERE THAT WENT WRONG
+
+The suite came back `2 failures`, both on the deposit and withdrawal prompt texts. The subject was
+right and the **expectation written into the test agent's brief was wrong**: the exam's message
+table reads, verbatim,
+
+```
+Deposit Message      Please enter amount to deposit and
+                     press Enter (E) when done
+```
+
+— the break falls after `and`, and the continuation is a lower-case `press`, unlike the Welcome
+message's capitalised `Press Enter (E) when done.` The orchestrator had flattened both to one line
+when writing the test brief, while the design brief the *generator* agents read carried the break
+correctly.
+
+Two things worth keeping. **The discriminator was the PDF, not either agent's reasoning** — one
+`extract_text()` on page 6 settled it in one call. And **the same specification was paraphrased
+into two agent prompts and they disagreed**, which is the multi-agent version of "two
+implementations of one rule drift": the message texts should have been quoted once, from the brief
+file both sides read, rather than retyped for the test side.
+
+### 14e. A FAILED CARAYA ASSERT ERRORS EVERY LATER ASSERT IN THE SAME VI
+
+Found by the test agent in its own first build, and general. Chaining each assert's `error in` to
+the previous assert's `error out` is the natural-looking shape, and a **failed** assert emits
+error 1 — so every later assert in that VI reports as an *error* rather than running. Its first run
+read `1 failure, 5 errors` and five real assertions had silently not executed; one of them was the
+second prompt mismatch, which only appeared after the fix.
+
+The shape that works: every assert takes `error in` from `Define Test`, and one `Merge Errors`
+collects them. The subject and file calls keep their own chain, which is what orders
+seed to act to read.
+
+### 14f. DIAGRAM SIZE, THIRD DATA POINT — WIDTH STILL FOLLOWS THE CHAIN
+
+| build | top-level diagram |
+|---|---|
+| run 1, after factoring | 2665 x 1094 |
+| run 2, designed for it | 2865 x 856 |
+| **run 4** | **2639 x 921** |
+
+Still over the 1920 guideline in width and comfortably under it in height, on a build whose
+consumer loop is the same twelve-stage pipeline. Section 11's finding holds at a third point:
+factoring buys height, width is the longest dependency chain, and AIXML carries no coordinates so
+the pipeline cannot be wrapped onto a second row.
+
+### 14g. THREE SMALLER THINGS
+
+- **`lvai_check_aixml`'s parameter is `aiXmlFilePath`.** `aixmlPath` is refused rather than folded
+  — the near-miss fold normalises `_`, `-` and case, and that pair is past it. One round trip.
+- **A repeated socket still costs one `lvai_swap_subvis` call per node.** `ATM Main.vi` calls
+  `Get Pressed Button Index.vi` and `Set Controls Disabled.vi` twice each, so the seven-entry swap
+  answered `socketsLeft: 2` and a second call finished it — exactly as `docs/cold-build-kilnrig.md`
+  section 2 measured, and still two avoidable calls.
+- **The controller rewrites `ATM accounts.txt` with CRLF** where the supplied file uses LF
+  (107 to 111 bytes). `Array To Spreadsheet String` emits the platform's line ending. The data reads back
+  correctly either way; flagged rather than changed, because the exam says nothing about it.
+
+### 14h. THE SUPPLIED PANEL, UNCHANGED AFTER FOUR RUNS
+
+Section 9's gap is exactly where it was. AIXML writes a VI whole, so the exam's own
+`Automatic Teller Machine (ATM).vi` cannot be given a generated diagram and keep its artwork. The
+deliverable ships `ATM Main.vi` beside it, carrying the same eight panel objects under the same
+names and types, plus a four-step IDE merge written into
+`README - assumptions and structure.md`. **This is the only part of the exam the toolchain cannot
+finish**, and it is worth stating as a stable limit rather than a per-run surprise: the route that
+would close it is VI Server diagram scripting, which is unmeasured here.
