@@ -1,15 +1,48 @@
-<VI _name="lvai_add_one_to_library.vi" description="Adds ONE existing file to an existing library through NI's own AddItem - the gesture that relinks\2C which hand-editing NI.Lib.ContainingLib does not. Type is an input\2C so this serves LVClass and VI alike.">
-  <FreeLabel comment="Open the library\2C add one item\2C save all" uid="4200" uid_parent="root"/>
+<VI _name="lvai_add_one_to_library.vi" description="Adds ONE existing file to an existing library through NI's own AddItem - the gesture that relinks\2C which hand-editing NI.Lib.ContainingLib does not. Type is an input\2C so this serves LVClass and VI alike. Given a folder name it adds INTO that virtual folder\2C the way NI's own Message Maker places a message class: AddItem is invoked on the FOLDER's project item rather than on the library. An unknown or empty folder name falls back to the library root\2C which is what NI does too.">
+  <FreeLabel comment="Open\2C find the folder\2C add\2C save all" uid="4200" uid_parent="root"/>
   <Control _name="library path" type="path" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
   <Control _name="item name" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
   <Control _name="item path" type="path" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
   <Control _name="item type" type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.value"/>
-  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]" outputs="value:4205.value"/>
-  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4205.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Control _name="folder" type="string" uid="4205" uid_parent="root" value="" outputs="value:4205.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="[false,0,]" outputs="value:4206.value"/>
+  <Constant _name="Folder Type" type="string" uid="4207" uid_parent="root" value="Folder" outputs="value:4207.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4206.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
   <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4215.app,reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
   <Node _name="Invoke Node" target="Library.Open" type="{LV.Application}" inputs="reference:4215.app,error in (no error):4215.err,Path:4201.value" outputs="Library.Open:4220.lib,reference out:,error out:4220.err" uid="4220" uid_parent="root"/>
-  <Node _name="Invoke Node" target="AddItem" type="{LV.Library}" inputs="reference:4220.lib,error in (no error):4220.err,Name:4202.value,Path:4203.value,Type:4204.value" outputs="reference out:4230.ref,error out:4230.err,AddItem:" uid="4230" uid_parent="root"/>
-  <Call target="Edit LVLibs.lvlib\3ASave All This Library.vi" inputs="Library in:4230.ref,Save Only Modified VIs and Libraries? (F):,error in (no error):4230.err" outputs="Library out:4240.lib,error out:4240.err" uid="4240" uid_parent="root"/>
-  <Node _name="Close Reference" inputs="reference:4240.lib,error in (no error):4240.err" outputs="error out:4250.err" uid="4250" uid_parent="root"/>
-  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4260" uid_parent="root" value="[false,0,]" inputs="value:4250.err"/>
+  <Node _name="Invoke Node" target="Get All Descendents" type="{LV.Library}" inputs="reference:4220.lib,error in (no error):4220.err,Type:4207.value,Exclude Dependencies:,ExcludeBuilds:,ExcludeTargets:" outputs="All Descendents:4230.desc,reference out:4230.ref,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Node _name="To Upper Case" inputs="string:4205.value" outputs="all upper case string:4235.wanted" uid="4235" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4230.desc" mode="index" outputs="value:4241.item" uid="4241" uid_parent="4240"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.ProjectItem}" inputs="reference:4241.item,error in (no error):" outputs="Name:4242.name,reference out:,error out:" uid="4242" uid_parent="4240"/>
+    <Node _name="To Upper Case" inputs="string:4242.name" outputs="all upper case string:4243.upper" uid="4243" uid_parent="4240"/>
+    <Tunnel _id="Out1" inputs="value:4243.upper" mode="index" outputs="value:4244.names" uid="4244" uid_parent="4240"/>
+  </Structure>
+  <Node _name="Search 1D Array" inputs="1D array:4244.names,element:4235.wanted,start index (0):" outputs="index of element:4250.idx" uid="4250" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4250.idx" uid="4260" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4230.desc" uid="4261" uid_parent="4260"/>
+    <Tunnel _id="In2" inputs="value:4230.ref" uid="4262" uid_parent="4260"/>
+    <CaseFrame selector="-1" selectout="" uid="4270" uid_parent="4260">
+      <FreeLabel comment="No such folder - fall back to the root" uid="4273" uid_parent="4270"/>
+      <Tunnel _id="In1" outputs="value:4271.desc" uid="4271" uid_parent="4270"/>
+      <Tunnel _id="In2" outputs="value:4272.lib" uid="4272" uid_parent="4270"/>
+      <Tunnel _id="Out1" inputs="value:4272.lib" uid="4274" uid_parent="4270"/>
+      <Tunnel _id="Out2" inputs="value:4271.desc" uid="4275" uid_parent="4270"/>
+    </CaseFrame>
+    <CaseFrame selector="0\2C Default" selectout="4280.value" uid="4280" uid_parent="4260">
+      <Tunnel _id="In1" outputs="value:4281.desc" uid="4281" uid_parent="4280"/>
+      <Tunnel _id="In2" outputs="value:4282.lib" uid="4282" uid_parent="4280"/>
+      <Node _name="Delete From Array" inputs="array:4281.desc,length:,index:4280.value" outputs="array w/ subset deleted:4283.rest,deleted portion:4283.folder" uid="4283" uid_parent="4280"/>
+      <Tunnel _id="Out1" inputs="value:4283.folder" uid="4284" uid_parent="4280"/>
+      <Tunnel _id="Out2" inputs="value:4283.rest" uid="4285" uid_parent="4280"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4290.target" uid="4290" uid_parent="4260"/>
+    <Tunnel _id="Out2" outputs="value:4291.rest" uid="4291" uid_parent="4260"/>
+  </Structure>
+  <Node _name="Invoke Node" target="AddItem" type="{LV.ProjectItem}" inputs="reference:4290.target,error in (no error):4230.err,Name:4202.value,Path:4203.value,Type:4204.value" outputs="reference out:4300.ref,error out:4300.err,AddItem:" uid="4300" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4291.rest,error in (no error):4300.err" outputs="error out:4310.err" uid="4310" uid_parent="root"/>
+  <Call target="Edit LVLibs.lvlib\3ASave All This Library.vi" inputs="Library in:4220.lib,Save Only Modified VIs and Libraries? (F):,error in (no error):4310.err" outputs="Library out:4320.lib,error out:4320.err" uid="4320" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4320.lib,error in (no error):4320.err" outputs="error out:4330.err" uid="4330" uid_parent="root"/>
+  <Indicator _name="folder index" type="int32" uid="4340" uid_parent="root" value="0" inputs="value:4250.idx"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4341" uid_parent="root" value="[false,0,]" inputs="value:4330.err"/>
 </VI>

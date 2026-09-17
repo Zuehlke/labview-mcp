@@ -59,6 +59,11 @@ internal sealed class LibraryTools(LvaiConnection connection)
         that entry once it belongs through a library - the answer names it under
         `projectEntriesToRemove`, and you remove it with the project CLOSED. Doing both in one call
         is not possible: AddItem wants the project open and a surviving .lvproj edit wants it shut.
+        A `folder` PUTS THE ITEM INSIDE A VIRTUAL FOLDER, the way NI's own Message Maker places a
+        message class: AddItem is invoked on the FOLDER's project item, not on the library.
+        NI FALLS BACK TO THE ROOT IN SILENCE when the folder does not exist, so a folder that is
+        not in the library is REFUSED here before LabVIEW is touched, naming the ones that are -
+        and `verify.placedIn` says where each item really landed.
         ONE HELPER RUN PER ITEM, all inside this one call, so a five-item library costs one round
         trip rather than five.
         VERIFIED FROM THE SAVED .lvlib, which is re-read afterwards - `verify.items` is what is on
@@ -76,6 +81,13 @@ internal sealed class LibraryTools(LvaiConnection connection)
             item LabVIEW then cannot bind.
             """)]
         string itemsJson,
+        [Description("""
+            Virtual folder inside the library to add into, e.g. "Messages for this Actor". Omit
+            for the library root. It must already exist in the .lvlib - a name that is not there
+            is refused rather than quietly landing at the root, which is what NI's own AddItem
+            does. The whole call uses one folder; add to two folders with two calls.
+            """)]
+        string? folder = null,
         [Description("""
             The .lvproj to open first. Without an active project every AddItem answers Error 1055.
             Omit only when you have opened one yourself. This file is never EDITED here.
@@ -145,6 +157,19 @@ internal sealed class LibraryTools(LvaiConnection connection)
                     $"'{library}' could not be read as XML: {e.Message}", new { libraryPath = library });
             }
 
+            if (folder is { Length: > 0 } && !existing.HasFolder(folder))
+                return Json.Error("folderNotInLibrary",
+                    $"'{library}' has no virtual folder called '{folder}'. NI's AddItem would " +
+                    "silently put the item at the library ROOT instead, which is the one outcome " +
+                    "nobody would notice, so this is refused here.",
+                    new JsonObject
+                    {
+                        ["libraryPath"] = library,
+                        ["folder"] = folder,
+                        ["foldersInLibrary"] =
+                            new JsonArray([.. existing.Folders.Select(f => (JsonNode)f)]),
+                    });
+
             foreach (var item in items)
                 if (existing.Holds(item))
                     return Json.Error("itemAlreadyInLibrary",
@@ -171,8 +196,8 @@ internal sealed class LibraryTools(LvaiConnection connection)
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
                 Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_one_to_library.vi"));
-            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } folder)
-                Directory.CreateDirectory(folder);
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder)
+                Directory.CreateDirectory(helperFolder);
 
             var steps = new JsonArray();
             var helperGenerated = false;
@@ -209,6 +234,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
                     ["item name"] = item.Name,
                     ["item path"] = item.Path,
                     ["item type"] = item.Type,
+                    ["folder"] = folder ?? "",
                 };
 
                 var answer = await new RunTools(connection).RunViAndReadValuesAsync(
@@ -251,9 +277,23 @@ internal sealed class LibraryTools(LvaiConnection connection)
             {
                 var after = ReadLibrary(library);
                 var missing = items.Where(i => !after.Holds(i)).Select(i => i.Name).ToArray();
-                verified = missing.Length == 0;
+
+                // WHERE IT LANDED, not just that it is in there. NI's AddItem falls back to the
+                // root without saying so, and the up-front guard cannot see a folder that exists
+                // but does not take the item.
+                var elsewhere = folder is { Length: > 0 }
+                    ? items.Where(i => !string.Equals(
+                            after.PlacedIn(i.Name), folder, StringComparison.OrdinalIgnoreCase))
+                        .Select(i => i.Name).ToArray()
+                    : [];
+
+                verified = missing.Length == 0 && elsewhere.Length == 0;
                 verify["items"] = new JsonArray([.. after.Names.Select(n => (JsonNode)n)]);
                 verify["missing"] = new JsonArray([.. missing.Select(n => (JsonNode)n)]);
+                verify["placedIn"] = new JsonObject([.. items.Select(i =>
+                    new KeyValuePair<string, JsonNode?>(i.Name, after.PlacedIn(i.Name)))]);
+                verify["notInRequestedFolder"] =
+                    new JsonArray([.. elsewhere.Select(n => (JsonNode)n)]);
                 verify["source"] = "the saved .lvlib, re-read as XML - no LabVIEW involved";
             }
             catch (Exception e) when (e is IOException or System.Xml.XmlException)
@@ -279,19 +319,33 @@ internal sealed class LibraryTools(LvaiConnection connection)
                       "with the project CLOSED, or LabVIEW's own save undoes the edit. Check the " +
                       "members with lvai_exec_state afterwards: library membership changes an " +
                       "item's qualified name, and that is exactly what a bad route breaks."
-                    : "Every run reported 0 but the .lvlib does not list every item asked for. " +
-                      "Treat this as a failure and read verify.missing.",
+                    : "Every run reported 0, but the .lvlib does not list every item asked for, or " +
+                      "an item did not land in the folder that was asked for. Treat this as a " +
+                      "failure and read verify.missing and verify.notInRequestedFolder.",
             });
         });
 
     private sealed record Item(string Path, string Name, string? Type);
 
-    /// <summary>What the library holds now, by name and by resolved path.</summary>
-    private sealed record Existing(IReadOnlyList<string> Names, IReadOnlySet<string> Paths)
+    /// <summary>
+    /// What the library holds now: its item names, their resolved paths, its virtual FOLDERS, and
+    /// which folder each item sits in (null for the root).
+    /// </summary>
+    private sealed record Existing(
+        IReadOnlyList<string> Names,
+        IReadOnlySet<string> Paths,
+        IReadOnlyList<string> Folders,
+        IReadOnlyDictionary<string, string?> ParentOf)
     {
         public bool Holds(Item item) =>
             Names.Any(n => string.Equals(n, item.Name, StringComparison.OrdinalIgnoreCase))
             || Paths.Contains(System.IO.Path.GetFullPath(item.Path));
+
+        public bool HasFolder(string name) =>
+            Folders.Any(f => string.Equals(f, name, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>The folder an item is in, or null for the library root.</summary>
+        public string? PlacedIn(string name) => ParentOf.GetValueOrDefault(name);
     }
 
     private static List<Item> ParseItems(string json)
@@ -344,20 +398,36 @@ internal sealed class LibraryTools(LvaiConnection connection)
 
         var names = new List<string>();
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var basis = libraryPath;
+        var folders = new List<string>();
+        var parentOf = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var element in root.Descendants("Item"))
+        // DESCENDED RATHER THAN FLATTENED, because which folder an item sits in is the whole
+        // question this tool grew a `folder` parameter for - and NI's own AddItem falls back to
+        // the root in silence, so the answer has to be able to say where the item really landed.
+        void Walk(XElement element, string? folder)
         {
-            if (element.Attribute("Type")?.Value is "Folder") continue;
-            if (element.Attribute("Name")?.Value is { Length: > 0 } name) names.Add(name);
-            if (element.Attribute("URL")?.Value is not { Length: > 0 } url) continue;
-            if (url.Contains('<')) continue;
+            foreach (var item in element.Elements("Item"))
+            {
+                var name = item.Attribute("Name")?.Value;
 
-            try { paths.Add(Path.GetFullPath(Path.Combine(basis, url.Replace('/', '\\')))); }
-            catch (ArgumentException) { }
+                if (item.Attribute("Type")?.Value is "Folder")
+                {
+                    if (name is { Length: > 0 }) folders.Add(name);
+                    Walk(item, name);
+                    continue;
+                }
+
+                if (name is { Length: > 0 }) { names.Add(name); parentOf[name] = folder; }
+                if (item.Attribute("URL")?.Value is not { Length: > 0 } url) continue;
+                if (url.Contains('<')) continue;
+
+                try { paths.Add(Path.GetFullPath(Path.Combine(libraryPath, url.Replace('/', '\\')))); }
+                catch (ArgumentException) { }
+            }
         }
 
-        return new Existing(names, paths);
+        Walk(root, null);
+        return new Existing(names, paths, folders, parentOf);
     }
 
     private async Task<string?> GenerateHelperAsync(

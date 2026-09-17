@@ -46,13 +46,15 @@ public class LibraryToolsTests
                 File.WriteAllText(f, "not a real LabVIEW file");
 
             LibraryPath = Path.Combine(lib, "Thing.lvlib");
+            // Log.vi sits INSIDE the folder, so the tests can tell a root item from a nested one.
             File.WriteAllText(LibraryPath, """
             <?xml version='1.0' encoding='UTF-8'?>
             <Library LVVersion="26008000">
             	<Property Name="NI.Lib.Version" Type="Str">1.0.0.0</Property>
-            	<Item Name="Messages" Type="Folder"/>
+            	<Item Name="Messages" Type="Folder">
+            		<Item Name="Log.vi" Type="VI" URL="../Log.vi"/>
+            	</Item>
             	<Item Name="Pump.lvclass" Type="LVClass" URL="../Pump/Pump.lvclass"/>
-            	<Item Name="Log.vi" Type="VI" URL="../Log.vi"/>
             	<Item Name="Note.foo" Type="VI" URL="../Note.foo"/>
             </Library>
             """);
@@ -64,9 +66,9 @@ public class LibraryToolsTests
         }
     }
 
-    private static JsonObject Add(string libraryPath, string itemsJson) =>
+    private static JsonObject Add(string libraryPath, string itemsJson, string? folder = null) =>
         (JsonObject)JsonNode.Parse(new LibraryTools(null!)
-            .AddToLibraryAsync(libraryPath, itemsJson)
+            .AddToLibraryAsync(libraryPath, itemsJson, folder)
             .GetAwaiter().GetResult())!;
 
     private static string Items(params string[] paths) =>
@@ -174,6 +176,41 @@ public class LibraryToolsTests
         using var tree = new Tree();
         // A .vi reaches the already-there guard, which sits after the type guard - so its type was
         // derived without being told.
+        Assert.Equal("itemAlreadyInLibrary", Kind(Add(tree.LibraryPath, Items(tree.LogVi))));
+    }
+
+    [Fact]
+    public void AFolderThatIsNotInTheLibraryIsRefusedAndTheRealOnesAreNamed()
+    {
+        using var tree = new Tree();
+
+        var answer = Add(tree.LibraryPath, Items(tree.SpareClass), folder: "Nachrichten");
+
+        // NI's own AddItem would put it at the ROOT instead and say nothing, which is the one
+        // outcome nobody checks for - so this is refused before LabVIEW is touched.
+        Assert.Equal("folderNotInLibrary", Kind(answer));
+        Assert.Contains("Messages",
+            answer["detail"]!["foldersInLibrary"]!.AsArray().Select(f => f!.GetValue<string>()));
+    }
+
+    [Fact]
+    public void AFolderThatExistsPassesTheGuard()
+    {
+        using var tree = new Tree();
+
+        // Reaching the already-there refusal proves the folder guard let this through; the folder
+        // check runs before it.
+        Assert.Equal("itemAlreadyInLibrary",
+            Kind(Add(tree.LibraryPath, Items(tree.PumpClass), folder: "Messages")));
+    }
+
+    [Fact]
+    public void AnItemNESTEDInAFolderStillCountsAsHeld()
+    {
+        using var tree = new Tree();
+
+        // Log.vi is inside the folder, not at the root. A reader that only looked at the root
+        // would offer to add it a second time.
         Assert.Equal("itemAlreadyInLibrary", Kind(Add(tree.LibraryPath, Items(tree.LogVi))));
     }
 

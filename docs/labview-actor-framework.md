@@ -645,3 +645,53 @@ failure — the block appeared in the same step that fixed the VI — was writte
 a remedy, a `grep` recipe and a queued tool change, on n = 1, on a VI whose history was already known
 to be contaminated. §8a said so itself in its last line and recommended a probe; the probe took four
 tool calls and refuted it. **Run the probe before writing the mechanism down, not after.**
+
+## 10. A message class belongs IN the folder, and `{LV.Library}` `AddItem` cannot put it there
+
+Measured 2026-09-17, after the Heizung build put four classes in `Heizung.lvlib` and every one of
+them landed at the library ROOT — the `Messages for this Actor` folder sat there empty. §8 records
+`{LV.Library}` `AddItem` as the gesture that relinks, and that is still true; what it does NOT do is
+choose a folder, because a library's root is the only thing it can add to.
+
+**NI's own placement is one layer down, and the node is on a different class.**
+`Message Maker.lvlib:Add to Project.vi` — which `Coupled Message Scripter:Add to Project.vi` calls
+with `Folder` = `"MESSAGES FOR THIS ACTOR"` — resolves the folder and then invokes
+
+```
+{LV.ProjectItem} AddItem   Name, Path, Type
+```
+
+on the FOLDER's project item. The resolution is worth copying verbatim:
+
+```
+{LV.Library} Get All Descendents   Type="Folder"        -> array of {LV.ProjectItem}
+  For each: {LV.ProjectItem} Name -> To Upper Case
+  Search 1D Array against the wanted name, upper-cased
+  found    -> Delete From Array at that index; `deleted portion` IS the folder's item
+  not found-> use the LIBRARY reference itself
+{LV.ProjectItem} AddItem on whichever came out
+Edit LVLibs.lvlib:Save All This Library.vi
+```
+
+**One node serves both arms because a `{LV.Library}` IS a `{LV.ProjectItem}`** - NI wires the library
+reference straight into the same `AddItem` node as the fallback. That is what makes this cheap to
+implement: no second code path.
+
+**THE FALLBACK IS SILENT, AND THAT IS THE DANGEROUS HALF.** A folder name that matches nothing puts
+the item at the root with `error out` 0, which is exactly the outcome that looks like success and is
+not. `lvai_add_to_library` therefore REFUSES a folder that is not in the `.lvlib` before LabVIEW is
+touched, naming the folders that are, and its `verify.placedIn` reports the folder each item really
+ended up in rather than only that it is somewhere in the library.
+
+**AND `AddItem` REFUSES AN ITEM THE LIBRARY ALREADY HOLDS - `error out` 56002.** Measured on
+`Bellen Msg.lvclass`, already at the root: `folder index: 0` (so the search had found the folder)
+and then 56002 from `AddItem`, which stopped the chain before `Save All This Library`, so nothing
+was written. So moving an item into a folder is NOT one call: drop its `<Item>` line from the
+`.lvlib` with the project CLOSED, then add it again with the folder. The class keeps its
+`NI.Lib.ContainingLib` throughout - it is still a member, just briefly unlisted - so this is not the
+dangling-file case that opens a modal search dialog, and NI's code tolerates 56002 for exactly this
+reason (`ignore error for autopopulating folders`).
+
+Repaired that way on both libraries and re-checked cold: `Hund.lvlib` and `Heizung.lvlib` nest every
+message class under `Messages for this Actor`, with the actor class at the root, and every VI reads
+`execState 1` after a project close.
