@@ -2051,6 +2051,7 @@ literally it argued away 600 usable palette VIs.
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
+| What is the ACTOR FRAMEWORK made of, and which half can be generated? | `docs/labview-actor-framework.md` | — an actor, its methods and a launcher all generate and run; an OVERRIDE of `Message.lvclass:Do.vi` is `eBad` whatever its diagram, so a custom message cannot be generated yet |
 | How is a `.lvproj` structured? | `docs/lvproj-structure.md` | `lvai_lvproj_reference` |
 | Where is access scope recorded? | `docs/lvlib-lvclass-structure.md` | `lvai_lvlib_reference` |
 | What can I call on VI Server? | `docs/vi-server-reference.md`, `docs/vi-server-methods.tsv`, `docs/vi-server-properties.tsv` | `lvai_vi_server_reference` |

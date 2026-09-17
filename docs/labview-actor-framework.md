@@ -1,0 +1,213 @@
+# The Actor Framework
+
+What was measured on 2026-09-17 while building `C:\temp\ActorFW_first`, on LabVIEW 2026 32-bit.
+Two halves: the part of an Actor Framework application this toolchain **can** generate end to end,
+and one construct it **cannot** — with the evidence for the second, because it looks like several
+other things first and cost most of a session to pin down.
+
+## 1. Where it lives, and what a `Call` target is spelled
+
+The framework is `vi.lib\ActorFramework\`, and every class in it belongs to the library
+`Actor Framework.lvlib` (`NI.Lib.ContainingLibPath` = `/<vilib>/ActorFramework/Actor Framework.lvlib`).
+So a `Call` target carries the library qualifier, which is the trap §9 of `lvai_aixml_reference`
+already records for OpenG — the palette prints the bare name and the bare name is refused:
+
+| what you want | `target=` |
+|---|---|
+| launch the top-level actor | `Actor Framework.lvlib\3AActor.lvclass\3ALaunch Root Actor.vi` |
+| launch a nested actor | `Actor Framework.lvlib\3AActor.lvclass\3ALaunch Nested Actor.vi` |
+| stop an actor | `Actor Framework.lvlib\3AStop Msg.lvclass\3ASend Normal Stop.vi` |
+| send any message | `Actor Framework.lvlib\3AMessage Enqueuer.lvclass\3AEnqueue.vi` |
+
+`lvai_palette_index` answers `Actor` with 45 hits, but the **examples** index does not list NI's own
+AF examples at all — 6 hits for "Actor Framework" and every one of them MGI's. NI's are on disk at
+`examples\Design Patterns\Actor Framework\Actor Framework Fundamentals.lvproj` (the Coffee Shop) and
+`examples\Object-Oriented Programming\Actors and Interfaces`. Read them off the filesystem; do not
+conclude from the index that they are absent.
+
+**An apostrophe in a terminal name needs no escape.** `Launch Root Actor.vi`'s output really is
+`Actor's Enqueuer`, and inside a double-quoted `outputs=` attribute the `'` is literal. Writing
+`Actor\5C's Enqueuer` puts a backslash in the name and the wire is refused.
+
+## 2. The shape of an actor and a message, from NI's own export
+
+`Message.lvclass:Do.vi` is the contract every message class overrides. Measured pane — and the
+detail that matters is **`Actor out` sits at conIdx 2, not 3**, so an override does NOT use the
+house accessor layout:
+
+| terminal | conIdx | connection | type |
+|---|---|---|---|
+| `Message` | 11 | **dynamic** | the message class |
+| `Actor in` | 10 | recommended | `Actor.lvclass` |
+| `error in (no error)` | 8 | recommended | error cluster |
+| `Actor out` | **2** | recommended | `Actor.lvclass` |
+| `error out` | 0 | recommended | error cluster |
+
+Pattern **4815** on the parent, on NI's child and on ours — measured on all three with
+`lvai_connector_pane viPath`, identical slot for slot. **An override copies the PARENT's pane, so
+ask for the parent's numbers, not the station default and not 4815's style guide.**
+
+The dynamic dispatch terminal may be RENAMED: NI's child calls it `Increase Count Msg` where the
+parent says `Message`. The other four names match the parent exactly in NI's child.
+
+NI's `Do.vi` body is worth copying: `To More Specific Class` with its object output unwired feeding
+a Case structure on its error, and a SECOND `To More Specific Class` inside the No Error frame with
+its error unwired — a trick to avoid copying the Actor object while still passing the original
+through if the cast fails.
+
+A message's payload travels in the message class's private data: the Send VI `Bundle`s it into a
+class constant and hands that to `Enqueue.vi`; `Do.vi` `Unbundle`s it.
+
+## 3. What generates cleanly — measured, runs
+
+All of this worked first time and is in `C:\temp\ActorFW_first`:
+
+- **A child of `Actor.lvclass` or `Message.lvclass`** via `lvai_create_class` with `parentClassPath`
+  pointing into `vi.lib`. `inheritsFrom` came back `Actor Framework.lvlib:Actor.lvclass` and
+  `Actor Framework.lvlib:Message.lvclass`, `parentKindsAreComplete: true`.
+- **Accessors** via `lvai_create_accessors` — dynamic dispatch, `execState 1`.
+- **An ordinary class method** authored in AIXML with `path` stand-ins, made a member with
+  `lvai_add_class_method` (`dispatchTerminals` for dynamic dispatch), then pointed at its own
+  accessors with `lvai_placeholder_subvi` + `lvai_swap_subvis`. `Counter.lvclass:Increment.vi`
+  reads its own `Count`, adds, writes back and appends to a log file: `execState 1`.
+- **A plain VI that drives the framework**: `Launcher.vi` builds a Counter, increments it 1/5/10,
+  launches it with `Launch Root Actor.vi` and stops it with `Send Normal Stop.vi`. Run through
+  `lvai_run_vi_and_read_values`: `Log` = `Count = 1 / Count = 6 / Count = 16`, `error out` clean.
+
+Two mechanics that this build exercised and that are worth restating because they are easy to get
+backwards. A **class constant** cannot be authored in AIXML — write a `path` `<Constant>`, give it a
+`_name` (which becomes the diagram label), and swap it with `lvai_swap_subvis`' `constantsJson`.
+And **one socket on three nodes costs three swap calls**: `socketsLeft` counts `swapsJson` ENTRIES
+still in the export, so it read 1, 1, 0 across the three while three, two and one nodes remained.
+
+## 4. THE GAP: a generated OVERRIDE of `Message.lvclass:Do.vi` is `eBad`
+
+**This is the finding.** `lvai_add_class_method` produces a member VI that LabVIEW does not accept
+as an override of its parent's method, and the resulting VI is not executable **whatever is on its
+diagram**. Because every AF message class must override `Do.vi`, the message half of an Actor
+Framework application cannot currently be generated by this toolchain.
+
+The failure is silent everywhere except `lvai_exec_state`:
+
+```
+execState 0, eBad
+VILoadErr: "VI has an error of type 42000000. The full development version of LabVIEW
+             is required to fix the errors."
+```
+
+`lvai_add_class_method` answered `ok: true`, `terminalsRetyped: 3`, `dynamicDispatchTerminals: [11]`,
+`verifiedOnDisk: true`, `pathStandInsLeft: 0`. `lvai_swap_subvis` answered `socketsLeft: 0` with
+correct `callTargets`. `lvai_check_aixml` was clean. The AIXML export of the finished VI is correct.
+**Nothing but `lvai_exec_state` disagrees** — the same shape `docs/cold-build-filterbench.md` records
+for a missing interface override.
+
+### What it is NOT — four hypotheses, each measured and refuted
+
+Each of these looked right and cost a full regeneration cycle. Recording them so nobody pays twice:
+
+| hypothesis | test | result |
+|---|---|---|
+| the diagram is wrong (bad wire, the cast, the Case structure) | rebuilt with the Case structure removed, then with **no diagram at all** — a pure pass-through with 0 nodes | **still eBad.** The diagram was never involved |
+| the terminal name — we write `error in`, the parent says `error in (no error)` | renamed to match the parent exactly | still eBad |
+| `Actor in`/`Actor out` got retyped to the wrong class | read the type space out of the saved file with pylabview: `Label="Actor out"` → `Item Text="Actor.lvclass"`, twice | types are correct |
+| `NI.ClassItem.Flags` — NI's working override is `16777344`, ours is `33554432` | edited the `.lvclass` to NI's value, **killed and restarted LabVIEW** for a clean load | **still eBad** |
+
+That last row is the fifth time this repository has been drawn to `NI.ClassItem.Flags` and the fifth
+time it was not the answer. CLAUDE.md's rule holds: it is not a dispatch field, and it is not an
+override marker either.
+
+**The control is what makes this a finding rather than a guess.** NI's own
+`Increase Count Msg.lvclass:Do.vi` was read with the same tool, in the same LabVIEW session, from the
+same kind of path: `execState 1`. So `eBad` is a property of our VI, not of how it is being read.
+
+Also measured, and worth knowing before chasing the pane again: `MethodScope` is **1 on ours and 1
+on NI's** — access scope is not the difference. `lvai_describe_class` reporting `scope: public` for
+that member is reading a different thing and should not be used to settle it.
+
+### What the difference actually is
+
+Extracting both VIs with `pylv_extract` and comparing the block lists:
+
+| | NI's working override | ours |
+|---|---|---|
+| blocks | …, `LIbd`, `LIfp`, **`LIvi`**, … | …, `LIbd`, `LIfp` — **no `LIvi`** |
+
+`LIvi` is the VI-level link-info block, and pylabview's own parse warning names what is inside NI's:
+`List of LinkObjects incorrectly ended with 0 after b'VIPI'`. That is the link to the parent method —
+the record that makes the VI an override rather than a second, colliding definition of `Do.vi`.
+`ConvertAIXMLToVI` does not write it, and `AddItemFromMemory` + `SetWireRule` do not add it.
+
+This is an inference from a block listing, not a decoded structure — but it is the only remaining
+file-level difference after the four refutations above, and it fits the symptom exactly.
+
+### And you cannot dodge it by leaving the override out
+
+`Message.lvclass:Do.vi` carries `NI.ClassItem.MustOverride = true`. Measured: deleting the broken
+`Do.vi` and its class entry — leaving a `Message` child with only its two accessors — took
+`Read Amount.vi` from `execState 1` to **`execState 0`, "VI has an error of type 8"**. A class that
+does not override a must-override method is broken, and **the breakage lands on the other members**,
+not on the method that is missing. Same shape as `docs/cold-build-filterbench.md`'s missing interface
+override: the VI that reports the fault is never the VI that caused it.
+
+So a `Message` child has exactly two states available to this toolchain today, and both are `eBad`:
+with a generated `Do.vi`, and without one. That is why `C:\temp\ActorFW_first` ships no message class
+at all rather than a half-built one.
+
+### The route to closing it
+
+`resource\Framework\Providers\LVClassLibrary\NewAccessors\**CLSUIP_CreateOverride.vi**` — the IDE's
+own "New → VI for Override…" provider, sitting in the same folder as `CLSUIP_CreateNewAccessor.vi`
+that `lvai_create_accessors` already drives. **It is fully scriptable** — measured pane, no dialog:
+
+```
+INPUTS   error in (no error)  conIdx 8    Child class  ref{LV.LVClassLibrary}  conIdx 10
+         Parent Method        ref{LV.VI}  conIdx 11
+OUTPUTS  error out  conIdx 0   NewItemID  string  conIdx 1
+         Child class out  conIdx 2        Parent Method out  conIdx 3
+```
+
+So this is CLAUDE.md's **fourth interface** — ask whether LabVIEW *compiles* the thing before trying
+to write it, and drive NI's own provider when it does.
+
+**But creating the override is only half the problem.** The provider makes a correctly linked VI
+with an empty body, and there is then no way to give it one: any AIXML regeneration overwrites the
+file and destroys the link again, `lvai_apply_aixml_to_vi` is inert from this client, and
+`lvai_swap_subvis` can only repoint nodes that already exist. Closing this gap properly needs
+`lvai_add_class_method` to gain an override mode that converts the diagram **and then** establishes
+the link — not a caller-side workaround.
+
+## 5. LabVIEW died creating the second AF class, and the log named the site
+
+Two `lvai_create_class` calls fired back to back, both deriving from `Actor Framework.lvlib`
+classes. The second answered `Could not find a port serving lvai.LVAI` and `LabVIEW.exe` was gone
+from the process table. **No minidump was written**, so LabVIEW's own crash handler did not fire.
+
+`%TEMP%\LabVIEW_32_*_cur.txt`, copied before restarting:
+
+```
+VI call stack:
+- LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:Open project application ref.vi
+- LV AI gRPC Service.lvlibp:gRPC Implementations.lvlib:OpenFile.vi
+*** Dumping Bread Crumb Stack ***
+#** VILinkObjRemoveCore: "…\vi.lib\ActorFramework\Message Enqueuer\Enqueue Critical.vi"
+```
+
+`Open project application ref.vi` is already on CLAUDE.md's list of crash sites. What is new is the
+breadcrumb: the fault was **unlinking an Actor Framework VI**, which is consistent with the class
+creation pulling the whole AF hierarchy into memory and the scratch project's teardown tripping over
+it. The class files themselves survived intact and were verified from disk afterwards.
+
+The Nigel service log (`%ProgramData%\National Instruments\AIAssistants\Logs`) recorded the moment as
+five `Stopped monitoring due to exception … StatusCode="Unavailable"` lines — unlike the silent
+disappearance CLAUDE.md records elsewhere, this one left a trace in both logs.
+
+**Space AF class creations apart**, as CLAUDE.md already advises for `lvai_create_class` generally.
+
+## 6. One toolchain trap this build hit
+
+**`sed -i` in Git Bash rewrites a CRLF file as LF.** Editing a `.lvclass` — which LabVIEW writes with
+CRLF — took it from 12 208 to 12 157 bytes, exactly one byte per line, while `diff` reported all 51
+lines changed and `grep -c $'\r'` still answered 51 for both files and hid it. `tr -cd '\r' | wc -c`
+is the honest measure: 51 against 0. Use PowerShell's `[System.IO.File]::ReadAllText` /
+`WriteAllText` with `UTF8Encoding($true)` to keep the BOM and the line endings, and verify the byte
+count. This is CLAUDE.md's heap-payload line-ending rule one layer out, on the class file.
