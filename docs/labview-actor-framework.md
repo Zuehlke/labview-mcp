@@ -800,7 +800,11 @@ one-field message beside it. That is the commonest real message in an actor syst
 
 With §11a that makes the measured range 0, 1 and 2 payload fields, over String, I32, Double and
 Boolean. The rule is the same at every point: every non-class, non-error input of the method
-becomes one private data field, in connector-pane order.
+becomes one private data field.
+
+**THE ORDER CLAUSE THAT USED TO END THAT SENTENCE - "in connector-pane order" - IS WRONG, and §13
+has the measurement.** It held for every message built up to that point because they all sat on
+4815, where the extra inputs run 10 then 9 and descending conIdx happens to read top to bottom.
 
 ### 12a. The control arm for the `Save All This Library` crash
 
@@ -833,3 +837,74 @@ entirely. The deliberate A/B - a throwaway VI listed loosely, then added - has n
 fire at all. A `ShowWindow(SW_RESTORE)` + `SetForegroundWindow` from PowerShell fixed it on the next
 call. The diagnosis is the documented one; what is new is that the automatic remedy reported
 nothing, which is worth a look before an unattended run depends on it.
+
+## 13. Drucker - three payload fields, a path payload, and a method off 4815
+
+Built 2026-09-17, in the session that could first CALL `lvai_add_class_field`. `Drucker.lvclass`
+(`Name` String, `Seiten Gesamt` I32, plus `Bereit` Bool added afterwards with that tool), two
+methods, two messages, every VI `execState 1` cold after a project close.
+
+**`payloadControlCount` REACHES 3, AND ONE OF THEM IS A `path`.** `Drucken.vi` takes `Datei`
+(path), `Kopien` (I32) and `Duplex` (Bool) beside the class wire and the error chain:
+
+| message | payloadControlCount | fields, in the order the Message Maker wrote them |
+|---|---|---|
+| `Drucken Msg` | **3** | `Duplex` Boolean, `Kopien` NumInt32, **`Datei` Path** |
+| `Bereit Melden Msg` | 1 | `Bereit` Boolean |
+
+With §11a and §12 the measured range is now **0 to 3 payload fields** over String, I32, Double,
+Boolean and Path.
+
+### 13a. THE FIELD ORDER IS DESCENDING conIdx, NOT READING ORDER
+
+§12 said "in connector-pane order" and that was an accident of 4815. `Drucken`'s inputs sit at
+conIdx 5, 7, 9 - running DOWN the left edge of 4833 - and the fields came back `Duplex`, `Kopien`,
+`Datei`, which is 9, 7, 5. Re-read against the earlier case: `Dimmen`'s inputs were 10 and 9 and
+its fields were `Helligkeit`, `Rampe ms` - also descending. So both measurements agree on
+**descending conIdx**, and on 4815 alone that coincides with top-to-bottom.
+
+It matters for `Send <Method>.vi`'s pane and for anyone reading the private data control: on a
+pattern whose inputs ascend down the edge, the message's fields are in the opposite order to the
+method's terminals.
+
+### 13b. A CLASS METHOD DOES NOT HAVE TO BE ON 4815
+
+Three payload inputs do not fit NI's accessor layout: 4815 offers 11, 10, 9 and 8 on the left, and
+8 is `error in`, so a class method has room for exactly TWO extra inputs. `lvai_add_class_method`
+re-panes onto 4815 by default and `panePattern: 0` leaves the pane alone - so the method was
+authored against the station default 4833 (`Drucker in` 0, `Datei` 5, `Kopien` 7, `Duplex` 9,
+`error in` 11; `Drucker out` 4, `error out` 15) and passed through with `panePattern: 0`. Dynamic
+dispatch resolved to 0 and 4, read off the VI's own export, and the result is `execState 1`.
+
+### 13c. The verify could not tell a REAL path parameter from a stand-in
+
+`Drucken` answered `ok: false`, `pathStandInsLeft: 1`, with `terminals retyped: 2`, the member
+added, the class saved and the VI executable. The on-disk check counts every `class="stdPath"`
+object in the front-panel heap and demanded zero, because the only reason a generated method
+normally carries a `path` terminal is that AIXML refuses a class-typed one. `Datei` is a real path
+parameter. `Bereit Melden`, with no path payload, answered 0 in the same run - the control arm.
+
+**It had been seen once before and left as a comment.** `VerifyFailureDetail` records the same
+shape from 2026-09-07 ("one of three `path` stand-ins, so two were legitimately left") and the
+remedy then was only to stop that branch throwing. Fixed now: the expectation is counted from the
+authoring AIXML - `path` terminals that are not named in `classTerminals` - reported as
+`expectedPathStandInsLeft`, and NOT gated at all when there is no document to count (a method
+handed over as an existing `vi`), because demanding zero there would re-create the false negative
+for exactly the callers who cannot see why.
+
+### 13d. Two ordering facts this build paid for
+
+**`lvai_create_accessors` needs the class in the ACTIVE project; `lvai_add_class_field` does not.**
+The library was created and the class went into it, but `Drucker.lvlib` was not yet listed in the
+`.lvproj` - and the accessor wizard answered `Error 56002` from `AddVIToClass.vi` with
+`membersAfter: 0`, nothing written. Adding the library entry with the project closed and reopening
+fixed it; `classIndex` went from 25 to 5. The add-field call before it had worked fine in that same
+state.
+
+**And the new tool's carrier directory was invisible to the project sweep.**
+`lvai_add_class_field` keeps its carrier under `%TEMP%\LabVIEWMCP\carriers\` deliberately, and
+`StripHelperItems` knew only `helpers/` and `classes/` - so the first real run left
+`Drucker-add-20260917150348.vi` in the user's `.lvproj` while the same sweep reported removing the
+helper beside it. The file still exists, so the dangling pass cannot catch it either. **A new tool
+that writes into a new directory has to teach that pattern about it**; nothing else in the chain
+notices.

@@ -2178,8 +2178,17 @@ internal sealed class ClassTools(LvaiConnection connection)
         // `URL="/&lt;userlib&gt;/LV_MCP/LVMCP ClsR1.vi"`, and the user found it before we did. The
         // URL is XML-escaped in the file, which is why the pattern matches `&lt;userlib&gt;`
         // rather than the angle brackets.
+        // `carriers/` IS THE THIRD TEMP TREE AND IT WAS MISSING FOR A DAY - measured 2026-09-17.
+        // `lvai_add_class_field` keeps its carrier VI under LabVIEWMCP/carriers/, deliberately
+        // (deleting a carrier LabVIEW has adopted leaves it holding a project whose items are
+        // gone), and this pattern knew only helpers/ and classes/ - so the very first real run of
+        // that tool left `Drucker-add-20260917150348.vi` in the user's .lvproj while the sweep
+        // reported removing the helper beside it. A NEW TOOL THAT WRITES INTO A NEW DIRECTORY HAS
+        // TO TEACH THIS PATTERN ABOUT IT; nothing else in the chain notices, because the file
+        // still exists and so the dangling pass below cannot see it either.
         const string helperItem =
-            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*(?:LabVIEWMCP/(?:helpers|classes)" +
+            "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*" +
+            "(?:LabVIEWMCP/(?:helpers|classes|carriers)" +
             "|(?:&lt;userlib&gt;|<userlib>)/LV_MCP)/[^\"]*\"\\s*/>";
 
         var helperMatches = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem);

@@ -29,6 +29,37 @@ public class ClassToolsTidyTests
         """;
 
     /// <summary>
+    /// THE CARRIERS TREE IS THE THIRD ONE, and it was missing until 2026-09-17.
+    /// <c>lvai_add_class_field</c> keeps its carrier VI under <c>LabVIEWMCP/carriers/</c> on
+    /// purpose - deleting one LabVIEW has adopted leaves it holding a project whose items are
+    /// gone - and the sweep knew only <c>helpers/</c> and <c>classes/</c>. So the first real run
+    /// of that tool left its carrier in the user's .lvproj while the same sweep reported removing
+    /// the helper beside it. The file still EXISTS, so the dangling pass cannot catch it either.
+    /// </summary>
+    [Fact]
+    public void A_carrier_from_the_add_field_tool_is_swept_too()
+    {
+        const string withCarrier = """
+            <?xml version='1.0' encoding='UTF-8'?>
+            <Project Type="Project" LVVersion="26008000">
+            	<Item Name="My Computer" Type="My Computer">
+            		<Item Name="Drucker.lvlib" Type="Library" URL="../Drucker/Drucker.lvlib"/>
+            		<Item Name="Drucker-add-20260917150348.vi" Type="VI" URL="../../../Users/jcm/AppData/Local/Temp/LabVIEWMCP/carriers/Drucker-add-20260917150348.vi"/>
+            		<Item Name="Dependencies" Type="Dependencies"/>
+            	</Item>
+            </Project>
+            """;
+
+        var (text, removed, names) = ClassTools.StripHelperItems(withCarrier);
+
+        Assert.Equal(1, removed);
+        Assert.Contains(names, n => n.Contains("Drucker-add-"));
+        Assert.DoesNotContain("carriers/", text);
+        // THE CONTROL: a sweep that simply deleted every VI would pass the three lines above.
+        Assert.Contains("Drucker.lvlib", text);
+    }
+
+    /// <summary>
     /// AND IT SAYS WHICH ONES. The count alone was what this returned until 2026-09-15, and it cost
     /// a wrong diagnosis: a `strayVisRemoved: 5` reported beside a class that had vanished from a
     /// .lvproj read as the cause, while the real cause was LabVIEW's save-on-close replacing the
