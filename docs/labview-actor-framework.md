@@ -779,3 +779,57 @@ read's error propagates into the write, so **on a file that does not exist yet t
 lost and the file is never created**. Aquarium's copy has the same shape and works only because its
 log file was created by hand first. Create the log file before the first run, or the first message
 handled leaves no trace and the diagram looks broken.
+
+## 12. Ventilator - a message with NO payload, and a Double one
+
+Built 2026-09-17 to close the two gaps §11a left. `Ventilator.lvclass`
+(`Name` String, `Stufe` I32, `Laeuft` Bool) off `Actor.lvclass`, three methods, three messages,
+every VI `execState 1` cold after a project close.
+
+**`payloadControlCount` REACHES 0, and nothing special is needed to get there.** `Anhalten.vi`
+takes only the class wire and the error cluster - four terminals, no payload - and the Message
+Maker produced a class with `fields: []` and `privateDataBytes` 11 805, against 12 265 for the
+one-field message beside it. That is the commonest real message in an actor system (`Stop`,
+`Reset`, `Toggle`) and it had never been built here.
+
+| message | payloadControlCount | field |
+|---|---|---|
+| `Anhalten Msg` | **0** | - |
+| `Stufe Setzen Msg` | 1 | `Stufe` NumInt32 |
+| `Kalibrieren Msg` | 1 | `Faktor` **NumFloat64** |
+
+With §11a that makes the measured range 0, 1 and 2 payload fields, over String, I32, Double and
+Boolean. The rule is the same at every point: every non-class, non-error input of the method
+becomes one private data field, in connector-pane order.
+
+### 12a. The control arm for the `Save All This Library` crash
+
+`docs/labview-crash-signatures.md` records LabVIEW disappearing while `Save All This Library.vi`
+added `Append To Log.vi` to `Lampe.lvlib`, with one clean difference available: that VI had a loose
+`<Item>` of its own in the `.lvproj`, where the three message classes added just before it had
+none. This build was sequenced to test that without provoking it - **the log VI was generated and
+added to its library BEFORE the project was ever saved with it open**, so it never acquired a loose
+entry:
+
+| add | loose `.lvproj` entry | elapsed | outcome |
+|---|---|---|---|
+| `Append To Log.vi` -> `Lampe.lvlib` | **yes** | **6 145 ms** | LabVIEW gone |
+| `Append To Log.vi` -> `Ventilator.lvlib` | no | **184 ms** | fine |
+
+Same tool, same file type, same root fallback (`folder index: -1`). **The 33x difference in elapsed
+time is the part worth keeping**: it says the crashing call was doing substantially more work, which
+fits LabVIEW reconciling an item that the project held two ways - and the `.lvproj` after that call
+proves it did exactly that, having moved the loose line out and adopted six strays with no close in
+the session.
+
+Still n=1 against n=1, and still not a cause. What it does justify is the ORDER: **add a helper VI
+to its library before anything can list it loose**, which costs nothing and avoids the state
+entirely. The deliberate A/B - a throwaway VI listed loosely, then added - has not been run.
+
+### 12b. `projectDidNotBecomeActive` needed a HAND fronting, three times
+
+`lvai_open_file` answered `No Error` with no active project three calls running, each time with
+`foregroundRetry: null` - so the built-in retry that `Infra/LabViewWindow.cs` exists for did not
+fire at all. A `ShowWindow(SW_RESTORE)` + `SetForegroundWindow` from PowerShell fixed it on the next
+call. The diagnosis is the documented one; what is new is that the automatic remedy reported
+nothing, which is worth a look before an unattended run depends on it.
