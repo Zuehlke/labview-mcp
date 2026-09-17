@@ -1142,6 +1142,37 @@ trusting either. What is real, and was the grain of truth underneath, is that
 `lvai_close_active_project` runs `Save` before `Close` — so an edit made while LabVIEW holds the
 project open is destroyed by the close. Edit a project file only while it is closed.
 
+**AND THE RULE IS WIDER THAN THE `.lvproj`, WITH ONE DISCRIMINATOR THAT DECIDES IT: WHO IS
+WRITING.** The user's rule of 2026-09-17, and it is the general form of four separate symptoms this
+file already records one at a time:
+
+- **WE write the file directly** — `sed`, `Write`, a Python rewrite — and that covers `.lvproj`,
+  `.lvclass` and `.lvlib` alike: **the project must be CLOSED.**
+- **NI's own API writes it** — `{LV.Library}` `AddItem`, `Save All This Library.vi`,
+  `LVClass.Open` + `Save`, the class and Message Maker providers — and the project being OPEN is
+  fine. Several of those *require* it, because they reach LabVIEW through `Project\3AActive
+  Project` and answer `Error 1055` without one.
+
+So "AddItem wants the project open and a surviving `.lvproj` edit wants it shut" is not a quirk of
+one tool; it is these two halves meeting. A tool that does both has to sequence them, which is what
+`lvai_add_class_method`'s close-then-open prologue is for.
+
+**Both consequences of breaking the first half are measured, and they are not the same severity.**
+Three times the edit is LOST in silence — a `.lvclass` entry undone by LabVIEW's own save
+(`lvai_add_class_method`), a `.lvproj` entry deleted (`lvai_generate_mock_class`'s `addToProject`),
+an edit destroyed by the close above. **Once it was a CRASH**: `tidyProject` rewriting the
+`.lvproj` under a live LabVIEW, *"LabVIEW does not survive having the project file changed under
+it"*. So the loss case is the common one and the crash case is real, which is why this is a rule
+rather than a tidiness preference.
+
+**What is NOT established is whether LabVIEW writing its own `.lvproj` mid-call carries the same
+hazard.** Measured 2026-09-17: `Save All This Library.vi`, adding `Append To Log.vi` to
+`Lampe.lvlib`, wrote the `.lvproj` itself — moving that VI out of the loose item list and adopting
+six strays — and LabVIEW disappeared in that call, with the log's only VI call stack naming it. No
+edit of ours was involved. Treat the crash as unexplained; the point for this rule is that the
+project file does get written under a live LabVIEW by LabVIEW, so "nobody writes it while it is
+open" was never true.
+
 `pylv_route` runs two checks because one is not sound: it validates the *untouched* export, and it
 scans that export for node families NI publishes as unsupported. The quiet families are listed in
 `docs/aixml-node-gaps.tsv` — those pass validation with `errorCode 0` and then come back **gutted**,
@@ -1348,6 +1379,18 @@ a VI adopted from a directory OUTSIDE every one of our trees stays, since nothin
 from one the user shares from a sibling folder on purpose, and a rule wide enough to catch it would
 delete those. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
 noticed is not the step that caused it.** `docs/cold-build-weighbridge.md` §3a, §4, §8.
+
+**"THE CLOSE IS THE ONLY PLACE A SWEEP CAN SEE THEM" IS TOO NARROW - `Save All This Library.vi`
+WRITES THE `.lvproj` TOO, measured 2026-09-17.** One `lvai_add_to_library` call put
+`Append To Log.vi` into `Lampe.lvlib`; LabVIEW then **died in that call** and no close ever ran -
+and the `.lvproj` on disk had nevertheless been rewritten, with the VI's loose `<Item>` line gone
+(correctly - it belongs through the library now) and **six strays adopted in**: our own
+`lvai_add_one_to_library.vi` out of the helpers directory, and five `/<userlib>/LV_MCP` sockets from
+the swap two sessions earlier. So the save that adopts is not only the close's; any NI call that
+saves a library can do it, and strays can be on disk with no close in the session at all. The sweep
+is still right to live on the close - that is where it can run safely - but a caller who reasons
+"no close, so the project file is untouched" is wrong, and that reasoning is what sent the first
+reading of this crash looking for a hand edit that had never happened.
 
 **AND `lvai_generate_mock_class`'s `addToProject` IS THE SAME HAZARD FROM A THIRD SIDE - measured
 2026-09-15.** A mock generated with `addToProject: true` against an open, ACTIVE project writes all
