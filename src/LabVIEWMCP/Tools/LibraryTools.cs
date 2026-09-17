@@ -228,14 +228,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
             var added = new JsonArray();
             foreach (var item in items)
             {
-                var inputs = new JsonObject
-                {
-                    ["library path"] = library,
-                    ["item name"] = item.Name,
-                    ["item path"] = item.Path,
-                    ["item type"] = item.Type,
-                    ["folder"] = folder ?? "",
-                };
+                var inputs = HelperInputs(library, item.Name, item.Path, item.Type, folder);
 
                 var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
@@ -346,6 +339,35 @@ internal sealed class LibraryTools(LvaiConnection connection)
 
         /// <summary>The folder an item is in, or null for the library root.</summary>
         public string? PlacedIn(string name) => ParentOf.GetValueOrDefault(name);
+    }
+
+    /// <summary>
+    /// The controls one helper run is given. A `folder` is OMITTED rather than sent empty, and
+    /// that distinction is the whole library-ROOT path.
+    ///
+    /// The runner pairs control names with values BY POSITION and refuses an empty value outright
+    /// (`Input 'folder' has an empty value`), so sending `""` for "no folder" made the DEFAULT
+    /// case fail before LabVIEW ran. Measured 2026-09-17 on the call that would have put
+    /// `Append To Log.vi` into `Lampe.lvlib`: nothing was written, three green `AddItem` steps had
+    /// gone through the folder path in the same session, and only `verify.missing` disagreed.
+    /// The helper's own control defaults to `""`, whose `Search 1D Array` answers -1 - which is
+    /// the root fallback the helper was written around.
+    ///
+    /// It is its own function so THAT can be tested without LabVIEW: every other guard here runs
+    /// before the connection, and this one does not.
+    /// </summary>
+    internal static JsonObject HelperInputs(
+        string library, string itemName, string itemPath, string? itemType, string? folder)
+    {
+        var inputs = new JsonObject
+        {
+            ["library path"] = library,
+            ["item name"] = itemName,
+            ["item path"] = itemPath,
+            ["item type"] = itemType,
+        };
+        if (folder is { Length: > 0 }) inputs["folder"] = folder;
+        return inputs;
     }
 
     private static List<Item> ParseItems(string json)

@@ -695,3 +695,87 @@ reason (`ignore error for autopopulating folders`).
 Repaired that way on both libraries and re-checked cold: `Hund.lvlib` and `Heizung.lvlib` nest every
 message class under `Messages for this Actor`, with the actor class at the root, and every VI reads
 `execState 1` after a project close.
+
+## 11. Lampe - the acceptance run for `folder`, and the regression it found
+
+Built 2026-09-17 in the session after the one that shipped the `folder` parameter, because a client
+fetches the tool list **once at session start** and a parameter declared later is stripped before
+sending - so the feature could not be tested where it was written. `Lampe.lvclass`
+(`Name` String, `Helligkeit` I32, `An` Bool) off `Actor.lvclass`, three methods, three messages.
+
+**THE READ-ONLY ARM CAME FIRST, because either outcome is a refusal and nothing is written.** A
+bogus folder against an item the library already holds:
+
+```
+lvai_add_to_library(libraryPath=…\Heizung\Heizung.lvlib,
+                    itemsJson=[{"path":…\Heizung\Heizung\Heizung.lvclass"}],
+                    folder="Nachrichten")
+-> errorKind "folderNotInLibrary", foldersInLibrary: ["Messages for this Actor"]
+```
+
+Had the client dropped the argument this would have answered `itemAlreadyInLibrary` instead, so one
+call settles that the parameter arrives AND that the guard fires. **The ToolSearch schema text was
+stale while the server was not** - it listed no `folder` property, which read exactly like an
+unrebuilt build and cost a DLL check. That check was itself wrong first: an ASCII `grep` of a .NET
+assembly found none of the new markers, and **the control - a string certainly in the old code -
+also read 0**, which is what exposed the method rather than the build. .NET strings are UTF-16.
+
+**The mutating arm was the three message classes in ONE call**, and it is the measurement that
+matters: `placedIn` three for three, `notInRequestedFolder: []`, and the saved `.lvlib` nests all
+three under `Messages for this Actor` with the actor class at the root.
+
+### 11a. A message carries TWO payload fields, and the order is the pane's
+
+`payloadControlCount` had been `1` on every message ever built here, so a multi-field payload was
+untested. `Dimmen.vi` takes `Helligkeit` (I32) and `Rampe ms` (I32) besides the class wire and the
+error cluster:
+
+| message | payloadControlCount | fields read back from the saved `.lvclass` |
+|---|---|---|
+| `Umbenennen Msg` | 1 | `Neuer Name` **String** |
+| `Dimmen Msg` | **2** | `Helligkeit` NumInt32, `Rampe ms` NumInt32 |
+| `Schalten Msg` | 1 | `An` Boolean |
+
+So the Message Maker takes every non-class, non-error input **in connector-pane order** and makes
+one private data field each; a String payload works like any other. Nothing special had to be done
+for either case - which is worth writing down precisely because both were being planned around.
+
+### 11b. THE FOLDER PARAMETER BROKE THE LIBRARY ROOT, which is the DEFAULT path
+
+Found in the same session, adding `Append To Log.vi` to `Lampe.lvlib` with no folder:
+
+```
+ok: false, verify.missing: ["Append To Log.vi"]
+step addItem -> badArguments: "Input 'folder' has an empty value. Names and values are paired
+                by POSITION, and an empty value does not survive the helper's split"
+```
+
+`lvai_add_to_library` sent `["folder"] = folder ?? ""`, and `lvai_run_vi_and_read_values` refuses an
+empty value outright rather than passing it on - so **every call WITHOUT a folder failed before
+LabVIEW ran**, from the commit that added the feature. The root path is the default and the one the
+tool shipped with; three folder calls had just succeeded in the same session, which is exactly why
+nothing looked wrong.
+
+**Nothing was written, and the only thing that said so was `verify`.** All three per-item steps in a
+successful call and this one have the same shape, and `itemsAdded` lists what was ASKED for - it is
+`verify.missing`, re-read from the saved `.lvlib`, that disagreed. That is the verify block earning
+its keep: a tool that trusted its own run answers would have reported success.
+
+The fix is to OMIT the input rather than send it empty - the helper's own control defaults to `""`,
+whose `Search 1D Array` answers `-1`, which is the root fallback the helper was already written
+around. It lives in `LibraryTools.HelperInputs`, its own function **so that it can be tested without
+LabVIEW**: every other guard in that tool runs before the connection and this one did not, so no
+existing test could reach it. Two tests, because a builder that dropped the folder ALWAYS would pass
+the first one: `NoFolderMEANSNOFOLDERINPUT_NotAnEmptyOne` and `AFolderIsPassedThroughVerbatim`.
+
+**The general shape is one this repository already records**, from `runForMs` picking its helper:
+*a parameter that one mode ignores must not be able to defeat that mode.* Here the mode was the
+default one.
+
+### 11c. The log helper needs its file to exist
+
+`Append To Log.vi` is `Read from Text File` -> `Concatenate Strings` -> `Write to Text File`, and the
+read's error propagates into the write, so **on a file that does not exist yet the first line is
+lost and the file is never created**. Aquarium's copy has the same shape and works only because its
+log file was created by hand first. Create the log file before the first run, or the first message
+handled leaves no trace and the diagram looks broken.

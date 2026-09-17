@@ -215,6 +215,33 @@ public class LibraryToolsTests
     }
 
     [Fact]
+    public void NoFolderMEANSNOFOLDERINPUT_NotAnEmptyOne()
+    {
+        var inputs = LibraryTools.HelperInputs(
+            @"C:\p\Thing.lvlib", "Log.vi", @"C:\p\Log.vi", "VI", folder: null);
+
+        // THE ROOT PATH IS THE DEFAULT AND IT WAS BROKEN FOR A DAY. The runner pairs control
+        // names with values BY POSITION and refuses an empty value outright, so a `folder` sent
+        // as "" failed the call before LabVIEW ran - and every `AddItem` step still read green,
+        // with only `verify.missing` disagreeing. Measured 2026-09-17 adding `Append To Log.vi`
+        // to `Lampe.lvlib`, in the same session where three items had just gone INTO a folder.
+        Assert.False(inputs.ContainsKey("folder"));
+        Assert.Equal("Log.vi", inputs["item name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void AFolderIsPassedThroughVerbatim()
+    {
+        // The control arm: without it, a builder that dropped the folder ALWAYS would pass the
+        // test above and break the feature this parameter exists for.
+        var inputs = LibraryTools.HelperInputs(
+            @"C:\p\Thing.lvlib", "Msg.lvclass", @"C:\p\Msg.lvclass", "LVClass",
+            folder: "Messages for this Actor");
+
+        Assert.Equal("Messages for this Actor", inputs["folder"]!.GetValue<string>());
+    }
+
+    [Fact]
     public void AVirtualFolderIsNotMistakenForAnItem()
     {
         using var tree = new Tree();
