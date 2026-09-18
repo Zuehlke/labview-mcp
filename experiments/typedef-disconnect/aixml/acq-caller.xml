@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Acq Caller.vi" description="Calls Acquire.vi's stub. Acquire.vi is a LOOSE VI\2C so a pylabview link retarget reaches it - measured. A class member needs lvai_swap_subvis instead.">
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Call target="LVMCP Stub 35b84556b0.vi" inputs="error in:4202.value" outputs="error out:4210.err" uid="4210" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4210.err" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+</VI>

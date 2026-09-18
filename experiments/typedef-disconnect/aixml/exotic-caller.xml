@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Exotic Caller.vi" description="Calls the exotic subject's STUB\2C so the call can then be retargeted onto Exotic Subject.vi with pylabview. That retarget is the operational test of section 12d\3A the pane's type descriptor is part of the link binding\2C so a terminal the stub only approximates shows up here as Error 7\2C Bad Linkage - and nowhere else.">
+  <Control _name="Task" conIdx="0" connection="required" description="A DAQmx task name refnum\2C wired so the stub's required input is not left empty." outputs="value:4200.value" type="ref{GenClassTag.Task.NIDAQ}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Call target="LVMCP Stub ecd50bc9ed.vi" inputs="Task:4200.value,error in:4202.value" outputs="error out:4210.err" uid="4210" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4210.err" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+</VI>

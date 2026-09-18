@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Outer Config.ctl" description="Fixture control for the typedef-disconnect measurement. Becomes a STRICT TYPEDEF cluster whose Mode element is then bound to Inner Mode.ctl\2C so the definition itself contains a typedef. That nesting is what the recursive disconnect has to reach.">
+  <Control _name="Outer Config" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" uid="4200" uid_parent="root" value="[0,0]" outputs="value:"/>
+</VI>

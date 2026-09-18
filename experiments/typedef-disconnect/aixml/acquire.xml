@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Acquire.vi" description="The plain-VI half of the mixed rig. Its pane carries three of the variants at once\3A Limits is a typedef holding another typedef\2C Samples is an ARRAY whose element is a typedef\2C and Reading is a PLAIN typedef. Every terminal is authored as its bare underlying type and then bound with {LV.Control} Replace.">
+  <Control _name="Limits" conIdx="0" connection="recommended" description="Bound to Limits.ctl\2C which carries Mode.ctl." outputs="value:" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Max}" uid="4200" uid_parent="root" value="[0,0]"/>
+  <Control _name="Samples" conIdx="5" connection="recommended" description="An array whose ELEMENT is bound to Mode.ctl." outputs="value:" type="array{uint16{Idle,Running,Stopped}}" uid="4202" uid_parent="root" value="[]"/>
+  <Control _name="Reading" conIdx="7" connection="recommended" description="Bound to Reading.ctl\2C a plain non-strict typedef." outputs="value:" type="cluster{double.Value,string.Unit}" uid="4204" uid_parent="root" value="[0,]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4206.value" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4206.value" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+</VI>

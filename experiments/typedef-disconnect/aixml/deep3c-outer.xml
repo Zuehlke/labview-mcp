@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Deep3c Outer.ctl" description="Level 3 of the THREE-LEVEL typedef chain\2C rebuilt after a LabVIEW restart. Its Inner element is bound to Deep2c Test.ctl\2C which carries Inner Mode.ctl - so a control typed as this one is three typedefs deep. The first attempt at this chain was built before the restart and every .ctl that had a typedef bound into it came out eBad ON DISK\2C which made Replace refuse it with Error 1154.">
+  <Control _name="Deep3c Outer" type="cluster{cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}.Inner,int32.Count}" uid="4200" uid_parent="root" value="[[0,0],0]" outputs="value:"/>
+</VI>

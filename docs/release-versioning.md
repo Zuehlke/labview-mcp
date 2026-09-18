@@ -249,6 +249,27 @@ extraction — which is precisely why `C:\Projects\labview-mcp` could not say wh
 carries the tag, which the assembly cannot: the assembly knows `1.3.0`, not that it came from
 `v1.3.0`.
 
+### 5a. `serverCommit` ANSWERS A DIFFERENT QUESTION FROM THE ONE A DEV BUILD ASKS — 2026-09-18
+
+`SourceRevisionId` is the git HEAD **at build time**, so on the ordinary development loop —
+edit, build, test, *then* commit — the running server reports the **parent** commit while
+carrying the change. Measured on acceptance: `lvai_status` answered
+`0.0.0-dev (15feae1e)` for a binary that demonstrably contained the fix committed as `7c2d2f0`,
+because `run-tests.ps1` had built it before the commit existed.
+
+So `serverCommit` answers *which commit was checked out when this was built*, which for a release
+build is the same thing as *what code is in it* and for a dev build is not. **On a dev build, ask
+the DLL**: `grep -a -q '<a string only the new code has>' …\bin\Debug\net8.0\LabVIEWMCP.dll` settles
+it in milliseconds, and comparing the DLL's `LastWriteTime` against the server process's
+`StartTime` settles whether the running process even loaded it.
+
+**And a tool DESCRIPTION is not evidence of the build either.** In the same session the deferred-tool
+catalogue served the *old* description text for `lvai_bind_pane_typedef` while the DLL held the new
+one and the three server processes had started two minutes after the DLL was written — so the stale
+text was the client's catalogue, not the server's code. The behaviour was correct. **Read the
+behaviour or the binary; a description and a commit id are both one step removed from it.** Same rule
+as §8's "ask the artefact, not the process that is supposed to have made it".
+
 The workflow asserts the stamp rather than assuming it: `-p:Version=` is silently ignored if the
 property is overridden later in the build, and an exe reporting `0.0.0` from a tagged release
 looks exactly like a dev build to every later check. It also runs `--version` from the staged exe

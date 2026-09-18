@@ -952,3 +952,373 @@ sequence that works, end to end:
 9. close with `projectPath` (the sweep runs here) -> `lvai_exec_state` cold
 
 Steps 4 and 5 are the two this file learned the hard way, in that order.
+
+## 15. Ofen - an actor whose private data carries a TYPEDEF, 2026-09-18
+
+Built to answer one question: does the typedef tooling hold when the typedef is inside an ACTOR's
+private data, all the way out to the message class? `Ofen.lvclass` (`Name` String, `Profil`
+**Ofenprofil.ctl**, `Heizt` Boolean), two methods, two messages, every VI `execState 1` after a
+LabVIEW restart. It does hold - and getting there found two real defects, one of them a hard stop.
+
+The rig, beyond §14's sequence: `Ofenprofil.ctl` is a plain (non-strict) typedef wrapping
+`cluster{double.Solltemperatur,double.Toleranz}`, made the way `docs/typedef-disconnect.md` §1
+prescribes - `lvai_generate_vi` to the `.ctl` path, then a pylabview flag patch of
+`<Instrument Type>` and `TypeDefVI`. `lvai_bind_class_fields` put it on the `Profil` field
+**before** any accessor existed, which is the ordering `lvai_placeholder_subvi` insists on.
+
+### 15a. THE HARD STOP: the accessor wizard refuses a `.ctl` LabVIEW has never SAVED
+
+`lvai_create_accessors` answered **`Error 1061`** on the typedef field and only on that field:
+
+```
+New VI Object in MemberVICreation.lvlib:BaseAccessorScripter.lvclass:CreateControlFromReference.vi
+  -> CreateControl.vi -> AddControlToWriteVI.vi -> ScriptAccessorVIs.vi -> CLSUIP_CreateNewAccessor.vi
+```
+
+`Name` (index 0) produced both accessors; `Profil` (index 1) produced none and stopped the slice, so
+`Heizt` never ran either. It is **not** a Write-side quirk: asking for `accessUi: "Read"` gave the
+identical code through `CreateIndicator.vi` -> `AddIndicatorToReadVI.vi`.
+
+**The cause is the shape of the `.ctl`, and `lvai_describe_ctl` shows it without LabVIEW.** A
+flag-patched control has never been written by LabVIEW itself, so it still carries the CONNECTOR
+PANE of the VI it was generated from:
+
+| file | `controlVIType` | `wrappedType` | `fields` | accessor wizard |
+|---|---|---|---|---|
+| `Ofenprofil.ctl` as patched | typedef | **`Function`** | 16, one real + 15 `Void` | **`Error 1061`** |
+| `Ofenprofil.ctl` after one LabVIEW save | typedef | **`TypeDef`** | **1** | works |
+| `Outer Config.ctl` (the §1 fixture) | strict typedef | `TypeDef` | 1 | works - it had been re-saved by a `Replace` |
+| `Inner Mode.ctl` (the §1 fixture) | strict typedef | **`Function`** | 16 | never asked - it is only ever used NESTED |
+
+So the two fixtures that this repository has been reasoning from differ in exactly this, and the
+difference was invisible because only one of them was ever the direct source of an accessor.
+Strictness is not the variable: `Ofenprofil.ctl` is plain and works once saved.
+
+**The repair is one LabVIEW save with the path UNWIRED** - `{LV.VI}` `Save.Instrument` in the IDE's
+own application instance, which writes a control in place. 4 155 -> 4 367 bytes, `wrappedType`
+`Function` -> `TypeDef`, `fields` 16 -> 1, and the same `lvai_create_accessors` call then produced
+all six accessors with `errorCode 0`. **`lvai_resave_ctl` is that call now**, and it reads the file
+back so `wrappedTypeAfter` is the verdict rather than an `errorCode 0`.
+
+**`lvai_describe_ctl` would have answered this in 200 ms and did not**, because nothing in it
+compared `isTypedef` against `wrappedType`. **It does now** - `needsLabviewSave`, a file-only check
+costing no LabVIEW, naming `lvai_resave_ctl` and the 1061 it prevents.
+
+**And the FIRST run after the repair still failed, with `Error 43` from `Save All This Library.vi`.**
+That is the documented "an earlier failed run left accessor VIs in memory with no path" symptom, and
+the ` 4` / ` 3` suffixes on `Read Profil 4.vi` / `Write Profil 3.vi` are its tell. `lvai_close_active_project`
+could not clear it either - **`Error 1019`**, the close refused while those VIs were unsaved - so the
+sequence that works is: kill LabVIEW, delete the suffixed VIs, restart, reopen the project, run once.
+
+### 15b. A GENERATED CLASS METHOD LOSES THE TYPEDEF ON ITS OWN PANE, and the repair hint is wrong
+
+After `lvai_swap_subvis`, `Profil Setzen.vi` read **`coerced: 1`** - on the `Ofenprofil` terminal of
+the `Write Profil.vi` call, and nowhere else. That is not a placeholder failure: the stub was
+flattened correctly (`typedefSites: 1`, `flattened: [Ofenprofil]`, `typedefObjectsInStub: 0`). It is
+the method's OWN pane. AIXML has no typedef in its grammar, so the `Profil` control it authored is
+a bare cluster, and `lvai_add_class_method` retypes only the CLASS terminals.
+
+**`lvai_coercion_dots` points the repair at `lvai_bind_typedef_constants`, which cannot reach this
+case** - that tool finds each coerced source by its CONSTANT label, and here the source is a
+front-panel CONTROL. The note is right for the case it was written for and silently wrong here.
+
+The repair is the same `{LV.Control}` `Replace` gesture `lvai_bind_class_fields` uses, aimed at the
+method's own pane, with the owning class saved in the same run because `Save.Instrument` alone does
+not persist a `Replace` - **on a plain VI either, measured afterwards**, which is why the tool
+requires the `.lvclass`. **`lvai_bind_pane_typedef` does it**: terminals found by NAME (`Controls[]`
+order is not portable), `Replace`, `Save.Instrument`, `{LV.LVClassLibrary}` `Save`, and then the
+SAVED FILE re-read to confirm the `.ctl` is really in it. One call, `terminals bound: 1`, and
+`lvai_coercion_dots` then answered **`clean: true`, `coerced: 0`**. `lvai_coercion_dots` names both
+repairs now instead of asserting the constant one. `docs/typedef-disconnect.md` §13a-§13c.
+
+### 15c. The typedef DOES travel all the way, which is what the build set out to show
+
+Read from the saved files, no LabVIEW involved:
+
+| file | what it says |
+|---|---|
+| `Ofen.lvclass` | `Profil` -> `type: TypeDef`, `isTypedef: true`, `typedef: Ofenprofil.ctl` |
+| `Write Profil.vi` | pane terminal named **`Ofenprofil`** - NI's wizard names an accessor control after the TYPEDEF, not after the field |
+| the stub for it | `typedefTerminals: 1`, `typedefPath` naming the `.ctl`, `typedefObjectsInStub: 0` after the flatten |
+| `Profil Setzen.vi` | `coercionDots 0` after the pane bind |
+| `Profil Setzen Msg.lvclass` | `Profil` -> `isTypedef: true`, `typedef: Ofenprofil.ctl` |
+
+So the Message Maker carries the typedef into the message payload by itself - the message class's
+private data field is a TypeDef naming the same `.ctl`, with nothing asked of it.
+
+### 15d. ONE MESSAGE CLASS PER FOLDER - two in one folder is `Error 1055`
+
+`lvai_create_message_class`'s `directory` puts the class **directly** in the folder it is given, and
+a message class always brings a `Do.vi` and a `Send Template.vi`. Giving both messages
+`...\Ofen Messages` made the second answer **`Error 1055`** at `replaceActorMethod`, from
+`To More Specific Class in Message Maker.lvlib:Special Replace of SubVI Node.vi` - a reference that
+is invalid because the file it wanted was the FIRST message's. Every earlier build in this project
+(Waage, Drucker) used `<Actor> Messages\<Method> Msg\`, which is what NI's own wizard does; the
+collision only appeared because this build passed the shared folder.
+
+The half-built class must go before retrying - `Copy Class.vi` does not overwrite - and it goes with
+the project CLOSED.
+
+### 15e. THE `.ctl` BELONGS IN THE LIBRARY, and NI's own `AddItem` relinks it
+
+The user's correction, and it is right: `Ofenprofil.ctl` is part of this class and this library, so
+it goes into `Ofen.lvlib` like the actor and its messages rather than sitting beside them as a loose
+dependency. `lvai_add_to_library` with `type: "VI"` does it - the `.ctl` is an RSRC file LabVIEW
+lists that way - and the whole point of going through NI's `{LV.Library}` `AddItem` plus
+`Save All This Library.vi` is that library membership changes the item's QUALIFIED NAME and this
+route relinks what refers to it. Writing `NI.Lib.ContainingLib` by hand does not, and §8 records that
+as the silent wrecker it is.
+
+Verified after the change, cold, past a LabVIEW restart:
+
+| check | answer |
+|---|---|
+| `Ofen.lvclass` field `Profil` | still `isTypedef: true`, `typedef: Ofenprofil.ctl` |
+| `privateDataBytes` | 7 277 -> 7 405, the qualified name growing by `Ofen.lvlib:` |
+| `Profil Setzen.vi`, `Do.vi` | `execState 1` |
+| `lvai_coercion_dots` on the `Write Profil.vi` call | `clean: true`, `coerced: 0` |
+| the VI's own `VCTP` | `<Label Text="Ofen.lvlib" />` then `<Label Text="Ofenprofil.ctl" />` |
+
+That last row is the membership showing up inside the caller's type descriptor, which is the thing a
+hand edit would have left inconsistent.
+
+**And the `.lvproj` gets no entry of its own** - the `.ctl` belongs to the project THROUGH the
+library now, exactly like `Append To Log.vi`.
+
+### 15f. What the run cost
+
+Around 50 MCP calls, of which the two defects above account for roughly 15. No LabVIEW crash. Two
+deliberate restarts: one to clear the `Error 43` state, one for the cold `lvai_exec_state` check.
+
+## 16. ComputerMaus - the ORDER of library and messages, 2026-09-18
+
+Two typedefs in the private data, two messages, everything through a `.lvlib`. The build worked
+first time; the ONE defect is an ordering rule nothing in this repository stated, and it is the
+kind that every file-level check passes.
+
+### 16a. THE LIBRARY MUST EXIST BEFORE THE MESSAGES - measured, with a clean A/B
+
+**Adding the actor class to a `.lvlib` AFTER its message classes were built leaves EVERY `Do.vi`
+`eBad`.** Library membership rewrites the class's qualified name to
+`ComputerMaus.lvlib:ComputerMaus.lvclass`, and `Do.vi` is the VI that CALLS the actor method, so its
+link breaks.
+
+**The tell that identifies it in one call is which half survives:**
+
+| VI | after the class joined the library |
+|---|---|
+| `Do.vi` (calls the actor method) | **`execState 0`, eBad** |
+| `Send <Method>.vi` (only enqueues) | `execState 1` |
+
+Both message classes failed the same way, and nothing else reported it: `lvai_add_to_library`
+answered `ok` with `verify.items` complete and `placedIn` correct, the `.lvlib` re-read clean, and
+`lvai_describe_vi` showed the message's OWN qualified name already updated to
+`ComputerMaus.lvlib:Bewegen Msg.lvclass:Do.vi` - so the relink DID reach the message class and still
+left the call broken. `lvai_exec_state` was the only thing that saw it, exactly as
+`lvai_add_to_library`'s own closing note warns.
+
+**The repair is to rebuild the messages, and the A/B is clean**: same tool, same arguments, the only
+difference being that the actor was a library member this time - `execState 0` before, **`1`** after,
+nothing else touched. Verified again cold after a project close, and a second time on `Foerderband`,
+whose `Starten Msg` was retrofitted the same way.
+
+**So the order is: class -> methods -> LIBRARY -> messages.** If a library is being retrofitted onto
+an actor that already has messages, delete the message classes and rebuild them; there is no cheaper
+repair, and loading the hierarchy does not fix it (measured - a `lvai_describe_vi` that pulled the
+whole hierarchy in left `execState` at 0).
+
+**AND REMOVE THE LIBRARY'S ITEM ENTRY BEFORE DELETING THE FILES.** A `.lvlib` listing a file that is
+not there opens LabVIEW's modal search dialog on load, and a modal stops the whole gRPC service. The
+same rule as for a `.lvproj`, and the order is: entry out (project CLOSED), then the folder.
+
+### 16b. What LabVIEW does for you, and what it does not
+
+**It swaps the `.lvproj` entry itself.** After `lvai_add_to_library` plus a close, the project's
+loose `<Item ... ComputerMaus.lvclass>` line was gone and `<Item Name="ComputerMaus.lvlib" ...>` was
+in its place - written by LabVIEW's own save, with no edit of ours. `projectEntriesToRemove` names
+them anyway, which is right: that is a prediction, not a report, and a caller who skips the close
+still has to act on it.
+
+**It does NOT list a message class in the project at all.** NI's Message Maker writes the files and
+leaves the `.lvproj` alone, the same way the class provider does. Through a library that is correct
+and nothing needs doing; for a loose message class the entry has to be written by hand, with the
+project closed.
+
+### 16c. The typedef route held, on a second independent build
+
+Every step of `docs/typedef-disconnect.md` section 13 reproduced without a surprise: `.ctl` generated
+with the project CLOSED (11 extract files, 4069 bytes), flags patched, `lvai_resave_ctl` taking
+`wrappedType` from `Function` to `TypeDef`, `lvai_bind_class_fields` binding both fields before the
+accessors, and **no `Error 1061`** from the wizard. The methods' own panes wore one coercion dot each,
+`lvai_coercion_dots` named `lvai_bind_pane_typedef` as the repair, and both came back `clean: true`.
+
+**The typedef travels all the way into the message payload**: both message classes report their field
+as `type: TypeDef`, read off the saved `.lvclass`.
+
+### 16d. `<VI>` REQUIRES a `description` attribute, and the lint does not know it
+
+`scripts/aixml_lint.py` answered `[clean]` for a document that `ValidateAIXML` then refused with
+`Error -2628 ... Line 2, Column 41, Message: missing required attribute 'description'`. The lint
+checks the missing-required case for `Control`, `Indicator` and `Constant` and not for `VI` itself.
+One line of friction here, and the validate path named it exactly - which is the half that already
+works.
+
+## 17. Medikament — the first build that FOLLOWED the ordering rule, and an agent that could not finish it, 2026-09-18
+
+Two typedefs in the private data, two messages, **built by the `labview-class-generator` agent** at
+the user's request — where sections 15 and 16 were driven by hand. Section 16's ordering rule was
+applied forwards for the first time instead of being discovered by retrofit, and it held: **class →
+methods → pane typedef binding → LIBRARY → messages**, with `Do.vi` and `Send <Method>.vi` at
+`execState 1` on both messages and no rebuild of anything.
+
+### 17a. THE AGENT CANNOT FINISH A TYPEDEF CLASS, because four tools were missing from its roster
+
+This is the finding worth the section. `labview-class-generator`'s own description says it *"binds
+`.ctl` typedef fields so they point at the file"*, and its roster held `pylv_extract`,
+`lvai_describe_ctl` and `lvai_bind_class_fields` — enough to READ a `.ctl` and bind one, and not
+enough to produce or repair one:
+
+| missing tool | what it is needed for | what happens without it |
+|---|---|---|
+| `pylv_rebuild` | writing the patched `.ctl` back — it had `pylv_extract` and so could read but not write | a typedef `.ctl` cannot be created at all |
+| `lvai_resave_ctl` | converting a fixture-route `.ctl` from `wrappedType: Function` to `TypeDef` | **`Error 1061`** from the accessor wizard, mid-Phase-3, naming nothing |
+| `lvai_coercion_dots` | seeing the dot a typedef method parameter leaves | silently shipped |
+| `lvai_bind_pane_typedef` | repairing it | unrepairable by the agent |
+
+So the build was split three ways — the orchestrator made both `.ctl` files, the agent made the
+class, accessors and methods, the orchestrator repaired the two panes and then did the library and
+the messages. That split is not the interesting part; **the roster is.** This is the third occurrence
+of the shape `CLAUDE.md` already records for `labview-vi-generator` and `labview-vi-editor`: *a
+capability the definition describes and the roster withholds reads as a capability that does not
+exist.* All four are in the roster now, and Phase 2b describes when to reach for them — because a
+tool added to a roster with no phase explaining it is only half the fix.
+
+`lvai_add_to_library` and `lvai_create_message_class` were deliberately NOT added. The ordering rule
+means the orchestrator has to sequence those steps anyway, and both need the project open while the
+`.lvproj` edits around them need it closed — which is the orchestrator's business in a build that
+may have several agents in it.
+
+### 17b. The pane binding has to come before the MESSAGES, not merely before the library
+
+Section 16c recorded that the typedef travels into the message payload. This build shows the
+direction of the dependency, because the order was chosen deliberately rather than observed: both
+message classes came back with `fields: [{label: "…", type: "TypeDef"}]`, read off the saved
+`.lvclass`, and the Message Maker builds that payload by cloning **the actor method's own terminal**.
+Bind the pane after the message exists and the message keeps the bare cluster, with nothing
+reporting a difference — the same silence the binding itself has.
+
+So Phase 2b's `lvai_bind_class_fields` is not the whole typedef story for an actor: the FIELD binding
+serves the accessors, the PANE binding serves the messages, and they are different calls against
+different objects.
+
+### 17c. `uid_parent` is required on a `<Control>`, and the root is spelled `root`
+
+Three refusals before the first `.ctl` generated, all schema-level, all answered `[clean]` by
+`scripts/aixml_lint.py`:
+
+| written | refusal |
+|---|---|
+| `<VI name="Dosierung" …>` | `attribute 'name' is not declared for element 'VI'` — it is `_name` |
+| `<Control … />` with no `uid_parent` | `missing required attribute 'uid_parent'` |
+| `uid_parent="0"` | `lvai_check_aixml` `danglingParent` — a root-level element is `uid_parent="root"` |
+
+The middle row widens section 16d: the cheap checkers cover the missing-required case for `value` and
+the net attributes and not for `uid_parent`, exactly as they do not cover `<VI description>`. The
+third row is the one worth keeping for its own sake — `0` is the sentinel for a *uid*, and reading it
+as also being the sentinel for a *parent* is a plausible-but-wrong generalisation that
+`lvai_check_aixml` catches and explicitly refuses to "repair", because silently reparenting to root
+is the fault it exists to prevent.
+
+Every refusal named its line and column in 5–10 ms, so the cost was three round trips rather than a
+diagnosis. That is the argument against widening the lint in a hurry and for authoring against a
+known-good skeleton: section 2 of `lvai_aixml_reference` has one, and reading it first would have
+cost one call instead of three.
+
+## 18. Strassenkarte — the acceptance run for §17a's roster fix, 2026-09-18
+
+Same shape as §17 (two typedefs in the private data, two messages, everything through a `.lvlib`),
+built the same afternoon at the user's request, in `C:\temp\TypedefTests`. It exists to answer one
+question: §17a added `pylv_rebuild`, `lvai_resave_ctl`, `lvai_coercion_dots` and
+`lvai_bind_pane_typedef` to `labview-class-generator`'s roster and wrote Phase 2b around them, and
+**that fix had never been run** — the build it came out of was split three ways precisely because the
+tools were missing. This file's own rule is that a fix verified only by the change alongside it is
+not verified.
+
+**It holds. The agent did the whole typedef half alone**, in one task: both `.ctl` files generated
+with the project closed (11 extract files each, no `VICD`), flags patched through `pylv_rebuild`,
+`lvai_resave_ctl` taking both from `wrappedType: Function` to `TypeDef` (4241→4405 and 4290→4446
+bytes), `lvai_bind_class_fields` before any accessor, **no `Error 1061`** from the wizard, and both
+methods' own panes repaired with `lvai_bind_pane_typedef` after `lvai_coercion_dots` found one dot
+each. No orchestrator intervention inside that half and no LabVIEW restart in the whole build.
+
+**The split that remains is the one §17a chose deliberately**, and it was the orchestrator's whole
+share: the `.lvlib` (`scripts/lvai_create_actor_library.xml`), `lvai_add_to_library`, and the two
+`lvai_create_message_class` calls. That is the ordering rule of §16a, not a roster gap.
+
+### 18a. The sequence, and what each step needed
+
+| step | project | what it did |
+|---|---|---|
+| agent: `.ctl` ×2, class, accessors ×8, methods ×2, pane binds | closed for the `.ctl`s, open for the rest, **closed at handover** | §17's Phase 2b, unassisted |
+| `lvai_create_actor_library.xml` | **open** | `Library.Create` + folder + `AddItem` class + save |
+| `lvai_add_to_library` (both `.ctl`, root) | **open** | §15e — the `.ctl` belongs to the library |
+| `lvai_close_active_project` | → closed | sweep removed the helper VI |
+| `lvai_create_message_class` ×2 | **open** | one folder each, per §15d |
+| `lvai_add_to_library` (both Msg, `Messages for this Actor`) | **open** | `placedIn` correct for both |
+| `lvai_close_active_project` | → closed | `strayVisRemoved: 0` |
+| `lvai_exec_state` ×6, cold | closed | all `1` |
+
+**LabVIEW swapped the `.lvproj` entry itself again**, as §16b records: after the first close the loose
+`Strassenkarte.lvclass` line was gone and `<Item Name="Strassenkarte.lvlib" Type="Library">` was in
+its place, with no edit of ours. The hand edit §14 step 4 prescribes was not needed — that step
+predates the library being created while the project is open, and the prediction under
+`projectEntriesToRemove` is still worth acting on for a caller who skips the close.
+
+### 18b. The typedef reaches the message payload, on a third independent build
+
+Read from the saved files: `Strassenkarte.lvclass` fields `Ausschnitt` → `Kartenausschnitt.ctl` and
+`Letzter Abschnitt` → `Strassenabschnitt.ctl`, both `isTypedef: true`, `privateDataBytes` 8546 → 8966
+as library membership grew the qualified name; `Ausschnitt Setzen Msg.lvclass` and
+`Abschnitt Hinzufuegen Msg.lvclass` each carry one field of `type: TypeDef`. §17b's ordering — pane
+binding **before** the messages — was applied forwards and the payloads came out typed, so the
+dependency direction it states reproduces rather than being re-derived.
+
+### 18c. What it cost
+
+About 15 orchestrator calls beside the one agent task (65 tool uses, ~7.5 min). No crash, no restart,
+no hand edit of any LabVIEW file. **An uneventful run is the point**: against §17, which paid for a
+three-way split, and §15, whose two defects cost roughly 15 calls of its ~50.
+
+### 18d. A finished class tree CAN be relocated, as one block, with one `.lvproj` edit
+
+The user's correction after the build: the class's files should have gone into a subfolder named
+after the class, not beside the `.lvproj`. Nothing in this repository had a recipe for moving a
+finished class, and the obvious assumption — that it means rebuilding — is wrong.
+
+**Every relative URL in the chain is relative to the file that holds it**, so moving the whole set
+together changes none of them:
+
+| holder | URL it writes | after the move |
+|---|---|---|
+| `.lvclass` → its members | `../Write Ausschnitt.vi` | unchanged — both moved |
+| `.lvlib` → class, `.ctl`, messages | `../Strassenkarte.lvclass` | unchanged — both moved |
+| message `Do.vi` → the actor method | across two folder levels | unchanged — both moved |
+| `.lvclass` → `Actor.lvclass` | `/<vilib>/…` symbolic | unaffected by any move |
+| **`.lvproj` → the `.lvlib`** | `../Strassenkarte.lvlib` | **the one edit**: `../Strassenkarte/Strassenkarte.lvlib` |
+
+So the move is: close the project, `mv` the class, its `.lvlib`, its `.ctl` files, its member VIs
+**and its messages folder** into the new directory, and rewrite that single `URL`. Measured
+2026-09-18 on the §18 build: all six `execState` checks still `1`, `lvai_describe_class` unchanged
+including both typedef bindings, and after reopening and closing the project LabVIEW **kept the
+edited URL** rather than rewriting it — which is the real test, since its save is what undoes a
+`.lvproj` edit made at the wrong moment.
+
+**The hazard to respect is the modal.** A `.lvproj` or `.lvlib` naming a file that is not there
+opens LabVIEW's search dialog on load, and a modal stops the whole gRPC service. So probe with
+`lvai_exec_state` BEFORE opening the project: it opens a VI reference with no application instance,
+needs no project, and answers whether the links resolve — a cheap check that cannot wedge the
+service. Open the project only once it has passed.
+
+**Leave nothing behind.** Moving the actor but not its `Strassenkarte Messages\` folder is the one
+way to break this: the two would then shift by different amounts and every `Do.vi` link would need
+repointing. The block is the whole class, messages included.

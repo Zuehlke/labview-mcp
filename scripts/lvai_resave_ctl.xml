@@ -1,0 +1,15 @@
+<VI _name="lvai_resave_ctl.vi" description="Opens a .ctl in the IDE's own application instance and saves it in place with Save.Instrument\2C the path left unwired. A flag-patched control has never been written by LabVIEW itself\2C so it still carries the connector-pane shape of the VI it was generated from.">
+  <FreeLabel comment="LabVIEW rewrites the file in its own shape" uid="4200" uid_parent="root"/>
+  <Control _name="ctl path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]" outputs="value:4202.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4202.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4215.app,reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4215.app,vi path:4220.path,error in (no error):4215.err" outputs="vi reference:4230.vi,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Control VI Type" type="{LV.VI}" inputs="reference:4230.vi,error in (no error):4230.err" outputs="Control VI Type:4240.kind,reference out:,error out:4240.err" uid="4240" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4230.vi,error in (no error):4240.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4250.err" uid="4250" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4230.vi,error in (no error):4250.err" outputs="error out:4260.err" uid="4260" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4215.app,error in (no error):4260.err" outputs="error out:4270.err" uid="4270" uid_parent="root"/>
+  <Indicator _name="control vi type" type="int32" uid="4280" uid_parent="root" value="0" inputs="value:4240.kind"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4290" uid_parent="root" value="[false,0,]" inputs="value:4270.err"/>
+</VI>

@@ -86,18 +86,40 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             LabVIEW, because they went out as four separate calls and a round trip is a model turn.
             """)]
         string? viPaths = null,
+        [Description("""
+            After the stub exists, give its typedef terminals the SUBJECT'S REAL TYPES with every
+            typedef link removed at every depth - lvai_flatten_typedefs, run for you. A no-op when
+            the pane carries no typedef, so leaving it on costs nothing on most panes.
+            WHY IT IS NOT FREE WHERE IT APPLIES: it copies each `.ctl` of the chain into
+            user.lib\LV_MCP, clears its TypeDefVI flag with pylabview, and installs it with
+            {LV.Control} Replace - one LabVIEW round trip per level. Turn it off to get the old
+            behaviour, where the stub keeps AIXML's approximation of the type.
+            IT CANNOT FAIL THE PLACEHOLDER. A stub whose types could not be improved is still a
+            usable stub, so the outcome is reported under `typedefFlatten` and `ok` above stays
+            about the placeholder itself - but a failure is ALSO named at the top level, in
+            `typedefFlattenWarning`, because a green `ok` over a stub that kept an approximation is
+            exactly the answer nobody reads far enough into.
+            """)]
+        bool flattenTypedefs = true,
+        [Description("""
+            Which route the flatten uses, "flag" (the default) or "disconnect" - see
+            lvai_flatten_typedefs. "flag" needs nothing of you. "disconnect" is faster and copies
+            no `.ctl`, but REQUIRES a project open and active, opens this stub in the editor, and
+            kills LabVIEW if either precondition is missing.
+            """)]
+        string typedefRoute = "flag",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default)
     {
         if (viPaths is { Length: > 0 })
-            return await ManyAsync(viPaths, refresh, timeoutSeconds, ct: ct);
+            return await ManyAsync(viPaths, refresh, flattenTypedefs, typedefRoute, timeoutSeconds, ct: ct);
 
         if (viPath is not { Length: > 0 })
             return Json.Error("badArguments",
                 "Give either `viPath` (one VI) or `viPaths` (several, one absolute path per line). " +
                 "Neither was set.");
 
-        return await OneAsync(viPath, refresh, timeoutSeconds, ct: ct);
+        return await OneAsync(viPath, refresh, flattenTypedefs, typedefRoute, timeoutSeconds, ct: ct);
     }
 
     /// <summary>
@@ -111,7 +133,8 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// <summary>Line separators for the newline-delimited path list.</summary>
     private static readonly char[] SplitChars = [(char)13, (char)10];
 
-    private async Task<string> ManyAsync(string viPaths, bool refresh, int timeoutSeconds,
+    private async Task<string> ManyAsync(string viPaths, bool refresh, bool flattenTypedefs,
+                                         string typedefRoute, int timeoutSeconds,
                                          CancellationToken ct)
     {
         var paths = viPaths
@@ -132,7 +155,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         var failed = 0;
         foreach (var path in paths)
         {
-            var one = await OneAsync(path, refresh, timeoutSeconds, ct: ct);
+            var one = await OneAsync(path, refresh, flattenTypedefs, typedefRoute, timeoutSeconds, ct: ct);
             var node = Read(one);
             if ((node as JsonObject)?["ok"]?.GetValue<bool>() is not true) failed++;
             answers.Add(new JsonObject { ["viPath"] = path, ["answer"] = node });
@@ -152,7 +175,8 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         });
     }
 
-    private async Task<string> OneAsync(string viPath, bool refresh, int timeoutSeconds,
+    private async Task<string> OneAsync(string viPath, bool refresh, bool flattenTypedefs,
+                                        string typedefRoute, int timeoutSeconds,
                                         CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -338,6 +362,46 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 answer["installed"] = false;
             }
 
+            // Run for a REUSED stub too. The flatten is idempotent - it installs the same flattened
+            // `.ctl` onto the same terminal - and a stub cached before this existed would otherwise
+            // keep AIXML's approximation for ever, with nothing saying so.
+            // RUN IT WHENEVER IT IS ASKED FOR, not only when the pane probe found something.
+            // That probe reads Panel -> Controls[] and does not descend, so a terminal that is a
+            // PLAIN cluster merely CONTAINING a typedef reported nothing and the flatten never ran
+            // - measured. The engine does its own descending walk and answers cheaply when there is
+            // nothing to do, so the entry condition no longer depends on the shallow count.
+            if (flattenTypedefs)
+            {
+                var flatten = TypedefFlattenTools.ParseRoute(typedefRoute) is not { } chosen
+                    ? new JsonObject
+                      {
+                          ["ran"] = false,
+                          ["reason"] = $"typedefRoute '{typedefRoute}' is not one of " +
+                                       "\"flag\" or \"disconnect\".",
+                      }
+                    : await new TypedefFlattenTools(connection)
+                        .FlattenIntoAsync(stubPath, viPath, chosen, timeoutSeconds, ct);
+                answer["typedefFlatten"] = flatten;
+
+                // NAMED AT THE TOP LEVEL, because `ok` here is about the placeholder and a reader
+                // scanning for it sees a green answer over a stub whose types were not made
+                // faithful. That is the shape this repository keeps paying for - a failure that is
+                // real, reported, and one level further down than anybody looks.
+                if (flatten["ok"]?.GetValue<bool>() is false)
+                    answer["typedefFlattenWarning"] =
+                        $"{flatten["errorKind"]?.GetValue<string>() ?? "failed"}: the stub's " +
+                        "typedef terminals were NOT given the subject's real types - read " +
+                        "`typedefFlatten`. `ok` above is about the placeholder, which exists and " +
+                        "is usable, carrying AIXML's approximation of the type.";
+            }
+            else
+                answer["typedefFlatten"] = new JsonObject
+                {
+                    ["ran"] = false,
+                    ["reason"] = "flattenTypedefs was false, so the stub keeps AIXML's " +
+                                 "approximation of the type on every typedef terminal.",
+                };
+
             answer["call"] = CallElement(stubName, subject);
             // Built as JSON rather than interpolated: the path is a Windows path full of
             // backslashes, and hand-quoting it into a JSON string literal is exactly the kind of
@@ -349,12 +413,28 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 ["to"] = Path.GetFileName(viPath),
                 ["path"] = Path.GetFullPath(viPath),
             }).ToJsonString();
-            answer["note"] =
-                "Author the new VI with the `call` element above, generate it, then hand " +
-                "`retarget` to pylv_apply's operationsJson. Check the result the only way that " +
-                "counts - pylv_apply's verify step reports the Call targets LabVIEW itself reads " +
-                "back. A pane mismatch does not surface as a link error: LabVIEW reports the " +
-                "CALLER as not executable, or `Error 7, Bad Linkage`.";
+            // THE CLOSING NOTE IS CONDITIONAL, because it is the field that reads as the
+            // instruction and it used to send EVERY caller down the pylabview retarget - including
+            // the one socket where that route cannot work. Measured 2026-09-18 on a class member:
+            // the retarget lands (`callTargets` right) and LabVIEW then refuses the caller with
+            // `Missing subVI <name>`, because a class member is addressed as
+            // `<Class>.lvclass:<VI>.vi` and a link retarget rewrites a file NAME. The control is a
+            // loose VI retargeted the same way in the same session: execState 1, 0 coercion dots.
+            // The correct advice was already in `classTerminalNote`, one field further up, which is
+            // exactly the shape this repository keeps paying for.
+            answer["note"] = classTerminals.Count > 0
+                ? "Author the new VI with the `call` element above and generate it - then repoint " +
+                  "the call with lvai_swap_subvis, NOT with the `retarget` below. This subject " +
+                  "carries a LabVIEW class, so it is a class MEMBER: a pylabview link retarget " +
+                  "rewrites a file name and LabVIEW then answers `Missing subVI`, measured. " +
+                  "lvai_swap_subvis goes through {LV.SubVI} Replace inside LabVIEW, which resolves " +
+                  "the member AND re-types the wires, which is what the `path` stand-ins on this " +
+                  "socket need. `retarget` is left in the answer for a caller that wants it anyway."
+                : "Author the new VI with the `call` element above, generate it, then hand " +
+                  "`retarget` to pylv_apply's operationsJson. Check the result the only way that " +
+                  "counts - pylv_apply's verify step reports the Call targets LabVIEW itself reads " +
+                  "back. A pane mismatch does not surface as a link error: LabVIEW reports the " +
+                  "CALLER as not executable, or `Error 7, Bad Linkage`.";
             return Json.Document(answer);
         });
 

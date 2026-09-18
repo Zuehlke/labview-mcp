@@ -109,7 +109,8 @@ internal sealed class TestTools(LvaiConnection connection)
 
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
-                .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null, timeoutSeconds, ct: ct);
+                .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null,
+                                       timeoutSeconds: timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "placeholder", ["answer"] = Read(placeholder) });
 
             if (Read(placeholder) is not JsonObject stub || stub["ok"]?.GetValue<bool>() is not true)

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Deep1 Mode.ctl" description="Fixture control for the THREE-LEVEL typedef chain. Level 1\2C the innermost\3A an enum that becomes a strict typedef and is then embedded in Deep2 Inner.ctl.">
+  <Control _name="Deep1 Mode" type="uint16{Idle,Running,Stopped}" uid="4200" uid_parent="root" value="0" outputs="value:"/>
+</VI>

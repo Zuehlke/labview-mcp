@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Limits.ctl" description="STRICT typedef cluster whose Mode element is bound to Mode.ctl\2C so a terminal typed as this one is TWO typedefs deep. The flag route has to flatten the chain from the inside out\3B the disconnect route has to walk it.">
+  <Control _name="Limits" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Max}" uid="4200" uid_parent="root" value="[0,0]" outputs="value:"/>
+</VI>

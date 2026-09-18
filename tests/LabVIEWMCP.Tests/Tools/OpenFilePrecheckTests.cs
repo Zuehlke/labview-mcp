@@ -119,19 +119,40 @@ public sealed class OpenFilePrecheckTests
     /// The calls that are actually correct pass through untouched. Both real spellings, because a
     /// precheck that refused a working call would be worse than the silence it replaces.
     /// </summary>
-    [Theory]
-    [InlineData(@"C:\temp\RerunProbe\Probe\Touch.vi", "Touch.vi", null, null)]
-    [InlineData(null, null, @"C:\temp\RerunProbe\RerunProbe.lvproj", "RerunProbe.lvproj")]
-    [InlineData(@"C:\x\A.vi", "A.vi", @"C:\x\P.lvproj", "P.lvproj")]
-    public void A_well_formed_call_is_not_refused(
-        string? viPath, string? viName, string? projectPath, string? projectName) =>
-        Assert.Null(ActionTools.OpenFilePrecheck(viPath, viName, projectPath, projectName));
+    /// <summary>
+    /// THE FIXTURES ARE REAL FILES, and they have to be: since 2026-09-18 the precheck refuses a
+    /// path that is not there, because LabVIEW answers a missing `.lvproj` with the actively
+    /// misleading `Error 1025, Application Reference is invalid`. Invented paths passed this test
+    /// for months and would now fail it for a reason that has nothing to do with what it checks.
+    /// </summary>
+    [Fact]
+    public void A_well_formed_call_is_not_refused()
+    {
+        var dir = Directory.CreateDirectory(
+            Path.Combine(Path.GetTempPath(), $"lvmcp-pre-{Guid.NewGuid():N}")).FullName;
+        var vi = Path.Combine(dir, "A.vi");
+        var project = Path.Combine(dir, "P.lvproj");
+        File.WriteAllText(vi, "x");
+        File.WriteAllText(project, "<Project/>");
+        try
+        {
+            Assert.Null(ActionTools.OpenFilePrecheck(vi, "A.vi", null, null));
+            Assert.Null(ActionTools.OpenFilePrecheck(null, null, project, "P.lvproj"));
+            Assert.Null(ActionTools.OpenFilePrecheck(vi, "A.vi", project, "P.lvproj"));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 
     /// <summary>
     /// A path with no extension is not judged: it may be a real file, and refusing it would be a
     /// guess. The swap guards compare extensions precisely because that is all there is to go on.
     /// </summary>
     [Fact]
-    public void An_extensionless_path_is_left_alone() =>
-        Assert.Null(ActionTools.OpenFilePrecheck(@"C:\x\something", null, null, null));
+    public void An_extensionless_path_is_left_alone()
+    {
+        var file = Path.Combine(Path.GetTempPath(), $"lvmcp-noext-{Guid.NewGuid():N}");
+        File.WriteAllText(file, "x");
+        try { Assert.Null(ActionTools.OpenFilePrecheck(file, null, null, null)); }
+        finally { File.Delete(file); }
+    }
 }
