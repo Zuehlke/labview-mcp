@@ -107,6 +107,61 @@ internal sealed class ActionTools(LvaiConnection connection)
     /// They exist because LabVIEW's answer to every one of these is the same <c>Error 7, File not
     /// found</c>, which sends the reader to check the disk - the one place the fault is not.
     /// </summary>
+    /// <summary>
+    /// What to tell a caller whose open left NO ACTIVE PROJECT.
+    ///
+    /// THIS TEXT USED TO ASSERT TWO THINGS IT HAD NOT CHECKED, and it asserted them exactly where
+    /// a reader is already confused. It opened "The open itself reported no error" while the
+    /// branch was keyed on <c>projectBecameActive == false</c> ALONE - so on 2026-09-18 it said
+    /// that beside an <c>errorCode</c> of <b>1025, Application Reference is invalid</b>, and then
+    /// sent the reader after the foreground, which is the measured cause of a DIFFERENT failure.
+    /// In the same sentence it claimed "this call already tried fronting it and opening again"
+    /// while <c>foregroundRetry</c> was <c>null</c> and no retry had run.
+    ///
+    /// Same shape as every other field in this repository that could not tell two cases apart and
+    /// was nevertheless the whole verdict. Both facts are now arguments.
+    /// </summary>
+    internal static string NoActiveProjectHint(int openErrorCode, bool retryRan)
+    {
+        // 1025 is its own diagnosis and does not belong in the foreground story at all. Measured
+        // 2026-09-18: everything in the ADDON's application instance kept working - a placeholder
+        // was generated, exported and installed in 382 ms - while everything needing the IDE's
+        // instance failed, `{LV.Control} Replace` answering 1154 on a fresh stub and a reused one
+        // alike. `lvai_status` said ok, dwarnCount 0, looksDegraded false throughout.
+        // 1025 HAS A KNOWN CAUSE AND IT IS NOT THE ONE THIS HINT USED TO GIVE. Measured
+        // 2026-09-18: a `.lvproj` that DOES NOT EXIST answers `Error 1025, Application Reference
+        // is invalid`, proven by an A/B in one directory. The precheck refuses that before LabVIEW
+        // sees it, so a 1025 arriving HERE is past the guard and unexplained - and this text says
+        // so rather than repeating a story. The two diagnoses it replaces were both written in the
+        // voice of a measurement and both wrong: "the IDE's application reference has gone
+        // invalid" and "LabVIEW restarted under the session".
+        if (openErrorCode == 1025)
+            return "The open FAILED with Error 1025, Application Reference is invalid. The ONE "
+                 + "measured cause of this is a .lvproj that does not exist (2026-09-18, A/B "
+                 + "against a project in the same folder that opened cleanly) - and this tool "
+                 + "refuses a missing path before calling LabVIEW, so that is not what happened "
+                 + "here. Check the path is the project you meant and that it is readable; beyond "
+                 + "that, this state is NOT explained. Do not read it as the foreground, and do "
+                 + "not reach for a LabVIEW restart on the strength of it - a restart has been "
+                 + "measured changing nothing for the missing-file case.";
+
+        if (openErrorCode != 0)
+            return $"The open FAILED with Error {openErrorCode} and NO PROJECT IS ACTIVE. Read " +
+                   "errorMessage first: the active-project check below reports the state it " +
+                   "found, not the reason the open did not take. Every call that reaches a class " +
+                   "through Project:Active Project will now answer Error 1055.";
+
+        return "The open itself reported no error and NO PROJECT IS ACTIVE, which is a different " +
+               "failure - every call that reaches the class through Project:Active Project will " +
+               "now answer Error 1055. This is NOT a path problem. The measured cause is LabVIEW " +
+               "not having the foreground, and " +
+               (retryRan
+                   ? "this call already tried fronting it and opening again - see foregroundRetry."
+                   : "this call could NOT try that: LabVIEW's main window was not found, so no " +
+                     "retry ran and foregroundRetry is null. Front LabVIEW and call again.") +
+               " Checked with scripts/lvai_active_project.xml, which only reads.";
+    }
+
     internal static string? OpenFilePrecheck(
         string? viPath, string? viName, string? projectPath, string? projectName)
     {
@@ -142,6 +197,47 @@ internal sealed class ActionTools(LvaiConnection connection)
                            + "projectName. There is no `path` or `filePath` parameter.",
                 });
 
+        // A PATH THAT DOES NOT EXIST, which is the fault this guard was missing and the most
+        // expensive one it could have missed. Measured 2026-09-18 as a clean A/B in ONE directory:
+        // `OpenProbe.lvproj` (exists) answers errorCode 0 with projectBecameActive true, and
+        // `GibtsGarNicht.lvproj` beside it answers **Error 1025, Application Reference is
+        // invalid** - a message about the IDE's application reference, for a missing FILE. It
+        // reads as a broken LabVIEW, and it was believed: three calls, a LabVIEW restart, a client
+        // restart and two written-up diagnoses ("the IDE's application reference has gone
+        // invalid", then "LabVIEW restarted under the session") went past it before anyone checked
+        // that the .lvproj was there. A VI is NOT the same case - a missing .vi answers the honest
+        // `Error 7, File not found` - but both are checked here, because one File.Exists costs
+        // nothing and a caller cannot be expected to know which of the two LabVIEW will lie about.
+        foreach (var (label, path, sibling) in new[]
+                 {
+                     ("viPath", viPath, "viName"),
+                     ("projectPath", projectPath, "projectName"),
+                 })
+        {
+            if (path is not { Length: > 0 } || File.Exists(path)) continue;
+
+            var isProject = label == "projectPath";
+            return Json.Error("fileNotFound",
+                $"{label} does not exist: {path}",
+                new
+                {
+                    checkedPath = path,
+                    directoryExists = Path.GetDirectoryName(path) is { Length: > 0 } dir
+                                      && Directory.Exists(dir),
+                    hint = isProject
+                        ? "LabVIEW answers 'Error 1025, Application Reference is invalid' for a "
+                          + ".lvproj that is not there - a message about the IDE, not about the "
+                          + "file - so this is refused here instead. Measured 2026-09-18 against a "
+                          + "project in the same folder that does exist and opened cleanly. Check "
+                          + "the path before reading 1025 as a broken LabVIEW: a project may also "
+                          + "live one directory up, or a class may belong to a project named after "
+                          + "something else entirely."
+                        : "LabVIEW answers 'Error 7, File not found' for a .vi that is not there, "
+                          + $"which is honest - but the {sibling} you passed cannot make a missing "
+                          + "file open, so the call is refused here rather than spent.",
+                });
+        }
+
         return null;
     }
 
@@ -172,6 +268,13 @@ internal sealed class ActionTools(LvaiConnection connection)
         inside LabVIEW. So a project open now reads `Project:Active Project` back and reports
         `projectBecameActive`, with `errorKind: projectDidNotBecomeActive` and the cause named when
         it did not. Pass `checkActive: false` to skip the check, which costs one short helper run.
+        THE FOREGROUND IS THE CAUSE OF ONE FAILURE, NOT OF EVERY ONE - read `errorCode` first.
+        `Error 1025, Application Reference is invalid` means the IDE's application reference has
+        gone invalid while the ADDON's instance keeps working, so a `1154` from a flatten, a bind
+        or a retype in the same session is the same fault and re-running it cannot help; measured
+        2026-09-18, with `lvai_status` green throughout. The `hint` used to open "The open itself
+        reported no error" whatever the code said, because it was keyed on `projectBecameActive`
+        alone.
         """)]
     public async Task<string> OpenFileAsync(
         [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,
@@ -204,7 +307,7 @@ internal sealed class ActionTools(LvaiConnection connection)
             if (projectPath is not { Length: > 0 } || !checkActive)
                 return Json.Message(response);
 
-            var (active, note) = await ProjectIsActiveAsync(timeoutSeconds, ct: ct);
+            var (active, note, activePath) = await ProjectIsActiveAsync(timeoutSeconds, ct: ct);
 
             // THE MEASURED CAUSE IS THE FOREGROUND WINDOW, AND THAT IS AUTOMATABLE - this tool
             // reported the remedy as a human action ("bring its window to the front") from
@@ -228,7 +331,7 @@ internal sealed class ActionTools(LvaiConnection connection)
                     }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync,
                     ct);
 
-                var (activeNow, noteNow) = await ProjectIsActiveAsync(timeoutSeconds, ct: ct);
+                var (activeNow, noteNow, activePathNow) = await ProjectIsActiveAsync(timeoutSeconds, ct: ct);
                 retry = new JsonObject
                 {
                     ["ran"] = true,
@@ -243,23 +346,44 @@ internal sealed class ActionTools(LvaiConnection connection)
                 };
                 active = activeNow;
                 note = noteNow;
+                activePath = activePathNow;
             }
+
+            // WHICH project is active is REPORTED, not enforced. The reporting is the measured
+            // win: an Error 1055 from a later class call used to say nothing about what LabVIEW
+            // was looking at, and two arms of an A/B were spent on that on 2026-09-18.
+            //
+            // The MISMATCH below has never been observed firing, and that is why it only
+            // annotates rather than turning `projectBecameActive` false. Probed the same day:
+            // opening project A while B was active SWITCHED correctly, so the case this was
+            // written for does not arise that way. A guard that refuses a working call on an
+            // unproven rule is worse than the silence it replaces - and two paths can differ
+            // by spelling alone.
+            var wanted = string.IsNullOrWhiteSpace(projectPath) ? null : Path.GetFullPath(projectPath);
+            var mismatch = active is true && wanted is not null &&
+                           !string.IsNullOrWhiteSpace(activePath) &&
+                           !string.Equals(Path.GetFullPath(activePath), wanted,
+                                          StringComparison.OrdinalIgnoreCase);
+            if (mismatch)
+                note = $"A project is active but it is NOT the one asked for: '{activePath}' is " +
+                       $"active, '{wanted}' was requested. OBSERVED 2026-09-18, and the trigger is " +
+                       "an open that FAILED: the requested project never loaded and the one from " +
+                       "before is still active, so read errorCode first - this line describes the " +
+                       "state found, not a switch that went wrong. On a SUCCESSFUL open a second " +
+                       "project switches correctly, which is why this is reported and not treated " +
+                       "as a failure. If a later call answers Error 1055, close the active project " +
+                       "and open again.";
 
             return Json.Message(response,
                 ("projectBecameActive", JsonValue.Create(active)),
+                ("activeProjectPathDiffers", mismatch ? JsonValue.Create(true) : null),
+                ("activeProjectPath", JsonValue.Create(activePath)),
                 ("activeProjectCheck", JsonValue.Create(note)),
                 ("foregroundRetry", retry),
                 ("errorKind", active is false
                     ? JsonValue.Create("projectDidNotBecomeActive") : null),
                 ("hint", active is false
-                    ? JsonValue.Create(
-                        "The open itself reported no error and NO PROJECT IS ACTIVE, which is a " +
-                        "different failure - every call that reaches the class through " +
-                        "Project:Active Project will now answer Error 1055. This is NOT a path " +
-                        "problem. The measured cause is LabVIEW not having the foreground, and " +
-                        "this call already tried fronting it and opening again - see " +
-                        "foregroundRetry. If that did not help, something else is wrong. Checked " +
-                        "with scripts/lvai_active_project.xml, which only reads.")
+                    ? JsonValue.Create(NoActiveProjectHint(response.ErrorCode, retry is not null))
                     : null));
         });
 
@@ -270,13 +394,13 @@ internal sealed class ActionTools(LvaiConnection connection)
     /// Returns null when the check itself could not run, which must never be reported as "no
     /// project": a missing helper is not evidence about the IDE's state.
     /// </summary>
-    private async Task<(bool? Active, string Note)> ProjectIsActiveAsync(
+    private async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
         int timeoutSeconds, CancellationToken ct)
     {
         var source = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, "lvai_active_project.xml") : null;
         if (source is null || !File.Exists(source))
-            return (null, "not checked - lvai_active_project.xml was not found beside the exe.");
+            return (null, "not checked - lvai_active_project.xml was not found beside the exe.", null);
 
         var helper = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
                                   "lvai_active_project.vi");
@@ -289,7 +413,7 @@ internal sealed class ActionTools(LvaiConnection connection)
                     source, helper, openVI: false, measurePane: false, panePattern: null,
                     timeoutSeconds, ct: ct);
                 if (!File.Exists(helper))
-                    return (null, "not checked - the read-only helper could not be generated.");
+                    return (null, "not checked - the read-only helper could not be generated.", null);
             }
 
             var run = await new RunTools(connection).RunViAndReadValuesAsync(
@@ -299,16 +423,22 @@ internal sealed class ActionTools(LvaiConnection connection)
             var values = (JsonNode.Parse(run) as JsonObject)?["values"] as JsonObject;
             var code = (values?["code"] as JsonObject)?["value"]?.GetValue<string>();
             if (!int.TryParse(code, out var errorCode))
-                return (null, "not checked - the helper returned no error code.");
+                return (null, "not checked - the helper returned no error code.", null);
 
+            // WHICH project, not merely whether one is active. `a project is active` is not the
+            // question a caller is asking - it wants ITS project active, and the two differ after
+            // any tool that opens and closes a project of its own.
+            var activePath = (values?["project path"] as JsonObject)?["value"]?.GetValue<string>();
             return errorCode == 0
-                ? (true, "a project is active (Project:Active Project answered with a reference).")
+                ? (true, "a project is active: " +
+                         (string.IsNullOrWhiteSpace(activePath) ? "(path not reported)" : activePath),
+                   activePath)
                 : (false, $"NO project is active - Project:Active Project answered {errorCode}. " +
-                          "1055 is the expected code for that state.");
+                          "1055 is the expected code for that state.", null);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
-            return (null, $"not checked - {failure.Message}");
+            return (null, $"not checked - {failure.Message}", null);
         }
     }
 

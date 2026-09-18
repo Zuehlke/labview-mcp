@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Variants Subject.vi" description="Fixture carrying every typedef shape the disconnect route has to survive\2C on one pane\3A a STRICT typedef cluster that itself contains a typedef\2C a PLAIN cluster that is not a typedef but holds one\2C a NON-STRICT typedef\2C and an ARRAY - the shape the descent is known not to reach\2C present so the walk has to meet it and say so rather than pass it over.\0A\0AThe controls are authored with the bare underlying types here and bound afterwards with {LV.Control} Replace\2C because AIXML has no typedef in its grammar.">
+  <Control _name="Strict" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" conIdx="0" connection="required" uid="4200" uid_parent="root" value="[0,0]" outputs="value:"/>
+  <Control _name="Plain" type="cluster{uint16{Idle,Running,Stopped}.Sel,double.Val}" conIdx="5" connection="recommended" uid="4210" uid_parent="root" value="[0,0]" outputs="value:"/>
+  <Control _name="NonStrict" type="uint16{Idle,Running,Stopped}" conIdx="7" connection="recommended" uid="4220" uid_parent="root" value="0" outputs="value:"/>
+  <Control _name="Arr" type="array{uint16{Idle,Running,Stopped}}" conIdx="9" connection="recommended" uid="4230" uid_parent="root" value="[]" outputs="value:"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" conIdx="11" connection="recommended" uid="4240" uid_parent="root" value="[false,0,]" outputs="value:4240.err"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" conIdx="15" connection="recommended" uid="4250" uid_parent="root" value="[false,0,]" inputs="value:4240.err"/>
+
+  <FreeLabel comment="Every typedef shape on one pane" uid="4260" uid_parent="root"/>
+</VI>

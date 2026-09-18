@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Mode.ctl" description="STRICT typedef enum. The innermost link of the chain\3A it is embedded in Limits.ctl\2C it is the element type of Acquire.vi's Samples array\2C and it is bound onto the Sensor class's Mode field - so one control exercises the nested\2C the array and the class-field variants at once.">
+  <Control _name="Mode" type="uint16{Idle,Running,Stopped}" uid="4200" uid_parent="root" value="0" outputs="value:"/>
+</VI>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Class Caller.vi" description="Calls the class subject's STUB\2C whose Gadget in and Gadget out are `path` stand-ins where Read Config.vi has a class refnum. Retargeting this call onto the subject with pylabview is the route section 12c warns about\3A the pane's type descriptor is part of the link binding\2C so a stand-in that is a different TYPE should answer Error 7\2C Bad Linkage. This VI exists to measure that rather than assert it.">
+  <Control _name="Gadget" conIdx="0" connection="required" description="The path stand-in the stub declares in place of the class wire." outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Call target="LVMCP Stub 93bd2280f6.vi" inputs="error in (no error):4202.value,Gadget in:4200.value" outputs="error out:4210.err" uid="4210" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4210.err" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+</VI>

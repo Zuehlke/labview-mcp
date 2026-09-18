@@ -56,6 +56,12 @@ internal sealed class CtlTools
         `bindable` is the verdict to act on, and `whyNotBindable` names the reason in one sentence.
         `wrappedType` is what the control actually carries - the type a binding would install, and
         the type a generated constant must be authored as.
+        AND READ `needsLabviewSave`. A .ctl produced by the fixture route - generate a VI to a .ctl
+        path, then patch the flags in the pylabview bundle - has never been written by LabVIEW and
+        still carries that VI's CONNECTOR PANE, which shows up here as `wrappedType: "Function"`
+        with 16 fields instead of `"TypeDef"` with one. It binds, it flattens, it validates; NI's
+        accessor wizard then refuses the field it is bound to with Error 1061 in the middle of a
+        class build. lvai_resave_ctl is the one-call repair.
         A `.vi` is accepted too and reports `isControl: false`, because pointing this at the wrong
         file is a likelier mistake than wanting it.
         """)]
@@ -71,8 +77,8 @@ internal sealed class CtlTools
         CancellationToken ct = default) =>
         Rpc.GuardAsync(async () =>
         {
-            var bundle = PyLabview.Locate();
-            if (bundle is null) return Json.Error("notProvisioned", PyLabview.NotProvisionedMessage());
+            if (PyLabview.Locate() is null)
+                return Json.Error("notProvisioned", PyLabview.NotProvisionedMessage());
             if (!File.Exists(ctlPath))
                 return Json.Error("badArguments", $"No file at ctlPath '{ctlPath}'.");
 
@@ -87,20 +93,13 @@ internal sealed class CtlTools
             var total = Stopwatch.StartNew();
             var outDirectory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "ctl",
                 Path.GetRandomFileName());
-            Directory.CreateDirectory(outDirectory);
             try
             {
-                var mainXml = Path.Combine(outDirectory,
-                    Path.GetFileNameWithoutExtension(ctlPath).Replace(" ", "") + ".xml");
-                var budget = Rpc.ClampToolWait(timeoutSeconds);
-                var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
-                    ["-x", "-i", ctlPath, "-m", mainXml], budget, ct);
-                if (extract.ExitCode != 0 || !File.Exists(mainXml))
-                    return Json.Error("extractFailed",
-                        $"pylabview exited {extract.ExitCode} and wrote no XML for '{ctlPath}'.",
-                        new { stderr = extract.StdErr });
+                var (mainXml, failure) =
+                    await ExtractAsync(ctlPath, outDirectory, timeoutSeconds, ct);
+                if (failure is not null) return failure;
 
-                var answer = Describe(XDocument.Load(mainXml).Root!, ctlPath);
+                var answer = Describe(XDocument.Load(mainXml!).Root!, ctlPath);
                 answer["elapsedMs"] = total.ElapsedMilliseconds;
                 answer["bundleDirectory"] = keepBundle ? outDirectory : null;
                 return Json.Document(answer);
@@ -113,6 +112,37 @@ internal sealed class CtlTools
         });
 
     // ------------------------------------------------------------------ reading the file
+
+    /// <summary>
+    /// Extract one RSRC file into <paramref name="outDirectory"/> and return its main XML.
+    ///
+    /// SHARED ON PURPOSE. <c>lvai_resave_ctl</c> verifies its own work by re-reading the file
+    /// through <see cref="Describe"/>, and a second copy of these fifteen lines is exactly the
+    /// kind of duplication this repository has already paid for once, when
+    /// <c>AixmlCheck.SafeUidBase</c> and the lint's ceiling drifted apart.
+    ///
+    /// Returns the main XML path on success, or a ready-made error payload - never both.
+    /// </summary>
+    internal static async Task<(string? MainXml, string? Failure)> ExtractAsync(
+        string filePath, string outDirectory, int timeoutSeconds, CancellationToken ct)
+    {
+        var bundle = PyLabview.Locate();
+        if (bundle is null)
+            return (null, Json.Error("notProvisioned", PyLabview.NotProvisionedMessage()));
+
+        Directory.CreateDirectory(outDirectory);
+        var mainXml = Path.Combine(outDirectory,
+            Path.GetFileNameWithoutExtension(filePath).Replace(" ", "") + ".xml");
+        var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
+            ["-x", "-i", filePath, "-m", mainXml], Rpc.ClampToolWait(timeoutSeconds), ct);
+
+        if (extract.ExitCode != 0 || !File.Exists(mainXml))
+            return (null, Json.Error("extractFailed",
+                $"pylabview exited {extract.ExitCode} and wrote no XML for '{filePath}'.",
+                new { stderr = extract.StdErr }));
+
+        return (mainXml, null);
+    }
 
     /// <summary>
     /// The whole verdict, from the extracted RSRC XML.
@@ -156,6 +186,28 @@ internal sealed class CtlTools
                      "just produces no typedef link, which is indistinguishable from success " +
                      "unless you check here first.";
 
+        // A .ctl LabVIEW HAS NEVER SAVED still carries the connector pane of the VI it was
+        // generated from, and that is invisible in every other field here. Measured 2026-09-18:
+        // the fixture route this repository uses for every typedef - generate a VI to a .ctl path,
+        // then patch <Instrument Type> and TypeDefVI in the pylabview bundle - leaves VCTP/TopLevel
+        // index 1 pointing at the PANE descriptor, so wrappedType reads `Function` with 16 fields
+        // where a finished control reads `TypeDef` with one. Everything that only needs the TYPE
+        // reads straight through it: this call says bindable, Replace installs it,
+        // lvai_bind_class_fields binds it, lvai_placeholder_subvi flattens it. And NI's accessor
+        // wizard answers Error 1061 at CreateControlFromReference.vi for the field it is bound to,
+        // on the Read side and the Write side alike, which is a hard stop in the middle of a class
+        // build with nothing anywhere naming the cause.
+        //
+        // The control arm is inside the fixture tree itself: `Outer Config.ctl` reads `TypeDef`
+        // because a Replace once re-saved it, while `Inner Mode.ctl` still reads `Function` and has
+        // only ever been used NESTED - which is why the trap survived every earlier measurement.
+        // Strictness is not the variable; the Ofen .ctl is a PLAIN typedef and works once saved.
+        //
+        // `Function` EXACTLY, not `!= "TypeDef"`. Only those two shapes have been measured, and a
+        // flag this tool raises on an unmeasured third would send a caller to a repair they do not
+        // need - worse than the silence it replaces.
+        var needsSave = isControl && kind is 1 or 2 && wrapped.Kind == "Function";
+
         return new JsonObject
         {
             ["ok"] = true,
@@ -173,6 +225,17 @@ internal sealed class CtlTools
             ["fields"] = wrapped.Fields,
             ["bindable"] = whyNot is null,
             ["whyNotBindable"] = whyNot,
+            ["needsLabviewSave"] = needsSave,
+            ["needsLabviewSaveReason"] = needsSave
+                ? "This file says it is a typedef and still carries the CONNECTOR PANE of the VI " +
+                  "it was generated from - wrappedType is 'Function' with " +
+                  $"{wrapped.Fields.Count} fields where a control LabVIEW has written reads " +
+                  "'TypeDef' with one. Binding it works and NI's ACCESSOR WIZARD DOES NOT: " +
+                  "lvai_create_accessors answers Error 1061 at CreateControlFromReference.vi for " +
+                  "the field it is bound to, Read side and Write side alike. Fix it with " +
+                  "lvai_resave_ctl, which is one Save.Instrument with the path unwired, and this " +
+                  "call then reads 'TypeDef'."
+                : null,
             ["source"] = "the saved file, read with pylabview - no LabVIEW was involved",
             ["note"] = "controlVIType matches {LV.VI} Control VI Type. Verify a binding from the " +
                        "TARGET afterwards: a bound field is a <TypeDesc Type=\"TypeDef\"> naming " +

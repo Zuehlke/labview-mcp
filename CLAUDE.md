@@ -1057,6 +1057,32 @@ service. And **a declared method breaks every implementing class until that clas
 exists**, measured with the require-override flag both set and cleared. So the method list is part
 of the contract a class is created against: finish it, then create the implementers, then write
 their overrides. `.claude/agents/labview-class-generator.md` Phase 1b.
+**AND THE LIBRARY MUST EXIST BEFORE THE MESSAGES - measured 2026-09-18 with a clean A/B.** Adding
+an actor class to a `.lvlib` AFTER its message classes were built leaves **EVERY `Do.vi` `eBad`**:
+library membership rewrites the class's qualified name to `ComputerMaus.lvlib:ComputerMaus.lvclass`,
+and `Do.vi` is the VI that CALLS the actor method. **The discriminator is which half survives** -
+`Do.vi` reads `execState 0` while `Send <Method>.vi`, which only enqueues, stays at `1`. Nothing else
+reported it: `lvai_add_to_library` answered `ok` with `verify.items` complete, the `.lvlib` re-read
+clean, and `lvai_describe_vi` showed the message's own qualified name ALREADY updated - so the relink
+did reach the message class and still left the call broken. **`lvai_exec_state` was the only thing
+that saw it**, exactly as that tool's own closing note warns.
+
+**So the order is: class -> methods -> LIBRARY -> messages.** Retrofitting a library onto an actor
+that already has messages means DELETING the message classes and rebuilding them - the A/B is clean,
+`execState 0` before and `1` after with nothing else changed, verified twice - and loading the
+hierarchy does not repair it. **Remove the library's `<Item>` entry BEFORE deleting the files**: a
+`.lvlib` naming a file that is not there opens LabVIEW's modal search dialog on load, and a modal
+stops the whole gRPC service. LabVIEW does swap the `.lvproj` entry from the loose class to the
+library by itself, on its own save; it does NOT list a message class at all.
+`docs/labview-actor-framework.md` section 16.
+
+**AND `<VI>` REQUIRES A `description` ATTRIBUTE, which neither cheap checker knows.** Measured the
+same day: `scripts/aixml_lint.py` answered `[clean]` for a document `ValidateAIXML` then refused with
+`Error -2628 ... Line 2, Column 41, Message: missing required attribute 'description'`. Both checkers
+cover the missing-required case for `Control`, `Indicator` and `Constant` and neither covers `VI`
+itself. The validate path named it exactly, so this costs one round trip rather than a diagnosis -
+which is the argument for authoring with a description rather than for widening the lint in a hurry.
+
 
 **`lvai_add_class_method` VALIDATES the AIXML now, and classifies the verdict rather than skipping
 it.** It converted blind because the validator is genuinely stricter for a class wire — and that
@@ -1242,6 +1268,146 @@ and a `String To Path` in every method. A path's literal is the empty one, like 
 tool refuses a field type, probe whether AIXML refuses it too before designing around it** — a
 three-line carrier VI answers it in 165 ms. `docs/lvclass-creation.md` §0.
 
+**AND A FLAG-PATCHED `.ctl` IS NOT FINISHED UNTIL LabVIEW HAS SAVED IT — measured 2026-09-18, and
+it is a HARD STOP, not a fidelity loss.** The fixture route this repository uses for every typedef
+(`lvai_generate_vi` to a `.ctl` path, then patch `<Instrument Type>` and `TypeDefVI` in the
+pylabview bundle) leaves the CONNECTOR PANE of the VI it was generated from in the file. Everything
+that only needs the TYPE reads straight through that — `lvai_describe_ctl` says `isTypedef: true,
+bindable: true`, `Replace` installs it, `lvai_bind_class_fields` binds it, `lvai_placeholder_subvi`
+flattens it — and **NI's accessor wizard answers `Error 1061`** at
+`BaseAccessorScripter.lvclass:CreateControlFromReference.vi`, for that field only, on the Read side
+and the Write side alike. **The tell is already in `lvai_describe_ctl`'s answer and nothing reads
+it**: `wrappedType` is `Function` with 16 fields (15 of them `Void` pane slots) where a finished
+control reads `TypeDef` with 1. One `{LV.VI}` `Save.Instrument` with the path UNWIRED, in the IDE's
+application instance, converts it — **`lvai_resave_ctl`**, which does that and reads the file back.
+**The control arm is inside the existing fixture tree**: `Outer Config.ctl` reads `TypeDef` because a
+`Replace` once re-saved it, while `Inner Mode.ctl` still reads `Function` and has only ever been used
+NESTED — which is why the trap survived every earlier typedef measurement. Strictness is not the
+variable. **`lvai_describe_ctl` answers `needsLabviewSave` now**, which is a file read costing no
+LabVIEW, and it is the check that would have saved the whole detour.
+`docs/typedef-disconnect.md` §13.
+
+**AND THAT RESAVE ONLY CONVERTS IF THE `.ctl` WAS GENERATED WITH THE PROJECT CLOSED — measured
+2026-09-18 as a clean A/B, one variable.** Same AIXML, same path: **project OPEN gives 6 148 bytes
+and a 17-file `pylv_extract` bundle carrying `VICD` compiled-code blocks, and `lvai_resave_ctl` then
+answers `Function` → `Function` FOR EVER**; **project CLOSED gives 4 156 bytes, 11 files, no `VICD`,
+and the same call converts to `TypeDef`.** LabVIEW compiled the control while the project held it,
+pylabview copies `VICD` through unparsed — the very property that makes the round trip lossless — so
+the flag patch lands in a file whose compiled half still says “standard VI”. **The cheap tell before
+you spend anything is the FILE COUNT in the extract answer: 11 is clean, 17 means the patch will not
+take.**
+
+**AND RESTARTING LabVIEW IS A CLEAN NEGATIVE HERE.** The first hypothesis was the documented stale
+in-memory copy; it is wrong. Killed, restarted, project reopened, resave re-run: `Function` before
+and after, byte-identical, and a second resave byte-identical again. **The remedy is the order this
+file already prescribes — close the project, then extract, edit, rebuild — and nothing heavier.**
+The user's correction was explicit: *“Ein Neustart von Labview sollte nicht nötig sein. Ein
+Schliessen des Projektes sollte genügen.”* Reaching for a restart first is how a five-minute A/B
+becomes three calls and a LabVIEW start.
+
+**`Error 1025, Application Reference is invalid` MEANS THE `.lvproj` IS NOT THERE.** Measured
+2026-09-18 as an A/B inside one directory: `OpenProbe.lvproj` (exists) answers `errorCode 0` with
+`projectBecameActive: true`, and `GibtsGarNicht.lvproj` beside it answers **1025**. A missing `.vi`
+gets the honest `Error 7, File not found`; only the PROJECT path lies, and it lies by naming a
+subsystem the caller never touched. `lvai_open_file` refuses a path that is not there now
+(`errorKind: fileNotFound`) and names 1025 in the refusal.
+
+**IT COST TWO WRITTEN-UP DIAGNOSES BEFORE ANYONE RAN `ls`, and that is the rule worth keeping.**
+The symptom was three `1025` answers for `C:\temp\ActorFW_first\Presse\Presse.lvproj`. First
+diagnosis: *"the IDE's application reference has gone invalid, no cheaper remedy than restarting
+LabVIEW is established"* - the observation was real (calls in the ADDON's instance worked while
+anything needing the IDE's failed) and the remedy was pure inference. Second: *"LabVIEW restarted
+under the session, so every reference is stale"* - and **its evidence was real too**, the Nigel
+service log showing all six features dropping at 14:45:15 and LabVIEW's process `StartTime` reading
+14:45:23. Both facts true, neither the cause; refuted by a fresh LabVIEW, a fresh server and a
+fresh client answering `1025` again two minutes later. **There is no `Presse.lvproj`** - that actor
+lives in `ActorFW_first.lvproj` one directory up, and the path had been invented, then reused
+across two restarts and two documents. **Every probe was aimed at LabVIEW's state and none at the
+argument.**
+
+**So: check that the file EXISTS before concluding anything about the machine**, and when an error
+names a SUBSYSTEM rather than the input, treat that as a reason to doubt the message rather than as
+a lead. A restart, a service log and a process id are all *available* evidence, and reaching for
+available evidence ahead of cheap evidence is how a five-second `ls` came last.
+
+**`lvai_status` reports `labviewUpSeconds` as of the same day, and that survives the retraction on
+its own merits.** The zero-DWarn note has always warned that the log is reset at start and never
+said WHEN, so a zero eight seconds old printed identically to one earned over four hours - a real
+gap, now closed. What is retracted is the claim that it explains `1025`. Retracted with it: that a
+`1154` from `{LV.Control} Replace` is "the same fault" - that tied two symptoms together on nothing,
+and the ordinary explanation (the flatten ran with NO project active, and `Replace` needs the IDE's
+own application instance) was never tested against.
+
+**AND SCOPING THAT CAVEAT TO A ZERO WAS TOO NARROW - ACCEPTANCE SHOWED IT, NOT ARGUMENT.** Measured
+2026-09-18 on three freshly restarted instances, 98 s, 94 s and 91 s old: the first two answered
+**`dwarnCount: 1`, not 0** - one `DestroyPlatformEvent failed with MgErr 42`, which this file
+already records as benign teardown - and the third answered 0. So a fresh instance lands on EITHER
+branch, and the branch beside the zero one - *"Low enough to be ordinary"* - carried the identical
+defect on an instance ninety seconds old.
+
+**The first write-up of this said the zero branch was "very nearly unreachable", from those two
+samples, and the third sample refutes it** - the caveat now fires there too, verified live. The FIX
+was right either way, because it covers both branches; only its justification was drawn from n=2.
+Two samples that agree are not a distribution, which is the same objection this file already records
+against reading 0, 1 and 2 as a trend. `StatusTools.LowDwarnNote` shares the age
+caveat across both now. **The lesson is the one this file keeps relearning: a fix aimed at the case
+that PROMPTED it is not aimed at the case that OCCURS** - and the thing that showed the difference
+was running the tool against a real instance twice, not reasoning about the branch.
+
+
+**And `lvai_open_file`'s `hint` asserted two things it had not checked, in one sentence.** It printed
+*"The open itself reported no error"* beside an `errorCode` of 1025, and *"this call already tried
+fronting it and opening again"* while `foregroundRetry` was `null` - the branch was keyed on
+`projectBecameActive == false` alone. Both are arguments now, with a control arm so a genuinely
+clean open still gets the foreground diagnosis. `activeProjectPathDiffers` learned something too:
+its note said *"this has never been seen happening"*, and a FAILED open does it every time, because
+the previous project is still active.
+
+**AND A GENERATED CLASS METHOD LOSES THE TYPEDEF ON ITS OWN PANE, where the repair tool
+`lvai_coercion_dots` names cannot reach.** The stub flattens correctly and the swap lands, and the
+caller still reads one coercion dot — because AIXML wrote the method's own `Profil` control as a
+bare cluster and `lvai_add_class_method` retypes only the CLASS terminals. `lvai_bind_typedef_constants`
+finds each coerced source by its CONSTANT label; here the source is a front-panel CONTROL, so the
+closing note is right for the case it was written for and silently wrong for this one. The repair is
+`{LV.Control}` `Replace` aimed at the method's own pane, with the owning class saved in the SAME run
+— **`lvai_bind_pane_typedef`**, after which `lvai_coercion_dots` answers `clean: true`. That note
+does not assert one repair any more: it returns `repairs`, both of them, with the question that picks
+between them. **Branching it automatically was NOT built, and the reason is a hazard rather than
+effort** — telling the two apart means reading the coerced terminal's `Connected Wire` and then the
+wire's source, and there is no `{LV.Wire}` in the VI Server catalogue at all. Authoring a helper
+against an uncatalogued class is the measured signature that preceded three LabVIEW deaths.
+
+**AND `Save.Instrument` ALONE DOES NOT COMMIT A `Replace` ON A PLAIN VI EITHER — this file has said
+it of a class MEMBER since 2026-09-02 and the limit is wider.** Measured 2026-09-18 on a throwaway VI
+in no project and no class: `Replace` plus `Save.Instrument` answered `error 0` at every stage,
+LabVIEW demonstrably rewrote the file (a `VICD` block appeared where the generated one had none), and
+the saved file carried **zero** typedef objects — against the class member in the same session, which
+carried one plus `Ofenprofil.ctl` named twice in its `VCTP`. The class `Save` is what commits it; what
+commits it for a non-member is NOT established, so `lvai_bind_pane_typedef` requires the `.lvclass`
+rather than pretending to offer the other case. **The only thing that saw this was reading the FILE**
+— every error cluster in the chain was zero — which is why that tool gates `ok` on the `.ctl` name
+appearing in the saved VI's own type descriptors and never on the helper's own count.
+
+**AND THE FILE CHECK ALONE WAS A FALSE PASS, found on ACCEPTANCE the next session.** Asked to bind a
+terminal named `Gibtsnicht` onto a VI whose `Profil` was ALREADY bound to that `.ctl`, the tool
+answered **`ok: true`, `verified: true`, `terminalsBound: 0`, `terminalOnPanel: false`** — green for
+a terminal that does not exist, with both disqualifying facts in the answer and neither gating it.
+The file check asks *is this `.ctl` in the VI*, which a bind from yesterday satisfies exactly as well
+as one that just happened, so it could never have caught this alone. `verified` is **three**
+conditions now — the `.ctl` in the saved file, every requested terminal ON THE PANEL, and the helper
+matching as many as were asked for. **The shape is one this file already records twice**:
+`nodesSwapped` reporting the REQUEST rather than the outcome, and `wiringLost` trusted as a verdict.
+**A field that cannot distinguish the two cases must not be the whole verdict** — and the unit tests
+were green throughout, because the false pass needs a REAL already-bound file, which is a shape no
+fixture had. `docs/typedef-disconnect.md` §13b-a.
+
+**AND THE FIRST OPEN OF A VI LabVIEW HAS NEVER LOADED READS EVERY CONTROL NAME AS EMPTY.** Measured
+twice on one fixture in one minute: the first run saw four nameless controls, matched none, bound
+nothing and answered `error 0`; the second saw all four names and bound. Any helper that finds a
+terminal BY NAME inherits this — and finding them by name is mandatory, because `Controls[]` order is
+not portable. So compare what was bound against what was asked for; a zero is a reason to retry once,
+not a verdict. `lvai_bind_pane_typedef` does that retry and reports it as `retriedAfterEmptyNames`.
+
 **A CLASS METHOD IS SCRIPTABLE, and `lvai_add_class_method` does it.** This file has said in several
 places that a class-typed terminal is the end of the road; that is true of AIXML and false as a
 conclusion. Author the method with `path` stand-ins, **convert WITHOUT validating**, then in ONE
@@ -1300,7 +1466,17 @@ that appears on N nodes needs N calls whatever N is.
 calls that pair the only route by which a generated VI calls project-local code — so an agent told
 to author such a call answered `No such tool available` and **hand-built a socket VI from AIXML
 instead**. It was exact and it worked, and an inexact clone is `Error 7, Bad Linkage` with nothing
-in the message about panes. **A capability the definition describes and the roster withholds reads
+in the message about panes.
+
+**A THIRD ROSTER GAP, 2026-09-18, and this one STOPS the agent rather than costing it a detour.**
+`labview-class-generator`'s description says it *"binds `.ctl` typedef fields"*, and its roster held
+`pylv_extract` but not `pylv_rebuild` — so it could read a `.ctl` and not write one — nor
+`lvai_resave_ctl`, `lvai_coercion_dots` or `lvai_bind_pane_typedef`. A typedef class build therefore
+had to be split three ways, and an agent that tried it alone would reach `Error 1061` from the
+accessor wizard in the middle of the accessor phase with nothing naming the cause. All four are in
+the roster now **and Phase 2b says when to reach for them**, because a tool added to a roster with no
+phase explaining it is only half the fix — the same half-measure as a document that is embedded and
+never served. `docs/labview-actor-framework.md` §17a. **A capability the definition describes and the roster withholds reads
 as a capability that does not exist**, which is the same shape as an embedded document nothing
 serves.
 
@@ -2137,6 +2313,7 @@ literally it argued away 600 usable palette VIs.
 | Do TWO sibling classes behind ONE interface behave, and where do strays come from? | `docs/cold-build-weighbridge.md` | — |
 | Why could a fix made this morning not be tested this afternoon? | `docs/cold-build-torquebench.md` | — |
 | What does a whole AGENT-driven build cost, and what DWarns does it leave? | `docs/cold-build-coolantloop.md` | — |
+| What does the TYPEDEF flatten cost, and which route should be the default? | `docs/cold-build-mixedrig.md` | — |
 | Which attribute is required even on an UNWIRED terminal? | `docs/cold-build-shakerrig.md` | — |
 | Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
 | How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
@@ -2168,6 +2345,8 @@ literally it argued away 600 usable palette VIs.
 | How do I bind typedefs onto a class's private data fields? | `docs/class-method-tooling.md` §3b | `lvai_bind_class_fields` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
 | Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
+| A coercion dot whose source is a CONTROL, not a constant | `docs/typedef-disconnect.md` §13a | `lvai_bind_pane_typedef` — `lvai_bind_typedef_constants` finds its target by CONSTANT label and cannot reach a pane control. Needs the owning `.lvclass`, and gates `ok` on the SAVED FILE |
+| NI's accessor wizard answers `Error 1061` on a typedef field | `docs/typedef-disconnect.md` §13 | `lvai_resave_ctl` — a flag-patched `.ctl` still carries the generator's connector pane; `lvai_describe_ctl` flags it as `needsLabviewSave` with `wrappedType: Function` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
@@ -2403,6 +2582,17 @@ identifying an install meant hashing 800 files. The commit SHA had been embedded
 **a value that exists but is not reported is not an answer**, the same shape as an embedded document
 nothing serves. It is now reported by `--version`, by `lvai_status` and by `pylv_status`, that last
 one because it is the only one that answers with no LabVIEW running.
+
+**BUT `serverCommit` IS THE HEAD AT BUILD TIME, so on a DEV build it names the PARENT of the change
+you are testing.** The ordinary loop is edit, build, test, *then* commit - so the binary contains the
+fix while the id names the commit before it. Measured 2026-09-18 on acceptance: `lvai_status` said
+`0.0.0-dev (15feae1e)` for a DLL that demonstrably carried the fix committed as `7c2d2f0`. **On a dev
+build, ask the DLL** - one `grep -a` for a string only the new code has - and compare the DLL's
+`LastWriteTime` against the server process's `StartTime` to see whether the running process loaded
+it. **A tool DESCRIPTION is no better**: the same session served the OLD description text out of the
+deferred-tool catalogue while the DLL held the new one and every server process post-dated it. Both
+are one step removed from the code; the behaviour and the binary are not.
+`docs/release-versioning.md` §5a.
 
 **NEVER PUBLISH `build.ps1`'s OUTPUT — and that is not a style rule, it happened five times.**
 Measured 2026-09-11 off the GitHub API: `V1.1.5`, `V1.2.0`, `V1.2.2`, `V1.2.5` and `V1.2.8` carry a

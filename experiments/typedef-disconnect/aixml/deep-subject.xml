@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Deep Subject.vi" description="Fixture for the THREE-LEVEL typedef chain. Its Config terminal is bound to Deep3 Outer.ctl\2C which carries Deep2 Inner.ctl\2C which carries Deep1 Mode.ctl - so the subject holds three typedef objects nested three deep. Everything else measured here is two deep\2C which is why depth greater than two was listed as untested.">
+  <Control _name="Config" conIdx="0" connection="required" description="Bound to Deep3 Outer.ctl after generation." outputs="value:4200.value" type="cluster{cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}.Inner,int32.Count}" uid="4200" uid_parent="root" value="[[0,0],0]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="Config out" conIdx="4" connection="recommended" description="The cluster passed straight through." inputs="value:4200.value" type="cluster{cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}.Inner,int32.Count}" uid="4300" uid_parent="root" value="[[0,0],0]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4302" uid_parent="root" value="[false,0,]"/>
+</VI>

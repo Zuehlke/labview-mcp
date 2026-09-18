@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Transplant Target.vi" description="Prototype target for the pylabview control transplant. AIXML creates it with the BARE cluster type - which is all AIXML can express - and pylabview then replaces that control with the typedef'd one taken out of Typedef Subject.vi. Same pane as the subject so the two are comparable control for control.">
+  <Control _name="Config" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" conIdx="0" connection="required" uid="4200" uid_parent="root" value="[0,0]" outputs="value:4200.cfg"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" conIdx="11" connection="recommended" uid="4210" uid_parent="root" value="[false,0,]" outputs="value:4210.err"/>
+  <Indicator _name="Config Out" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" conIdx="4" connection="recommended" uid="4220" uid_parent="root" value="[0,0]" inputs="value:4200.cfg"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" conIdx="15" connection="recommended" uid="4230" uid_parent="root" value="[false,0,]" inputs="value:4210.err"/>
+
+  <FreeLabel comment="Config is bare here and transplanted after" uid="4240" uid_parent="root"/>
+</VI>

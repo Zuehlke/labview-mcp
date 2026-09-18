@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Reading.ctl" description="PLAIN (non-strict) typedef. TypeDefVI is set and StrictTypeDefVI is not\2C which is the variant a pattern matching only the strict pair would pass over while answering as though it had worked.">
+  <Control _name="Reading" type="cluster{double.Value,string.Unit}" uid="4200" uid_parent="root" value="[0,]" outputs="value:"/>
+</VI>

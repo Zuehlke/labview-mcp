@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Inner Mode.ctl" description="Fixture control for the typedef-disconnect measurement. An enum that is meant to become a TYPEDEF and then be embedded inside another typedef\2C so the recursion has something to find.">
+  <Control _name="Inner Mode" type="uint16{Idle,Running,Stopped}" uid="4200" uid_parent="root" value="0" outputs="value:"/>
+</VI>

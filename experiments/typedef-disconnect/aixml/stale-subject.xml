@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="Stale Subject.vi" description="Fixture for the stale-LabVIEW cross-check. Its pane carries a PLAIN enum and no typedef at all\2C so a walk over it finds nothing and its file agrees. The test then overwrites the FILE with one that does carry typedefs while LabVIEW holds this copy in memory\2C which is the disagreement lvai_flatten_typedefs must refuse to call success.">
+  <Control _name="Mode" conIdx="0" connection="required" description="A plain enum\2C deliberately not a typedef." outputs="value:4200.value" type="uint16{Idle,Running,Stopped}" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="Mode out" conIdx="4" connection="recommended" description="The enum passed straight through." inputs="value:4200.value" type="uint16{Idle,Running,Stopped}" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4302" uid_parent="root" value="[false,0,]"/>
+</VI>

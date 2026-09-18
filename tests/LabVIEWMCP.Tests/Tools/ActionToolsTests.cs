@@ -145,6 +145,36 @@ public class ActionBuildTests
     }
 }
 
+/// <summary>
+/// Real files on disk for the open-file tests.
+///
+/// THEY USED TO BE INVENTED PATHS like <c>C:\p\My.vi</c>, and that stopped working when
+/// <c>lvai_open_file</c> started refusing a path that is not there - measured 2026-09-18, because
+/// LabVIEW answers a missing <c>.lvproj</c> with <b>Error 1025, Application Reference is
+/// invalid</b>, a message about the IDE for a missing file. Making these real is the honest fix:
+/// weakening the guard so the old fixtures kept passing would have restored the defect.
+/// </summary>
+internal sealed class TempOpenFiles : IDisposable
+{
+    private readonly string _dir =
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), $"lvmcp-open-{Guid.NewGuid():N}"))
+                 .FullName;
+
+    public TempOpenFiles()
+    {
+        File.WriteAllText(Vi, "not a real VI, and it does not have to be - nothing opens it here");
+        File.WriteAllText(Project, "<Project/>");
+    }
+
+    public string Vi => Path.Combine(_dir, "My.vi");
+    public string Project => Path.Combine(_dir, "App.lvproj");
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_dir, recursive: true); } catch (IOException) { }
+    }
+}
+
 public class ActionOpenFileTests
 {
     /// <summary>
@@ -196,13 +226,15 @@ public class ActionOpenFileTests
     {
         await using var server = await LvaiTestServer.StartAsync();
 
+        using var files = new TempOpenFiles();
+
         await new ActionTools(server.Connection).OpenFileAsync(
-            @"C:\p\My.vi", "My.vi", @"C:\p\App.lvproj", "App.lvproj");
+            files.Vi, "My.vi", files.Project, "App.lvproj");
 
         var request = server.Service.Last<OpenFileRequest>("OpenFile");
-        Assert.Equal(@"C:\p\My.vi", request.ViPath);
+        Assert.Equal(files.Vi, request.ViPath);
         Assert.Equal("My.vi", request.ViName);
-        Assert.Equal(@"C:\p\App.lvproj", request.ProjectPath);
+        Assert.Equal(files.Project, request.ProjectPath);
         Assert.Equal("App.lvproj", request.ProjectName);
     }
 
@@ -212,7 +244,9 @@ public class ActionOpenFileTests
         // A null would fail protobuf serialization; empty string is the correct wire value.
         await using var server = await LvaiTestServer.StartAsync();
 
-        await new ActionTools(server.Connection).OpenFileAsync(@"C:\p\My.vi");
+        using var files = new TempOpenFiles();
+
+        await new ActionTools(server.Connection).OpenFileAsync(files.Vi);
 
         var request = server.Service.Last<OpenFileRequest>("OpenFile");
         Assert.Equal("", request.ViName);
@@ -249,8 +283,12 @@ public class ActionOpenFileTests
         await using var server = await LvaiTestServer.StartAsync();
         server.Service.ErrorCode = 7;
         server.Service.ErrorMessage = "cannot open";
+        using var files = new TempOpenFiles();
 
-        var result = await new ActionTools(server.Connection).OpenFileAsync(@"C:\p\Missing.vi");
+        // The file EXISTS here on purpose: this test is about LabVIEW's error reaching the caller,
+        // and a path the precheck refuses would never get that far - it would pass for the wrong
+        // reason and stop covering the surfacing it is named for.
+        var result = await new ActionTools(server.Connection).OpenFileAsync(files.Vi);
 
         Assert.Equal(7, Res.Int(result, "errorCode"));
         Assert.Equal("cannot open", Res.Str(result, "errorMessage"));

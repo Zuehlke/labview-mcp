@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Exotic Subject.vi" description="Fixture for section 12d - types AIXML cannot express that are NOT typedefs. Every terminal is authored as a plain string here and then REPLACED with one of NI's own silver_ctls controls\2C which are ordinary controls rather than typedefs\2C so Is Typedef? is false and neither flatten route touches them. What the stub then carries is AIXML's approximation and nothing else.">
+  <Control _name="Task" conIdx="0" connection="required" description="Replaced with DAQmx Task Name NI_Silver.ctl." outputs="value:" type="string" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Visa" conIdx="5" connection="recommended" description="Replaced with VISA Resource Name NI_Silver.ctl." outputs="value:" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="Wave" conIdx="7" connection="recommended" description="Replaced with Waveform NI_Silver.ctl." outputs="value:" type="string" uid="4204" uid_parent="root" value=""/>
+  <Control _name="DigData" conIdx="9" connection="recommended" description="Replaced with Digital Data NI_Silver.ctl." outputs="value:" type="string" uid="4206" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Standard error chain in." outputs="value:4208.value" type="cluster{bool.status,int32.code,string.source}" uid="4208" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="DigWave" conIdx="4" connection="recommended" description="Replaced with Digital Waveform NI_Silver.ctl." inputs="value:" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Standard error chain out." inputs="value:4208.value" type="cluster{bool.status,int32.code,string.source}" uid="4302" uid_parent="root" value="[false,0,]"/>
+</VI>

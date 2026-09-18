@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Typedef Subject.vi" description="Fixture subject for the typedef-disconnect measurement. Its Config terminal is bound to Outer Config.ctl afterwards\2C which is itself a strict typedef whose Mode element is bound to Inner Mode.ctl - so the pane carries a typedef with a typedef inside it. The question this VI exists to answer is what lvai_placeholder_subvi's stub carries after cloning that pane.">
+  <Control _name="Config" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" conIdx="0" connection="required" uid="4200" uid_parent="root" value="[0,0]" outputs="value:4200.cfg"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" conIdx="11" connection="recommended" uid="4210" uid_parent="root" value="[false,0,]" outputs="value:4210.err"/>
+  <Indicator _name="Config Out" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" conIdx="4" connection="recommended" uid="4220" uid_parent="root" value="[0,0]" inputs="value:4200.cfg"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" conIdx="15" connection="recommended" uid="4230" uid_parent="root" value="[false,0,]" inputs="value:4210.err"/>
+  <FreeLabel comment="Fixture pane for the typedef probe" uid="4240" uid_parent="root"/>
+</VI>

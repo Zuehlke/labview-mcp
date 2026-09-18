@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="lvtd_discon_safe.vi" description="Measurement probe\3A the SAME Discon Typedef call as lvtd_discon_one.vi with ONE difference - nothing is read back from the control reference afterwards. It is the control arm for a LabVIEW that died twice.\0A\0AWHAT IS BEING SEPARATED. lvtd_discon_one.vi read Is Typedef? off the same reference after the disconnect and LabVIEW disappeared within six seconds\2C twice\2C with no entry in its own crash log and the target file never written. lvtd_rep_top.vi survives the very same shape around {LV.Control} Replace - and it reads NOTHING back\2C which is the documented rule for Replace\3A the reference it was called on is poison. If Discon Typedef replaces the control object the same way\2C the read is a use-after-free and this probe lives. If this one dies too\2C the call itself is fatal in this context and the whole route needs another idea.\0A\0AThe verdict is not in this VI's outputs. It is whether the saved file still names a typedef - extract it afterwards and count.">
+  <Control _name="target path" conIdx="0" connection="required" description="Absolute path of the .vi or .ctl to edit. Saved in place." type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.v"/>
+  <Control _name="control label" conIdx="5" connection="required" description="Label of the one front panel control to disconnect." type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.v"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4204" uid_parent="root" value="[false,0,]" outputs="value:4204.err"/>
+
+  <Constant _name="not a typedef" outputs="value:4206.zero" type="uint32{not a typedef,typedef,strict typedef,class private data}" uid="4206" uid_parent="root" value="0"/>
+
+  <Node _name="String To Path" inputs="string:4200.v" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.path,error in (no error):4204.err" outputs="vi reference:4212.ref,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4212.ref,error in (no error):4212.err" outputs="Front Panel:4214.panel,reference out:,error out:4214.err" uid="4214" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4214.panel,error in (no error):4214.err" outputs="Controls[]:4216.ctrls,reference out:,error out:4216.err" uid="4216" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4216.ctrls" mode="index" outputs="value:4302.c" uid="4302" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Control}" inputs="reference:4302.c,error in (no error):" outputs="Label:4304.lbl,reference out:,error out:4304.err" uid="4304" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4304.lbl,error in (no error):" outputs="Text:4306.t,reference out:,error out:4306.err" uid="4306" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4306.t" mode="index" outputs="value:4308.labels" uid="4308" uid_parent="4300"/>
+  </Structure>
+
+  <Node _name="Search 1D Array" inputs="1D array:4308.labels,element:4202.v,start index (0):" outputs="index of element:4310.i" uid="4310" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4216.ctrls,index:4310.i" outputs="element:4312.ctl" uid="4312" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Is Typedef?" type="{LV.Control}" inputs="reference:4312.ctl,error in (no error):4216.err" outputs="Is Typedef?:4320.kind,reference out:,error out:4320.err" uid="4320" uid_parent="root"/>
+  <Node _name="Not Equal?" inputs="x:4320.kind,y:4206.zero" outputs="x != y?:4322.before" uid="4322" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Discon Typedef" type="{LV.Control}" inputs="reference:4312.ctl,error in (no error):4320.err" outputs="reference out:,error out:4330.err,Discon Typedef:" uid="4330" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4330.err" outputs="code:4332.code" uid="4332" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4212.ref,error in (no error):4330.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:4400.ref,error out:4400.err" uid="4400" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4400.ref,error in (no error):4400.err" outputs="error out:4402.err" uid="4402" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4402.err" outputs="code:4404.code,source:4404.source" uid="4404" uid_parent="root"/>
+
+  <Indicator _name="labels" type="array{string}" uid="4500" uid_parent="root" value="[]" inputs="value:4308.labels"/>
+  <Indicator _name="typedef before" type="bool" uid="4502" uid_parent="root" value="FALSE" inputs="value:4322.before"/>
+  <Indicator _name="discon code" type="int32" uid="4506" uid_parent="root" value="0" inputs="value:4332.code"/>
+  <Indicator _name="code" type="int32" uid="4510" uid_parent="root" value="0" inputs="value:4404.code"/>
+  <Indicator _name="source" type="string" uid="4512" uid_parent="root" value="" inputs="value:4404.source"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4514" uid_parent="root" value="[false,0,]" inputs="value:4402.err"/>
+
+  <FreeLabel comment="Nothing is read back after the disconnect" uid="4520" uid_parent="root"/>
+</VI>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Deep2c Test.ctl" description="Isolation arm. Same construction as Deep2 Inner.ctl - AIXML\2C flag patch\2C then a typedef bound into its Mode field - but the source is Inner Mode.ctl\2C the enum typedef from the session that produced the known-good Outer Config.ctl. If this comes out eBad too then the breakage is in the CONSTRUCTION as run today\2C not in Deep1 Mode.ctl.">
+  <Control _name="Deep2c Test" type="cluster{uint16{Idle,Running,Stopped}.Mode,double.Gain}" uid="4200" uid_parent="root" value="[0,0]" outputs="value:"/>
+</VI>

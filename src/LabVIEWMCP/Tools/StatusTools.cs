@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -181,11 +182,24 @@ internal sealed class StatusTools(LvaiConnection connection)
         const int knownCap = 100;
         var saturated = warnings >= knownCap;
 
+        // HOW OLD THE INSTANCE IS, because without it `dwarnCount` cannot be read at all.
+        // Measured 2026-09-18: LabVIEW went down at 14:45:15 - the Nigel service log records all
+        // six of its features dropping - and a NEW process appeared at 14:45:23. Every probe after
+        // that answered `Error 1025, Application Reference is invalid` and `1154` from
+        // {LV.Control} Replace, while this tool reported ok, dwarnCount 0, looksDegraded false.
+        // The zero was not health; it was a log reset eight seconds earlier. The note below has
+        // SAID "the log is reset at start" since it was written and never said WHEN that was, so
+        // the one number that settles it was the one number missing.
+        var upSeconds = LabViewUpSeconds();
+
         return new JsonObject
         {
             ["logFound"] = true,
             ["logPath"] = log,
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
+            // The OS's own answer, not an inference from the log: a log can be appended to across
+            // restarts, so its age is not the instance's age.
+            ["labviewUpSeconds"] = upSeconds is null ? null : JsonValue.Create(upSeconds.Value),
             ["dwarnCount"] = warnings,
             ["dwarnCountSaturated"] = saturated,
             // EVENTS, NOT LINES - and named, because the unit CHANGED on 2026-09-08 and a reader
@@ -216,9 +230,7 @@ internal sealed class StatusTools(LvaiConnection connection)
             // the note says - as something to check AFTER an unexplained failure - and do not
             // gate work on it.
             ["note"] = warnings == 0
-                ? "No DWarn entries in this instance's log. That is NOT a promise of health: an "
-                  + "instance reading 0 has been measured crashing minutes later, because the log "
-                  + "is reset at start and records only what has already gone wrong."
+                ? LowDwarnNote(warnings, upSeconds)
                 : saturated
                     ? $"AT LEAST {knownCap} DWarn events - the count is SATURATED and is a "
                       + "FLOOR, not a magnitude. Measured 2026-09-03: three captures read "
@@ -243,8 +255,11 @@ internal sealed class StatusTools(LvaiConnection connection)
                       + "state explains - Error 1073 on a private-data export, Error 1562 from the "
                       + "accessor wizard - check whether the count moved and restart LabVIEW "
                       + "before hunting further. Do not gate work on this number."
-                    : $"{warnings} DWarn events. Low enough to be ordinary; read the log if a "
-                      + "call fails in a way the arguments do not explain.",
+                    // THE SAME CAVEAT AS THE ZERO CASE, because a low count on a
+                    // 94-second-old instance says exactly as little. Measured 2026-09-18: two
+                    // fresh instances both read 1, so the zero branch alone was landing where it
+                    // would almost never be read.
+                    : LowDwarnNote(warnings, upSeconds),
         };
     }
 
@@ -453,5 +468,82 @@ internal sealed class StatusTools(LvaiConnection connection)
             if (!line.Contains(benign, StringComparison.Ordinal)) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// Seconds since the youngest LabVIEW process started, or <c>null</c> when that cannot be read.
+    /// </summary>
+    private static int? LabViewUpSeconds()
+    {
+        try
+        {
+            var youngest = Process.GetProcessesByName("LabVIEW")
+                .Select(p => { try { return (DateTime?)p.StartTime; } catch { return null; } })
+                .Where(t => t is not null)
+                .Max();
+            return youngest is null ? null : (int)(DateTime.Now - youngest.Value).TotalSeconds;
+        }
+        // A process that exits between the enumeration and the read, or a platform that refuses
+        // StartTime, is not a reason to fail a status call.
+        catch (Exception failure) when (failure is InvalidOperationException
+                                        or System.ComponentModel.Win32Exception) { return null; }
+    }
+
+    /// <summary>
+    /// What a LOW <c>dwarnCount</c> actually means, which depends on how old the instance is.
+    ///
+    /// THE OLD TEXT WAS RIGHT AND UNUSABLE. It said an instance reading 0 "has been measured
+    /// crashing minutes later, because the log is reset at start" - true, and it never reported
+    /// when that start was, so the reader had no way to tell a genuinely quiet instance from one
+    /// whose log had just been wiped.
+    ///
+    /// AND SCOPING IT TO ZERO WAS TOO NARROW, which acceptance showed rather than argued.
+    /// Measured 2026-09-18 across two freshly restarted instances, 98 s and 94 s old: BOTH read
+    /// <c>dwarnCount: 1</c>, not 0 - one <c>DestroyPlatformEvent failed with MgErr 42</c>, which
+    /// this repository already records as benign teardown. So on this station the zero branch is
+    /// very nearly unreachable and the caveat was landing where it would never be read, while the
+    /// low-count branch beside it - "Low enough to be ordinary" - carried the identical defect on
+    /// an instance a minute and a half old. The caveat is shared now.
+    ///
+    /// Thirty minutes is a READING AID, not a measured boundary, and the raw
+    /// <c>labviewUpSeconds</c> is reported beside it so nobody has to trust the line.
+    /// </summary>
+    internal static string LowDwarnNote(int warnings, int? upSeconds)
+    {
+        var opening = warnings == 0
+            ? "No DWarn entries in this instance's log. That is NOT a promise of health: an " +
+              "instance reading 0 has been measured crashing minutes later, because the log is " +
+              "reset at start and records only what has already gone wrong."
+            : $"{warnings} DWarn events. Low enough to be ordinary; read the log if a call fails " +
+              "in a way the arguments do not explain.";
+
+        return opening + " " + AgeCaveat(warnings, upSeconds);
+    }
+
+    /// <summary>
+    /// The half that depends on the clock rather than on the count.
+    ///
+    /// It deliberately says NOTHING about `Error 1025` any more. That sentence was here for a day
+    /// and it was wrong: 1025 means the `.lvproj` does not exist, measured as an A/B in one
+    /// directory, and `lvai_open_file` refuses a missing path before LabVIEW sees it. Pointing a
+    /// reader at a stale-reference story from a health note is how the wrong diagnosis spread the
+    /// first time.
+    /// </summary>
+    private static string AgeCaveat(int warnings, int? upSeconds)
+    {
+        var subject = warnings == 0 ? "this zero" : "this count";
+
+        if (upSeconds is null)
+            return "LabVIEW's process start time could not be read here, so whether " + subject +
+                   " reflects a quiet instance or a freshly reset log is not established.";
+
+        var minutes = upSeconds.Value / 60;
+
+        return upSeconds.Value < 30 * 60
+            ? $"AND THIS INSTANCE IS {minutes} MINUTE(S) OLD, so {subject} says almost nothing - " +
+              "the log was reset that recently, and nothing here has had time to go wrong yet. " +
+              "Read labviewUpSeconds beside this before treating a low count as health."
+            : $"This instance has been up {minutes} minutes, so {subject} is at least about a " +
+              "period of real work rather than a log that was just reset.";
     }
 }

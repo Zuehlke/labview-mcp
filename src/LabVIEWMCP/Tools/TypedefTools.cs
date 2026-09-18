@@ -1,6 +1,7 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
@@ -479,7 +480,10 @@ internal sealed class TypedefTools(LvaiConnection connection)
         because AIXML cannot express a typedef and the stub is cloned with the bare underlying type.
         Validation, the retarget and a run ALL pass in that state. This is the only thing that sees
         it, the same way lvai_connector_pane is the only thing that sees a misplaced pane.
-        Repair what it finds with lvai_bind_typedef_constants.
+        WHICH REPAIR depends on what feeds the terminal, and the answer comes back in
+        `repairs`: a diagram CONSTANT is lvai_bind_typedef_constants, a front-panel CONTROL of
+        the calling VI is lvai_bind_pane_typedef. This description named only the first until
+        2026-09-18 and was measured sending a build at the tool that could not reach its case.
         Needs no active project - it opens the VI without an application instance on purpose, so it
         also works while pylv_apply has the project closed.
         ONE ENTRY PER CALL NODE, not per subVI name. A diagram may call the same subVI several
@@ -652,15 +656,54 @@ internal sealed class TypedefTools(LvaiConnection connection)
                     ? "At least one subVI call could not be read - see its note."
                     : coerced == 0
                         ? "No coercion dot on any subVI call terminal. Nothing to repair."
-                        : $"{coerced} terminal(s) are coerced. Repair them with " +
-                          "lvai_bind_typedef_constants, which derives the .ctl from the terminal " +
-                          "itself - you do not supply a path. Note that it finds each constant by " +
-                          "its LABEL, so the constant must have been authored as " +
-                          "_name=\"<terminal>\".",
+                        : $"{coerced} terminal(s) are coerced. WHICH REPAIR DEPENDS ON WHAT FEEDS " +
+                          "THE TERMINAL - see `repairs`. This note named only the constant one " +
+                          "until 2026-09-18, and sent a real build at a tool that could not reach " +
+                          "its case.",
         };
+
+        if (coerced > 0) result["repairs"] = Repairs();
 
         return Json.Document(result);
     }
+
+    /// <summary>
+    /// The two repairs a coercion dot can need, and the question that picks between them.
+    ///
+    /// WHY THIS IS A LIST AND NOT A BRANCH. Telling them apart automatically means reading what is
+    /// WIRED to the coerced terminal - <c>{LV.Terminal} Connected Wire</c> and then the wire's
+    /// source object. `Connected Wire` exists, and the class it returns is NOT in the VI Server
+    /// catalogue this repository ships: there is no <c>{LV.Wire}</c> entry at all. Authoring a
+    /// helper against a class the catalogue does not list is the measured signature that preceded
+    /// three LabVIEW deaths - <c>OMAutoClasses.cpp(74) DWarn, index: -1, nObj: 0</c>, fired while
+    /// LabVIEW PARSES the AIXML. So the discriminator is handed to the reader, who can see the
+    /// diagram, rather than guessed at by a helper that might take the session down.
+    ///
+    /// Naming both is still strictly better than what was here before, which asserted the constant
+    /// repair for every dot and was measured wrong on a real build: the coerced source was a
+    /// front-panel CONTROL on a generated class method's own pane, and
+    /// <c>lvai_bind_typedef_constants</c> finds its target by the CONSTANT's label.
+    /// </summary>
+    internal static JsonArray Repairs() =>
+    [
+        new JsonObject
+        {
+            ["whenTheSourceIs"] = "a diagram CONSTANT wired into the terminal",
+            ["tool"] = "lvai_bind_typedef_constants",
+            ["note"] = "Derives the .ctl from the terminal itself - you supply no path - and " +
+                       "finds each constant by its LABEL, so it must have been authored as " +
+                       "_name=\"<terminal>\".",
+        },
+        new JsonObject
+        {
+            ["whenTheSourceIs"] = "a FRONT-PANEL CONTROL of the calling VI",
+            ["tool"] = "lvai_bind_pane_typedef",
+            ["note"] = "A generated VI's own pane control is the bare underlying type, because " +
+                       "AIXML has no typedef in its grammar and lvai_add_class_method retypes " +
+                       "only the CLASS terminals. Needs the owning .lvclass: Save.Instrument " +
+                       "alone does not commit a Replace.",
+        },
+    ];
 
     /// <summary>
     /// A 1D array indicator out of the runner's payload. Arrays come back with `value` null and
@@ -685,6 +728,510 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// <summary>The same, read as LabVIEW's 0/1 booleans.</summary>
     internal static IReadOnlyList<bool> BoolArray(JsonObject? values, string name) =>
         StringArray(values, name).Select(v => v == "1").ToList();
+
+    // ------------------------------------------------------- the CONTROL half of the repair
+
+    /// <summary>Name of the pane-binding helper's AIXML source inside the scripts folder.</summary>
+    internal const string PaneBindHelperAixmlFileName = "lvai_bind_pane_typedef.xml";
+
+    /// <summary>Name of the .ctl resave helper's AIXML source inside the scripts folder.</summary>
+    internal const string ResaveCtlHelperAixmlFileName = "lvai_resave_ctl.xml";
+
+    /// <summary>
+    /// Every `.ctl` named by a <c>&lt;Label&gt;</c> anywhere in an extracted VI - which is how a
+    /// bound typedef announces itself, as a <c>&lt;TypeDesc Type="TypeDef"&gt;</c> whose Label
+    /// children name the owning library and the file. Measured on a real class member:
+    /// <c>&lt;Label Text="Ofen.lvlib" /&gt;</c> then <c>&lt;Label Text="Ofenprofil.ctl" /&gt;</c>.
+    ///
+    /// THIS IS THE VERDICT, and it is the only one that caught the defect it exists for. A run
+    /// that answered `terminals bound: 1` with every error cluster zero left a file carrying ZERO
+    /// typedef objects - measured 2026-09-18 on a VI with no owning class. Reading the file is what
+    /// separated "LabVIEW did it" from "LabVIEW said yes", the same rule
+    /// <c>lvai_add_class_method</c>'s on-disk verify already encodes.
+    /// </summary>
+    internal static SortedSet<string> TypedefCtlNames(XElement rsrc)
+    {
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var label in rsrc.Descendants("Label"))
+            if ((string?)label.Attribute("Text") is { Length: > 0 } text &&
+                text.EndsWith(".ctl", StringComparison.OrdinalIgnoreCase))
+                names.Add(text);
+        return names;
+    }
+
+    /// <summary>One requested binding: which pane terminal gets which `.ctl`.</summary>
+    internal sealed record PaneBinding(string Terminal, string CtlPath);
+
+    /// <summary>
+    /// Parse <c>bindingsJson</c>. Unknown keys are REFUSED by name rather than dropped - the
+    /// silence inside a JSON string argument is a defect this repository has already measured
+    /// costing two agents a suite that asserted the opposite of what was asked for.
+    /// </summary>
+    internal static IReadOnlyList<PaneBinding> ParseBindings(string bindingsJson)
+    {
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(bindingsJson); }
+        catch (JsonException bad)
+        {
+            throw new ArgumentException(
+                $"bindingsJson is not valid JSON: {bad.Message}. It is an ARRAY, e.g. " +
+                """[{"terminal":"Profil","ctlPath":"C:\\p\\Ofenprofil.ctl"}]""");
+        }
+
+        if (parsed is not JsonArray array || array.Count == 0)
+            throw new ArgumentException(
+                "bindingsJson must be a non-empty JSON ARRAY, e.g. " +
+                """[{"terminal":"Profil","ctlPath":"C:\\p\\Ofenprofil.ctl"}]""");
+
+        var accepted = new[] { "terminal", "ctlPath" };
+        var bindings = new List<PaneBinding>(array.Count);
+        foreach (var entry in array)
+        {
+            if (entry is not JsonObject o)
+                throw new ArgumentException("Every entry of bindingsJson must be an object.");
+
+            foreach (var key in o.Select(p => p.Key))
+                if (!accepted.Contains(key, StringComparer.Ordinal))
+                    throw new ArgumentException(
+                        $"'{key}' is not a key this tool reads. Accepted: " +
+                        $"{string.Join(", ", accepted)}. A key nobody reads is dropped in " +
+                        "silence otherwise, which is how a call comes to report success for " +
+                        "something it never did.");
+
+            var terminal = o["terminal"]?.GetValue<string>();
+            var ctl = o["ctlPath"]?.GetValue<string>();
+            if (terminal is not { Length: > 0 } || ctl is not { Length: > 0 })
+                throw new ArgumentException(
+                    "Every entry needs a non-empty `terminal` and `ctlPath`.");
+            if (terminal.Contains('|') || ctl.Contains('|'))
+                throw new ArgumentException(
+                    $"'{terminal}' / '{ctl}': the helper pairs names with paths on a PIPE, so " +
+                    "neither may contain one. A '|' is in Path.GetInvalidFileNameChars() on " +
+                    "Windows, so no real path carries one.");
+            bindings.Add(new PaneBinding(terminal, ctl));
+        }
+
+        return bindings;
+    }
+
+    [McpServerTool(Name = "lvai_bind_pane_typedef", Destructive = true, OpenWorld = true,
+                   Title = "Bind a .ctl typedef onto a class member's own pane controls")]
+    [Description("""
+        MUTATING: installs a .ctl typedef onto named FRONT PANEL controls of an existing CLASS
+        MEMBER through {LV.Control} Replace, and saves the VI and its owning class in one run.
+        THIS IS THE OTHER HALF OF lvai_bind_typedef_constants, and the half nothing else reaches. A
+        GENERATED VI CANNOT CARRY A TYPEDEF ON ITS OWN PANE: AIXML has no typedef in its grammar,
+        so a control it authored is the bare underlying type, and a call into a subVI whose terminal
+        IS the typedef then wears a coercion dot that survives the placeholder flatten and the swap.
+        lvai_bind_typedef_constants finds its target by the CONSTANT's label and cannot reach a
+        front-panel control; this does.
+        THE CLASS PATH IS REQUIRED, AND THAT IS A MEASUREMENT. Measured 2026-09-18 on a plain VI in
+        no project and no class: with the class save left out, Replace plus Save.Instrument answered
+        error 0 at every stage and the saved file carried ZERO typedef objects - LabVIEW rewrote it
+        and dropped the binding. The class Save is what commits it. What commits it for a VI that is
+        NOT a class member is not established, so this tool does not offer that.
+        PRECONDITION: a project must be OPEN and ACTIVE - {LV.Control} Replace is a SILENT no-op
+        outside the IDE's own application instance, reporting terminals retyped while changing
+        nothing. Pass projectPath to have it opened here.
+        THE VERDICT IS `verified`, AND IT IS THREE CONDITIONS AT ONCE. Each requested .ctl must
+        appear as a <Label> in the SAVED VI's own type descriptors - read with pylabview, no
+        LabVIEW - AND every requested terminal must be on the panel AND the helper must have matched
+        as many as were asked for. `terminalsBound` alone is not the verdict: a run reported 1 for a
+        file that ended up with none. The FILE alone is not either, measured on acceptance - asked
+        to bind a terminal that does not exist on a VI whose .ctl was ALREADY bound, the file check
+        passed on its own and the call answered ok for something it never did. `terminalsNotOnPanel`
+        names the terminals that disqualified a run; `terminalNamesSeen` is what the panel has.
+        AND A FIRST OPEN READS EVERY CONTROL NAME AS EMPTY. Measured twice on one fixture: the
+        first run after LabVIEW had never loaded the VI saw four nameless controls and bound
+        nothing at error 0; the second saw all four names and bound. This tool retries once for
+        exactly that and reports it as `retriedAfterEmptyNames`.
+        """)]
+    public async Task<string> BindPaneTypedefAsync(
+        [Description(@"Absolute path to the class member .vi whose pane controls should be bound")]
+        string viPath,
+        [Description("""
+            Absolute path to the .lvclass that owns the VI. REQUIRED: Save.Instrument alone does
+            not commit a Replace - measured, on a class member AND on a plain VI.
+            """)]
+        string lvclassPath,
+        [Description("""
+            JSON array of bindings, e.g.
+            [{"terminal":"Profil","ctlPath":"C:\\p\\Ofenprofil.ctl"}]
+            `terminal` is the control's label exactly as lvai_vi_terminals prints it. An unknown
+            key is refused by name rather than dropped.
+            """)]
+        string bindingsJson,
+        [Description("""
+            The .lvproj to open first. Without an active project the Replace is a silent no-op.
+            Omit only when you have opened one yourself.
+            """)]
+        string? projectPath = null,
+        [Description("Where to keep the generated helper VI")] string? helperViPath = null,
+        [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
+        string? helperAixmlPath = null,
+        [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
+        [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(viPath)) return Json.Error("badArguments", $"No .vi at '{viPath}'.");
+            if (!File.Exists(lvclassPath))
+                return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
+            if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
+                return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
+
+            IReadOnlyList<PaneBinding> bindings;
+            try { bindings = ParseBindings(bindingsJson); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+
+            foreach (var binding in bindings)
+                if (!File.Exists(binding.CtlPath))
+                    return Json.Error("badArguments",
+                        $"No .ctl at '{binding.CtlPath}' for terminal '{binding.Terminal}'.");
+
+            var aixml = helperAixmlPath ?? ScriptPath(PaneBindHelperAixmlFileName)
+                ?? throw new FileNotFoundException(
+                    "The helper's AIXML source could not be located; pass helperAixmlPath " +
+                    $"explicitly, pointing at {PaneBindHelperAixmlFileName}.");
+            if (!File.Exists(aixml))
+                throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
+
+            var helperVi = Path.GetFullPath(helperViPath ??
+                Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+                             "lvai_bind_pane_typedef.vi"));
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
+                Directory.CreateDirectory(directory);
+
+            var steps = new JsonArray();
+            var helperGenerated = false;
+            if (regenerateHelper || !File.Exists(helperVi))
+            {
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
+                    is { } failure) return failure;
+                helperGenerated = true;
+            }
+
+            if (projectPath is { Length: > 0 })
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath),
+                    checkActive: true, timeoutSeconds, ct: ct);
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "openProject",
+                    ["answer"] = Parse(opened),
+                });
+                if ((Parse(opened) as JsonObject)?["projectBecameActive"]?.GetValue<bool>() is false)
+                    return Json.Error("projectDidNotBecomeActive",
+                        "The project did not become active, and {LV.Control} Replace is a SILENT " +
+                        "no-op outside the IDE's own application instance - it would report " +
+                        "terminals retyped and change nothing.",
+                        new JsonObject { ["steps"] = steps });
+            }
+
+            var inputs = new JsonObject
+            {
+                ["vi path"] = Path.GetFullPath(viPath),
+                ["class path"] = Path.GetFullPath(lvclassPath),
+                ["terminal names"] = string.Join("|", bindings.Select(b => b.Terminal)),
+                ["ctl paths"] =
+                    string.Join("|", bindings.Select(b => Path.GetFullPath(b.CtlPath))),
+            }.ToJsonString();
+
+            var runner = new RunTools(connection);
+            var answer = await runner.RunViAndReadValuesAsync(
+                helperVi, inputs, includeRawXml: false, helperViPath: null,
+                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "bind", ["answer"] = Parse(answer) });
+
+            // A FIRST OPEN READS EVERY CONTROL NAME AS EMPTY, measured twice on one fixture. One
+            // retry costs a second and turns a silent no-bind into a bind; more than one would be
+            // guessing, so a second empty reading is reported rather than hammered at.
+            var retried = false;
+            if (StringArray(ValuesOf(answer), "terminal names seen").All(n => n.Length == 0))
+            {
+                retried = true;
+                answer = await runner.RunViAndReadValuesAsync(
+                    helperVi, inputs, includeRawXml: false, helperViPath: null,
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                steps.Add(new JsonObject { ["step"] = "bindRetry", ["answer"] = Parse(answer) });
+            }
+
+            return DescribePaneBind(answer, bindings, viPath, lvclassPath, helperVi, aixml,
+                                    helperGenerated, retried, steps,
+                                    await TypedefCtlNamesOnDiskAsync(viPath, timeoutSeconds, ct));
+        });
+
+    /// <summary>
+    /// The pane-bind verdict, kept apart from the RPC work so the part that decides `ok` is
+    /// unit-testable with no LabVIEW and no pylabview.
+    /// </summary>
+    internal static string DescribePaneBind(
+        string runnerAnswer, IReadOnlyList<PaneBinding> bindings, string viPath, string lvclassPath,
+        string helperVi, string aixml, bool helperGenerated, bool retried, JsonArray steps,
+        SortedSet<string>? onDisk)
+    {
+        var values = ValuesOf(runnerAnswer);
+        var bound = int.TryParse(Value(values, "terminals bound"), out var parsed) ? parsed : 0;
+        var namesSeen = StringArray(values, "terminal names seen");
+
+        var rows = new JsonArray();
+        var missing = new JsonArray();
+        var notOnPanel = new JsonArray();
+        foreach (var binding in bindings)
+        {
+            var wanted = Path.GetFileName(binding.CtlPath);
+            var present = onDisk?.Contains(wanted);
+            var onPanel = namesSeen.Contains(binding.Terminal);
+            rows.Add(new JsonObject
+            {
+                ["terminal"] = binding.Terminal,
+                ["ctl"] = wanted,
+                ["terminalOnPanel"] = onPanel,
+                ["typedefInSavedFile"] = present,
+            });
+            if (present is false) missing.Add(wanted);
+            if (!onPanel) notOnPanel.Add(binding.Terminal);
+        }
+
+        // THREE CONDITIONS, AND THE FILE ALONE IS NOT ENOUGH - measured on acceptance, 2026-09-18.
+        //
+        // The file check answers "is this .ctl in the VI?", which a bind that already happened
+        // satisfies just as well as one that just did. Asked to bind a terminal named `Gibtsnicht`
+        // onto a VI whose `Profil` was ALREADY bound to the same .ctl, this answered `ok: true`,
+        // `verified: true`, `terminalsBound: 0`, `terminalOnPanel: false` - a green verdict for a
+        // terminal that does not exist. Both disqualifying facts were in the answer and neither
+        // gated it, which is exactly the shape `nodesSwapped` had when it reported the REQUEST
+        // rather than the outcome.
+        //
+        // So the helper's count is not the verdict AND is not ignorable either: it is one of three.
+        // Every requested terminal must be on the panel, the helper must have matched as many as
+        // were asked for, and every .ctl must be in the saved file. A null file reading still
+        // answers null rather than true.
+        var allOnPanel = notOnPanel.Count == 0;
+        var boundAsManyAsAsked = bound >= bindings.Count;
+        var verified = onDisk is null
+            ? (bool?)null
+            : missing.Count == 0 && allOnPanel && boundAsManyAsAsked;
+
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = verified is true,
+            ["verified"] = verified,
+            ["viPath"] = Path.GetFullPath(viPath),
+            ["lvclassPath"] = Path.GetFullPath(lvclassPath),
+            ["terminalsAsked"] = bindings.Count,
+            ["terminalsBound"] = bound,
+            ["retriedAfterEmptyNames"] = retried,
+            ["terminalNamesSeen"] = new JsonArray([.. namesSeen.Select(n => JsonValue.Create(n))]),
+            ["bindings"] = rows,
+            ["typedefsMissingFromSavedFile"] = missing,
+            ["terminalsNotOnPanel"] = notOnPanel,
+            ["helperViPath"] = helperVi,
+            ["helperAixmlPath"] = Path.GetFullPath(aixml),
+            ["helperGenerated"] = helperGenerated,
+            ["steps"] = steps,
+            ["note"] = verified switch
+            {
+                true => "Every requested .ctl is named in the SAVED VI's own type descriptors - " +
+                        "read from the file with pylabview, not from the session. Check the " +
+                        "caller with lvai_coercion_dots, which is what the repair is for.",
+                false when notOnPanel.Count > 0 =>
+                    "A requested terminal is NOT on this VI's panel - read terminalsNotOnPanel " +
+                    "against terminalNamesSeen, which is what the panel really has, including any " +
+                    "double spaces. Nothing was bound for it. A .ctl already present from an " +
+                    "earlier bind makes the FILE check pass on its own, which is why that check is " +
+                    "not the whole verdict.",
+                false when missing.Count > 0 =>
+                    "At least one .ctl is NOT in the saved file, so the bind did not land whatever " +
+                    "the helper reported. Check that a project is open and ACTIVE - Replace is a " +
+                    "silent no-op outside the IDE's own application instance.",
+                false =>
+                    "The helper matched fewer terminals than were asked for - read terminalsBound " +
+                    "against terminalsAsked, and the per-stage errors under steps.",
+                null => "The saved file could not be read back, so NOTHING is concluded here - in " +
+                        "particular not that the bind landed. The helper's own answer is under " +
+                        "steps.",
+            },
+        });
+    }
+
+    [McpServerTool(Name = "lvai_resave_ctl", Destructive = true, OpenWorld = true,
+                   Title = "Make LabVIEW write a flag-patched .ctl in its own shape")]
+    [Description("""
+        MUTATING: opens a .ctl in the IDE's own application instance and saves it in place with
+        {LV.VI} Save.Instrument, the path left UNWIRED, which is how LabVIEW writes a control back
+        over itself.
+        WHY IT EXISTS: a .ctl built the fixture way - generate a VI to a .ctl path, then patch
+        <Instrument Type> and TypeDefVI in the pylabview bundle - has never been written by LabVIEW
+        and still carries that VI's CONNECTOR PANE. lvai_describe_ctl shows it as
+        `wrappedType: "Function"` with 16 fields and flags it as `needsLabviewSave`. Everything that
+        only needs the TYPE reads straight through it, and NI's ACCESSOR WIZARD DOES NOT:
+        lvai_create_accessors answers Error 1061 at CreateControlFromReference.vi for the field it
+        is bound to, on the Read side and the Write side alike, which is a hard stop in the middle
+        of a class build with nothing naming the cause.
+        PRECONDITION: a project must be OPEN and ACTIVE - the helper reaches the file through
+        Project:Active Project. Pass projectPath to have it opened here.
+        THE VERDICT IS `wrappedTypeAfter`, re-read from the saved file with pylabview: it must be
+        `TypeDef`. `errorCode 0` on its own says only that LabVIEW answered.
+        This is a no-op on a .ctl LabVIEW has already written, which is why it is safe to run
+        whenever lvai_describe_ctl asks for it.
+        """)]
+    public async Task<string> ResaveCtlAsync(
+        [Description(@"Absolute path to the .ctl to rewrite in place")] string ctlPath,
+        [Description("""
+            The .lvproj to open first. Without an active project the helper answers Error 1055.
+            Omit only when you have opened one yourself.
+            """)]
+        string? projectPath = null,
+        [Description("Where to keep the generated helper VI")] string? helperViPath = null,
+        [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
+        string? helperAixmlPath = null,
+        [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
+        [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(ctlPath)) return Json.Error("badArguments", $"No file at '{ctlPath}'.");
+            if (Path.GetExtension(ctlPath) is not ".ctl")
+                return Json.Error("badArguments",
+                    $"'{ctlPath}' is not a .ctl. This rewrites a CONTROL in place; a VI is saved " +
+                    "by whatever wrote it.");
+            if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
+                return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
+
+            var aixml = helperAixmlPath ?? ScriptPath(ResaveCtlHelperAixmlFileName)
+                ?? throw new FileNotFoundException(
+                    "The helper's AIXML source could not be located; pass helperAixmlPath " +
+                    $"explicitly, pointing at {ResaveCtlHelperAixmlFileName}.");
+            if (!File.Exists(aixml))
+                throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
+
+            var helperVi = Path.GetFullPath(helperViPath ??
+                Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_resave_ctl.vi"));
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
+                Directory.CreateDirectory(directory);
+
+            var steps = new JsonArray();
+            var helperGenerated = false;
+            if (regenerateHelper || !File.Exists(helperVi))
+            {
+                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
+                    is { } failure) return failure;
+                helperGenerated = true;
+            }
+
+            if (projectPath is { Length: > 0 })
+            {
+                var opened = await new ActionTools(connection).OpenFileAsync(
+                    viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                    projectName: Path.GetFileName(projectPath),
+                    checkActive: true, timeoutSeconds, ct: ct);
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "openProject",
+                    ["answer"] = Parse(opened),
+                });
+            }
+
+            var before = await DescribeCtlOnDiskAsync(ctlPath, timeoutSeconds, ct);
+            var bytesBefore = new FileInfo(ctlPath).Length;
+
+            var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                helperVi,
+                new JsonObject { ["ctl path"] = Path.GetFullPath(ctlPath) }.ToJsonString(),
+                includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+                regenerateHelper: false, timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "resave", ["answer"] = Parse(answer) });
+
+            var after = await DescribeCtlOnDiskAsync(ctlPath, timeoutSeconds, ct);
+            var wrappedAfter = after?["wrappedType"]?.GetValue<string>();
+
+            return Json.Document(new JsonObject
+            {
+                ["ok"] = wrappedAfter == "TypeDef",
+                ["ctlPath"] = Path.GetFullPath(ctlPath),
+                ["wrappedTypeBefore"] = before?["wrappedType"]?.GetValue<string>(),
+                ["wrappedTypeAfter"] = wrappedAfter,
+                ["needsLabviewSaveBefore"] = before?["needsLabviewSave"]?.GetValue<bool>(),
+                ["needsLabviewSaveAfter"] = after?["needsLabviewSave"]?.GetValue<bool>(),
+                ["bytesBefore"] = bytesBefore,
+                ["bytesAfter"] = File.Exists(ctlPath) ? new FileInfo(ctlPath).Length : 0,
+                ["helperViPath"] = helperVi,
+                ["helperAixmlPath"] = Path.GetFullPath(aixml),
+                ["helperGenerated"] = helperGenerated,
+                ["steps"] = steps,
+                ["note"] = wrappedAfter == "TypeDef"
+                    ? "The saved file now reads wrappedType 'TypeDef' - LabVIEW has written it in " +
+                      "its own shape and NI's accessor wizard will take it. Read from the file " +
+                      "with pylabview, not from the session."
+                    : "The file does NOT read wrappedType 'TypeDef' afterwards. If a project was " +
+                      "not open and active the helper reached nothing; Error 1055 in the resave " +
+                      "step says so.",
+            });
+        });
+
+    /// <summary>
+    /// <c>lvai_describe_ctl</c>'s verdict for one file, as a JsonObject - no LabVIEW, no RPC.
+    /// Null when the file could not be read, so a caller cannot mistake a failed read for a
+    /// finding.
+    /// </summary>
+    private static async Task<JsonObject?> DescribeCtlOnDiskAsync(
+        string ctlPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var outDirectory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "ctl",
+            Path.GetRandomFileName());
+        try
+        {
+            var (mainXml, failure) =
+                await CtlTools.ExtractAsync(ctlPath, outDirectory, timeoutSeconds, ct);
+            if (failure is not null || mainXml is null) return null;
+            return CtlTools.Describe(XDocument.Load(mainXml).Root!, ctlPath);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            try { Directory.Delete(outDirectory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>The `.ctl` names in a saved VI's type descriptors, or null when it cannot be read.</summary>
+    private static async Task<SortedSet<string>?> TypedefCtlNamesOnDiskAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var outDirectory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "panebind",
+            Path.GetRandomFileName());
+        try
+        {
+            var (mainXml, failure) =
+                await CtlTools.ExtractAsync(viPath, outDirectory, timeoutSeconds, ct);
+            if (failure is not null || mainXml is null) return null;
+            return TypedefCtlNames(XDocument.Load(mainXml).Root!);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            try { Directory.Delete(outDirectory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>A file inside the scripts folder beside the exe, or null when there is none.</summary>
+    private static string? ScriptPath(string fileName) =>
+        StatusTools.ScriptsDirectory() is { } scripts ? Path.Combine(scripts, fileName) : null;
+
+    /// <summary>A runner answer as JSON, or the raw string when it will not parse.</summary>
+    private static JsonNode? Parse(string answer)
+    {
+        try { return JsonNode.Parse(answer); }
+        catch (JsonException) { return JsonValue.Create(answer); }
+    }
 
     private static string? DefaultDotsHelperAixmlPath() =>
         StatusTools.ScriptsDirectory() is { } scripts

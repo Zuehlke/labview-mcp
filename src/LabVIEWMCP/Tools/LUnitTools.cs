@@ -712,9 +712,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
             foreach (var field in fieldNames)
             {
                 var write = await placeholders.PlaceholderSubViAsync(
-                    Path.Combine(folder, $"Write {field}.vi"), false, null, timeoutSeconds, ct: ct);
+                    Path.Combine(folder, $"Write {field}.vi"), false, null,
+                    timeoutSeconds: timeoutSeconds, ct: ct);
                 var read = await placeholders.PlaceholderSubViAsync(
-                    Path.Combine(folder, $"Read {field}.vi"), false, null, timeoutSeconds, ct: ct);
+                    Path.Combine(folder, $"Read {field}.vi"), false, null,
+                    timeoutSeconds: timeoutSeconds, ct: ct);
                 steps.Add(new JsonObject
                 {
                     ["field"] = field,
