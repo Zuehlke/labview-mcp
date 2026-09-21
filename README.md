@@ -4,7 +4,11 @@
 
 [**Quickstart**](#quickstart) · [What you can ask for](#what-you-can-ask-for) · [Under the hood](#under-the-hood) · [Status](#status-research-grade-and-honest-about-it) · [Install another way](docs/guide/install.md) · [All the docs](docs/README.md)
 
-> ## 🧪 Read this before you let a robot touch your VIs
+
+<details>
+
+<summary>⚠️☠️🚨 Read this before you let a robot touch your VIs ⚠️☠️🚨</summary>
+
 >
 > **Not affiliated with, endorsed by, or supported by NI or Emerson.** Nobody at NI asked for
 > this, nobody at NI owes you anything for it, and nobody at NI is on the hook when it misbehaves.
@@ -40,6 +44,9 @@
 >
 > LabVIEW, NI and ni.com are trademarks of National Instruments Corporation, used here only to
 > say which software this thing talks to.
+
+
+</details>
 
 ## What you can ask for
 
