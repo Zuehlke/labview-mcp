@@ -1,7 +1,7 @@
 # Safety, status and known limits
 
-Everything on this page is the small print behind the six bullets in the
-[README](../../README.md#-before-you-point-it-at-code-you-care-about). Read it before you let an
+This page is the small print behind the short status note in the
+[README](../../README.md#status-research-grade-and-honest-about-it). Read it before you let an
 assistant write to code you care about.
 
 **Contents**

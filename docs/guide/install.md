@@ -14,10 +14,10 @@ If something does not work, see [troubleshooting.md](troubleshooting.md).
 
 ## Requirements
 
-- Windows, .NET 8 runtime (build from source with the installed .NET SDK — the project targets
-  `net8.0`)
-- **LabVIEW 2026 running**, with the AI feature active (the server lives inside `LabVIEW.exe`).
-  Not needed to *install* — only to use the `lvai_*` tools.
+- Windows, and the .NET 8 runtime. Building from source uses the installed .NET SDK, and the
+  project targets `net8.0`.
+- **LabVIEW 2026 running**, with the AI feature active, since the server lives inside
+  `LabVIEW.exe`. Installing works with LabVIEW closed. Using the `lvai_*` tools does not.
 
 ## Install as a Claude Code plugin
 

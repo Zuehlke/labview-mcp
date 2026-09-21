@@ -1,7 +1,8 @@
 # The AIXML workflow
 
-How a VI is actually generated and changed, end to end. This is the tutorial; the format spec is
-[aixml-reference.md](../aixml-reference.md), served by `lvai_aixml_reference`.
+How a VI is actually generated and changed, end to end. This page is the tutorial. The format
+itself is specified in [aixml-reference.md](../aixml-reference.md), which `lvai_aixml_reference`
+serves to an assistant at run time.
 
 ## The AIXML loop
 

@@ -1,7 +1,8 @@
 # Tool catalogue
 
-Every tool the server exposes, and which of them are safe to allow-list. The counts here are
-asserted by a test against the source, so they cannot drift — see `ToolCatalogueTests`.
+Every tool the server exposes, and which of them are safe to allow-list. A test asserts the
+counts on this page against the registration in the source, so they cannot drift. It is called
+`ToolCatalogueTests`.
 
 ## What is served
 

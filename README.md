@@ -41,9 +41,9 @@
 
 ## Why this did not exist before
 
-A `.vi` is a binary file. You cannot grep it, a diff of two versions tells you only that they
-differ, and no amount of clever prompting will get a language model to emit one — which is why the
-last few years of assistants writing everybody else's code politely skipped LabVIEW.
+A `.vi` is a binary file. You cannot grep it. A diff of two versions tells you only that they
+differ. No amount of clever prompting will get a language model to emit one. So the last few years
+of assistants writing everybody else's code politely skipped LabVIEW.
 
 LabVIEW MCP borrows the IDE's own hands. It drives a running LabVIEW 2026 and exposes it over
 [MCP](https://modelcontextprotocol.io), so a VI becomes something an assistant can read as text and
@@ -51,51 +51,52 @@ produce as text. Once it is connected:
 
 | | |
 |---|---|
-| **Read** | *"What does this VI do?"* — the block diagram comes back as text: nodes, wires, terminals, structures. A whole `.lvproj` or `.lvlib` too. |
-| **Write** | *"Give me a VI that reads this file and sorts it"* — generated, validated, saved as a real `.vi`. |
-| **Edit** | *"Add error handling to this VI"* — the existing diagram changed in place, not rebuilt from memory. |
-| **Run** | *"Does it actually work?"* — executed as a top-level VI, outputs read back. |
+| **Read** | *"What does this VI do?"* The block diagram comes back as text: nodes, wires, terminals, structures. A whole `.lvproj` or `.lvlib` too. |
+| **Write** | *"Give me a VI that reads this file and sorts it."* Generated, validated, saved as a real `.vi`. |
+| **Edit** | *"Add error handling to this VI."* The existing diagram is changed in place. |
+| **Run** | *"Does it actually work?"* Executed as a top-level VI, with the outputs read back. |
 | **Build** | A build specification in a project is executed and its output written. |
-| **Reuse** | Your installed palettes and NI's shipping examples are searchable, so the answer is an existing VI wherever one exists — OpenG, MGI and JKI included if you have them. |
+| **Reuse** | Your installed palettes and NI's shipping examples are searchable, so the answer is an existing VI wherever one exists. OpenG, MGI and JKI are included if you have them. |
 | **Document** | A bundled agent turns a library, class or project into a Word document, with a structure diagram and a section per public VI. |
 
-Nothing in that list is something the IDE could not do itself. The trick is only that a text-shaped
+Every item on that list is something the IDE could already do. The trick is that a text-shaped
 thing can now ask for it.
 
 ## What is actually in the room
 
-Four processes, all of them yours, none of them on the internet. The assistant never speaks to
-LabVIEW — it speaks to a small local translator that does.
+Four processes, all of them yours, none of them on the internet. The assistant talks to a small
+local translator, and the translator talks to LabVIEW.
 
 ```
      YOU
       │   "give me a VI that reads this CSV and sorts it"
       ▼
  ┌────────────────────────────┐
- │        AI CLIENT           │  Claude Code · Claude Desktop · Cursor · Codex · Copilot
- │                            │  …or your own agent wrapped around a local LLM
+ │        AI CLIENT           │  Claude Code · Claude Desktop · Cursor · Codex · Copilot,
+ │                            │  or your own agent wrapped around a local LLM.
  └─────────────┬──────────────┘
-               │  MCP — JSON-RPC over stdin/stdout. The client starts the server
-               │  as a child process and asks it, once per session, what it can do.
+               │  MCP, spoken as JSON-RPC over stdin and stdout. The client starts
+               │  the server as a child process and asks it, once per session,
+               │  what it can do.
                ▼
  ┌────────────────────────────┐
- │       LabVIEW MCP          │  LabVIEWMCP.exe — one Windows executable, 82 tools.
+ │       LabVIEW MCP          │  LabVIEWMCP.exe, one Windows executable with 82 tools.
  │                            │  This is where the knowledge lives: the AIXML dialect,
  │      the translator        │  the palette and example indexes, the VI Server catalogue.
  └──────┬──────────────┬──────┘
         │              │
    ENGINE 1        ENGINE 2
    lvai.LVAI       pylabview
-   gRPC/HTTP-2     bundled — opens the .vi
-   on 127.0.0.1    container and rewrites it
+   gRPC/HTTP-2     bundled. It opens the .vi
+   on 127.0.0.1    container and rewrites it.
         │              │
         ▼              │
  ┌────────────────┐    │   The port is picked when LabVIEW starts and rediscovered
  │  LabVIEW.exe   │    │   every session. You never configure it, and you cannot.
  │ ┌────────────┐ │    │
  │ │ lvai.LVAI  │ │    │   The gRPC server runs INSIDE LabVIEW: NI's own grpc-labview,
- │ │  service   │ │    │   loaded by the AI add-on. No LabVIEW, no engine 1 — which is
- │ └────────────┘ │    │   exactly what engine 2 is for.
+ │ │  service   │ │    │   loaded by the AI add-on. With LabVIEW closed, engine 1 is
+ │ └────────────┘ │    │   unavailable, and engine 2 is what you have left.
  └───────┬────────┘    │
          │             │
          ▼             ▼
@@ -106,70 +107,71 @@ LabVIEW — it speaks to a small local translator that does.
 
 ### One VI, nine steps
 
-What happens between *"give me a VI that reads this CSV and sorts it"* and a file you can
+Here is what happens between *"give me a VI that reads this CSV and sorts it"* and a file you can
 double-click. The last column is the interesting one.
 
 | | Step | Who does the work | LabVIEW? |
 |---|---|---|---|
-| 1 | You ask | the client | — |
-| 2 | **Has NI already written this?** `lvai_example_index`, `lvai_palette_index` — because the best generated VI is one you did not generate | the server, from a disk cache | no |
-| 3 | **How is it spelled?** `lvai_aixml_reference` — terminal names are literal LabVIEW labels and several are surprising (`Increment` is `x+1`, but `Greater?` is `x > y?`, spaces and all) | the server, from a document inside its own DLL | no |
-| 4 | **Steal from something that works.** `lvai_convert_vi_to_aixml` on a VI resembling the target | LabVIEW exports it — cached, if it ships with LabVIEW | yes, or cached |
-| 5 | The model writes the AIXML: nodes, wires, terminals, as text | the model | — |
-| 6 | **Cheap checks first.** `lvai_check_aixml` catches the faults LabVIEW would accept in silence and mangle quietly | the server | no |
-| 7 | **Generate.** `lvai_generate_vi` → `ValidateAIXML`, then `ConvertAIXMLToVI` | LabVIEW, over gRPC | **yes** |
-| 8 | **But does it run?** `lvai_run_vi_and_read_values` executes it and reads every output back | LabVIEW, over VI Server | **yes** |
+| 1 | You ask | the client | n/a |
+| 2 | **Has NI already written this?** `lvai_example_index`, `lvai_palette_index`. The best generated VI is one you did not have to generate. | the server, from a disk cache | no |
+| 3 | **How is it spelled?** `lvai_aixml_reference`. Terminal names are literal LabVIEW labels, and several are surprising. `Increment` is `x+1`, while `Greater?` is `x > y?` with the spaces. | the server, from a document inside its own DLL | no |
+| 4 | **Steal from something that works.** `lvai_convert_vi_to_aixml` on a VI resembling the target. | LabVIEW exports it, and the export is cached if the VI ships with LabVIEW | yes, or cached |
+| 5 | The model writes the AIXML: nodes, wires, terminals, as text | the model | n/a |
+| 6 | **Cheap checks first.** `lvai_check_aixml` catches the faults LabVIEW would accept in silence and then mangle quietly. | the server | no |
+| 7 | **Generate.** `lvai_generate_vi` runs `ValidateAIXML`, then `ConvertAIXMLToVI`. | LabVIEW, over gRPC | **yes** |
+| 8 | **But does it run?** `lvai_run_vi_and_read_values` executes it and reads every output back. | LabVIEW, over VI Server | **yes** |
 | 9 | Icon, connector pane, a line in the `.lvproj` | LabVIEW and the server between them | yes |
 
-Four of the nine reach LabVIEW. The rest is the server answering out of a cache or out of its own
+Four of the nine reach LabVIEW. For the rest, the server answers out of a cache or out of its own
 compiled-in documentation, which is why a session feels brisk right up to step 7 and then pauses to
 think.
 
-Step 7 is also the first one that *writes anything*, and it is the one your client should be asking
-you about: reads carry `readOnlyHint` and can be allow-listed, writes carry `destructiveHint` and
+Step 7 is also the first step that writes anything, and it is the one your client should be asking
+you about. Reads carry `readOnlyHint` and can be allow-listed. Writes carry `destructiveHint` and
 prompt every time. The whole loop, including the parts verification cannot see, is in
 [docs/guide/aixml-workflow.md](docs/guide/aixml-workflow.md).
 
 ### Two engines, because one of them needs a licence
 
-Engine 1 needs LabVIEW running. Engine 2 needs nothing at all — not LabVIEW, not a licence, not
-even a Python install — because a bundled copy of
+Engine 1 needs LabVIEW running. Engine 2 needs nothing at all, not LabVIEW, not a licence, not even
+a Python install, because a bundled copy of
 **[pylabview](https://github.com/mefistotelis/pylabview)** takes the `.vi` container apart and puts
 it back together itself. It reaches everything AIXML has no words for: icons, front-panel layout,
 decorations, `.ctl` files, connector-pane patterns, and the diagram of a VI whose constructs
 LabVIEW's own generator flatly refuses to read.
 
-They are not rivals, and the dependency runs one way:
+The two have separate jobs, and the dependency runs one way:
 
 | | |
 |---|---|
-| **AIXML**, via LabVIEW | **creates and names.** The only way to author a VI from nothing at all. |
-| **pylabview** | **edits and reads.** Cannot invent a node or a wire, but changes what is already there, byte for byte. |
+| **AIXML**, via LabVIEW | **Creates and names.** The only way to author a VI from nothing at all. |
+| **pylabview** | **Edits and reads.** It changes what is already there, byte for byte. It cannot invent a node or a wire. |
 
 `pylv_route` picks between them per VI and tells you why. Which turns out to matter more than it
-sounds: measured across 900 VIs of a production codebase, only **15 %** can be regenerated through
+sounds. Measured across 900 VIs of a production codebase, only **15 %** can be regenerated through
 AIXML at all. Seventy per cent call the project's own subVIs, which the generator rejects outright.
-For *editing existing code*, pylabview is the normal route and AIXML is the exception.
+When you are editing existing code, pylabview is the normal route and AIXML is the exception.
 
 ## Status: research-grade, and honest about it
 
-This works, and it has not been near a production validation cycle. Everything documented in this
+This works, and it has never been near a production validation cycle. Everything documented in this
 repository was measured on a real installation, by its authors, on one station.
 
 What that means in practice: the writing tools overwrite a `.vi` without asking. Regenerating a VI
-throws away its diagram layout, its decorations and its icon. And the interface underneath is
-NI's private one, so a LabVIEW upgrade is a coin toss.
+throws away its diagram layout, its decorations and its icon. And the interface underneath is NI's
+private one, so a LabVIEW upgrade is a coin toss.
 
 **Work on copies. Commit first.** Version control is the only undo there is.
 
-The unabridged version — including what `ApplyAIXMLToVI` does instead of working, and the one class
-of edit that took `LabVIEW.exe` down on load — is in
-**[docs/guide/safety.md](docs/guide/safety.md)**. Worth ten minutes before the first write.
+The unabridged version is in **[docs/guide/safety.md](docs/guide/safety.md)**, including what
+`ApplyAIXMLToVI` does instead of working, and the one class of edit that took `LabVIEW.exe` down on
+load. Worth ten minutes before the first write.
 
 ## Quickstart
 
 **You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
-**LabVIEW 2026 Q3**. LabVIEW has to be running before you *use* the tools, but not to install them.
+**LabVIEW 2026 Q3**. LabVIEW has to be running before you use the tools, though not to install
+them.
 
 Open a terminal in your LabVIEW project folder:
 
@@ -191,13 +193,13 @@ Start LabVIEW, open Claude Code in your project, and try:
 > does."*
 
 Later, to update: `claude plugin marketplace update zuehlke-labview`, then
-`claude plugin update labview-mcp`. (The catalogue does not refresh itself, and a stale one is the
-single most common reason a plugin install looks like it shipped fewer agents than the zip.)
+`claude plugin update labview-mcp`. The catalogue does not refresh itself, and a stale one is the
+commonest reason a plugin install looks like it shipped fewer agents than the zip did.
 
-On Claude Code older than 2.1.224 the install complains about an unsupported source type — upgrade,
-or take the manual route. Not using the plugin, or driving this from something other than Claude?
-Codex, Copilot, Cursor, a local LLM and a binary-only install on a machine with no repository are
-all in [docs/guide/install.md](docs/guide/install.md).
+On Claude Code older than 2.1.224 the install complains about an unsupported source type. Upgrade,
+or take the manual route. If you are not using the plugin, or you are driving this from something
+other than Claude, then Codex, Copilot, Cursor, a local LLM and a binary-only install on a machine
+with no repository are all covered in [docs/guide/install.md](docs/guide/install.md).
 
 ## Where to go next
 
@@ -212,42 +214,42 @@ all in [docs/guide/install.md](docs/guide/install.md).
 | build, test, release, or find my way around | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | have an assistant work in here without breaking things | [CLAUDE.md](CLAUDE.md) |
 
-Beyond the guides, [`docs/`](docs/) is a lab notebook: fifty-odd pages of measurements, each one
-written up because it had just cost somebody an afternoon — crash signatures, the class and
+Beyond the guides, [`docs/`](docs/) is a lab notebook. Fifty-odd pages of measurements, each one
+written up because it had just cost somebody an afternoon: crash signatures, the class and
 interface tooling, fifteen cold-build post-mortems, connector-pane tables.
 [`docs/README.md`](docs/README.md) sorts them by what you are trying to find out.
 
 ## Credits and third-party code
 
-### pylabview — with thanks
+### pylabview, with thanks
 
 The `pylv_*` tools exist because of
-**[pylabview](https://github.com/mefistotelis/pylabview)**, and the debt is worth stating plainly:
-the hard part of this project's second engine — understanding LabVIEW's `RSRC` container and its
-object heaps well enough to take a `.vi` apart and put it back together byte-for-byte — was
+**[pylabview](https://github.com/mefistotelis/pylabview)**, and the debt is worth stating plainly.
+The hard part of this project's second engine was understanding LabVIEW's `RSRC` container and its
+object heaps well enough to take a `.vi` apart and put it back together byte-for-byte, and that was
 already solved there, by other people, years ago. Nothing in this repository reverse-engineers a
 `.vi` file format. It reads one through their work.
 
-Thank you to **Mefistotelis**, who wrote it. It is a decade of
-patient, unglamorous file-format archaeology, given away for free, and it turned "an assistant
-cannot edit a VI without a LabVIEW licence" into something that is simply not true any more.
+Thank you to **Mefistotelis**, who wrote it. It is a decade of patient, unglamorous file-format
+archaeology, given away for free, and it turned "an assistant cannot edit a VI without a LabVIEW
+licence" into something that is simply not true any more.
 
 | | |
 |---|---|
 | Project | [mefistotelis/pylabview](https://github.com/mefistotelis/pylabview) |
-| Authors | Jessica Creighton (2013), Mefistotelis (2019–2020) — as the licence names them |
-| Licence | MIT — full text in `tools\pylabview\vendor\LICENSE-pylabview.txt` |
+| Authors | Jessica Creighton (2013), Mefistotelis (2019 to 2020), as the licence names them |
+| Licence | MIT. Full text in `tools\pylabview\vendor\LICENSE-pylabview.txt` |
 | Pinned commit | `69768647c18d2d792a259b69884b2433761c3a4f` (2026-07-30) |
-| Local changes | **none** — see below |
+| Local changes | **none**, as described below |
 
 **Upstream is vendored unmodified, deliberately.** `tools\pylabview\vendor\pylabview\` is
 byte-identical to that commit, so upstream fixes can be taken by copying the package over it.
-Everything this project needed on top was added *from the outside* instead: the primitive and
+Everything this project needed on top was added from the outside instead. The primitive and
 terminal names pylabview does not carry are written in as inert XML comments by
-`experiments\pylabview\annotate_names.py`, and the one upstream defect encountered — a crash on
-VIs whose probe table is not a `RepeatedBlock`, measured at 32 of 900 VIs in a production
-codebase — is applied to the assembled copy through `tools\pylabview\patches\patches.json`, never
-to `vendor\`. `tools\pylabview\VENDOR.md` has the provenance and the reasoning.
+`experiments\pylabview\annotate_names.py`. The one upstream defect encountered was a crash on VIs
+whose probe table is not a `RepeatedBlock`, measured at 32 of 900 VIs in a production codebase, and
+it is applied to the assembled copy through `tools\pylabview\patches\patches.json` and never to
+`vendor\`. `tools\pylabview\VENDOR.md` has the provenance and the reasoning.
 
 If you use this server's editing tools, you are using their code. Please star their repository.
 
@@ -255,17 +257,17 @@ If you use this server's editing tools, you are using their code. Please star th
 
 The `lvai.LVAI` transport is NI's own open-source
 [grpc-labview](https://github.com/ni/grpc-labview), which is what makes the interface reachable at
-all — see the next section.
+all. The next section has the details.
 
 ## Where the interface comes from
 
-`labview_grpc_server.dll` (shipped in the `lvai` LVAddon) is NI's open-source
-[grpc-labview](https://github.com/ni/grpc-labview) — a *generic* gRPC server, which is why
-no `.proto` ships with it: the schema is registered from LabVIEW at runtime.
+`labview_grpc_server.dll`, shipped in the `lvai` LVAddon, is NI's open-source
+[grpc-labview](https://github.com/ni/grpc-labview). It is a *generic* gRPC server, which is why no
+`.proto` ships with it: the schema is registered from LabVIEW at runtime.
 
 That server has **gRPC server reflection** compiled in, so the schema was recovered by asking the
-running LabVIEW rather than by picking apart the binary. The result is in
-[`Protos/lvai_grpc_interface.proto`](src/LabVIEWMCP/Protos/lvai_grpc_interface.proto) — it compiles
+running LabVIEW itself. The result is in
+[`Protos/lvai_grpc_interface.proto`](src/LabVIEWMCP/Protos/lvai_grpc_interface.proto). It compiles
 with `protoc`, and its generated stubs return live data.
 
 `lvai_dump_schema` re-reads the schema from whatever LabVIEW is running, so you can catch drift

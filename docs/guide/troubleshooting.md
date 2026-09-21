@@ -1,7 +1,7 @@
 # Troubleshooting
 
-Symptom-first. For what the tools are allowed to do and what they cost you when they go wrong, see
-[safety.md](safety.md); for install routes, [install.md](install.md).
+Arranged by symptom. For what the tools are allowed to do, and what they cost you when they go
+wrong, see [safety.md](safety.md). For install routes, see [install.md](install.md).
 
 ## Which version am I running?
 

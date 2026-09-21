@@ -1,26 +1,26 @@
 # Contributing to LabVIEW MCP
 
-Everything you need to build, test, release and find your way around the repository. If you are
-here to *use* the server rather than change it, start at the [README](README.md).
+Everything you need to build, test, release and find your way around the repository. If you came
+here to use the server, start at the [README](README.md) instead.
 
 **Contents**
 
 - [Build and try it](#build-and-try-it)
 - [Where the caches live](#where-the-caches-live)
-- [`--corpus` — measuring the AIXML dialect](#--corpus--measuring-the-aixml-dialect-instead-of-guessing-at-it)
+- [`--corpus`, measuring the AIXML dialect](#--corpus--measuring-the-aixml-dialect-instead-of-guessing-at-it)
 - [Tests](#tests)
 - [Releasing a new version](#releasing-a-new-version)
 - [Layout](#layout)
 
 `CLAUDE.md` in the repository root is the working agreement for changing LabVIEW code with these
-tools — every rule in it came out of a measurement that cost real work. Read it before you touch
-the generators.
+tools. Every rule in it came out of a measurement that cost real work. Read it before you touch the
+generators.
 
 ## Requirements
 
 - Windows, .NET 8 SDK (the project targets `net8.0`)
-- **LabVIEW 2026 running** for anything that exercises the `lvai_*` path; the `pylv_*` tools and
-  most unit tests need neither LabVIEW nor a licence
+- **LabVIEW 2026 running** for anything that exercises the `lvai_*` path. The `pylv_*` tools and
+  most of the unit tests need neither LabVIEW nor a licence.
 
 ## Build and try it
 
