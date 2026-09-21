@@ -2,6 +2,8 @@
 
 **An AI assistant that can read, write and run the LabVIEW code on your machine.**
 
+[**Quickstart**](#quickstart) · [What you can ask for](#what-you-can-ask-for) · [Under the hood](#under-the-hood) · [Status](#status-research-grade-and-honest-about-it) · [Install another way](docs/guide/install.md) · [All the docs](docs/README.md)
+
 > ## 🧪 Read this before you let a robot touch your VIs
 >
 > **Not affiliated with, endorsed by, or supported by NI or Emerson.** Nobody at NI asked for
@@ -39,7 +41,7 @@
 > LabVIEW, NI and ni.com are trademarks of National Instruments Corporation, used here only to
 > say which software this thing talks to.
 
-## Why this did not exist before
+## What you can ask for
 
 A `.vi` is a binary file. You cannot grep it. A diff of two versions tells you only that they
 differ. No amount of clever prompting will get a language model to emit one. So the last few years
@@ -62,7 +64,7 @@ produce as text. Once it is connected:
 Every item on that list is something the IDE could already do. The trick is that a text-shaped
 thing can now ask for it.
 
-## What is actually in the room
+## Under the hood
 
 Four processes, all of them yours, none of them on the internet. The assistant talks to a small
 local translator, and the translator talks to LabVIEW.
@@ -105,31 +107,65 @@ local translator, and the translator talks to LabVIEW.
     └─────────────────────┘  indistinguishable from one you drew yourself
 ```
 
-### One VI, nine steps
+### One request, end to end
 
-Here is what happens between *"give me a VI that reads this CSV and sorts it"* and a file you can
-double-click. The last column is the interesting one.
+Here is the whole conversation behind *"give me a VI that reads this CSV and sorts it"*. Watch how
+many of the arrows stop at the server.
 
-| | Step | Who does the work | LabVIEW? |
-|---|---|---|---|
-| 1 | You ask | the client | n/a |
-| 2 | **Has NI already written this?** `lvai_example_index`, `lvai_palette_index`. The best generated VI is one you did not have to generate. | the server, from a disk cache | no |
-| 3 | **How is it spelled?** `lvai_aixml_reference`. Terminal names are literal LabVIEW labels, and several are surprising. `Increment` is `x+1`, while `Greater?` is `x > y?` with the spaces. | the server, from a document inside its own DLL | no |
-| 4 | **Steal from something that works.** `lvai_convert_vi_to_aixml` on a VI resembling the target. | LabVIEW exports it, and the export is cached if the VI ships with LabVIEW | yes, or cached |
-| 5 | The model writes the AIXML: nodes, wires, terminals, as text | the model | n/a |
-| 6 | **Cheap checks first.** `lvai_check_aixml` catches the faults LabVIEW would accept in silence and then mangle quietly. | the server | no |
-| 7 | **Generate.** `lvai_generate_vi` runs `ValidateAIXML`, then `ConvertAIXMLToVI`. | LabVIEW, over gRPC | **yes** |
-| 8 | **But does it run?** `lvai_run_vi_and_read_values` executes it and reads every output back. | LabVIEW, over VI Server | **yes** |
-| 9 | Icon, connector pane, a line in the `.lvproj` | LabVIEW and the server between them | yes |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant C as AI client
+    participant M as LabVIEW MCP
+    participant L as LabVIEW.exe
+    participant D as your project
 
-Four of the nine reach LabVIEW. For the rest, the server answers out of a cache or out of its own
-compiled-in documentation, which is why a session feels brisk right up to step 7 and then pauses to
-think.
+    You->>C: "a VI that reads this CSV and sorts it"
 
-Step 7 is also the first step that writes anything, and it is the one your client should be asking
-you about. Reads carry `readOnlyHint` and can be allow-listed. Writes carry `destructiveHint` and
-prompt every time. The whole loop, including the parts verification cannot see, is in
-[docs/guide/aixml-workflow.md](docs/guide/aixml-workflow.md).
+    C->>M: lvai_example_index, lvai_palette_index
+    M-->>C: has NI already written this? (from a disk cache)
+
+    C->>M: lvai_aixml_reference
+    M-->>C: terminal names, wiring grammar (from a doc inside the DLL)
+
+    C->>M: lvai_convert_vi_to_aixml, on a VI that resembles it
+    M->>L: ConvertVIToAIXML
+    L-->>M: AIXML
+    M-->>C: here is how NI wired theirs
+
+    Note over C: the model writes the AIXML
+
+    C->>M: lvai_check_aixml
+    M-->>C: the faults LabVIEW would accept in silence
+
+    C->>M: lvai_generate_vi
+    M->>L: ValidateAIXML
+    M->>L: ConvertAIXMLToVI
+    L->>D: writes YourVI.vi
+    M-->>C: saved, and here is the connector pane verdict
+
+    C->>M: lvai_run_vi_and_read_values
+    M->>L: run it, read every output back
+    L-->>M: the values
+    M-->>C: it works
+
+    C-->>You: here is your VI
+```
+
+Four of those calls reach LabVIEW. The rest the server answers out of a disk cache or out of a
+document compiled into its own DLL, which is why a session feels brisk right up to the generate
+step and then stops to think.
+
+Step 4 earns its place in there. Terminal names in AIXML are literal LabVIEW labels, and several of
+them are surprising: `Increment` is `x+1`, while `Greater?` is `x > y?` with the spaces. An
+assistant that guesses collects an error from the validator. An assistant that looks them up gets a
+VI.
+
+The generate step is the first one that writes anything, and it is the one your client should be
+asking you about. Reads carry `readOnlyHint` and can be allow-listed. Writes carry
+`destructiveHint` and prompt every time. The full loop, including the parts verification cannot
+see, is in [docs/guide/aixml-workflow.md](docs/guide/aixml-workflow.md).
 
 ### Two engines, because one of them needs a licence
 
