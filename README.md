@@ -216,12 +216,24 @@ load. Worth ten minutes before the first write.
 **LabVIEW 2026 Q3**. LabVIEW has to be running before you use the tools, though not to install
 them.
 
+### Installation
+
 Open a terminal in your LabVIEW project folder:
 
-```bash
+```powershell
 claude plugin marketplace add Zuehlke/labview-mcp
 claude plugin install labview-mcp@zuehlke-labview
 ```
+
+### Update
+
+Once installed, run these commands to update the plugin to the latest release:
+
+```powershell
+claude plugin marketplace update zuehlke-labview
+claude plugin update labview-mcp
+```
+
 
 That is the whole setup. No clone, no build, no config file to hand-edit. Claude Code pulls a
 prebuilt Windows binary from the
@@ -235,9 +247,6 @@ Start LabVIEW, open Claude Code in your project, and try:
 > *"Call `lvai_status` to check the LabVIEW connection, then tell me what `C:\path\to\My.vi`
 > does."*
 
-Later, to update: `claude plugin marketplace update zuehlke-labview`, then
-`claude plugin update labview-mcp`. The catalogue does not refresh itself, and a stale one is the
-commonest reason a plugin install looks like it shipped fewer agents than the zip did.
 
 On Claude Code older than 2.1.224 the install complains about an unsupported source type. Upgrade,
 or take the manual route. If you are not using the plugin, or you are driving this from something
