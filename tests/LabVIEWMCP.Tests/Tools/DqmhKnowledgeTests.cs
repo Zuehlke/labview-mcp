@@ -94,6 +94,14 @@ public class DqmhKnowledgeTests
         // generated <FixedConst> must carry, so it cannot be paraphrased away without making
         // the reference unusable. Narrow on purpose: this document and this token only.
         ("aixml-reference.md", "eol"),
+
+        // The GdevCon7 talk shows a TestStand sequence tree whose main sequence is named after
+        // the end-of-line test it runs - "EOL" there is the industry's standard term for that
+        // test stage, not the customer's product. Released by the author on 2026-09-21 after
+        // reading the slide. Narrow on purpose: this document and this token only, and the
+        // payload stripping above means it covers the ONE authored occurrence rather than the
+        // seventeen the minified bundle and the base64 screenshots used to manufacture.
+        ("MCP_Presentation.html", "eol"),
     ];
 
     [Theory]
@@ -149,13 +157,23 @@ public class DqmhKnowledgeTests
         Assert.NotNull(anchor);
         var folder = Path.GetDirectoryName(anchor!)!;
 
-        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
-        Assert.True(files.Length >= 15, $"only {files.Length} files found in {folder}");
+        // Binary documents are skipped, exactly as the scripts\ guard below skips a .vi:
+        // docs\ was text-only until the GdevCon7 material added .png and .mp4, and tokenising
+        // a compressed image produces noise that cannot be reasoned about - one PNG's IDAT
+        // stream happened to contain a forbidden token as three random bytes, which reads as
+        // a leak and is not one. A picture CAN of course carry a customer name visually; this
+        // guard never could see that, and skipping the file does not change what it covers.
+        string[] textual = [".md", ".tsv", ".html", ".txt", ".json", ".csv", ".xml"];
+        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            .Where(f => textual.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        Assert.True(files.Length >= 15, $"only {files.Length} text files found in {folder}");
 
         foreach (var path in files)
         {
             var name = Path.GetFileName(path);
-            foreach (var token in Regex.Split(File.ReadAllText(path), "[^A-Za-z0-9]+"))
+            foreach (var token in Regex.Split(StripGeneratedPayloads(File.ReadAllText(path)),
+                                              "[^A-Za-z0-9]+"))
             {
                 if (token.Length < 3) continue;
 
@@ -170,6 +188,26 @@ public class DqmhKnowledgeTests
             }
         }
     }
+
+    /// <summary>
+    /// Removes the machine-generated payload of a self-contained HTML document - bundled
+    /// &lt;script&gt; and &lt;style&gt;, and base64 data URIs - so only authored prose is
+    /// tokenised. Same reasoning as skipping a .png: a minified bundle and a base64 screenshot
+    /// are not text a reader can reason about, and tokenising them manufactures leaks.
+    ///
+    /// Measured on docs/GdevCon7/MCP_Presentation.html, 7 090 619 characters: raw, it reports
+    /// EOL 12x, eol 3x and datastore 2x. Stripped it is 63 620 characters and reports ONE
+    /// occurrence, on the one line that really carries it. Allowlisting the raw hits instead
+    /// would have made the guard blind to those two tokens in the document's actual prose.
+    /// </summary>
+    private static string StripGeneratedPayloads(string text) =>
+        Regex.Replace(
+            Regex.Replace(
+                Regex.Replace(text, "<script\\b.*?</script>", " ",
+                    RegexOptions.Singleline | RegexOptions.IgnoreCase),
+                "<style\\b.*?</style>", " ",
+                RegexOptions.Singleline | RegexOptions.IgnoreCase),
+            "data:[a-z/+.-]+;base64,[A-Za-z0-9+/=]+", " ", RegexOptions.IgnoreCase);
 
     /// <summary>
     /// The same guard over scripts\ , which SHIPS next to the exe exactly as docs\ does and was

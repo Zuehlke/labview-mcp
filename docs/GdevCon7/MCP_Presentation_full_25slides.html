@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two MCP Servers for the NI Stack</title>
+<meta name="description" content="LabVIEW MCP and TestStand MCP — what an MCP server is, what NI's APIs allow, and what they do not.">
+<style>
+  :root {
+    --bg:        #0e1117;
+    --bg-2:      #161b26;
+    --bg-3:      #1d2430;
+    --fg:        #e8ecf2;
+    --fg-dim:    #9aa6b8;
+    --fg-faint:  #6b7688;
+    --line:      #2b3444;
+    --accent:    #ffb340;   /* LabVIEW  */
+    --accent-2:  #4fd1c5;   /* TestStand */
+    --accent-3:  #f47174;   /* warnings  */
+    --ok:        #7ddba1;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    --sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+    --pad: clamp(1.6rem, 4.5vw, 5rem);
+  }
+  :root[data-theme="light"] {
+    --bg:#fbfbfd; --bg-2:#f1f3f7; --bg-3:#e7eaf1;
+    --fg:#14181f; --fg-dim:#4d5768; --fg-faint:#7d8798;
+    --line:#d3d9e4; --accent:#b26a00; --accent-2:#0f7a70; --accent-3:#c0392b; --ok:#1d7a45;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: clamp(15px, 1.15vw, 21px);
+    line-height: 1.5;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── slide frame ─────────────────────────────────────────── */
+  .deck { height: 100%; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--pad) var(--pad) calc(var(--pad) * 0.8);
+    overflow: hidden;
+  }
+  .slide.active { display: flex; animation: in .28s ease; }
+  @keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .slide > * { max-width: 1500px; width: 100%; margin-inline: auto; }
+
+  /* section accents */
+  .slide[data-track="ts"]  { --accent: var(--accent-2); }
+
+  /* ─── typography ──────────────────────────────────────────── */
+  h1 { font-size: clamp(2.2rem, 5vw, 4.4rem); line-height: 1.05; margin: 0 0 .5em; letter-spacing: -.02em; font-weight: 700; }
+  h2 {
+    font-size: clamp(1.6rem, 3.1vw, 2.9rem); line-height: 1.12; margin: 0 0 .1em;
+    letter-spacing: -.015em; font-weight: 650;
+  }
+  h2 + .sub { color: var(--fg-dim); font-size: clamp(.95rem, 1.5vw, 1.35rem); margin: 0 0 1.4em; }
+  h3 { font-size: clamp(1rem, 1.45vw, 1.35rem); margin: 0 0 .4em; color: var(--accent); font-weight: 650; letter-spacing: .01em; }
+  p { margin: 0 0 .8em; }
+  strong { color: var(--fg); font-weight: 650; }
+  em { color: var(--accent); font-style: normal; font-weight: 600; }
+  code, .mono { font-family: var(--mono); font-size: .9em; color: var(--accent); }
+  a { color: var(--accent-2); }
+
+  .kicker {
+    text-transform: uppercase; letter-spacing: .18em;
+    font-size: clamp(.65rem, .9vw, .82rem); font-weight: 700;
+    color: var(--accent); margin: 0 0 1.1em;
+  }
+
+  ul, ol { margin: 0; padding-left: 1.2em; }
+  li { margin-bottom: .55em; }
+  li::marker { color: var(--accent); }
+  ul.plain { list-style: none; padding-left: 0; }
+  ul.plain > li { padding-left: 1.5em; position: relative; }
+  ul.plain > li::before {
+    content: ""; position: absolute; left: 0; top: .62em;
+    width: .5em; height: .5em; border-radius: 2px; background: var(--accent);
+  }
+
+  /* ─── title slide ─────────────────────────────────────────── */
+  .title-slide { justify-content: center; }
+  .title-slide h1 { max-width: 20ch; }
+  .title-slide .lede { font-size: clamp(1.05rem, 1.9vw, 1.7rem); color: var(--fg-dim); max-width: 48ch; margin-bottom: 2.2em; }
+  .title-slide .lede b { color: var(--fg); font-weight: 600; }
+  .byline { display: flex; flex-wrap: wrap; gap: .6em 1.6em; align-items: baseline; color: var(--fg-faint); font-size: clamp(.85rem, 1.2vw, 1.1rem); }
+  .byline .name { color: var(--fg); font-weight: 600; }
+  .rule { height: 4px; width: 5.5rem; background: var(--accent); border-radius: 2px; margin-bottom: 2rem; }
+
+  /* ─── layout helpers ──────────────────────────────────────── */
+  .cols { display: grid; gap: clamp(1rem, 2.4vw, 2.6rem); }
+  .c2 { grid-template-columns: 1fr 1fr; }
+  .c3 { grid-template-columns: repeat(3, 1fr); }
+  .c2-wide { grid-template-columns: 1.25fr 1fr; }
+  .stack { display: flex; flex-direction: column; gap: clamp(.7rem, 1.4vw, 1.3rem); }
+
+  .card {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: clamp(.85rem, 1.5vw, 1.5rem);
+  }
+  .card h3 { margin-bottom: .3em; }
+  .card p, .card ul { font-size: .93em; color: var(--fg-dim); margin-bottom: 0; }
+  .card.hi { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 15vw, 230px), 1fr)); gap: .7rem; }
+  .tile {
+    background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: .7rem .85rem;
+  }
+  .tile b { display: block; font-size: .96em; margin-bottom: .1em; }
+  .tile span { color: var(--fg-faint); font-size: .82em; line-height: 1.35; display: block; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: clamp(.8rem, 2vw, 2rem); }
+  .stat .n { font-size: clamp(2rem, 4.6vw, 4rem); font-weight: 700; line-height: 1; color: var(--accent); letter-spacing: -.03em; }
+  .stat .l { color: var(--fg-dim); font-size: clamp(.8rem, 1.1vw, 1rem); margin-top: .45em; }
+
+  /* tables */
+  table { border-collapse: collapse; width: 100%; font-size: clamp(.78rem, 1.18vw, 1.05rem); }
+  th, td { text-align: left; padding: .5em .7em; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--accent); font-weight: 650; font-size: .88em; text-transform: uppercase; letter-spacing: .08em; }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--mono); color: var(--fg); white-space: nowrap; }
+  .t-ts { color: var(--accent-2); font-weight: 600; }
+  .t-lv { color: #ffb340; font-weight: 600; }
+  :root[data-theme="light"] .t-lv { color: #b26a00; }
+
+  /* callout */
+  .callout {
+    border-left: 4px solid var(--accent); background: var(--bg-2);
+    padding: .85em 1.1em; border-radius: 0 10px 10px 0; color: var(--fg-dim);
+    font-size: clamp(.85rem, 1.3vw, 1.15rem);
+  }
+  .callout b, .callout strong { color: var(--fg); }
+  .callout.warn { border-color: var(--accent-3); }
+  .callout.ok { border-color: var(--ok); }
+
+  pre {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: .9em 1.1em; overflow: auto; margin: 0;
+    font-family: var(--mono); font-size: clamp(.72rem, 1.05vw, .95rem); line-height: 1.6; color: var(--fg);
+  }
+  pre .c { color: var(--fg-faint); }
+  pre .k { color: var(--accent); }
+
+  .big { font-size: clamp(1.4rem, 3.2vw, 2.8rem); line-height: 1.25; font-weight: 600; letter-spacing: -.015em; }
+  .big span { color: var(--accent); }
+
+  .pill {
+    display: inline-block; font-size: .72em; font-family: var(--mono);
+    padding: .15em .55em; border-radius: 5px; background: var(--bg-3); color: var(--fg-dim);
+    border: 1px solid var(--line); white-space: nowrap;
+  }
+  .pill.no { color: var(--accent-3); border-color: color-mix(in srgb, var(--accent-3) 40%, var(--line)); }
+  .pill.yes { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: var(--sans); fill: var(--fg); }
+  .svg-box { fill: var(--bg-2); stroke: var(--line); }
+  .svg-box-hi { fill: color-mix(in srgb, var(--accent) 12%, var(--bg-2)); stroke: var(--accent); }
+  .svg-line { stroke: var(--fg-faint); fill: none; }
+  .svg-dim { fill: var(--fg-dim); }
+  .svg-acc { fill: var(--accent); }
+
+  /* ─── chrome ──────────────────────────────────────────────── */
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); z-index: 50; transition: width .25s ease; }
+  .chrome {
+    position: fixed; bottom: .7rem; right: 1rem; z-index: 50;
+    display: flex; align-items: center; gap: .75rem;
+    color: var(--fg-faint); font-size: .8rem; font-family: var(--mono);
+  }
+  .chrome button {
+    background: transparent; border: 1px solid var(--line); color: var(--fg-faint);
+    border-radius: 6px; padding: .2rem .5rem; cursor: pointer; font: inherit;
+  }
+  .chrome button:hover { color: var(--fg); border-color: var(--fg-faint); }
+  .slide-tag {
+    position: fixed; bottom: .8rem; left: 1rem; z-index: 50;
+    color: var(--fg-faint); font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
+  }
+
+  /* overview — a title grid, not clipped thumbnails */
+  .overview body { overflow: auto; }
+  .overview .deck {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px; padding: 14px; height: 100%; overflow: auto; position: static;
+    counter-reset: s; align-content: start;
+  }
+  .overview .slide {
+    display: block !important; position: relative; inset: auto; animation: none;
+    min-height: 92px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+    padding: 10px 12px 10px 34px; overflow: hidden; background: var(--bg-2);
+    counter-increment: s; transition: border-color .15s, background .15s;
+  }
+  .overview .slide:hover { border-color: var(--fg-faint); background: var(--bg-3); }
+  .overview .slide.active { border-color: var(--accent); background: var(--bg-3); }
+  .overview .slide::before {
+    content: counter(s); position: absolute; left: 10px; top: 9px;
+    font-family: var(--mono); font-size: 11px; color: var(--fg-faint);
+  }
+  .overview .slide * { display: none; }
+  .overview .slide > div { display: block; max-width: none; }
+  .overview .slide h1, .overview .slide h2 { display: block; font-size: 14px; line-height: 1.25; margin: 0; letter-spacing: 0; }
+  .overview .slide h1 br, .overview .slide h2 br { display: inline; }
+  .overview .slide .kicker {
+    display: block; font-size: 8px; margin: 0 0 5px; letter-spacing: .12em;
+  }
+
+  @media (max-width: 800px) {
+    .c2, .c3, .c2-wide { grid-template-columns: 1fr; }
+    .slide { justify-content: flex-start; overflow-y: auto; }
+  }
+
+  @media print {
+    body { overflow: visible; background: #fff; }
+    .slide { display: flex !important; position: relative; inset: auto; height: 100vh; page-break-after: always; break-after: page; }
+    .progress, .chrome, .slide-tag { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="slide-tag" id="tag"></div>
+<div class="chrome">
+  <button id="prev" title="Previous (←)">◀</button>
+  <span id="counter">1 / 1</span>
+  <button id="next" title="Next (→)">▶</button>
+  <button id="ov" title="Overview (O)">▦</button>
+  <button id="th" title="Theme (T)">◐</button>
+</div>
+
+<main class="deck" id="deck">
+
+<!-- ══════════════════════════════════ 1 ══ TITLE ══ -->
+<section class="slide title-slide" data-tag="GDevCon">
+  <div>
+    <div class="rule"></div>
+    <h1>Two MCP Servers<br>for the NI Stack</h1>
+    <p class="lede">
+      <b>TestStand MCP</b> — built on a documented API, and feature complete.<br>
+      <b>LabVIEW MCP</b> — built on an undocumented one, and a lot of workarounds.
+    </p>
+    <div class="byline">
+      <span class="name">Jean-Claude Mengisen</span>
+      <span>Zühlke</span>
+      <span>GDevCon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 2 ══ AGENDA ══ -->
+<section class="slide" data-tag="Agenda">
+  <div>
+    <p class="kicker">Agenda</p>
+    <h2>Four questions</h2>
+    <div class="sub">And one of them takes twice as long as the others.</div>
+    <div class="cols c2">
+      <div class="card">
+        <h3>1 &nbsp;What is an MCP?</h3>
+        <p>The protocol, the shape of a server, and why it is not a chat feature.</p>
+      </div>
+      <div class="card">
+        <h3>2 &nbsp;TestStand MCP</h3>
+        <p>Built on NI's TestStand API. What you can drive — which is, essentially, everything.</p>
+      </div>
+      <div class="card">
+        <h3>3 &nbsp;LabVIEW MCP</h3>
+        <p>Built on NI's gRPC interface. The restrictions, and the workarounds around them.</p>
+      </div>
+      <div class="card hi">
+        <h3>4 &nbsp;What it can do today</h3>
+        <p>The capability tour — and what it cost to get there.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 3 ══ MCP PROBLEM ══ -->
+<section class="slide" data-tag="1 · What is an MCP">
+  <div>
+    <p class="kicker">1 · What is an MCP</p>
+    <h2>The model knows LabVIEW. It cannot touch it.</h2>
+    <div class="sub">An LLM will happily discuss a queued message handler. It cannot open your project.</div>
+    <div class="cols c2">
+      <div class="stack">
+        <div class="card">
+          <h3>What it cannot do on its own</h3>
+          <ul class="plain">
+            <li>Open your <code>.seq</code> or your <code>.lvproj</code></li>
+            <li>See whether a VI is broken</li>
+            <li>Run a sequence and read the result</li>
+            <li>Write a file back where you wanted it</li>
+          </ul>
+        </div>
+        <div class="callout">
+          Without an integration, <b>copy-and-paste is the interface</b> — and a screenshot of a
+          block diagram is not something you can execute.
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card hi">
+          <h3>MCP — Model Context Protocol</h3>
+          <p style="color:var(--fg)">An open protocol for connecting an AI host to a tool. The model does
+          not call your API; it calls a <em>tool</em> you declared, and your server makes the API call.</p>
+        </div>
+        <ul class="plain">
+          <li><strong>Open</strong> — a specification, not one vendor's feature</li>
+          <li><strong>One server, any host</strong> — Claude, Codex, Copilot, a local LLM</li>
+          <li><strong>You keep control</strong> — the server runs on your machine, under your account</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 4 ══ MCP SHAPE ══ -->
+<section class="slide" data-tag="1 · What is an MCP">
+  <div>
+    <p class="kicker">1 · What is an MCP</p>
+    <h2>The shape of it</h2>
+    <div class="sub">Four boxes. The middle two are the protocol; the outer two are yours.</div>
+
+    <svg viewBox="0 0 1000 300" role="img" aria-label="MCP architecture: host, client, server, application">
+      <g stroke-width="1.5">
+        <rect class="svg-box" x="10"  y="70" width="190" height="120" rx="10"/>
+        <rect class="svg-box" x="270" y="70" width="190" height="120" rx="10"/>
+        <rect class="svg-box-hi" x="530" y="70" width="190" height="120" rx="10"/>
+        <rect class="svg-box" x="790" y="70" width="200" height="120" rx="10"/>
+      </g>
+      <g text-anchor="middle" font-size="19" font-weight="600">
+        <text x="105" y="118">AI Host</text>
+        <text x="365" y="118">MCP Client</text>
+        <text x="625" y="118">MCP Server</text>
+        <text x="890" y="118">Application</text>
+      </g>
+      <g text-anchor="middle" font-size="13" class="svg-dim">
+        <text x="105" y="145">Claude Code / Desktop</text>
+        <text x="105" y="164">Codex · Copilot · local LLM</text>
+        <text x="365" y="145">one per server</text>
+        <text x="365" y="164">manages the session</text>
+        <text x="625" y="145">your process</text>
+        <text x="625" y="164">TestStandMCP.exe · LabVIEWMCP.exe</text>
+        <text x="890" y="145">TestStand engine</text>
+        <text x="890" y="164">LabVIEW IDE</text>
+      </g>
+      <g class="svg-line" stroke-width="2">
+        <path d="M200 130 H270"/><path d="M460 130 H530"/><path d="M720 130 H790"/>
+      </g>
+      <g fill="var(--fg-faint)">
+        <polygon points="270,130 260,125 260,135"/><polygon points="200,130 210,125 210,135"/>
+        <polygon points="530,130 520,125 520,135"/><polygon points="460,130 470,125 470,135"/>
+        <polygon points="790,130 780,125 780,135"/><polygon points="720,130 730,125 730,135"/>
+      </g>
+      <g text-anchor="middle" font-size="12" class="svg-acc" font-weight="600">
+        <text x="495" y="60">JSON-RPC 2.0 · stdio or HTTP</text>
+        <text x="755" y="60">native API</text>
+      </g>
+      <g text-anchor="middle" font-size="12" class="svg-dim">
+        <text x="755" y="215">COM automation · gRPC</text>
+        <text x="495" y="215">the MCP specification</text>
+      </g>
+    </svg>
+
+    <div class="callout" style="margin-top:1.2rem">
+      Both servers here are <b>.NET 8 console applications speaking stdio</b>. There is no cloud hop:
+      the model asks its host to call a tool, and the host runs the executable sitting next to LabVIEW.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 5 ══ WHAT A SERVER EXPOSES ══ -->
+<section class="slide" data-tag="1 · What is an MCP">
+  <div>
+    <p class="kicker">1 · What is an MCP</p>
+    <h2>What a server exposes</h2>
+    <div class="sub">Three kinds of thing — and in practice, one of them does the work.</div>
+    <div class="cols c3">
+      <div class="card hi">
+        <h3>Tools</h3>
+        <p style="color:var(--fg)">Callable functions with a JSON&nbsp;Schema for their arguments.
+        <code>run_sequence</code>, <code>lvai_generate_vi</code>. The model picks one and fills in the blanks.</p>
+      </div>
+      <div class="card">
+        <h3>Resources</h3>
+        <p>Documents the host can read on demand. The LabVIEW server publishes its five reference
+        manuals as <code>labview://aixml-reference</code> and friends.</p>
+      </div>
+      <div class="card">
+        <h3>Prompts</h3>
+        <p>Canned workflows a user can invoke by name. Useful; neither server leans on them.</p>
+      </div>
+    </div>
+
+    <div class="cols c2" style="margin-top:1.4rem">
+      <div>
+        <h3>The schema is the documentation</h3>
+        <p style="color:var(--fg-dim)">There is no manual for the model to read. It sees the tool name, the
+        description you wrote and the parameter schema — <b>that is the entire contract</b>. A vague
+        description is a bug, and it produces wrong calls rather than an error message.</p>
+      </div>
+      <div>
+        <h3>Annotations let the host gate the writes</h3>
+        <p style="color:var(--fg-dim)"><span class="pill yes">readOnlyHint</span>
+        <span class="pill no">destructiveHint</span> — of the LabVIEW server's 80 tools,
+        <b>33 are read-only and 25 are marked destructive</b>, so reads run without a prompt while
+        anything that writes a <code>.vi</code> still has to ask.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 6 ══ TWO SERVERS ══ -->
+<section class="slide" data-tag="1 · What is an MCP">
+  <div>
+    <p class="kicker">Two servers, two worlds</p>
+    <h2>Same protocol. Very different ground.</h2>
+    <div class="sub">The protocol was never the hard part. What is underneath it decides everything.</div>
+    <table>
+      <thead>
+        <tr><th></th><th class="t-ts">TestStand MCP</th><th class="t-lv">LabVIEW MCP</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Interface underneath</td><td>TestStand API (COM automation)</td><td><code>lvai.LVAI</code> over gRPC</td></tr>
+        <tr><td>Documented by NI</td><td><span class="pill yes">yes — reference manual, versioned</span></td><td><span class="pill no">no .proto, no docs, no policy</span></td></tr>
+        <tr><td>How I found the surface</td><td>Read the manual</td><td>Asked the server — gRPC reflection</td></tr>
+        <tr><td>Tools exposed</td><td class="num">252</td><td class="num">80 &nbsp;<span style="color:var(--fg-faint)">(75 lvai + 5 pylabview)</span></td></tr>
+        <tr><td>Underlying calls</td><td>The whole engine object model</td><td class="num">23 RPCs</td></tr>
+        <tr><td>Process</td><td>x86 — the engine COM server is 32-bit</td><td>x64, talking to 32-bit LabVIEW</td></tr>
+        <tr><td>Status</td><td><span class="pill yes">feature complete</span></td><td><span class="pill">complete for what the interface allows</span></td></tr>
+        <tr><td>Risk</td><td>NI supports the API</td><td><span class="pill no">it will break, probably on a Tuesday</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 7 ══ TS FOUNDATION ══ -->
+<section class="slide" data-track="ts" data-tag="2 · TestStand MCP">
+  <div>
+    <p class="kicker">2 · TestStand MCP</p>
+    <h2>Standing on NI's own API</h2>
+    <div class="sub">The Sequence Editor is a client of it. So is this.</div>
+    <div class="cols c2-wide">
+      <div class="stack">
+        <ul class="plain">
+          <li><strong>The TestStand API is public, documented and versioned.</strong> Engine,
+            SequenceFile, Sequence, Step, Execution, Thread, PropertyObject — the same object model
+            NI's own editor is built on.</li>
+          <li><strong>Nothing was reverse engineered.</strong> Every call in this server is in the
+            reference manual.</li>
+          <li><strong>So the work moved up a level:</strong> not <em>can I reach it</em>, but
+            <em>what shape should the tool have</em> so a model uses it correctly.</li>
+        </ul>
+        <div class="callout ok">
+          <b>That is the whole difference.</b> On TestStand I spent the time on surface design,
+          verification and guard rails. On LabVIEW I spent it on discovery.
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>Practical consequences</h3>
+          <ul style="font-size:.93em">
+            <li><b>x86 build</b> — the engine COM server is 32-bit, so the whole process is</li>
+            <li><b>Lazy connect</b> — <code>connect_engine</code>, then everything shares one engine</li>
+            <li><b>.tsenv environments</b> — the same isolation the editor's <code>/env</code> switch gives, in-process and <em>verified</em> after connecting</li>
+            <li><b>Undo groups</b> — a multi-step edit is one transaction the operator can revert</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 8 ══ TS COVERAGE ══ -->
+<section class="slide" data-track="ts" data-tag="2 · TestStand MCP">
+  <div>
+    <p class="kicker">2 · TestStand MCP</p>
+    <h2>What it covers</h2>
+    <div class="sub">252 tools. Author, analyse, run, debug, report — without opening the editor.</div>
+    <div class="tiles">
+      <div class="tile"><b>Engine &amp; station</b><span>Connect, station info, globals, options, process model, expression evaluation, path macros</span></div>
+      <div class="tile"><b>Sequence files</b><span>Open, create, save, close; binary / XML / INI on disk; file globals and attributes</span></div>
+      <div class="tile"><b>Sequences</b><span>Insert, rename, duplicate, delete; parameters, locals, bulk insert</span></div>
+      <div class="tile"><b>Steps</b><span>Insert, move, rename, enable, delete; expressions, preconditions, pass/fail actions, loops, limits</span></div>
+      <div class="tile"><b>Code modules</b><span>Typed configuration per adapter: .NET, DLL, LabVIEW, Python, Sequence Call</span></div>
+      <div class="tile"><b>Execution</b><span>Any entry point, poll, wait, results, abort, terminate, restart</span></div>
+      <div class="tile"><b>Debugging</b><span>Break, resume, step over / into / out, breakpoints, watch expressions</span></div>
+      <div class="tile"><b>Live thread state</b><span>Read and write a running thread's variables, call stack, and Set Next Step</span></div>
+      <div class="tile"><b>Types &amp; enums</b><span>Custom data types, fields, named enumerations, type palettes, typedef copying</span></div>
+      <div class="tile"><b>Reporting</b><span>HTML / XML / TXT reports, result schemas, export, report viewer</span></div>
+      <div class="tile"><b>Sync objects</b><span>Semaphores, mutexes, queues, notifications, rendezvous</span></div>
+      <div class="tile"><b>Search &amp; analysis</b><span>Native find/replace, step search, NI Sequence Analyzer</span></div>
+      <div class="tile"><b>Users &amp; privileges</b><span>List, create, delete, passwords, privilege checks</span></div>
+      <div class="tile"><b>Sequence Editor GUI</b><span>Launch, open a file, run from the editor — for the human in the loop</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 9 ══ TS HIGHLIGHTS ══ -->
+<section class="slide" data-track="ts" data-tag="2 · TestStand MCP">
+  <div>
+    <p class="kicker">2 · TestStand MCP</p>
+    <h2>The parts that are more than a wrapper</h2>
+    <div class="sub">A thin wrapper over an API is easy. These are where the value is.</div>
+    <div class="cols c2">
+      <div class="card">
+        <h3>Whole-file export / import</h3>
+        <p>The entire sequence file as one JSON model — types with their attach state, file globals,
+        every sequence with parameters and locals, every step with its full module configuration —
+        and rebuilt elsewhere. This is how you migrate, clone or bulk-edit. The granular tools are
+        for surgery.</p>
+      </div>
+      <div class="card">
+        <h3>Native diff</h3>
+        <p>Not a text diff of an XML dump — <b>the same FileDiffer the Sequence Editor uses</b>, with
+        category, path and change-type filters. A "looks clean" result means what TestStand means by it.</p>
+      </div>
+      <div class="card">
+        <h3>Three verification tools</h3>
+        <p><code>validate_sequence_plan</code> checks a planned step list <em>before</em> anything is
+        built — unclosed blocks, undeclared variables. <code>audit_sequence_references</code> finds
+        undeclared <code>Locals.</code> / <code>Parameters.</code> use. <code>audit_type_consistency</code>
+        catches duplicate or mismatched type registrations, <b>which a content diff cannot see</b>.</p>
+      </div>
+      <div class="card">
+        <h3>Live thread context</h3>
+        <p>Read and write a running or paused thread's <em>runtime</em> state: live variable values,
+        the execution cursor, Set Next Step. The ordinary expression tools cannot reach that scope —
+        this is the Variables pane, over MCP.</p>
+      </div>
+      <div class="card">
+        <h3>Module settings verified by read-back</h3>
+        <p>Every module setting is read back after it is written, so the result reports what actually
+        landed on the step. <b>A target that could not be resolved is named</b>, not silently accepted.</p>
+      </div>
+      <div class="card">
+        <h3>Analyzer that admits when it did nothing</h3>
+        <p>The Sequence Analyzer loads every code module, so a big file runs for minutes — hence an
+        async mode with polling. And <b>zero messages is reported as <code>resultSuspect</code></b>,
+        not as "clean", because it almost always means the run did not happen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 10 ══ TS COMPLETE ══ -->
+<section class="slide" data-track="ts" data-tag="2 · TestStand MCP">
+  <div>
+    <p class="kicker">2 · TestStand MCP</p>
+    <h2>Why I call it feature complete</h2>
+    <div class="cols c2-wide">
+      <div class="stack">
+        <ul class="plain">
+          <li><strong>Every phase of the workflow is reachable.</strong> Author a file from nothing →
+            analyse it → run it → debug it live → read the report. No step drops back to the GUI
+            because the API would not go there.</li>
+          <li><strong>No capability needed a workaround.</strong> There is no chapter in this project
+            called "how I got around the API", because there was nothing to get around.</li>
+          <li><strong>Failures report what TestStand said.</strong> The engine's own error surfaces,
+            rather than a generic "tool failed".</li>
+          <li><strong>What is left is polish.</strong> Better descriptions, better defaults, more
+            guard rails — not more reach.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <div class="stats">
+          <div class="stat"><div class="n">252</div><div class="l">tools registered</div></div>
+          <div class="stat"><div class="n">0</div><div class="l">workarounds required</div></div>
+        </div>
+        <div class="callout ok">
+          <b>The claim, concretely:</b> you can go from an empty <code>.seq</code> to a passing UUT run,
+          with a report on disk, without ever opening the Sequence Editor.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 11 ══ LV START ══ -->
+<section class="slide" data-tag="3 · LabVIEW MCP">
+  <div>
+    <p class="kicker">3 · LabVIEW MCP</p>
+    <h2>A very different starting point</h2>
+    <div class="sub">There is no TestStand API for LabVIEW code generation. There is a gRPC server nobody documented.</div>
+    <div class="cols c2">
+      <div class="stack">
+        <div class="card">
+          <h3>The plumbing is NI's, and it is public</h3>
+          <p>The server inside LabVIEW is <b>ni/grpc-labview</b> — NI's own open source, MIT licensed.
+          It is a <em>generic</em> server: it serves whatever schema LabVIEW registers into it at
+          runtime, and it ships with gRPC reflection switched on so a client can ask what that is.</p>
+          <p style="color:var(--fg)"><b>We asked. It answered.</b></p>
+        </div>
+        <div class="card">
+          <h3>What it happens to be serving is another matter</h3>
+          <p><code>lvai.LVAI</code> — the interface behind NI's own LabVIEW coding assistant.
+          No <code>.proto</code> in the install, no documentation, no version policy, and no promise
+          any of these 23 RPCs will be there next quarter.</p>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="callout warn">
+          <b>Said plainly, because it belongs on the slide:</b> this project is not affiliated with,
+          endorsed by, or supported by NI. Nothing was cracked open to get here — but nothing here is
+          promised to keep working either. After a LabVIEW upgrade, dump the schema and find out what
+          moved while you were asleep.
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="n">23</div><div class="l">RPCs discovered</div></div>
+          <div class="stat"><div class="n">45</div><div class="l">documents written,<br>because none existed</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 12 ══ AIXML LOOP ══ -->
+<section class="slide" data-tag="3 · LabVIEW MCP">
+  <div>
+    <p class="kicker">3 · LabVIEW MCP</p>
+    <h2>AIXML — the currency</h2>
+    <div class="sub">A VI, as an XML document: nodes, terminals, wires, structures, constants.</div>
+
+    <svg viewBox="0 0 1000 210" role="img" aria-label="The AIXML loop: export, validate, convert">
+      <g stroke-width="1.5">
+        <rect class="svg-box"    x="30"  y="60" width="200" height="90" rx="10"/>
+        <rect class="svg-box-hi" x="400" y="60" width="200" height="90" rx="10"/>
+        <rect class="svg-box"    x="770" y="60" width="200" height="90" rx="10"/>
+      </g>
+      <g text-anchor="middle" font-size="19" font-weight="600">
+        <text x="130" y="100">Your .vi</text>
+        <text x="500" y="100">AIXML</text>
+        <text x="870" y="100">A new .vi</text>
+      </g>
+      <g text-anchor="middle" font-size="13" class="svg-dim">
+        <text x="130" y="126">on disk</text>
+        <text x="500" y="126">an XML document</text>
+        <text x="870" y="126">written by LabVIEW</text>
+      </g>
+      <g class="svg-line" stroke-width="2">
+        <path d="M230 105 H400"/><path d="M600 105 H770"/>
+        <path d="M500 60 V30 H500" /><path d="M430 30 H570"/>
+      </g>
+      <g fill="var(--fg-faint)">
+        <polygon points="400,105 390,100 390,110"/><polygon points="770,105 760,100 760,110"/>
+        <polygon points="500,60 495,50 505,50"/>
+      </g>
+      <g text-anchor="middle" font-size="13" class="svg-acc" font-weight="600">
+        <text x="315" y="95">ConvertVIToAIXML</text>
+        <text x="685" y="95">ConvertAIXMLToVI</text>
+        <text x="500" y="22">ValidateAIXML</text>
+      </g>
+      <g text-anchor="middle" font-size="12" class="svg-dim">
+        <text x="315" y="130">read · 331 ms median</text>
+        <text x="685" y="130">write</text>
+        <text x="500" y="182">Everything else in the server composes these three.</text>
+      </g>
+    </svg>
+
+    <div class="cols c3" style="margin-top:.6rem">
+      <div class="card"><h3>Read</h3><p>Export any VI — including all 951 shipping examples — and read how NI wired it. Installation VIs are cached on disk.</p></div>
+      <div class="card"><h3>Check</h3><p>Validation is cheap and names the node and terminal. It is also <em>not</em> a subset of conversion — sometimes stricter, sometimes blind.</p></div>
+      <div class="card"><h3>Write</h3><p>Conversion writes a real VI. And this is where the restrictions live.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 13 ══ RESTRICTION HEADLINE ══ -->
+<section class="slide" data-tag="3 · Restrictions">
+  <div>
+    <p class="kicker">3 · The restrictions</p>
+    <p class="big" style="margin-bottom:1.2rem">
+      The single biggest one:<br>
+      <span>a generated VI cannot call your own code.</span>
+    </p>
+    <div class="cols c2-wide">
+      <div class="stack">
+        <div class="callout warn">
+          <code>Error 53 — Unsupported SubVI</code><br>
+          There is no target syntax that reaches project-local code. Not a bare name, not a full path,
+          not a library-qualified name.
+        </div>
+        <p style="color:var(--fg-dim)">I measured how much that costs, structurally, over a production
+        codebase — <b>900 VIs</b>, using the binary parser, no LabVIEW needed:</p>
+        <table>
+          <tbody>
+            <tr><td>VIs that call the project's own code</td><td class="num">634 &nbsp;· 70.4 %</td></tr>
+            <tr><td>subVI calls going into own code</td><td class="num">1 654 &nbsp;· 87 %</td></tr>
+            <tr><td>VIs with no blocking construct at all</td><td class="num">136 &nbsp;· 15.1 %</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="stack">
+        <div class="card hi">
+          <h3>Confirmed from a second direction</h3>
+          <p style="color:var(--fg)">NI's own example corpus, exported and re-validated, failed
+          <b>737 times out of 1 052 for exactly this cause — 70 %</b>.</p>
+          <p>Two codebases, two methods, the same number. This is not one project's style.</p>
+        </div>
+        <div class="callout">
+          Worth knowing what is <em>rare</em>, too: <b>Timed Loop is on NI's not-supported list and
+          appears in one VI out of 900</b>. Effort spent there would have been effort wasted.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 14 ══ RESTRICTION LIST ══ -->
+<section class="slide" data-tag="3 · Restrictions">
+  <div>
+    <p class="kicker">3 · The restrictions</p>
+    <h2>And then the rest of them</h2>
+    <div class="sub">Each one cost a session to find. Most of them fail <em>silently</em>.</div>
+    <table>
+      <thead><tr><th>What you cannot do</th><th>How it shows up</th></tr></thead>
+      <tbody>
+        <tr><td><b>Edit a VI in place</b></td><td>The patch RPC answers <code>errorCode 0</code> and changes nothing from a third-party client. So an edit is a <em>full regeneration</em> — layout, decorations and the icon are re-decided by LabVIEW every time.</td></tr>
+        <tr><td><b>Put a class on a connector pane</b></td><td><code>Control with type=UDClassInst is not supported</code>. A class method cannot be authored directly at all.</td></tr>
+        <tr><td><b>Keep a typedef</b></td><td>AIXML cannot say "this control is an instance of a <code>.ctl</code>" — and the <em>export</em> drops the identity too. <b>Nothing reports it.</b> It surfaces weeks later when a <code>.ctl</code> edit stops propagating.</td></tr>
+        <tr><td><b>Register an event</b></td><td>Event Structure frames survive conversion; the event specifications collapse to a single Timeout. The IDE then shows an event case with no event.</td></tr>
+        <tr><td><b>Place a comment</b></td><td>AIXML has no coordinate attribute. A comment lands wherever the generator chooses — six comments once landed on six plausible, wrong nodes.</td></tr>
+        <tr><td><b>Trust validation</b></td><td>A dangling parent uid is silently reparented to the top-level diagram. A duplicate uid is renumbered. An enum given a label is written as <code>0</code>. A timestamp literal is discarded. All <code>errorCode 0</code>.</td></tr>
+        <tr><td><b>Survive a dialog</b></td><td>Any modal dialog inside LabVIEW stops the <em>entire</em> gRPC service until a human clicks it away.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 15 ══ WORKAROUND 1 ══ -->
+<section class="slide" data-tag="3 · Workarounds">
+  <div>
+    <p class="kicker">3 · Workaround 1</p>
+    <h2>The placeholder socket</h2>
+    <div class="sub">How a generated VI comes to call your code anyway.</div>
+    <div class="cols c2-wide">
+      <div class="stack">
+        <ol>
+          <li><b>A loose VI under <code>user.lib</code> resolves by bare name.</b> That is a target AIXML
+            is allowed to create.</li>
+          <li><b>So generate a placeholder</b> whose connector pane <em>exactly</em> clones the VI you
+            actually want to call. Cached by signature.</li>
+          <li><b>Author the call to the placeholder.</b> Validation passes, because the target exists.</li>
+          <li><b>Then let LabVIEW re-point it</b> — its own <code>Replace</code> swaps the node onto your
+            VI, and <b>re-types the wires while it does</b>.</li>
+        </ol>
+        <div class="callout ok">
+          That last property is what makes <em>class</em> code reachable: the two panes need not match,
+          so a test authored against <code>path</code> stand-ins becomes a test that calls a real accessor.
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card hi">
+          <h3>What this unlocks</h3>
+          <ul style="font-size:.93em;color:var(--fg)">
+            <li>A generated <b>unit test calls its subject as an ordinary static subVI</b> — not through VI Server</li>
+            <li>A generated method reads its own class fields through its accessors</li>
+            <li>Generated code composes with the rest of the project</li>
+          </ul>
+        </div>
+        <div class="callout warn">
+          <b>The clone must be exact.</b> A Variant stub retargeted onto a <code>double</code> subject is
+          <code>Error 7, Bad Linkage</code>. The pane's type descriptor is part of the link binding —
+          there is no generic placeholder.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 16 ══ WORKAROUND 2 ══ -->
+<section class="slide" data-tag="3 · Workarounds">
+  <div>
+    <p class="kicker">3 · Workaround 2</p>
+    <h2>A second engine, with no LabVIEW in it</h2>
+    <div class="sub">Reading and rewriting the VI binary directly — via a bundled pylabview.</div>
+    <div class="cols c2">
+      <div class="stack">
+        <div class="card hi">
+          <h3>The division of labour</h3>
+          <p style="color:var(--fg);font-size:1.05em"><b>AIXML creates and names.<br>pylabview edits and reads.</b></p>
+          <p>The dependency runs one way: every primitive name and terminal role pylabview annotates
+          with was harvested by joining against AIXML exports. It cannot author a VI from nothing —
+          there is no empty starting point.</p>
+        </div>
+        <div class="callout ok">
+          <b>No LabVIEW, no licence, no Python installation</b> — the bundle ships its own interpreter.
+          These five tools work on a checkout, on a build agent, in CI.
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>What it actually fixes</h3>
+          <ul style="font-size:.93em">
+            <li><b>Connector pane pattern</b> — repaired without regenerating, so no caller changes</li>
+            <li><b>Diagram comments</b> — placed on the node you meant, with clearance scoring</li>
+            <li><b>Event specifications</b> — written back after conversion collapsed them</li>
+            <li><b>Malleable VIs</b> — the four inline flags AIXML cannot write</li>
+            <li><b>Timed Loop timing</b> — through the wired constant, the only writable place</li>
+          </ul>
+        </div>
+        <div class="callout">
+          And a router: <code>pylv_route</code> decides which engine a given edit belongs to,
+          <b>with the evidence</b>, rather than by habit.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 17 ══ WORKAROUND 3 ══ -->
+<section class="slide" data-tag="3 · Workarounds">
+  <div>
+    <p class="kicker">3 · Workaround 3</p>
+    <h2>Drive NI's own code</h2>
+    <div class="sub">Some artefacts are compiler output. You cannot write them — you have to ask LabVIEW to.</div>
+    <div class="cols c2-wide">
+      <div class="stack">
+        <div class="callout warn">
+          A class private data control <em>looks</em> like a <code>.ctl</code> with a cluster in it.
+          It is really a type space plus a data-space layout. Building one from outside produced, for
+          weeks, classes LabVIEW <b>reported as fine and its compiler refused</b>.
+        </div>
+        <ul class="plain">
+          <li><strong>The IDE's own project providers are ordinary VIs.</strong> They live under
+            <code>resource\Framework\Providers\</code> and a generated helper can call them.</li>
+          <li><strong>So classes, accessors and Actor Framework messages are created by NI's own
+            wizard code</strong>, driven over VI Server — not written by us.</li>
+          <li><strong>And vendor toolkits the same way.</strong> DQMH's and LMock's scripting VIs sit
+            under <code>project\</code>, which AIXML cannot reach in any spelling — but
+            <code>Open VI Reference</code> takes a <em>path</em> and has no such restriction.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>Ask first: does LabVIEW <em>compile</em> this?</h3>
+          <p>If yes, do not try to write the file. That is the rule that came out of it, and it
+          generalises past classes.</p>
+        </div>
+        <div class="card">
+          <h3>The trick that makes it tractable</h3>
+          <p><b>Values move as Variants and never have to be named.</b> DQMH's module list is an array
+          of six-field clusters — carried from one <code>Ctrl Val.Get</code> straight into a
+          <code>Ctrl Val.Set</code>, the helper never spells that type out. It applies to any
+          refnum- or cluster-heavy vendor API.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 18 ══ FIVE DOORS ══ -->
+<section class="slide" data-tag="3 · Architecture">
+  <div>
+    <p class="kicker">3 · Architecture</p>
+    <h2>Five doors into LabVIEW</h2>
+    <div class="sub">Picking the wrong one is the most expensive mistake available. So the router asks first.</div>
+    <table>
+      <thead><tr><th style="width:22%">Door</th><th style="width:40%">Use it for</th><th>Why not the others</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>AIXML</b><br><span class="pill">the gRPC RPCs</span></td>
+          <td>Creating a <em>new</em> VI. Naming things. Reading a VI 37× more compactly than the binary.</td>
+          <td>pylabview has no empty starting point — it cannot author from nothing.</td>
+        </tr>
+        <tr>
+          <td><b>pylabview</b><br><span class="pill">no LabVIEW</span></td>
+          <td>Editing an existing VI. Panes, comments, event specs, <code>.ctl</code> files, icons, layout. Reading in CI.</td>
+          <td>An AIXML "edit" is a full regeneration and discards everything it cannot express.</td>
+        </tr>
+        <tr>
+          <td><b>NI provider VIs</b><br><span class="pill">VI Server</span></td>
+          <td>Anything the compiler produces: <code>.lvclass</code>, private data, accessors, AF messages.</td>
+          <td>Written from outside, they report fine and refuse to compile.</td>
+        </tr>
+        <tr>
+          <td><b>VI Server by path</b><br><span class="pill">VI Server</span></td>
+          <td>Vendor toolkits under <code>project\</code>, icons, panel state, project items — anything with no RPC.</td>
+          <td>AIXML resolves by <em>name</em> against what the installation can find. That folder is not on the list.</td>
+        </tr>
+        <tr>
+          <td><b>ApplyAIXMLToVI</b><br><span class="pill no">nailed shut</span></td>
+          <td>Nothing. It is gated on a per-VI attachment bound to NI's own assistant.</td>
+          <td>It answers <code>errorCode 0</code> and changes nothing — a silent success is worse than a failure.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 19 ══ CAPABILITIES ══ -->
+<section class="slide" data-tag="4 · What it can do today">
+  <div>
+    <p class="kicker">4 · What it can do today</p>
+    <h2>The capability tour</h2>
+    <div class="sub">80 tools. Everything below is measured end to end, not designed on a whiteboard.</div>
+    <div class="tiles">
+      <div class="tile"><b>Generate a VI</b><span>Contract → palette and example search → generate → run it → give it a 32×32 icon</span></div>
+      <div class="tile"><b>Classes</b><span>.lvclass, private data, inheritance, dynamic-dispatch accessors, methods, field typedef binding</span></div>
+      <div class="tile"><b>Interfaces</b><span>Real LabVIEW interfaces, multiple inheritance, scripted interface methods and overrides</span></div>
+      <div class="tile"><b>Actor Framework</b><span>Actor classes, and message classes through NI's own Message Maker</span></div>
+      <div class="tile"><b>DQMH</b><span>Whole modules and typed request / broadcast events, by driving Delacor's own scripting</span></div>
+      <div class="tile"><b>Unit testing</b><span>Caraya, LUnit, and LMock mocks — generate the suite, run it, return the report parsed</span></div>
+      <div class="tile"><b>Event structures</b><span>Front-panel events registered, dynamic event terminals wired, user-event payloads read</span></div>
+      <div class="tile"><b>Documentation</b><span>A Word document with icons, connector panes, structure and UML diagrams</span></div>
+      <div class="tile"><b>Diagnostics</b><span>Is it executable? Coercion dots? Connector pane style? Render the diagram to PNG and look</span></div>
+      <div class="tile"><b>Knowledge</b><span>3 335 palette VIs indexed, 951 shipping examples, 5 reference manuals served as resources</span></div>
+      <div class="tile"><b>Projects &amp; libraries</b><span>Create, describe, add to a .lvlib with relinking, build from a build specification</span></div>
+      <div class="tile"><b>Malleable VIs</b><span>.vim files — which AIXML alone writes broken, with every cheap check still green</span></div>
+    </div>
+    <div class="callout" style="margin-top:1rem">
+      <b>Eight agents ship with it</b> — VI generator, VI editor, class generator, doc generator, DQMH
+      module, and one per unit-test framework. An agent is a definition, not a tool: it has phases,
+      gates, and returns <em>NEEDS CLARIFICATION</em> instead of guessing your data model.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 20 ══ DEMO HOOK ══ -->
+<section class="slide" data-tag="4 · What it can do today">
+  <div>
+    <p class="kicker">4 · What it can do today</p>
+    <h2>What that looks like from the chat</h2>
+    <div class="sub">The model chooses the tools. You describe the outcome.</div>
+    <div class="cols c2">
+      <div class="stack">
+        <pre><span class="c">&gt; Create a class Thermostat with a setpoint,</span>
+<span class="c">  a hysteresis and a current temperature.</span>
+<span class="c">  Accessors for all of them, then unit tests.</span>
+
+<span class="k">lvai_create_class</span>        .lvclass + private data
+<span class="k">lvai_create_accessors</span>   6 VIs, dynamic dispatch
+<span class="k">lvai_generate_class_test</span> round trip per field
+<span class="k">lvai_generate_caraya_test_runner</span>
+<span class="k">lvai_run_vi_and_read_values</span>
+                        <span class="c">failures="0"</span></pre>
+        <div class="callout ok">
+          The class is created by <b>NI's own provider VIs</b>, the tests call the accessors as
+          <b>ordinary static subVIs</b>, and the report is read back from the suite's own XML.
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>Where it is genuinely good</h3>
+          <ul style="font-size:.93em">
+            <li>Boilerplate with a shape — classes, accessors, test suites, message classes, DQMH modules</li>
+            <li>Reading unfamiliar code — export a VI and ask what it does</li>
+            <li>Finding NI's answer first — 951 examples, indexed and searchable</li>
+            <li>Documentation nobody wants to write</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Where it is not</h3>
+          <ul style="font-size:.93em">
+            <li>Editing a VI whose <b>front panel is the point</b> — an edit re-decides the layout</li>
+            <li>Anything where a modal dialog can appear unattended</li>
+            <li>Your 70 % — diagrams that are mostly calls into existing project code</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 21 ══ ECONOMICS ══ -->
+<section class="slide" data-tag="4 · Economics">
+  <div>
+    <p class="kicker">4 · What it costs</p>
+    <h2>LabVIEW is not the slow part</h2>
+    <div class="sub">Measured over six sessions: 2 641 tool calls across 2 549 model turns.</div>
+    <div class="stats" style="margin-bottom:1.6rem">
+      <div class="stat"><div class="n">12.9 h</div><div class="l">waiting for the model</div></div>
+      <div class="stat"><div class="n">3.6 h</div><div class="l">inside the tools</div></div>
+      <div class="stat"><div class="n">3.6 : 1</div><div class="l">the ratio</div></div>
+      <div class="stat"><div class="n">7.1 s</div><div class="l">median per turn</div></div>
+    </div>
+    <div class="cols c2">
+      <div class="stack">
+        <div class="callout ok">
+          <b>So the optimisation target is the number of calls, not the cost of one.</b>
+          <code>lvai_validate_aixml</code> runs in 0.08 s. Shaving milliseconds off it is worthless;
+          removing one round trip is worth seven seconds.
+        </div>
+        <p style="color:var(--fg-dim)">This is why the server has 80 tools rather than 23 thin wrappers.
+        Nearly every one of them exists because some sequence of calls was <em>measured</em> to be expensive.</p>
+      </div>
+      <div class="stack">
+        <div class="card hi">
+          <h3>How you find the next tool to write</h3>
+          <p style="color:var(--fg)">Measure a whole run, then look for the step whose <b>wall clock is
+          large and whose tool time is not</b>.</p>
+          <p>The biggest single item in one cold build: authoring a test-suite runner —
+          <b>186 s of wall clock against 6.1 s inside LabVIEW</b>. The model re-deriving XML whose
+          shape never varies. That is now one call.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 22 ══ LESSONS ══ -->
+<section class="slide" data-tag="Lessons">
+  <div>
+    <p class="kicker">What generalises</p>
+    <h2>Six things I would tell myself in August</h2>
+    <div class="cols c2">
+      <div class="card">
+        <h3>Ask the artefact, not the process</h3>
+        <p>"There is one build and one packaging path" was true of the pipeline and said nothing about
+        what was on the release page. One API call settled in seconds what reasoning had hidden for days.</p>
+      </div>
+      <div class="card">
+        <h3>A plausible fixture is not a test</h3>
+        <p>Both tools that failed on first real use had passing unit tests written against a fixture
+        that looked right. <b>Build the fixture by unwrapping the real artefact.</b></p>
+      </div>
+      <div class="card">
+        <h3>A fix is not verified by the test written beside it</h3>
+        <p>One filter passed its own test, validated against LabVIEW, and was completely inert.
+        What found it was reproducing the original failure.</p>
+      </div>
+      <div class="card">
+        <h3>Leave the word "cannot" out</h3>
+        <p>An impossibility claim written in the same voice as a measurement stops the next person
+        looking. One such sentence cost <b>18 days</b>; the fix underneath it was four lines.</p>
+      </div>
+      <div class="card">
+        <h3>Silent success is worse than a loud failure</h3>
+        <p>Almost every expensive bug here was something reporting <code>errorCode 0</code> while doing
+        nothing — or doing something else.</p>
+      </div>
+      <div class="card">
+        <h3>Write the rule where the work happens</h3>
+        <p>A rule that lives only in an agent's definition is invisible to the route that does not spawn
+        one. Put it in the checker, not only in the document.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 23 ══ STATUS ══ -->
+<section class="slide" data-tag="Status">
+  <div>
+    <p class="kicker">Before you point it at code you care about</p>
+    <h2>Two different risk profiles</h2>
+    <div class="cols c2">
+      <div class="card" style="border-color:var(--accent-2)">
+        <h3 style="color:var(--accent-2)">TestStand MCP</h3>
+        <ul style="font-size:.95em">
+          <li>Built on a <b>supported, documented API</b></li>
+          <li>Breaks when NI deprecates something, on NI's own schedule and with notice</li>
+          <li>Still writes and runs tests — the usual care applies</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:var(--accent-3)">
+        <h3 style="color:var(--accent-3)">LabVIEW MCP</h3>
+        <ul style="font-size:.95em">
+          <li><b>Not affiliated with, endorsed by or supported by NI.</b> Please do not open a ticket
+            with NI about it</li>
+          <li>An undocumented interface: a LabVIEW update, a tweak to the AI feature, a shifted comma
+            in the XML dialect — any one is enough</li>
+          <li>After every upgrade, dump the schema and see what moved</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout warn" style="margin-top:1.4rem">
+      <b>Both of them write and run code on your machine.</b> Work on copies. Commit first. Keep the
+      mutating tools behind a confirmation prompt, and do not allow-list a whole server just because
+      the prompts are irritating. They are irritating on purpose.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 24 ══ TRY IT ══ -->
+<section class="slide" data-tag="Try it">
+  <div>
+    <p class="kicker">Try it</p>
+    <h2>Two commands, or one config line</h2>
+    <div class="cols c2">
+      <div class="stack">
+        <h3>LabVIEW MCP — as a plugin</h3>
+        <pre>claude plugin marketplace add Zuehlke/labview-mcp
+claude plugin install labview-mcp@zuehlke-labview</pre>
+        <p style="color:var(--fg-dim);font-size:.92em">No clone, no build, no config file. You get the
+        server, the eight agents, and a read-only allow-list so reads run without a prompt.
+        Needs Windows and LabVIEW 2026 Q3 running.</p>
+      </div>
+      <div class="stack">
+        <h3>TestStand MCP — download and register</h3>
+        <pre>"mcpServers": {
+  "teststand": {
+    "command": "C:\\path\\TestStandMCP.exe"
+  }
+}</pre>
+        <p style="color:var(--fg-dim);font-size:.92em">Then: <em>"Connect to the TestStand engine and
+        open my sequence file."</em> Needs TestStand 2019+ and the x86 .NET 8 runtimes.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:1.4rem">
+      <b>Any MCP client works</b> — Claude Code and Desktop, Codex, GitHub Copilot, a local LLM.
+      Neither server is tied to one host.<br>
+      <span style="font-family:var(--mono);font-size:.92em">github.com/Zuehlke/labview-mcp &nbsp;·&nbsp; github.com/Zuehlke/teststand-mcp</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ 25 ══ END ══ -->
+<section class="slide title-slide" data-tag="Thank you">
+  <div>
+    <div class="rule"></div>
+    <h1>Questions</h1>
+    <p class="lede">
+      <b>252 tools</b> on a documented API — and no workarounds needed.<br>
+      <b>80 tools</b> on an undocumented one — and a 45-document logbook of why.
+    </p>
+    <div class="byline">
+      <span class="name">Jean-Claude Mengisen</span>
+      <span>Zühlke</span>
+      <span class="mono" style="color:var(--fg-faint)">github.com/Zuehlke/labview-mcp</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var slides  = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i       = 0;
+  var overview = false;
+  var counter = document.getElementById('counter');
+  var bar     = document.getElementById('progress');
+  var tag     = document.getElementById('tag');
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    tag.textContent = slides[i].dataset.tag || '';
+    if (!overview) { try { location.hash = i + 1; } catch (e) {} }
+  }
+
+  function toggleOverview() {
+    overview = !overview;
+    document.documentElement.classList.toggle('overview', overview);
+    if (!overview) show(i);
+  }
+
+  slides.forEach(function (s, k) {
+    s.addEventListener('click', function () { if (overview) { show(k); toggleOverview(); } });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ': case 'n':
+        e.preventDefault(); if (overview) toggleOverview(); show(i + 1); break;
+      case 'ArrowLeft': case 'PageUp': case 'p':
+        e.preventDefault(); if (overview) toggleOverview(); show(i - 1); break;
+      case 'Home': e.preventDefault(); show(0); break;
+      case 'End':  e.preventDefault(); show(slides.length - 1); break;
+      case 'o': case 'Escape': e.preventDefault(); toggleOverview(); break;
+      case 'f': e.preventDefault();
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+        break;
+      case 't': e.preventDefault(); theme(); break;
+    }
+  });
+
+  function theme() {
+    var r = document.documentElement;
+    r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light';
+  }
+
+  document.getElementById('next').onclick = function () { show(i + 1); };
+  document.getElementById('prev').onclick = function () { show(i - 1); };
+  document.getElementById('ov').onclick   = toggleOverview;
+  document.getElementById('th').onclick   = theme;
+
+  var start = parseInt((location.hash || '').replace('#', ''), 10);
+  show(isNaN(start) ? 0 : start - 1);
+})();
+</script>
+</body>
+</html>
