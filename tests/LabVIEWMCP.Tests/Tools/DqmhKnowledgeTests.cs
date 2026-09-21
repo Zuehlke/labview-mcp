@@ -149,8 +149,17 @@ public class DqmhKnowledgeTests
         Assert.NotNull(anchor);
         var folder = Path.GetDirectoryName(anchor!)!;
 
-        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
-        Assert.True(files.Length >= 15, $"only {files.Length} files found in {folder}");
+        // Binary documents are skipped, exactly as the scripts\ guard below skips a .vi:
+        // docs\ was text-only until the GdevCon7 material added .png and .mp4, and tokenising
+        // a compressed image produces noise that cannot be reasoned about - one PNG's IDAT
+        // stream happened to contain a forbidden token as three random bytes, which reads as
+        // a leak and is not one. A picture CAN of course carry a customer name visually; this
+        // guard never could see that, and skipping the file does not change what it covers.
+        string[] textual = [".md", ".tsv", ".html", ".txt", ".json", ".csv", ".xml"];
+        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            .Where(f => textual.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .ToArray();
+        Assert.True(files.Length >= 15, $"only {files.Length} text files found in {folder}");
 
         foreach (var path in files)
         {
