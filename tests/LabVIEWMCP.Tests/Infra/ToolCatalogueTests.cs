@@ -93,4 +93,20 @@ public class ToolCatalogueTests
         Assert.Contains($"**{served} tools over ", File.ReadAllText(CataloguePath()));
     }
 
+    /// <summary>
+    /// The README repeats the count in its "How it works" diagram, which is the one number a reader
+    /// meets before anything else. Two copies of a number drift - this repository has paid for that
+    /// with SafeUidBase and with dwarnCount - so the second copy is asserted rather than trusted.
+    /// </summary>
+    [Fact]
+    public void The_readme_diagram_count_matches_the_number_of_tools()
+    {
+        var path = Res.FindRepoFile("README.md");
+        Assert.NotNull(path);
+
+        using var provider = ServedTools();
+        var served = provider.GetServices<McpServerTool>().Count();
+
+        Assert.Contains($"{served} tools.", File.ReadAllText(path!));
+    }
 }
