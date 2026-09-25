@@ -148,6 +148,64 @@ public sealed class CreateTypedefTests
         Assert.Null(TypedefCreateTools.TopLevelTypedefName(Rsrc(firstFlat: 1)));              // not a typedef
     }
 
+    // ------------------------------------------------------------------ second cold build
+
+    // Write Config.vi as NI's wizard makes it for a field bound to Channel Config.ctl, reduced to
+    // its panel (measured 2026-09-25): the data terminal is named after the TYPEDEF.
+    private static XElement WriteConfigExport() => XElement.Parse($"""
+        <VI _name="Channel.lvclass:Write Config.vi" description="">
+          <Control _name="error in (no error)" type="cluster{"{"}bool.status,int32.code,string.source{"}"}" value="[false,0,]" outputs="value:"/>
+          <Control _name="Channel in" type="ref{"{"}UDClassInst{"}"}" value="" outputs="value:"/>
+          <Control _name="Channel Config" type="{Config}" value="[,0,[0,0],0]" outputs="value:"/>
+          <Indicator _name="error out" type="cluster{"{"}bool.status,int32.code,string.source{"}"}" value="[false,0,]" inputs="value:"/>
+          <Indicator _name="Channel out" type="ref{"{"}UDClassInst{"}"}" value="" inputs="value:"/>
+        </VI>
+        """);
+
+    [Fact]
+    public void ATypedefFieldsTypeIsReadOffTheDataInputNamedAfterTheTypedef()
+    {
+        var (type, note) = TestTools.FieldTypeFromExport(WriteConfigExport(), "Config");
+
+        Assert.Equal(Config, type);
+        Assert.Contains("Channel Config", note);
+        // control: a field whose terminal carries its own name is read as before
+        Assert.Equal(Config, TestTools.FieldTypeFromExport(WriteConfigExport(), "Channel Config").Type);
+    }
+
+    [Fact]
+    public void TwoDataInputsAreRefusedRatherThanGuessedBetween()
+    {
+        var export = WriteConfigExport();
+        export.Add(new XElement("Control", new XAttribute("_name", "Other"),
+                                new XAttribute("type", "double"), new XAttribute("value", "0")));
+
+        var (type, note) = TestTools.FieldTypeFromExport(export, "Config");
+        Assert.Null(type);
+        Assert.Contains("2 data inputs", note);
+    }
+
+    [Fact]
+    public void OnlyElementTypedefsInsideTheProjectTreeAreListed()
+    {
+        var dir = Directory.CreateTempSubdirectory("td").FullName;
+        try
+        {
+            var project = Touch(dir, "P.lvproj");
+            Directory.CreateDirectory(Path.Combine(dir, "Typedefs"));
+            var mode = Touch(dir, Path.Combine("Typedefs", "Channel Mode.ctl"));
+            var foreign = Path.Combine(Path.GetTempPath(), "vi.lib-like", "Range.ctl");
+            var request = new TypedefCreateTools.Request(
+                Path.Combine(dir, "Typedefs", "Channel Config.ctl"), Config, "Channel Config", false,
+                [new("Channel Mode", 1, mode), new("Range", 2, foreign)], project);
+
+            Assert.Equal([mode], TypedefCreateTools.ElementsToList(request));
+            // control: no project, nothing listed
+            Assert.Empty(TypedefCreateTools.ElementsToList(request with { ProjectPath = null }));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     private static string Touch(string dir, string name)
     {
         var path = Path.Combine(dir, name);

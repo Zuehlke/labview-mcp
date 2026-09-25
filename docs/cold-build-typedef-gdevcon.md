@@ -88,8 +88,44 @@ Accepted on the delivered suite: regenerated `Test Channel.vi` answered `typedef
 on `Write Config` - the remaining dots are Caraya's Variant inputs, the ordinary conversion - and the
 suite ran 2/0 and 1/0.
 
-## 5. Not established
+## 5. AN EDIT TO THE INNER `.ctl` PROPAGATES - on load, not on disk
 
-- Whether an edit to an inner `.ctl` propagates through `Channel Config.ctl` into the class and its
-  accessors. The file references say the links are live; nobody changed a `.ctl` to prove it.
+Measured the same day on a copy of the delivery (`C:	emp\TypedefPropagation\`): `Channel Mode.ctl`
+edited in place in the IDE's application instance (`{LV.Enum}` write `Strings []`, `Save.Instrument`)
+from `Off,Voltage,Current` to `Off,Voltage,Current,Resistance`, with a control arm - a VI whose
+cluster is a bare copy that was never linked.
+
+| check | before the edit | after the edit |
+|---|---|---|
+| AIXML export of `Write Config.vi` / `Read Config.vi` | 3 items | **4 items** |
+| export of the never-linked control VI | 3 items | 3 items - the control arm |
+| `lvai_exec_state` of both Config accessors | - | `1`, executable |
+| round trip through the class with `Channel Mode = 3` (`Resistance`) | - | **2/0**, the written constant verified to carry value 3 with the 4-item type |
+| files LabVIEW rewrote | - | **only `Channel Mode.ctl`** |
+| enum list stored in `Channel Config.ctl` and `Write Config.vi` ON DISK | 3 items | **still 3 items** |
+| the same in `Channel Config.ctl` after one `lvai_resave_ctl` | - | 4 items |
+
+So the links are live: every dependent picks up the new definition the moment LabVIEW loads it, and
+the class, its accessors and a generated test all run with the new item. What does NOT happen by
+itself is the disk: a dependent keeps its old copy of the type until something SAVES it - in the IDE
+that is the asterisk on the dependent and `Save All`. Nothing broke while the copies were stale, and
+the project close (which saves only the `.lvproj`) raised no modal save prompt. Reading a dependent's
+FILE after an edit, though, reports the old type - the pylabview reads in this repository do exactly
+that, so re-save the dependents before trusting one.
+
+## 6. The second cold build, with the tool - and its three findings FIXED
+
+Same task, `C:	emp\TypedefAfterGDevCon2\`, `labview-class-generator` plus the Caraya handoff: about
+7:20 end to end against about 12 minutes, the typedefs in **0:42 against 6:09**. No `pylv_*` call, no
+disconnect or flatten, no new stub file, 3/0 with a negative control that failed exactly one case.
+Three things did not work as promised, all fixed the same day and accepted over raw stdio:
+
+| finding | fix | acceptance |
+|---|---|---|
+| the inner typedefs were created without `projectPath`, so only the outer `.ctl` was listed and the agent had no tool to list the others | `lvai_create_typedef` lists the ELEMENT typedefs beside the new one - only those in the project's own folder tree; `lvai_add_vis_to_project` is in the class agent's roster and its recipe passes `projectPath` on every call | inner typedefs created WITHOUT `projectPath`, outer WITH: all three listed under `Typedefs`; the delivery's two missing ones added with `lvai_add_vis_to_project` |
+| `lvai_generate_class_test` answered `fieldTypeUnknown` for the typedef field: it looked for a terminal named `Config`, and NI's wizard names it `Channel Config` after the typedef | the type falls back to the Write accessor's ONE data input (neither class wire nor error cluster); two candidates are refused | the delivery's `Test Channel.vi` regenerated with no `type` in the case: `ok`, `typedefConstants.bound: 1`, no dot on `Write Config`, 2/0 and 1/0 |
+| the Caraya agent had no `lvai_coercion_dots`, though checking the dot is its job | added with `lvai_bind_typedef_constants`, and Phase 3b says when to use them | roster only - agents are read at session start, so this is first exercised by the next session |
+
+## 7. Not established
+
 - The suite has no negative control yet.

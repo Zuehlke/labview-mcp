@@ -1611,19 +1611,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return (null, $"Its export did not parse: {bad.Message}.");
             }
 
-            var control = root.Elements()
-                .FirstOrDefault(e => (e.Name.LocalName is "Control" or "Indicator")
-                                     && string.Equals((string?)e.Attribute("_name"), field,
-                                                      StringComparison.Ordinal));
-            if (control?.Attribute("type") is { } type)
-                return (type.Value, "");
-
-            var present = string.Join(", ", root.Elements()
-                .Where(e => e.Name.LocalName is "Control" or "Indicator")
-                .Select(e => (string?)e.Attribute("_name")));
-            return (null, control is null
-                ? $"Its export has no Control named '{field}'. It carries: {present}."
-                : $"'{field}' is in the export but has no `type` attribute.");
+            return FieldTypeFromExport(root, field);
         }
         finally
         {
@@ -1631,6 +1619,51 @@ internal sealed class TestTools(LvaiConnection connection)
             catch (Exception failure) when (failure is IOException
                                             or UnauthorizedAccessException) { }
         }
+    }
+
+    /// <summary>
+    /// The field's type out of its Write accessor's export: the Control named after the field, or
+    /// - when there is none - the accessor's ONE data input, the Control that is neither the class
+    /// wire nor the error cluster.
+    ///
+    /// WHY THE FALLBACK. NI's wizard names the data terminal after the TYPEDEF when the field is
+    /// bound to one: the field `Config`, bound to `Channel Config.ctl`, gets `Write Config.vi` with
+    /// a terminal called `Channel Config`. Measured 2026-09-25 on the second TypedefAfterGDevCon
+    /// build - the lookup by field name answered `fieldTypeUnknown` and the test agent had to pass
+    /// `type` by hand, while the direct route's DirectAccessorCall already found the same terminal
+    /// by type. A Write accessor has exactly one data input by construction; two candidates are
+    /// refused rather than guessed between.
+    /// </summary>
+    internal static (string? Type, string Note) FieldTypeFromExport(System.Xml.Linq.XElement root,
+                                                                   string field)
+    {
+        var controls = root.Elements()
+            .Where(e => e.Name.LocalName is "Control" or "Indicator")
+            .ToList();
+        var named = controls.FirstOrDefault(e =>
+            string.Equals((string?)e.Attribute("_name"), field, StringComparison.Ordinal));
+        if (named is not null)
+            return named.Attribute("type") is { } type
+                ? (type.Value, "")
+                : (null, $"'{field}' is in the export but has no `type` attribute.");
+
+        var data = controls
+            .Where(e => e.Name.LocalName == "Control")
+            .Where(e => !((string?)e.Attribute("type") ?? "").StartsWith("ref{UDClassInst}",
+                                                                        StringComparison.Ordinal))
+            .Where(e => !ConnectorPane.IsErrorIn((string?)e.Attribute("_name") ?? ""))
+            .Where(e => e.Attribute("type") is not null)
+            .ToList();
+        if (data.Count == 1)
+            return ((string)data[0].Attribute("type")!,
+                    $"read off the accessor's one data input '{(string?)data[0].Attribute("_name")}', " +
+                    "which is named after the typedef the field is bound to.");
+
+        var present = string.Join(", ", controls.Select(e => (string?)e.Attribute("_name")));
+        return (null, data.Count == 0
+            ? $"Its export has no Control named '{field}' and no data input. It carries: {present}."
+            : $"Its export has no Control named '{field}', and {data.Count} data inputs to choose " +
+              $"from. It carries: {present}.");
     }
 
     /// <summary>Where a socket has to live to resolve as a Call target by its bare name: a plain

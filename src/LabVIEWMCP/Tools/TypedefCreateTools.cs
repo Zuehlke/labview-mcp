@@ -63,8 +63,11 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         save - two separate runs were measured leaving a stray type descriptor in the file. Replace
         keeps each element's LABEL, measured; `labelAfter` shows it and gates `ok`.
         Create the inner typedefs FIRST, with this tool, then the cluster that contains them.
-        WITH projectPath the .ctl is listed in the project under folderName and the project is left
-        CLOSED - the listing is a file edit, and LabVIEW's close would save over it otherwise.
+        WITH projectPath the .ctl is listed in the project under folderName - together with every
+        element typedef that lies in the project's own folder tree, so the inner typedefs do not end
+        up under Dependencies only - and the project is left CLOSED: the listing is a file edit, and
+        LabVIEW's close would save over it otherwise. A typedef from vi.lib or elsewhere is used,
+        never listed.
         THE VERDICT IS READ FROM THE SAVED FILE: `verifiedFromFile` holds lvai_describe_ctl's reading
         (isTypedef, isStrictTypedef, needsLabviewSave) and each element typedef's name must appear
         in the saved .ctl. The in-memory `Control VI Type` is reported beside it and is NOT the
@@ -226,10 +229,13 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
                     }
                 }
 
-                // ---- 4. list it, which also closes the project
+                // ---- 4. list it AND the element typedefs it uses, which also closes the project.
+                //      The inner ones used to be left out: created without a projectPath, they
+                //      showed only under Dependencies - measured 2026-09-25 on the second cold
+                //      build, where the agent had no tool left to list them with.
                 if (req.ProjectPath is { } project)
                     steps.Add(await new TestTools(connection).ListInProjectAsync(
-                        project, folderName, [req.CtlPath], timeoutSeconds, ct,
+                        project, folderName, [req.CtlPath, .. ElementsToList(req)], timeoutSeconds, ct,
                         reopen: false, moveTargetLevel: true));
 
                 // ---- 5. the verdict, from the saved file
@@ -334,6 +340,22 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
 
             return (new Request(full, type.Trim(), name, strict, elements, project), null);
         }
+    }
+
+    /// <summary>
+    /// The element typedefs to list beside the new one: those inside the project's own folder
+    /// tree. A typedef from vi.lib, user.lib or a sibling project is USED by the cluster and is not
+    /// this project's to list.
+    /// </summary>
+    internal static IReadOnlyList<string> ElementsToList(Request req)
+    {
+        if (req.ProjectPath is not { } project || Path.GetDirectoryName(project) is not { } root)
+            return [];
+        var prefix = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar;
+        return [.. req.Elements
+            .Select(e => Path.GetFullPath(e.TypedefPath))
+            .Where(p => p.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>The carrier VI: nothing but the one control that becomes the typedef.</summary>
