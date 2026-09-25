@@ -2450,7 +2450,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` — open the target (or one member of its class) with `lvai_open_file` first; it converts past the `Unsupported SubVI` refusal and gates on executability. `lvai_validate_aixml` alone always refuses it. Plain VIs and class members measured; a `.ctl` is not accepted |
-| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`; `lvai_describe_class` reads each field's DEFAULT back |
+| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`, placed with `typedef.<name>` in `fields`; `lvai_describe_class` reads each field's DEFAULT and each member's dispatch back |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I add a FIELD to a class that ALREADY has members? | `docs/lvclass-creation.md` §9 | `lvai_add_class_field` — `lvai_create_class` only CREATES and its `overwrite` drops every member, so this looked unreachable and cost a method written to take a value and NOT store it. It is the SAME provider on the same route, and it APPENDS — measured on a fixture with accessors before it was run for real |
@@ -2459,7 +2459,7 @@ literally it argued away 600 usable palette VIs.
 | Is this `.ctl` a typedef, and what does it wrap? | `docs/class-method-tooling.md` §1a | `lvai_describe_ctl` |
 | How do I bind typedefs onto a class's private data fields? | `docs/class-method-tooling.md` §3b | `lvai_bind_class_fields` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
-| Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
+| Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` — a dot on a VARIANT input is `intoVariant` and not a finding |
 | A coercion dot whose source is a CONTROL, not a constant | `docs/typedef-disconnect.md` §13a | `lvai_bind_pane_typedef` — `lvai_bind_typedef_constants` finds its target by CONSTANT label and cannot reach a pane control. Needs the owning `.lvclass`, and gates `ok` on the SAVED FILE |
 | How do I CREATE a typedef `.ctl`, with typedefs inside a cluster? | `docs/cold-build-typedef-gdevcon.md` | `lvai_create_typedef` — VI Server alone, verified from the saved file. Create inner typedefs first; `elementTypedefsJson` binds the cluster's elements in one run |
 | NI's accessor wizard answers `Error 1061` on a typedef field | `docs/typedef-disconnect.md` §13 | `lvai_resave_ctl` — a flag-patched `.ctl` still carries the generator's connector pane; `lvai_describe_ctl` flags it as `needsLabviewSave` with `wrappedType: Function` |

@@ -265,7 +265,18 @@ internal static class LvClass
     /// comma because that is what the AIXML cluster grammar uses, which also means a field NAME
     /// cannot contain one - said here rather than discovered from a malformed type string.
     /// </summary>
-    public static List<Field> ParseFields(string? spec)
+    public static List<Field> ParseFields(string? spec) => ParseFields(spec, allowTypedefMarkers: false);
+
+    /// <summary>The type a <c>typedef.&lt;name&gt;</c> position marker parses to.</summary>
+    public const string TypedefMarker = "typedef";
+
+    /// <summary>
+    /// As above; with <paramref name="allowTypedefMarkers"/> a <c>typedef.&lt;name&gt;</c> entry is
+    /// accepted as a POSITION marker for a field whose .ctl lvai_create_class's typedefFieldsJson
+    /// names. Before 2026-09-25 a typedef field could not be placed at all - it was appended after
+    /// every scalar, so `Config, Gain` came out as Gain 0, Config 1.
+    /// </summary>
+    public static List<Field> ParseFields(string? spec, bool allowTypedefMarkers)
     {
         var fields = new List<Field>();
         if (string.IsNullOrWhiteSpace(spec)) return fields;
@@ -296,6 +307,17 @@ internal static class LvClass
                     throw new ArgumentException($"'{entry}' has a default but no field name.");
                 if (DefaultProblem(type, fieldDefault) is { } problem)
                     throw new ArgumentException($"'{entry}': {problem}");
+            }
+
+            if (allowTypedefMarkers && type == TypedefMarker)
+            {
+                if (fieldDefault is not null)
+                    throw new ArgumentException(
+                        $"'{entry}': a typedef field takes its default from the .ctl, not from here.");
+                if (fields.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)))
+                    throw new ArgumentException($"'{name}' appears twice.");
+                fields.Add(new Field(TypedefMarker, name));
+                continue;
             }
 
             if (!Literals.ContainsKey(type))

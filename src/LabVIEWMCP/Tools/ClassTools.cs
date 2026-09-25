@@ -92,6 +92,9 @@ internal sealed class ClassTools(LvaiConnection connection)
             `string.Manufacturer,int32.Year Of Manufacture`. A DEFAULT is `<type>.<name>=<value>`,
             e.g. `double.Gain=1,bool.Enabled=true` - without one a field defaults to its type's
             empty value (0, false, ""). Not for timestamp fields. Omit for empty private data.
+            A TYPEDEF field from typedefFieldsJson may be PLACED here as `typedef.<name>`, e.g.
+            `typedef.Config,double.Gain=1` - it then keeps that position. Left out, it goes after
+            every field listed here. Naming it here with a real type (`string.Config`) is refused.
             """)]
         string? fields = null,
         [Description("""
@@ -99,6 +102,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             existing typedef .ctl, e.g. {"Config":"C:\\T\\Typedefs\\Channel Config.ctl"}. Each
             is created as a placeholder and then bound to its .ctl with lvai_bind_class_fields in
             the same call, so the field keeps its name and carries the typedef. Needs projectPath.
+            Do NOT also list it in `fields` with a type; write `typedef.<name>` there to fix its
+            position, or leave it out and it comes after the fields listed there.
             Create the accessors AFTER this call - an accessor made before the bind keeps the bare
             type. Until 2026-09-25 this took two calls and a placeholder type chosen by hand.
             """)]
@@ -167,13 +172,14 @@ internal sealed class ClassTools(LvaiConnection connection)
                     "'Auto.lvclass' and not a path.");
 
             List<LvClass.Field> parsed;
-            try { parsed = LvClass.ParseFields(fields); }
+            try { parsed = LvClass.ParseFields(fields, allowTypedefMarkers: true); }
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
-            // Typedef fields ride in as placeholders and are bound to their .ctl after creation.
+            // Typedef fields ride in as placeholders and are bound to their .ctl after creation;
+            // a `typedef.X` marker in fields decides where X's placeholder sits.
             var (typedefFields, typedefRefusal) = TypedefFieldRequest(typedefFieldsJson, parsed, projectPath);
             if (typedefRefusal is not null) return typedefRefusal;
-            parsed.AddRange(typedefFields.Select(t => new LvClass.Field("string", t.Field)));
+            parsed = WithTypedefPlaceholders(parsed, typedefFields);
 
             // pylabview is NO LONGER a precondition here. It was, while the private data control
             // was built by converting a generated VI; LabVIEW's own provider VIs need none of it.
@@ -563,7 +569,14 @@ internal sealed class ClassTools(LvaiConnection connection)
     internal static (List<TypedefField> Fields, string? Refusal) TypedefFieldRequest(
         string? json, IReadOnlyList<LvClass.Field> scalar, string? projectPath)
     {
-        if (string.IsNullOrWhiteSpace(json)) return ([], null);
+        var markers = scalar.Where(f => f.Type == LvClass.TypedefMarker).Select(f => f.Name).ToList();
+        if (string.IsNullOrWhiteSpace(json))
+            return markers.Count == 0
+                ? ([], null)
+                : ([], Json.Error("badArguments",
+                    $"`typedef.{markers[0]}` in fields marks where a typedef field goes, and " +
+                    "typedefFieldsJson names no .ctl for it. Add " +
+                    $"{{\"{markers[0]}\":\"<path>.ctl\"}} there."));
         JsonObject? map;
         try { map = JsonNode.Parse(json) as JsonObject; }
         catch (System.Text.Json.JsonException e)
@@ -588,12 +601,40 @@ internal sealed class ClassTools(LvaiConnection connection)
                 return ([], Json.Error("fileNotFound",
                     $"The typedef for field '{name}' is not an existing .ctl: '{path}'. Create it " +
                     "first - lvai_create_typedef does that through VI Server."));
-            if (scalar.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)))
+            if (scalar.FirstOrDefault(f => f.Type != LvClass.TypedefMarker &&
+                    string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) is { } twice)
                 return ([], Json.Error("badArguments",
-                    $"'{name}' is in both `fields` and typedefFieldsJson. Name it once."));
+                    $"'{name}' is in both `fields` (as {twice.Type}.{twice.Name}) and " +
+                    "typedefFieldsJson. Its type comes from the .ctl, so it cannot also be a " +
+                    $"{twice.Type}. To place it among the other fields write `typedef.{name}` in " +
+                    "fields; left out of fields, it goes after them."));
             fields.Add(new TypedefField(name, path));
         }
+        if (markers.FirstOrDefault(m => !fields.Any(f =>
+                string.Equals(f.Field, m, StringComparison.OrdinalIgnoreCase))) is { } unnamed)
+            return ([], Json.Error("badArguments",
+                $"`typedef.{unnamed}` in fields marks where a typedef field goes, and " +
+                "typedefFieldsJson names no .ctl for it."));
         return (fields, null);
+    }
+
+    /// <summary>
+    /// The field list the carrier is built from: a `typedef.X` marker becomes X's placeholder IN
+    /// PLACE, and a typedef field with no marker is appended after the rest. The bind replaces
+    /// the placeholder's type and keeps its position.
+    /// </summary>
+    internal static List<LvClass.Field> WithTypedefPlaceholders(
+        IReadOnlyList<LvClass.Field> parsed, IReadOnlyList<TypedefField> typedefs)
+    {
+        const string placeholder = "string";
+        var placed = parsed
+            .Select(f => f.Type == LvClass.TypedefMarker ? new LvClass.Field(placeholder, f.Name) : f)
+            .ToList();
+        placed.AddRange(typedefs
+            .Where(t => !parsed.Any(f => f.Type == LvClass.TypedefMarker &&
+                                         string.Equals(f.Name, t.Field, StringComparison.OrdinalIgnoreCase)))
+            .Select(t => new LvClass.Field(placeholder, t.Field)));
+        return placed;
     }
 
     private const string TypedefBindFailedNote =
@@ -987,6 +1028,15 @@ internal sealed class ClassTools(LvaiConnection connection)
             member list for.
             """)]
         bool includeFields = true,
+        [Description("""
+            Report each member's `dynamicDispatch`. Where the .lvclass records IsStaticMethod that
+            is used; otherwise the member's own saved file is read with pylabview (no LabVIEW,
+            about 250 ms per VI, four at a time) and a connector pane terminal flagged 0x8000
+            means dynamic dispatch - measured against NI's own IsStaticMethod on 149 of 149 class
+            members. `dynamicDispatchFrom` says which source answered. Pass false to skip the
+            file reads. On by default.
+            """)]
+        bool includeDispatch = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         Rpc.GuardAsync(async () =>
@@ -1049,15 +1099,38 @@ internal sealed class ClassTools(LvaiConnection connection)
                 }
             }
 
+            // DISPATCH: from the .lvclass where it records IsStaticMethod, otherwise from the
+            // member's own connector pane. NI's wizard writes no IsStaticMethod, so every accessor
+            // read null here until 2026-09-25 (fourth TypedefAfterGDevCon build).
+            var dispatch = new (bool? Value, string? From)[info.Members.Count];
+            var bundle = includeDispatch ? PyLabview.Locate() : null;
+            using (var gate = new SemaphoreSlim(4))
+                await Task.WhenAll(info.Members.Select(async (member, i) =>
+                {
+                    if (member.DynamicDispatch is { } recorded)
+                    { dispatch[i] = (recorded, "lvclass"); return; }
+                    if (bundle is null || member.Type != "VI") return;
+                    await gate.WaitAsync(ct);
+                    try
+                    {
+                        var vi = Path.GetFullPath(Path.Combine(info.Path, member.Url));
+                        if (await PaneDispatch.ReadAsync(bundle, vi, Rpc.ClampToolWait(timeoutSeconds), ct)
+                            is { } fromPane)
+                            dispatch[i] = (fromPane, "connectorPane");
+                    }
+                    finally { gate.Release(); }
+                }));
+
             var members = new JsonArray();
-            foreach (var member in info.Members)
+            foreach (var (member, i) in info.Members.Select((m, i) => (m, i)))
                 members.Add(new JsonObject
                 {
                     ["name"] = member.Name,
                     ["url"] = member.Url,
                     ["kind"] = member.Type,
                     ["scope"] = member.Scope,
-                    ["dynamicDispatch"] = member.DynamicDispatch,
+                    ["dynamicDispatch"] = dispatch[i].Value,
+                    ["dynamicDispatchFrom"] = dispatch[i].From,
                 });
 
             var ancestors = new JsonArray();
@@ -1123,6 +1196,12 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["fieldsDefaultsNote"] = fieldsDefaultsNote,
                 ["memberCount"] = info.Members.Count,
                 ["members"] = members,
+                ["dispatchNote"] = !includeDispatch
+                    ? "Members' files not read - includeDispatch was false, so dynamicDispatch is " +
+                      "only set where the .lvclass records IsStaticMethod."
+                    : bundle is null
+                        ? "Members' files not read: " + PyLabview.NotProvisionedMessage()
+                        : null,
                 ["note"] = info.PrivateDataBytes switch
                 {
                     -1 => "The flattened private data property does not decode. That is what " +
@@ -2132,10 +2211,10 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 // THE DISPATCH EVIDENCE, so nobody has to grep the class file for it. Runs that
                 // used this tool all ended with `lvai_describe_class` plus a shell grep for
-                // `NI.ClassItem.Flags`, because describe_class reports dynamicDispatch as null -
-                // the class file does not carry it under that name - and 0 versus 16777216 in the
-                // flags is what actually settles it. Read off the file, so it says what was
-                // written rather than what was asked for.
+                // `NI.ClassItem.Flags`, because describe_class reported dynamicDispatch as null -
+                // the class file does not carry it for wizard accessors. Since 2026-09-25
+                // describe_class reads it off each member's connector pane instead, which is the
+                // answer to use; these raw counts stay as they are and decode nothing.
                 final["memberNames"] = MemberNamesOnDisk(lvclassPath);
                 final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
 

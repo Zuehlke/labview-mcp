@@ -403,6 +403,13 @@ internal sealed class TestTools(LvaiConnection connection)
         Replace, which RE-TYPES THE WIRES where a pylabview link retarget cannot.
         casesJson is a JSON ARRAY, one object per field:
           [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
+        A CLUSTER FIELD'S `value` is AIXML's cluster literal: the elements in the cluster's own
+        order, comma separated, in square brackets, a nested cluster bracketed again, a string
+        UNQUOTED and an enum as its INDEX, not its item name. Channel Config {Name, Channel Mode
+        (Off,Voltage,Current), Range {Min,Max}, Samples} as Voltage, -10..10, 1000 samples:
+          {"field":"Config","value":"[CH1,1,[-10,10],1000]"}
+        Measured 2026-09-25 - LabVIEW's export of the saved test read that literal back
+        unchanged. A comma inside a string element is not measured.
         A FRESH OBJECT'S DEFAULT is a case too - `expectDefault` in place of `value` reads the field
         off the seed object with no Write and asserts that: {"field":"Gain","expectDefault":"1"}.
         One round trip and one default case per field.
@@ -1090,16 +1097,21 @@ internal sealed class TestTools(LvaiConnection connection)
             await File.WriteAllTextAsync(
                 aixml, CarayaRunnerAixml(runnerViPath, relatives, reportFileName), ct);
 
+            // THE PANE IS MEASURED AND FIXED, which it was not until 2026-09-25: measurePane was
+            // false, so nothing ever said where the runner's terminals sat.
             var generated = await new BulkTools(connection).GenerateViAsync(
-                aixml, runnerViPath, openVI: false, measurePane: false, panePattern: null,
+                aixml, runnerViPath, openVI: false, measurePane: true, panePattern: RunnerPanePattern,
                 timeoutSeconds: timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
 
             if ((Read(generated) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return RunnerOutcome(false, "generate", steps, total, runnerViPath, aixml,
                     reportFileName, relatives.Count,
-                    "The runner was NOT generated. Read the generate step - a Caraya target that " +
-                    "does not resolve on this station shows up there as an unresolved Call.");
+                    File.Exists(runnerViPath)
+                        ? "The runner was written but did not pass the generate step - read it; " +
+                          "failedAtStep connectorPane means the pane, not the diagram, needs work."
+                        : "The runner was NOT generated. Read the generate step - a Caraya target " +
+                          "that does not resolve on this station shows up there as an unresolved Call.");
 
             if (!keepAixml)
             {
@@ -2445,6 +2457,14 @@ internal sealed class TestTools(LvaiConnection connection)
     /// and a modal dialog stops LabVIEW's whole gRPC service until a human dismisses it - which in
     /// an unattended run is nobody.
     /// </summary>
+    /// <summary>The runner's pane: pattern 4815, whose bottom row is 8 (left) and 0 (right).</summary>
+    internal const int RunnerPanePattern = 4815;
+
+    internal static class RunnerPane
+    {
+        internal const int ErrorIn = 8, ReportPath = 2, ErrorOut = 0;
+    }
+
     internal static string CarayaRunnerAixml(string runnerViPath, IReadOnlyList<string> relativeTestPaths,
                                        string reportFileName)
     {
@@ -2468,7 +2488,7 @@ internal sealed class TestTools(LvaiConnection connection)
         // `40`->`4220`, reported in its `steps`). Fixing them at source makes that pass a no-op
         // instead of a routine three-item repair, and stops the six log lines it cost.
         const int here = UidBase, strip = UidBase + 10, array = UidBase + 40,
-                  interactive = UidBase + 50, call = UidBase + 60;
+                  interactive = UidBase + 50, call = UidBase + 60, errorIn = UidBase + 63;
         const int nameBase = UidBase + 100, reportName = UidBase + 199,
                   buildBase = UidBase + 200, reportBuild = UidBase + 299;
 
@@ -2501,20 +2521,32 @@ internal sealed class TestTools(LvaiConnection connection)
 
         sb.AppendLine(Constant(interactive, "bool", "false", "Interactive (T)"));
 
+        // THE RUNNER CARRIES `error in` AND `error out` ON THE BOTTOM ROW like every VI we create
+        // (CLAUDE.md, 2026-09-12). It had neither an `error in` nor a single conIdx until
+        // 2026-09-25 - the fourth TypedefAfterGDevCon build noticed that nothing measured its
+        // pane. The numbers are PATTERN 4815's (RunnerPanePattern), fixed by the generate step
+        // rather than left to the station's DefaultConPane, so they mean the same edges anywhere.
+        sb.AppendLine($"  <Control _name=\"error in\" conIdx=\"{RunnerPane.ErrorIn}\" " +
+                      "connection=\"recommended\" description=\"Runs nothing when it carries an " +
+                      $"error.\" outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" " +
+                      $"uid=\"{errorIn}\" uid_parent=\"root\" value=\"[false,0,]\"/>");
+
         // Every terminal is named, the unwired ones with an empty target - that is the shape a
         // working runner's own export has, and a Call that lists only some of a polymorphic
         // instance's terminals is not one this generator will accept.
         sb.AppendLine($"  <Call adapt=\"true\" inputs=\"Interactive (T):{interactive}.value," +
-                      $"Paths:{array}.appended array,Inspect Recursively (T):,error in:," +
+                      $"Paths:{array}.appended array,Inspect Recursively (T):,error in:{errorIn}.value," +
                       $"Report Path:{reportBuild}.appended path,Test Report:,Verbose:," +
                       $"timeout (2000 ms):\" instance=\"{RunTestArrayPath}\" " +
                       $"outputs=\"Test Results:,error out:{call}.error out\" target=\"{RunTests}\" " +
                       $"uid=\"{call}\" uid_parent=\"root\"/>");
 
-        sb.AppendLine("  <Indicator _name=\"Report Path used\" description=\"Absolute path of the " +
+        sb.AppendLine($"  <Indicator _name=\"Report Path used\" conIdx=\"{RunnerPane.ReportPath}\" " +
+                      "connection=\"recommended\" description=\"Absolute path of the " +
                       $"JUnit XML report this run wrote.\" inputs=\"value:{reportBuild}.appended path\" " +
                       $"type=\"path\" uid=\"{UidBase + 61}\" uid_parent=\"root\" value=\"\"/>");
-        sb.AppendLine("  <Indicator _name=\"error out\" description=\"Caraya returns 7002 when a " +
+        sb.AppendLine($"  <Indicator _name=\"error out\" conIdx=\"{RunnerPane.ErrorOut}\" " +
+                      "connection=\"recommended\" description=\"Caraya returns 7002 when a " +
                       "test suite FAILED - that is a pass/fail signal\\2C not a fault. It also " +
                       "carries the FIRST failed assertion only; read the JUnit report for all of " +
                       $"them.\" inputs=\"value:{call}.error out\" type=\"{ErrorCluster}\" " +

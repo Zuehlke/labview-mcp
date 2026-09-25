@@ -1,4 +1,4 @@
-<VI _name="lvbd_coercion_dots.vi" description="For ONE subVI call node on a VI's block diagram - addressed by its index in All Objects[] - report every terminal's Name and {LV.Terminal} Coercion Dot?\2C and alongside it the VI Name of every diagram object (empty for anything that is not a subVI call). A coercion dot means the wired type is not identical to the terminal type\2C which is what the placeholder-plus-retarget route leaves behind when the real subVI's pane carries typedefs. ADDRESSED BY INDEX\2C NOT BY NAME\3A a diagram may call the same subVI several times\2C and matching on VI Name collapses them to one - measured\2C a caller with four coerced terminals across two nodes reported two\2C and could report clean while a second node still wore dots. The index is safe here because subvis seen is emitted in the same pass and resolved in the same session\3B nothing persists it. Pass node index -1 to enumerate only. TWO SEQUENTIAL LOOPS\2C never nested\3A a nested pair accumulating through shift registers was measured to keep only the LAST outer iteration. Opened WITHOUT an application instance on purpose - this has to work while pylv_apply has the project closed. Read only.">
+<VI _name="lvbd_coercion_dots.vi" description="For ONE subVI call node on a VI's block diagram - addressed by its index in All Objects[] - report every terminal's Name\2C {LV.Terminal} Coercion Dot? and the type code in Type Descriptor[1] (0x53 in the low byte is a Variant\2C whose dot is an ordinary conversion)\2C and alongside it the VI Name of every diagram object (empty for anything that is not a subVI call). A coercion dot means the wired type is not identical to the terminal type\2C which is what the placeholder-plus-retarget route leaves behind when the real subVI's pane carries typedefs. ADDRESSED BY INDEX\2C NOT BY NAME\3A a diagram may call the same subVI several times\2C and matching on VI Name collapses them to one - measured\2C a caller with four coerced terminals across two nodes reported two\2C and could report clean while a second node still wore dots. The index is safe here because subvis seen is emitted in the same pass and resolved in the same session\3B nothing persists it. Pass node index -1 to enumerate only. TWO SEQUENTIAL LOOPS\2C never nested\3A a nested pair accumulating through shift registers was measured to keep only the LAST outer iteration. Opened WITHOUT an application instance on purpose - this has to work while pylv_apply has the project closed. Read only.">
   <Control _name="vi path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
   <Control _name="node index" conIdx="1" connection="required" outputs="value:11.value" type="string" uid="11" uid_parent="root" value="-1"/>
 
@@ -25,9 +25,12 @@
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
     <Tunnel _id="In1" inputs="value:150.terms" mode="index" outputs="value:201.term" uid="201" uid_parent="200"/>
-    <Node _name="Property Node" fields="read+Name,read+Coercion Dot?" type="{LV.Terminal}" inputs="reference:201.term,error in (no error):" outputs="Name:210.tname,Coercion Dot?:210.dot,reference out:,error out:210.error out" uid="210" uid_parent="200"/>
+    <Node _name="Property Node" fields="read+Name,read+Coercion Dot?,read+Type Descriptor" type="{LV.Terminal}" inputs="reference:201.term,error in (no error):" outputs="Name:210.tname,Coercion Dot?:210.dot,Type Descriptor:210.td,reference out:,error out:210.error out" uid="210" uid_parent="200"/>
+    <Constant _name="type code index" type="int32" value="1" outputs="value:211.value" uid="211" uid_parent="200"/>
+    <Node _name="Index Array" inputs="array:210.td,index:211.value" outputs="element:212.element" uid="212" uid_parent="200"/>
     <Tunnel _id="Out1" inputs="value:210.tname" mode="index" outputs="value:230.names" uid="230" uid_parent="200"/>
     <Tunnel _id="Out2" inputs="value:210.dot" mode="index" outputs="value:231.dots" uid="231" uid_parent="200"/>
+    <Tunnel _id="Out3" inputs="value:212.element" mode="index" outputs="value:232.codes" uid="232" uid_parent="200"/>
   </Structure>
 
   <Node _name="Close Reference" inputs="reference:24.vi reference,error in (no error):28.error out" outputs="error out:300.error out" uid="300" uid_parent="root"/>
@@ -37,6 +40,7 @@
   <Indicator _name="subvi found" conIdx="5" connection="recommended" inputs="value:150.found" type="string" uid="901" uid_parent="root" value=""/>
   <Indicator _name="terminal names" conIdx="6" connection="recommended" inputs="value:230.names" type="array{string}" uid="902" uid_parent="root" value="[]"/>
   <Indicator _name="coercion dots" conIdx="7" connection="recommended" inputs="value:231.dots" type="array{bool}" uid="903" uid_parent="root" value="[]"/>
+  <Indicator _name="terminal type codes" conIdx="9" connection="recommended" inputs="value:232.codes" type="array{int16}" uid="906" uid_parent="root" value="[]"/>
   <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:310.code" type="int32" uid="904" uid_parent="root" value="0"/>
   <Indicator _name="source" conIdx="15" connection="recommended" inputs="value:310.source" type="string" uid="905" uid_parent="root" value=""/>
 </VI>

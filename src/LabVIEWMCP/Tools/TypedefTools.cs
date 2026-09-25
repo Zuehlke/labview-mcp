@@ -363,7 +363,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
-            if (!File.Exists(helperVi) &&
+            if (HelperCache.NeedsRebuild(aixml, helperVi) &&
                 await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is not null)
                 return null;
 
@@ -393,8 +393,9 @@ internal sealed class TypedefTools(LvaiConnection connection)
 
                 var names = StringArray(values, "terminal names");
                 var flags = BoolArray(values, "coercion dots");
+                var codes = IntArray(values, "terminal type codes");
                 for (var i = 0; i < names.Count; i++)
-                    if (names[i].Length > 0 && i < flags.Count && flags[i])
+                    if (names[i].Length > 0 && i < flags.Count && flags[i] && !IntoVariant(codes, i))
                         coerced.Add(Where(name, index, nodes, names[i]));
             }
 
@@ -493,6 +494,10 @@ internal sealed class TypedefTools(LvaiConnection connection)
         Unassigned connector pane slots are dropped rather than reported as nameless terminals.
         `clean` is only ever true when nodes were actually examined: a sweep that saw nothing says
         so instead of passing for a clean bill of health.
+        A DOT ON A VARIANT INPUT IS NOT A FINDING: it is LabVIEW's ordinary conversion into a
+        Variant (every Caraya assert input is one), there is nothing to bind, and it is reported
+        as `intoVariant` and counted under `coercedIntoVariant` instead of `coerced`, so it does
+        not make `clean` false.
         """)]
     public async Task<string> CoercionDotsAsync(
         [Description(@"Absolute path to the .vi to inspect")] string viPath,
@@ -535,7 +540,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
@@ -593,6 +598,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
     {
         var calls = new JsonArray();
         var coerced = 0;
+        var intoVariant = 0;
         var checkedTerminals = 0;
         var failed = 0;
 
@@ -603,6 +609,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var code = Value(values, "code");
             var names = StringArray(values, "terminal names");
             var dots = BoolArray(values, "coercion dots");
+            var codes = IntArray(values, "terminal type codes");
 
             var terminals = new JsonArray();
             var callCoerced = 0;
@@ -614,14 +621,18 @@ internal sealed class TypedefTools(LvaiConnection connection)
             {
                 if (names[i].Length == 0) continue;
                 var dot = i < dots.Count && dots[i];
+                var variant = dot && IntoVariant(codes, i);
                 checkedTerminals++;
-                if (dot) { callCoerced++; coerced++; }
-                terminals.Add(new JsonObject
+                if (variant) intoVariant++;
+                else if (dot) { callCoerced++; coerced++; }
+                var terminal = new JsonObject
                 {
                     ["terminal"] = names[i],
                     ["paneSlot"] = i,
                     ["coercionDot"] = dot,
-                });
+                };
+                if (variant) terminal["intoVariant"] = true;
+                terminals.Add(terminal);
             }
 
             var call = new JsonObject
@@ -660,6 +671,11 @@ internal sealed class TypedefTools(LvaiConnection connection)
             ["subViCalls"] = runs.Count,
             ["terminalsChecked"] = checkedTerminals,
             ["coerced"] = coerced,
+            // A dot on a VARIANT terminal is LabVIEW's ordinary To Variant on the wire - every
+            // Caraya assert input is one - and there is no typedef to bind. Counted apart so it
+            // no longer makes `clean` false; measured 2026-09-25, a test with three assert calls
+            // answered clean: false on six such dots and an agent read 55 terminals to see why.
+            ["coercedIntoVariant"] = intoVariant,
             ["calls"] = calls,
             ["helperViPath"] = helperVi,
             ["helperAixmlPath"] = Path.GetFullPath(aixml),
@@ -671,7 +687,11 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 : failed > 0
                     ? "At least one subVI call could not be read - see its note."
                     : coerced == 0
-                        ? "No coercion dot on any subVI call terminal. Nothing to repair."
+                        ? intoVariant > 0
+                            ? $"Nothing to repair. The {intoVariant} dot(s) there are on VARIANT " +
+                              "inputs (marked intoVariant) - an ordinary conversion into a " +
+                              "Variant, which no typedef binding changes."
+                            : "No coercion dot on any subVI call terminal. Nothing to repair."
                         : $"{coerced} terminal(s) are coerced. WHICH REPAIR DEPENDS ON WHAT FEEDS " +
                           "THE TERMINAL - see `repairs`. This note named only the constant one " +
                           "until 2026-09-18, and sent a real build at a tool that could not reach " +
@@ -744,6 +764,24 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// <summary>The same, read as LabVIEW's 0/1 booleans.</summary>
     internal static IReadOnlyList<bool> BoolArray(JsonObject? values, string name) =>
         StringArray(values, name).Select(v => v == "1").ToList();
+
+    internal static IReadOnlyList<int> IntArray(JsonObject? values, string name) =>
+        StringArray(values, name)
+            .Select(v => int.TryParse(v, System.Globalization.NumberStyles.Integer,
+                                      System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0)
+            .ToList();
+
+    /// <summary>LabVIEW's type code for a Variant, the low byte of a type descriptor's word 1.</summary>
+    internal const int VariantTypeCode = 0x53;
+
+    /// <summary>
+    /// Whether pane slot <paramref name="slot"/> is a VARIANT terminal, from {LV.Terminal}
+    /// Type Descriptor[1]. Measured 2026-09-25 on Caraya's Assert Equal Value_Variant.vi: Actual
+    /// and Expected read 0x4053, a double 0x400A, an error cluster 0x4050, a class 0x4070. A
+    /// helper built before the codes existed returns none, and then nothing counts as a variant.
+    /// </summary>
+    internal static bool IntoVariant(IReadOnlyList<int> codes, int slot) =>
+        slot < codes.Count && (codes[slot] & 0xFF) == VariantTypeCode;
 
     // ------------------------------------------------------- the CONTROL half of the repair
 

@@ -43,8 +43,9 @@ internal sealed class IconTools(LvaiConnection connection)
         direction: setting an icon does not leave the VI in memory, so the path can still be
         regenerated afterwards.
         `ok` IS `verified`, and on a verified run `errorCode` is 0: RunVIAsTopLevel's own 91 - the
-        known read-back artefact, which appears on success - is kept under runnerErrorCode. Look at
-        the read-back PNG to see what actually landed in the VI.
+        known read-back artefact, which appears on success - is dropped, and only an unexpected
+        runner code is kept under runnerErrorCode. Look at the read-back PNG to see what actually
+        landed in the VI.
         """)]
     public async Task<string> SetViIconAsync(
         [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
@@ -215,9 +216,13 @@ internal sealed class IconTools(LvaiConnection connection)
                 ("note", JsonValue.Create(
                     "Judged by `verified` - a read-back file written during this call - and not by " +
                     "RunVIAsTopLevel, which cannot read this helper's indicators back and answers " +
-                    "91 on success; that code is kept under runnerErrorCode. Open readBackPath to " +
-                    "see the icon now stored in the VI."))), verified);
+                    "91 on success; on a verified run that 91 is dropped, and any other runner " +
+                    "code is kept under runnerErrorCode. Open readBackPath to see the icon now " +
+                    "stored in the VI."))), verified);
         });
+
+    /// <summary>RunVIAsTopLevel's code on a SUCCESSFUL run of a helper whose outputs it cannot read.</summary>
+    internal const int RunnerReadBackArtefact = 91;
 
     /// <summary>
     /// `ok` and `errorCode` from `verified`, with RunVIAsTopLevel's own code kept aside.
@@ -225,8 +230,13 @@ internal sealed class IconTools(LvaiConnection connection)
     /// WHY. The answer used to carry `errorCode 91` on every SUCCESSFUL run - the read-back artefact
     /// of RunVIAsTopLevel - with `verified: true` beside it and a note saying to ignore the code. An
     /// agent reported it as a finding on the third TypedefAfterGDevCon build (2026-09-25): a field
-    /// named errorCode that must be ignored is read as an error. On a verified run it is 0 now, and
-    /// the runner's 91 sits under runnerErrorCode; an unverified run keeps the real code.
+    /// named errorCode that must be ignored is read as an error. On a verified run it is 0 now; an
+    /// unverified run keeps the real code.
+    ///
+    /// AND THE KNOWN 91 IS DROPPED, NOT KEPT ASIDE. Keeping it under runnerErrorCode was the next
+    /// finding (fourth build, same day): `ok: true` beside a `runnerErrorCode 91` still reads as
+    /// something to look at. On a verified run 91 carries no information, so it goes; any OTHER
+    /// runner code on a verified run is unexpected and stays visible under runnerErrorCode.
     /// </summary>
     internal static string Verdict(string answer, bool verified)
     {
@@ -235,8 +245,11 @@ internal sealed class IconTools(LvaiConnection connection)
         o["ok"] = verified;
         if (verified && code != 0)
         {
-            o["runnerErrorCode"] = code;
-            o["runnerErrorMessage"] = o["errorMessage"]?.DeepClone();
+            if (code != RunnerReadBackArtefact)
+            {
+                o["runnerErrorCode"] = code;
+                o["runnerErrorMessage"] = o["errorMessage"]?.DeepClone();
+            }
             o["errorCode"] = 0;
             o["errorMessage"] = "";
         }

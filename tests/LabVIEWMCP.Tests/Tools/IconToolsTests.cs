@@ -168,7 +168,7 @@ public sealed class IconToolsTests : IDisposable
         Assert.True(Res.Bool(result, "verified"));           // the contract...
         Assert.True(Res.Bool(result, "ok"));
         Assert.Equal(0, Res.Int(result, "errorCode"));       // ...and the answer says so,
-        Assert.Equal(91, Res.Int(result, "runnerErrorCode")); // with LabVIEW's own code kept aside
+        Assert.Null(System.Text.Json.Nodes.JsonNode.Parse(result)!["runnerErrorCode"]); // 91 dropped
         Assert.Equal("32x32", Res.Str(result, "readBackSize"));
     }
 

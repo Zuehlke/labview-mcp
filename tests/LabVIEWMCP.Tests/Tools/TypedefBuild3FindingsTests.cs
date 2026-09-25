@@ -174,7 +174,8 @@ public sealed class TypedefBuild3FindingsTests
             """{"errorCode":91,"errorMessage":"Error 91 occurred"}""", verified: true))!;
         Assert.True(verified["ok"]!.GetValue<bool>());
         Assert.Equal(0, verified["errorCode"]!.GetValue<int>());
-        Assert.Equal(91, verified["runnerErrorCode"]!.GetValue<int>());
+        // the known 91 is dropped since the fourth build (TypedefBuild4FindingsTests)
+        Assert.Null(verified["runnerErrorCode"]);
 
         // control: an unverified run keeps LabVIEW's code where it was, and is not ok
         var failed = JsonNode.Parse(IconTools.Verdict(

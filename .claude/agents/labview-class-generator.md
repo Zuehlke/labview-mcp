@@ -427,7 +427,8 @@ saves a PLAIN control, and every call answers `error 0`).
 **Then create the class with the field bound in the SAME call** - `lvai_create_class`'s
 `typedefFieldsJson` ({"Config":"...\Typedefs\Channel Config.ctl"}, with `projectPath`) creates the
 field as a placeholder and binds it through lvai_bind_class_fields before it returns, closing the
-project again. Do not create it as `string.Config` and bind it by hand, which is what the third
+project again. Write `typedef.Config` in `fields` where the field belongs (`typedef.Config,double.Gain=1`);
+never `string.Config`, which is refused, and left out it goes after the other fields. Do not create it as `string.Config` and bind it by hand, which is what the third
 TypedefAfterGDevCon build had to do. The paragraphs below are what that call does inside, and the
 route for binding a field of a class that already exists.
 

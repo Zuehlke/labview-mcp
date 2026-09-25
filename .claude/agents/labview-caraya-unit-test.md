@@ -294,7 +294,9 @@ field `Config`); the tool reads the type off that terminal by itself since 2026-
 answer carries a `typedefConstants` step: the written constant is re-pointed to the typedef so the
 Write call has no coercion dot. **Confirm it with `lvai_coercion_dots` on the finished test VI** -
 the Write and Read accessor calls must show none; the dots on Caraya's `Actual`/`Expected` inputs
-are the ordinary conversion into a Variant and are expected. A dot left on an accessor call is
+are the ordinary conversion into a Variant, which the tool reports as `intoVariant` under
+`coercedIntoVariant` and leaves out of `clean` - so `clean: true` is the whole check and there are
+no terminals to read by hand. A dot left on an accessor call is
 repaired with `lvai_bind_typedef_constants` (the constant is labelled `written <n>`), with the
 class's project active.
 
