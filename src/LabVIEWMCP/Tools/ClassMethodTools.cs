@@ -325,6 +325,24 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                                "this step is trying to reach.",
                 });
 
+                // A LOOSE PROJECT ENTRY FOR A VI ABOUT TO BECOME A MEMBER GOES FIRST. A method
+                // generated with its class loaded - how it calls its own accessors with no stub,
+                // measured 2026-09-25 - is generated with the project open, so LabVIEW's save
+                // listed it as a loose item, and that build's agent had to remove the line by hand
+                // before this call. Same closed window, same reason, as the class-file edit below.
+                var looseRemoved = LvClass.RemoveLooseViEntries(
+                    projectPath, methods.Select(m => Path.GetFullPath(m.Vi)));
+                if (looseRemoved.Count > 0)
+                    prologue.Add(new JsonObject
+                    {
+                        ["order"] = ++order,
+                        ["step"] = "dropLooseProjectEntries",
+                        ["removed"] = new JsonArray([.. looseRemoved.Select(n => (JsonNode)n!)]),
+                        ["why"] = "The VI was listed in the project as a loose item - LabVIEW's " +
+                                  "save adopts a VI generated with the project open - and it is " +
+                                  "about to be listed through its class instead.",
+                    });
+
                 // STILL CLOSED, AND THIS IS THE ONLY WINDOW IT FITS IN - editing the class file
                 // while LabVIEW holds the project open is undone by LabVIEW's own save, silently.
                 var dropped = RemoveMemberEntries(classPath, methods.Select(m => Path.GetFullPath(m.Vi)));

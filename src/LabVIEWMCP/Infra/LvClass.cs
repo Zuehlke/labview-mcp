@@ -201,8 +201,12 @@ internal static class LvClass
 
     // ------------------------------------------------------------------ the field grammar
 
-    /// <summary>One private data field: an AIXML scalar type name and the label it carries.</summary>
-    public sealed record Field(string Type, string Name);
+    /// <summary>
+    /// One private data field: an AIXML scalar type name, the label it carries, and optionally its
+    /// DEFAULT value as the literal the carrier control is authored with (null = the type's empty
+    /// literal).
+    /// </summary>
+    public sealed record Field(string Type, string Name, string? Default = null);
 
     /// <summary>
     /// The AIXML scalar types a field may use, with the <c>value</c> literal each needs. AIXML
@@ -278,6 +282,22 @@ internal static class LvClass
             var type = entry[..dot].Trim();
             var name = entry[(dot + 1)..].Trim();
 
+            // `<type>.<name>=<default>` - the default is what the carrier control is authored
+            // with, and NI's provider takes the field from that control. Added 2026-09-25: a class
+            // asked for `Gain` defaulting to 1 came out 0, because every field was authored with
+            // its type's empty literal and there was no way to say otherwise.
+            string? fieldDefault = null;
+            var equals = name.IndexOf('=', StringComparison.Ordinal);
+            if (equals >= 0)
+            {
+                fieldDefault = name[(equals + 1)..].Trim();
+                name = name[..equals].Trim();
+                if (name.Length == 0)
+                    throw new ArgumentException($"'{entry}' has a default but no field name.");
+                if (DefaultProblem(type, fieldDefault) is { } problem)
+                    throw new ArgumentException($"'{entry}': {problem}");
+            }
+
             if (!Literals.ContainsKey(type))
                 throw new ArgumentException(
                     $"'{entry}' has type '{type}', which this tool has no default literal for. " +
@@ -295,11 +315,50 @@ internal static class LvClass
                     $"'{name}' appears twice. LabVIEW allows it in a cluster and nothing good " +
                     "comes of it - an accessor cannot say which one it means.");
 
-            fields.Add(new Field(type, name));
+            fields.Add(new Field(type, name, fieldDefault));
         }
 
         return fields;
     }
+
+    /// <summary>
+    /// Why a default literal cannot be used for this type, or null when it can. Numbers are
+    /// checked as numbers because a wrong literal generates without complaint and a field then
+    /// silently defaults to 0; a timestamp default is refused because a non-empty timestamp
+    /// `value` is DISCARDED by the converter (CLAUDE.md, measured 2026-09-14).
+    /// </summary>
+    internal static string? DefaultProblem(string type, string value)
+    {
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        switch (type)
+        {
+            case "timestamp":
+                return "a timestamp field cannot carry a default - the converter discards a " +
+                       "non-empty timestamp literal, so the field would read empty anyway.";
+            case "bool":
+                return value is "true" or "false" or "TRUE" or "FALSE" or "True" or "False"
+                    ? null : $"'{value}' is not a boolean - write true or false.";
+            case "double" or "single":
+                return double.TryParse(value, System.Globalization.NumberStyles.Float, invariant, out _)
+                    ? null : $"'{value}' is not a number (use a '.' as the decimal point).";
+            case "int8" or "int16" or "int32" or "int64":
+                return long.TryParse(value, System.Globalization.NumberStyles.Integer, invariant, out _)
+                    ? null : $"'{value}' is not an integer.";
+            case "uint8" or "uint16" or "uint32" or "uint64":
+                return ulong.TryParse(value, System.Globalization.NumberStyles.None, invariant, out _)
+                    ? null : $"'{value}' is not an unsigned integer.";
+            default:
+                return value.Contains(',')
+                    ? "a default cannot contain a comma - the comma separates the fields."
+                    : null;
+        }
+    }
+
+    /// <summary>A default as the carrier control's <c>value</c> literal, escaped for AIXML.</summary>
+    internal static string DefaultLiteral(string type, string value) =>
+        type == "bool"
+            ? value.ToLowerInvariant()
+            : Xml(value).Replace("\\", "\\5C", StringComparison.Ordinal);
 
     /// <summary>
     /// The CARRIER: a VI whose front panel holds one control per field, and nothing else.
@@ -323,7 +382,7 @@ internal static class LvClass
         // a signature we emit ourselves crowds out the ones that mean something. Measured
         // 2026-09-07, three calls in one cold build reporting 4, 2 and 2 such repairs.
         var controls = string.Join("\n", fields.Select((f, i) =>
-            $"""  <Control _name="{f.Name}" outputs="value:" type="{f.Type}" uid="{AixmlCheck.SafeUidBase + i * 10}" uid_parent="root" value="{Literals[f.Type]}"/>"""));
+            $"""  <Control _name="{f.Name}" outputs="value:" type="{f.Type}" uid="{AixmlCheck.SafeUidBase + i * 10}" uid_parent="root" value="{(f.Default is { } d ? DefaultLiteral(f.Type, d) : Literals[f.Type])}"/>"""));
         return $"""
                 <VI _name="{className}-fields.vi" description="Carrier for the private data fields of {className}.lvclass. Its front-panel controls are handed to NI's Add Member Data to Private Data Control.vi as references\2C so each control's name and type becomes a field. Nothing here runs.">
                 {controls}
@@ -1108,6 +1167,72 @@ internal static class LvClass
     /// Only a FILE edit: the caller must hold the project closed, because LabVIEW's next close
     /// saves its own copy over whatever this writes.
     /// </summary>
+    /// <summary>
+    /// Takes LOOSE project entries for the given VI files out of a <c>.lvproj</c> - at target level
+    /// or in a virtual folder, never under a class or library item - and returns the names removed.
+    /// The file is matched by its URL resolved against the project file, not by its name, because
+    /// a class member and a loose VI elsewhere may share a file name.
+    ///
+    /// WHY IT EXISTS. A method generated with its class LOADED - the route by which a class method
+    /// calls its own accessors with no stub, measured 2026-09-25 - is generated with the project
+    /// open, so LabVIEW's save lists the new VI as a loose project item. Making it a member then
+    /// meets that entry. The agent of that build removed the line by hand with the project closed.
+    /// Line-precise like <see cref="RemoveTargetLevelVis"/>; the caller holds the project closed.
+    /// </summary>
+    public static IReadOnlyList<string> RemoveLooseViEntries(string projectPath,
+                                                             IEnumerable<string> viPaths)
+    {
+        if (!File.Exists(projectPath)) return [];
+        var wanted = viPaths.Select(Path.GetFullPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return [];
+
+        var target = XDocument.Load(projectPath, LoadOptions.SetLineInfo).Root?.Elements("Item")
+            .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
+        if (target is null) return [];
+
+        string? Resolve(string url)
+        {
+            if (url.Contains('<') || url.Contains("&lt;")) return null;   // symbolic, not a path
+            try { return Path.GetFullPath(Path.Combine(projectPath, url.Replace('/', '\\'))); }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException
+                                      or PathTooLongException) { return null; }
+        }
+
+        var hits = target.Descendants("Item")
+            .Where(i => (string?)i.Attribute("Type") == "VI")
+            // Loose only: every ancestor up to the target is a plain virtual folder.
+            .Where(i => i.Ancestors("Item").TakeWhile(a => a != target)
+                         .All(a => (string?)a.Attribute("Type") == "Folder"))
+            .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
+                          Url: (string?)i.Attribute("URL") ?? "",
+                          Line: ((System.Xml.IXmlLineInfo)i).LineNumber))
+            .Where(h => h.Line > 0 && Resolve(h.Url) is { } full && wanted.Contains(full))
+            .ToList();
+        if (hits.Count == 0) return [];
+
+        var text = File.ReadAllText(projectPath);
+        var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split(newline).ToList();
+
+        var removed = new List<string>();
+        foreach (var hit in hits.OrderByDescending(h => h.Line))
+        {
+            var index = hit.Line - 1;
+            if (index >= lines.Count) continue;
+            var line = lines[index].Trim();
+            if (!line.StartsWith("<Item ", StringComparison.Ordinal)
+                || !line.EndsWith("/>", StringComparison.Ordinal)
+                || !line.Contains($"Name=\"{Xml(hit.Name)}\"", StringComparison.Ordinal))
+                continue;
+            lines.RemoveAt(index);
+            removed.Add(hit.Name);
+        }
+
+        if (removed.Count > 0) File.WriteAllText(projectPath, string.Join(newline, lines));
+        removed.Reverse();
+        return removed;
+    }
+
     public static IReadOnlyList<string> RemoveTargetLevelVis(string projectPath,
                                                              IReadOnlyCollection<string> names)
     {

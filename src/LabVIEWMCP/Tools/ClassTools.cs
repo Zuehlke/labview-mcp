@@ -89,7 +89,9 @@ internal sealed class ClassTools(LvaiConnection connection)
         string directory,
         [Description("""
             Private data fields as `<type>.<name>`, comma separated, e.g.
-            `string.Manufacturer,int32.Year Of Manufacture`. Omit for empty private data.
+            `string.Manufacturer,int32.Year Of Manufacture`. A DEFAULT is `<type>.<name>=<value>`,
+            e.g. `double.Gain=1,bool.Enabled=true` - without one a field defaults to its type's
+            empty value (0, false, ""). Not for timestamp fields. Omit for empty private data.
             """)]
         string? fields = null,
         [Description("Absolute path to the parent .lvclass this one derives from")]

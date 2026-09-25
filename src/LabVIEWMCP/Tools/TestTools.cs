@@ -444,8 +444,8 @@ internal sealed class TestTools(LvaiConnection connection)
             which is nearly always: nothing else writes a VI into a `.lvproj`, and a suite that is
             not listed is one the user cannot find. Measured 2026-08-29 - a complete, green, verified
             suite was handed over and the Project Explorer showed the classes and no tests at all.
-            The project is CLOSED before the file is edited and re-opened afterwards, because
-            LabVIEW's close saves its own copy over the file and would destroy the edit.
+            The project is CLOSED before the file is edited and left closed, because LabVIEW's
+            close saves its own copy over the file and would destroy the edit.
             On the DIRECT route an omitted projectPath is not "list it nowhere": the route uses the
             one project that lists the class, and lists the test there under testFolderName.
             """)]
@@ -944,8 +944,9 @@ internal sealed class TestTools(LvaiConnection connection)
         string? reportFileName = null,
         [Description("""
             The `.lvproj` to list the runner in. Pass it whenever the tests belong to a project: the
-            project is CLOSED before the file is edited and re-opened afterwards, because LabVIEW's
-            close saves its own copy over the file and would destroy the edit.
+            project is CLOSED before the file is edited and LEFT closed, because LabVIEW's close saves
+            its own copy over the file and would destroy the edit. A runner runs with its project
+            closed - measured, class suites included.
             """)]
         string? projectPath = null,
         [Description("Virtual folder inside the project to list the runner in")]
@@ -1052,12 +1053,16 @@ internal sealed class TestTools(LvaiConnection connection)
             // holds before the close and re-asserts it, so passing a generated suite again is a
             // no-op rather than a duplicate entry.
             //
-            // reopen: TRUE here, and deliberately — the caller's next move is to RUN this runner,
-            // which needs the project's classes linked.
+            // reopen: FALSE, like every other generator. This said TRUE "deliberately - the
+            // caller's next move is to RUN this runner, which needs the project's classes linked".
+            // Measured 2026-09-25 and it does not: a runner over two class suites and a plain one,
+            // run with the project CLOSED, reported 11 tests, 0 failures. What the reopen did cost
+            // was a project left open behind the tool (`projectLeftOpen: true`), which the next
+            // tool that edits the .lvproj as a file then loses its edit to.
             if (projectPath is { Length: > 0 })
                 steps.Add(await ListInProjectAsync(projectPath, testFolderName,
                                                    [runnerViPath, .. tests],
-                                                   timeoutSeconds, ct, reopen: true));
+                                                   timeoutSeconds, ct, reopen: false));
 
             return RunnerOutcome(true, null, steps, total, runnerViPath,
                 keepAixml ? aixml : null, reportFileName, relatives.Count,

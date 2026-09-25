@@ -1334,6 +1334,12 @@ The fallback is not a defeat: the field then carries the real wrapped type - a g
 `Refnum RefType="UsrDefndTag" Ident="Task" TypeName="NIDAQ"`, not a de-linked copy. Report it as
 information.
 
+**A CLASS FIELD CAN CARRY A DEFAULT: `double.Gain=1`** (since 2026-09-25, measured reading back
+`1.0`). Before that every field defaulted to its type's empty value with no way to say otherwise,
+and a sensor class shipped with `Gain = 0`. Not for a timestamp, whose literal the converter
+discards. And a method test that needs SEVERAL fields set uses `seed` - `writeField` sets one and
+asserts it survived. `docs/cold-build-sensor-monitor-events.md`.
+
 **A CLASS FIELD MAY BE A `path` — and the tool refusing one was an ALLOWLIST GAP, not a format
 limit.** `lvai_create_class` needs a `value` literal per type, and a type missing from that table is
 refused by name; twice now that has read as "AIXML cannot express this". `timestamp` was the first,
@@ -2398,6 +2404,7 @@ literally it argued away 600 usable palette VIs.
 | Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
 | How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
 | Can a whole application be built with NO stub files and NO pyLabVIEW, and how are the agents split? | `docs/cold-build-atm-no-stubs.md` | — |
+| How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |

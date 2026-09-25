@@ -160,9 +160,9 @@ internal sealed class CloseTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("""
-            The .lvproj being closed. OPTIONAL, and the only way this tool can tidy: the helper
-            closes whatever project is ACTIVE and never learns its path, so without this there is
-            nothing to read back. Given one, the saved file is swept for items LabVIEW adopted into
+            The .lvproj being closed. OPTIONAL: without it the ACTIVE project's path is read from
+            LabVIEW before the close, so the sweep runs either way (`projectPathFrom` says which).
+            The saved file is swept for items LabVIEW adopted into
             it - helper VIs out of our temp trees, sockets under <userlib>/LV_MCP, and entries whose
             file is not there - and the answer NAMES every one it removed. The save this tool
             performs is what writes those entries, so this is the step where they appear.
@@ -193,12 +193,44 @@ internal sealed class CloseTools(LvaiConnection connection)
             }
 
             var wall = System.Diagnostics.Stopwatch.StartNew();
+
+            // NO PATH GIVEN: ASK LabVIEW WHICH PROJECT IS ACTIVE, so the sweep runs anyway. Every
+            // tool that closes a project internally used to call this without a path - the test
+            // generators, lvai_wire_dynamic_events - and each of those saves adopted its strays
+            // unswept. Measured 2026-09-25: lvai_wire_dynamic_events' save put its own helper
+            // `lvai_wire_dyn_events.vi` into the user's .lvproj, where it stayed until a later
+            // close with a path removed it. Reading the active project is one helper run, and it
+            // is read BEFORE the close because afterwards there is nothing active to read.
+            var pathFrom = projectPath is { Length: > 0 } ? "argument" : null;
+            if (pathFrom is null)
+            {
+                var (active, _, activePath) = await new ActionTools(connection)
+                    .ProjectIsActiveAsync(timeoutSeconds, ct);
+                if (active is true && activePath is { Length: > 0 } && File.Exists(activePath))
+                {
+                    projectPath = activePath;
+                    pathFrom = "active project";
+                }
+            }
+
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
-            return DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
-                                        wall.ElapsedMilliseconds, projectPath);
+            var described = DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
+                                                 wall.ElapsedMilliseconds, projectPath);
+            if (pathFrom is null) return described;
+            try
+            {
+                var node = System.Text.Json.Nodes.JsonNode.Parse(described);
+                if (node is System.Text.Json.Nodes.JsonObject o && o["projectSweep"] is { } sweep)
+                {
+                    sweep["projectPathFrom"] = pathFrom;
+                    return Json.Document(o);
+                }
+            }
+            catch (System.Text.Json.JsonException) { }
+            return described;
         });
 
     /// <summary>

@@ -97,6 +97,13 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         comes from `value`, and the read-back is asserted against `expectFieldValue` instead. Its
         absence meant such a method could not be tested at all, because seeding 12.5 into a `Zero`
         asserted `12.5 == 0`. A case may carry any combination.
+        `seed` WRITES FIELDS WITHOUT ASSERTING THEM, as many as the method needs:
+          {"method":"Read Value","seed":{"Current":"3","Gain":"2"},
+           "expectOutput":"reading","expectValue":"6"}
+        That is the shape for a method reading two fields, which one `writeField` could not
+        express. The answer's `assertions` step lists every assertion each case generated, and
+        warns where `writeField` beside `expectOutput`/`expectErrorCode` implies "the field is
+        UNCHANGED after the call" - move the field to `seed` if it only has to be set.
         WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
         you the value. Say which in your report - a measured string asserted as if it were the spec
         freezes whatever the method happens to do today.
@@ -290,6 +297,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     }
                 }
 
+                // FIELDS SEEDED BEFORE THE CALL AND NOT ASSERTED. A case used to seed ONE field,
+                // so a method reading two - `reading = Current x Gain` - could only be tested with
+                // the second at its default: measured 2026-09-25, the multiplication was asserted
+                // as 0 x 0 because Gain could not be set.
+                var seedWrites = new List<SeedWrite>();
+                foreach (var (seedField, seedValue) in request.Seeds ?? new Dictionary<string, string>())
+                {
+                    var seedAccessor = Path.Combine(folder, $"Write {seedField}.vi");
+                    if (!File.Exists(seedAccessor))
+                        return Json.Error("accessorMissing",
+                            $"'{seedField}' in \"seed\" has no Write accessor beside the class - " +
+                            $"expected '{Path.GetFileName(seedAccessor)}'.",
+                            new { field = seedField, write = seedAccessor });
+                    var (seedType, seedNote) = await new TestTools(connection)
+                        .FieldTypeAsync(seedAccessor, seedField, timeoutSeconds, ct: ct);
+                    if (seedType is null)
+                        return Json.Error("fieldTypeUnknown",
+                            $"The type of seeded field '{seedField}' could not be read off " +
+                            $"'{Path.GetFileName(seedAccessor)}'. {seedNote}",
+                            new { field = seedField, accessor = seedAccessor });
+                    seedWrites.Add(new SeedWrite(seedField, seedAccessor, seedType, seedValue));
+                }
+
                 // THE METHOD'S OWN REQUIRED INPUTS, read off its export. Anything `required` and
                 // left unwired makes the generated caller NOT EXECUTABLE, and neither this tool's
                 // validation nor its verify can see that - measured 2026-09-03, `ok: true` for a
@@ -338,7 +368,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                          request.ExpectErrorCode, seed, required!,
                                          request.ExpectOutput, request.ExpectValue,
                                          outputType, outputConIdx,
-                                         request.ExpectFieldValue));
+                                         request.ExpectFieldValue, seedWrites));
                 methodShapes.Add(DirectMethodCall.From(terminals!,
                     TestTools.DirectAccessorCall.Target(lvclassPath, methodVi)));
             }
@@ -379,6 +409,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                && test.OutputConIdx is { } outSlot
                                ? (outName, outType, outSlot)
                                : null));
+                for (var k = 0; k < test.Seeds.Count; k++)
+                    Author(pairs, scratch, socketRoot, test.SeedSocket(k),
+                           TestTools.SocketAixml(test.SeedSocket(k), test.Seeds[k].Type, write: true));
                 if (test.DataType is { } type)
                 {
                     Author(pairs, scratch, socketRoot, test.WriteSocket!,
@@ -418,6 +451,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 swaps.Add(new JsonObject
                 { ["socket"] = test.MethodSocket, ["target"] = test.MethodVi });
+                for (var k = 0; k < test.Seeds.Count; k++)
+                    swaps.Add(new JsonObject
+                    { ["socket"] = test.SeedSocket(k), ["target"] = test.Seeds[k].WriteAccessor });
                 if (test.DataType is not null)
                 {
                     swaps.Add(new JsonObject
@@ -462,6 +498,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     reopen: false));
 
             steps.Add(RequiredInputsStep(cases));
+            steps.Add(AssertionsStep(cases));
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {Counts(cases)}, every method called as an ordinary static subVI. " +
                 "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs; open " +
@@ -469,6 +506,50 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "expectation on purpose once, because an all-green first run proves very little.",
                 swapAnswer["callTargets"]?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// EVERY ASSERTION EACH CASE GENERATED, spelled out - and a warning where one was implied.
+    ///
+    /// `writeField` + `value` asserts that the field SURVIVES the call, and it did that silently
+    /// beside `expectOutput` too: measured 2026-09-25, a test agent seeded `Current` to reach an
+    /// output assertion on a method whose job includes `Current + 1`, got a suite that also
+    /// asserted `Current == 3` after the call, and found it only by exporting the test VI. The
+    /// shape is legitimate - it is the one a dispatch mistake fails - so it is REPORTED, not
+    /// refused, and `seed` is named as the way to write a field without asserting it.
+    /// </summary>
+    internal static JsonObject AssertionsStep(IEnumerable<MethodCase> cases)
+    {
+        var list = new JsonArray();
+        var warnings = new JsonArray();
+        foreach (var c in cases)
+        {
+            var asserts = new JsonArray();
+            if (c.ExpectOutput is { } output)
+                asserts.Add($"{output} == {c.ExpectValue}");
+            if (c.ExpectErrorCode is { } code)
+                asserts.Add($"error out code == {code}");
+            if (c.DataType is not null)
+                asserts.Add(c.ExpectFieldValue is { } after
+                    ? $"{c.ReadField} after the call == {after}"
+                    : $"{c.ReadField} SURVIVES the call: == {c.Value}, the value written");
+            list.Add(new JsonObject
+            {
+                ["slot"] = c.Slot,
+                ["label"] = c.Label,
+                ["asserts"] = asserts,
+                ["seededNotAsserted"] = new JsonArray([.. c.Seeds.Select(x => (JsonNode)$"{x.Field} = {x.Value}")]),
+            });
+            if (c.DataType is not null && c.ExpectFieldValue is null
+                && (c.ExpectOutput is not null || c.ExpectErrorCode is not null))
+                warnings.Add($"Case {c.Slot} ('{c.Label}') also asserts that {c.ReadField} is " +
+                             $"UNCHANGED ({c.Value}) after '{c.Method}'. If the method changes it, " +
+                             "add \"expectFieldValue\"; if the field only has to be SET, move it " +
+                             "to \"seed\", which writes it without asserting.");
+        }
+        var step = new JsonObject { ["step"] = "assertions", ["cases"] = list };
+        if (warnings.Count > 0) step["warnings"] = warnings;
+        return step;
+    }
 
     /// <summary>What each case wired into the method's required inputs, and where the value came from.</summary>
     private static JsonObject RequiredInputsStep(IEnumerable<MethodCase> cases) => new()
@@ -578,6 +659,25 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             if (shape is null) return (null, why);
             accessors.Add(shape);
         }
+        // each seeded field's Write accessor, read off its own export like the pairs above
+        var seedCalls = new List<IReadOnlyList<DirectWriteCall>>();
+        foreach (var test in cases)
+        {
+            var writes = new List<DirectWriteCall>();
+            foreach (var seeded in test.Seeds)
+            {
+                var export = await tests.ExportedTerminalsAsync(seeded.WriteAccessor, scratch,
+                                                                timeoutSeconds, ct);
+                var shape = export is null ? null : DirectWriteCall.From(export,
+                    TestTools.DirectAccessorCall.Target(lvclassPath, seeded.WriteAccessor));
+                if (shape is null)
+                    return (null, $"The Write accessor of seeded field '{seeded.Field}' could not " +
+                                  "be read as one class input, one data input and one class output.");
+                writes.Add(shape);
+            }
+            seedCalls.Add(writes);
+        }
+
         steps.Add(new JsonObject
         {
             ["step"] = "members",
@@ -608,7 +708,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         var testAixml = Path.Combine(scratch,
             Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
         await File.WriteAllTextAsync(testAixml,
-            MethodTestAixml(testViPath, className, cases, methods, accessors), ct);
+            MethodTestAixml(testViPath, className, cases, methods, accessors, seedCalls), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
             timeoutSeconds, ct: ct);
@@ -679,6 +779,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                                  timeoutSeconds, ct, reopen: false));
 
         steps.Add(RequiredInputsStep(cases));
+        steps.Add(AssertionsStep(cases));
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
             $"Generated. {Counts(cases)}, every method and accessor called DIRECTLY - no sockets, " +
             "no node swaps; only the seed constants were replaced. THE PROJECT IS LEFT CLOSED; " +
@@ -868,7 +969,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     internal static string MethodTestAixml(string testViPath, string className,
                                            IReadOnlyList<MethodCase> cases,
                                            IReadOnlyList<DirectMethodCall>? methods = null,
-                                           IReadOnlyList<TestTools.DirectAccessorCall?>? accessors = null)
+                                           IReadOnlyList<TestTools.DirectAccessorCall?>? accessors = null,
+                                           IReadOnlyList<IReadOnlyList<DirectWriteCall>>? seedCalls = null)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -928,8 +1030,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             var seed = uid++;
             sb.AppendLine(TestTools.Constant(seed, "path", "", test.SeedLabel));
 
-            // An optional write BEFORE the call - this is what the read-back is compared against.
             var objectIn = $"{seed}.value";
+
+            // THE SEEDED FIELDS, written first and asserted nowhere - a case's `seed`.
+            for (var k = 0; k < test.Seeds.Count; k++)
+            {
+                var seeded = test.Seeds[k];
+                var seedValue = uid++;
+                sb.AppendLine(TestTools.Constant(seedValue, seeded.Type,
+                    TestTools.ValueFor(seeded.Type, seeded.Value), $"seed {seeded.Field} {test.Slot}"));
+                var seedWrite = uid++;
+                var direct = seedCalls?[index][k];
+                sb.AppendLine(direct is null
+                    ? $"  <Call target=\"{TestTools.Escape(test.SeedSocket(k))}\" " +
+                      $"inputs=\"obj in:{objectIn},value:{seedValue}.value\" " +
+                      $"outputs=\"obj out:{seedWrite}.obj out\" uid=\"{seedWrite}\" uid_parent=\"root\"/>"
+                    : $"  <Call target=\"{TestTools.Escape(direct.Target)}\" " +
+                      $"inputs=\"{direct.ClassIn}:{objectIn},{direct.Data}:{seedValue}.value\" " +
+                      $"outputs=\"{direct.ClassOut}:{seedWrite}.obj out\" uid=\"{seedWrite}\" " +
+                      "uid_parent=\"root\"/>");
+                objectIn = $"{seedWrite}.obj out";
+            }
+
+            // An optional write BEFORE the call - this is what the read-back is compared against.
             var written = -1;
             if (test.DataType is { } type)
             {
@@ -1255,6 +1378,23 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// A MISSING class output or error pair is not refused HERE - a method need not return its
     /// object - but the case that needs one is, by <see cref="Unmet"/>, before anything is authored.
     /// </summary>
+    /// <summary>A Write accessor as it really spells itself, for a seeded field on the direct route.</summary>
+    internal sealed record DirectWriteCall(string Target, string ClassIn, string Data, string ClassOut)
+    {
+        internal static DirectWriteCall? From(ViTerminals.Result write, string target)
+        {
+            const string classType = "ref{UDClassInst}";
+            var inputs = write.Inputs.Where(t => t.ConIdx is not null).ToList();
+            var outputs = write.Outputs.Where(t => t.ConIdx is not null).ToList();
+            var classIn = inputs.Where(t => t.Type == classType).ToList();
+            var classOut = outputs.Where(t => t.Type == classType).ToList();
+            var data = inputs.Where(t => t.Type != classType && t.Type != ErrorCluster).ToList();
+            return classIn.Count == 1 && classOut.Count == 1 && data.Count == 1
+                ? new DirectWriteCall(target, classIn[0].Name, data[0].Name, classOut[0].Name)
+                : null;
+        }
+    }
+
     internal sealed record DirectMethodCall(string Target, string ClassIn, string? ErrorIn,
                                             string? ClassOut, string? ErrorOut)
     {
@@ -1308,6 +1448,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     : null;
     }
 
+    /// <summary>A field written before the method is called and NOT asserted - a case's `seed`.</summary>
+    internal sealed record SeedWrite(string Field, string WriteAccessor, string Type, string Value);
+
     /// <summary>One required input of the method under test, and the literal wired into it.</summary>
     internal sealed record RequiredInput(string Name, string Type, string Value, int ConIdx,
                                          bool FromCaller);
@@ -1326,8 +1469,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                       string? ExpectValue = null,
                                       string? OutputType = null,
                                       int? OutputConIdx = null,
-                                      string? ExpectFieldValue = null)
+                                      string? ExpectFieldValue = null,
+                                      IReadOnlyList<SeedWrite>? SeedWrites = null)
     {
+        public IReadOnlyList<SeedWrite> Seeds => SeedWrites ?? [];
+        public string SeedSocket(int k) => $"LVMCP MthS{Slot}_{k + 1}.vi";
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
         // method would land in the wrong case with no error at all.
@@ -1360,13 +1506,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                              string? ExpectOutput = null,
                                              string? ExpectValue = null,
                                              string? OutputType = null,
-                                             string? ExpectFieldValue = null)
+                                             string? ExpectFieldValue = null,
+                                             IReadOnlyDictionary<string, string>? Seeds = null)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> Accepted = new(StringComparer.Ordinal)
         {
             "method", "writeField", "readField", "value", "expectFieldValue", "type",
             "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
+            "seed",
         };
 
         /// <summary>
@@ -1387,6 +1535,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["expectOutput"] = JsonValueKind.String,
             ["expectValue"] = JsonValueKind.String,
             ["outputType"] = JsonValueKind.String,
+            ["seed"] = JsonValueKind.Object,
         };
 
         /// <summary>Why a particular wrong kind is worth a sentence of its own.</summary>
@@ -1515,13 +1664,38 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                         inputs[pair.Key] = pair.Value?.GetValue<string>() ?? "";
                 }
 
+                // `seed`: fields written before the call and NOT asserted, {"Gain":"2"}. Every
+                // value is text, like every other value in a case. A seeded field that is also the
+                // writeField would be written twice with two values, so it is refused by name.
+                Dictionary<string, string>? seedFields = null;
+                if (o["seed"] is JsonObject seedObject)
+                {
+                    seedFields = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (var pair in seedObject)
+                    {
+                        if (string.IsNullOrWhiteSpace(pair.Key))
+                            throw new ArgumentException(
+                                $"Case for '{method}' has an empty field name in \"seed\".");
+                        if (pair.Value is not JsonValue v || v.GetValueKind() != JsonValueKind.String)
+                            throw new ArgumentException(
+                                $"Case for '{method}': \"seed\" value for '{pair.Key}' must be " +
+                                "a string, like every other value in a case - write \"2\", not 2.");
+                        if (string.Equals(pair.Key, writeField, StringComparison.Ordinal))
+                            throw new ArgumentException(
+                                $"Case for '{method}' seeds '{pair.Key}' AND names it as " +
+                                "\"writeField\" - it would be written twice with two values. " +
+                                "Keep it in one of the two.");
+                        seedFields[pair.Key] = v.GetValue<string>();
+                    }
+                }
+
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
                                               o["label"]?.GetValue<string>(), inputs,
                                               expectOutput, expectValue,
                                               o["outputType"]?.GetValue<string>(),
-                                              expectFieldValue));
+                                              expectFieldValue, seedFields));
             }
 
             return all;

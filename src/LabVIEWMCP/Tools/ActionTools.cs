@@ -394,7 +394,7 @@ internal sealed class ActionTools(LvaiConnection connection)
     /// Returns null when the check itself could not run, which must never be reported as "no
     /// project": a missing helper is not evidence about the IDE's state.
     /// </summary>
-    private async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
+    internal async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
         int timeoutSeconds, CancellationToken ct)
     {
         var source = StatusTools.ScriptsDirectory() is { } scripts
