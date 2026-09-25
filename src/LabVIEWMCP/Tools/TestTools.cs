@@ -403,7 +403,11 @@ internal sealed class TestTools(LvaiConnection connection)
         Replace, which RE-TYPES THE WIRES where a pylabview link retarget cannot.
         casesJson is a JSON ARRAY, one object per field:
           [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
-        The only case keys are `field`, `value`, `label` and `type`; ANY OTHER IS REFUSED BY NAME,
+        A FRESH OBJECT'S DEFAULT is a case too - `expectDefault` in place of `value` reads the field
+        off the seed object with no Write and asserts that: {"field":"Gain","expectDefault":"1"}.
+        One round trip and one default case per field.
+        The only case keys are `field`, `value`, `expectDefault`, `label` and `type`; ANY OTHER IS
+        REFUSED BY NAME,
         with the accepted set listed and a pointer to the tool that can do what the stray key was
         reaching for. In particular a value the field should hold AFTER some method ran is
         lvai_generate_method_test's `expectFieldValue`, not a case key here.
@@ -565,8 +569,10 @@ internal sealed class TestTools(LvaiConnection connection)
                 }
 
                 cases.Add(new ClassCase(i + 1, request.Field, type, request.Value,
-                                        request.Label ?? $"{request.Field} round trip",
-                                        write, read, seed));
+                                        request.Label ?? (request.DefaultOnly
+                                            ? $"{request.Field} defaults to {request.Value}"
+                                            : $"{request.Field} round trip"),
+                                        write, read, seed, request.DefaultOnly));
             }
 
             var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classtest");
@@ -601,6 +607,8 @@ internal sealed class TestTools(LvaiConnection connection)
                 foreach (var (name, isWrite) in new[] { (test.WriteSocket, true),
                                                         (test.ReadSocket, false) })
                 {
+                    // A default case writes nothing, so it has no Write socket to author or swap.
+                    if (isWrite && test.DefaultOnly) continue;
                     var source = Path.Combine(scratch, Path.ChangeExtension(name, ".xml"));
                     await File.WriteAllTextAsync(
                         source, SocketAixml(name, test.DataType, isWrite), ct);
@@ -659,8 +667,9 @@ internal sealed class TestTools(LvaiConnection connection)
             var seeds = new JsonArray();
             foreach (var test in cases)
             {
-                swaps.Add(new JsonObject
-                { ["socket"] = test.WriteSocket, ["target"] = test.WriteAccessor });
+                if (!test.DefaultOnly)
+                    swaps.Add(new JsonObject
+                    { ["socket"] = test.WriteSocket, ["target"] = test.WriteAccessor });
                 swaps.Add(new JsonObject
                 { ["socket"] = test.ReadSocket, ["target"] = test.ReadAccessor });
                 seeds.Add(new JsonObject
@@ -799,8 +808,7 @@ internal sealed class TestTools(LvaiConnection connection)
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
             timeoutSeconds, ct: ct);
-        steps.Add(new JsonObject
-        { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
+        steps.Add(GenerateStepBeforeSeeds(Json.Slim(Read(generated), verbose)));
         var answer = Read(generated) as JsonObject;
 
         async Task<string?> CloseAsync()
@@ -844,9 +852,11 @@ internal sealed class TestTools(LvaiConnection connection)
 
         // 5b. a written value feeding a TYPEDEF terminal carries the typedef, or it wears a dot
         steps.Add(await BindTypedefConstantsStepAsync(testViPath,
-            [.. cases.Select((test, index) => new TypedefCandidate(test.WriteAccessor,
-                ViNameOf(shapes[index].WriteTarget), shapes[index].WriteData,
-                $"written {test.Slot}"))],
+            [.. cases.Select((test, index) => (test, index))
+                .Where(x => !x.test.DefaultOnly)          // nothing is written, nothing to bind
+                .Select(x => new TypedefCandidate(x.test.WriteAccessor,
+                    ViNameOf(shapes[x.index].WriteTarget), shapes[x.index].WriteData,
+                    $"written {x.test.Slot}"))],
             timeoutSeconds, ct));
 
         // 6. executable now, or the direct route produced something the socket route would not
@@ -1215,6 +1225,27 @@ internal sealed class TestTools(LvaiConnection connection)
     /// start. Nothing failed and NO TOOL WARNED; trusting the sequence would have generated four
     /// of five suites under an open project.
     /// </param>
+    /// <summary>
+    /// The generate step of a DIRECT route, where the test is converted while its seed constants
+    /// are still `path`s wired into class inputs - so lvai_generate_vi's own gate reads `execState`
+    /// 0 and answers `ok: false` by design, and the seeds step two steps later makes it the class.
+    /// Measured 2026-09-25 as a finding: a test agent read that sub-answer as a failure the tool
+    /// had swallowed. The answer is left whole; the step says why it looks like this, and that the
+    /// verdict is the `execState` step after the seeds.
+    /// </summary>
+    internal static JsonObject GenerateStepBeforeSeeds(JsonNode? answer)
+    {
+        var step = new JsonObject { ["step"] = "generate", ["answer"] = answer };
+        if ((answer as JsonObject)?["failedAtStep"]?.GetValue<string>() == "execState")
+        {
+            step["notExecutableYetIsExpected"] = true;
+            step["note"] = "`ok: false` at execState is EXPECTED here: the seed constants are still " +
+                           "paths wired into class inputs until the seeds step replaces them. The " +
+                           "verdict is the execState step after the seeds, not this one.";
+        }
+        return step;
+    }
+
     /// <summary>
     /// One constant a generated test wires into a subVI terminal: the callee, the node's VI Name
     /// as LabVIEW reports it, the terminal, and the constant's block diagram label.
@@ -1683,11 +1714,18 @@ internal sealed class TestTools(LvaiConnection connection)
         }
     }
 
-    internal sealed record ClassCaseRequest(string Field, string Value, string? Label, string? Type)
+    /// <param name="DefaultOnly">
+    /// The case is `expectDefault`: read the field off a FRESH object and assert <paramref name="Value"/>,
+    /// with no Write. Before 2026-09-25 a default could only be asserted through
+    /// lvai_generate_method_test's `expectOutput` on the Read accessor, in a VI of its own - measured
+    /// on the second TypedefAfterGDevCon build, where `Gain` defaults to 1.
+    /// </param>
+    internal sealed record ClassCaseRequest(string Field, string Value, string? Label, string? Type,
+                                            bool DefaultOnly = false)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> CaseKeys =
-            new(StringComparer.Ordinal) { "field", "value", "label", "type" };
+            new(StringComparer.Ordinal) { "field", "value", "label", "type", "expectDefault" };
 
         /// <summary>Every value here is a string; the round trip has nothing structural in it.</summary>
         private static readonly Dictionary<string, JsonValueKind> Kinds = new(StringComparer.Ordinal)
@@ -1696,6 +1734,7 @@ internal sealed class TestTools(LvaiConnection connection)
             ["value"] = JsonValueKind.String,
             ["label"] = JsonValueKind.String,
             ["type"] = JsonValueKind.String,
+            ["expectDefault"] = JsonValueKind.String,
         };
 
         public static List<ClassCaseRequest> ParseAll(string? json)
@@ -1720,8 +1759,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
                 RejectUnknownCaseKeys(o, i, CaseKeys,
                     "This tool does ONE ROUND TRIP per field - write \"value\" into \"field\", " +
-                    "read it back, assert they match - so there is nothing to give it beyond the " +
-                    "field, the value, an optional \"type\" and an optional \"label\". A value " +
+                    "read it back, assert they match - or reads a fresh object's DEFAULT with " +
+                    "\"expectDefault\", so there is nothing to give it beyond the field, the " +
+                    "value or default, an optional \"type\" and an optional \"label\". A value " +
                     "the class should hold AFTER some method ran is lvai_generate_method_test's " +
                     "\"expectFieldValue\", not a case key here.");
                 RejectWrongCaseValueKinds(o, i, Kinds);
@@ -1731,19 +1771,27 @@ internal sealed class TestTools(LvaiConnection connection)
                     throw new ArgumentException($"casesJson[{i}] has no \"field\".");
 
                 var value = o["value"]?.ToString();
-                if (value is null)
+                var expectDefault = o["expectDefault"]?.GetValue<string>();
+                if (value is not null && expectDefault is not null)
+                    throw new ArgumentException(
+                        $"casesJson[{i}] gives both \"value\" and \"expectDefault\". A round trip " +
+                        "WRITES value and reads it back; a default case writes nothing and reads a " +
+                        "fresh object. Give the same field twice, one case of each, to test both.");
+                if (value is null && expectDefault is null)
                     throw new ArgumentException(
                         $"casesJson[{i}] has no \"value\". A round trip writes something and reads " +
-                        "it back; there is nothing to assert without it.");
+                        "it back; there is nothing to assert without it. To assert a fresh " +
+                        "object's DEFAULT instead, pass \"expectDefault\".");
 
-                return new ClassCaseRequest(field, value, o["label"]?.GetValue<string>(),
-                                            o["type"]?.GetValue<string>());
+                return new ClassCaseRequest(field, value ?? expectDefault!, o["label"]?.GetValue<string>(),
+                                            o["type"]?.GetValue<string>(), expectDefault is not null);
             }).ToList();
 
-            if (cases.GroupBy(c => c.Field, StringComparer.OrdinalIgnoreCase)
+            if (cases.GroupBy(c => (Field: c.Field.ToLowerInvariant(), c.DefaultOnly))
                      .FirstOrDefault(g => g.Count() > 1) is { } twice)
                 throw new ArgumentException(
-                    $"'{twice.Key}' appears {twice.Count()} times in casesJson. One round trip per " +
+                    $"'{twice.First().Field}' appears {twice.Count()} times in casesJson as a " +
+                    (twice.Key.DefaultOnly ? "default case" : "round trip") + ". One of each per " +
                     "field - two would need two socket pairs with the same accessor, and the swap " +
                     "matches by name.");
 
@@ -1934,9 +1982,11 @@ internal sealed class TestTools(LvaiConnection connection)
             var seed = uid++;
             sb.AppendLine(Constant(seed, "path", "", test.SeedLabel));
 
+            // A DEFAULT CASE writes nothing: the fresh object goes straight into the Read, and the
+            // constant is the EXPECTED default rather than a written value.
             var written = uid++;
             sb.AppendLine(Constant(written, test.DataType, ValueFor(test.DataType, test.Value),
-                                   $"written {test.Slot}"));
+                                   test.DefaultOnly ? $"expected {test.Slot}" : $"written {test.Slot}"));
 
             // THE REAL ACCESSORS on the direct route, the sockets otherwise - same wiring, only the
             // target and the terminal names change. The seed is still a PATH constant either way:
@@ -1945,7 +1995,10 @@ internal sealed class TestTools(LvaiConnection connection)
             // 2026-09-25, eBad after the convert and execState 1 after the Replace.
             var shape = direct?[index];
             var write = uid++;
-            sb.AppendLine(shape is null
+            var objectIntoRead = test.DefaultOnly ? $"{seed}.value" : $"{write}.obj out";
+            if (!test.DefaultOnly)
+            {
+                sb.AppendLine(shape is null
                 ? $"  <Call target=\"{Escape(test.WriteSocket)}\" " +
                   $"inputs=\"obj in:{seed}.value,value:{written}.value\" " +
                   $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" uid_parent=\"root\"/>"
@@ -1953,18 +2006,19 @@ internal sealed class TestTools(LvaiConnection connection)
                   $"inputs=\"{shape.WriteClassIn}:{seed}.value,{shape.WriteData}:{written}.value\" " +
                   $"outputs=\"{shape.WriteClassOut}:{write}.obj out\" uid=\"{write}\" " +
                   "uid_parent=\"root\"/>");
+            }
 
             var read = uid++;
             sb.AppendLine(shape is null
                 ? $"  <Call target=\"{Escape(test.ReadSocket)}\" " +
-                  $"inputs=\"obj in:{write}.obj out\" " +
+                  $"inputs=\"obj in:{objectIntoRead}\" " +
                   $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>"
                 : $"  <Call target=\"{Escape(shape.ReadTarget)}\" " +
-                  $"inputs=\"{shape.ReadClassIn}:{write}.obj out\" " +
+                  $"inputs=\"{shape.ReadClassIn}:{objectIntoRead}\" " +
                   $"outputs=\"{shape.ReadData}:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
 
             // Expected IS what was written - the constant is reused rather than restated, so the
-            // two can never drift apart.
+            // two can never drift apart. For a default case it is the expected default itself.
             var label = uid++;
             sb.AppendLine(Constant(label, "string", test.Label, "Label"));
 
@@ -2179,7 +2233,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// <summary>One field round trip: which accessors, which sockets, and the value to write.</summary>
     internal sealed record ClassCase(int Slot, string Field, string DataType, string Value,
                                     string Label, string WriteAccessor, string ReadAccessor,
-                                    string SeedClassPath)
+                                    string SeedClassPath, bool DefaultOnly = false)
     {
         public string WriteSocket => $"LVMCP ClsW{Slot}.vi";
         public string ReadSocket => $"LVMCP ClsR{Slot}.vi";

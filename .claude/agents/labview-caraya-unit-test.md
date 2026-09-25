@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_run_caraya_tests, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -240,6 +240,12 @@ name rather than the same one.
 [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
 ```
 
+**A DEFAULT is a case of this tool too**: `{"field":"Gain","expectDefault":"1"}` reads the field off
+a fresh object with no Write. Do not reach for lvai_generate_method_test and a VI of its own for it,
+which is what the second TypedefAfterGDevCon build had to do before 2026-09-25. Assert only a
+default the class DECLARES (`lvai_create_class`'s `double.Gain=1`) or the type's own empty value,
+and say which.
+
 `seedClassPath` is what tests INHERITANCE: leave it out and each chain starts from the class's own
 constant; point it at a CHILD class to run the parent's accessors on a child object. The accessors
 stay the parent's — only the object changes.
@@ -350,7 +356,15 @@ in your report.
 **Do not hand-author the runner.** One call takes the test VI paths (one absolute path per line),
 the runner's path and optionally the `.lvproj`, and writes the whole thing: every test's path built
 relative to the runner's own location, the array, the `Report Path`, `Interactive (T)` FALSE, and
-the project entry. Then run it and read the report.
+the project entry.
+
+**RUN IT WITH `lvai_run_caraya_tests`, not with `lvai_run_vi_and_read_values` plus a shell parse of
+the XML.** One call runs the runner and answers from the JUnit report: counts per suite and every
+failing case named with its suite and test VI, and `reportFresh` says the report was written by THIS
+run - an old green file beside a runner that did not start reads exactly like a pass otherwise. **Do
+not take the verdict from the runner's `error out`**: it is Caraya's one error for the whole run
+(7002 on a failure) and its source is not the failing VI - measured 2026-09-25, it named
+`Test Channel.vi` for a failure in `Test Channel Defaults.vi`.
 
 The reason it is a tool: measured 2026-08-30 on a five-suite build, hand-authoring the runner took
 **186 s of wall clock against 6.1 s inside LabVIEW** — a fifth of the whole run, spent re-writing

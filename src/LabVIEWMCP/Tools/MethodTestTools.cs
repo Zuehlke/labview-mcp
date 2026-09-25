@@ -717,7 +717,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
             timeoutSeconds, ct: ct);
-        steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
+        steps.Add(TestTools.GenerateStepBeforeSeeds(Read(generated)));
         var answer = Read(generated) as JsonObject;
 
         if (TestTools.NotResolved(answer))
