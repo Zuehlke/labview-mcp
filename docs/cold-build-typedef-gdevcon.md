@@ -166,7 +166,26 @@ friction, all fixed the same day and accepted over raw stdio:
 NI's wizard names an accessor's error input `error in (no error)`. The house rule governs VIs we
 create, so that stays.
 
-## 9. Not established
+## 9. The fifth cold build - and its four findings FIXED
+
+`C:\temp\TypedefAfterGDevCon5\`, same task: about 8:25 end to end (typedefs 30 s, class 24 s,
+accessors with icons 105 s, tests 4:28), no LabVIEW restart. Every fix of §8 held: `Config` placed
+first and bound, `Gain` default 1, all four accessors `dynamicDispatch: true` from the pane, 0 real
+dots beside 6 `intoVariant`, the cluster value written without a guess, 3/0 and a negative control
+that failed exactly `Gain defaults to 1`. Four findings, fixed the same day and accepted over raw
+stdio on a copy of the delivery:
+
+| finding | fix | acceptance |
+|---|---|---|
+| the runner ran pyLabVIEW: §8's fix forced pattern 4815 through the generate step's pylabview pane rebuild, and the build had been asked for none | the runner is authored with the STATION pattern's own `conIdx` (from `LabVIEW.ini`, like the test generators) and generated with no `panePattern` | generate sub-steps `validate`, `convert`, `connectorPane` and nothing else; pattern 4833, `Report Path used` at 4, `paneViolations: 0`; 3/0 |
+| the class and method test generators labelled the test VI's OWN input `error in (no error)` | `error in`; the Caraya callee terminals keep NI's spelling | a fresh class test's export: its only control is `error in`, and `Define Test`'s input still reads `error in (no error)` |
+| `lvai_describe_ctl`'s note said the file value "matches" VI Server's `Control VI Type` beside a description saying it is one lower | the note says the file value is one lower | `Channel Config.ctl`: `controlVIType: 1` with that note |
+| `lvai_generate_class_test` called a default case a round trip, and listed a Write for it that is not on the diagram | the note counts round trips and default cases apart, the `accessors` step lists only the Read for a default case, and the note and description name the negative-control route (`lvai_set_constant` on an `expected <n>`; a round trip's `written <n>` feeds both sides) | "2 round trip(s) and 1 default case(s)"; five targets for three cases, the default case's Read alone |
+
+LUnit's scaffold still names its test methods' input `error in (no error)` - that route follows
+LUnit's own template and was not in this build.
+
+## 10. Not established
 
 - A comma inside a string element of a cluster case value.
 - The dispatch rule on a member whose file pylabview cannot parse - it answers `null` there.

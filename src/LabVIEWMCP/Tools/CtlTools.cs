@@ -242,7 +242,12 @@ internal sealed class CtlTools
                   "call then reads 'TypeDef'."
                 : null,
             ["source"] = "the saved file, read with pylabview - no LabVIEW was involved",
-            ["note"] = "controlVIType matches {LV.VI} Control VI Type. Verify a binding from the " +
+            // This note said controlVIType "matches" VI Server's Control VI Type until 2026-09-25,
+            // beside a description that says the opposite; the fifth TypedefAfterGDevCon build
+            // read both and reported the contradiction (lvai_create_typedef wrote 2, file read 1).
+            ["note"] = "controlVIType is the FILE's value; {LV.VI} Control VI Type in VI Server " +
+                       "is ONE HIGHER (1 plain control, 2 typedef, 3 strict typedef), so a typedef " +
+                       "written with 2 reads 1 here. Verify a binding from the " +
                        "TARGET afterwards: a bound field is a <TypeDesc Type=\"TypeDef\"> naming " +
                        "the .ctl, and this call answers what the SOURCE offers, not what took.",
         };

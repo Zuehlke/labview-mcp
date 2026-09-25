@@ -433,8 +433,9 @@ internal sealed class TestTools(LvaiConnection connection)
         BEFORE RETRYING: check the file, or you generate the same suite twice and the second
         attempt fights the first for the sockets.
         READ THE JUNIT REPORT, NOT `error out` - the cluster carries the first failed assertion only.
-        AND PROVE IT CAN FAIL before believing a green run: point one Read socket at a different
-        field's accessor, confirm exactly one failure, put it back.
+        AND PROVE IT CAN FAIL before believing a green run: lvai_set_constant on a DEFAULT case's
+        `expected <n>` constant, confirm exactly one failure, set it back. A round trip cannot be
+        broken that way - its `written <n>` constant feeds both the Write and the assertion.
         """)]
     public async Task<string> GenerateClassTestAsync(
         [Description(@"Absolute path to the .lvclass whose accessors are the subject")]
@@ -725,14 +726,38 @@ internal sealed class TestTools(LvaiConnection connection)
             }
 
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
-                $"Generated. {cases.Count} round trip(s), each a static call to the class's own " +
+                $"Generated. {CaseSummary(cases)}, each a static call to the class's own " +
                 "Write and Read accessors, verified against LabVIEW's own export. Run it through " +
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
                 "break one case on purpose once, because an all-green first run proves very " +
-                "little. THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
+                "little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
                 "needs; open it when you are ready to RUN the suite.",
                 swapAnswer["callTargets"]?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// What the suite holds, for the closing note. It said "{n} round trip(s)" for every case until
+    /// 2026-09-25, and the fifth TypedefAfterGDevCon build counted a default case among them.
+    /// </summary>
+    internal static string CaseSummary(IReadOnlyList<ClassCase> cases)
+    {
+        var defaults = cases.Count(c => c.DefaultOnly);
+        var trips = cases.Count - defaults;
+        var parts = new List<string>();
+        if (trips > 0) parts.Add($"{trips} round trip(s)");
+        if (defaults > 0) parts.Add($"{defaults} default case(s)");
+        return string.Join(" and ", parts);
+    }
+
+    /// <summary>
+    /// Which constant a negative control can break. A round trip's `written n` feeds the Write AND
+    /// the assertion, so changing it changes both sides and the case stays green - measured on the
+    /// fifth build; only an `expected n` constant (a default case) can be broken alone.
+    /// </summary>
+    internal const string NegativeControlHint =
+        "lvai_set_constant on a default case's `expected <n>` constant is the one-call way. A " +
+        "round trip's `written <n>` feeds both the Write and the assertion, so breaking it proves " +
+        "nothing.";
 
     /// <summary>
     /// The round-trip test against the REAL accessors: one member opened through the class's
@@ -793,8 +818,12 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             ["step"] = "accessors",
             ["pairs"] = shapes.Count,
-            ["targets"] = new JsonArray([.. shapes.SelectMany(s =>
-                new[] { (JsonNode)s.WriteTarget, s.ReadTarget })]),
+            ["defaultCases"] = cases.Count(c => c.DefaultOnly),
+            // A DEFAULT case calls only the Read: listing its Write as well described a node that
+            // is not on the diagram (fifth TypedefAfterGDevCon build, 2026-09-25).
+            ["targets"] = new JsonArray([.. shapes.Zip(cases).SelectMany(p => p.Second.DefaultOnly
+                ? new[] { (JsonNode)p.First.ReadTarget }
+                : new[] { (JsonNode)p.First.WriteTarget, p.First.ReadTarget })]),
         });
 
         // 3. load the class through its project - one member is enough for all of them
@@ -901,11 +930,11 @@ internal sealed class TestTools(LvaiConnection connection)
                                            timeoutSeconds, ct, reopen: false));
 
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
-            $"Generated. {cases.Count} round trip(s), each calling the class's own Write and Read " +
-            "accessors DIRECTLY - no sockets, no node swaps; only the seed constants were " +
+            $"Generated. {CaseSummary(cases)}, each calling the class's own accessors " +
+            "DIRECTLY - no sockets, no node swaps; only the seed constants were " +
             "replaced. Run it through Caraya's runner with a Report Path ending in .xml and read " +
             "the JUnit report - and break one case on purpose once, because an all-green first " +
-            "run proves very little. THE PROJECT IS LEFT CLOSED.",
+            "run proves very little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED.",
             swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
     }
 
@@ -1097,10 +1126,11 @@ internal sealed class TestTools(LvaiConnection connection)
             await File.WriteAllTextAsync(
                 aixml, CarayaRunnerAixml(runnerViPath, relatives, reportFileName), ct);
 
-            // THE PANE IS MEASURED AND FIXED, which it was not until 2026-09-25: measurePane was
-            // false, so nothing ever said where the runner's terminals sat.
+            // THE PANE IS MEASURED, which it was not until 2026-09-25: measurePane was false, so
+            // nothing ever said where the runner's terminals sat. NO panePattern - that is a
+            // pylabview rebuild, and the conIdx values are already the station pattern's.
             var generated = await new BulkTools(connection).GenerateViAsync(
-                aixml, runnerViPath, openVI: false, measurePane: true, panePattern: RunnerPanePattern,
+                aixml, runnerViPath, openVI: false, measurePane: true, panePattern: null,
                 timeoutSeconds: timeoutSeconds, ct: ct);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
 
@@ -1963,7 +1993,7 @@ internal sealed class TestTools(LvaiConnection connection)
         var uid = UidBase;
         var errorIn = uid++;
         sb.AppendLine(
-            $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
+            $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
             "connection=\"recommended\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
@@ -2336,7 +2366,7 @@ internal sealed class TestTools(LvaiConnection connection)
         var uid = UidBase;
         var errorIn = uid++;
         sb.AppendLine(
-            $"  <Control _name=\"error in (no error)\"{ConIdx(geometry?.ErrorIn)} " +
+            $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
             $"connection=\"recommended\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
@@ -2457,17 +2487,18 @@ internal sealed class TestTools(LvaiConnection connection)
     /// and a modal dialog stops LabVIEW's whole gRPC service until a human dismisses it - which in
     /// an unattended run is nobody.
     /// </summary>
-    /// <summary>The runner's pane: pattern 4815, whose bottom row is 8 (left) and 0 (right).</summary>
-    internal const int RunnerPanePattern = 4815;
-
-    internal static class RunnerPane
-    {
-        internal const int ErrorIn = 8, ReportPath = 2, ErrorOut = 0;
-    }
-
     internal static string CarayaRunnerAixml(string runnerViPath, IReadOnlyList<string> relativeTestPaths,
-                                       string reportFileName)
+                                       string reportFileName, ConnectorPane.Geometry? geometry = null)
     {
+        // THE STATION'S OWN PATTERN, read from LabVIEW.ini like the test generators do, so the
+        // conIdx values are written into the AIXML and nothing has to move them afterwards. The
+        // first version of this (2026-09-25) forced pattern 4815 through the generate step's
+        // pylabview pane rebuild, and the fifth TypedefAfterGDevCon build - asked for no
+        // pyLabVIEW - found it running there with no way to turn it off.
+        geometry ??= StationPaneDefault.Read().Pattern is { } pattern
+            ? ConnectorPanePatterns.Find(pattern)?.Geometry
+            : null;
+
         var sb = new StringBuilder();
         sb.Append($"<VI _name=\"{Escape(Path.GetFileName(runnerViPath))}\" description=\"")
           .Append("Caraya suite runner\\2C generated by lvai_generate_caraya_test_runner.\\0A\\0AIt builds ")
@@ -2524,9 +2555,8 @@ internal sealed class TestTools(LvaiConnection connection)
         // THE RUNNER CARRIES `error in` AND `error out` ON THE BOTTOM ROW like every VI we create
         // (CLAUDE.md, 2026-09-12). It had neither an `error in` nor a single conIdx until
         // 2026-09-25 - the fourth TypedefAfterGDevCon build noticed that nothing measured its
-        // pane. The numbers are PATTERN 4815's (RunnerPanePattern), fixed by the generate step
-        // rather than left to the station's DefaultConPane, so they mean the same edges anywhere.
-        sb.AppendLine($"  <Control _name=\"error in\" conIdx=\"{RunnerPane.ErrorIn}\" " +
+        // pane. The numbers are the station pattern's, from `geometry` above.
+        sb.AppendLine($"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
                       "connection=\"recommended\" description=\"Runs nothing when it carries an " +
                       $"error.\" outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" " +
                       $"uid=\"{errorIn}\" uid_parent=\"root\" value=\"[false,0,]\"/>");
@@ -2541,11 +2571,11 @@ internal sealed class TestTools(LvaiConnection connection)
                       $"outputs=\"Test Results:,error out:{call}.error out\" target=\"{RunTests}\" " +
                       $"uid=\"{call}\" uid_parent=\"root\"/>");
 
-        sb.AppendLine($"  <Indicator _name=\"Report Path used\" conIdx=\"{RunnerPane.ReportPath}\" " +
+        sb.AppendLine($"  <Indicator _name=\"Report Path used\"{ConIdx(geometry?.FirstOutput)} " +
                       "connection=\"recommended\" description=\"Absolute path of the " +
                       $"JUnit XML report this run wrote.\" inputs=\"value:{reportBuild}.appended path\" " +
                       $"type=\"path\" uid=\"{UidBase + 61}\" uid_parent=\"root\" value=\"\"/>");
-        sb.AppendLine($"  <Indicator _name=\"error out\" conIdx=\"{RunnerPane.ErrorOut}\" " +
+        sb.AppendLine($"  <Indicator _name=\"error out\"{ConIdx(geometry?.ErrorOut)} " +
                       "connection=\"recommended\" description=\"Caraya returns 7002 when a " +
                       "test suite FAILED - that is a pass/fail signal\\2C not a fault. It also " +
                       "carries the FIRST failed assertion only; read the JUnit report for all of " +

@@ -182,14 +182,15 @@ public sealed class TypedefBuild4FindingsTests
     [Fact]
     public void TheRunnerCarriesErrorInAndErrorOutOnTheBottomRowOf4815()
     {
-        var vi = XElement.Parse(TestTools.CarayaRunnerAixml(@"C:\t\Run.vi", [@"Test A.vi"], "Run-TestReport.xml"));
+        var vi = XElement.Parse(TestTools.CarayaRunnerAixml(@"C:\t\Run.vi", [@"Test A.vi"], "Run-TestReport.xml",
+            ConnectorPanePatterns.Find(4815)!.Geometry));
         string? Slot(string element, string name) => (string?)vi.Elements(element)
             .Single(e => (string?)e.Attribute("_name") == name).Attribute("conIdx");
 
-        Assert.Equal(4815, TestTools.RunnerPanePattern);
+        // since the fifth build the pattern is GIVEN (the station's), not forced by a pylabview step
         Assert.Equal("8", Slot("Control", "error in"));
         Assert.Equal("0", Slot("Indicator", "error out"));
-        Assert.Equal("2", Slot("Indicator", "Report Path used"));
+        Assert.Equal("3", Slot("Indicator", "Report Path used"));
 
         // the error in reaches Run Tests.vi rather than sitting unwired
         var errorIn = (string?)vi.Elements("Control").Single(e => (string?)e.Attribute("_name") == "error in")
