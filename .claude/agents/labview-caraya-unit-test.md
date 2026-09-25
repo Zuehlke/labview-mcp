@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_run_caraya_tests, mcp__labview__lvai_set_constant, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_run_caraya_tests, mcp__labview__lvai_set_constant, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -227,8 +227,17 @@ the second row, if the pane did not already tell you.
 [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
 ```
 
-Two things it will not tell you: a **backslash in a value must be doubled** (`C:\\temp\\x`), because
-the value is written verbatim into an AIXML constant; and a **failed validation poisons the test
+**A CASE MAY CALL OTHER VIs FIRST** with `setup` - `[{"vi":"<abs path>","inputs":{...}}]`, chained
+into the subject by the error wire. A write-then-read round trip is a Read case with the Write as
+its setup; a transaction on a reset file is the transaction with the reset as its setup. Do not
+hand-author AIXML for those any more. **Every expected constant is labelled `expected <n>`** and
+listed in the answer's `expectedConstants` with its case, so the negative control is one
+`lvai_set_constant` call on a suite this tool wrote too.
+
+Two things it will not tell you: a **backslash in a value is written ONCE** - `C:\temp\x` as the
+value, which is `"C:\\temp\\x"` in the JSON text only because JSON escapes it. The tool writes it
+as AIXML's `\5C` itself; this line said "must be doubled" until 2026-09-25, when a suite whose
+setup and subject both took single-backslash paths ran green. And a **failed validation poisons the test
 name** — the phantom stays under that `_name` until LabVIEW restarts, so retry under a **fresh**
 name rather than the same one.
 
@@ -449,8 +458,13 @@ at all, and one stray `LVMCP ClsR1.vi` adopted out of `user.lib`. Their whole re
 fehlen im Projekt!"*. Nothing in any tool answer showed either half — every file was on disk and
 every assertion passed.
 
-**If you ever write the entries by hand** — an older build, or a runner the tool did not generate —
-two rules, and the order is not optional:
+**A test VI you authored yourself** (AIXML through `lvai_generate_vi`/`lvai_generate_vis`) is
+listed with **`lvai_add_vis_to_project`** and `folderName` `Tests` - it closes the project, edits the
+file, moves an entry LabVIEW's save left at target level into the folder instead of listing it
+twice, and sweeps the strays. The third ATM cold build (2026-09-25) moved three such entries by hand
+because this tool was not on this agent's list.
+
+**If you ever write the entries by hand** anyway — two rules, and the order is not optional:
 
 1. **`lvai_close_active_project` FIRST.** A `.lvproj` edited while LabVIEW holds it open is destroyed
    by the next close, because the close SAVES. Edit the file, then re-open it for the user.

@@ -480,11 +480,19 @@ named control what it is (`Class Name`), and converts first. Values still go IN 
 
 **The measurement that keeps it to four cases: a DBL and an I32 control BOTH answer `Digital`, and
 `Ctrl Val.Set` COERCES** — an I32 control fed a DBL variant read back `42`. So there is one numeric
-case, not one per representation. **ARRAY AND CLUSTER CONTROLS ARE STILL UNREACHABLE** and fail
-loudly rather than silently: `Error 91` from `Control Value:Set`, with the target not run. A control
-name matching nothing on the panel is `Error 1055` from the helper's own property node, also before
-the run — **and `errorCode` on the answer is `RunVIAsTopLevel`'s, which reads 0 for both**, so read
-`helperFailed` / `helperErrorCode` instead. `lvai_run_for_ms.vi`, the `runForMs` helper, has NOT had
+case, not one per representation. A control name matching nothing on the panel is `Error 1055`
+from the helper's own property node, before the run — **and `errorCode` on the answer is
+`RunVIAsTopLevel`'s, which reads 0 for it**, so read `helperFailed` / `helperErrorCode` instead.
+
+**ENUM, RING, ARRAY AND CLUSTER CONTROLS ARE SETTABLE SINCE 2026-09-25 — this clause said "ARRAY AND
+CLUSTER CONTROLS ARE STILL UNREACHABLE" and agents built harness VIs around it.** An enum takes an
+item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns — because
+`Unflatten From XML` with a Variant as its `type` yields a variant carrying its own type. Two traps,
+both measured: a name-else-number fallback turns a TYPO into item 0 (so unmatched text now goes in as
+a string and `Ctrl Val.Set` refuses it, `Error 91`), and `Unflatten From XML` decodes NO character
+reference, so a line break inside a string member is refused rather than sent as `&#10;`.
+`lvai_set_constant` takes an array or cluster the same way, as the AIXML literal.
+`docs/vi-server-reference.md`, `docs/cold-build-atm-agents-3.md`. `lvai_run_for_ms.vi`, the `runForMs` helper, has NOT had
 the typed setter and is still string-only; the answer says so when inputs are passed with `runForMs`.
 
 This clause used to say "write the result to a file and inspect that". That worked, and it cost
@@ -2429,6 +2437,8 @@ literally it argued away 600 usable palette VIs.
 | How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
 | What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
 | Can a NESTED typedef cluster in a class be built with no pyLabVIEW, and does AIXML have a typedef constant? | `docs/cold-build-typedef-gdevcon.md` | — |
+| Can a generated test call other VIs FIRST - a write before a read? How do I break an ARRAY expectation for a negative control? | `docs/cold-build-atm-agents-3.md` | `lvai_generate_test` `setup` (direct route; every expectation is labelled `expected <n>` and listed in `expectedConstants`), then `lvai_set_constant` with the AIXML literal |
+| How do I load SEVERAL callees before a direct Call, and which ones does an `Error 53` want? | `docs/cold-build-atm-agents-3.md` | `lvai_open_file` `viPaths`; `lvai_generate_vi_with_events` names them under `unsupportedSubVIs` |
 | How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |

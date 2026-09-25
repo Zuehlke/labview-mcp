@@ -348,6 +348,22 @@ internal sealed class BulkTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// Every <c>Unsupported SubVI:</c> target in a validate refusal, whatever else it lists -
+    /// the list lvai_generate_vi_with_events names when ConvertAIXMLToVI's Error 53 names nothing.
+    /// </summary>
+    internal static IReadOnlyList<string> UnsupportedSubVIs(string? message)
+    {
+        const string prefix = "Unsupported SubVI:";
+        if (string.IsNullOrEmpty(message)) return [];
+        return [.. message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                              StringSplitOptions.TrimEntries)
+                          .Where(l => l.StartsWith(prefix, StringComparison.Ordinal))
+                          .Select(l => l[prefix.Length..].Trim())
+                          .Where(n => n.Length > 0)
+                          .Distinct(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
     /// The Call targets a validate refusal names, when it names NOTHING ELSE - or null.
     ///
     /// LabVIEW lists each fault as its own line under an <c>Errors:</c> header, and an unresolved

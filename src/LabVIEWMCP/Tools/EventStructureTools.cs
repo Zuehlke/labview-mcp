@@ -163,16 +163,52 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 });
             }
 
-            // 2. convert, deliberately WITHOUT validating
+            // 2. convert, deliberately WITHOUT validating - and UNDER A THROWAWAY _name, the way
+            //    lvai_generate_vi's loaded-subVI route does. A failed convert under the real name
+            //    leaves that name in LabVIEW's memory, and the ATM cold build of 2026-09-25 met
+            //    exactly that: Error 53 (a callee not loaded), then Error 1051 on the retry. The
+            //    saved VI is named after its FILE either way.
+            using var throwaway = ValidationScratch.Create(aiXmlFilePath, preserveName: false,
+                                                           prefix: "LVMCP Convert");
+            if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
+                Directory.CreateDirectory(folder);
             var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                aiXmlFilePath, viPath, openVI: false, timeoutSeconds, ct: ct);
+                throwaway.Path, viPath, openVI: false, timeoutSeconds, ct: ct);
             steps.Add(Step("convert", convert));
             if (ErrorCode(convert) is not 0)
+            {
+                // ERROR 53 NAMES NOTHING, so ask the validator, which does. Its other complaints
+                // (event frames with no events) are expected for this tool and are left out; the
+                // Unsupported SubVI lines are the callees that must be OPEN for the Call to resolve.
+                IReadOnlyList<string>? missing = null;
+                if (ErrorCode(convert) == 53)
+                {
+                    var validate = await new AixmlTools(connection).ValidateAixmlAsync(
+                        aiXmlFilePath, timeoutSeconds, ct: ct);
+                    missing = BulkTools.UnsupportedSubVIs(Field(validate, "errorMessage"));
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "whichCallTargets",
+                        ["unsupportedSubVIs"] = new JsonArray([.. (missing ?? []).Select(n => (JsonNode)n)]),
+                        ["note"] = "Asked of lvai_validate_aixml because ConvertAIXMLToVI's Error 53 " +
+                                   "names no target. Every name here must be OPEN in LabVIEW - open " +
+                                   "them through their project, lvai_open_file with viPaths - before " +
+                                   "this call can resolve them.",
+                    });
+                }
                 return Outcome(false, "convert", steps, frameList, total, viPath, directory, true,
-                    "ConvertAIXMLToVI refused the document, so nothing else ran. Note that this " +
-                    "tool skips validation, so the message here is the generator's own and may be " +
-                    "terser than lvai_validate_aixml would be - run lvai_check_aixml for the " +
-                    "faults the validator misses.");
+                    missing is { Count: > 0 }
+                        ? $"Error 53: these Call targets are NOT LOADED in LabVIEW: " +
+                          string.Join(", ", missing.Select(m => $"'{m}'")) + ". Open them through " +
+                          "their project (lvai_open_file with projectPath and viPaths) and call " +
+                          "again - the document was converted under a throwaway name, so the " +
+                          "real one is not burned and the same viPath works on the retry."
+                        : "ConvertAIXMLToVI refused the document, so nothing else ran. Note that " +
+                          "this tool skips validation, so the message here is the generator's own " +
+                          "and may be terser than lvai_validate_aixml would be - run " +
+                          "lvai_check_aixml for the faults the validator misses. It converted under " +
+                          "a throwaway name, so a retry at the same viPath is not blocked by 1051.");
+            }
 
             // 3. extract
             var extract = await new PyLabviewTools(connection).ExtractAsync(

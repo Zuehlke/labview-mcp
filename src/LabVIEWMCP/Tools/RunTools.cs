@@ -62,11 +62,19 @@ internal sealed class RunTools(LvaiConnection connection)
         The helper reads the target's panel, asks each named control what it is, and converts
         before setting - so a path, a double, an integer and a boolean can all be set by passing
         their text ("C:\\data\\in.csv", "12.5", "42", "true"). Measured 2026-09-16 on one control
-        of each type. ARRAY AND CLUSTER CONTROLS STILL CANNOT BE SET: there is no general
-        text-to-composite conversion, they fall through to the string case, and the call then
-        fails rather than silently leaving them at their defaults.
-        A newline in a name or value is rejected, because the helper's wire format separates
-        them by newlines.
+        of each type.
+        AN ENUM OR A TEXT RING takes an item NAME ("withdraw", exact and case-sensitive) or an
+        index ("2"). Text that is neither is refused by Ctrl Val.Set BEFORE the run - it used to
+        be the case that nothing but a string could be set at all.
+        AN ARRAY OR A CLUSTER takes LabVIEW's own XML for the value - exactly what this tool
+        returns under a compound control's `xml`, so a value read back can be pasted in as the
+        next call's input. A bare <Array> or <Cluster> is wrapped in <LvVariant> for you, and
+        the indentation between its tags is folded away; the helper then turns it into a Variant
+        that carries its own type, so you never name the type. Since 2026-09-25. A line break
+        INSIDE one of its text values is refused: LabVIEW's Unflatten From XML does not decode
+        &#10;, measured, and a raw one would split the value.
+        A newline in a name or in a NON-XML value is rejected, because the helper's wire format
+        separates them by newlines.
         A control name that matches nothing on the target's panel is Error 1055 and the target
         does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
         Reading is done through a VI REFERENCE, which is released afterwards, so this does not
@@ -77,9 +85,10 @@ internal sealed class RunTools(LvaiConnection connection)
         [Description("""
             Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv","count":"42"}.
             Keys are control labels, values are always TEXT - the helper converts each one to
-            whatever type the named control actually is. String, path, numeric and boolean
-            controls all work; array and cluster controls do not. Omit for a VI that needs no
-            inputs.
+            whatever type the named control actually is. String, path, numeric, boolean, enum
+            and ring controls take plain text; an array or cluster control takes its value as
+            LabVIEW XML (<Array>…</Array>, <Cluster>…</Cluster>, or wrapped in <LvVariant>).
+            Omit for a VI that needs no inputs.
             """)]
         string? inputsJson = null,
         [Description("""
@@ -129,11 +138,22 @@ internal sealed class RunTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
             var inputs = Rpc.ParseStringMap(inputsJson, nameof(inputsJson)).ToList();
+            var compoundInputs = inputs.Where(i => CompoundValue(i.Value) is not null)
+                                       .Select(i => i.Key).ToList();
+            inputs = inputs.Select(i => new KeyValuePair<string, string>(
+                i.Key, CompoundValue(i.Value) ?? i.Value)).ToList();
             if (Offending(inputs) is { } offender)
                 return Json.Error("inputContainsNewline",
-                    $"The control name or value for '{offender}' contains a line break. The " +
-                    "helper pairs names with values by line, so a newline in either would " +
-                    "silently shift every later pair onto the wrong control.",
+                    compoundInputs.Contains(offender)
+                        ? $"The XML for '{offender}' carries a line break INSIDE a text value. " +
+                          "Indentation between tags is folded away, but a break inside a value " +
+                          "cannot be: the helper pairs names with values by line, and LabVIEW's " +
+                          "Unflatten From XML does not decode &#10; - measured 2026-09-25, it " +
+                          "arrived as the literal text '&#10;' with no error. Send that string " +
+                          "without the line break."
+                        : $"The control name or value for '{offender}' contains a line break. The " +
+                          "helper pairs names with values by line, so a newline in either would " +
+                          "silently shift every later pair onto the wrong control.",
                     new { controlName = offender });
 
             var timed = runForMs > 0;
@@ -175,7 +195,10 @@ internal sealed class RunTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            // A helper built from an OLDER AIXML is rebuilt, not reused: the Enum, Ring, Array
+            // and Cluster frames went into the AIXML on 2026-09-25, and a cached VI from before
+            // that would have kept refusing them with no sign that a newer helper exists.
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } generationFailure) return generationFailure;
@@ -235,6 +258,9 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["helperAixmlPath"] = JsonValue.Create(Path.GetFullPath(aixml));
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
             payload["inputsSent"] = JsonValue.Create(inputs.Count);
+            if (compoundInputs.Count > 0)
+                payload["compoundInputs"] = new JsonArray(compoundInputs
+                    .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
@@ -245,7 +271,14 @@ internal sealed class RunTools(LvaiConnection connection)
                 (helperCode is not null and not 0
                     ? $" helperFailed is TRUE ({helperCode}): the helper stopped before the " +
                       "target ran, so `values` is empty and nothing was set. Error 1055 here " +
-                      "means a control name matched nothing on the target's panel."
+                      "means a control name matched nothing on the target's panel. Error 91 " +
+                      "means a value did not fit its control - on an ENUM or RING, text that is " +
+                      "neither one of its item names (exact, case-sensitive) nor a number." +
+                      (compoundInputs.Count > 0
+                          ? " A refusal from Unflatten From XML means the XML given for " +
+                            string.Join(", ", compoundInputs) + " is not a LabVIEW value - " +
+                            "copy the `xml` this tool returns for that control."
+                          : "")
                     : "") +
                 (timed
                     ? $" These values are a SNAPSHOT taken {runForMs} ms after the VI started, and " +
@@ -259,6 +292,45 @@ internal sealed class RunTools(LvaiConnection connection)
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
+
+    private static readonly Regex CompoundRoot = new(
+        @"^\s*(?:<\?xml[^>]*\?>\s*)?<(LvVariant|Array|Cluster)[\s>]", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A value given as LabVIEW XML, made fit for the helper's Array and Cluster frames - or null
+    /// when the value is not XML for a compound, in which case it is sent exactly as given.
+    ///
+    /// The helper feeds it to Unflatten From XML with a VARIANT as the type, which yields a
+    /// variant carrying the value's own type - measured 2026-09-25 on a 2D string array, round
+    /// trip exact. Two things have to happen first. The value must be ONE line, because names and
+    /// values are paired by line, so indentation between tags is dropped. And the root must be
+    /// <c>LvVariant</c>, because that is what Unflatten From XML into a variant reads; a bare
+    /// <c>&lt;Array&gt;</c> or <c>&lt;Cluster&gt;</c> - the shape this tool returns under a
+    /// control's <c>xml</c> - is wrapped, so a value read back can be passed straight in.
+    ///
+    /// A LINE BREAK INSIDE A TEXT VALUE IS LEFT IN, so the newline guard refuses it. The first
+    /// version wrote it as <c>&amp;#10;</c>, and LabVIEW's Unflatten From XML does NOT decode a
+    /// character reference: measured 2026-09-25 on an error cluster, the source came back as the
+    /// literal text <c>acceptance&amp;#10;second line</c> with no error anywhere. LabVIEW's own XML
+    /// carries a raw line break there, which this wire format cannot.
+    ///
+    /// ONLY THOSE THREE ROOTS are recognised. A string control may legitimately be given text that
+    /// starts with an angle bracket, and rewriting that would change the string.
+    /// </summary>
+    internal static string? CompoundValue(string value)
+    {
+        var root = CompoundRoot.Match(value);
+        if (!root.Success) return null;
+
+        var xml = value.Trim();
+        if (xml.StartsWith("<?xml", StringComparison.Ordinal))
+            xml = xml[(xml.IndexOf("?>", StringComparison.Ordinal) + 2)..].TrimStart();
+        xml = Regex.Replace(xml, @">[ \t]*(?:\r\n|\r|\n)\s*<", "><");
+
+        return root.Groups[1].Value == "LvVariant"
+            ? xml
+            : $"<LvVariant><Name>Variant</Name>{xml}</LvVariant>";
+    }
 
     /// <summary>The first name or value carrying a line break, or null when all are clean.</summary>
     private static string? Offending(IEnumerable<KeyValuePair<string, string>> inputs) =>
