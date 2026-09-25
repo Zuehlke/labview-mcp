@@ -151,9 +151,12 @@ required inputs, the seed `Replace` stays, and a case the method cannot serve (a
 on a method that returns no object) is REFUSED before anything is written instead of generating a
 suite that cannot run. Accepted through Caraya with a failing control arm, and **here it IS faster —
 15.8 s against 26.2 s** for four cases, because the sockets' swap also needs the project opened
-first. **One gap it makes routine:** the test is generated with the project open, so LabVIEW's save
-adopts it at target level and `testFolderName` ends up `inRequestedFolder: false` — the report-only
-D2 behaviour, every time on this route. `docs/class-method-tooling.md` §3d.
+first. The test is generated with the project open, so LabVIEW's save adopts it at target level
+on every run — and the listing step now MOVES that entry into `testFolderName`, because it was not
+in the project before the call. **The discriminator is time, not place**: a VI listed anywhere
+BEFORE the call, target level included, is someone's choice and stays (`listedElsewhere`); only
+the entry this call's own save made is moved (`movedIntoFolder`). `docs/class-method-tooling.md`
+§3d and D2.
 
 **CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
 member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;

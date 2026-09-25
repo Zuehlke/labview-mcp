@@ -428,9 +428,16 @@ internal sealed class TestTools(LvaiConnection connection)
             suite was handed over and the Project Explorer showed the classes and no tests at all.
             The project is CLOSED before the file is edited and re-opened afterwards, because
             LabVIEW's close saves its own copy over the file and would destroy the edit.
+            On the DIRECT route an omitted projectPath is not "list it nowhere": the route uses the
+            one project that lists the class, and lists the test there under testFolderName.
             """)]
         string? projectPath = null,
-        [Description("Virtual folder inside the project to list the tests in")]
+        [Description("""
+            Virtual folder inside the project to list the tests in. A test LabVIEW's own save has
+            just adopted at the project's top level - which is what happens to every test generated
+            with the project open - is MOVED into it; one that was listed elsewhere before this
+            call stays where it was, and `listedElsewhere` names it.
+            """)]
         string testFolderName = "Tests",
         [Description("""
             Further VIs to list in that same folder, ONE ABSOLUTE PATH PER LINE, plain text and NOT
@@ -841,17 +848,15 @@ internal sealed class TestTools(LvaiConnection connection)
             catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
         }
 
-        // 7. release the class, and list the test where the socket route would have
-        if (projectPath is { Length: > 0 })
-        {
-            var extra = (alsoListInProject ?? "")
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
-                                     StringSplitOptions.TrimEntries);
-            steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath, .. extra],
-                                               timeoutSeconds, ct, reopen: false));
-        }
-        else
-            await CloseAsync();
+        // 7. release the class and list the test - ALSO when the project was only discovered.
+        //    LabVIEW's save writes the test into the project either way, since it was generated
+        //    with the project open; going through the listing step is what puts it in
+        //    testFolderName rather than wherever that save dropped it.
+        var extra = (alsoListInProject ?? "")
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                 StringSplitOptions.TrimEntries);
+        steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath, .. extra],
+                                           timeoutSeconds, ct, reopen: false));
 
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
             $"Generated. {cases.Count} round trip(s), each calling the class's own Write and Read " +
@@ -1164,6 +1169,18 @@ internal sealed class TestTools(LvaiConnection connection)
                                Url: LvClass.RelativeUrl(projectPath, vi)))
                 .ToList();
 
+            // MOVE WHAT THIS VERY CLOSE ADOPTED, before anything is added. LabVIEW's save drops a
+            // VI it has open at TARGET level, and AddVisToProject then declines to list the file a
+            // second time - so every test generated with the project open landed outside the
+            // folder, measured 2026-09-25 on every direct-route run. `JustAdopted` picks only the
+            // entries the save made: asked for, NOT listed before the close, at target level after
+            // it. A VI the user put anywhere - including at target level - was listed before and
+            // stays where it is.
+            var adopted = JustAdopted(entries.Select(e => e.Name),
+                                      listedBefore.Select(v => v.Name),
+                                      LvClass.ListedViPlaces(projectPath));
+            var moved = LvClass.RemoveTargetLevelVis(projectPath, adopted);
+
             // RESTORE, ADD, THEN TIDY - in that order. Tidy last is what makes the pass safe: it
             // can only ever remove an entry whose file is missing or which points into one of our
             // temp trees, and nothing written above is either. AddVisToProject is idempotent, so
@@ -1213,6 +1230,7 @@ internal sealed class TestTools(LvaiConnection connection)
             // `wiringLost` and retracted a day later after it suppressed the caller's own steps on
             // correct diagrams, costing two agents ~135 s each. Report it; do not decide with it.
             step["inRequestedFolder"] = elsewhere.Count == 0;
+            step["movedIntoFolder"] = new JsonArray([.. moved.Select(v => (JsonNode)v)]);
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
@@ -1239,14 +1257,29 @@ internal sealed class TestTools(LvaiConnection connection)
             if (added > 0) note.Add($"Listed under '{folderName}'.");
             else if (notOnDisk.Count == 0 && notListed.Count == 0)
                 note.Add("Already listed; nothing added.");
-            if (elsewhere.Count > 0)
+            if (moved.Count > 0)
+                note.Add($"{moved.Count} of them LabVIEW's own save had just adopted at target " +
+                         $"level ({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
+                         $"'{folderName}', because they were not in the project before this call.");
+            var unmatched = adopted.Except(moved, StringComparer.OrdinalIgnoreCase).ToList();
+            if (unmatched.Count > 0)
+                note.Add("LabVIEW's save had just adopted " +
+                         string.Join(", ", unmatched.Select(v => $"'{v}'")) + " at target level, " +
+                         "but its line in the .lvproj did not read as one self-closing item, so it " +
+                         "was left rather than edited by guesswork.");
+            var chosen = elsewhere.Where(e => !unmatched.Contains(e.Name,
+                                                                  StringComparer.OrdinalIgnoreCase))
+                                  .ToList();
+            if (chosen.Count > 0)
                 note.Add("BUT NOT UNDER '" + folderName + "': " +
-                         string.Join(", ", elsewhere.Select(e => $"'{e.Name}' is in {e.Folder}")) +
-                         ". Left there deliberately - listing it twice would give the project two " +
-                         "items for one file, and an item inside a class or a library is owned by " +
-                         "it. LabVIEW's own save adopts a VI it has open and drops it at target " +
-                         "level, which is how a runner gets there. It is findable and it runs; " +
-                         "move it in the Project Explorer if the folder matters.");
+                         string.Join(", ", chosen.Select(e => $"'{e.Name}' is in {e.Folder}")) +
+                         ". Left there deliberately - only an entry THIS call's own save created " +
+                         "at target level is moved, and this one was in the project before the " +
+                         "call or sits inside another item, so the place is someone's choice or " +
+                         "an earlier run's. Listing it twice would give the project two items for " +
+                         "one file, and an item inside a class or a library is owned by it. It is " +
+                         "findable and it runs; move it in the Project Explorer if the folder " +
+                         "matters.");
             if (restored > 0)
                 note.Add($"{restored} entry/entries LabVIEW's close had deleted from the .lvproj " +
                          "were put back - anything above 0 means the close clobbered the file, " +
@@ -1273,6 +1306,33 @@ internal sealed class TestTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// Which of the VIs we asked for were put at target level BY THIS CALL'S OWN CLOSE, and may
+    /// therefore be moved into the requested folder without overriding anyone's choice.
+    ///
+    /// THE DISCRIMINATOR IS TIME, NOT PLACE. LabVIEW's save adopts a VI it has open and drops it
+    /// at target level; a user may equally have put one there on purpose. What separates the two
+    /// is whether the project listed the VI BEFORE the close - which ListInProjectAsync reads
+    /// anyway, to put back what the close deletes. Not listed before and at target level after
+    /// means the save made the entry, so moving it changes nothing anybody chose. Measured
+    /// 2026-09-25: the direct test routes generate with the project open, and every one of their
+    /// tests landed at target level while `testFolderName` said `Tests`.
+    ///
+    /// Target level ONLY: a VI found inside a class or library is owned by that item, and one in a
+    /// folder was put there by something other than an adopting save.
+    /// </summary>
+    internal static List<string> JustAdopted(
+        IEnumerable<string> asked, IEnumerable<string> listedBefore,
+        IReadOnlyList<(string Name, string Url, string Folder)> placesAfter)
+    {
+        var before = listedBefore.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var atTarget = placesAfter.Where(p => p.Folder.Length == 0)
+                                  .Select(p => p.Name)
+                                  .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return [.. asked.Where(name => !before.Contains(name) && atTarget.Contains(name))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)];
+    }
+
+    /// <summary>
     /// Which of the VIs we asked for are listed somewhere OTHER than the folder we asked for, and
     /// where each one actually sits.
     ///
@@ -1283,11 +1343,12 @@ internal sealed class TestTools(LvaiConnection connection)
     /// VI it has open and dropping it at target level, and <c>AddVisToProject</c> then correctly
     /// declining to list the same file twice.
     ///
-    /// IT REPORTS AND MOVES NOTHING, and <c>ok</c> does not turn on it. Moving an item would be a
-    /// change to the user's project nobody asked for, and an item inside a class or a library is
-    /// owned by that item - the runner is findable and it runs, so this is information, not a
-    /// verdict. Same rule as <c>wiringLost</c>, which gated <c>ok</c> for one day and was wrong
-    /// every time it fired.
+    /// IT REPORTS, and <c>ok</c> does not turn on it. The one case that IS moved is decided before
+    /// this runs, by <see cref="JustAdopted"/> - an entry the close's own save created - so what
+    /// this still reports is a place that predates the call: moving that would be a change to the
+    /// user's project nobody asked for, and an item inside a class or a library is owned by that
+    /// item. The VI is findable and it runs, so this is information, not a verdict. Same rule as
+    /// <c>wiringLost</c>, which gated <c>ok</c> for one day and was wrong every time it fired.
     ///
     /// A folder chain that ENDS in the wanted name counts as the right place: the folder the caller
     /// asked for may itself be nested, and <c>AddVisToProject</c> finds it by name at any depth.

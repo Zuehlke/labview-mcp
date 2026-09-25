@@ -248,14 +248,18 @@ their swap refuses to run without an active project. That is 26.2 s against 15.8
 and six sockets. Inside the direct call, generating took 2.7 s, the seed `Replace` 5.0 s and the
 close 1.0 s.
 
-**What the direct route does NOT do: put the test under `testFolderName`.** It generates the test
-while the project is open, so LabVIEW's own save during the close adopts it at TARGET level, and the
-listing step then declines to list the file a second time - `inRequestedFolder: false`,
-`listedElsewhere` naming it. That is the D2 behaviour below, deliberately report-only, and not
-something this route introduced; but on the socket route the same suite landed under `Tests`, so on
-this route it happens every time rather than occasionally. The listing step reads the project
-BEFORE the close, so "not listed before, at target level after" identifies exactly the entry this
-save made - the discriminator a move would need, if moving is ever wanted.
+**The first version did NOT put the test under `testFolderName`, and that is fixed the same day.**
+The test is generated while the project is open, so LabVIEW's own save during the close adopted it
+at TARGET level and the listing step declined to list the file a second time -
+`inRequestedFolder: false` on every direct-route run, where the socket route had put the same suite
+under `Tests`. The listing step reads the project BEFORE the close, so "not listed before, at target
+level after" identifies exactly the entry this save made; that entry is now MOVED
+(`movedIntoFolder`), and D2 below has the rule. The direct route also lists through that step when
+the project was only DISCOVERED, because LabVIEW writes the test into the project either way.
+Accepted against LabVIEW: a new method test with `projectPath`, one with the project discovered and
+a new class test all landed in `Tests`, a new runner too, and the three suites ran green from there;
+the CONTROL, regenerating a test that was already at target level before the call, stayed there
+with `listedElsewhere` naming it.
 
 ### 3e. The `lvai_generate_class_test` bug
 
@@ -1068,6 +1072,19 @@ Four tests in `ProjectTestEntryTests` pin it, and the first reproduces the measu
 LabVIEW: a runner planted at target level beside the folder, `AddVisToProject` correctly answering
 `0`, and `listedElsewhere` naming it. This finding sat here as a description for twelve days beside
 D1, which is the fuse that entry is about — so it is closed in the code, not in the prose.
+
+**AND SINCE 2026-09-25 THE ADOPTED CASE IS MOVED after all — the objection above was about a place
+someone CHOSE, and the adopted entry is not one.** What changed is a discriminator, not the rule:
+the step reads the project before the close, so a requested VI that was NOT listed before and sits
+at TARGET level afterwards was put there by this call's own save. `TestTools.JustAdopted` picks
+exactly those, `LvClass.RemoveTargetLevelVis` takes their line out (line-precise, a line that does
+not read as one self-closing item is left alone), and the ordinary add puts them in the folder;
+the answer names them in `movedIntoFolder`. Everything else is still report-only, for the reasons
+above: a VI listed ANYWHERE before the call - target level included - stays, and so does one
+inside a class or library. The trigger was the direct test routes, which generate with the project
+open and so hit this on every run; the runner case recorded here and in
+`docs/cold-build-torquebench.md` §5 is the same entry and is moved the same way. The control arm is
+a unit test and was run against LabVIEW too: a test at target level before the call stays there.
 
 ### The socket slot names are FIXED and the folder is GLOBAL
 

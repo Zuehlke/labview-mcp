@@ -215,6 +215,11 @@ tool could list it, and the tool declined to list it twice. Confirmed on disk.
 **So the behaviour is non-deterministic and now says so.** `ok` is still not gated on it, which
 remains right — nothing is broken, the runner is findable and runs.
 
+**Since 2026-09-25 the TorqueSensor case is MOVED into the folder rather than only reported**: a
+runner that was not in the project before the call and sits at target level after it was put there
+by that call's own save, so nothing anybody chose is overridden. `movedIntoFolder` names it.
+`docs/class-method-tooling.md` D2.
+
 ## 6. Two smaller things
 
 - **The `.lvproj` lost its UTF-8 BOM.** LabVIEW writes one (`EF BB BF`); after our rewrites

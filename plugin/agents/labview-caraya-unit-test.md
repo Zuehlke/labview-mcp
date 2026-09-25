@@ -323,10 +323,13 @@ through the class's project; the sockets are the fallback, `route` says which ra
 route a case the method cannot serve - a `writeField` case on a method that returns no object - is
 refused as `caseNeedsATerminalTheMethodLacks` before anything is written; take the case out or
 change its shape, do not force the sockets to get past it. Measured 2026-09-25 on four cases:
-15.8 s direct against 26.2 s for the sockets plus the project open they need. **On the direct
-route the test lands at the project's TOP LEVEL, not in `testFolderName`** - LabVIEW's own save
-adopts it there, because it was generated with the project open. With `projectPath` given the
-`projectEntry` step says so as `inRequestedFolder: false`; name where it is in your report.
+15.8 s direct against 26.2 s for the sockets plus the project open they need. The test lands in
+`testFolderName` - always on the direct route, on the socket route only with `projectPath`: when
+LabVIEW's own save adopts a freshly generated test at the project's top level, the `projectEntry`
+step moves exactly that entry (`movedIntoFolder`).
+**A test that was already listed somewhere else before the call stays there** - that place is
+someone's choice - and `inRequestedFolder: false` plus `listedElsewhere` say so; name where it is
+in your report.
 
 ### Phase 4 — The runner: `lvai_generate_caraya_test_runner`, one call
 

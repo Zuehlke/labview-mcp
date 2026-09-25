@@ -1097,6 +1097,60 @@ internal static class LvClass
     }
 
     /// <summary>
+    /// Takes the named VIs out of the project where they sit DIRECTLY under the target - the place
+    /// LabVIEW's own save drops a VI it adopts - and returns the names actually removed.
+    ///
+    /// LINE-PRECISE, NOT A RE-SERIALISATION. The element is found by parsing, so a VI of the same
+    /// name inside a folder is never touched, and its line is then removed from the text so the
+    /// rest of the file keeps LabVIEW's own formatting - the same split AddVisToProject makes. A
+    /// line that does not look like one self-closing item is left alone rather than guessed at.
+    ///
+    /// Only a FILE edit: the caller must hold the project closed, because LabVIEW's next close
+    /// saves its own copy over whatever this writes.
+    /// </summary>
+    public static IReadOnlyList<string> RemoveTargetLevelVis(string projectPath,
+                                                             IReadOnlyCollection<string> names)
+    {
+        if (names.Count == 0) return [];
+
+        var wanted = names.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var target = XDocument.Load(projectPath, LoadOptions.SetLineInfo).Root?.Elements("Item")
+            .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
+        if (target is null) return [];
+
+        var hits = target.Elements("Item")
+            .Where(i => (string?)i.Attribute("Type") == "VI"
+                        && wanted.Contains((string?)i.Attribute("Name") ?? ""))
+            .Select(i => (Name: (string)i.Attribute("Name")!,
+                          Line: ((System.Xml.IXmlLineInfo)i).LineNumber))
+            .Where(h => h.Line > 0)
+            .ToList();
+        if (hits.Count == 0) return [];
+
+        var text = File.ReadAllText(projectPath);
+        var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split(newline).ToList();
+
+        var removed = new List<string>();
+        foreach (var hit in hits.OrderByDescending(h => h.Line))
+        {
+            var index = hit.Line - 1;
+            if (index >= lines.Count) continue;
+            var line = lines[index].Trim();
+            if (!line.StartsWith("<Item ", StringComparison.Ordinal)
+                || !line.EndsWith("/>", StringComparison.Ordinal)
+                || !line.Contains($"Name=\"{Xml(hit.Name)}\"", StringComparison.Ordinal))
+                continue;
+            lines.RemoveAt(index);
+            removed.Add(hit.Name);
+        }
+
+        if (removed.Count > 0) File.WriteAllText(projectPath, string.Join(newline, lines));
+        removed.Reverse();
+        return removed;
+    }
+
+    /// <summary>
     /// The <c>URL</c> one LabVIEW file uses to point at another.
     ///
     /// **`../` IS RELATIVE TO THE REFERENCING FILE, NOT ITS DIRECTORY** - the leading `..` pops the

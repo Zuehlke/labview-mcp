@@ -147,11 +147,16 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         string? seedClassPath = null,
         [Description("""
             The .lvproj that lists the class. The direct route opens the class through it, and the
-            test VI is listed in it. Omitted, the direct route looks for the one project that lists
-            the class and closes it again without listing anything itself.
+            test VI is listed in it under testFolderName. Omitted, the direct route uses the one
+            project that lists the class and lists the test there too; the socket route lists it
+            nowhere.
             """)]
         string? projectPath = null,
-        [Description("Virtual folder inside the project to list the test in")]
+        [Description("""
+            Virtual folder inside the project to list the test in. A test LabVIEW's own save has
+            just adopted at the project's top level is MOVED into it; one that was listed elsewhere
+            before this call stays where it was, and `listedElsewhere` names it.
+            """)]
         string testFolderName = "Tests",
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
@@ -666,12 +671,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
         }
 
-        // 7. release the class, and list the test where the socket route would have
-        if (projectPath is { Length: > 0 })
-            steps.Add(await tests.ListInProjectAsync(project, testFolderName, [testViPath],
-                                                     timeoutSeconds, ct, reopen: false));
-        else
-            await CloseAsync();
+        // 7. release the class and list the test - ALSO when the project was only discovered.
+        //    LabVIEW's save writes the test into the project either way, since it was generated
+        //    with the project open; going through the listing step is what puts it in
+        //    testFolderName rather than wherever that save dropped it.
+        steps.Add(await tests.ListInProjectAsync(project, testFolderName, [testViPath],
+                                                 timeoutSeconds, ct, reopen: false));
 
         steps.Add(RequiredInputsStep(cases));
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
