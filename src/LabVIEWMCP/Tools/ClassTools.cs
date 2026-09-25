@@ -465,7 +465,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                         a => a.EndsWith(name, StringComparison.OrdinalIgnoreCase)))
                     .ToList();
 
-                steps.Add(new JsonObject
+                var verifyStep = new JsonObject
                 {
                     ["step"] = "verify",
                     ["privateDataBytes"] = info.PrivateDataBytes,
@@ -487,7 +487,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["interfacesAsked"] = interfacePaths.Count,
                     ["interfacesOpened"] = provider.InterfacesOpened,
                     ["interfacesLinked"] = interfacePaths.Count - missingInterfaces.Count,
-                });
+                };
+                steps.Add(verifyStep);
 
                 TryDelete(projectUsed);   // the throwaway; the work directory follows in `finally`
 
@@ -533,11 +534,18 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return Outcome(false, "bindTypedefFields", steps, total, classPath, null,
                         TypedefBindFailedNote);
 
+                // THE BYTE COUNT IS READ AGAIN AFTER THE BIND, which rewrites the private data: the
+                // sixth TypedefAfterGDevCon build's note said 6 120 bytes, measured before it, for
+                // a file holding 8 432.
+                var bytes = typedefFields.Count > 0 ? LvClass.Read(classPath).PrivateDataBytes
+                                                    : info.PrivateDataBytes;
+                if (typedefFields.Count > 0) verifyStep["privateDataBytesAfterBind"] = bytes;
+
                 return Outcome(true, null, steps, total, classPath, null,
                     (typedefFields.Count > 0
                         ? $"{typedefFields.Count} typedef field(s) bound to their .ctl. " : "")
                     + $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
-                    + $"{info.PrivateDataBytes} bytes of private data, inherits from "
+                    + $"{bytes} bytes of private data, inherits from "
                     + $"'{inherits ?? "LabVIEW Object"}'{interfaceNote}. The private data control "
                     + "is LabVIEW's own - "
                     + "NI's provider VIs built it - so it carries a real type space and compiles.");
@@ -1029,14 +1037,16 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         bool includeFields = true,
         [Description("""
-            Report each member's `dynamicDispatch`. Where the .lvclass records IsStaticMethod that
-            is used; otherwise the member's own saved file is read with pylabview (no LabVIEW,
-            about 250 ms per VI, four at a time) and a connector pane terminal flagged 0x8000
-            means dynamic dispatch - measured against NI's own IsStaticMethod on 149 of 149 class
-            members. `dynamicDispatchFrom` says which source answered. Pass false to skip the
-            file reads. On by default.
+            Read each member VI's own saved file with pylabview (no LabVIEW, about 250 ms per VI,
+            four at a time) for two things. `dynamicDispatch` where the .lvclass records no
+            IsStaticMethod: a connector pane terminal flagged 0x8000 means dynamic dispatch,
+            measured against NI's own IsStaticMethod on 149 of 149 class members, and
+            `dynamicDispatchFrom` says which source answered. And `paneTypedefs`: every pane
+            terminal that carries a typedef, with the .ctl it names - so an accessor still bound
+            to its field's typedef reads [{"terminal":"Channel Config","typedef":"Channel
+            Config.ctl"}]. Pass false to skip the file reads. On by default.
             """)]
-        bool includeDispatch = true,
+        bool readMemberFiles = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         Rpc.GuardAsync(async () =>
@@ -1102,20 +1112,24 @@ internal sealed class ClassTools(LvaiConnection connection)
             // DISPATCH: from the .lvclass where it records IsStaticMethod, otherwise from the
             // member's own connector pane. NI's wizard writes no IsStaticMethod, so every accessor
             // read null here until 2026-09-25 (fourth TypedefAfterGDevCon build).
+            // The same file read also names the TYPEDEFS on each member's pane - the sixth build's
+            // agent searched an accessor's bytes by hand to see whether `Channel Config.ctl` was
+            // still on its data terminal.
             var dispatch = new (bool? Value, string? From)[info.Members.Count];
-            var bundle = includeDispatch ? PyLabview.Locate() : null;
+            var paneFacts = new PaneDispatch.Facts?[info.Members.Count];
+            var bundle = readMemberFiles ? PyLabview.Locate() : null;
             using (var gate = new SemaphoreSlim(4))
                 await Task.WhenAll(info.Members.Select(async (member, i) =>
                 {
-                    if (member.DynamicDispatch is { } recorded)
-                    { dispatch[i] = (recorded, "lvclass"); return; }
+                    if (member.DynamicDispatch is { } recorded) dispatch[i] = (recorded, "lvclass");
                     if (bundle is null || member.Type != "VI") return;
                     await gate.WaitAsync(ct);
                     try
                     {
                         var vi = Path.GetFullPath(Path.Combine(info.Path, member.Url));
-                        if (await PaneDispatch.ReadAsync(bundle, vi, Rpc.ClampToolWait(timeoutSeconds), ct)
-                            is { } fromPane)
+                        paneFacts[i] = await PaneDispatch.ReadAsync(
+                            bundle, vi, Rpc.ClampToolWait(timeoutSeconds), ct);
+                        if (dispatch[i].From is null && paneFacts[i]?.DynamicDispatch is { } fromPane)
                             dispatch[i] = (fromPane, "connectorPane");
                     }
                     finally { gate.Release(); }
@@ -1131,6 +1145,11 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["scope"] = member.Scope,
                     ["dynamicDispatch"] = dispatch[i].Value,
                     ["dynamicDispatchFrom"] = dispatch[i].From,
+                    // null = the file was not read; [] = read, and no pane terminal is a typedef
+                    ["paneTypedefs"] = paneFacts[i] is { } facts
+                        ? new JsonArray([.. facts.Typedefs.Select(t => (JsonNode)new JsonObject
+                            { ["terminal"] = t.Terminal, ["typedef"] = t.Typedef })])
+                        : null,
                 });
 
             var ancestors = new JsonArray();
@@ -1196,9 +1215,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["fieldsDefaultsNote"] = fieldsDefaultsNote,
                 ["memberCount"] = info.Members.Count,
                 ["members"] = members,
-                ["dispatchNote"] = !includeDispatch
-                    ? "Members' files not read - includeDispatch was false, so dynamicDispatch is " +
-                      "only set where the .lvclass records IsStaticMethod."
+                ["memberFilesNote"] = !readMemberFiles
+                    ? "Members' files not read - readMemberFiles was false, so dynamicDispatch is " +
+                      "only set where the .lvclass records IsStaticMethod and paneTypedefs is null."
                     : bundle is null
                         ? "Members' files not read: " + PyLabview.NotProvisionedMessage()
                         : null,
@@ -2547,7 +2566,12 @@ internal sealed class ClassTools(LvaiConnection connection)
             privateDataItem = pdcName,
             classIndex,
             fieldCount,
+            // FIELDS, one entry of `created` each - the name reads like a VI count, and the sixth
+            // TypedefAfterGDevCon build reported `accessorsCreated: 2` for four VIs. Kept for the
+            // callers that read it; accessorVisCreated is the VI count.
             accessorsCreated = created.Count,
+            accessorVisCreated = readNames.Count(n => !string.IsNullOrEmpty(n)) +
+                                 writeNames.Count(n => !string.IsNullOrEmpty(n)),
             created,
             // Only when the lookup failed, and then it is the whole diagnosis: a -1 is either an
             // empty list (no project, or none loaded yet) or a path that differs from LabVIEW's

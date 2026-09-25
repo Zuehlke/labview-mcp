@@ -548,9 +548,13 @@ A child class gets accessors for **its own** fields only. It inherits the parent
    reports `inheritsFrom: "LabVIEW Object"` and carries no `Parent Libraries` item — until
    2026-08-28 it reported its own name, i.e. inheriting from itself, which two runs of this agent
    caught and flagged.
-2. **Confirm the dispatch, because `describe_class` reports `dynamicDispatch: null`** — the class
-   file does not carry it under that name. **Read `connection=` per terminal**, which is what
-   actually says it:
+2. **Confirm the dispatch and the accessors' typedefs from `lvai_describe_class`.** Since
+   2026-09-25 it reads each member's own file: `dynamicDispatch` with `dynamicDispatchFrom`
+   (`connectorPane` for a wizard accessor, whose class entry records nothing), and `paneTypedefs`,
+   which for a Config accessor bound to its field's typedef reads
+   `[{"terminal":"Channel Config","typedef":"Channel Config.ctl"}]`. Do NOT search the accessor's
+   bytes for the `.ctl` name - that is what this step replaces. Where `dynamicDispatch` is still
+   null, **read `connection=` per terminal**, which is what actually says it:
 
    ```
    lvai_convert_vis_to_aixml   <- one call, every member, then read connection= in the exports

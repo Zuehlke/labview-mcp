@@ -185,7 +185,22 @@ stdio on a copy of the delivery:
 LUnit's scaffold still names its test methods' input `error in (no error)` - that route follows
 LUnit's own template and was not in this build.
 
-## 10. Not established
+## 10. The sixth cold build - and its five findings FIXED
+
+`C:\temp\TypedefAfterGDevCon6\`, same task: about 9:23 end to end (typedefs 24 s, class 23 s,
+accessors with icons 2:11, tests 4:21), no restart, no pyLabVIEW call, 3/0 and the negative control
+exact. Every fix of §9 held. Five findings, fixed the same day and accepted over raw stdio on a
+copy of the delivery:
+
+| finding | fix | acceptance |
+|---|---|---|
+| the generated test VIs and the runner carried NO diagram comment, against the rule that every generated VI carries one | one position-independent `<FreeLabel>` under 45 characters in the class, method and plain test and in the runner; the sockets stay bare | test: `Each case is one chain asserted by Caraya`; runner: `Test paths are relative to this VI`; 2/0 |
+| nothing said whether an ACCESSOR's pane still carries the field's typedef; the agent searched the file's bytes | `lvai_describe_class` reads each member's file once for dispatch AND `paneTypedefs`: a pane slot's TypeID is a flat id in the same section, and a `TypeDef` entry there names the `.ctl` and, through its inner type, the terminal. `readMemberFiles` replaces `includeDispatch` | Read/Write Config: `[{"terminal":"Channel Config","typedef":"Channel Config.ctl"}]`; Read/Write Gain: `[]` |
+| `lvai_create_class`'s note gave the private data size from BEFORE the typedef bind | read again after the bind; the verify step carries `privateDataBytesAfterBind` | 6 133 before, 8 421 after, in the note and in `lvai_describe_class` alike |
+| `lvai_create_accessors`'s `accessorsCreated: 2` counts fields and was read as four VIs short | `accessorVisCreated` beside it; `accessorsCreated` keeps its meaning for the callers that read it | `accessorsCreated: 2`, `accessorVisCreated: 4`, `membersAfter: 4` |
+| the pre-seed generate step's own note explained the expected break by wire types | that note and hint move to `noteBeforeSeeds` / `hintBeforeSeeds` where the break is the expected one; a real failure keeps them | `notExecutableYetIsExpected: true`, inner `note` gone, `noteBeforeSeeds` present |
+
+## 11. Not established
 
 - A comma inside a string element of a cluster case value.
 - The dispatch rule on a member whose file pylabview cannot parse - it answers `null` there.

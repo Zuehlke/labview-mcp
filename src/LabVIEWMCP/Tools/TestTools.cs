@@ -1278,12 +1278,21 @@ internal sealed class TestTools(LvaiConnection connection)
     internal static JsonObject GenerateStepBeforeSeeds(JsonNode? answer)
     {
         var step = new JsonObject { ["step"] = "generate", ["answer"] = answer };
-        if ((answer as JsonObject)?["failedAtStep"]?.GetValue<string>() == "execState")
+        if (answer is JsonObject inner && inner["failedAtStep"]?.GetValue<string>() == "execState")
         {
             step["notExecutableYetIsExpected"] = true;
             step["note"] = "`ok: false` at execState is EXPECTED here: the seed constants are still " +
                            "paths wired into class inputs until the seeds step replaces them. The " +
                            "verdict is the execState step after the seeds, not this one.";
+            // THE GENERATOR'S OWN TEXT IS MOVED ASIDE, not left beside that note. It explains a
+            // broken VI by wire types, which is right in general and wrong here, and the sixth
+            // TypedefAfterGDevCon build read it as the finding (2026-09-25).
+            foreach (var key in new[] { "note", "hint" })
+                if (inner[key] is { } text)
+                {
+                    inner.Remove(key);
+                    inner[$"{key}BeforeSeeds"] = text;
+                }
         }
         return step;
     }
@@ -2093,6 +2102,7 @@ internal sealed class TestTools(LvaiConnection connection)
             $"inputs=\"value:{last}\" type=\"{ErrorCluster}\" uid=\"{errorOut}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        sb.AppendLine(TestTools.DiagramComment(uid++));
         sb.AppendLine("</VI>");
         return sb.ToString();
     }
@@ -2461,6 +2471,7 @@ internal sealed class TestTools(LvaiConnection connection)
             $"inputs=\"value:{last}\" type=\"{ErrorCluster}\" uid=\"{errorOut}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        sb.AppendLine(TestTools.DiagramComment(uid++));
         sb.AppendLine("</VI>");
         return sb.ToString();
     }
@@ -2487,6 +2498,18 @@ internal sealed class TestTools(LvaiConnection connection)
     /// and a modal dialog stops LabVIEW's whole gRPC service until a human dismisses it - which in
     /// an unattended run is nobody.
     /// </summary>
+    /// <summary>
+    /// THE ONE DIAGRAM COMMENT EVERY GENERATED TEST VI CARRIES (CLAUDE.md, 2026-09-08), written to
+    /// be true wherever LabVIEW drops it and kept under 45 characters so no box clips it. The test
+    /// generators and the runner emitted none until the sixth TypedefAfterGDevCon build noticed.
+    /// </summary>
+    internal const string TestComment = "Each case is one chain asserted by Caraya";
+
+    internal const string RunnerComment = "Test paths are relative to this VI";
+
+    internal static string DiagramComment(int uid, string text = TestComment) =>
+        $"  <FreeLabel comment=\"{Escape(text)}\" uid=\"{uid}\" uid_parent=\"root\"/>";
+
     internal static string CarayaRunnerAixml(string runnerViPath, IReadOnlyList<string> relativeTestPaths,
                                        string reportFileName, ConnectorPane.Geometry? geometry = null)
     {
@@ -2582,6 +2605,7 @@ internal sealed class TestTools(LvaiConnection connection)
                       $"them.\" inputs=\"value:{call}.error out\" type=\"{ErrorCluster}\" " +
                       $"uid=\"{UidBase + 62}\" uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        sb.AppendLine(DiagramComment(UidBase + 64, RunnerComment));
         sb.AppendLine("</VI>");
         return sb.ToString();
     }

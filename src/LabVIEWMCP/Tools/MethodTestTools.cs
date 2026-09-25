@@ -1235,6 +1235,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             $"inputs=\"value:{last}\" type=\"{ErrorCluster}\" uid=\"{errorOut}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        sb.AppendLine(TestTools.DiagramComment(uid++));
         sb.AppendLine("</VI>");
         return sb.ToString();
     }
