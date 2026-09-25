@@ -104,7 +104,83 @@ by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI
 under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
 does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
 seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
-loose or in a project library.
+loose or in a project library — **unless that code is LOADED, and then only for conversion.**
+
+**PROJECT-LOCAL CODE RESOLVES BY BARE NAME ONCE IT IS OPEN IN LabVIEW — measured 2026-09-25 on
+NI's hint, and the sentence above said "does not resolve" flatly until then.** Opened through its
+project or opened loose with no project, a subject outside every installation tree was accepted
+by `ConvertAIXMLToVI` (`errorCode 0`), the caller ran with the right answer, and it was still
+`execState 1` from disk in a FRESH LabVIEW — so the link is written into the file. Not loaded, or
+merely a member of an active project, it is `Error 53` as before, three times over. **The reason
+nobody saw it: `ValidateAIXML` refuses the same document in every arm.** Two traps come with it:
+a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as a failed
+validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
+VI there that makes the project unclosable (`1019`) until it is saved to a path.
+
+**`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
+it (`lvai_generate_vis`, the test generators, the class tools). A validate refusal naming ONLY
+`Unsupported SubVI` lines is converted anyway — under a throwaway `_name`, so a refusal burns
+nothing and the saved VI is still named after its file — with the target folder created first, and
+the result is then gated on `lvai_exec_state` in place of the validation that could not look; the
+answer carries `loadedSubVIs`. Accepted against LabVIEW over raw stdio: not loaded → `53` naming
+the target, then the SAME document and path after opening it → `ok`, `executable: true`, run
+correct; a class chain the same. **A misspelt terminal on such a call is `Error 1` from the
+generator, not a broken VI** — the converter refuses it and writes nothing — and the answer says
+which of the three failure shapes it was, because only the Save-time one leaves the `1019` orphan.
+
+**`lvai_generate_test` CALLS ITS SUBJECT DIRECTLY by default since the same day** — it finds the
+`.lvproj` that LISTS the subject, opens it there, names the subject in the `Call`, generates and
+closes the project; the placeholder route is the fallback, and `route` in the answer says which
+ran and why. Accepted through a real Caraya run with a failing control. **It is NOT faster inside
+the call** (15.7 s against 13.6–15.9 s) — the gain is fewer moving parts, and it passes a case the
+placeholder route FAILS: a test VI in a different folder from its subject, where the pylabview
+retarget leaves `Missing subVI` and `execState 0`. `docs/labview-unit-testing.md` §3. It lists the
+test under `testFolderName` (default `Tests`) since the same day, where it used to leave it wherever
+LabVIEW's save dropped it.
+
+**A WHOLE CLD EXAM HAS NOW BEEN BUILT WITH NO STUB AND NO pyLabVIEW** - the ATM, 2026-09-25,
+five agents, thirteen VIs, Caraya 50/0, audited from the transcripts and the stub folder rather than
+from the agents' reports. The one design cost is the Event Structure, whose registration is still
+pyLabVIEW work, so that build polled instead. The shape that makes it work with parallel agents is
+by DEPENDENCY: leaf VIs in parallel with no project opened, then ONE agent opens the callees and
+generates the callers. **And a line break in a generated `value` is `&#10;`** - a raw one is
+normalised to a space by the XML parser, which silently broke every multi-line test expectation
+until `EscapeValue` wrote the reference. `docs/cold-build-atm-no-stubs.md`.
+
+**`lvai_generate_class_test` CALLS THE ACCESSORS DIRECTLY too** — one accessor opened through the
+class's project makes every member callable, each pair's terminal names are read off its export
+(a typedef-bound field's data terminal is named after the TYPEDEF, not the field), and the test
+calls the real accessors. **The seed `path` constant and its `{LV.Constant}` `Replace` stay**: the
+converter writes the path into the class input as a broken wire, and the Replace turns it into the
+class — measured `eBad` before, `execState 1` after. Sockets and node swaps go. Accepted through
+Caraya on an `int32` and a typedef field; **for ONE field it is not faster** (18.0 s against
+11.9 s + a 7.4 s project open), and the per-field saving is not measured. `docs/labview-unit-testing.md` §3d.
+
+**`lvai_generate_method_test` CALLS THE METHODS AND ACCESSORS DIRECTLY as well**, same shape: the
+method's class and error terminals are read by TYPE off the export the tool already makes for the
+required inputs, the seed `Replace` stays, and a case the method cannot serve (a wire-survival case
+on a method that returns no object) is REFUSED before anything is written instead of generating a
+suite that cannot run. Accepted through Caraya with a failing control arm, and **here it IS faster —
+15.8 s against 26.2 s** for four cases, because the sockets' swap also needs the project opened
+first. The test is generated with the project open, so LabVIEW's save adopts it at target level
+on every run — and the listing step now MOVES that entry into `testFolderName`, because it was not
+in the project before the call. **The discriminator is time, not place**: a VI listed anywhere
+BEFORE the call, target level included, is someone's choice and stays (`listedElsewhere`); only
+the entry this call's own save made is moved (`movedIntoFolder`). `docs/class-method-tooling.md`
+§3d and D2.
+
+**CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
+member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
+a caller chaining a static `New` method into a dynamic-dispatch `Write` and `Read` converted, ran
+(`42` in, `42` out) and was still executable in a fresh LabVIEW. Class wires between the calls need
+nothing — no `path` stand-in, no swap. A `.ctl` open through its project is refused as a `Call`
+target and has no `type=` spelling at all (`Unrecognized or unsupported attribute set`), and a
+control merely labelled like it is not bound to it. So a constant feeding a typedef input still
+arrives bare with a coercion dot, and `lvai_bind_typedef_constants` still repairs it — measured on
+this route with the value kept. **The test generators run that repair themselves since 2026-09-25**
+(a `typedefConstants` step), and thirteen AIXML spellings for a typedef constant were refused with the
+`.ctl` loaded - `docs/cold-build-typedef-gdevcon.md` §4. Project-library members are the one target kind not measured yet.
+`docs/aixml-call-loaded-vi.md`.
 
 **The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
 scanned `menus\` and `LVAddons\` only, so a `.mnu` anywhere else was invisible — a query for
@@ -1260,6 +1336,12 @@ The fallback is not a defeat: the field then carries the real wrapped type - a g
 `Refnum RefType="UsrDefndTag" Ident="Task" TypeName="NIDAQ"`, not a de-linked copy. Report it as
 information.
 
+**A CLASS FIELD CAN CARRY A DEFAULT: `double.Gain=1`** (since 2026-09-25, measured reading back
+`1.0`). Before that every field defaulted to its type's empty value with no way to say otherwise,
+and a sensor class shipped with `Gain = 0`. Not for a timestamp, whose literal the converter
+discards. And a method test that needs SEVERAL fields set uses `seed` - `writeField` sets one and
+asserts it survived. `docs/cold-build-sensor-monitor-events.md`.
+
 **A CLASS FIELD MAY BE A `path` — and the tool refusing one was an ALLOWLIST GAP, not a format
 limit.** `lvai_create_class` needs a `value` literal per type, and a type missing from that table is
 refused by name; twice now that has read as "AIXML cannot express this". `timestamp` was the first,
@@ -1267,6 +1349,17 @@ refused by name; twice now that has read as "AIXML cannot express this". `timest
 and a `String To Path` in every method. A path's literal is the empty one, like a string's. **When a
 tool refuses a field type, probe whether AIXML refuses it too before designing around it** — a
 three-line carrier VI answers it in 165 ms. `docs/lvclass-creation.md` §0.
+
+**A TYPEDEF `.ctl` IS CREATED WITH `lvai_create_typedef` - THROUGH VI SERVER, NO pylabview, NO
+FLAG PATCH.** Measured 2026-09-25: `New VI` (Control VI), `Move` a carrier's control onto it, write
+`{LV.VI}` `Control VI Type`, `Save.Instrument`. It retires the fixture route described in the next
+two paragraphs, and with it `lvai_resave_ctl` and the project-closed ordering. **VI Server's enum is
+ONE HIGHER than the file flag** - writing 1 saves a PLAIN control, 2 a typedef, 3 a strict one - and
+every call answers `error 0` whichever you write, so the tool verifies from the saved file. **Nested
+typedefs** are one `{LV.Control}` `Replace` per cluster element, in the IDE's application instance -
+and **all of them in ONE open and ONE save**: two separate runs left a stray copy of the inner
+typedef at the head of the `.ctl`'s type list, which only a check on `VCTP/TopLevel` saw.
+`docs/cold-build-typedef-gdevcon.md`.
 
 **AND A FLAG-PATCHED `.ctl` IS NOT FINISHED UNTIL LabVIEW HAS SAVED IT — measured 2026-09-18, and
 it is a HARD STOP, not a fidelity loss.** The fixture route this repository uses for every typedef
@@ -1461,6 +1554,15 @@ produced ten subVIs in about **11 minutes of wall clock against about 32 minutes
 time**, with no project contention at all — and the swaps then cost two calls, because a socket
 that appears on N nodes needs N calls whatever N is.
 
+**AND THE ORCHESTRATOR LISTS VIs WITH `lvai_add_vis_to_project`, NEVER BY HAND.** Measured
+2026-09-25 on the agent-driven ATM build: an agent's close saved the project while three helper VIs
+were loaded, LabVIEW listed them at target level, and a hand-written edit then listed the same three
+under `SubVIs` - so the next open answered **`Error 74`** and loaded nothing, a message about
+unflattening data rather than about the project. The tool lists as a file edit with the project
+closed, moves a target-level entry into the folder instead of adding a second one, and repairs any
+file already listed twice; every close sweep repairs one too, and `lvai_open_file` refuses such a
+project by name (`duplicateProjectEntries`). `docs/cold-build-atm-agents-pc.md` §2.
+
 **Two roster gaps surfaced doing it, both now closed.** `labview-vi-generator` and
 `labview-vi-editor` had neither `lvai_placeholder_subvi` nor `lvai_swap_subvis`, while this file
 calls that pair the only route by which a generated VI calls project-local code — so an agent told
@@ -1597,7 +1699,13 @@ a window is visible to whoever is at the machine, which is why it is a retry and
 precondition.
 
 **A GENERATED METHOD CANNOT READ ITS OWN FIELDS THROUGH AN AIXML `Call`** — `Error 53, Unsupported
-SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured. So a generated method either takes
+SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured — **with the class NOT loaded.**
+Measured 2026-09-25: once one member of the class is open, `ConvertAIXMLToVI` resolves
+`X.lvclass\3AAccessor.vi` for a caller OUTSIDE the class. A method of the SAME class authored that
+way is not measured, and `lvai_add_class_method` converts with the project CLOSED — the state in
+which the call does not resolve — while its validate classifier (`IsClassTypeComplaint`, any
+message containing `.lvclass`) would wave the `Unsupported SubVI: X.lvclass:…` refusal through as
+class-wire strictness. `docs/aixml-call-loaded-vi.md` §4. So a generated method either takes
 its parameters on the connector pane, or reaches its accessors through `lvai_placeholder_subvi` plus
 `lvai_swap_subvis`, **and that route works for accessors — this clause said it collapsed and that was
 wrong.** Written 2026-09-03 from an agent's reasoning rather than a measurement, it claimed
@@ -2299,9 +2407,9 @@ literally it argued away 600 usable palette VIs.
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |
 | How do I create a class and its accessors, end to end? | `.claude/agents/labview-class-generator.md` | — |
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
-| How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
+| How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` to write it, `lvai_run_caraya_tests` to run it — answers from the JUnit report; the runner's `error out` source names the wrong VI, measured |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — three case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value` |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — four case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value`, and `expectFieldValue` beside them for a method that CHANGES the field. `inputs` sets ANY input, required or not - a name the method does not have is refused. Calls the real methods directly when the class's project is found |
 | What does a cold build of the WHOLE chain look like, and what does it catch? | `docs/cold-build-thermostat.md` | — |
 | What does a SECOND cold build catch, and which generators are still wrong? | `docs/cold-build-datalogger.md` | — |
 | Do those fixes hold in a real build, and what is still silently wrong? | `docs/cold-build-alarmgate.md` | — |
@@ -2317,11 +2425,17 @@ literally it argued away 600 usable palette VIs.
 | Which attribute is required even on an UNWIRED terminal? | `docs/cold-build-shakerrig.md` | — |
 | Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
 | How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
+| Can a whole application be built with NO stub files and NO pyLabVIEW, and how are the agents split? | `docs/cold-build-atm-no-stubs.md` | — |
+| How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
+| What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
+| Can a NESTED typedef cluster in a class be built with no pyLabVIEW, and does AIXML have a typedef constant? | `docs/cold-build-typedef-gdevcon.md` | — |
+| How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
+| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7 | `lvai_set_constant` — by label, numeric/boolean/string/enum, verified from a fresh export |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |
@@ -2335,7 +2449,8 @@ literally it argued away 600 usable palette VIs.
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
-| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
+| Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` — open the target (or one member of its class) with `lvai_open_file` first; it converts past the `Unsupported SubVI` refusal and gates on executability. `lvai_validate_aixml` alone always refuses it. Plain VIs and class members measured; a `.ctl` is not accepted |
+| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`; `lvai_describe_class` reads each field's DEFAULT back |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I add a FIELD to a class that ALREADY has members? | `docs/lvclass-creation.md` §9 | `lvai_add_class_field` — `lvai_create_class` only CREATES and its `overwrite` drops every member, so this looked unreachable and cost a method written to take a value and NOT store it. It is the SAME provider on the same route, and it APPENDS — measured on a fixture with accessors before it was run for real |
@@ -2346,6 +2461,7 @@ literally it argued away 600 usable palette VIs.
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
 | Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
 | A coercion dot whose source is a CONTROL, not a constant | `docs/typedef-disconnect.md` §13a | `lvai_bind_pane_typedef` — `lvai_bind_typedef_constants` finds its target by CONSTANT label and cannot reach a pane control. Needs the owning `.lvclass`, and gates `ok` on the SAVED FILE |
+| How do I CREATE a typedef `.ctl`, with typedefs inside a cluster? | `docs/cold-build-typedef-gdevcon.md` | `lvai_create_typedef` — VI Server alone, verified from the saved file. Create inner typedefs first; `elementTypedefsJson` binds the cluster's elements in one run |
 | NI's accessor wizard answers `Error 1061` on a typedef field | `docs/typedef-disconnect.md` §13 | `lvai_resave_ctl` — a flag-patched `.ctl` still carries the generator's connector pane; `lvai_describe_ctl` flags it as `needsLabviewSave` with `wrappedType: Function` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |

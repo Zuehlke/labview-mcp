@@ -42,9 +42,9 @@ internal sealed class IconTools(LvaiConnection connection)
         measured on two VIs - so re-apply after every regeneration. It is safe in the other
         direction: setting an icon does not leave the VI in memory, so the path can still be
         regenerated afterwards.
-        DO NOT judge the result by errorCode: 91 with empty outputs is the known
-        RunVIAsTopLevel read-back artifact and appears on success. Use the `verified` field,
-        and look at the read-back PNG to see what actually landed in the VI.
+        `ok` IS `verified`, and on a verified run `errorCode` is 0: RunVIAsTopLevel's own 91 - the
+        known read-back artefact, which appears on success - is kept under runnerErrorCode. Look at
+        the read-back PNG to see what actually landed in the VI.
         """)]
     public async Task<string> SetViIconAsync(
         [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
@@ -197,7 +197,7 @@ internal sealed class IconTools(LvaiConnection connection)
                 warnings.Add("No read-back file was written, so the icon was probably NOT applied. " +
                              "Check errorMessage, and that the VI is not read-only or locked by a library.");
 
-            return Json.Message(response,
+            return Verdict(Json.Message(response,
                 ("verified", JsonValue.Create(verified)),
                 ("helperViPath", JsonValue.Create(helperVi)),
                 ("helperAixmlPath", JsonValue.Create(Path.GetFullPath(aixml))),
@@ -213,10 +213,35 @@ internal sealed class IconTools(LvaiConnection connection)
                 ("iconImageSize", JsonValue.Create(iconSize)),
                 ("warnings", warnings),
                 ("note", JsonValue.Create(
-                    "errorCode 91 with empty outputs is expected and does NOT mean failure - " +
-                    "RunVIAsTopLevel cannot read this helper's indicators back. Judge by " +
-                    "`verified`, and open readBackPath to see the icon now stored in the VI.")));
+                    "Judged by `verified` - a read-back file written during this call - and not by " +
+                    "RunVIAsTopLevel, which cannot read this helper's indicators back and answers " +
+                    "91 on success; that code is kept under runnerErrorCode. Open readBackPath to " +
+                    "see the icon now stored in the VI."))), verified);
         });
+
+    /// <summary>
+    /// `ok` and `errorCode` from `verified`, with RunVIAsTopLevel's own code kept aside.
+    ///
+    /// WHY. The answer used to carry `errorCode 91` on every SUCCESSFUL run - the read-back artefact
+    /// of RunVIAsTopLevel - with `verified: true` beside it and a note saying to ignore the code. An
+    /// agent reported it as a finding on the third TypedefAfterGDevCon build (2026-09-25): a field
+    /// named errorCode that must be ignored is read as an error. On a verified run it is 0 now, and
+    /// the runner's 91 sits under runnerErrorCode; an unverified run keeps the real code.
+    /// </summary>
+    internal static string Verdict(string answer, bool verified)
+    {
+        if (System.Text.Json.Nodes.JsonNode.Parse(answer) is not JsonObject o) return answer;
+        var code = o["errorCode"]?.GetValue<int>() ?? 0;
+        o["ok"] = verified;
+        if (verified && code != 0)
+        {
+            o["runnerErrorCode"] = code;
+            o["runnerErrorMessage"] = o["errorMessage"]?.DeepClone();
+            o["errorCode"] = 0;
+            o["errorMessage"] = "";
+        }
+        return Json.Document(o);
+    }
 
     /// <summary>
     /// Validate then generate the helper VI. Returns null on success, or a ready-made error

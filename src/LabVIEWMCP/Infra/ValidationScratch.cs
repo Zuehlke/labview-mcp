@@ -21,8 +21,15 @@ namespace LabVIEWMcp.Infra;
 /// validating every new document under a scratch name first. Doing it here costs one temp file and
 /// removes the trap: the caller's real name is never handed to LabVIEW by the validate path at all.
 ///
-/// SCOPE IS VALIDATION ONLY. Conversion must of course use the real name - that is the point of
-/// converting - so nothing here touches <see cref="LabVIEWMcp.Tools.AixmlTools"/>'s convert path.
+/// CONVERSION MAY USE IT TOO, and this comment said the opposite until 2026-09-25 ("conversion must
+/// of course use the real name"). Measured that day: a document with <c>_name="IMC Caller.vi"</c>
+/// converted onto <c>Control\IMC Caller B.vi</c> came out as a VI called <c>IMC Caller B.vi</c> -
+/// the saved VI takes its name from the FILE, not from <c>_name</c>. And a failed CONVERT burns the
+/// name exactly as a failed validate does: a 53 on <c>IMC Multiply Caller.vi</c> was followed by
+/// <c>1051</c> at <c>Save:Instrument</c> for the same name, while the same document renamed
+/// converted clean. So <see cref="LabVIEWMcp.Tools.BulkTools"/> converts under a throwaway name
+/// whenever a conversion is likely to be refused - the loaded-subVI route, which converts past a
+/// validate that named only <c>Unsupported SubVI</c> targets.
 /// </summary>
 internal sealed class ValidationScratch : IDisposable
 {
@@ -54,7 +61,8 @@ internal sealed class ValidationScratch : IDisposable
     /// <see cref="SymbolicUids.Prepare"/> does and for the same reason: a file this cannot parse
     /// must still reach LabVIEW so that LabVIEW's own diagnosis is what the caller sees.
     /// </summary>
-    internal static ValidationScratch Create(string aixmlPath, bool preserveName)
+    internal static ValidationScratch Create(string aixmlPath, bool preserveName,
+                                             string prefix = "LVMCP Validate")
     {
         if (preserveName) return new ValidationScratch(aixmlPath, null, [], null);
 
@@ -83,7 +91,7 @@ internal sealed class ValidationScratch : IDisposable
 
         // Unique per call, so a refusal can never burn a name a later call wants - not even this
         // same document's, validated twice.
-        var throwaway = $"LVMCP Validate {Guid.NewGuid():N}"[..24] + ".vi";
+        var throwaway = $"{prefix} {Guid.NewGuid():N}"[..(prefix.Length + 10)] + ".vi";
         foreach (var element in carriers) element.SetAttributeValue("_name", throwaway);
 
         try

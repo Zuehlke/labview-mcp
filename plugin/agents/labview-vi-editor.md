@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -234,10 +234,16 @@ the whole workflow is possible.
    empty VI — regenerating from it would replace the user's VI with nothing. Stop.
 2. `lvai_validate_aixml` on that **untouched** export.
 
-Step 2 is the decisive one, and the reason is structural: **no `Call` target syntax reaches your
-own code.** Not a bare name, not an absolute path, not a library-qualified name even while that
-library is open in the IDE — measured across all of them. So a VI that calls a project-local or
-library-local subVI *cannot be expressed in AIXML that the generator accepts*:
+Step 2 is the decisive one, and what it decides CHANGED on 2026-09-25. **`ValidateAIXML` never
+resolves your own code** - not by bare name, not by path, not library-qualified - so a VI that calls
+a project-local subVI is always refused here. But **`ConvertAIXMLToVI` resolves a project VI by its
+bare name once that VI is LOADED** (`docs/aixml-call-loaded-vi.md`), and `lvai_generate_vi` converts
+past a refusal whose `Errors:` block names ONLY `Unsupported SubVI` lines, then gates on
+`execState`. So such a VI IS regenerable: open each callee named in the refusal through the project
+with `lvai_open_file` (never the VI you are editing - that one must stay unloaded, or the
+regeneration answers `Error 1357`), then regenerate with `lvai_generate_vi` and read `loadedSubVIs`.
+Plain VIs and class members are measured; a PROJECT-LIBRARY member (`X.lvlib:VI.vi`) as a target is
+NOT, so for one of those treat the refusal below as the old stop. A refusal that looks like this:
 
 ```
 Error 53 ... Manager call not supported.
@@ -250,14 +256,22 @@ Read the two messages apart — the distinction is the whole diagnosis:
 
 | Message | Meaning |
 |---|---|
-| `Unsupported SubVI: X` | the target was **never resolved** → this VI cannot be regenerated |
+| `Unsupported SubVI: X` | the target was **not resolved by the validator** → regenerable once X is loaded (open it through the project, then `lvai_generate_vi`); still a stop when X is a project-LIBRARY member (unmeasured) or lives in an `.llb` |
 | `Object terminal not found` | the target **was** resolved, only a terminal name is wrong → fixable |
 
 The second line above is just a knock-on: an unresolved target has no terminals, so its wires
 fail too. Express VIs (`Ex_Inst_*.vi`) fail the same way.
 
-**If the pristine export does not validate, stop.** Nothing has been touched yet, which is the
-point of doing this first. Return:
+**If the pristine export's refusal names ONLY `Unsupported SubVI` lines for plain project VIs or
+class members, PROVE THE ROUND TRIP before stopping.** Open each named callee through the project
+(`lvai_open_file`), then `lvai_generate_vi` the UNTOUCHED export to a SCRATCH path (never the VI's
+own path) and read `loadedSubVIs.executable`. `true` means the VI is regenerable on the loaded
+route: continue, and generate the edited version the same way later. Delete the scratch VI
+afterwards. Nothing of the user's has been touched by that probe.
+
+**Otherwise - any other refusal line, a project-LIBRARY member, an `.llb` target, or a probe that
+comes back not executable - stop.** Nothing has been touched yet, which is the point of doing this
+first. Return:
 
 ```
 CANNOT PROCEED
@@ -267,16 +281,19 @@ Blocking calls (targets the generator cannot resolve):
   - MyLib.lvlib:Helper.vi
   - Utilities/Parse Line.vi
 
-Why: AIXML has no Call target syntax that reaches project- or library-local subVIs,
-so these nodes cannot be written back. Measured across bare names, absolute paths and
-lvlib-qualified names.
+Why: these targets did not resolve even with the callees loaded (or are of a kind the
+loaded route is not measured for: a project-library member, a VI inside an .llb), so
+these nodes cannot be written back.
 
 What can still be done:
   - edit the VI by hand in the IDE (this agent can describe the change precisely)
   - build the new logic as a NEW subVI (labview-vi-generator) and wire it in by hand
 ```
 
-This gate is why most real application VIs are out of reach and most leaf/utility VIs are not.
+This gate used to put most real application VIs out of reach, because 70 % of them call the
+project's own subVIs (`docs/aixml-gap-census.md`). Since the loaded route (2026-09-25) that share
+is reachable in principle; what still stops a VI is a library-member target, an `.llb` target, or
+a construct AIXML cannot carry.
 Find out in two calls rather than after an hour.
 
 ### Phase 3 — Has the new functionality already been built?
@@ -527,9 +544,11 @@ re-apply it.
   earlier — and a **silent `errorCode 0`** since 2026-09-16, measured with the VI closed and again
   with it open in the IDE, the export identical both times. Do not call it and do not re-measure
   it; the user asks for it by name or it does not happen.
-- **No `Call` target syntax reaches your own code** — bare name, absolute path and
+- **`ValidateAIXML` resolves none of your own code** — bare name, absolute path and
   `lvlib:`-qualified name were all measured as `Unsupported SubVI`, the last one even with the
-  library open in the IDE. The boundary is palette reachability, not library membership.
+  library open in the IDE. **`ConvertAIXMLToVI` does resolve a LOADED project VI or class member by
+  bare name** (measured 2026-09-25), which is what the Phase 2 probe above uses; a loaded
+  project-library member is not measured.
 - **`Unsupported SubVI` means unresolved; `Object terminal not found` means resolved.** The
   error message is the discriminator, which is what makes the Phase 2 gate cheap.
 - **AIXML carries no coordinates, and the exporter drops decorations.** `FreeLabel` survives.
@@ -620,9 +639,19 @@ the `Event Data Node` - so there the documented route stands: a labelled placeho
 into a PRIM input, plus `lvai_set_event_data_fields` as a third build step. Do not generalise the
 shortcut past front-panel events; the two cases look alike on a diagram and are not.
 
-**`lvai_placeholder_subvi` PLUS `lvai_swap_subvis` IS THE ONLY ROUTE BY WHICH A GENERATED VI CALLS
-PROJECT-LOCAL CODE.** AIXML refuses a project VI as a `Call` target outright (`Error 53, Unsupported
-SubVI`), in every spelling. Do not hand-build a stand-in: the clone must match the subject's pane
+**A REGENERATED VI CALLS PROJECT-LOCAL CODE BY ITS BARE NAME ONCE THAT CODE IS LOADED - no stub.**
+This paragraph said until 2026-09-25 that `lvai_placeholder_subvi` plus `lvai_swap_subvis` was the
+ONLY route; that is superseded. Open each callee through its project with `lvai_open_file`, write
+`<Call target="Find Account.vi" .../>`, and regenerate with `lvai_generate_vi`: `ValidateAIXML`
+refuses it with `Unsupported SubVI` in every state, and the tool converts past exactly that refusal
+and gates on `execState` - read `loadedSubVIs` in its answer. Measured over a whole CLD build,
+2026-09-25: every caller executable on the first generate, zero stubs
+(`docs/cold-build-atm-no-stubs.md`). **When you opened a project, close it when you are done** -
+`lvai_close_active_project` with `projectPath` - or the next file edit of the `.lvproj` is lost to
+LabVIEW's save.
+
+**THE PLACEHOLDER ROUTE IS THE FALLBACK**, for when the callee cannot be loaded - most often because
+other agents share the LabVIEW (below). Do not hand-build a stand-in: the clone must match the subject's pane
 terminal for terminal, and an inexact one is `Error 7, Bad Linkage` with nothing in the message
 about panes. Measured 2026-09-16 - an agent whose roster lacked the tool built its own socket VI
 from AIXML, correctly but by luck, with no way to know the rule it was re-deriving.

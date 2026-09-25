@@ -200,10 +200,7 @@ internal sealed class RunTools(LvaiConnection connection)
                     "control that is not set keeps its own default.",
                     new { inputName = empty, inputCount = inputs.Count });
 
-            var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
-            request.Inputs["VI Path"] = Path.GetFullPath(viPath);
-            request.Inputs["Input Names"] = string.Join("\n", inputs.Select(i => i.Key));
-            request.Inputs["Input Values"] = string.Join("\n", inputs.Select(i => i.Value));
+            var request = HelperRequest(helperVi, viPath, inputs, timed ? runForMs : 0);
 
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
@@ -324,6 +321,31 @@ internal sealed class RunTools(LvaiConnection connection)
 
     /// <summary>The control the timed runner takes its budget on; its presence is the test.</summary>
     internal const string RunForMsControlName = "run for ms";
+
+    /// <summary>
+    /// The helper call. <paramref name="runForMs"/> above zero is written into the timed helper's
+    /// <c>run for ms</c> control, as TEXT because that control is a string.
+    ///
+    /// IT WAS NEVER WRITTEN AT ALL until 2026-09-25. <c>runForMs</c> chose the timed helper and
+    /// was echoed back in the answer, and the helper then ran for its own default of
+    /// <c>"1000"</c> whatever was asked: measured on an event-driven main VI, 2500 and 5000 both
+    /// returned after ~1.07 s, while the same helper driven directly with 4000 ran 4.06 s. The
+    /// snapshot a caller received was always the first second of the run, which on a slow loop
+    /// is exactly the state that has not happened yet.
+    /// </summary>
+    internal static RunVIAsTopLevelRequest HelperRequest(string helperVi, string viPath,
+                                                        IReadOnlyList<KeyValuePair<string, string>> inputs,
+                                                        int runForMs)
+    {
+        var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
+        request.Inputs["VI Path"] = Path.GetFullPath(viPath);
+        request.Inputs["Input Names"] = string.Join("\n", inputs.Select(i => i.Key));
+        request.Inputs["Input Values"] = string.Join("\n", inputs.Select(i => i.Value));
+        if (runForMs > 0)
+            request.Inputs[RunForMsControlName] =
+                runForMs.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return request;
+    }
 
     /// <summary>
     /// Whether a caller-named helper can honour runForMs at all. A null path means the default

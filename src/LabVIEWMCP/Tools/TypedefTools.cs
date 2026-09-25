@@ -497,8 +497,11 @@ internal sealed class TypedefTools(LvaiConnection connection)
     public async Task<string> CoercionDotsAsync(
         [Description(@"Absolute path to the .vi to inspect")] string viPath,
         [Description("""
-            Check only this subVI call, by its VI Name - e.g. 'CalculateSomething.vi'. Omit to
-            sweep every subVI call on the diagram, which costs one helper run per call.
+            Check only this subVI call, by its VI Name - e.g. 'CalculateSomething.vi'. A class or
+            library member may be named bare ('Write Config.vi') or qualified
+            ('Channel.lvclass:Write Config.vi'); a name that matches nothing is refused with the
+            names that ARE on the diagram. Omit to sweep every subVI call on the diagram, which
+            costs one helper run per call.
             """)]
         string? subViName = null,
         [Description("""
@@ -559,8 +562,21 @@ internal sealed class TypedefTools(LvaiConnection connection)
                     "answer follows.",
                     new JsonObject { ["run"] = JsonNode.Parse(first) });
 
+            var matched = Nodes(firstValues, subViName);
+            if (subViName is { Length: > 0 } && matched.Count == 0)
+                return Json.Error("subViNotOnDiagram",
+                    $"No subVI call on this diagram is named '{subViName}'. A class or library " +
+                    "member is matched by its bare name as well as its qualified one; the names " +
+                    "actually on the diagram are listed below.",
+                    new
+                    {
+                        subViName,
+                        subVisOnDiagram = Nodes(firstValues, null).Select(n => n.Name)
+                            .Distinct(StringComparer.Ordinal).ToArray(),
+                    });
+
             var answers = new List<(string SubVi, int NodeIndex, string Answer)>();
-            foreach (var node in Nodes(firstValues, subViName))
+            foreach (var node in matched)
                 answers.Add((node.Name, node.Index, await RunFor(node.Index)));
 
             return DescribeDots(answers, viPath, helperVi, aixml, helperGenerated);
@@ -1293,9 +1309,22 @@ internal sealed class TypedefTools(LvaiConnection connection)
         StringArray(values, "subvis seen")
             .Select((name, index) => (Name: name, Index: index))
             .Where(n => n.Name.Length > 0)
-            .Where(n => subViName is null ||
-                        string.Equals(n.Name, subViName, StringComparison.Ordinal))
+            .Where(n => subViName is null || MatchesSubVi(n.Name, subViName))
             .ToList();
+
+    /// <summary>
+    /// Whether a node's VI Name is the subVI asked for: the exact name, or - for a bare name - the
+    /// same VI inside a class or library, whose VI Name is QUALIFIED.
+    ///
+    /// WHY. `{LV.SubVI} VI Name` of a class member reads `Channel.lvclass:Write Config.vi`, so a
+    /// call with `subViName: "Write Config.vi"` matched nothing and answered `subViCalls: 0`,
+    /// `ok: false` - measured 2026-09-25 on the third TypedefAfterGDevCon build, where the agent had
+    /// to find the qualified spelling by itself. A qualified request still matches only itself.
+    /// </summary>
+    internal static bool MatchesSubVi(string nodeName, string requested) =>
+        string.Equals(nodeName, requested, StringComparison.Ordinal)
+        || (!requested.Contains(':') &&
+            nodeName.EndsWith(":" + requested, StringComparison.Ordinal));
 
     /// <summary>The runner's `values` map, or null when the payload is not readable.</summary>
     private static JsonObject? ValuesOf(string runnerAnswer)

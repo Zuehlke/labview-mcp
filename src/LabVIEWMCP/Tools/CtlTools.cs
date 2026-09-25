@@ -51,11 +51,16 @@ internal sealed class CtlTools
         `errclust.llb\Error Cluster.ctl` are ordinary controls (`TypeDefVI="0"`). The success and
         the failure look identical from the calling side; only the source tells them apart.
         `controlVIType` is LabVIEW's own enum, reconstructed from the saved file rather than from a
-        running IDE: 0 not a typedef, 1 typedef, 2 strict typedef, 3 class private data. It agrees
-        with `{LV.VI} Control VI Type`, which `scripts/lvctl_kind.xml` reads the slow way.
+        running IDE: 0 not a typedef, 1 typedef, 2 strict typedef, 3 class private data.
+        `{LV.VI} Control VI Type` in VI Server is ONE HIGHER - 1 plain control, 2 typedef, 3 strict -
+        measured 2026-09-25: `scripts/lvctl_kind.xml` read 1 for a file this tool reads 0, and a
+        control saved with 1 written was not a typedef. This text claimed the two agreed until then.
         `bindable` is the verdict to act on, and `whyNotBindable` names the reason in one sentence.
         `wrappedType` is what the control actually carries - the type a binding would install, and
-        the type a generated constant must be authored as.
+        the type a generated constant must be authored as. Each entry of `fields` says its `kind`:
+        `enum` with its `items` (pylabview's `UnitUInt*` types), or `numeric` - which is what a RING is
+        too, because a ring keeps its labels on the panel rather than in the type. A field that is a
+        typedef instance names it in `typedef` and describes the type inside it.
         AND READ `needsLabviewSave`. A .ctl produced by the fixture route - generate a VI to a .ctl
         path, then patch the flags in the pylabview bundle - has never been written by LabVIEW and
         still carries that VI's CONNECTOR PANE, which shows up here as `wrappedType: "Function"`
@@ -275,11 +280,7 @@ internal sealed class CtlTools
             // caller sees types rather than indices.
             var resolved = int.TryParse((string?)child.Attribute("TypeID"), out var cid)
                            && cid >= 0 && cid < flat.Count ? flat[cid] : child;
-            fields.Add(new JsonObject
-            {
-                ["label"] = (string?)resolved.Attribute("Label") ?? (string?)child.Attribute("Label"),
-                ["type"] = (string?)resolved.Attribute("Type"),
-            });
+            fields.Add(Field(resolved, child, flat));
         }
 
         return new Wrapped(
@@ -287,6 +288,63 @@ internal sealed class CtlTools
             (string?)descriptor.Attribute("Type"),
             Detail(descriptor),
             fields);
+    }
+
+    /// <summary>
+    /// One field as the caller needs it: label, type, and - where the type says so - what KIND of
+    /// control it is.
+    ///
+    /// ENUM OR RING, answered from the type. pylabview names an enum `UnitUInt8/16/32` and carries
+    /// its items as `EnumLabel` children; a ring is an ordinary `NumUInt16` (or any numeric) whose
+    /// labels live on the front panel, not in the type. Until 2026-09-25 only `type` was reported,
+    /// so `UnitUInt16` read as "some 16-bit number" and a test agent could not tell whether index 2
+    /// meant anything - measured on the second TypedefAfterGDevCon build. A field that is itself a
+    /// TYPEDEF instance names the `.ctl` and describes the type inside it.
+    /// </summary>
+    internal static JsonObject Field(XElement resolved, XElement reference,
+                                     IReadOnlyList<XElement> flat, int depth = 0)
+    {
+        var field = new JsonObject
+        {
+            ["label"] = (string?)resolved.Attribute("Label") ?? (string?)reference.Attribute("Label"),
+            ["type"] = (string?)resolved.Attribute("Type"),
+        };
+
+        var inner = resolved;
+        if ((string?)resolved.Attribute("Type") == "TypeDef")
+        {
+            field["typedef"] = (string?)resolved.Element("Label")?.Attribute("Text");
+            if (resolved.Element("TypeDesc") is { } nested)
+            {
+                inner = nested;
+                field["label"] ??= (string?)nested.Attribute("Label");
+                field["innerType"] = (string?)nested.Attribute("Type");
+            }
+        }
+
+        var innerType = (string?)inner.Attribute("Type") ?? "";
+        var items = inner.Elements("EnumLabel").Select(e => (JsonNode?)e.Value).ToList();
+        // `UnitUInt8/16/32` are the ENUM types; `UnitFloat*` and `UnitComplex*` are numerics
+        // carrying a physical unit, which is the same "Unit" prefix in pylabview's names and
+        // not an enum at all (LVdatatype.py, 0x15-0x17 against 0x19-0x1E).
+        if (innerType.StartsWith("UnitUInt", StringComparison.Ordinal) || items.Count > 0)
+        {
+            field["kind"] = "enum";
+            field["items"] = new JsonArray([.. items]);
+        }
+        else if (innerType.StartsWith("Num", StringComparison.Ordinal) ||
+                 innerType.StartsWith("Unit", StringComparison.Ordinal))
+            field["kind"] = "numeric";      // a ring is one of these; its labels are on the panel
+        else if (innerType == "Cluster" && depth < 4)
+        {
+            // A cluster's members are references into the flat list, one level down each.
+            field["members"] = new JsonArray([.. inner.Elements("TypeDesc").Select(member =>
+                (JsonNode)Field(
+                    int.TryParse((string?)member.Attribute("TypeID"), out var id)
+                        && id >= 0 && id < flat.Count ? flat[id] : member,
+                    member, flat, depth + 1))]);
+        }
+        return field;
     }
 
     /// <summary>The distinguishing attributes of a refnum or tag, which `Type` alone hides.</summary>

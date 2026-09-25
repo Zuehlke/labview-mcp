@@ -1,0 +1,49 @@
+<VI _name="lvtd_bind_elements.vi" description="Makes cluster elements of a typedef .ctl instances of other typedef files - ALL of them in ONE open and ONE save - and reports each element's typedef flag and label afterwards. {LV.Control} Replace with the typedef's Path does the binding\3B it is a silent no-op outside the IDE's own application instance\2C so the .ctl is opened through Project\3AActive Project and a project must be active. ONE RUN FOR EVERY ELEMENT IS THE POINT\3A measured 2026-09-25\2C binding two elements in two separate open-replace-save runs left an extra copy of the first typedef's descriptor at the head of the file's type list\2C where one run with both Replaces does not. Replace KEEPS the element's label\2C measured with a typedef whose own control is labelled differently\2C so no label is written. The lists arrive as strings separated by a vertical bar\2C a character no Windows path contains\2C because RunVIAsTopLevel cannot set an array control. No pylabview. Driven by lvai_create_typedef.">
+  <FreeLabel comment="Cluster elements become typedefs, one save" uid="4200" uid_parent="root"/>
+  <Control _name="ctl path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="typedef paths" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Control _name="element indices" type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
+  <Constant _name="delimiter" type="string" uid="4204" uid_parent="root" value="|" outputs="value:4204.value"/>
+  <Constant _name="string format" type="string" uid="4205" uid_parent="root" value="%s" outputs="value:4205.value"/>
+  <Constant _name="index format" type="string" uid="4206" uid_parent="root" value="%d" outputs="value:4206.value"/>
+  <Constant _name="string array type" type="array{string}" uid="4207" uid_parent="root" value="[]" outputs="value:4207.value"/>
+  <Constant _name="index array type" type="array{int32}" uid="4208" uid_parent="root" value="[]" outputs="value:4208.value"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4205.value,spreadsheet string:4202.value,array type (2D Dbl):4207.value,delimiter (Tab):4204.value" outputs="array:4209.paths" uid="4209" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4206.value,spreadsheet string:4203.value,array type (2D Dbl):4208.value,delimiter (Tab):4204.value" outputs="array:4219.indices" uid="4219" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4218.path" uid="4218" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4211.app,reference out:,error out:4211.err" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4218.path,error in (no error):4211.err" outputs="vi reference:4212.vi,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:4212.vi,error in (no error):4212.err" outputs="Front Panel:4213.panel,reference out:,error out:4213.err" type="{LV.VI}" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4213.panel,error in (no error):4213.err" outputs="Controls[]:4214.ctrls,reference out:,error out:4214.err" type="{LV.Panel}" uid="4214" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4214.ctrls,index:" outputs="element:4215.el" uid="4215" uid_parent="root"/>
+  <Constant type="ref{LV.Cluster}" value="" outputs="value:4216.value" uid="4216" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:4215.el,error in:4214.err,target class:4216.value" outputs="specific class reference:4217.cl,error out:4217.err" uid="4217" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4209.paths" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4219.indices" mode="index" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4217.cl" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4217.err" outputs="value:4311.acc" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4327.err" outputs="value:4312.err" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <Node _name="String To Path" inputs="string:4301.value" outputs="path:4320.path" uid="4320" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4303.value,error in (no error):4311.acc" outputs="Controls[]:4321.c1,reference out:,error out:4321.err" type="{LV.Cluster}" uid="4321" uid_parent="4300"/>
+    <Node _name="Index Array" inputs="array:4321.c1,index:4302.value" outputs="element:4322.e1" uid="4322" uid_parent="4300"/>
+    <Node _name="Invoke Node" inputs="reference:4322.e1,error in (no error):4321.err,Path:4320.path" outputs="reference out:,error out:4323.err,Replace:" target="Replace" type="{LV.Control}" uid="4323" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4303.value,error in (no error):4323.err" outputs="Controls[]:4324.c2,reference out:,error out:4324.err" type="{LV.Cluster}" uid="4324" uid_parent="4300"/>
+    <Node _name="Index Array" inputs="array:4324.c2,index:4302.value" outputs="element:4325.e2" uid="4325" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Is Typedef?,read+Label" inputs="reference:4325.e2,error in (no error):4324.err" outputs="Is Typedef?:4326.td,Label:4326.lbl,reference out:,error out:4326.err" type="{LV.Control}" uid="4326" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4326.lbl,error in (no error):4326.err" outputs="Text:4327.text,reference out:,error out:4327.err" uid="4327" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4326.td" mode="index" outputs="value:4330.value" uid="4330" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4327.text" mode="index" outputs="value:4331.value" uid="4331" uid_parent="4300"/>
+  </Structure>
+  <Node _name="Invoke Node" inputs="reference:4212.vi,error in (no error):4312.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4240.err" target="Save.Instrument" type="{LV.VI}" uid="4240" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4212.vi,error in (no error):4240.err" outputs="error out:4245.err" uid="4245" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4245.err" outputs="status:4246.status,code:4246.code,source:4246.source" uid="4246" uid_parent="root"/>
+  <Indicator _name="is typedef after" inputs="value:4330.value" type="array{int32}" uid="4250" uid_parent="root" value="[]"/>
+  <Indicator _name="labels after" inputs="value:4331.value" type="array{string}" uid="4251" uid_parent="root" value="[]"/>
+  <Indicator _name="status" inputs="value:4246.status" type="bool" uid="4253" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:4246.code" type="int32" uid="4254" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:4246.source" type="string" uid="4255" uid_parent="root" value=""/>
+</VI>

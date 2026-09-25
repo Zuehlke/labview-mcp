@@ -2545,7 +2545,20 @@ broadly.
 So a generated VI may freely call the palette — every `vi.lib` utility by bare file name, and every
 palette VI owned by a library by its qualified name. What it may not call is *your* code:
 project-local, library-local to the project you are editing, and even a loose `.vi` sitting in a
-directory.
+directory — **as long as that code is not loaded.**
+
+> **PROJECT-LOCAL CODE THAT IS OPEN IN LabVIEW RESOLVES — for conversion, not for validation.**
+> Measured 2026-09-25 on NI's hint; this section said "may not call your code" without the
+> qualifier until then. A loose `.vi` outside every installation tree, opened through its project
+> OR opened with no project at all, was accepted by bare name by `ConvertAIXMLToVI`
+> (`errorCode 0`); the caller ran correctly and was still executable from disk in a fresh LabVIEW.
+> Not loaded, or only a member of an active project, it is `Error 53` as the table above says.
+> `ValidateAIXML` refused the SAME document in every arm, bare name and both path spellings — which
+> is why the table was never contradicted: every row was taken by validating. A CLASS member
+> resolves the same way once one member of its class is open (`X.lvclass\3AMethod.vi`, class wires
+> chained between calls, executable in a fresh LabVIEW); a `.ctl` does not, neither as a `Call`
+> target nor as a `type=`. Project-library members are not measured yet.
+> `docs/aixml-call-loaded-vi.md`.
 
 **`lvai_palette_index` answers which names those are.** It reads the installed LabVIEW's own
 `menus\*.mnu` palette files, so the set is the one this station actually has — installed toolkits

@@ -1,0 +1,70 @@
+<VI _name="lvbd_set_constant.vi" description="Sets the VALUE of ONE block diagram constant\2C found by its LABEL\2C and saves the VI in place - the edit a negative control needs\2C without regenerating the test. The value arrives as text and is converted by `kind`\3A Digital through Fract/Exp String To Number\2C Boolean from TRUE or 1\2C anything else as the string itself. The diagram's All Objects[] are searched for a Constant whose Label text equals the label\3B objects that are not constants fail To More Specific Class inside the loop and are skipped. Reports the label it found - empty when none matched\2C in which case nothing is written. Driven by lvai_set_constant\2C which checks the result by exporting the VI again.">
+  <FreeLabel comment="One labelled constant gets a new value" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="constant label" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Control _name="value" type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
+  <Control _name="kind" type="string" uid="4204" uid_parent="root" value="String" outputs="value:4204.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4205.path" uid="4205" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4205.path" outputs="vi reference:4210.vi,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4210.vi,error in (no error):4210.err" outputs="Block Diagram:4211.bd,reference out:,error out:4211.err" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4211.bd,error in (no error):4211.err" outputs="All Objects[]:4212.objs,reference out:,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Constant type="ref{LV.Constant}" value="" outputs="value:4213.value" uid="4213" uid_parent="root"/>
+  <Constant type="ref{LV.Constant}" value="" outputs="value:4214.value" uid="4214" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4212.objs" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4202.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4213.value" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:,target class:4303.value" outputs="specific class reference:4310.k,error out:4310.err" uid="4310" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:4310.k,error in (no error):" outputs="Label:4311.label,reference out:,error out:4311.err" uid="4311" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4311.label,error in (no error):" outputs="Text:4312.text,reference out:,error out:4312.err" uid="4312" uid_parent="4300"/>
+    <Node _name="Equal?" inputs="x:4312.text,y:4302.value" outputs="x = y?:4313.eq" uid="4313" uid_parent="4300"/>
+    <Node _name="Select" inputs="t:4310.k,s:4313.eq,f:4321.acc" outputs="s? t\3Af:4314.sel" uid="4314" uid_parent="4300"/>
+    <ShiftReg uid="4320" uid_parent="4300">
+      <Left inputs="value:4214.value" outputs="value:4321.acc" uid="4321" uid_parent="4320"/>
+      <Right inputs="value:4314.sel" outputs="value:4330.const" uid="4322" uid_parent="4320"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:4330.const,error in (no error):4212.err" outputs="Label:4331.label,reference out:,error out:4331.err" uid="4331" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4331.label,error in (no error):4331.err" outputs="Text:4332.found,reference out:,error out:4332.err" uid="4332" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4204.value" uid="4400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4330.const" uid="4401" uid_parent="4400"/>
+    <Tunnel _id="In2" inputs="value:4203.value" uid="4402" uid_parent="4400"/>
+    <Tunnel _id="In3" inputs="value:4332.err" uid="4403" uid_parent="4400"/>
+    <Tunnel _id="Out1" outputs="value:4404.value" uid="4404" uid_parent="4400"/>
+    <CaseFrame selector="&quot;Digital&quot;" selectout="" uid="4410" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:4411.value" uid="4411" uid_parent="4410"/>
+      <Tunnel _id="In2" outputs="value:4412.value" uid="4412" uid_parent="4410"/>
+      <Tunnel _id="In3" outputs="value:4413.value" uid="4413" uid_parent="4410"/>
+      <Node _name="Fract/Exp String To Number" inputs="string:4412.value" outputs="number:4414.number" uid="4414" uid_parent="4410"/>
+      <Node _name="Property Node" fields="write+Value" type="{LV.Constant}" inputs="reference:4411.value,error in (no error):4413.value,Value:4414.number" outputs="reference out:,error out:4415.err" uid="4415" uid_parent="4410"/>
+      <Tunnel _id="Out1" inputs="value:4415.err" uid="4416" uid_parent="4410"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;Boolean&quot;" selectout="" uid="4420" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:4421.value" uid="4421" uid_parent="4420"/>
+      <Tunnel _id="In2" outputs="value:4422.value" uid="4422" uid_parent="4420"/>
+      <Tunnel _id="In3" outputs="value:4423.value" uid="4423" uid_parent="4420"/>
+      <Constant _name="True Text" outputs="value:4424.value" type="string" uid="4424" uid_parent="4420" value="TRUE"/>
+      <Constant _name="One Text" outputs="value:4425.value" type="string" uid="4425" uid_parent="4420" value="1"/>
+      <Node _name="To Upper Case" inputs="string:4422.value" outputs="all upper case string:4426.up" uid="4426" uid_parent="4420"/>
+      <Node _name="Equal?" inputs="x:4426.up,y:4424.value" outputs="x = y?:4427.a" uid="4427" uid_parent="4420"/>
+      <Node _name="Equal?" inputs="x:4426.up,y:4425.value" outputs="x = y?:4428.b" uid="4428" uid_parent="4420"/>
+      <Node _name="Or" inputs="x:4427.a,y:4428.b" outputs="x .or. y?:4429.bool" uid="4429" uid_parent="4420"/>
+      <Node _name="Property Node" fields="write+Value" type="{LV.Constant}" inputs="reference:4421.value,error in (no error):4423.value,Value:4429.bool" outputs="reference out:,error out:4430.err" uid="4430" uid_parent="4420"/>
+      <Tunnel _id="Out1" inputs="value:4430.err" uid="4431" uid_parent="4420"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" selectout="" uid="4440" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:4441.value" uid="4441" uid_parent="4440"/>
+      <Tunnel _id="In2" outputs="value:4442.value" uid="4442" uid_parent="4440"/>
+      <Tunnel _id="In3" outputs="value:4443.value" uid="4443" uid_parent="4440"/>
+      <Node _name="Property Node" fields="write+Value" type="{LV.Constant}" inputs="reference:4441.value,error in (no error):4443.value,Value:4442.value" outputs="reference out:,error out:4444.err" uid="4444" uid_parent="4440"/>
+      <Tunnel _id="Out1" inputs="value:4444.err" uid="4445" uid_parent="4440"/>
+    </CaseFrame>
+  </Structure>
+  <Node _name="Invoke Node" inputs="reference:4210.vi,error in (no error):4404.value,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4450.err" target="Save.Instrument" type="{LV.VI}" uid="4450" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.vi,error in (no error):4450.err" outputs="error out:4451.err" uid="4451" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4451.err" outputs="status:4452.status,code:4452.code,source:4452.source" uid="4452" uid_parent="root"/>
+  <Indicator _name="constant found" inputs="value:4332.found" type="string" uid="4460" uid_parent="root" value=""/>
+  <Indicator _name="status" inputs="value:4452.status" type="bool" uid="4461" uid_parent="root" value="false"/>
+  <Indicator _name="code" inputs="value:4452.code" type="int32" uid="4462" uid_parent="root" value="0"/>
+  <Indicator _name="source" inputs="value:4452.source" type="string" uid="4463" uid_parent="root" value=""/>
+</VI>

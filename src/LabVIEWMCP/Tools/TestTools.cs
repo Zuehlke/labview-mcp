@@ -48,11 +48,19 @@ internal sealed class TestTools(LvaiConnection connection)
     [Description("""
         MUTATING: writes a Caraya unit-test VI that calls viPath as an ordinary static subVI, one
         node per case, and leaves it ready to run.
-        It composes the whole route in one call: lvai_placeholder_subvi for a call node AIXML is
-        allowed to create, lvai_generate_vi for the test, then pylv_apply's retarget to point that
-        node at your VI. Each sub-answer comes back whole under `steps`, so a failure reads the same
-        as calling them by hand. Measured: 18 calls by hand before this existed, 10 of them editing
-        an object heap.
+        TWO ROUTES, and the answer's `route` says which ran and why. DIRECT, the default since
+        2026-09-25: the subject is opened through the .lvproj that lists it (found by itself, or
+        projectPath), the test's Call names the subject itself - a loaded project VI is a legal
+        Call target, docs/aixml-call-loaded-vi.md - and the project is closed again, which releases
+        the subject; the test is then listed under testFolderName (`projectEntry` step). No
+        placeholder, no retarget, no pylabview. When no
+        single project lists the subject, when it will not become active, or when the subject
+        still does not resolve, the PLACEHOLDER route runs as before: lvai_placeholder_subvi for a
+        call node AIXML is allowed to create, lvai_generate_vi for the test, then pylv_apply's
+        retarget to point that node at your VI. Either way the active project is closed at the
+        end. Each sub-answer comes back whole under `steps`, so a failure reads the same as calling
+        them by hand. Measured: 18 calls by hand before this existed, 10 of them editing an object
+        heap.
         casesJson is a JSON ARRAY, one object per test case:
           [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
         The only case keys are `label`, `inputs` and `expect`; ANY OTHER IS REFUSED BY NAME, with
@@ -80,6 +88,24 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <subject>.vi' beside the subject.")]
         string? testViPath = null,
+        [Description("""
+            The .lvproj the subject belongs to, for the DIRECT route. Omit it and the one project
+            at or up to three folders above the subject that LISTS it is used; with none, or with
+            more than one, the placeholder route runs instead and the answer says why.
+            """)]
+        string? projectPath = null,
+        [Description("""
+            Call the subject DIRECTLY instead of through a placeholder: open it through its
+            project, author the test's Call against the subject's own name, generate, close the
+            project. On by default. False forces the placeholder route.
+            """)]
+        bool directCall = true,
+        [Description("""
+            Virtual folder of the subject's project the test is listed in, on the DIRECT route.
+            LabVIEW's own save adopts the freshly generated test at the project's top level; that
+            entry is moved here. A test listed somewhere else BEFORE the call stays where it is.
+            """)]
+        string testFolderName = "Tests",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -107,6 +133,23 @@ internal sealed class TestTools(LvaiConnection connection)
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
 
+            // 0. THE DIRECT ROUTE FIRST. A subject open in LabVIEW is a legal Call target
+            // (docs/aixml-call-loaded-vi.md), which removes the placeholder, the retarget and the
+            // pylabview round trip in between. It either finishes the job or hands back WHY it
+            // could not start, and then the placeholder route below runs as it always has.
+            var route = new JsonObject { ["route"] = "placeholder" };
+            if (!directCall)
+                route["reason"] = "directCall was false.";
+            else
+            {
+                var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
+                                                         projectPath, testFolderName, steps, total,
+                                                         route, timeoutSeconds, ct);
+                if (done is not null) return done;
+                route["route"] = "placeholder";
+                route["reason"] = fallback;
+            }
+
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
                 .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null,
@@ -117,7 +160,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "placeholder", steps, total, testViPath, null,
                     "No placeholder, so there is no call node to give the test. Read the " +
                     "placeholder step - it says whether the subject could be exported and whether " +
-                    "user.lib could be written.");
+                    "user.lib could be written.", route: route);
 
             var stubName = stub["placeholder"]!.GetValue<string>();
             var terminals = Terminal.From(stub["terminals"] as JsonArray);
@@ -125,7 +168,8 @@ internal sealed class TestTools(LvaiConnection connection)
             if (Unknown(cases, terminals) is { } unknown)
                 return Outcome(false, "cases", steps, total, testViPath, null,
                     $"The cases name terminals the subject does not have: {unknown}. The " +
-                    "subject's terminals are listed in the placeholder step under `terminals`.");
+                    "subject's terminals are listed in the placeholder step under `terminals`.",
+                    route: route);
 
             // 2. author and generate against the placeholder
             var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -141,7 +185,8 @@ internal sealed class TestTools(LvaiConnection connection)
 
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, aixmlPath,
-                    "The test VI was not written. The generate step carries LabVIEW's own message.");
+                    "The test VI was not written. The generate step carries LabVIEW's own message.",
+                    route: route);
 
             // 3. point the call node at the subject
             var retarget = new JsonArray(new JsonObject
@@ -161,7 +206,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "retarget", steps, total, testViPath, aixmlPath,
                     "THE TEST VI WAS WRITTEN and is sound - what failed is repointing its call " +
                     $"from '{stubName}' at the subject, so it still calls the placeholder and " +
-                    "would test nothing. Read the retarget step.");
+                    "would test nothing. Read the retarget step.", route: route);
 
             // LabVIEW's own export of the result is the only thing that proves the swap landed.
             var targets = (Read(applied) as JsonObject)?["steps"]?.AsArray()
@@ -171,8 +216,170 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"Generated. {cases.Count} case(s), each a static call to " +
                 $"'{Path.GetFileName(viPath)}'. Run it through Caraya's runner with a Report Path " +
                 "ending in .xml and read the JUnit report - the VI's own error cluster carries " +
-                "only the first failed assertion.", targets?.DeepClone());
+                "only the first failed assertion.", targets?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// The test against the SUBJECT ITSELF: its project opened, its own name as the Call target,
+    /// the project closed again. Returns the finished answer, or null and the reason the
+    /// placeholder route has to run instead.
+    ///
+    /// WHAT IT REPLACES. The placeholder route is export -> clone a stub into user.lib -> generate
+    /// against it -> close the project -> pylabview extract -> retarget -> rebuild -> export to
+    /// verify. None of that is needed when the subject can be named: ConvertAIXMLToVI resolves a
+    /// project VI by bare name once it is loaded, and lvai_generate_vi now converts past the
+    /// validate refusal that always accompanies it and gates on executability instead.
+    ///
+    /// WHY THE PROJECT IS CLOSED AT THE END. Opening the subject is what makes it resolvable, and
+    /// it is also what makes the next regeneration OF THE SUBJECT answer Error 1357. The close
+    /// releases it, and its save lists the new test VI in the project, which is where CLAUDE.md
+    /// wants every generated VI. The placeholder route closed the active project too, inside its
+    /// retarget step.
+    /// </summary>
+    private async Task<(string? Done, string? Fallback)> DirectAsync(
+        string viPath, string testViPath, string subjectName, List<Case> cases,
+        string? projectPath, string testFolderName, JsonArray steps, Stopwatch total,
+        JsonObject route, int timeoutSeconds, CancellationToken ct)
+    {
+        // 1. the project that owns the subject
+        string project;
+        if (projectPath is { Length: > 0 })
+        {
+            if (!File.Exists(projectPath))
+                return (Json.Error("badArguments", $"No file at projectPath '{projectPath}'."), null);
+            project = Path.GetFullPath(projectPath);
+            route["projectFrom"] = "argument";
+        }
+        else
+        {
+            var owners = ProjectMembership.ProjectsListing(viPath);
+            if (owners.Count != 1)
+                return (null, owners.Count == 0
+                    ? $"No .lvproj at or up to {ProjectMembership.LevelsUp} folders above the " +
+                      "subject lists it, so there is no project to open it through. A library " +
+                      "or class member is never listed - its library is. Pass projectPath to " +
+                      "take the direct route anyway."
+                    : $"{owners.Count} projects list the subject ({string.Join(", ", owners)}); " +
+                      "pass projectPath to choose one.");
+            project = owners[0];
+            route["projectFrom"] = "discovered";
+        }
+        route["projectPath"] = project;
+        route["listedInProject"] = ProjectMembership.Lists(project, viPath);
+
+        // 2. the subject's own terminals - the same export the placeholder clones its pane from
+        var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                                      $"direct-subject-{Environment.ProcessId}.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(exportPath)!);
+        var export = await new AixmlTools(connection).ConvertViToAixmlAsync(
+            viPath, exportPath, returnContent: true, maxContentChars: 0,
+            timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
+        if (Read(export)?["xml"]?.GetValue<string>() is not { Length: > 0 } subjectXml ||
+            ViTerminals.Parse(subjectXml) is not { } subject)
+            return (null, "The subject could not be exported, so its terminals are unknown; the " +
+                          "placeholder route reports the same failure in its own words.");
+        if (subject.Instances.Count > 0 || subject.Inputs.Count + subject.Outputs.Count == 0)
+            return (null, "The subject is polymorphic or has no terminals; the placeholder route " +
+                          "refuses it with the specific reason.");
+
+        // A typedef on the pane is not a reason to fall back: the Call is to the REAL subject, so
+        // its terminals carry the typedef and only the constants the test wires in are bare.
+        var typedefs = await new TypedefTools(connection).PaneTypedefsAsync(viPath, timeoutSeconds, ct);
+        var terminals = Terminal.From(PlaceholderTools.Terminals(subject, typedefs));
+        steps.Add(new JsonObject
+        {
+            ["step"] = "subject",
+            ["viName"] = subject.ViName,
+            ["inputs"] = subject.Inputs.Count,
+            ["outputs"] = subject.Outputs.Count,
+            ["typedefTerminals"] = typedefs?.Count,
+        });
+
+        if (Unknown(cases, terminals) is { } unknown)
+            return (Outcome(false, "cases", steps, total, testViPath, null,
+                $"The cases name terminals the subject does not have: {unknown}. The subject's " +
+                "terminals are what lvai_vi_terminals prints for it.", route: Direct(route)), null);
+
+        // 3. load the subject THROUGH its project, which is what makes it resolvable
+        var open = await new ActionTools(connection).OpenFileAsync(
+            viPath, Path.GetFileName(viPath), project, Path.GetFileName(project),
+            checkActive: true, timeoutSeconds, ct);
+        steps.Add(new JsonObject { ["step"] = "openSubject", ["answer"] = Read(open) });
+        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+            opened["projectBecameActive"]?.GetValue<bool>() is not true)
+            return (null, "The subject's project did not become active, so the subject is not " +
+                          "known to be loaded - read the openSubject step.");
+
+        // 4. author the test against the subject's own name, and generate
+        var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                                     Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
+        await File.WriteAllTextAsync(aixmlPath,
+            TestAixml(testViPath, subjectName, subject.ViName.Replace(":", @"\3A"), cases, terminals),
+            ct);
+        var generated = await new BulkTools(connection).GenerateViAsync(
+            aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
+        var answer = Read(generated) as JsonObject;
+
+        // 5. release the subject whatever happened - a loaded subject blocks its own regeneration.
+        //    When a test was written, the release goes through the LISTING step, which closes the
+        //    project and then puts the test in testFolderName. A bare close left it wherever
+        //    LabVIEW's save dropped it - the project's top level, every time, measured 2026-09-25
+        //    on four ATM suites - and a later listing then correctly treated it as placed by
+        //    someone and left it there (docs/class-method-tooling.md D2).
+        if (!NotResolved(answer) && answer?["viExistsNow"]?.GetValue<bool>() is true)
+            steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath],
+                                               timeoutSeconds, ct, reopen: false));
+        else
+        {
+            var close = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
+        }
+
+        if (NotResolved(answer))
+            return (null, "The subject was opened through its project and still did not resolve " +
+                          "as a Call target (Error 53 at conversion). Nothing was written.");
+
+        if (answer?["viExistsNow"]?.GetValue<bool>() is not true)
+            return (Outcome(false, "generate", steps, total, testViPath, aixmlPath,
+                "The test VI was not written. The generate step carries LabVIEW's own message.",
+                route: Direct(route)), null);
+
+        if (answer["failedAtStep"]?.GetValue<string>() == "execState")
+            return (Outcome(false, "generate", steps, total, testViPath, aixmlPath,
+                "THE TEST VI WAS WRITTEN and LabVIEW cannot run it - read the generate step's " +
+                "execState. The direct route skipped validation for the subject call, which is " +
+                "what executability stands in for.", route: Direct(route)), null);
+
+        var typedefNote = typedefs is { Count: > 0 }
+            ? $" {typedefs.Count} of the subject's terminals are TYPEDEFS, and the case " +
+              "constants wired into them are the bare type, so each wears a coercion dot. Every " +
+              "constant is named after the terminal it feeds, so lvai_bind_typedef_constants can " +
+              "repair them with the project open."
+            : "";
+        return (Outcome(true, null, steps, total, testViPath, aixmlPath,
+            $"Generated. {cases.Count} case(s), each a static call to '{subject.ViName}', called " +
+            "DIRECTLY - no placeholder, no retarget. Run it through Caraya's runner with a Report " +
+            "Path ending in .xml and read the JUnit report - the VI's own error cluster carries " +
+            "only the first failed assertion." + typedefNote,
+            new JsonArray(JsonValue.Create(subject.ViName)), Direct(route)), null);
+    }
+
+    private static JsonObject Direct(JsonObject route)
+    {
+        route["route"] = "direct";
+        return route;
+    }
+
+    /// <summary>The direct route's one reason to fall back after generating: the target never resolved.</summary>
+    internal static bool NotResolved(JsonObject? generated) =>
+        generated?["failedAtStep"]?.GetValue<string>() == "convert" &&
+        generated["loadedSubVIs"] is not null &&
+        generated["steps"]?.AsArray().Any(s =>
+            s?["step"]?.GetValue<string>() == "convert" &&
+            s["errorCode"]?.GetValue<int>() == 53) == true;
 
     [McpServerTool(Name = "lvai_generate_class_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya round-trip test for a class's accessors")]
@@ -183,14 +390,24 @@ internal sealed class TestTools(LvaiConnection connection)
         hand for a three-class hierarchy: sockets generated one at a time, the test authored, then
         nineteen further calls alternating a node listing and a node swap. Everything below happens
         inside this one call.
-        WHY IT IS NOT lvai_generate_test. That tool's placeholder is a pane clone generated through
+        TWO ROUTES, and `route` in the answer says which ran and why. DIRECT, the default since
+        2026-09-25: one accessor is opened through the project that lists the class (found by
+        itself, or projectPath), the test names the REAL accessors - a class with one member open
+        is a legal Call target, docs/aixml-call-loaded-vi.md - each chain's seed `path` constant is
+        turned into the class with {LV.Constant} Replace, and the project is closed. When no single
+        project lists the class, or the accessors do not resolve, the SOCKET route runs:
+        WHY SOCKETS AT ALL. lvai_generate_test's placeholder is a pane clone generated through
         AIXML, and AIXML refuses a class-typed terminal - `Control with type=UDClassInst is not
         supported` - so it answers `stubRefused` for any class member. This route instead authors
         sockets whose class terminals are `path` stand-ins and then uses LabVIEW's own {LV.SubVI}
         Replace, which RE-TYPES THE WIRES where a pylabview link retarget cannot.
         casesJson is a JSON ARRAY, one object per field:
           [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
-        The only case keys are `field`, `value`, `label` and `type`; ANY OTHER IS REFUSED BY NAME,
+        A FRESH OBJECT'S DEFAULT is a case too - `expectDefault` in place of `value` reads the field
+        off the seed object with no Write and asserts that: {"field":"Gain","expectDefault":"1"}.
+        One round trip and one default case per field.
+        The only case keys are `field`, `value`, `expectDefault`, `label` and `type`; ANY OTHER IS
+        REFUSED BY NAME,
         with the accepted set listed and a pointer to the tool that can do what the stray key was
         reaching for. In particular a value the field should hold AFTER some method ran is
         lvai_generate_method_test's `expectFieldValue`, not a case key here.
@@ -231,11 +448,18 @@ internal sealed class TestTools(LvaiConnection connection)
             which is nearly always: nothing else writes a VI into a `.lvproj`, and a suite that is
             not listed is one the user cannot find. Measured 2026-08-29 - a complete, green, verified
             suite was handed over and the Project Explorer showed the classes and no tests at all.
-            The project is CLOSED before the file is edited and re-opened afterwards, because
-            LabVIEW's close saves its own copy over the file and would destroy the edit.
+            The project is CLOSED before the file is edited and left closed, because LabVIEW's
+            close saves its own copy over the file and would destroy the edit.
+            On the DIRECT route an omitted projectPath is not "list it nowhere": the route uses the
+            one project that lists the class, and lists the test there under testFolderName.
             """)]
         string? projectPath = null,
-        [Description("Virtual folder inside the project to list the tests in")]
+        [Description("""
+            Virtual folder inside the project to list the tests in. A test LabVIEW's own save has
+            just adopted at the project's top level - which is what happens to every test generated
+            with the project open - is MOVED into it; one that was listed elsewhere before this
+            call stays where it was, and `listedElsewhere` names it.
+            """)]
         string testFolderName = "Tests",
         [Description("""
             Further VIs to list in that same folder, ONE ABSOLUTE PATH PER LINE, plain text and NOT
@@ -265,6 +489,12 @@ internal sealed class TestTools(LvaiConnection connection)
             FAILED is reported whole regardless of this flag, so nothing diagnostic is lost.
             """)]
         bool verbose = false,
+        [Description("""
+            Call the accessors DIRECTLY instead of through sockets: open one of them through the
+            class's project, name the real accessors in the test, turn the seed constants into the
+            class, close the project. On by default. False forces the socket route.
+            """)]
+        bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -339,13 +569,33 @@ internal sealed class TestTools(LvaiConnection connection)
                 }
 
                 cases.Add(new ClassCase(i + 1, request.Field, type, request.Value,
-                                        request.Label ?? $"{request.Field} round trip",
-                                        write, read, seed));
+                                        request.Label ?? (request.DefaultOnly
+                                            ? $"{request.Field} defaults to {request.Value}"
+                                            : $"{request.Field} round trip"),
+                                        write, read, seed, request.DefaultOnly));
+            }
+
+            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classtest");
+            Directory.CreateDirectory(scratch);
+
+            // 0. THE DIRECT ROUTE FIRST: a class with one member open is a legal Call target for
+            // every member (docs/aixml-call-loaded-vi.md §4), which removes both sockets per field
+            // and both node swaps. It finishes the job or says why the socket route has to run.
+            var route = new JsonObject { ["route"] = "sockets" };
+            if (!directCall)
+                route["reason"] = "directCall was false.";
+            else
+            {
+                var (done, fallback) = await DirectClassTestAsync(
+                    lvclassPath, className, testViPath, cases, projectPath, testFolderName,
+                    alsoListInProject, scratch, keepAixml, verbose, steps, total, route,
+                    timeoutSeconds, ct);
+                if (done is not null) return done;
+                route["route"] = "sockets";
+                route["reason"] = fallback;
             }
 
             // 1. the sockets, all of them in one call
-            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classtest");
-            Directory.CreateDirectory(scratch);
             var socketRoot = SocketDirectory();
             if (socketRoot is null)
                 return Json.Error("noUserLib",
@@ -357,6 +607,8 @@ internal sealed class TestTools(LvaiConnection connection)
                 foreach (var (name, isWrite) in new[] { (test.WriteSocket, true),
                                                         (test.ReadSocket, false) })
                 {
+                    // A default case writes nothing, so it has no Write socket to author or swap.
+                    if (isWrite && test.DefaultOnly) continue;
                     var source = Path.Combine(scratch, Path.ChangeExtension(name, ".xml"));
                     await File.WriteAllTextAsync(
                         source, SocketAixml(name, test.DataType, isWrite), ct);
@@ -391,7 +643,7 @@ internal sealed class TestTools(LvaiConnection connection)
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return Outcome(false, "sockets", steps, total, testViPath, null,
                     "The sockets could not all be generated, so the test was not authored. Each " +
-                    "socket's own answer is in the sockets step.");
+                    "socket's own answer is in the sockets step.", route: route);
 
             // 2. the test itself, against those sockets
             var testAixml = Path.Combine(scratch,
@@ -406,7 +658,8 @@ internal sealed class TestTools(LvaiConnection connection)
             { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
-                    "The test VI was not written. The generate step carries LabVIEW's own message.");
+                    "The test VI was not written. The generate step carries LabVIEW's own message.",
+                    route: route);
 
             // 3. swap every socket for its accessor and every path constant for the class - nodes
             //    first, constants last, which is what lvai_swap_subvis enforces.
@@ -414,8 +667,9 @@ internal sealed class TestTools(LvaiConnection connection)
             var seeds = new JsonArray();
             foreach (var test in cases)
             {
-                swaps.Add(new JsonObject
-                { ["socket"] = test.WriteSocket, ["target"] = test.WriteAccessor });
+                if (!test.DefaultOnly)
+                    swaps.Add(new JsonObject
+                    { ["socket"] = test.WriteSocket, ["target"] = test.WriteAccessor });
                 swaps.Add(new JsonObject
                 { ["socket"] = test.ReadSocket, ["target"] = test.ReadAccessor });
                 seeds.Add(new JsonObject
@@ -436,7 +690,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "swap", steps, total, testViPath, testAixml,
                     "THE TEST VI WAS WRITTEN and still calls the sockets, so it would test " +
                     "nothing. Read the swap step - `socketsNotOnDiagram` and `socketsLeft` say " +
-                    "which half failed.");
+                    "which half failed.", route: route);
 
             if (!keepAixml)
             {
@@ -470,7 +724,252 @@ internal sealed class TestTools(LvaiConnection connection)
                 "break one case on purpose once, because an all-green first run proves very " +
                 "little. THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
                 "needs; open it when you are ready to RUN the suite.",
-                swapAnswer["callTargets"]?.DeepClone());
+                swapAnswer["callTargets"]?.DeepClone(), route);
+        });
+
+    /// <summary>
+    /// The round-trip test against the REAL accessors: one member opened through the class's
+    /// project, the accessors named in the Calls, the seed constants replaced by the class, the
+    /// project closed. Returns the finished answer, or null and the reason the socket route has to
+    /// run instead.
+    ///
+    /// WHAT IT REPLACES: two socket VIs per field generated into user.lib, and two node swaps per
+    /// field. What it keeps is the seed: AIXML has no class constant, so each chain still starts at
+    /// a PATH constant that {LV.Constant} Replace turns into the class - measured 2026-09-25, eBad
+    /// straight after the convert (the path is wired into a class input) and execState 1 after the
+    /// Replace, with `42` read back.
+    /// </summary>
+    private async Task<(string? Done, string? Fallback)> DirectClassTestAsync(
+        string lvclassPath, string className, string testViPath, List<ClassCase> cases,
+        string? projectPath, string testFolderName, string? alsoListInProject, string scratch,
+        bool keepAixml, bool verbose, JsonArray steps, Stopwatch total, JsonObject route,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        // 1. the project that owns the class
+        string project;
+        if (projectPath is { Length: > 0 })
+        {
+            project = Path.GetFullPath(projectPath);
+            route["projectFrom"] = "argument";
+        }
+        else
+        {
+            var owners = ProjectMembership.ProjectsListing(lvclassPath);
+            if (owners.Count != 1)
+                return (null, owners.Count == 0
+                    ? $"No .lvproj at or up to {ProjectMembership.LevelsUp} folders above the class " +
+                      "lists it, so there is no project to open an accessor through. Pass " +
+                      "projectPath to take the direct route anyway."
+                    : $"{owners.Count} projects list the class ({string.Join(", ", owners)}); pass " +
+                      "projectPath to choose one.");
+            project = owners[0];
+            route["projectFrom"] = "discovered";
+        }
+        route["projectPath"] = project;
+
+        // 2. each accessor pair as it really spells itself
+        var shapes = new List<DirectAccessorCall>();
+        foreach (var test in cases)
+        {
+            var write = await ExportedTerminalsAsync(test.WriteAccessor, scratch, timeoutSeconds, ct);
+            var read = await ExportedTerminalsAsync(test.ReadAccessor, scratch, timeoutSeconds, ct);
+            if (write is null || read is null)
+                return (null, $"The accessors of '{test.Field}' could not be exported, so their " +
+                              "terminal names are unknown.");
+            var (shape, why) = DirectAccessorCall.From(write, read,
+                DirectAccessorCall.Target(lvclassPath, test.WriteAccessor),
+                DirectAccessorCall.Target(lvclassPath, test.ReadAccessor));
+            if (shape is null) return (null, why);
+            shapes.Add(shape);
+        }
+        steps.Add(new JsonObject
+        {
+            ["step"] = "accessors",
+            ["pairs"] = shapes.Count,
+            ["targets"] = new JsonArray([.. shapes.SelectMany(s =>
+                new[] { (JsonNode)s.WriteTarget, s.ReadTarget })]),
+        });
+
+        // 3. load the class through its project - one member is enough for all of them
+        var open = await new ActionTools(connection).OpenFileAsync(
+            cases[0].WriteAccessor, Path.GetFileName(cases[0].WriteAccessor), project,
+            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
+        steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
+        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+            opened["projectBecameActive"]?.GetValue<bool>() is not true)
+            return (null, "The class's project did not become active, so the class is not known " +
+                          "to be loaded - read the openClass step.");
+
+        // 4. author against the real accessors and generate. `execState` failing HERE is expected
+        //    and is not a failure: the seeds are still paths wired into class inputs.
+        var testAixml = Path.Combine(scratch,
+            Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
+        await File.WriteAllTextAsync(testAixml, ClassTestAixml(testViPath, className, cases, shapes), ct);
+        var generated = await new BulkTools(connection).GenerateViAsync(
+            testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(GenerateStepBeforeSeeds(Json.Slim(Read(generated), verbose)));
+        var answer = Read(generated) as JsonObject;
+
+        async Task<string?> CloseAsync()
+        {
+            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+            return null;
+        }
+
+        if (NotResolved(answer))
+        {
+            await CloseAsync();
+            return (null, "The class was opened through its project and its accessors still did " +
+                          "not resolve as Call targets (Error 53 at conversion). Nothing was written.");
+        }
+        if (answer?["viExistsNow"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "generate", steps, total, testViPath, testAixml,
+                "The test VI was not written. The generate step carries LabVIEW's own message.",
+                route: Direct(route)), null);
+        }
+
+        // 5. the seeds become the class - the one Replace this route cannot do without
+        var seeds = new JsonArray([.. cases.Select(test => (JsonNode)new JsonObject
+        { ["label"] = test.SeedLabel, ["class"] = test.SeedClassPath })]);
+        var swapped = await new SwapTools(connection).SwapSubVisAsync(
+            testViPath, null, seeds.ToJsonString(), verify: true, verbose: false,
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, editsJson: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "seeds", ["answer"] = Read(swapped) });
+        var swapAnswer = Read(swapped) as JsonObject;
+        if (swapAnswer?["ok"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "seeds", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and calls the real accessors, but its seed constants are " +
+                "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
+        }
+
+        // 5b. a written value feeding a TYPEDEF terminal carries the typedef, or it wears a dot
+        steps.Add(await BindTypedefConstantsStepAsync(testViPath,
+            [.. cases.Select((test, index) => (test, index))
+                .Where(x => !x.test.DefaultOnly)          // nothing is written, nothing to bind
+                .Select(x => new TypedefCandidate(x.test.WriteAccessor,
+                    ViNameOf(shapes[x.index].WriteTarget), shapes[x.index].WriteData,
+                    $"written {x.test.Slot}"))],
+            timeoutSeconds, ct));
+
+        // 6. executable now, or the direct route produced something the socket route would not
+        var reading = await new ExecStateTools(connection).ReadAsync(
+            testViPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject
+        {
+            ["step"] = "execState",
+            ["execState"] = reading?.State,
+            ["linkerErrors"] = reading?.LinkerErrors,
+        });
+        if (reading is { Broken: true })
+        {
+            await CloseAsync();
+            return (Outcome(false, "execState", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
+                "read linkerErrors in the execState step.", route: Direct(route)), null);
+        }
+
+        if (!keepAixml)
+        {
+            try { File.Delete(testAixml); }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        }
+
+        // 7. release the class and list the test - ALSO when the project was only discovered.
+        //    LabVIEW's save writes the test into the project either way, since it was generated
+        //    with the project open; going through the listing step is what puts it in
+        //    testFolderName rather than wherever that save dropped it.
+        var extra = (alsoListInProject ?? "")
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                 StringSplitOptions.TrimEntries);
+        steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath, .. extra],
+                                           timeoutSeconds, ct, reopen: false));
+
+        return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
+            $"Generated. {cases.Count} round trip(s), each calling the class's own Write and Read " +
+            "accessors DIRECTLY - no sockets, no node swaps; only the seed constants were " +
+            "replaced. Run it through Caraya's runner with a Report Path ending in .xml and read " +
+            "the JUnit report - and break one case on purpose once, because an all-green first " +
+            "run proves very little. THE PROJECT IS LEFT CLOSED.",
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+    }
+
+    /// <summary>One VI's terminals off its own export, or null when it could not be exported.</summary>
+    internal async Task<ViTerminals.Result?> ExportedTerminalsAsync(
+        string viPath, string scratch, int timeoutSeconds, CancellationToken ct)
+    {
+        var export = Path.Combine(scratch, Path.GetFileNameWithoutExtension(viPath) + ".shape.xml");
+        try
+        {
+            var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
+                viPath, export, returnContent: true, maxContentChars: 0,
+                timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
+            return ViTerminals.Parse(Read(answer)?["xml"]?.GetValue<string>());
+        }
+        finally
+        {
+            try { File.Delete(export); }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    [McpServerTool(Name = "lvai_add_vis_to_project", Destructive = true, OpenWorld = true,
+                   Title = "List VIs under a folder of a LabVIEW project")]
+    [Description("""
+        MUTATING: lists VIs in a `.lvproj` under one virtual folder, as a FILE edit made with the
+        project CLOSED - it closes the active project first, because LabVIEW's close saves its own
+        copy over the file and would destroy the edit - and leaves it closed unless `reopen`.
+        USE THIS INSTEAD OF EDITING A .lvproj BY HAND. Measured 2026-09-25 on the ATM cold build: a
+        hand edit listed three VIs under `SubVIs` that LabVIEW's own save had already listed at
+        target level, and the next open answered `Error 74` and loaded nothing.
+        A VI ALREADY LISTED IS NEVER LISTED TWICE. One at TARGET level - where LabVIEW's save drops
+        every VI it adopts - is MOVED into the folder (`movedIntoFolder`); one inside another folder
+        stays and is named under `listedElsewhere`. Any file the project already lists twice is
+        repaired, keeping the entry inside a folder (`duplicateEntriesRemoved`), and the strays our
+        own tools leave behind - helper VIs, user.lib\LV_MCP sockets, entries whose file is gone -
+        are swept as on every close. A path with no file behind it is NOT listed (`notOnDisk`).
+        `lvai_open_file` refuses a project that lists a file twice (`duplicateProjectEntries`);
+        this call with that projectPath and the VIs you meant to list is the repair.
+        """)]
+    public async Task<string> AddVisToProjectAsync(
+        [Description("The .lvproj to list the VIs in")] string projectPath,
+        [Description("The VIs to list, one absolute path per line")] string viPaths,
+        [Description("Virtual folder to list them under; created at target level if missing")]
+        string folderName = "SubVIs",
+        [Description("Open the project again afterwards. Leave false when the next step generates")]
+        bool reopen = false,
+        [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(projectPath))
+                return Json.Error("fileNotFound", $"No .lvproj at projectPath '{projectPath}'.",
+                    new { projectPath });
+            if (PathListFault(viPaths, nameof(viPaths)) is { } listFault)
+                return Json.Error("badArguments", listFault,
+                    new { parameter = nameof(viPaths), arrived = viPaths });
+            if (string.IsNullOrWhiteSpace(folderName))
+                return Json.Error("badArguments",
+                    "folderName is empty. Name the virtual folder the VIs belong under - an entry " +
+                    "at target level is exactly what LabVIEW's own save produces, so it cannot be " +
+                    "told apart from an adopted stray afterwards.");
+
+            var paths = (viPaths ?? "")
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                     StringSplitOptions.TrimEntries)
+                .ToList();
+            var step = await ListInProjectAsync(Path.GetFullPath(projectPath), folderName.Trim(),
+                                                paths, timeoutSeconds, ct, reopen,
+                                                moveTargetLevel: true);
+            return Json.Document(step);
         });
 
     [McpServerTool(Name = "lvai_generate_caraya_test_runner", Destructive = true, OpenWorld = true,
@@ -513,8 +1012,9 @@ internal sealed class TestTools(LvaiConnection connection)
         string? reportFileName = null,
         [Description("""
             The `.lvproj` to list the runner in. Pass it whenever the tests belong to a project: the
-            project is CLOSED before the file is edited and re-opened afterwards, because LabVIEW's
-            close saves its own copy over the file and would destroy the edit.
+            project is CLOSED before the file is edited and LEFT closed, because LabVIEW's close saves
+            its own copy over the file and would destroy the edit. A runner runs with its project
+            closed - measured, class suites included.
             """)]
         string? projectPath = null,
         [Description("Virtual folder inside the project to list the runner in")]
@@ -621,12 +1121,16 @@ internal sealed class TestTools(LvaiConnection connection)
             // holds before the close and re-asserts it, so passing a generated suite again is a
             // no-op rather than a duplicate entry.
             //
-            // reopen: TRUE here, and deliberately — the caller's next move is to RUN this runner,
-            // which needs the project's classes linked.
+            // reopen: FALSE, like every other generator. This said TRUE "deliberately - the
+            // caller's next move is to RUN this runner, which needs the project's classes linked".
+            // Measured 2026-09-25 and it does not: a runner over two class suites and a plain one,
+            // run with the project CLOSED, reported 11 tests, 0 failures. What the reopen did cost
+            // was a project left open behind the tool (`projectLeftOpen: true`), which the next
+            // tool that edits the .lvproj as a file then loses its edit to.
             if (projectPath is { Length: > 0 })
                 steps.Add(await ListInProjectAsync(projectPath, testFolderName,
                                                    [runnerViPath, .. tests],
-                                                   timeoutSeconds, ct, reopen: true));
+                                                   timeoutSeconds, ct, reopen: false));
 
             return RunnerOutcome(true, null, steps, total, runnerViPath,
                 keepAixml ? aixml : null, reportFileName, relatives.Count,
@@ -721,9 +1225,134 @@ internal sealed class TestTools(LvaiConnection connection)
     /// start. Nothing failed and NO TOOL WARNED; trusting the sequence would have generated four
     /// of five suites under an open project.
     /// </param>
+    /// <summary>
+    /// The generate step of a DIRECT route, where the test is converted while its seed constants
+    /// are still `path`s wired into class inputs - so lvai_generate_vi's own gate reads `execState`
+    /// 0 and answers `ok: false` by design, and the seeds step two steps later makes it the class.
+    /// Measured 2026-09-25 as a finding: a test agent read that sub-answer as a failure the tool
+    /// had swallowed. The answer is left whole; the step says why it looks like this, and that the
+    /// verdict is the `execState` step after the seeds.
+    /// </summary>
+    internal static JsonObject GenerateStepBeforeSeeds(JsonNode? answer)
+    {
+        var step = new JsonObject { ["step"] = "generate", ["answer"] = answer };
+        if ((answer as JsonObject)?["failedAtStep"]?.GetValue<string>() == "execState")
+        {
+            step["notExecutableYetIsExpected"] = true;
+            step["note"] = "`ok: false` at execState is EXPECTED here: the seed constants are still " +
+                           "paths wired into class inputs until the seeds step replaces them. The " +
+                           "verdict is the execState step after the seeds, not this one.";
+        }
+        return step;
+    }
+
+    /// <summary>
+    /// One constant a generated test wires into a subVI terminal: the callee, the node's VI Name
+    /// as LabVIEW reports it, the terminal, and the constant's block diagram label.
+    /// </summary>
+    internal sealed record TypedefCandidate(string CalleeVi, string SubViName, string Terminal,
+                                            string ConstantLabel);
+
+    /// <summary>An AIXML Call target as the node's `VI Name` reads it: `X.lvclass\3AY.vi` -> `X.lvclass:Y.vi`.</summary>
+    internal static string ViNameOf(string aixmlTarget) =>
+        aixmlTarget.Replace("\\3A", ":", StringComparison.Ordinal);
+
+    /// <summary>
+    /// BINDS EVERY GENERATED CONSTANT THAT FEEDS A TYPEDEF TERMINAL, so the test has no coercion dot.
+    ///
+    /// WHY THE GENERATORS DO THIS THEMSELVES. AIXML has no spelling for a typedef constant -
+    /// measured 2026-09-25, thirteen spellings with the `.ctl` loaded, every one refused - so a
+    /// round trip over a typedef field wrote a bare cluster into `Write Config`, which ran, passed
+    /// and wore a coercion dot that only lvai_coercion_dots saw. The repair
+    /// (lvai_bind_typedef_constants) was in neither test agent's roster, so the agent that built the
+    /// TypedefAfterGDevCon suite could only report the dot. Doing it here means it cannot be missed.
+    ///
+    /// WHICH CONSTANTS: only those whose callee's pane control of that name IS a typedef, read
+    /// through VI Server from the callee (one read per callee). The bind itself derives the `.ctl`
+    /// from the terminal, so no path is passed. Needs an ACTIVE project - the direct routes call
+    /// this while the class's project is still open.
+    ///
+    /// REPORTED, NOT GATED. The value is right either way and the suite runs either way; the same
+    /// move on `wiringLost` was retracted after it suppressed correct steps. `stillCoerced` is
+    /// filtered to the bound terminals, because a Caraya assertion's Variant inputs always wear a
+    /// dot and that is not this step's business.
+    /// </summary>
+    internal async Task<JsonObject> BindTypedefConstantsStepAsync(
+        string testViPath, IReadOnlyList<TypedefCandidate> candidates, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "typedefConstants" };
+        var typedefs = new TypedefTools(connection);
+        var panes = new Dictionary<string, IReadOnlyDictionary<string, string>?>(
+            StringComparer.OrdinalIgnoreCase);
+        var toBind = new List<TypedefCandidate>();
+        var unreadable = new List<string>();
+        foreach (var candidate in candidates)
+        {
+            if (!panes.TryGetValue(candidate.CalleeVi, out var pane))
+                panes[candidate.CalleeVi] = pane =
+                    await typedefs.PaneTypedefsAsync(candidate.CalleeVi, timeoutSeconds, ct);
+            if (pane is null) unreadable.Add(Path.GetFileName(candidate.CalleeVi));
+            else if (pane.ContainsKey(candidate.Terminal) && !candidate.Terminal.Contains(',')
+                     && !candidate.ConstantLabel.Contains(','))
+                toBind.Add(candidate);
+        }
+
+        if (unreadable.Count > 0)
+            step["calleesNotReadable"] = new JsonArray([.. unreadable.Distinct().Select(n => (JsonNode)n)]);
+        if (toBind.Count == 0)
+        {
+            step["bound"] = 0;
+            step["note"] = unreadable.Count > 0
+                ? "Whether a callee's terminal is a typedef could not be read for the callees " +
+                  "listed, so nothing was bound. Run lvai_coercion_dots on the test."
+                : "No generated constant feeds a typedef terminal - nothing to bind.";
+            return step;
+        }
+
+        var replaced = 0;
+        var still = new JsonArray();
+        var calls = new JsonArray();
+        foreach (var group in toBind.GroupBy(c => c.SubViName, StringComparer.Ordinal))
+        {
+            var answer = await typedefs.BindTypedefConstantsAsync(
+                testViPath, group.Key,
+                string.Join(",", group.Select(c => c.Terminal)),
+                string.Join(",", group.Select(c => c.ConstantLabel)),
+                helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                timeoutSeconds, ct);
+            var parsed = Read(answer) as JsonObject;
+            replaced += parsed?["replaced"]?.GetValue<int>() ?? 0;
+            foreach (var entry in (parsed?["stillCoerced"] as JsonArray ?? []).Select(e => e?.ToString() ?? ""))
+                if (entry.StartsWith(group.Key, StringComparison.Ordinal) &&
+                    group.Any(c => entry.EndsWith("/ " + c.Terminal, StringComparison.Ordinal)))
+                    still.Add(entry);
+            calls.Add(new JsonObject
+            {
+                ["subVi"] = group.Key,
+                ["constants"] = new JsonArray([.. group.Select(c => (JsonNode)c.ConstantLabel)]),
+                ["replaced"] = parsed?["replaced"]?.DeepClone(),
+                ["failed"] = parsed?["failed"]?.DeepClone(),
+                ["hint"] = parsed?["hint"]?.DeepClone(),
+            });
+        }
+
+        step["ok"] = replaced == toBind.Count && still.Count == 0;
+        step["bound"] = replaced;
+        step["asked"] = toBind.Count;
+        step["stillCoerced"] = still;
+        step["calls"] = calls;
+        step["note"] = still.Count == 0 && replaced == toBind.Count
+            ? $"{replaced} constant(s) now carry the typedef their terminal expects - no coercion dot " +
+              "on them. The dots on Caraya's Variant inputs are the ordinary conversion into a Variant."
+            : "Not every typedef constant was bound - read calls. The test still runs and asserts the " +
+              "right value; only the dot remains. lvai_bind_typedef_constants repairs it by hand.";
+        return step;
+    }
+
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
-        CancellationToken ct, bool reopen = true)
+        CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
     {
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
         try
@@ -756,11 +1385,29 @@ internal sealed class TestTools(LvaiConnection connection)
                                Url: LvClass.RelativeUrl(projectPath, vi)))
                 .ToList();
 
+            // MOVE WHAT THIS VERY CLOSE ADOPTED, before anything is added. LabVIEW's save drops a
+            // VI it has open at TARGET level, and AddVisToProject then declines to list the file a
+            // second time - so every test generated with the project open landed outside the
+            // folder, measured 2026-09-25 on every direct-route run. `JustAdopted` picks only the
+            // entries the save made: asked for, NOT listed before the close, at target level after
+            // it. A VI the user put anywhere - including at target level - was listed before and
+            // stays where it is.
+            // `moveTargetLevel` - the explicit listing tool - moves a requested VI out of target
+            // level whoever put it there: the caller named the VI AND the folder.
+            var adopted = JustAdopted(entries.Select(e => e.Name),
+                                      moveTargetLevel ? [] : listedBefore.Select(v => v.Name),
+                                      LvClass.ListedViPlaces(projectPath));
+            var moved = LvClass.RemoveTargetLevelVis(projectPath, adopted);
+
             // RESTORE, ADD, THEN TIDY - in that order. Tidy last is what makes the pass safe: it
             // can only ever remove an entry whose file is missing or which points into one of our
             // temp trees, and nothing written above is either. AddVisToProject is idempotent, so
             // an entry that survived the close costs nothing.
-            var restored = LvClass.AddVisToProject(projectPath, folderName, listedBefore);
+            // A VI MOVED ABOVE IS NOT RESTORED: it was listed before the close only at target
+            // level, and putting that entry "back" into the folder would count a requested move as
+            // the close clobbering the file - measured on the explicit tool's first live run.
+            var restored = LvClass.AddVisToProject(projectPath, folderName,
+                [.. listedBefore.Where(v => !moved.Contains(v.Name, StringComparer.OrdinalIgnoreCase))]);
             var added = entries.Count > 0
                 ? LvClass.AddVisToProject(projectPath, folderName, entries)
                 : 0;
@@ -768,6 +1415,11 @@ internal sealed class TestTools(LvaiConnection connection)
             var (tidied, removed, _) = ClassTools.StripHelperItems(
                 await File.ReadAllTextAsync(projectPath, ct), projectPath);
             if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
+
+            // AND NO FILE LISTED TWICE, whoever wrote the second entry: that project answers
+            // `Error 74` on the next open. AddVisToProject never adds one; this repairs one made
+            // by hand or by an earlier run.
+            var duplicates = LvClass.RemoveDuplicateViEntries(projectPath);
 
             // VERIFY FROM THE FILE, NOT FROM THE COUNT. `added` says what was written; this says
             // what survived, and the two differ whenever the tidy pass fires.
@@ -805,9 +1457,11 @@ internal sealed class TestTools(LvaiConnection connection)
             // `wiringLost` and retracted a day later after it suppressed the caller's own steps on
             // correct diagrams, costing two agents ~135 s each. Report it; do not decide with it.
             step["inRequestedFolder"] = elsewhere.Count == 0;
+            step["movedIntoFolder"] = new JsonArray([.. moved.Select(v => (JsonNode)v)]);
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
+            step["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(v => (JsonNode)v)]);
             step["reopened"] = reopened;
             if (notOnDisk.Count > 0)
                 step["notOnDisk"] = new JsonArray([.. notOnDisk.Select(v => (JsonNode)v)]);
@@ -831,18 +1485,41 @@ internal sealed class TestTools(LvaiConnection connection)
             if (added > 0) note.Add($"Listed under '{folderName}'.");
             else if (notOnDisk.Count == 0 && notListed.Count == 0)
                 note.Add("Already listed; nothing added.");
-            if (elsewhere.Count > 0)
+            if (moved.Count > 0)
+                note.Add(moveTargetLevel
+                    ? $"{moved.Count} of them sat at target level " +
+                      $"({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
+                      $"'{folderName}' as asked, rather than listed a second time."
+                    : $"{moved.Count} of them LabVIEW's own save had just adopted at target " +
+                      $"level ({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
+                      $"'{folderName}', because they were not in the project before this call.");
+            var unmatched = adopted.Except(moved, StringComparer.OrdinalIgnoreCase).ToList();
+            if (unmatched.Count > 0)
+                note.Add("LabVIEW's save had just adopted " +
+                         string.Join(", ", unmatched.Select(v => $"'{v}'")) + " at target level, " +
+                         "but its line in the .lvproj did not read as one self-closing item, so it " +
+                         "was left rather than edited by guesswork.");
+            var chosen = elsewhere.Where(e => !unmatched.Contains(e.Name,
+                                                                  StringComparer.OrdinalIgnoreCase))
+                                  .ToList();
+            if (chosen.Count > 0)
                 note.Add("BUT NOT UNDER '" + folderName + "': " +
-                         string.Join(", ", elsewhere.Select(e => $"'{e.Name}' is in {e.Folder}")) +
-                         ". Left there deliberately - listing it twice would give the project two " +
-                         "items for one file, and an item inside a class or a library is owned by " +
-                         "it. LabVIEW's own save adopts a VI it has open and drops it at target " +
-                         "level, which is how a runner gets there. It is findable and it runs; " +
-                         "move it in the Project Explorer if the folder matters.");
+                         string.Join(", ", chosen.Select(e => $"'{e.Name}' is in {e.Folder}")) +
+                         ". Left there deliberately - only an entry THIS call's own save created " +
+                         "at target level is moved, and this one was in the project before the " +
+                         "call or sits inside another item, so the place is someone's choice or " +
+                         "an earlier run's. Listing it twice would give the project two items for " +
+                         "one file, and an item inside a class or a library is owned by it. It is " +
+                         "findable and it runs; move it in the Project Explorer if the folder " +
+                         "matters.");
             if (restored > 0)
                 note.Add($"{restored} entry/entries LabVIEW's close had deleted from the .lvproj " +
                          "were put back - anything above 0 means the close clobbered the file, " +
                          "which is a known and unexplained behaviour.");
+            if (duplicates.Count > 0)
+                note.Add($"{duplicates.Count} entry/entries listed a file a second time and were " +
+                         "removed - a project listing one file twice answers Error 74 on open: " +
+                         string.Join(", ", duplicates.Select(v => $"'{v}'")) + ".");
             if (removed > 0)
                 note.Add($"{removed} stray item(s) LabVIEW had adopted were removed - a socket " +
                          "out of user.lib\\LV_MCP lands in the project when LabVIEW saves it " +
@@ -855,13 +1532,40 @@ internal sealed class TestTools(LvaiConnection connection)
                                         or UnauthorizedAccessException)
         {
             step["ok"] = false;
-            step["note"] = "The tests were generated and are sound, but the project could not be " +
+            step["note"] = "The VIs exist and are sound, but the project could not be " +
                            $"edited: {failure.Message}. List " +
                            string.Join(", ", viPaths.Select(v => $"'{Path.GetFileName(v)}'")) +
                            " by hand - and do it with the project CLOSED, because LabVIEW's close " +
                            "saves over the file.";
             return step;
         }
+    }
+
+    /// <summary>
+    /// Which of the VIs we asked for were put at target level BY THIS CALL'S OWN CLOSE, and may
+    /// therefore be moved into the requested folder without overriding anyone's choice.
+    ///
+    /// THE DISCRIMINATOR IS TIME, NOT PLACE. LabVIEW's save adopts a VI it has open and drops it
+    /// at target level; a user may equally have put one there on purpose. What separates the two
+    /// is whether the project listed the VI BEFORE the close - which ListInProjectAsync reads
+    /// anyway, to put back what the close deletes. Not listed before and at target level after
+    /// means the save made the entry, so moving it changes nothing anybody chose. Measured
+    /// 2026-09-25: the direct test routes generate with the project open, and every one of their
+    /// tests landed at target level while `testFolderName` said `Tests`.
+    ///
+    /// Target level ONLY: a VI found inside a class or library is owned by that item, and one in a
+    /// folder was put there by something other than an adopting save.
+    /// </summary>
+    internal static List<string> JustAdopted(
+        IEnumerable<string> asked, IEnumerable<string> listedBefore,
+        IReadOnlyList<(string Name, string Url, string Folder)> placesAfter)
+    {
+        var before = listedBefore.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var atTarget = placesAfter.Where(p => p.Folder.Length == 0)
+                                  .Select(p => p.Name)
+                                  .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return [.. asked.Where(name => !before.Contains(name) && atTarget.Contains(name))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>
@@ -875,11 +1579,12 @@ internal sealed class TestTools(LvaiConnection connection)
     /// VI it has open and dropping it at target level, and <c>AddVisToProject</c> then correctly
     /// declining to list the same file twice.
     ///
-    /// IT REPORTS AND MOVES NOTHING, and <c>ok</c> does not turn on it. Moving an item would be a
-    /// change to the user's project nobody asked for, and an item inside a class or a library is
-    /// owned by that item - the runner is findable and it runs, so this is information, not a
-    /// verdict. Same rule as <c>wiringLost</c>, which gated <c>ok</c> for one day and was wrong
-    /// every time it fired.
+    /// IT REPORTS, and <c>ok</c> does not turn on it. The one case that IS moved is decided before
+    /// this runs, by <see cref="JustAdopted"/> - an entry the close's own save created - so what
+    /// this still reports is a place that predates the call: moving that would be a change to the
+    /// user's project nobody asked for, and an item inside a class or a library is owned by that
+    /// item. The VI is findable and it runs, so this is information, not a verdict. Same rule as
+    /// <c>wiringLost</c>, which gated <c>ok</c> for one day and was wrong every time it fired.
     ///
     /// A folder chain that ENDS in the wanted name counts as the right place: the folder the caller
     /// asked for may itself be nested, and <c>AddVisToProject</c> finds it by name at any depth.
@@ -937,19 +1642,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return (null, $"Its export did not parse: {bad.Message}.");
             }
 
-            var control = root.Elements()
-                .FirstOrDefault(e => (e.Name.LocalName is "Control" or "Indicator")
-                                     && string.Equals((string?)e.Attribute("_name"), field,
-                                                      StringComparison.Ordinal));
-            if (control?.Attribute("type") is { } type)
-                return (type.Value, "");
-
-            var present = string.Join(", ", root.Elements()
-                .Where(e => e.Name.LocalName is "Control" or "Indicator")
-                .Select(e => (string?)e.Attribute("_name")));
-            return (null, control is null
-                ? $"Its export has no Control named '{field}'. It carries: {present}."
-                : $"'{field}' is in the export but has no `type` attribute.");
+            return FieldTypeFromExport(root, field);
         }
         finally
         {
@@ -957,6 +1650,51 @@ internal sealed class TestTools(LvaiConnection connection)
             catch (Exception failure) when (failure is IOException
                                             or UnauthorizedAccessException) { }
         }
+    }
+
+    /// <summary>
+    /// The field's type out of its Write accessor's export: the Control named after the field, or
+    /// - when there is none - the accessor's ONE data input, the Control that is neither the class
+    /// wire nor the error cluster.
+    ///
+    /// WHY THE FALLBACK. NI's wizard names the data terminal after the TYPEDEF when the field is
+    /// bound to one: the field `Config`, bound to `Channel Config.ctl`, gets `Write Config.vi` with
+    /// a terminal called `Channel Config`. Measured 2026-09-25 on the second TypedefAfterGDevCon
+    /// build - the lookup by field name answered `fieldTypeUnknown` and the test agent had to pass
+    /// `type` by hand, while the direct route's DirectAccessorCall already found the same terminal
+    /// by type. A Write accessor has exactly one data input by construction; two candidates are
+    /// refused rather than guessed between.
+    /// </summary>
+    internal static (string? Type, string Note) FieldTypeFromExport(System.Xml.Linq.XElement root,
+                                                                   string field)
+    {
+        var controls = root.Elements()
+            .Where(e => e.Name.LocalName is "Control" or "Indicator")
+            .ToList();
+        var named = controls.FirstOrDefault(e =>
+            string.Equals((string?)e.Attribute("_name"), field, StringComparison.Ordinal));
+        if (named is not null)
+            return named.Attribute("type") is { } type
+                ? (type.Value, "")
+                : (null, $"'{field}' is in the export but has no `type` attribute.");
+
+        var data = controls
+            .Where(e => e.Name.LocalName == "Control")
+            .Where(e => !((string?)e.Attribute("type") ?? "").StartsWith("ref{UDClassInst}",
+                                                                        StringComparison.Ordinal))
+            .Where(e => !ConnectorPane.IsErrorIn((string?)e.Attribute("_name") ?? ""))
+            .Where(e => e.Attribute("type") is not null)
+            .ToList();
+        if (data.Count == 1)
+            return ((string)data[0].Attribute("type")!,
+                    $"read off the accessor's one data input '{(string?)data[0].Attribute("_name")}', " +
+                    "which is named after the typedef the field is bound to.");
+
+        var present = string.Join(", ", controls.Select(e => (string?)e.Attribute("_name")));
+        return (null, data.Count == 0
+            ? $"Its export has no Control named '{field}' and no data input. It carries: {present}."
+            : $"Its export has no Control named '{field}', and {data.Count} data inputs to choose " +
+              $"from. It carries: {present}.");
     }
 
     /// <summary>Where a socket has to live to resolve as a Call target by its bare name: a plain
@@ -976,11 +1714,18 @@ internal sealed class TestTools(LvaiConnection connection)
         }
     }
 
-    internal sealed record ClassCaseRequest(string Field, string Value, string? Label, string? Type)
+    /// <param name="DefaultOnly">
+    /// The case is `expectDefault`: read the field off a FRESH object and assert <paramref name="Value"/>,
+    /// with no Write. Before 2026-09-25 a default could only be asserted through
+    /// lvai_generate_method_test's `expectOutput` on the Read accessor, in a VI of its own - measured
+    /// on the second TypedefAfterGDevCon build, where `Gain` defaults to 1.
+    /// </param>
+    internal sealed record ClassCaseRequest(string Field, string Value, string? Label, string? Type,
+                                            bool DefaultOnly = false)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> CaseKeys =
-            new(StringComparer.Ordinal) { "field", "value", "label", "type" };
+            new(StringComparer.Ordinal) { "field", "value", "label", "type", "expectDefault" };
 
         /// <summary>Every value here is a string; the round trip has nothing structural in it.</summary>
         private static readonly Dictionary<string, JsonValueKind> Kinds = new(StringComparer.Ordinal)
@@ -989,6 +1734,7 @@ internal sealed class TestTools(LvaiConnection connection)
             ["value"] = JsonValueKind.String,
             ["label"] = JsonValueKind.String,
             ["type"] = JsonValueKind.String,
+            ["expectDefault"] = JsonValueKind.String,
         };
 
         public static List<ClassCaseRequest> ParseAll(string? json)
@@ -1013,8 +1759,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
                 RejectUnknownCaseKeys(o, i, CaseKeys,
                     "This tool does ONE ROUND TRIP per field - write \"value\" into \"field\", " +
-                    "read it back, assert they match - so there is nothing to give it beyond the " +
-                    "field, the value, an optional \"type\" and an optional \"label\". A value " +
+                    "read it back, assert they match - or reads a fresh object's DEFAULT with " +
+                    "\"expectDefault\", so there is nothing to give it beyond the field, the " +
+                    "value or default, an optional \"type\" and an optional \"label\". A value " +
                     "the class should hold AFTER some method ran is lvai_generate_method_test's " +
                     "\"expectFieldValue\", not a case key here.");
                 RejectWrongCaseValueKinds(o, i, Kinds);
@@ -1024,19 +1771,27 @@ internal sealed class TestTools(LvaiConnection connection)
                     throw new ArgumentException($"casesJson[{i}] has no \"field\".");
 
                 var value = o["value"]?.ToString();
-                if (value is null)
+                var expectDefault = o["expectDefault"]?.GetValue<string>();
+                if (value is not null && expectDefault is not null)
+                    throw new ArgumentException(
+                        $"casesJson[{i}] gives both \"value\" and \"expectDefault\". A round trip " +
+                        "WRITES value and reads it back; a default case writes nothing and reads a " +
+                        "fresh object. Give the same field twice, one case of each, to test both.");
+                if (value is null && expectDefault is null)
                     throw new ArgumentException(
                         $"casesJson[{i}] has no \"value\". A round trip writes something and reads " +
-                        "it back; there is nothing to assert without it.");
+                        "it back; there is nothing to assert without it. To assert a fresh " +
+                        "object's DEFAULT instead, pass \"expectDefault\".");
 
-                return new ClassCaseRequest(field, value, o["label"]?.GetValue<string>(),
-                                            o["type"]?.GetValue<string>());
+                return new ClassCaseRequest(field, value ?? expectDefault!, o["label"]?.GetValue<string>(),
+                                            o["type"]?.GetValue<string>(), expectDefault is not null);
             }).ToList();
 
-            if (cases.GroupBy(c => c.Field, StringComparer.OrdinalIgnoreCase)
+            if (cases.GroupBy(c => (Field: c.Field.ToLowerInvariant(), c.DefaultOnly))
                      .FirstOrDefault(g => g.Count() > 1) is { } twice)
                 throw new ArgumentException(
-                    $"'{twice.Key}' appears {twice.Count()} times in casesJson. One round trip per " +
+                    $"'{twice.First().Field}' appears {twice.Count()} times in casesJson as a " +
+                    (twice.Key.DefaultOnly ? "default case" : "round trip") + ". One of each per " +
                     "field - two would need two socket pairs with the same accessor, and the swap " +
                     "matches by name.");
 
@@ -1172,7 +1927,8 @@ internal sealed class TestTools(LvaiConnection connection)
     /// generated and the swap succeeded and the export looked right.
     /// </summary>
     internal static string ClassTestAixml(string testViPath, string className,
-                                          IReadOnlyList<ClassCase> cases)
+                                          IReadOnlyList<ClassCase> cases,
+                                          IReadOnlyList<DirectAccessorCall>? direct = null)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -1183,9 +1939,13 @@ internal sealed class TestTools(LvaiConnection connection)
           .Append($"Caraya round-trip test for {Escape(className)}\\2C generated by ")
           .Append("lvai_generate_class_test.\\0A\\0AEach case writes a value through the class's ")
           .Append("own Write accessor and reads it back through the Read accessor\\2C both called ")
-          .Append("as ORDINARY STATIC SUBVIS. AIXML cannot author a class-typed terminal\\2C so the ")
-          .Append("calls were generated against sockets and swapped for the real accessors with ")
-          .Append("LabVIEW's own Replace\\2C which re-types the wires.\\0A\\0AThe error cluster ")
+          .Append(direct is null
+              ? "as ORDINARY STATIC SUBVIS. AIXML cannot author a class-typed terminal\\2C so the " +
+                "calls were generated against sockets and swapped for the real accessors with " +
+                "LabVIEW's own Replace\\2C which re-types the wires."
+              : "as ORDINARY STATIC SUBVIS\\2C named directly while the class was open in LabVIEW. " +
+                "Each object comes from a class constant.")
+          .Append("\\0A\\0AThe error cluster ")
           .AppendLine("carries the FIRST failure only. Read the JUnit report for all of them.\">");
 
         var uid = UidBase;
@@ -1213,30 +1973,52 @@ internal sealed class TestTools(LvaiConnection connection)
             "uid_parent=\"root\"/>");
 
         var assertions = new List<int>();
-        foreach (var test in cases)
+        for (var index = 0; index < cases.Count; index++)
         {
+            var test = cases[index];
+
             // The class source. Authored as a PATH constant and named, because lvai_swap_subvis
             // finds it by its block diagram label - AIXML's _name becomes that label.
             var seed = uid++;
             sb.AppendLine(Constant(seed, "path", "", test.SeedLabel));
 
+            // A DEFAULT CASE writes nothing: the fresh object goes straight into the Read, and the
+            // constant is the EXPECTED default rather than a written value.
             var written = uid++;
             sb.AppendLine(Constant(written, test.DataType, ValueFor(test.DataType, test.Value),
-                                   $"written {test.Slot}"));
+                                   test.DefaultOnly ? $"expected {test.Slot}" : $"written {test.Slot}"));
 
+            // THE REAL ACCESSORS on the direct route, the sockets otherwise - same wiring, only the
+            // target and the terminal names change. The seed is still a PATH constant either way:
+            // AIXML has no class constant, so the converter writes a broken wire into the class
+            // input and the {LV.Constant} Replace afterwards is what makes it a class - measured
+            // 2026-09-25, eBad after the convert and execState 1 after the Replace.
+            var shape = direct?[index];
             var write = uid++;
-            sb.AppendLine($"  <Call target=\"{Escape(test.WriteSocket)}\" " +
-                          $"inputs=\"obj in:{seed}.value,value:{written}.value\" " +
-                          $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" " +
-                          "uid_parent=\"root\"/>");
+            var objectIntoRead = test.DefaultOnly ? $"{seed}.value" : $"{write}.obj out";
+            if (!test.DefaultOnly)
+            {
+                sb.AppendLine(shape is null
+                ? $"  <Call target=\"{Escape(test.WriteSocket)}\" " +
+                  $"inputs=\"obj in:{seed}.value,value:{written}.value\" " +
+                  $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" uid_parent=\"root\"/>"
+                : $"  <Call target=\"{Escape(shape.WriteTarget)}\" " +
+                  $"inputs=\"{shape.WriteClassIn}:{seed}.value,{shape.WriteData}:{written}.value\" " +
+                  $"outputs=\"{shape.WriteClassOut}:{write}.obj out\" uid=\"{write}\" " +
+                  "uid_parent=\"root\"/>");
+            }
 
             var read = uid++;
-            sb.AppendLine($"  <Call target=\"{Escape(test.ReadSocket)}\" " +
-                          $"inputs=\"obj in:{write}.obj out\" " +
-                          $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
+            sb.AppendLine(shape is null
+                ? $"  <Call target=\"{Escape(test.ReadSocket)}\" " +
+                  $"inputs=\"obj in:{objectIntoRead}\" " +
+                  $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>"
+                : $"  <Call target=\"{Escape(shape.ReadTarget)}\" " +
+                  $"inputs=\"{shape.ReadClassIn}:{objectIntoRead}\" " +
+                  $"outputs=\"{shape.ReadData}:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
 
             // Expected IS what was written - the constant is reused rather than restated, so the
-            // two can never drift apart.
+            // two can never drift apart. For a default case it is the expected default itself.
             var label = uid++;
             sb.AppendLine(Constant(label, "string", test.Label, "Label"));
 
@@ -1373,6 +2155,24 @@ internal sealed class TestTools(LvaiConnection connection)
         return "0";
     }
 
+    /// <summary>
+    /// A cluster type literal's top-level members, in cluster order, as (type, name) - or null when
+    /// the literal is not a cluster. The order is the one {LV.Cluster} Controls[] indexes by,
+    /// which is what lvai_create_typedef binds elements with.
+    /// </summary>
+    internal static IReadOnlyList<(string Type, string Name)>? ClusterMembers(string type)
+    {
+        var t = type.Trim();
+        if (!t.StartsWith("cluster{", StringComparison.Ordinal) || Braced(t) is not { } inner)
+            return null;
+        return [.. SplitTopLevel(inner).Select(member =>
+        {
+            var memberType = FieldType(member);
+            var name = member.Length > memberType.Length ? member[(memberType.Length + 1)..] : "";
+            return (memberType, name);
+        })];
+    }
+
     /// <summary>The text inside the type's outermost braces, or null when they are unbalanced.</summary>
     private static string? Braced(string type)
     {
@@ -1433,11 +2233,68 @@ internal sealed class TestTools(LvaiConnection connection)
     /// <summary>One field round trip: which accessors, which sockets, and the value to write.</summary>
     internal sealed record ClassCase(int Slot, string Field, string DataType, string Value,
                                     string Label, string WriteAccessor, string ReadAccessor,
-                                    string SeedClassPath)
+                                    string SeedClassPath, bool DefaultOnly = false)
     {
         public string WriteSocket => $"LVMCP ClsW{Slot}.vi";
         public string ReadSocket => $"LVMCP ClsR{Slot}.vi";
         public string SeedLabel => $"object {Slot}";
+    }
+
+    /// <summary>
+    /// One round trip's two calls as the REAL accessors spell them, for the direct route: the
+    /// qualified Call targets and the terminal names read off each accessor's own export.
+    ///
+    /// THE NAMES ARE READ, NOT ASSUMED. The sockets used generic `obj in` / `value` / `obj out`, and
+    /// NI's wizard does name the class terminals `&lt;Class&gt; in` / `&lt;Class&gt; out` and the data
+    /// terminal after the field - until the field is a typedef: measured 2026-09-25, a field created
+    /// as `Profile` and bound to `IMC Setpoint.ctl` gave accessors named `Read Profile.vi` whose data
+    /// terminal is `IMC Setpoint`. So the class terminals are recognised by TYPE (`ref{UDClassInst}`)
+    /// and the data terminal is the one left over once the error cluster is set aside.
+    /// </summary>
+    internal sealed record DirectAccessorCall(
+        string WriteTarget, string WriteClassIn, string WriteData, string WriteClassOut,
+        string ReadTarget, string ReadClassIn, string ReadData)
+    {
+        private const string ClassType = "ref{UDClassInst}";
+
+        /// <summary>The pair, or null and the reason it could not be recognised.</summary>
+        internal static (DirectAccessorCall? Call, string? Why) From(
+            ViTerminals.Result write, ViTerminals.Result read, string writeTarget, string readTarget)
+        {
+            static ViTerminals.Terminal? One(IEnumerable<ViTerminals.Terminal> terminals,
+                                             Func<ViTerminals.Terminal, bool> which)
+            {
+                var hits = terminals.Where(which).ToList();
+                return hits.Count == 1 ? hits[0] : null;
+            }
+            static bool IsClass(ViTerminals.Terminal t) => t.Type == ClassType;
+            static bool IsData(ViTerminals.Terminal t) => t.Type != ClassType && t.Type != ErrorCluster;
+
+            var writeIn = One(write.Inputs, IsClass);
+            var writeOut = One(write.Outputs, IsClass);
+            var writeData = One(write.Inputs, IsData);
+            var readIn = One(read.Inputs, IsClass);
+            var readData = One(read.Outputs, IsData);
+
+            if (writeIn is null || writeOut is null || readIn is null)
+                return (null, $"'{write.ViName}' / '{read.ViName}' do not carry exactly one class " +
+                              "input and output each, so they are not a wizard accessor pair.");
+            if (writeData is null || readData is null)
+                return (null, $"'{write.ViName}' / '{read.ViName}' do not carry exactly one data " +
+                              "terminal each beside the class and error terminals.");
+
+            return (new DirectAccessorCall(writeTarget, writeIn.Value.Name, writeData.Value.Name,
+                                           writeOut.Value.Name, readTarget, readIn.Value.Name,
+                                           readData.Value.Name), null);
+        }
+
+        /// <summary>
+        /// The Call target for a class member: the class's qualified name (library-owned or not,
+        /// read off the .lvclass) plus the accessor's file name, with every `:` as `\3A`.
+        /// </summary>
+        internal static string Target(string lvclassPath, string accessorPath) =>
+            $"{LvClass.QualifiedName(lvclassPath)}:{Path.GetFileName(accessorPath)}"
+                .Replace(":", @"\3A");
     }
 
     // ------------------------------------------------------------------ authoring
@@ -1501,8 +2358,12 @@ internal sealed class TestTools(LvaiConnection connection)
                     wired.Add($"{terminal.Name}:");        // unwired: the subject's own default
                     continue;
                 }
+                // NAMED AFTER THE TERMINAL IT FEEDS: that label is how lvai_bind_typedef_constants
+                // finds the constant when the terminal turns out to be a typedef, and with the
+                // direct route the terminal is the subject's own, typedef and all.
                 var constant = uid++;
-                sb.AppendLine(Constant(constant, terminal.Type, ValueFor(terminal.Type, value)));
+                sb.AppendLine(Constant(constant, terminal.Type, ValueFor(terminal.Type, value),
+                                       terminal.Name));
                 wired.Add($"{terminal.Name}:{constant}.value");
             }
 
@@ -1902,8 +2763,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null) =>
-        Json.Document(new JsonObject
+                                  JsonNode? callTargets = null, JsonObject? route = null)
+    {
+        var result = new JsonObject
         {
             ["ok"] = ok,
             ["failedAtStep"] = failedAt,
@@ -1911,10 +2773,14 @@ internal sealed class TestTools(LvaiConnection connection)
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
-            ["steps"] = steps,
-            ["totalElapsedMs"] = total.ElapsedMilliseconds,
-            ["note"] = note,
-        });
+        };
+        // Which route ran, and when it was the placeholder one, why the direct one did not.
+        if (route is not null) result["route"] = route.DeepClone();
+        result["steps"] = steps;
+        result["totalElapsedMs"] = total.ElapsedMilliseconds;
+        result["note"] = note;
+        return Json.Document(result);
+    }
 
     private static JsonNode? Read(string answer)
     {
@@ -1944,6 +2810,17 @@ internal sealed class TestTools(LvaiConnection connection)
     /// unmeasured change to every value this generator writes. <see cref="Escape"/> stays as it
     /// is for <c>target=</c> and <c>fields=</c>, whose callers pass strings that ALREADY carry
     /// <c>\3A</c> escapes - putting this on those would double-escape them.
+    ///
+    /// AND A LINE BREAK OR A TAB IS A CHARACTER REFERENCE, because XML attribute normalisation
+    /// turns a RAW one into a SPACE before LabVIEW ever sees it. Found 2026-09-25 by a Caraya agent
+    /// on the ATM build: `Your Balance Is:\n$ 550.00` arrived as `Your Balance Is: $ 550.00`, so
+    /// exactly the multi-line expectations failed while every single-line one passed. Measured the
+    /// same day on one probe VI, with the raw newline as the control arm: `&amp;#10;` gave a
+    /// three-character `a\nb`, `&amp;#13;&amp;#10;` four characters, `&amp;#9;` three with no space,
+    /// and the raw newline a space at offset 1. The caller cannot pre-escape it either - LabVIEW's
+    /// own `\0A` spelling would come out of the backslash rule above as `\5C0A`.
     /// </summary>
-    internal static string EscapeValue(string value) => Escape(value).Replace("\\", "\\5C");
+    internal static string EscapeValue(string value) =>
+        Escape(value).Replace("\\", "\\5C")
+                     .Replace("\r", "&#13;").Replace("\n", "&#10;").Replace("\t", "&#9;");
 }

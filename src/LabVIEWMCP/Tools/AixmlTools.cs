@@ -528,7 +528,9 @@ internal sealed class AixmlTools(LvaiConnection connection)
         acceptable, WITHOUT creating anything. Always run this before lvai_convert_aixml_to_vi
         or lvai_apply_aixml_to_vi - it is the cheap failure path.
         Reading the messages: "Unsupported SubVI: X" means the Call target cannot be resolved
-        (project-local subVIs and Express VIs never can); "Object terminal not found for
+        by validation - project-local subVIs and Express VIs never can, EVEN WHEN the project
+        subVI is open in LabVIEW, while lvai_convert_aixml_to_vi then ACCEPTS it (measured
+        2026-09-25, docs/aixml-call-loaded-vi.md); "Object terminal not found for
         input" means a misspelled terminal name, or fallout from such a Call.
         lvai_aixml_reference has the authoring rules and a verified terminal-name table.
         A REFUSAL NO LONGER BURNS THE VI's NAME. Validation runs against a throwaway copy whose
@@ -598,7 +600,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
         pointer to an element, and fan-out is expressed by repeating that net string; and
         terminal names are literal LabVIEW labels that must be looked up, not guessed
         (`Increment` -> `x+1`, but `Greater?` -> `x > y?` with spaces).
-        The generated VI must be self-contained: a Call to a project-local subVI is rejected.
+        A Call to a project-local subVI is rejected (Error 53) UNLESS that subVI is OPEN in
+        LabVIEW - through its project or loose - when this runs; then it resolves by bare name
+        and the link is written into the file. Validation refuses it either way; lvai_generate_vi
+        converts past that refusal for you, under a throwaway name, and checks executability. A
+        failed convert here burns the caller's name (1051 next time). Measured 2026-09-25 on plain VIs and on class members (open one member and
+        the whole class resolves); a .ctl is NOT accepted. docs/aixml-call-loaded-vi.md.
         """)]
     public async Task<string> ConvertAixmlToViAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,

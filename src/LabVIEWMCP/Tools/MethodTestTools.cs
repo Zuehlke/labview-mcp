@@ -55,6 +55,16 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         THE COMPANION TO lvai_generate_class_test, which does accessors. Measured 2026-09-02:
         authoring a method suite by hand was the largest single item of that run - ~80 s of wall
         clock for 0 s inside LabVIEW, because the shape never varies.
+        TWO ROUTES, and `route` in the answer says which ran and why. DIRECT, the default since
+        2026-09-25: one method is opened through the project that lists the class (found by
+        itself, or projectPath), the suite names the REAL methods and accessors - a class with one
+        member open is a legal Call target, docs/aixml-call-loaded-vi.md - each chain's seed `path`
+        constant becomes the class through {LV.Constant} Replace, and the project is closed. No
+        socket is generated and no node is swapped. When no single project lists the class or the
+        members do not resolve, the SOCKET route runs: a socket per method call and per accessor,
+        swapped for the real member afterwards. A case the method cannot serve - a wire-survival
+        case on a method that returns no object - is REFUSED on the direct route before anything is
+        written, where the socket route would have generated a suite that cannot run.
         casesJson is a JSON ARRAY, one object per case, in one of FOUR shapes:
           [{"method":"Describe","expectOutput":"description",
             "expectValue":"Bicycle - a human-powered two-wheeled vehicle.",
@@ -87,6 +97,13 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         comes from `value`, and the read-back is asserted against `expectFieldValue` instead. Its
         absence meant such a method could not be tested at all, because seeding 12.5 into a `Zero`
         asserted `12.5 == 0`. A case may carry any combination.
+        `seed` WRITES FIELDS WITHOUT ASSERTING THEM, as many as the method needs:
+          {"method":"Read Value","seed":{"Current":"3","Gain":"2"},
+           "expectOutput":"reading","expectValue":"6"}
+        That is the shape for a method reading two fields, which one `writeField` could not
+        express. The answer's `assertions` step lists every assertion each case generated, and
+        warns where `writeField` beside `expectOutput`/`expectErrorCode` implies "the field is
+        UNCHANGED after the call" - move the field to `seed` if it only has to be set.
         WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
         you the value. Say which in your report - a measured string asserted as if it were the spec
         freezes whatever the method happens to do today.
@@ -101,7 +118,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         rather than guessed. Supply those per case:
           [{"method":"Initialize","expectErrorCode":-200099,
             "inputs":{"Physical Channel":"Dev1/ai0"}}]
-        `inputs` overrides the default for any terminal, required or not named here.
+        `inputs` sets ANY input terminal of the method, required or not: a required one is always
+        wired (with the default where the case gives none), any other only when the case names it,
+        so an unnamed one keeps the method's own default. A name the method does not declare is
+        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`).
+        Until 2026-09-25 a value for a non-required terminal was dropped in silence.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
         A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
@@ -135,12 +156,27 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             run a parent's methods on a child object.
             """)]
         string? seedClassPath = null,
-        [Description("The .lvproj to LIST the test VI in - pass it whenever the class has one")]
+        [Description("""
+            The .lvproj that lists the class. The direct route opens the class through it, and the
+            test VI is listed in it under testFolderName. Omitted, the direct route uses the one
+            project that lists the class and lists the test there too; the socket route lists it
+            nowhere.
+            """)]
         string? projectPath = null,
-        [Description("Virtual folder inside the project to list the test in")]
+        [Description("""
+            Virtual folder inside the project to list the test in. A test LabVIEW's own save has
+            just adopted at the project's top level is MOVED into it; one that was listed elsewhere
+            before this call stays where it was, and `listedElsewhere` names it.
+            """)]
         string testFolderName = "Tests",
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
+        [Description("""
+            Call the methods and accessors DIRECTLY with the class open through its project,
+            instead of through sockets. The socket route still runs when no single project lists
+            the class or the calls do not resolve; `route` in the answer says which ran.
+            """)]
+        bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -204,6 +240,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             // Resolve each case against the FILES. A method that is not there is a class whose
             // methods were never added, and saying so beats failing at validation.
             var cases = new List<MethodCase>();
+            // The direct route's method calls, read off the SAME export the required inputs come
+            // from - so the route choice costs no extra LabVIEW round trip. A method whose shape
+            // is not recognised is not an error here, only a reason the direct route cannot run.
+            var methodShapes = new List<(DirectMethodCall? Call, string? Why)>();
             for (var i = 0; i < requested.Count; i++)
             {
                 var request = requested[i];
@@ -261,6 +301,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     }
                 }
 
+                // FIELDS SEEDED BEFORE THE CALL AND NOT ASSERTED. A case used to seed ONE field,
+                // so a method reading two - `reading = Current x Gain` - could only be tested with
+                // the second at its default: measured 2026-09-25, the multiplication was asserted
+                // as 0 x 0 because Gain could not be set.
+                var seedWrites = new List<SeedWrite>();
+                foreach (var (seedField, seedValue) in request.Seeds ?? new Dictionary<string, string>())
+                {
+                    var seedAccessor = Path.Combine(folder, $"Write {seedField}.vi");
+                    if (!File.Exists(seedAccessor))
+                        return Json.Error("accessorMissing",
+                            $"'{seedField}' in \"seed\" has no Write accessor beside the class - " +
+                            $"expected '{Path.GetFileName(seedAccessor)}'.",
+                            new { field = seedField, write = seedAccessor });
+                    var (seedType, seedNote) = await new TestTools(connection)
+                        .FieldTypeAsync(seedAccessor, seedField, timeoutSeconds, ct: ct);
+                    if (seedType is null)
+                        return Json.Error("fieldTypeUnknown",
+                            $"The type of seeded field '{seedField}' could not be read off " +
+                            $"'{Path.GetFileName(seedAccessor)}'. {seedNote}",
+                            new { field = seedField, accessor = seedAccessor });
+                    seedWrites.Add(new SeedWrite(seedField, seedAccessor, seedType, seedValue));
+                }
+
                 // THE METHOD'S OWN REQUIRED INPUTS, read off its export. Anything `required` and
                 // left unwired makes the generated caller NOT EXECUTABLE, and neither this tool's
                 // validation nor its verify can see that - measured 2026-09-03, `ok: true` for a
@@ -309,12 +372,32 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                          request.ExpectErrorCode, seed, required!,
                                          request.ExpectOutput, request.ExpectValue,
                                          outputType, outputConIdx,
-                                         request.ExpectFieldValue));
+                                         request.ExpectFieldValue, seedWrites));
+                methodShapes.Add(DirectMethodCall.From(terminals!,
+                    TestTools.DirectAccessorCall.Target(lvclassPath, methodVi)));
+            }
+
+            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "methodtest");
+            Directory.CreateDirectory(scratch);
+
+            // ---- 0. THE DIRECT ROUTE FIRST: one member open through the class's project makes
+            // every member a legal Call target (docs/aixml-call-loaded-vi.md §4), which removes the
+            // method socket, both accessor sockets and every node swap. It finishes the job or says
+            // why the socket route has to run.
+            var route = new JsonObject { ["route"] = "sockets" };
+            if (!directCall)
+                route["reason"] = "directCall was false.";
+            else
+            {
+                var (done, fallback) = await DirectMethodTestAsync(
+                    lvclassPath, className, testViPath, cases, methodShapes, projectPath,
+                    testFolderName, scratch, keepAixml, steps, total, route, timeoutSeconds, ct);
+                if (done is not null) return done;
+                route["route"] = "sockets";
+                route["reason"] = fallback;
             }
 
             // ---- 1. the sockets: one per method call, plus an accessor pair per wire-survival case
-            var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "methodtest");
-            Directory.CreateDirectory(scratch);
             var socketRoot = TestTools.SocketDirectory();
             if (socketRoot is null)
                 return Json.Error("noUserLib",
@@ -330,6 +413,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                && test.OutputConIdx is { } outSlot
                                ? (outName, outType, outSlot)
                                : null));
+                for (var k = 0; k < test.Seeds.Count; k++)
+                    Author(pairs, scratch, socketRoot, test.SeedSocket(k),
+                           TestTools.SocketAixml(test.SeedSocket(k), test.Seeds[k].Type, write: true));
                 if (test.DataType is { } type)
                 {
                     Author(pairs, scratch, socketRoot, test.WriteSocket!,
@@ -345,7 +431,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             steps.Add(new JsonObject { ["step"] = "sockets", ["answer"] = Read(sockets) });
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return Outcome(false, "sockets", steps, total, testViPath, null,
-                    "The sockets could not all be generated, so the test was not authored.");
+                    "The sockets could not all be generated, so the test was not authored.",
+                    route: route);
 
             // ---- 2. the suite
             var testAixml = Path.Combine(scratch,
@@ -358,7 +445,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
-                    "The test VI was not written. The generate step carries LabVIEW's own message.");
+                    "The test VI was not written. The generate step carries LabVIEW's own message.",
+                    route: route);
 
             // ---- 3. swap sockets for the real members, and the path constants for the class
             var swaps = new JsonArray();
@@ -367,6 +455,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 swaps.Add(new JsonObject
                 { ["socket"] = test.MethodSocket, ["target"] = test.MethodVi });
+                for (var k = 0; k < test.Seeds.Count; k++)
+                    swaps.Add(new JsonObject
+                    { ["socket"] = test.SeedSocket(k), ["target"] = test.Seeds[k].WriteAccessor });
                 if (test.DataType is not null)
                 {
                     swaps.Add(new JsonObject
@@ -390,7 +481,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 return Outcome(false, "swap", steps, total, testViPath, testAixml,
                     "THE TEST VI WAS WRITTEN and still calls the sockets, so it would test " +
                     "nothing. Read the swap step - `socketsNotOnDiagram` and `socketsLeft` say " +
-                    "which half failed.");
+                    "which half failed.", route: route);
 
             if (!keepAixml)
             {
@@ -410,40 +501,323 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     projectPath, testFolderName, [testViPath], timeoutSeconds, ct,
                     reopen: false));
 
-            var errorCases = cases.Count(c => c.ExpectErrorCode is not null);
-            var wireCases = cases.Count(c => c.DataType is not null);
-            var outputCases = cases.Count(c => c.ExpectOutput is not null);
-            steps.Add(new JsonObject
-            {
-                ["step"] = "requiredInputs",
-                ["cases"] = new JsonArray([.. cases.Select(c => (JsonNode)new JsonObject
-                {
-                    ["method"] = c.Method,
-                    ["wired"] = new JsonArray([.. c.Required.Select(r => (JsonNode)new JsonObject
-                    {
-                        ["terminal"] = r.Name,
-                        ["type"] = r.Type,
-                        ["value"] = r.Value,
-                        ["source"] = r.FromCaller ? "the case's inputs" : "this tool's default",
-                    })]),
-                })]),
-                ["note"] = "A required input left unwired is what makes a suite not executable. " +
-                           "Values marked as this tool's default are 0 or empty - if one of them " +
-                           "matters to what the case proves, pass it in the case's `inputs`.",
-            });
-            // EVERY SHAPE IS COUNTED. It used to name only the error-code and wire-survival ones,
-            // so the first suite built from `expectOutput` reported "0 error-code assertion(s) and
-            // 0 wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a
-            // suite whose assertion had just been proven to fire.
+            steps.Add(RequiredInputsStep(cases));
+            steps.Add(AssertionsStep(cases));
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
-                $"Generated. {outputCases} returned-value assertion(s), {errorCases} error-code " +
-                $"assertion(s) and {wireCases} wire-survival assertion(s), every method called as " +
-                "an ordinary static subVI. THE PROJECT IS LEFT CLOSED, which is the state the next " +
-                "generate call needs; open it when you are ready to RUN the suite. Read the JUnit " +
-                "report, and break one expectation on purpose once, because an all-green first run " +
-                "proves very little.",
-                swapAnswer["callTargets"]?.DeepClone());
+                $"Generated. {Counts(cases)}, every method called as an ordinary static subVI. " +
+                "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs; open " +
+                "it when you are ready to RUN the suite. Read the JUnit report, and break one " +
+                "expectation on purpose once, because an all-green first run proves very little.",
+                swapAnswer["callTargets"]?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// EVERY ASSERTION EACH CASE GENERATED, spelled out - and a warning where one was implied.
+    ///
+    /// `writeField` + `value` asserts that the field SURVIVES the call, and it did that silently
+    /// beside `expectOutput` too: measured 2026-09-25, a test agent seeded `Current` to reach an
+    /// output assertion on a method whose job includes `Current + 1`, got a suite that also
+    /// asserted `Current == 3` after the call, and found it only by exporting the test VI. The
+    /// shape is legitimate - it is the one a dispatch mistake fails - so it is REPORTED, not
+    /// refused, and `seed` is named as the way to write a field without asserting it.
+    /// </summary>
+    internal static JsonObject AssertionsStep(IEnumerable<MethodCase> cases)
+    {
+        var list = new JsonArray();
+        var warnings = new JsonArray();
+        foreach (var c in cases)
+        {
+            var asserts = new JsonArray();
+            if (c.ExpectOutput is { } output)
+                asserts.Add($"{output} == {c.ExpectValue}");
+            if (c.ExpectErrorCode is { } code)
+                asserts.Add($"error out code == {code}");
+            if (c.DataType is not null)
+                asserts.Add(c.ExpectFieldValue is { } after
+                    ? $"{c.ReadField} after the call == {after}"
+                    : $"{c.ReadField} SURVIVES the call: == {c.Value}, the value written");
+            list.Add(new JsonObject
+            {
+                ["slot"] = c.Slot,
+                ["label"] = c.Label,
+                ["asserts"] = asserts,
+                ["seededNotAsserted"] = new JsonArray([.. c.Seeds.Select(x => (JsonNode)$"{x.Field} = {x.Value}")]),
+            });
+            if (c.DataType is not null && c.ExpectFieldValue is null
+                && (c.ExpectOutput is not null || c.ExpectErrorCode is not null))
+                warnings.Add($"Case {c.Slot} ('{c.Label}') also asserts that {c.ReadField} is " +
+                             $"UNCHANGED ({c.Value}) after '{c.Method}'. If the method changes it, " +
+                             "add \"expectFieldValue\"; if the field only has to be SET, move it " +
+                             "to \"seed\", which writes it without asserting.");
+        }
+        var step = new JsonObject { ["step"] = "assertions", ["cases"] = list };
+        if (warnings.Count > 0) step["warnings"] = warnings;
+        return step;
+    }
+
+    /// <summary>What each case wired into the method's inputs, and where the value came from.</summary>
+    private static JsonObject RequiredInputsStep(IEnumerable<MethodCase> cases) => new()
+    {
+        ["step"] = "requiredInputs",
+        ["cases"] = new JsonArray([.. cases.Select(c => (JsonNode)new JsonObject
+        {
+            ["method"] = c.Method,
+            ["wired"] = new JsonArray([.. c.Required.Select(r => (JsonNode)new JsonObject
+            {
+                ["terminal"] = r.Name,
+                ["type"] = r.Type,
+                ["connection"] = r.IsRequired ? "required" : "not required, wired because the case gives it",
+                ["value"] = r.Value,
+                ["source"] = r.FromCaller ? "the case's inputs" : "this tool's default",
+            })]),
+        })]),
+        ["note"] = "A required input left unwired is what makes a suite not executable. " +
+                   "Values marked as this tool's default are 0 or empty - if one of them " +
+                   "matters to what the case proves, pass it in the case's `inputs`.",
+    };
+
+    /// <summary>
+    /// EVERY SHAPE IS COUNTED. It used to name only the error-code and wire-survival ones, so the
+    /// first suite built from `expectOutput` reported "0 error-code assertion(s) and 0
+    /// wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a suite
+    /// whose assertion had just been proven to fire.
+    /// </summary>
+    private static string Counts(IReadOnlyCollection<MethodCase> cases) =>
+        $"{cases.Count(c => c.ExpectOutput is not null)} returned-value assertion(s), " +
+        $"{cases.Count(c => c.ExpectErrorCode is not null)} error-code assertion(s) and " +
+        $"{cases.Count(c => c.DataType is not null)} wire-survival assertion(s)";
+
+    /// <summary>
+    /// The method suite against the REAL members: one method opened through the class's project,
+    /// the method and any accessors named in the Calls, the seed constants replaced by the class,
+    /// the project closed. Returns the finished answer, or null and the reason the socket route
+    /// has to run instead.
+    ///
+    /// WHAT IT REPLACES: a socket VI per method call plus two per wire-survival case, generated
+    /// into user.lib, and a node swap for every one of them. What it keeps is the seed, for the
+    /// reason lvai_generate_class_test's direct route keeps it - AIXML has no class constant.
+    ///
+    /// NOTHING ABOUT THE METHOD'S ERROR HANDLING CHANGES. It is still fed a `no error` constant
+    /// and never chained into the assertions; only the terminal the constant is wired to now
+    /// carries the method's own name.
+    /// </summary>
+    private async Task<(string? Done, string? Fallback)> DirectMethodTestAsync(
+        string lvclassPath, string className, string testViPath, List<MethodCase> cases,
+        List<(DirectMethodCall? Call, string? Why)> methodShapes, string? projectPath,
+        string testFolderName, string scratch, bool keepAixml, JsonArray steps, Stopwatch total,
+        JsonObject route, int timeoutSeconds, CancellationToken ct)
+    {
+        if (methodShapes.FirstOrDefault(s => s.Call is null).Why is { } unrecognised)
+            return (null, unrecognised);
+        var methods = methodShapes.Select(s => s.Call!).ToList();
+
+        // A case the method cannot serve is refused HERE, before anything is written. The socket
+        // route would not do better: its swap drops the wire the real method lacks, and the suite
+        // comes out with an unwired dispatch input or nothing to unbundle.
+        for (var index = 0; index < cases.Count; index++)
+            if (methods[index].Unmet(cases[index]) is { } unmet)
+                return (Json.Error("caseNeedsATerminalTheMethodLacks", unmet,
+                    new { method = cases[index].Method, slot = cases[index].Slot }), null);
+
+        // 1. the project that owns the class
+        string project;
+        if (projectPath is { Length: > 0 })
+        {
+            project = Path.GetFullPath(projectPath);
+            route["projectFrom"] = "argument";
+        }
+        else
+        {
+            var owners = ProjectMembership.ProjectsListing(lvclassPath);
+            if (owners.Count != 1)
+                return (null, owners.Count == 0
+                    ? $"No .lvproj at or up to {ProjectMembership.LevelsUp} folders above the class " +
+                      "lists it, so there is no project to open a method through. Pass " +
+                      "projectPath to take the direct route anyway."
+                    : $"{owners.Count} projects list the class ({string.Join(", ", owners)}); pass " +
+                      "projectPath to choose one.");
+            project = owners[0];
+            route["projectFrom"] = "discovered";
+        }
+        route["projectPath"] = project;
+
+        // 2. each wire-survival case's accessor pair as it really spells itself
+        var tests = new TestTools(connection);
+        var accessors = new List<TestTools.DirectAccessorCall?>();
+        foreach (var test in cases)
+        {
+            if (test.DataType is null)
+            {
+                accessors.Add(null);
+                continue;
+            }
+            var write = await tests.ExportedTerminalsAsync(test.WriteAccessor!, scratch,
+                                                           timeoutSeconds, ct);
+            var read = await tests.ExportedTerminalsAsync(test.ReadAccessor!, scratch,
+                                                          timeoutSeconds, ct);
+            if (write is null || read is null)
+                return (null, $"The accessors of '{test.WriteField}' could not be exported, so " +
+                              "their terminal names are unknown.");
+            var (shape, why) = TestTools.DirectAccessorCall.From(write, read,
+                TestTools.DirectAccessorCall.Target(lvclassPath, test.WriteAccessor!),
+                TestTools.DirectAccessorCall.Target(lvclassPath, test.ReadAccessor!));
+            if (shape is null) return (null, why);
+            accessors.Add(shape);
+        }
+        // each seeded field's Write accessor, read off its own export like the pairs above
+        var seedCalls = new List<IReadOnlyList<DirectWriteCall>>();
+        foreach (var test in cases)
+        {
+            var writes = new List<DirectWriteCall>();
+            foreach (var seeded in test.Seeds)
+            {
+                var export = await tests.ExportedTerminalsAsync(seeded.WriteAccessor, scratch,
+                                                                timeoutSeconds, ct);
+                var shape = export is null ? null : DirectWriteCall.From(export,
+                    TestTools.DirectAccessorCall.Target(lvclassPath, seeded.WriteAccessor));
+                if (shape is null)
+                    return (null, $"The Write accessor of seeded field '{seeded.Field}' could not " +
+                                  "be read as one class input, one data input and one class output.");
+                writes.Add(shape);
+            }
+            seedCalls.Add(writes);
+        }
+
+        steps.Add(new JsonObject
+        {
+            ["step"] = "members",
+            ["methods"] = new JsonArray([.. methods.Select(m => (JsonNode)m.Target)]),
+            ["accessors"] = new JsonArray([.. accessors.Where(a => a is not null)
+                .SelectMany(a => new[] { (JsonNode)a!.WriteTarget, a.ReadTarget })]),
+        });
+
+        // 3. load the class through its project - one member is enough for all of them
+        var open = await new ActionTools(connection).OpenFileAsync(
+            cases[0].MethodVi, Path.GetFileName(cases[0].MethodVi), project,
+            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
+        steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
+        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+            opened["projectBecameActive"]?.GetValue<bool>() is not true)
+            return (null, "The class's project did not become active, so the class is not known " +
+                          "to be loaded - read the openClass step.");
+
+        async Task CloseAsync()
+        {
+            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+        }
+
+        // 4. author against the real members and generate. `execState` failing HERE is expected
+        //    and is not a failure: the seeds are still paths wired into class inputs.
+        var testAixml = Path.Combine(scratch,
+            Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
+        await File.WriteAllTextAsync(testAixml,
+            MethodTestAixml(testViPath, className, cases, methods, accessors, seedCalls), ct);
+        var generated = await new BulkTools(connection).GenerateViAsync(
+            testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(TestTools.GenerateStepBeforeSeeds(Read(generated)));
+        var answer = Read(generated) as JsonObject;
+
+        if (TestTools.NotResolved(answer))
+        {
+            await CloseAsync();
+            return (null, "The class was opened through its project and its members still did " +
+                          "not resolve as Call targets (Error 53 at conversion). Nothing was written.");
+        }
+        if (answer?["viExistsNow"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "generate", steps, total, testViPath, testAixml,
+                "The test VI was not written. The generate step carries LabVIEW's own message.",
+                route: Direct(route)), null);
+        }
+
+        // 5. the seeds become the class - the one Replace this route cannot do without
+        var seeds = new JsonArray([.. cases.Select(test => (JsonNode)new JsonObject
+        { ["label"] = test.SeedLabel, ["class"] = test.SeedClassPath })]);
+        var swapped = await new SwapTools(connection).SwapSubVisAsync(
+            testViPath, null, seeds.ToJsonString(), verify: true, verbose: false,
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, editsJson: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "seeds", ["answer"] = Read(swapped) });
+        var swapAnswer = Read(swapped) as JsonObject;
+        if (swapAnswer?["ok"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "seeds", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and calls the real methods, but its seed constants are " +
+                "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
+        }
+
+        // 5b. every generated constant that feeds a TYPEDEF terminal carries the typedef - seeds,
+        //     the written value and the method's own inputs alike
+        var candidates = new List<TestTools.TypedefCandidate>();
+        for (var index = 0; index < cases.Count; index++)
+        {
+            var test = cases[index];
+            for (var k = 0; k < test.Seeds.Count; k++)
+                candidates.Add(new(test.Seeds[k].WriteAccessor,
+                    TestTools.ViNameOf(seedCalls[index][k].Target), seedCalls[index][k].Data,
+                    $"seed {test.Seeds[k].Field} {test.Slot}"));
+            if (accessors[index] is { } accessor)
+                candidates.Add(new(test.WriteAccessor!, TestTools.ViNameOf(accessor.WriteTarget),
+                    accessor.WriteData, $"written {test.Slot}"));
+            foreach (var input in test.Required)
+                candidates.Add(new(test.MethodVi, TestTools.ViNameOf(methods[index].Target),
+                    input.Name, $"{input.Name} {test.Slot}"));
+        }
+        steps.Add(await tests.BindTypedefConstantsStepAsync(testViPath, candidates,
+                                                            timeoutSeconds, ct));
+
+        // 6. executable now, or the direct route produced something the socket route would not
+        var reading = await new ExecStateTools(connection).ReadAsync(
+            testViPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject
+        {
+            ["step"] = "execState",
+            ["execState"] = reading?.State,
+            ["linkerErrors"] = reading?.LinkerErrors,
+        });
+        if (reading is { Broken: true })
+        {
+            await CloseAsync();
+            return (Outcome(false, "execState", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
+                "read linkerErrors in the execState step. A required input of a method that this " +
+                "call did not wire would look exactly like this.", route: Direct(route)), null);
+        }
+
+        if (!keepAixml)
+        {
+            try { File.Delete(testAixml); }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        }
+
+        // 7. release the class and list the test - ALSO when the project was only discovered.
+        //    LabVIEW's save writes the test into the project either way, since it was generated
+        //    with the project open; going through the listing step is what puts it in
+        //    testFolderName rather than wherever that save dropped it.
+        steps.Add(await tests.ListInProjectAsync(project, testFolderName, [testViPath],
+                                                 timeoutSeconds, ct, reopen: false));
+
+        steps.Add(RequiredInputsStep(cases));
+        steps.Add(AssertionsStep(cases));
+        return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
+            $"Generated. {Counts(cases)}, every method and accessor called DIRECTLY - no sockets, " +
+            "no node swaps; only the seed constants were replaced. THE PROJECT IS LEFT CLOSED; " +
+            "open it when you are ready to RUN the suite. Read the JUnit report, and break one " +
+            "expectation on purpose once, because an all-green first run proves very little.",
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+    }
+
+    private static JsonObject Direct(JsonObject route)
+    {
+        route["route"] = "direct";
+        return route;
+    }
 
     private static void Author(JsonArray pairs, string scratch, string socketRoot, string name,
                                string aixml)
@@ -537,8 +911,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         {
             sb.AppendLine(
                 $"  <Control _name=\"{TestTools.Escape(input.Name)}\" conIdx=\"{input.ConIdx}\" " +
-                "connection=\"required\" description=\"Stands in for a required input of the " +
-                $"method.\" outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
+                $"connection=\"{(input.IsRequired ? "required" : "recommended")}\" " +
+                "description=\"Stands in for an input of the method the test wires.\" " +
+                $"outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
                 $"uid=\"{uid}\" uid_parent=\"root\" " +
                 $"value=\"{TestTools.EscapeValue(input.Value)}\"/>");
             uid++;
@@ -609,8 +984,19 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// THE METHOD'S `error in` IS A CONSTANT, never the Caraya chain. See the class comment: a
     /// method that is expected to error would otherwise poison every assertion downstream of it.
     /// </summary>
+    /// <param name="methods">
+    /// The DIRECT route's method calls, one per case, as the real methods spell themselves. Null
+    /// authors every call against its socket instead.
+    /// </param>
+    /// <param name="accessors">
+    /// The direct route's accessor pair per case - null for a case that writes no field, and the
+    /// whole list null on the socket route.
+    /// </param>
     internal static string MethodTestAixml(string testViPath, string className,
-                                           IReadOnlyList<MethodCase> cases)
+                                           IReadOnlyList<MethodCase> cases,
+                                           IReadOnlyList<DirectMethodCall>? methods = null,
+                                           IReadOnlyList<TestTools.DirectAccessorCall?>? accessors = null,
+                                           IReadOnlyList<IReadOnlyList<DirectWriteCall>>? seedCalls = null)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -620,7 +1006,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         sb.Append($"<VI _name=\"{TestTools.Escape(Path.GetFileName(testViPath))}\" description=\"")
           .Append($"Caraya method test for {TestTools.Escape(className)}\\2C generated by ")
           .Append("lvai_generate_method_test.\\0A\\0AEach case calls one of the class's own ")
-          .Append("methods as an ORDINARY STATIC SUBVI. An error-code case asserts the `code` the ")
+          .Append("methods as an ORDINARY STATIC SUBVI")
+          .Append(methods is null
+              ? ""
+              : "\\2C named directly while the class was open in LabVIEW\\3B each object comes " +
+                "from a class constant")
+          .Append(". An error-code case asserts the `code` the ")
           .Append("method returns\\3B a wire-survival case writes a field\\2C calls the method\\2C ")
           .Append("and reads the field back off the object the METHOD returned.\\0A\\0AThe ")
           .Append("method's own error cluster is fed `no error` and never chained into the ")
@@ -651,13 +1042,43 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             "uid_parent=\"root\"/>");
 
         var assertions = new List<int>();
-        foreach (var test in cases)
+        for (var index = 0; index < cases.Count; index++)
         {
+            var test = cases[index];
+
+            // THE REAL METHOD AND ACCESSORS on the direct route, the sockets otherwise - the wiring
+            // is the same and only the targets and terminal names change. The seed is a PATH
+            // constant either way: AIXML has no class constant, and {LV.Constant} Replace is what
+            // turns it into the class afterwards.
+            var method = methods?[index];
+            var accessor = accessors?[index];
+
             var seed = uid++;
             sb.AppendLine(TestTools.Constant(seed, "path", "", test.SeedLabel));
 
-            // An optional write BEFORE the call - this is what the read-back is compared against.
             var objectIn = $"{seed}.value";
+
+            // THE SEEDED FIELDS, written first and asserted nowhere - a case's `seed`.
+            for (var k = 0; k < test.Seeds.Count; k++)
+            {
+                var seeded = test.Seeds[k];
+                var seedValue = uid++;
+                sb.AppendLine(TestTools.Constant(seedValue, seeded.Type,
+                    TestTools.ValueFor(seeded.Type, seeded.Value), $"seed {seeded.Field} {test.Slot}"));
+                var seedWrite = uid++;
+                var direct = seedCalls?[index][k];
+                sb.AppendLine(direct is null
+                    ? $"  <Call target=\"{TestTools.Escape(test.SeedSocket(k))}\" " +
+                      $"inputs=\"obj in:{objectIn},value:{seedValue}.value\" " +
+                      $"outputs=\"obj out:{seedWrite}.obj out\" uid=\"{seedWrite}\" uid_parent=\"root\"/>"
+                    : $"  <Call target=\"{TestTools.Escape(direct.Target)}\" " +
+                      $"inputs=\"{direct.ClassIn}:{objectIn},{direct.Data}:{seedValue}.value\" " +
+                      $"outputs=\"{direct.ClassOut}:{seedWrite}.obj out\" uid=\"{seedWrite}\" " +
+                      "uid_parent=\"root\"/>");
+                objectIn = $"{seedWrite}.obj out";
+            }
+
+            // An optional write BEFORE the call - this is what the read-back is compared against.
             var written = -1;
             if (test.DataType is { } type)
             {
@@ -666,17 +1087,27 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     TestTools.ValueFor(type, test.Value!), $"written {test.Slot}"));
 
                 var write = uid++;
-                sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.WriteSocket!)}\" " +
-                              $"inputs=\"obj in:{objectIn},value:{written}.value\" " +
-                              $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" " +
-                              "uid_parent=\"root\"/>");
+                sb.AppendLine(accessor is null
+                    ? $"  <Call target=\"{TestTools.Escape(test.WriteSocket!)}\" " +
+                      $"inputs=\"obj in:{objectIn},value:{written}.value\" " +
+                      $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" uid_parent=\"root\"/>"
+                    : $"  <Call target=\"{TestTools.Escape(accessor.WriteTarget)}\" " +
+                      $"inputs=\"{accessor.WriteClassIn}:{objectIn}," +
+                      $"{accessor.WriteData}:{written}.value\" " +
+                      $"outputs=\"{accessor.WriteClassOut}:{write}.obj out\" uid=\"{write}\" " +
+                      "uid_parent=\"root\"/>");
                 objectIn = $"{write}.obj out";
             }
 
             // The method's own error in is a CONSTANT. Not the Caraya chain - see the class comment.
-            var noError = uid++;
-            sb.AppendLine(TestTools.Constant(noError, ErrorCluster, "[false,0,]",
-                                                    $"no error {test.Slot}"));
+            // A real method with no error input gets none, rather than a constant wired to nothing.
+            var noError = -1;
+            if (method is null || method.ErrorIn is not null)
+            {
+                noError = uid++;
+                sb.AppendLine(TestTools.Constant(noError, ErrorCluster, "[false,0,]",
+                                                 $"no error {test.Slot}"));
+            }
 
             // A constant per required input. Leaving one out is what made this tool's first real
             // suite generate cleanly and then refuse to run.
@@ -691,14 +1122,27 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             }
 
             var call = uid++;
-            var inputs = string.Join(",",
-                [$"obj in:{objectIn}", $"error in (no error):{noError}.value", .. wired]);
-            var outputs = test.ExpectOutput is { } asserted
-                ? $"obj out:{call}.obj out,error out:{call}.error out," +
-                  $"{TestTools.Escape(asserted)}:{call}.asserted"
-                : $"obj out:{call}.obj out,error out:{call}.error out";
-            sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.MethodSocket)}\" " +
-                          $"inputs=\"{inputs}\" outputs=\"{outputs}\" " +
+            var inputs = new List<string>
+            { $"{method?.ClassIn ?? "obj in"}:{objectIn}" };
+            if (noError >= 0)
+                inputs.Add($"{method?.ErrorIn ?? "error in (no error)"}:{noError}.value");
+            inputs.AddRange(wired);
+
+            // An output the real method does not have is left out rather than named: a Call naming
+            // a terminal its target lacks is refused. The cases that NEED one were refused before
+            // authoring, so what is dropped here is only ever an output nothing reads.
+            var outputs = new List<string>();
+            if (method is null || method.ClassOut is not null)
+                outputs.Add($"{method?.ClassOut ?? "obj out"}:{call}.obj out");
+            if (method is null || method.ErrorOut is not null)
+                outputs.Add($"{method?.ErrorOut ?? "error out"}:{call}.error out");
+            if (test.ExpectOutput is { } asserted)
+                outputs.Add($"{TestTools.Escape(asserted)}:{call}.asserted");
+
+            var target = method?.Target ?? test.MethodSocket;
+            sb.AppendLine($"  <Call target=\"{TestTools.Escape(target)}\" " +
+                          $"inputs=\"{string.Join(",", inputs)}\" " +
+                          $"outputs=\"{string.Join(",", outputs)}\" " +
                           $"uid=\"{call}\" uid_parent=\"root\"/>");
 
             // THE OUTPUT ASSERTION. This is what the tool could not express until 2026-09-07: it
@@ -737,9 +1181,14 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             if (test.DataType is not null)
             {
                 var read = uid++;
-                sb.AppendLine($"  <Call target=\"{TestTools.Escape(test.ReadSocket!)}\" " +
-                              $"inputs=\"obj in:{call}.obj out\" " +
-                              $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
+                sb.AppendLine(accessor is null
+                    ? $"  <Call target=\"{TestTools.Escape(test.ReadSocket!)}\" " +
+                      $"inputs=\"obj in:{call}.obj out\" " +
+                      $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>"
+                    : $"  <Call target=\"{TestTools.Escape(accessor.ReadTarget)}\" " +
+                      $"inputs=\"{accessor.ReadClassIn}:{call}.obj out\" " +
+                      $"outputs=\"{accessor.ReadData}:{read}.value\" uid=\"{read}\" " +
+                      "uid_parent=\"root\"/>");
 
                 // BY DEFAULT expected IS what was written, the same constant - the two cannot drift
                 // apart, which is the whole point of a wire-survival case.
@@ -810,10 +1259,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ required inputs
 
-    private sealed record Fault(string Kind, string Message, object? Detail);
+    internal sealed record Fault(string Kind, string Message, object? Detail);
 
     /// <summary>
-    /// The method's <c>required</c> inputs, each with the literal to wire into it.
+    /// The method's <c>required</c> inputs, plus every other input the case names in `inputs`,
+    /// each with the literal to wire into it.
     ///
     /// WHY THIS EXISTS AT ALL. A `required` input left unwired makes the generated caller NOT
     /// EXECUTABLE - `7101, At least one test is not in a executable state` from Caraya's runner -
@@ -853,16 +1303,62 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "this call stops rather than generating one that cannot run.",
                 new { methodVi }));
 
+        var (resolved, fault) = ResolveInputs(methodVi, terminals, supplied);
+        // The parsed export travels back so the caller can resolve an asserted OUTPUT's type from
+        // it. Doing that here would mean this method knowing about assertions; doing it with a
+        // second export would cost another LabVIEW round trip for something already in hand.
+        return fault is null ? (resolved, terminals, null) : (null, null, fault);
+    }
+
+    /// <summary>
+    /// Which of the method's inputs the test wires, and with what - the part of
+    /// <see cref="RequiredInputsAsync"/> that needs no LabVIEW.
+    /// </summary>
+    internal static (IReadOnlyList<RequiredInput>? Inputs, Fault? Fault) ResolveInputs(
+        string methodVi, ViTerminals.Result terminals, IReadOnlyDictionary<string, string>? supplied)
+    {
+        // A SUPPLIED NAME THE METHOD DOES NOT DECLARE IS REFUSED BY NAME, and one naming the class
+        // or error terminal too - those are wired by the diagram, and a text value cannot feed
+        // them. Before 2026-09-25 an `inputs` entry for anything but a `required` terminal was
+        // dropped in silence: `Withdraw` with `amount` = 800 (a `recommended` input) ran as a
+        // withdrawal of 0, and the case "800 is refused" failed against a correct method.
+        foreach (var name in supplied?.Keys ?? Enumerable.Empty<string>())
+        {
+            var match = terminals.Inputs.FirstOrDefault(t => t.Name.Equals(name, StringComparison.Ordinal));
+            if (match.Name is null)
+                return (null, new Fault("inputTerminalNotFound",
+                    $"'{Path.GetFileName(methodVi)}' has no input terminal called '{name}'. " +
+                    "Names are literal and case-sensitive; a value for a terminal that does not " +
+                    "exist would be wired to nothing and the case would run on the default.",
+                    new
+                    {
+                        methodVi, terminal = name,
+                        inputs = terminals.Inputs.Select(t => t.Name).ToArray(),
+                    }));
+            if (match.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)
+                || ConnectorPane.IsErrorIn(match.Name))
+                return (null, new Fault("inputNotSettable",
+                    $"'{name}' on '{Path.GetFileName(methodVi)}' is the class or error input, " +
+                    "which the generated diagram wires itself. Set a field with `seed` or " +
+                    "`writeField`; the method is always fed `no error`.",
+                    new { methodVi, terminal = name, type = match.Type }));
+        }
+
         var slots = FreeSocketSlots();
         var resolved = new List<RequiredInput>();
         foreach (var terminal in terminals.Inputs)
         {
-            if (terminal.Connection != "required") continue;
             if (terminal.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)) continue;
             if (ConnectorPane.IsErrorIn(terminal.Name)) continue;
+            var isRequired = terminal.Connection == "required";
+            // A terminal that is not required is wired ONLY when the case gives it a value - an
+            // unwired one keeps the method's own default, which is the point of it not being
+            // required (CLAUDE.md, "wire a constant ONLY where the callee marks the input
+            // `required`").
+            if (!isRequired && supplied?.ContainsKey(terminal.Name) != true) continue;
 
             if (resolved.Count >= slots.Count)
-                return (null, null, new Fault("tooManyRequiredInputs",
+                return (null, new Fault("tooManyRequiredInputs",
                     $"'{Path.GetFileName(methodVi)}' has more required inputs than the socket " +
                     $"pane has free slots ({slots.Count}). Wire fewer of them by making the " +
                     "surplus `recommended` on the method, or test it through a wrapper.",
@@ -870,7 +1366,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var given = supplied is not null && supplied.TryGetValue(terminal.Name, out var v);
             if (!given && !HasHonestDefault(terminal.Type))
-                return (null, null, new Fault("requiredInputNeedsAValue",
+                return (null, new Fault("requiredInputNeedsAValue",
                     $"'{terminal.Name}' on '{Path.GetFileName(methodVi)}' is a REQUIRED input of " +
                     $"type `{terminal.Type}`, and there is no default this call can invent that " +
                     "means anything. Leaving it unwired would generate a suite LabVIEW refuses to " +
@@ -880,13 +1376,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             resolved.Add(new RequiredInput(
                 terminal.Name, terminal.Type,
                 given ? supplied![terminal.Name] : TestTools.DefaultFor(terminal.Type),
-                slots[resolved.Count], given));
+                slots[resolved.Count], given, isRequired));
         }
 
-        // The parsed export travels back so the caller can resolve an asserted OUTPUT's type from
-        // it. Doing that here would mean this method knowing about assertions; doing it with a
-        // second export would cost another LabVIEW round trip for something already in hand.
-        return (resolved, terminals, null);
+        return (resolved, null);
     }
 
     /// <summary>
@@ -924,11 +1417,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null) =>
+                                  JsonNode? callTargets = null, JsonObject? route = null) =>
         Json.Document(new JsonObject
         {
             ["ok"] = ok,
             ["failedAtStep"] = failedAt,
+            ["route"] = route,
             ["testViPath"] = testViPath,
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
@@ -940,9 +1434,99 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ the cases
 
-    /// <summary>One required input of the method under test, and the literal wired into it.</summary>
+    /// <summary>
+    /// One method call as the REAL method spells it, for the direct route: the qualified Call
+    /// target and the class and error terminals read off the method's own export.
+    ///
+    /// THE CLASS TERMINALS ARE RECOGNISED BY TYPE, never by the `&lt;Class&gt; in` convention - a
+    /// method is whatever its author called it, and the accessor half of this route already met a
+    /// data terminal named after a typedef rather than after its field. Where a method carries
+    /// more than one class-typed input (an interface method taking another interface's object, say)
+    /// the DISPATCH one is the input marked `dynamic`, and no dynamic one among several is refused
+    /// rather than guessed: the seed would land on the wrong object with no error at all.
+    ///
+    /// A MISSING class output or error pair is not refused HERE - a method need not return its
+    /// object - but the case that needs one is, by <see cref="Unmet"/>, before anything is authored.
+    /// </summary>
+    /// <summary>A Write accessor as it really spells itself, for a seeded field on the direct route.</summary>
+    internal sealed record DirectWriteCall(string Target, string ClassIn, string Data, string ClassOut)
+    {
+        internal static DirectWriteCall? From(ViTerminals.Result write, string target)
+        {
+            const string classType = "ref{UDClassInst}";
+            var inputs = write.Inputs.Where(t => t.ConIdx is not null).ToList();
+            var outputs = write.Outputs.Where(t => t.ConIdx is not null).ToList();
+            var classIn = inputs.Where(t => t.Type == classType).ToList();
+            var classOut = outputs.Where(t => t.Type == classType).ToList();
+            var data = inputs.Where(t => t.Type != classType && t.Type != ErrorCluster).ToList();
+            return classIn.Count == 1 && classOut.Count == 1 && data.Count == 1
+                ? new DirectWriteCall(target, classIn[0].Name, data[0].Name, classOut[0].Name)
+                : null;
+        }
+    }
+
+    internal sealed record DirectMethodCall(string Target, string ClassIn, string? ErrorIn,
+                                            string? ClassOut, string? ErrorOut)
+    {
+        private const string ClassType = "ref{UDClassInst}";
+
+        internal static (DirectMethodCall? Call, string? Why) From(ViTerminals.Result method,
+                                                                   string target)
+        {
+            // PANE TERMINALS ONLY. The export lists every control and indicator on the panel, and
+            // a Call can wire only the ones with a conIdx - a second error indicator kept off the
+            // pane would otherwise make the error pair look ambiguous.
+            static ViTerminals.Terminal? Dispatch(IEnumerable<ViTerminals.Terminal> terminals)
+            {
+                var classTyped = terminals.Where(t => t.Type == ClassType).ToList();
+                if (classTyped.Count == 1) return classTyped[0];
+                var dynamic = classTyped.Where(t => t.Connection == "dynamic").ToList();
+                return dynamic.Count == 1 ? dynamic[0] : null;
+            }
+            static ViTerminals.Terminal? Error(IEnumerable<ViTerminals.Terminal> terminals)
+            {
+                var hits = terminals.Where(t => t.Type == ErrorCluster).ToList();
+                return hits.Count == 1 ? hits[0] : null;
+            }
+
+            var inputs = method.Inputs.Where(t => t.ConIdx is not null).ToList();
+            var outputs = method.Outputs.Where(t => t.ConIdx is not null).ToList();
+
+            var classIn = Dispatch(inputs);
+            if (classIn is null)
+                return (null, inputs.Any(t => t.Type == ClassType)
+                    ? $"'{method.ViName}' has several class-typed inputs and not exactly one " +
+                      "marked dynamic, so which one the seed feeds is not decidable."
+                    : $"'{method.ViName}' has no class-typed input in its export, so it is not a " +
+                      "class-typed method - lvai_add_class_method retypes one.");
+
+            return (new DirectMethodCall(target, classIn.Value.Name, Error(inputs)?.Name,
+                                         Dispatch(outputs)?.Name, Error(outputs)?.Name), null);
+        }
+
+        /// <summary>
+        /// What a case asks of the method that the method does not have, or null. A wire-survival
+        /// case reads its field back off the object the METHOD returned, and an error-code case
+        /// unbundles the method's error out - neither has anything to read without the terminal.
+        /// </summary>
+        internal string? Unmet(MethodCase test) =>
+            test.DataType is not null && ClassOut is null
+                ? $"'{test.Method}' returns no object, so case {test.Slot} cannot read " +
+                  $"'{test.ReadField}' back off it."
+                : test.ExpectErrorCode is not null && ErrorOut is null
+                    ? $"'{test.Method}' has no error out, so case {test.Slot} has no code to assert."
+                    : null;
+    }
+
+    /// <summary>A field written before the method is called and NOT asserted - a case's `seed`.</summary>
+    internal sealed record SeedWrite(string Field, string WriteAccessor, string Type, string Value);
+
+    /// <summary>
+    /// One input of the method under test that the test wires, and the literal wired into it:
+    /// every `required` input, plus any other the case's `inputs` gives a value.
+    /// </summary>
     internal sealed record RequiredInput(string Name, string Type, string Value, int ConIdx,
-                                         bool FromCaller);
+                                         bool FromCaller, bool IsRequired = true);
 
     /// <param name="ExpectOutput">
     /// The method's own output terminal to assert on, spelled exactly as the method spells it -
@@ -958,8 +1542,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                       string? ExpectValue = null,
                                       string? OutputType = null,
                                       int? OutputConIdx = null,
-                                      string? ExpectFieldValue = null)
+                                      string? ExpectFieldValue = null,
+                                      IReadOnlyList<SeedWrite>? SeedWrites = null)
     {
+        public IReadOnlyList<SeedWrite> Seeds => SeedWrites ?? [];
+        public string SeedSocket(int k) => $"LVMCP MthS{Slot}_{k + 1}.vi";
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
         // method would land in the wrong case with no error at all.
@@ -992,13 +1579,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                              string? ExpectOutput = null,
                                              string? ExpectValue = null,
                                              string? OutputType = null,
-                                             string? ExpectFieldValue = null)
+                                             string? ExpectFieldValue = null,
+                                             IReadOnlyDictionary<string, string>? Seeds = null)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> Accepted = new(StringComparer.Ordinal)
         {
             "method", "writeField", "readField", "value", "expectFieldValue", "type",
             "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
+            "seed",
         };
 
         /// <summary>
@@ -1019,6 +1608,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["expectOutput"] = JsonValueKind.String,
             ["expectValue"] = JsonValueKind.String,
             ["outputType"] = JsonValueKind.String,
+            ["seed"] = JsonValueKind.Object,
         };
 
         /// <summary>Why a particular wrong kind is worth a sentence of its own.</summary>
@@ -1147,13 +1737,38 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                         inputs[pair.Key] = pair.Value?.GetValue<string>() ?? "";
                 }
 
+                // `seed`: fields written before the call and NOT asserted, {"Gain":"2"}. Every
+                // value is text, like every other value in a case. A seeded field that is also the
+                // writeField would be written twice with two values, so it is refused by name.
+                Dictionary<string, string>? seedFields = null;
+                if (o["seed"] is JsonObject seedObject)
+                {
+                    seedFields = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (var pair in seedObject)
+                    {
+                        if (string.IsNullOrWhiteSpace(pair.Key))
+                            throw new ArgumentException(
+                                $"Case for '{method}' has an empty field name in \"seed\".");
+                        if (pair.Value is not JsonValue v || v.GetValueKind() != JsonValueKind.String)
+                            throw new ArgumentException(
+                                $"Case for '{method}': \"seed\" value for '{pair.Key}' must be " +
+                                "a string, like every other value in a case - write \"2\", not 2.");
+                        if (string.Equals(pair.Key, writeField, StringComparison.Ordinal))
+                            throw new ArgumentException(
+                                $"Case for '{method}' seeds '{pair.Key}' AND names it as " +
+                                "\"writeField\" - it would be written twice with two values. " +
+                                "Keep it in one of the two.");
+                        seedFields[pair.Key] = v.GetValue<string>();
+                    }
+                }
+
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
                                               o["label"]?.GetValue<string>(), inputs,
                                               expectOutput, expectValue,
                                               o["outputType"]?.GetValue<string>(),
-                                              expectFieldValue));
+                                              expectFieldValue, seedFields));
             }
 
             return all;

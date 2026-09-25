@@ -366,4 +366,122 @@ public sealed class ProjectTestEntryTests
     {
         Assert.Empty(TestTools.ListedElsewhere(["Run Tests.vi"], [], "Tests"));
     }
+
+    // ------------------------------------------------------------------ moving what the close adopted
+
+    /// <summary>Plants a VI at TARGET level, the way LabVIEW's save adopts one it holds open.</summary>
+    private static void AdoptAtTargetLevel(string project, string name)
+    {
+        var text = File.ReadAllText(project);
+        File.WriteAllText(project, text.Replace(
+            "\t\t<Item Name=\"Dependencies\"",
+            $"\t\t<Item Name=\"{name}\" Type=\"VI\" URL=\"../{name}\"/>\r\n" +
+            "\t\t<Item Name=\"Dependencies\"",
+            StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// THE MOVE, in the order ListInProjectAsync runs it. Measured 2026-09-25: every test the direct
+    /// routes generated landed at target level, because it was generated with the project open and
+    /// LabVIEW's save adopted it - and `testFolderName` said `Tests`. Not listed before the close
+    /// and at target level after it is the entry that save made, so it is moved.
+    /// </summary>
+    [Fact]
+    public void A_vi_this_close_adopted_at_target_level_is_moved_into_the_folder()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Test Netzteil.vi", "Test Netzteil Methods.vi");
+            LvClass.AddVisToProject(project, "Tests", [("Test Netzteil.vi", "../Test Netzteil.vi")]);
+
+            var before = LvClass.ListedVis(project).Select(v => v.Name).ToList();
+            AdoptAtTargetLevel(project, "Test Netzteil Methods.vi");
+            var linesBefore = File.ReadAllText(project).Split("\r\n");
+
+            var adopted = TestTools.JustAdopted(["Test Netzteil Methods.vi"], before,
+                                                LvClass.ListedViPlaces(project));
+            Assert.Equal(["Test Netzteil Methods.vi"], adopted);
+
+            Assert.Equal(adopted, LvClass.RemoveTargetLevelVis(project, adopted));
+            Assert.Equal(1, LvClass.AddVisToProject(project, "Tests",
+                [("Test Netzteil Methods.vi", "../Test Netzteil Methods.vi")]));
+
+            var places = LvClass.ListedViPlaces(project);
+            Assert.All(places, p => Assert.Equal("Tests", p.Folder));
+            Assert.Empty(TestTools.ListedElsewhere(places.Select(p => p.Name), places, "Tests"));
+
+            // One item, not two - and every other line of the file exactly as it was: the entry
+            // moved, the file was not re-serialised.
+            var text = File.ReadAllText(project);
+            Assert.Equal(1, text.Split("Test Netzteil Methods.vi\" Type=\"VI\"").Length - 1);
+            var linesAfter = text.Split("\r\n");
+            Assert.Equal(linesBefore.Length, linesAfter.Length);
+            Assert.Equal(linesBefore.Where(l => !l.Contains("Methods.vi")),
+                         linesAfter.Where(l => !l.Contains("Methods.vi")));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>
+    /// THE CONTROL ARM. The same VI at the same place - but the project listed it there BEFORE the
+    /// call, so the place is someone's choice or an earlier run's, and it stays.
+    /// </summary>
+    [Fact]
+    public void A_vi_listed_at_target_level_before_the_call_is_not_taken_for_adopted()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        try
+        {
+            var project = WriteProject(dir, "Run Tests.vi");
+            AdoptAtTargetLevel(project, "Run Tests.vi");
+
+            var before = LvClass.ListedVis(project).Select(v => v.Name).ToList();
+
+            Assert.Empty(TestTools.JustAdopted(["Run Tests.vi"], before,
+                                               LvClass.ListedViPlaces(project)));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    /// <summary>
+    /// Target level ONLY. A VI found inside a class was not put there by an adopting save, and
+    /// the class owns it.
+    /// </summary>
+    [Fact]
+    public void A_vi_inside_another_item_is_never_taken_for_adopted()
+    {
+        List<(string Name, string Url, string Folder)> places =
+            [("Read Volt.vi", "../Read Volt.vi", "Code/Netzteil.lvclass")];
+
+        Assert.Empty(TestTools.JustAdopted(["Read Volt.vi"], [], places));
+    }
+
+    [Fact]
+    public void Removing_touches_only_target_level_and_only_a_line_that_reads_as_one_item()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvproj-tests").FullName;
+        var path = Path.Combine(dir, "Test.lvproj");
+        try
+        {
+            var original = string.Join("\r\n",
+                "<?xml version='1.0' encoding='UTF-8'?>",
+                "<Project Type=\"Project\" LVVersion=\"26008000\">",
+                "\t<Item Name=\"My Computer\" Type=\"My Computer\">",
+                "\t\t<Item Name=\"Code\" Type=\"Folder\">",
+                "\t\t\t<Item Name=\"Read Volt.vi\" Type=\"VI\" URL=\"../Read Volt.vi\"/>",
+                "\t\t</Item>",
+                // an item written over two lines is not something to edit by line
+                "\t\t<Item Name=\"Split.vi\" Type=\"VI\" URL=\"../Split.vi\">",
+                "\t\t</Item>",
+                "\t\t<Item Name=\"Dependencies\" Type=\"Dependencies\"/>",
+                "\t</Item>",
+                "</Project>");
+            File.WriteAllText(path, original);
+
+            Assert.Empty(LvClass.RemoveTargetLevelVis(path, ["Read Volt.vi", "Split.vi"]));
+            Assert.Equal(original, File.ReadAllText(path));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

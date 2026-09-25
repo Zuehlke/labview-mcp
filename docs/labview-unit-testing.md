@@ -196,6 +196,32 @@ subject. Each sub-answer comes back whole under `steps`, so a failure reads the 
 three by hand. `inputs` and `expect` are keyed by the subject's **own terminal names**, and each
 value is written verbatim into a constant of that terminal's type.
 
+**SINCE 2026-09-25 IT CALLS THE SUBJECT DIRECTLY WHEN IT CAN, and the placeholder route below is
+the fallback.** A project VI that is open in LabVIEW is a legal `Call` target
+(`docs/aixml-call-loaded-vi.md`), so the tool finds the `.lvproj` that LISTS the subject (or takes
+`projectPath`), opens the subject through it, authors the test's `Call` against the subject's own
+name, generates, and closes the project - which releases the subject and lists the test in the
+project. The answer's `route` says which ran and, for the placeholder one, why the direct one did
+not. Accepted 2026-09-25 against LabVIEW: two cases on the direct route both `pass` through a
+generated Caraya runner, a deliberately wrong expectation beside them `FAIL`, and the test VI listed
+in the project afterwards.
+
+**The direct route FIXED a placeholder-route failure on the way, and the fallback still has it.**
+With the test VI in a DIFFERENT folder from its subject - `Tests\` beside `Loose\` - the pylabview
+retarget writes a link LabVIEW cannot follow: `ok: false`, `failedAtStep: retarget`, `execState 0`,
+`Missing subVI IMC Multiply.vi in VI Test IMC Multiply B2.vi`, with an exact stub and correct
+`callTargets`. The same forced placeholder route with the test BESIDE the subject answered
+`execState 1`. The direct route passed the cross-folder case (`Sub\` against `Tests\`). So a subject
+that no project lists, tested into its own test folder, still fails - keep such a test beside its
+subject until the retarget is fixed.
+
+**It is not faster inside the call**, and that is worth saying because the route was expected to
+save time: 15.7 s direct against 13.6-15.9 s placeholder on the same VI, the first direct call 28 s
+while its helpers were built. What it removes is moving parts - the stub in `user.lib`, the
+typedef flatten, the pylabview extract and rebuild - and the cross-folder failure above. Every case
+constant is now named after the terminal it feeds, because on the direct route that terminal is the
+subject's own, typedef included, and `lvai_bind_typedef_constants` finds constants by that label.
+
 Two limits worth knowing before writing cases:
 
 - **every assertion is `Assert Equal Value_Variant`, and float equality is exact.** Caraya's
@@ -386,9 +412,32 @@ as a failure.
 
 ### 3d. THE STATIC ROUTE: class accessors as ordinary subVI calls, via `{LV.SubVI}` `Replace`
 
-Measured 2026-08-29 in `C:\temp\NetzteilACDC`. Four Caraya test VIs, twelve properties over three
-classes, every accessor a **static subVI call on the test diagram**, `failures="0"` on two
-consecutive runs, and a negative control that fails on demand.
+**SINCE 2026-09-25 `lvai_generate_class_test` CALLS THE ACCESSORS DIRECTLY, and this section's
+socket route is its fallback.** The paragraph below says a direct `Call` to a class accessor is
+refused "even with the owning project open"; that was true of what it measured - the project OPEN,
+no member LOADED, and validation, which refuses such a call in every state. With ONE member opened
+through the project, `ConvertAIXMLToVI` resolves `Class.lvclass\3AWrite X.vi` for every member of
+the class (`docs/aixml-call-loaded-vi.md` §4). The tool now finds the project that lists the class
+(or takes `projectPath`), reads each accessor pair's REAL terminal names off its export - the
+class terminals by type, because a typedef-bound field's data terminal is named after the typedef,
+not the field - opens one accessor through the project, generates the test against the real
+accessors, and closes the project. **The seed stays**: AIXML has no class constant, so each chain
+still starts at a `path` constant; the converter writes it into the class input as a broken wire
+(`eBad`), and the same `{LV.Constant}` `Replace` as before makes it the class (`execState 1`). What
+goes is both sockets and both node swaps per field. `route` in the answer says which route ran.
+
+Accepted 2026-09-25 through a real Caraya run: an `int32` field (`42`) and a typedef-bound cluster
+field (`1.5 / 0.25`, accessors `Write Profile.vi`/`Read Profile.vi`, data terminal `IMC Setpoint`),
+both `pass`, both with the project found by itself. A round trip cannot pass vacuously there: the
+written value differs from the field's default. **It is not faster for ONE field** - 18.0 s direct
+against 11.9 s of socket route plus the 7.4 s project open that route needs first - and it should
+pull ahead per extra field, since each one costs two exports instead of two socket generations and
+two node swaps; that scaling is NOT measured yet.
+
+The rest of this section is the socket route, measured 2026-08-29 in `C:\temp\NetzteilACDC`. Four
+Caraya test VIs, twelve properties over three classes, every accessor a **static subVI call on the
+test diagram**, `failures="0"` on two consecutive runs, and a negative control that fails on
+demand.
 
 **The blocker is narrower than the documents said.** Three spellings of a direct `Call` to a class
 accessor are refused even with the owning project open —

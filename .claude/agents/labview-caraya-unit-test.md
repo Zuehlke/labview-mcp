@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_generate_test, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, mcp__labview__lvai_run_caraya_tests, mcp__labview__lvai_set_constant, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -42,11 +42,14 @@ green run can be meaningless.
   the value's real type; and a renamed field breaks the test at run time instead of at edit time.
 
 - **CLASS CODE DOES NOT EXEMPT YOU, and it is the case that looks impossible.** AIXML refuses a
-  class-typed terminal (`Control with type=UDClassInst is not supported`), so no generated `Call` can
-  name an accessor and `lvai_placeholder_subvi` answers `stubRefused`. The way through is LabVIEW's
-  own `{LV.SubVI}` `Replace`, which **re-types the wires** where a pylabview link retarget cannot.
-  **`lvai_generate_class_test` does the whole thing in one call** - Phase 3b. Full recipe and
-  the traps in `docs/labview-unit-testing.md` §3d.
+  class-typed TERMINAL (`Control with type=UDClassInst is not supported`) - but since 2026-09-25 a
+  `Call` CAN name an accessor or method once ONE member of the class is loaded through its project,
+  and the class wires between such calls need nothing. Only the chain's first object still needs a
+  `path` seed turned into the class with `{LV.Constant}` `Replace`. **`lvai_generate_class_test`
+  and `lvai_generate_method_test` do the whole thing in one call** and take that direct route by
+  default (Phase 3b, 3c); the older socket route - `{LV.SubVI}` `Replace`, which **re-types the
+  wires** where a pylabview link retarget cannot - is their fallback. Full recipe and the traps in
+  `docs/labview-unit-testing.md` §3d.
 
 - **A DYNAMIC DISPATCH INPUT IS A REQUIRED TERMINAL.** This is the trap that decides whether a class
   test runs at all. Leave the first accessor's class input unwired and you get `Error 1003, VI is not
@@ -237,6 +240,12 @@ name rather than the same one.
 [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
 ```
 
+**A DEFAULT is a case of this tool too**: `{"field":"Gain","expectDefault":"1"}` reads the field off
+a fresh object with no Write. Do not reach for lvai_generate_method_test and a VI of its own for it,
+which is what the second TypedefAfterGDevCon build had to do before 2026-09-25. Assert only a
+default the class DECLARES (`lvai_create_class`'s `double.Gain=1`) or the type's own empty value,
+and say which.
+
 `seedClassPath` is what tests INHERITANCE: leave it out and each chain starts from the class's own
 constant; point it at a CHILD class to run the parent's accessors on a child object. The accessors
 stay the parent's — only the object changes.
@@ -244,7 +253,16 @@ stay the parent's — only the object changes.
 Measured 2026-08-29, cold: **12 sockets, 12 node swaps and 6 constant swaps in 34 s**, verified
 against LabVIEW's own export, where the same thing by hand had cost about forty calls.
 
-What the tool does, so an unexpected answer is readable:
+**TWO ROUTES since 2026-09-25, and `route` in the answer says which ran.** By DEFAULT the tool
+finds the `.lvproj` that lists the class, opens one accessor through it - which makes every member
+of the class a legal `Call` target - and names the REAL accessors, with terminal names read off
+their exports. No sockets, no node swaps; only the seed constants are still replaced, because AIXML
+has no class constant. It closes the project afterwards. When no single project lists the class,
+or the accessors do not resolve, it falls back to the SOCKET route below, and `route.reason` says
+why. `directCall: false` forces the sockets. The direct route opens and closes the project
+itself; the socket route's swap needs one ACTIVE already and answers `noActiveProject` without it.
+
+What the SOCKET route does, so an unexpected answer is readable:
 
 1. **One socket VI per slot**, generated into `<LabVIEW>\user.lib\LV_MCP\`, where a loose VI resolves
    as a `Call` target by bare name. Class terminals are **`path`** — no private data field is a path,
@@ -268,6 +286,17 @@ What you want to see in the verify export:
 ```
 
 and zero socket names left anywhere in the file.
+
+**A TYPEDEF FIELD: CHECK THE COERCION DOT, AND DO NOT PASS `type` BY HAND.** When a field is bound to
+a `.ctl`, NI's wizard names the accessor's data terminal after the TYPEDEF (`Channel Config` for the
+field `Config`); the tool reads the type off that terminal by itself since 2026-09-25, so a
+`fieldTypeUnknown` there is worth reporting rather than working around. On the direct route the
+answer carries a `typedefConstants` step: the written constant is re-pointed to the typedef so the
+Write call has no coercion dot. **Confirm it with `lvai_coercion_dots` on the finished test VI** -
+the Write and Read accessor calls must show none; the dots on Caraya's `Actual`/`Expected` inputs
+are the ordinary conversion into a Variant and are expected. A dot left on an accessor call is
+repaired with `lvai_bind_typedef_constants` (the constant is labelled `written <n>`), with the
+class's project active.
 
 **A FAILED RUN POISONS THE SOCKET NAMES for the rest of the LabVIEW session.** The tool numbers them
 by slot, so a retry after fixing anything reuses the same names — and a name whose validation failed
@@ -309,12 +338,33 @@ not know it unless you wrote it down.
 Every method must already be a class member with a class-typed pane. If one is not, that is
 `lvai_add_class_method`'s job, not yours — name it and hand back.
 
+**The same two routes as Phase 3b.** By default the methods and accessors are called DIRECTLY
+through the class's project; the sockets are the fallback, `route` says which ran. On the direct
+route a case the method cannot serve - a `writeField` case on a method that returns no object - is
+refused as `caseNeedsATerminalTheMethodLacks` before anything is written; take the case out or
+change its shape, do not force the sockets to get past it. Measured 2026-09-25 on four cases:
+15.8 s direct against 26.2 s for the sockets plus the project open they need. The test lands in
+`testFolderName` - always on the direct route, on the socket route only with `projectPath`: when
+LabVIEW's own save adopts a freshly generated test at the project's top level, the `projectEntry`
+step moves exactly that entry (`movedIntoFolder`).
+**A test that was already listed somewhere else before the call stays there** - that place is
+someone's choice - and `inRequestedFolder: false` plus `listedElsewhere` say so; name where it is
+in your report.
+
 ### Phase 4 — The runner: `lvai_generate_caraya_test_runner`, one call
 
 **Do not hand-author the runner.** One call takes the test VI paths (one absolute path per line),
 the runner's path and optionally the `.lvproj`, and writes the whole thing: every test's path built
 relative to the runner's own location, the array, the `Report Path`, `Interactive (T)` FALSE, and
-the project entry. Then run it and read the report.
+the project entry.
+
+**RUN IT WITH `lvai_run_caraya_tests`, not with `lvai_run_vi_and_read_values` plus a shell parse of
+the XML.** One call runs the runner and answers from the JUnit report: counts per suite and every
+failing case named with its suite and test VI, and `reportFresh` says the report was written by THIS
+run - an old green file beside a runner that did not start reads exactly like a pass otherwise. **Do
+not take the verdict from the runner's `error out`**: it is Caraya's one error for the whole run
+(7002 on a failure) and its source is not the failing VI - measured 2026-09-25, it named
+`Test Channel.vi` for a failure in `Test Channel Defaults.vi`.
 
 The reason it is a tool: measured 2026-08-30 on a five-suite build, hand-authoring the runner took
 **186 s of wall clock against 6.1 s inside LabVIEW** — a fifth of the whole run, spent re-writing
@@ -351,8 +401,13 @@ LabVIEW round trips and about 75 s measured on 2026-08-30 — and the user has a
 Skip it unless the task prompt explicitly asks for one.
 
 When it IS asked for: break one thing, run, confirm the failure names the case you broke, restore,
-re-run green. Cheapest form for a class test: `Replace` one Read accessor with a different field's,
-which makes exactly one case fail. Record the failure message in your report.
+re-run green. **Break it with `lvai_set_constant`, not by regenerating**: the generators label every
+constant (`expected 2`, `written 1`), so one call sets an expectation wrong and one call sets it
+back, each verified from the saved file - where the regeneration route cost two full generations of
+about 56 s each, measured 2026-09-25. Break an EXPECTED constant (`expected <n>`, a default case's
+or an output assertion's); a round trip's `written <n>` feeds both the write and the assertion, so
+changing it proves nothing. Run with `lvai_run_caraya_tests` and confirm `failing` names exactly the
+case you broke. Record it in your report.
 
 **What this costs you, and say so in the report rather than hiding it:** an all-green first run is
 weak evidence on its own. It has twice been green here while testing nothing — a `value="TRUE"` on a
@@ -521,9 +576,22 @@ the `Event Data Node` - so there the documented route stands: a labelled placeho
 into a PRIM input, plus `lvai_set_event_data_fields` as a third build step. Do not generalise the
 shortcut past front-panel events; the two cases look alike on a diagram and are not.
 
-**`lvai_placeholder_subvi` PLUS `lvai_swap_subvis` IS THE ONLY ROUTE BY WHICH A GENERATED VI CALLS
-PROJECT-LOCAL CODE.** AIXML refuses a project VI as a `Call` target outright (`Error 53, Unsupported
-SubVI`), in every spelling. Do not hand-build a stand-in: the clone must match the subject's pane
+**A GENERATED VI CALLS PROJECT-LOCAL CODE BY ITS BARE NAME ONCE THAT CODE IS LOADED - no stub.**
+This paragraph said until 2026-09-25 that `lvai_placeholder_subvi` plus `lvai_swap_subvis` was the
+ONLY route; that is superseded. With each callee opened through its project (`lvai_open_file`),
+`<Call target="Find Account.vi" .../>` converts; `ValidateAIXML` refuses it with `Unsupported
+SubVI` in every state, and `lvai_generate_vi` converts past exactly that refusal by itself and gates
+on `execState` - read `loadedSubVIs` in its answer. `lvai_generate_test`,
+`lvai_generate_class_test` and `lvai_generate_method_test` take the same route by default and say
+so in `route`. Measured over a whole CLD build, 2026-09-25: every caller executable on the first
+generate, zero stubs written (`docs/cold-build-atm-no-stubs.md`). Whoever opened a project closes it
+again (`lvai_close_active_project` with `projectPath`).
+
+**THE PLACEHOLDER ROUTE IS THE FALLBACK**, for when the callee cannot be loaded: other agents share
+the LabVIEW and you may not open a project, or the VI is converted with the project CLOSED - which
+`lvai_add_class_method` and `lvai_lunit_add_test_method` do, so for a class method or an LUnit test
+method calling project code the loaded route is NOT measured and the placeholder stays the route.
+Do not hand-build a stand-in: the clone must match the subject's pane
 terminal for terminal, and an inexact one is `Error 7, Bad Linkage` with nothing in the message
 about panes. Measured 2026-09-16 - an agent whose roster lacked the tool built its own socket VI
 from AIXML, correctly but by luck, with no way to know the rule it was re-deriving.

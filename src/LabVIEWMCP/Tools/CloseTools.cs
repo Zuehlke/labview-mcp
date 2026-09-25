@@ -160,9 +160,9 @@ internal sealed class CloseTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("""
-            The .lvproj being closed. OPTIONAL, and the only way this tool can tidy: the helper
-            closes whatever project is ACTIVE and never learns its path, so without this there is
-            nothing to read back. Given one, the saved file is swept for items LabVIEW adopted into
+            The .lvproj being closed. OPTIONAL: without it the ACTIVE project's path is read from
+            LabVIEW before the close, so the sweep runs either way (`projectPathFrom` says which).
+            The saved file is swept for items LabVIEW adopted into
             it - helper VIs out of our temp trees, sockets under <userlib>/LV_MCP, and entries whose
             file is not there - and the answer NAMES every one it removed. The save this tool
             performs is what writes those entries, so this is the step where they appear.
@@ -193,12 +193,44 @@ internal sealed class CloseTools(LvaiConnection connection)
             }
 
             var wall = System.Diagnostics.Stopwatch.StartNew();
+
+            // NO PATH GIVEN: ASK LabVIEW WHICH PROJECT IS ACTIVE, so the sweep runs anyway. Every
+            // tool that closes a project internally used to call this without a path - the test
+            // generators, lvai_wire_dynamic_events - and each of those saves adopted its strays
+            // unswept. Measured 2026-09-25: lvai_wire_dynamic_events' save put its own helper
+            // `lvai_wire_dyn_events.vi` into the user's .lvproj, where it stayed until a later
+            // close with a path removed it. Reading the active project is one helper run, and it
+            // is read BEFORE the close because afterwards there is nothing active to read.
+            var pathFrom = projectPath is { Length: > 0 } ? "argument" : null;
+            if (pathFrom is null)
+            {
+                var (active, _, activePath) = await new ActionTools(connection)
+                    .ProjectIsActiveAsync(timeoutSeconds, ct);
+                if (active is true && activePath is { Length: > 0 } && File.Exists(activePath))
+                {
+                    projectPath = activePath;
+                    pathFrom = "active project";
+                }
+            }
+
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
-            return DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
-                                        wall.ElapsedMilliseconds, projectPath);
+            var described = DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
+                                                 wall.ElapsedMilliseconds, projectPath);
+            if (pathFrom is null) return described;
+            try
+            {
+                var node = System.Text.Json.Nodes.JsonNode.Parse(described);
+                if (node is System.Text.Json.Nodes.JsonObject o && o["projectSweep"] is { } sweep)
+                {
+                    sweep["projectPathFrom"] = pathFrom;
+                    return Json.Document(o);
+                }
+            }
+            catch (System.Text.Json.JsonException) { }
+            return described;
         });
 
     /// <summary>
@@ -234,12 +266,19 @@ internal sealed class CloseTools(LvaiConnection connection)
                 File.ReadAllText(full), full);
             if (removed > 0) File.WriteAllText(full, tidied);
 
+            // A FILE LISTED TWICE MAKES THE NEXT OPEN FAIL with `Error 74` and load nothing, so a
+            // close must not leave one behind. Measured 2026-09-25 on the ATM cold build: this
+            // save adopted three helper VIs at target level, a later edit listed them in a folder
+            // as well, and the open after it refused the project. The folder entry is kept.
+            var duplicates = LvClass.RemoveDuplicateViEntries(full);
+
             return new JsonObject
             {
                 ["swept"] = true,
                 ["projectPath"] = full,
                 ["strayVisRemoved"] = removed,
                 ["strayVisRemovedNames"] = new JsonArray([.. names.Select(n => (JsonNode)n!)]),
+                ["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(n => (JsonNode)n!)]),
                 // WHAT IT DOES NOT REACH, said plainly rather than left to be discovered. The same
                 // WeighBridge close also adopted a VI from a directory OUTSIDE the project tree
                 // (`../../wb-negctl/Neg Control.vi`), and that one stays: the file exists and sits
@@ -247,13 +286,17 @@ internal sealed class CloseTools(LvaiConnection connection)
                 // shares from a sibling folder - which real projects do constantly. A rule wide
                 // enough to catch it would delete those, and deleting a user's own entry is a worse
                 // failure than leaving a stray. Read the .lvproj after the close; that rule stands.
-                ["note"] = removed > 0
+                ["note"] = (duplicates.Count > 0
+                    ? $"{duplicates.Count} entry/entries listed a file a second time and were " +
+                      "removed (duplicateEntriesRemoved) - a project listing one file twice " +
+                      "answers Error 74 on the next open. The copy inside a folder was kept. "
+                    : "") + (removed > 0
                     ? "Items LabVIEW adopted into the project during this session were removed - "
                     + "see strayVisRemovedNames. This sweep reaches our own temp trees, "
                     + "<userlib>/LV_MCP sockets, and entries whose file is not there. A VI adopted "
                     + "from any OTHER directory is left alone and is not reported, because nothing "
                     + "here can distinguish it from one the user listed on purpose."
-                    : "Nothing to remove.",
+                    : duplicates.Count > 0 ? "" : "Nothing to remove."),
             };
         }
         catch (Exception failure)

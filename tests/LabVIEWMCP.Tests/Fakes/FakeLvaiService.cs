@@ -63,6 +63,14 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
         get { lock (_gate) return [.. _received]; }
     }
 
+    private readonly List<string> _convertedAixml = [];
+
+    /// <summary>The AIXML each ConvertAIXMLToVI call was handed, as it read at the time.</summary>
+    public IReadOnlyList<string> ConvertedAixml
+    {
+        get { lock (_gate) return [.. _convertedAixml]; }
+    }
+
     public T Last<T>(string method) where T : IMessage
     {
         lock (_gate)
@@ -258,6 +266,10 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
         ConvertAIXMLToVIRequest request, ServerCallContext context) =>
         Unary(nameof(ConvertAIXMLToVI), request, () =>
         {
+            // Read NOW: a caller may hand over a scratch copy it deletes as soon as the call
+            // returns, and the copy's content - its _name, say - is what a test needs to see.
+            if (File.Exists(request.AiXMLFilePath))
+                lock (_gate) _convertedAixml.Add(File.ReadAllText(request.AiXMLFilePath));
             if (ViFileContent is not null)
                 File.WriteAllText(request.ViPath, ViFileContent);
             return new ConvertAIXMLToVIResponse
