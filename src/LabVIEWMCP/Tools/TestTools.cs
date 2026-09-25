@@ -904,6 +904,57 @@ internal sealed class TestTools(LvaiConnection connection)
         }
     }
 
+    [McpServerTool(Name = "lvai_add_vis_to_project", Destructive = true, OpenWorld = true,
+                   Title = "List VIs under a folder of a LabVIEW project")]
+    [Description("""
+        MUTATING: lists VIs in a `.lvproj` under one virtual folder, as a FILE edit made with the
+        project CLOSED - it closes the active project first, because LabVIEW's close saves its own
+        copy over the file and would destroy the edit - and leaves it closed unless `reopen`.
+        USE THIS INSTEAD OF EDITING A .lvproj BY HAND. Measured 2026-09-25 on the ATM cold build: a
+        hand edit listed three VIs under `SubVIs` that LabVIEW's own save had already listed at
+        target level, and the next open answered `Error 74` and loaded nothing.
+        A VI ALREADY LISTED IS NEVER LISTED TWICE. One at TARGET level - where LabVIEW's save drops
+        every VI it adopts - is MOVED into the folder (`movedIntoFolder`); one inside another folder
+        stays and is named under `listedElsewhere`. Any file the project already lists twice is
+        repaired, keeping the entry inside a folder (`duplicateEntriesRemoved`), and the strays our
+        own tools leave behind - helper VIs, user.lib\LV_MCP sockets, entries whose file is gone -
+        are swept as on every close. A path with no file behind it is NOT listed (`notOnDisk`).
+        `lvai_open_file` refuses a project that lists a file twice (`duplicateProjectEntries`);
+        this call with that projectPath and the VIs you meant to list is the repair.
+        """)]
+    public async Task<string> AddVisToProjectAsync(
+        [Description("The .lvproj to list the VIs in")] string projectPath,
+        [Description("The VIs to list, one absolute path per line")] string viPaths,
+        [Description("Virtual folder to list them under; created at target level if missing")]
+        string folderName = "SubVIs",
+        [Description("Open the project again afterwards. Leave false when the next step generates")]
+        bool reopen = false,
+        [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(async () =>
+        {
+            if (!File.Exists(projectPath))
+                return Json.Error("fileNotFound", $"No .lvproj at projectPath '{projectPath}'.",
+                    new { projectPath });
+            if (PathListFault(viPaths, nameof(viPaths)) is { } listFault)
+                return Json.Error("badArguments", listFault,
+                    new { parameter = nameof(viPaths), arrived = viPaths });
+            if (string.IsNullOrWhiteSpace(folderName))
+                return Json.Error("badArguments",
+                    "folderName is empty. Name the virtual folder the VIs belong under - an entry " +
+                    "at target level is exactly what LabVIEW's own save produces, so it cannot be " +
+                    "told apart from an adopted stray afterwards.");
+
+            var paths = (viPaths ?? "")
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                     StringSplitOptions.TrimEntries)
+                .ToList();
+            var step = await ListInProjectAsync(Path.GetFullPath(projectPath), folderName.Trim(),
+                                                paths, timeoutSeconds, ct, reopen,
+                                                moveTargetLevel: true);
+            return Json.Document(step);
+        });
+
     [McpServerTool(Name = "lvai_generate_caraya_test_runner", Destructive = true, OpenWorld = true,
                    Title = "Generate the Caraya suite runner for a set of test VIs")]
     [Description("""
@@ -1159,7 +1210,7 @@ internal sealed class TestTools(LvaiConnection connection)
     /// </param>
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
-        CancellationToken ct, bool reopen = true)
+        CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
     {
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
         try
@@ -1199,8 +1250,10 @@ internal sealed class TestTools(LvaiConnection connection)
             // entries the save made: asked for, NOT listed before the close, at target level after
             // it. A VI the user put anywhere - including at target level - was listed before and
             // stays where it is.
+            // `moveTargetLevel` - the explicit listing tool - moves a requested VI out of target
+            // level whoever put it there: the caller named the VI AND the folder.
             var adopted = JustAdopted(entries.Select(e => e.Name),
-                                      listedBefore.Select(v => v.Name),
+                                      moveTargetLevel ? [] : listedBefore.Select(v => v.Name),
                                       LvClass.ListedViPlaces(projectPath));
             var moved = LvClass.RemoveTargetLevelVis(projectPath, adopted);
 
@@ -1208,7 +1261,11 @@ internal sealed class TestTools(LvaiConnection connection)
             // can only ever remove an entry whose file is missing or which points into one of our
             // temp trees, and nothing written above is either. AddVisToProject is idempotent, so
             // an entry that survived the close costs nothing.
-            var restored = LvClass.AddVisToProject(projectPath, folderName, listedBefore);
+            // A VI MOVED ABOVE IS NOT RESTORED: it was listed before the close only at target
+            // level, and putting that entry "back" into the folder would count a requested move as
+            // the close clobbering the file - measured on the explicit tool's first live run.
+            var restored = LvClass.AddVisToProject(projectPath, folderName,
+                [.. listedBefore.Where(v => !moved.Contains(v.Name, StringComparer.OrdinalIgnoreCase))]);
             var added = entries.Count > 0
                 ? LvClass.AddVisToProject(projectPath, folderName, entries)
                 : 0;
@@ -1216,6 +1273,11 @@ internal sealed class TestTools(LvaiConnection connection)
             var (tidied, removed, _) = ClassTools.StripHelperItems(
                 await File.ReadAllTextAsync(projectPath, ct), projectPath);
             if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
+
+            // AND NO FILE LISTED TWICE, whoever wrote the second entry: that project answers
+            // `Error 74` on the next open. AddVisToProject never adds one; this repairs one made
+            // by hand or by an earlier run.
+            var duplicates = LvClass.RemoveDuplicateViEntries(projectPath);
 
             // VERIFY FROM THE FILE, NOT FROM THE COUNT. `added` says what was written; this says
             // what survived, and the two differ whenever the tidy pass fires.
@@ -1257,6 +1319,7 @@ internal sealed class TestTools(LvaiConnection connection)
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
+            step["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(v => (JsonNode)v)]);
             step["reopened"] = reopened;
             if (notOnDisk.Count > 0)
                 step["notOnDisk"] = new JsonArray([.. notOnDisk.Select(v => (JsonNode)v)]);
@@ -1281,9 +1344,13 @@ internal sealed class TestTools(LvaiConnection connection)
             else if (notOnDisk.Count == 0 && notListed.Count == 0)
                 note.Add("Already listed; nothing added.");
             if (moved.Count > 0)
-                note.Add($"{moved.Count} of them LabVIEW's own save had just adopted at target " +
-                         $"level ({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
-                         $"'{folderName}', because they were not in the project before this call.");
+                note.Add(moveTargetLevel
+                    ? $"{moved.Count} of them sat at target level " +
+                      $"({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
+                      $"'{folderName}' as asked, rather than listed a second time."
+                    : $"{moved.Count} of them LabVIEW's own save had just adopted at target " +
+                      $"level ({string.Join(", ", moved.Select(v => $"'{v}'"))}) - moved into " +
+                      $"'{folderName}', because they were not in the project before this call.");
             var unmatched = adopted.Except(moved, StringComparer.OrdinalIgnoreCase).ToList();
             if (unmatched.Count > 0)
                 note.Add("LabVIEW's save had just adopted " +
@@ -1307,6 +1374,10 @@ internal sealed class TestTools(LvaiConnection connection)
                 note.Add($"{restored} entry/entries LabVIEW's close had deleted from the .lvproj " +
                          "were put back - anything above 0 means the close clobbered the file, " +
                          "which is a known and unexplained behaviour.");
+            if (duplicates.Count > 0)
+                note.Add($"{duplicates.Count} entry/entries listed a file a second time and were " +
+                         "removed - a project listing one file twice answers Error 74 on open: " +
+                         string.Join(", ", duplicates.Select(v => $"'{v}'")) + ".");
             if (removed > 0)
                 note.Add($"{removed} stray item(s) LabVIEW had adopted were removed - a socket " +
                          "out of user.lib\\LV_MCP lands in the project when LabVIEW saves it " +
@@ -1319,7 +1390,7 @@ internal sealed class TestTools(LvaiConnection connection)
                                         or UnauthorizedAccessException)
         {
             step["ok"] = false;
-            step["note"] = "The tests were generated and are sound, but the project could not be " +
+            step["note"] = "The VIs exist and are sound, but the project could not be " +
                            $"edited: {failure.Message}. List " +
                            string.Join(", ", viPaths.Select(v => $"'{Path.GetFileName(v)}'")) +
                            " by hand - and do it with the project CLOSED, because LabVIEW's close " +

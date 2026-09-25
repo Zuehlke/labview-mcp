@@ -118,7 +118,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         rather than guessed. Supply those per case:
           [{"method":"Initialize","expectErrorCode":-200099,
             "inputs":{"Physical Channel":"Dev1/ai0"}}]
-        `inputs` overrides the default for any terminal, required or not named here.
+        `inputs` sets ANY input terminal of the method, required or not: a required one is always
+        wired (with the default where the case gives none), any other only when the case names it,
+        so an unnamed one keeps the method's own default. A name the method does not declare is
+        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`).
+        Until 2026-09-25 a value for a non-required terminal was dropped in silence.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
         A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
@@ -551,7 +555,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         return step;
     }
 
-    /// <summary>What each case wired into the method's required inputs, and where the value came from.</summary>
+    /// <summary>What each case wired into the method's inputs, and where the value came from.</summary>
     private static JsonObject RequiredInputsStep(IEnumerable<MethodCase> cases) => new()
     {
         ["step"] = "requiredInputs",
@@ -562,6 +566,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 ["terminal"] = r.Name,
                 ["type"] = r.Type,
+                ["connection"] = r.IsRequired ? "required" : "not required, wired because the case gives it",
                 ["value"] = r.Value,
                 ["source"] = r.FromCaller ? "the case's inputs" : "this tool's default",
             })]),
@@ -886,8 +891,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         {
             sb.AppendLine(
                 $"  <Control _name=\"{TestTools.Escape(input.Name)}\" conIdx=\"{input.ConIdx}\" " +
-                "connection=\"required\" description=\"Stands in for a required input of the " +
-                $"method.\" outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
+                $"connection=\"{(input.IsRequired ? "required" : "recommended")}\" " +
+                "description=\"Stands in for an input of the method the test wires.\" " +
+                $"outputs=\"value:{uid}.value\" type=\"{TestTools.Escape(input.Type)}\" " +
                 $"uid=\"{uid}\" uid_parent=\"root\" " +
                 $"value=\"{TestTools.EscapeValue(input.Value)}\"/>");
             uid++;
@@ -1233,10 +1239,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ required inputs
 
-    private sealed record Fault(string Kind, string Message, object? Detail);
+    internal sealed record Fault(string Kind, string Message, object? Detail);
 
     /// <summary>
-    /// The method's <c>required</c> inputs, each with the literal to wire into it.
+    /// The method's <c>required</c> inputs, plus every other input the case names in `inputs`,
+    /// each with the literal to wire into it.
     ///
     /// WHY THIS EXISTS AT ALL. A `required` input left unwired makes the generated caller NOT
     /// EXECUTABLE - `7101, At least one test is not in a executable state` from Caraya's runner -
@@ -1276,16 +1283,62 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "this call stops rather than generating one that cannot run.",
                 new { methodVi }));
 
+        var (resolved, fault) = ResolveInputs(methodVi, terminals, supplied);
+        // The parsed export travels back so the caller can resolve an asserted OUTPUT's type from
+        // it. Doing that here would mean this method knowing about assertions; doing it with a
+        // second export would cost another LabVIEW round trip for something already in hand.
+        return fault is null ? (resolved, terminals, null) : (null, null, fault);
+    }
+
+    /// <summary>
+    /// Which of the method's inputs the test wires, and with what - the part of
+    /// <see cref="RequiredInputsAsync"/> that needs no LabVIEW.
+    /// </summary>
+    internal static (IReadOnlyList<RequiredInput>? Inputs, Fault? Fault) ResolveInputs(
+        string methodVi, ViTerminals.Result terminals, IReadOnlyDictionary<string, string>? supplied)
+    {
+        // A SUPPLIED NAME THE METHOD DOES NOT DECLARE IS REFUSED BY NAME, and one naming the class
+        // or error terminal too - those are wired by the diagram, and a text value cannot feed
+        // them. Before 2026-09-25 an `inputs` entry for anything but a `required` terminal was
+        // dropped in silence: `Withdraw` with `amount` = 800 (a `recommended` input) ran as a
+        // withdrawal of 0, and the case "800 is refused" failed against a correct method.
+        foreach (var name in supplied?.Keys ?? Enumerable.Empty<string>())
+        {
+            var match = terminals.Inputs.FirstOrDefault(t => t.Name.Equals(name, StringComparison.Ordinal));
+            if (match.Name is null)
+                return (null, new Fault("inputTerminalNotFound",
+                    $"'{Path.GetFileName(methodVi)}' has no input terminal called '{name}'. " +
+                    "Names are literal and case-sensitive; a value for a terminal that does not " +
+                    "exist would be wired to nothing and the case would run on the default.",
+                    new
+                    {
+                        methodVi, terminal = name,
+                        inputs = terminals.Inputs.Select(t => t.Name).ToArray(),
+                    }));
+            if (match.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)
+                || ConnectorPane.IsErrorIn(match.Name))
+                return (null, new Fault("inputNotSettable",
+                    $"'{name}' on '{Path.GetFileName(methodVi)}' is the class or error input, " +
+                    "which the generated diagram wires itself. Set a field with `seed` or " +
+                    "`writeField`; the method is always fed `no error`.",
+                    new { methodVi, terminal = name, type = match.Type }));
+        }
+
         var slots = FreeSocketSlots();
         var resolved = new List<RequiredInput>();
         foreach (var terminal in terminals.Inputs)
         {
-            if (terminal.Connection != "required") continue;
             if (terminal.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)) continue;
             if (ConnectorPane.IsErrorIn(terminal.Name)) continue;
+            var isRequired = terminal.Connection == "required";
+            // A terminal that is not required is wired ONLY when the case gives it a value - an
+            // unwired one keeps the method's own default, which is the point of it not being
+            // required (CLAUDE.md, "wire a constant ONLY where the callee marks the input
+            // `required`").
+            if (!isRequired && supplied?.ContainsKey(terminal.Name) != true) continue;
 
             if (resolved.Count >= slots.Count)
-                return (null, null, new Fault("tooManyRequiredInputs",
+                return (null, new Fault("tooManyRequiredInputs",
                     $"'{Path.GetFileName(methodVi)}' has more required inputs than the socket " +
                     $"pane has free slots ({slots.Count}). Wire fewer of them by making the " +
                     "surplus `recommended` on the method, or test it through a wrapper.",
@@ -1293,7 +1346,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var given = supplied is not null && supplied.TryGetValue(terminal.Name, out var v);
             if (!given && !HasHonestDefault(terminal.Type))
-                return (null, null, new Fault("requiredInputNeedsAValue",
+                return (null, new Fault("requiredInputNeedsAValue",
                     $"'{terminal.Name}' on '{Path.GetFileName(methodVi)}' is a REQUIRED input of " +
                     $"type `{terminal.Type}`, and there is no default this call can invent that " +
                     "means anything. Leaving it unwired would generate a suite LabVIEW refuses to " +
@@ -1303,13 +1356,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             resolved.Add(new RequiredInput(
                 terminal.Name, terminal.Type,
                 given ? supplied![terminal.Name] : TestTools.DefaultFor(terminal.Type),
-                slots[resolved.Count], given));
+                slots[resolved.Count], given, isRequired));
         }
 
-        // The parsed export travels back so the caller can resolve an asserted OUTPUT's type from
-        // it. Doing that here would mean this method knowing about assertions; doing it with a
-        // second export would cost another LabVIEW round trip for something already in hand.
-        return (resolved, terminals, null);
+        return (resolved, null);
     }
 
     /// <summary>
@@ -1451,9 +1501,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// <summary>A field written before the method is called and NOT asserted - a case's `seed`.</summary>
     internal sealed record SeedWrite(string Field, string WriteAccessor, string Type, string Value);
 
-    /// <summary>One required input of the method under test, and the literal wired into it.</summary>
+    /// <summary>
+    /// One input of the method under test that the test wires, and the literal wired into it:
+    /// every `required` input, plus any other the case's `inputs` gives a value.
+    /// </summary>
     internal sealed record RequiredInput(string Name, string Type, string Value, int ConIdx,
-                                         bool FromCaller);
+                                         bool FromCaller, bool IsRequired = true);
 
     /// <param name="ExpectOutput">
     /// The method's own output terminal to assert on, spelled exactly as the method spells it -

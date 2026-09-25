@@ -238,6 +238,25 @@ internal sealed class ActionTools(LvaiConnection connection)
                 });
         }
 
+        // A PROJECT LISTING ONE FILE TWICE IS REFUSED BEFORE LabVIEW SEES IT. LabVIEW answers
+        // `Error 74` for it - a message about unflattening data, not about the project - and
+        // loads nothing. Measured 2026-09-25 on the ATM cold build, three VIs listed both at
+        // target level and in a folder. A file read costs nothing; the refusal names the entries.
+        if (projectPath is { Length: > 0 }
+            && LvClass.DuplicateViEntries(projectPath) is { Count: > 0 } twice)
+            return Json.Error("duplicateProjectEntries",
+                $"'{Path.GetFileName(projectPath)}' lists {twice.Count} file(s) a second time: " +
+                string.Join(", ", twice.Select(d => $"'{d.Name}' (line {d.Line})")) +
+                ". LabVIEW answers Error 74 for such a project and opens nothing.",
+                new
+                {
+                    duplicates = twice.Select(d => new { name = d.Name, url = d.Url, line = d.Line }),
+                    hint = "Remove the listed lines - they are the second entry for each file; the "
+                           + "one inside a folder is the one to keep - or call "
+                           + "lvai_add_vis_to_project with this projectPath, which removes them "
+                           + "itself. The project is not open, so editing the file now is safe.",
+                });
+
         return null;
     }
 

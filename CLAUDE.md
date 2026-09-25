@@ -1541,6 +1541,15 @@ produced ten subVIs in about **11 minutes of wall clock against about 32 minutes
 time**, with no project contention at all — and the swaps then cost two calls, because a socket
 that appears on N nodes needs N calls whatever N is.
 
+**AND THE ORCHESTRATOR LISTS VIs WITH `lvai_add_vis_to_project`, NEVER BY HAND.** Measured
+2026-09-25 on the agent-driven ATM build: an agent's close saved the project while three helper VIs
+were loaded, LabVIEW listed them at target level, and a hand-written edit then listed the same three
+under `SubVIs` - so the next open answered **`Error 74`** and loaded nothing, a message about
+unflattening data rather than about the project. The tool lists as a file edit with the project
+closed, moves a target-level entry into the folder instead of adding a second one, and repairs any
+file already listed twice; every close sweep repairs one too, and `lvai_open_file` refuses such a
+project by name (`duplicateProjectEntries`). `docs/cold-build-atm-agents-pc.md` §2.
+
 **Two roster gaps surfaced doing it, both now closed.** `labview-vi-generator` and
 `labview-vi-editor` had neither `lvai_placeholder_subvi` nor `lvai_swap_subvis`, while this file
 calls that pair the only route by which a generated VI calls project-local code — so an agent told
@@ -2387,7 +2396,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — four case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value`, and `expectFieldValue` beside them for a method that CHANGES the field. Calls the real methods directly when the class's project is found |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — four case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value`, and `expectFieldValue` beside them for a method that CHANGES the field. `inputs` sets ANY input, required or not - a name the method does not have is refused. Calls the real methods directly when the class's project is found |
 | What does a cold build of the WHOLE chain look like, and what does it catch? | `docs/cold-build-thermostat.md` | — |
 | What does a SECOND cold build catch, and which generators are still wrong? | `docs/cold-build-datalogger.md` | — |
 | Do those fixes hold in a real build, and what is still silently wrong? | `docs/cold-build-alarmgate.md` | — |
@@ -2405,6 +2414,8 @@ literally it argued away 600 usable palette VIs.
 | How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
 | Can a whole application be built with NO stub files and NO pyLabVIEW, and how are the agents split? | `docs/cold-build-atm-no-stubs.md` | — |
 | How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
+| What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
+| How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |

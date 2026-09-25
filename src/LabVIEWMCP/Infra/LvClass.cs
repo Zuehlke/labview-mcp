@@ -1190,14 +1190,6 @@ internal static class LvClass
             .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
         if (target is null) return [];
 
-        string? Resolve(string url)
-        {
-            if (url.Contains('<') || url.Contains("&lt;")) return null;   // symbolic, not a path
-            try { return Path.GetFullPath(Path.Combine(projectPath, url.Replace('/', '\\'))); }
-            catch (Exception e) when (e is ArgumentException or NotSupportedException
-                                      or PathTooLongException) { return null; }
-        }
-
         var hits = target.Descendants("Item")
             .Where(i => (string?)i.Attribute("Type") == "VI")
             // Loose only: every ancestor up to the target is a plain virtual folder.
@@ -1206,7 +1198,8 @@ internal static class LvClass
             .Select(i => (Name: (string?)i.Attribute("Name") ?? "",
                           Url: (string?)i.Attribute("URL") ?? "",
                           Line: ((System.Xml.IXmlLineInfo)i).LineNumber))
-            .Where(h => h.Line > 0 && Resolve(h.Url) is { } full && wanted.Contains(full))
+            .Where(h => h.Line > 0 && ResolveProjectUrl(projectPath, h.Url) is { } full
+                        && wanted.Contains(full))
             .ToList();
         if (hits.Count == 0) return [];
 
@@ -1273,6 +1266,101 @@ internal static class LvClass
         if (removed.Count > 0) File.WriteAllText(projectPath, string.Join(newline, lines));
         removed.Reverse();
         return removed;
+    }
+
+    /// <summary>
+    /// Loose VI entries of a <c>.lvproj</c> that list a file ANOTHER loose entry already lists -
+    /// the ones <see cref="RemoveDuplicateViEntries"/> would take out, found without writing.
+    ///
+    /// WHY IT EXISTS. A project listing one file twice does not open: LabVIEW answers `Error 74`
+    /// and loads nothing. Measured 2026-09-25 on the ATM cold build - the class agent's close
+    /// saved the project while three helper VIs were loaded, so LabVIEW listed them at target
+    /// level, and a hand edit then listed the same three under `SubVIs`. Nothing between the edit
+    /// and the next open reported it.
+    ///
+    /// Two entries are duplicates when their URLs RESOLVE to the same file (against the project
+    /// file, as LabVIEW does); a symbolic URL counts by its text. Only LOOSE entries are compared -
+    /// target level and virtual folders - never an item inside a class, a library, Dependencies or
+    /// a build specification. Of each group the entry deepest in a folder is KEPT, the first in
+    /// document order breaking a tie, because a target-level twin is what LabVIEW's own save
+    /// makes and the folder is where someone put it.
+    /// </summary>
+    public static IReadOnlyList<(string Name, string Url, int Line)> DuplicateViEntries(string projectPath)
+    {
+        if (!File.Exists(projectPath)) return [];
+        XElement? target;
+        try
+        {
+            target = XDocument.Load(projectPath, LoadOptions.SetLineInfo).Root?.Elements("Item")
+                .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
+        }
+        catch (System.Xml.XmlException) { return []; }
+        if (target is null) return [];
+
+        var loose = target.Descendants("Item")
+            .Where(i => (string?)i.Attribute("Type") == "VI")
+            .Select(i => (Item: i, Folders: i.Ancestors("Item").TakeWhile(a => a != target).ToList()))
+            .Where(x => x.Folders.All(a => (string?)a.Attribute("Type") == "Folder"))
+            .Select((x, order) => (Name: (string?)x.Item.Attribute("Name") ?? "",
+                                   Url: (string?)x.Item.Attribute("URL") ?? "",
+                                   Line: ((System.Xml.IXmlLineInfo)x.Item).LineNumber,
+                                   Depth: x.Folders.Count, Order: order))
+            .Where(x => x.Url.Length > 0 && x.Line > 0);
+
+        return [.. loose
+            .GroupBy(x => ResolveProjectUrl(projectPath, x.Url) ?? "url:" + x.Url,
+                     StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g.OrderByDescending(x => x.Depth).ThenBy(x => x.Order).Skip(1))
+            .OrderBy(x => x.Line)
+            .Select(x => (x.Name, x.Url, x.Line))];
+    }
+
+    /// <summary>
+    /// Takes the entries <see cref="DuplicateViEntries"/> names out of the file, line-precise like
+    /// <see cref="RemoveTargetLevelVis"/>, and returns the names removed. A line that does not read
+    /// as one self-closing item is left rather than guessed at. The caller holds the project
+    /// CLOSED: LabVIEW's next close saves its own copy over whatever this writes.
+    /// </summary>
+    public static IReadOnlyList<string> RemoveDuplicateViEntries(string projectPath)
+    {
+        var hits = DuplicateViEntries(projectPath);
+        if (hits.Count == 0) return [];
+
+        var text = File.ReadAllText(projectPath);
+        var newline = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var lines = text.Split(newline).ToList();
+
+        var removed = new List<string>();
+        foreach (var hit in hits.OrderByDescending(h => h.Line))
+        {
+            var index = hit.Line - 1;
+            if (index >= lines.Count) continue;
+            var line = lines[index].Trim();
+            if (!line.StartsWith("<Item ", StringComparison.Ordinal)
+                || !line.EndsWith("/>", StringComparison.Ordinal)
+                || !line.Contains($"Name=\"{Xml(hit.Name)}\"", StringComparison.Ordinal))
+                continue;
+            lines.RemoveAt(index);
+            removed.Add(hit.Name);
+        }
+
+        if (removed.Count > 0) File.WriteAllText(projectPath, string.Join(newline, lines));
+        removed.Reverse();
+        return removed;
+    }
+
+    /// <summary>
+    /// A project item's URL as a full path - relative to the <c>.lvproj</c> FILE treated as a
+    /// directory, as LabVIEW writes it - or null for a symbolic URL (<c>/&lt;vilib&gt;/...</c>),
+    /// which names no path this process can compare.
+    /// </summary>
+    private static string? ResolveProjectUrl(string projectPath, string url)
+    {
+        if (url.Contains('<') || url.Contains("&lt;")) return null;
+        try { return Path.GetFullPath(Path.Combine(projectPath, url.Replace('/', '\\'))); }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException
+                                  or PathTooLongException) { return null; }
     }
 
     /// <summary>

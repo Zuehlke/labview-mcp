@@ -400,6 +400,14 @@ A "no task" refnum constant is a decision about what the test asserts, not a det
 is how a green suite comes to pin nothing. The answer now lists every wired input with its value and
 whether it came from the caller or from the tool.
 
+**And `inputs` reaches a terminal that is NOT required as well - it did not until 2026-09-25.** Only
+`required` inputs were wired, so a value for a `recommended` one was dropped in silence: on the
+agent-driven ATM build `"amount":"800"` never reached `Apply Transaction.vi`, the method ran a
+withdrawal of 0, and the case "800 is refused" failed against a correct method. A non-required input
+is now wired exactly when the case names it - an unnamed one keeps the method's own default - and a
+name the method does not declare is refused (`inputTerminalNotFound`), as is the class or error input
+(`inputNotSettable`). `docs/cold-build-atm-agents-pc.md` §3.
+
 Note the panes need NOT otherwise match: `{LV.SubVI}` `Replace` **re-types the wires**, which is how
 a four-terminal socket swapped cleanly onto an eleven-terminal method in that same run. So the socket
 mirrors what the test must *wire*, not the method's whole pane.

@@ -266,12 +266,19 @@ internal sealed class CloseTools(LvaiConnection connection)
                 File.ReadAllText(full), full);
             if (removed > 0) File.WriteAllText(full, tidied);
 
+            // A FILE LISTED TWICE MAKES THE NEXT OPEN FAIL with `Error 74` and load nothing, so a
+            // close must not leave one behind. Measured 2026-09-25 on the ATM cold build: this
+            // save adopted three helper VIs at target level, a later edit listed them in a folder
+            // as well, and the open after it refused the project. The folder entry is kept.
+            var duplicates = LvClass.RemoveDuplicateViEntries(full);
+
             return new JsonObject
             {
                 ["swept"] = true,
                 ["projectPath"] = full,
                 ["strayVisRemoved"] = removed,
                 ["strayVisRemovedNames"] = new JsonArray([.. names.Select(n => (JsonNode)n!)]),
+                ["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(n => (JsonNode)n!)]),
                 // WHAT IT DOES NOT REACH, said plainly rather than left to be discovered. The same
                 // WeighBridge close also adopted a VI from a directory OUTSIDE the project tree
                 // (`../../wb-negctl/Neg Control.vi`), and that one stays: the file exists and sits
@@ -279,13 +286,17 @@ internal sealed class CloseTools(LvaiConnection connection)
                 // shares from a sibling folder - which real projects do constantly. A rule wide
                 // enough to catch it would delete those, and deleting a user's own entry is a worse
                 // failure than leaving a stray. Read the .lvproj after the close; that rule stands.
-                ["note"] = removed > 0
+                ["note"] = (duplicates.Count > 0
+                    ? $"{duplicates.Count} entry/entries listed a file a second time and were " +
+                      "removed (duplicateEntriesRemoved) - a project listing one file twice " +
+                      "answers Error 74 on the next open. The copy inside a folder was kept. "
+                    : "") + (removed > 0
                     ? "Items LabVIEW adopted into the project during this session were removed - "
                     + "see strayVisRemovedNames. This sweep reaches our own temp trees, "
                     + "<userlib>/LV_MCP sockets, and entries whose file is not there. A VI adopted "
                     + "from any OTHER directory is left alone and is not reported, because nothing "
                     + "here can distinguish it from one the user listed on purpose."
-                    : "Nothing to remove.",
+                    : duplicates.Count > 0 ? "" : "Nothing to remove."),
             };
         }
         catch (Exception failure)
