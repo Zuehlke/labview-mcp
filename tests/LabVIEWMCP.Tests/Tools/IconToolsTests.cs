@@ -165,8 +165,10 @@ public sealed class IconToolsTests : IDisposable
         var result = await new IconTools(server.Connection).SetViIconAsync(
             WriteVi(), WritePng("icon.png"), readBack, At("helper.vi"), ShippedHelperAixml());
 
-        Assert.Equal(91, Res.Int(result, "errorCode"));      // LabVIEW's own verdict is useless...
-        Assert.True(Res.Bool(result, "verified"));           // ...so this is the contract
+        Assert.True(Res.Bool(result, "verified"));           // the contract...
+        Assert.True(Res.Bool(result, "ok"));
+        Assert.Equal(0, Res.Int(result, "errorCode"));       // ...and the answer says so,
+        Assert.Equal(91, Res.Int(result, "runnerErrorCode")); // with LabVIEW's own code kept aside
         Assert.Equal("32x32", Res.Str(result, "readBackSize"));
     }
 
@@ -198,6 +200,7 @@ public sealed class IconToolsTests : IDisposable
             ShippedHelperAixml());
 
         Assert.False(Res.Bool(result, "verified"));
+        Assert.False(Res.Bool(result, "ok"));                // control: unverified is not ok
         Assert.Equal(0, Res.Long(result, "readBackBytes"));
     }
 

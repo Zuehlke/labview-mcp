@@ -94,6 +94,15 @@ internal sealed class ClassTools(LvaiConnection connection)
             empty value (0, false, ""). Not for timestamp fields. Omit for empty private data.
             """)]
         string? fields = null,
+        [Description("""
+            Fields that are TYPEDEF instances, as a JSON object: field name -> absolute path of an
+            existing typedef .ctl, e.g. {"Config":"C:\\T\\Typedefs\\Channel Config.ctl"}. Each
+            is created as a placeholder and then bound to its .ctl with lvai_bind_class_fields in
+            the same call, so the field keeps its name and carries the typedef. Needs projectPath.
+            Create the accessors AFTER this call - an accessor made before the bind keeps the bare
+            type. Until 2026-09-25 this took two calls and a placeholder type chosen by hand.
+            """)]
+        string? typedefFieldsJson = null,
         [Description("Absolute path to the parent .lvclass this one derives from")]
         string? parentClassPath = null,
         [Description("""
@@ -160,6 +169,11 @@ internal sealed class ClassTools(LvaiConnection connection)
             List<LvClass.Field> parsed;
             try { parsed = LvClass.ParseFields(fields); }
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+
+            // Typedef fields ride in as placeholders and are bound to their .ctl after creation.
+            var (typedefFields, typedefRefusal) = TypedefFieldRequest(typedefFieldsJson, parsed, projectPath);
+            if (typedefRefusal is not null) return typedefRefusal;
+            parsed.AddRange(typedefFields.Select(t => new LvClass.Field("string", t.Field)));
 
             // pylabview is NO LONGER a precondition here. It was, while the private data control
             // was built by converting a generated VI; LabVIEW's own provider VIs need none of it.
@@ -408,10 +422,16 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // The file answers what was actually asked for - the fields landed, the parent
                 // was recorded - and it needs no LabVIEW, so nothing can serve it stale.
                 if (!verify)
+                {
+                    if (!await BindTypedefFieldsAsync(typedefFields, classPath, userProject, steps,
+                                                      timeoutSeconds, ct))
+                        return Outcome(false, "bindTypedefFields", steps, total, classPath, null,
+                            TypedefBindFailedNote);
                     return Outcome(true, null, steps, total, classPath, null,
                         "Written, but NOT verified - verify was false. The provider reported no "
                         + "error, which is not the same as the class file carrying what you asked "
                         + "for; lvai_describe_class reads it back.");
+                }
 
                 var info = LvClass.Read(classPath);
                 // THE BASE CLASS, WHICH IS NOT `Ancestors[0]`. Every parent link is opened and its
@@ -502,8 +522,15 @@ internal sealed class ClassTools(LvaiConnection connection)
                     : $", implementing {interfacePaths.Count} interface(s) "
                       + $"[{string.Join(", ", interfacePaths.Select(Path.GetFileName))}]";
 
+                if (!await BindTypedefFieldsAsync(typedefFields, classPath, userProject, steps,
+                                                  timeoutSeconds, ct))
+                    return Outcome(false, "bindTypedefFields", steps, total, classPath, null,
+                        TypedefBindFailedNote);
+
                 return Outcome(true, null, steps, total, classPath, null,
-                    $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
+                    (typedefFields.Count > 0
+                        ? $"{typedefFields.Count} typedef field(s) bound to their .ctl. " : "")
+                    + $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
                     + $"{info.PrivateDataBytes} bytes of private data, inherits from "
                     + $"'{inherits ?? "LabVIEW Object"}'{interfaceNote}. The private data control "
                     + "is LabVIEW's own - "
@@ -529,6 +556,74 @@ internal sealed class ClassTools(LvaiConnection connection)
     // ---------------------------------------------------------------- create interface
 
     private const string CreateInterfaceHelperAixmlFileName = "lvai_create_interface.xml";
+
+    internal readonly record struct TypedefField(string Field, string CtlPath);
+
+    /// <summary>`typedefFieldsJson` parsed and checked, or the refusal - before anything is written.</summary>
+    internal static (List<TypedefField> Fields, string? Refusal) TypedefFieldRequest(
+        string? json, IReadOnlyList<LvClass.Field> scalar, string? projectPath)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return ([], null);
+        JsonObject? map;
+        try { map = JsonNode.Parse(json) as JsonObject; }
+        catch (System.Text.Json.JsonException e)
+        {
+            return ([], Json.Error("badArguments", $"typedefFieldsJson is not JSON: {e.Message}"));
+        }
+        if (map is null)
+            return ([], Json.Error("badArguments",
+                "typedefFieldsJson must be a JSON OBJECT of field name -> .ctl path."));
+        if (string.IsNullOrWhiteSpace(projectPath))
+            return ([], Json.Error("projectNeeded",
+                "typedefFieldsJson needs projectPath: the binding reaches the class through the " +
+                "active project, and a throwaway project is deleted before it could run."));
+
+        var fields = new List<TypedefField>();
+        foreach (var (name, value) in map)
+        {
+            if (value is not JsonValue v || v.GetValueKind() != System.Text.Json.JsonValueKind.String)
+                return ([], Json.Error("badArguments", $"The value for '{name}' must be a .ctl path string."));
+            var path = Path.GetFullPath(v.GetValue<string>());
+            if (!File.Exists(path) || !path.EndsWith(".ctl", StringComparison.OrdinalIgnoreCase))
+                return ([], Json.Error("fileNotFound",
+                    $"The typedef for field '{name}' is not an existing .ctl: '{path}'. Create it " +
+                    "first - lvai_create_typedef does that through VI Server."));
+            if (scalar.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)))
+                return ([], Json.Error("badArguments",
+                    $"'{name}' is in both `fields` and typedefFieldsJson. Name it once."));
+            fields.Add(new TypedefField(name, path));
+        }
+        return (fields, null);
+    }
+
+    private const string TypedefBindFailedNote =
+        "THE CLASS WAS CREATED, but binding its typedef field(s) did not complete - read the " +
+        "bindTypedefFields step. The fields exist with a placeholder `string` type; " +
+        "lvai_bind_class_fields repeats the bind on its own.";
+
+    /// <summary>
+    /// Bind the typedef fields, then CLOSE the project again: lvai_bind_class_fields leaves it open,
+    /// and a project left open makes the next lvai_create_class lose its entry (CLAUDE.md, 2026-09-14).
+    /// </summary>
+    private async Task<bool> BindTypedefFieldsAsync(IReadOnlyList<TypedefField> fields,
+        string classPath, string? userProject, JsonArray steps, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        if (fields.Count == 0) return true;
+        var bindings = new JsonArray([.. fields.Select(f => (JsonNode)new JsonObject
+        { ["field"] = f.Field, ["ctlPath"] = f.CtlPath })]);
+        var bound = Parsed(await new ClassBindTools(connection).BindClassFieldsAsync(
+            classPath, bindings.ToJsonString(), userProject, timeoutSeconds: timeoutSeconds, ct: ct));
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: userProject, timeoutSeconds: timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject
+        {
+            ["step"] = "bindTypedefFields",
+            ["answer"] = bound,
+            ["closeProject"] = Parsed(closed),
+        });
+        return (bound as JsonObject)?["ok"]?.GetValue<bool>() == true;
+    }
 
     [McpServerTool(Name = "lvai_create_interface", Destructive = true, OpenWorld = true,
                    Title = "Create a LabVIEW interface (.lvclass with no private data)")]
@@ -868,8 +963,11 @@ internal sealed class ClassTools(LvaiConnection connection)
         Members come back with their effective scope from `NI.ClassItem.MethodScope` - per member,
         no propagation, unlike a `.lvlib` where the scope sits on the folder. Folder names are
         ignored on purpose: the census found folders called `private` whose members were all public.
-        `fields` REPORTS EACH PRIVATE DATA FIELD with its label, its type descriptor and whether it
-        is a bound typedef. Nothing else reported this: measured 2026-09-03, establishing what types
+        `fields` REPORTS EACH PRIVATE DATA FIELD with its label, its type descriptor, whether it
+        is a bound typedef, and its `default` - decoded from the flattened private data, a
+        cluster as an object of its members, an enum as value and item; a type whose layout is
+        not decoded (path, refnum, array, timestamp) stops the walk and `fieldsDefaultsNote`
+        says where. Nothing else reported this: measured 2026-09-03, establishing what types
         a class's fields carry by hand cost 154 s of wall clock for 4.2 s inside LabVIEW - reading
         the 6-bit codec out of the source, unwrapping the flattened control, and extracting it. It
         is also the check that distinguishes a successful typedef bind from one that installed the
@@ -908,6 +1006,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             // so without taking the rest of the answer down with it.
             var fields = new JsonArray();
             string? fieldsNote = null;
+            string? fieldsDefaultsNote = null;
             if (!includeFields || info.PrivateDataBytes <= 0)
             {
                 fieldsNote = !includeFields
@@ -931,7 +1030,13 @@ internal sealed class ClassTools(LvaiConnection connection)
                                 ["detail"] = field.Detail,
                                 ["isTypedef"] = read.BoundTypedefs.Contains(fields.Count),
                                 ["typedef"] = read.TypedefName(fields.Count),
+                                // The field's DEFAULT, from the private data control's flattened
+                                // data - a cluster default is an object of its members' defaults.
+                                ["default"] = read.Defaults is { } d && fields.Count < d.Count
+                                    ? d[fields.Count]?.DeepClone() : null,
                             });
+                        if (read.DefaultsNote is { } defaultsNote)
+                            fieldsDefaultsNote = defaultsNote;
                         fieldsNote = "Read from the saved class file with pylabview - no LabVIEW " +
                                      "was involved. `isTypedef` false with a correct `type` is the " +
                                      "normal outcome of binding a .ctl that is not itself a " +
@@ -1015,6 +1120,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // only inside lvai_bind_class_fields.
                 ["fields"] = fields,
                 ["fieldsNote"] = fieldsNote,
+                ["fieldsDefaultsNote"] = fieldsDefaultsNote,
                 ["memberCount"] = info.Members.Count,
                 ["members"] = members,
                 ["note"] = info.PrivateDataBytes switch

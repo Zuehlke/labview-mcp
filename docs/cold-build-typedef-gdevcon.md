@@ -129,6 +129,25 @@ Three things did not work as promised, all fixed the same day and accepted over 
 | the runner's `error out` names the wrong VI, and a generate sub-answer reads `ok: false` | **`lvai_run_caraya_tests`** runs the runner and answers from the JUnit report - failing cases named with suite and test VI, `reportFresh` for a report this run wrote; the direct routes' generate step says `notExecutableYetIsExpected` | negative control: `failing` named `Test Channel Defaults.vi`, while `runnerErrorOut` read `7002` with source **`Test Channel.vi`** (`sourceNamesAFailingSuite: false`) - the agent's claim, measured |
 | `lvai_describe_ctl` could not tell an enum from a ring | each field carries `kind` - `enum` with its `items`, or `numeric`, which a ring's type is - a typedef field names its `.ctl`, and a cluster lists its `members` | `Channel Mode.ctl`: `enum` with Off, Voltage, Current; `Channel Config.ctl`: all four members, the two typedef instances named |
 
-## 7. Not established
+## 7. The third cold build - and its five findings FIXED
+
+`C:	emp\TypedefAfterGDevCon3\`, same task, with every fix of §6 in use: about 7:55 end to end,
+typedefs in 0:29, all three `.ctl` listed, the Config round trip without `type`, the Gain default
+through `expectDefault`, `lvai_run_caraya_tests` naming the negative control's failure, no
+`pylv_*` call, no stub. Five things still took a detour, all fixed the same day:
+
+| finding | fix | acceptance |
+|---|---|---|
+| `lvai_create_class` took no typedef field; the agent created `Config` as `string` and bound it by hand | `typedefFieldsJson` ({"Config":"...\Channel Config.ctl"}, with `projectPath`): placeholder, bind through lvai_bind_class_fields in the same call, project closed again | `Channel2` created in one call: `Config` a bound typedef, `Gain` default 1 |
+| `lvai_coercion_dots` with a bare `subViName` matched nothing (`subViCalls: 0`), the qualified name worked | a bare name also matches the class- or library-qualified VI Name; a name matching nothing is refused with the names on the diagram | `Write Config.vi` found one call, 0 dots; `Nope.vi` answered `subViNotOnDiagram` listing all six calls |
+| `lvai_describe_class` showed no field defaults | each field carries `default`, decoded from the private data control's flattened `DefaultData` (26 zero bytes for `Config`, `3FF0...` for `Gain`, measured) - a cluster as an object, an enum as value and item; an undecoded type stops the walk and says where | both classes: `Gain` 1, `Config` {Name "", Channel Mode Off, Range 0..0, Samples 0} |
+| a negative control cost two regenerations of about 56 s each | **`lvai_set_constant`**: one labelled constant, by VI Server `Value`, saved and verified from a fresh export; a double into an int32 or enum constant is converted by LabVIEW, measured on one probe per kind | `expected 2` set to 2 (7.0 s) -> exactly `Gain defaults to 1 on a fresh object` failed -> set back to 1 (6.0 s) -> 3/0; an unknown label refused |
+| `lvai_set_vi_icon` answered `errorCode 91` on success | `ok` is `verified`, `errorCode` 0 on a verified run, the runner's 91 under `runnerErrorCode` | `ok: true`, `errorCode: 0`, `runnerErrorCode: 91` |
+
+The same pass found a mistake in §6's enum fix: pylabview's `Unit` prefix is not only the enum.
+`UnitUInt8/16/32` are enums, `UnitFloat*` and `UnitComplex*` are numerics with a physical unit;
+`lvai_describe_ctl` now names only the first `enum`.
+
+## 8. Not established
 
 - The suite has no negative control yet.

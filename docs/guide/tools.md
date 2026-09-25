@@ -6,7 +6,7 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**85 tools over 23 RPCs.** Forty-six map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**86 tools over 23 RPCs.** Forty-seven map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
@@ -63,6 +63,7 @@ resources rather than call tools.
 | `lvai_add_vis_to_project` | — (closes the project, then a file edit) | **edits a `.lvproj`**: lists VIs under one folder, never twice - moves a target-level entry into the folder and removes any file listed twice (`Error 74` on open) |
 | `lvai_create_typedef` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **creates a typedef `.ctl`** through VI Server alone - nested typedef elements included, strict on request - verified from the saved file; no pylabview writes |
 | `lvai_run_caraya_tests` | — (composes `RunVIAsTopLevel`) | **executes a Caraya suite runner** and answers from its JUnit report - failing cases named with suite and test VI, and whether the report was written by this run; the runner's own `error out` is not the verdict |
+| `lvai_set_constant` | — (composes `ConvertVIToAIXML` + `RunVIAsTopLevel`) | **edits one labelled block diagram constant** of an existing VI in place and saves it - numeric, boolean, string or enum - verified from a fresh export; the cheap negative control |
 | `lvai_build_from_build_specification` | `BuildFromBuildSpecification` | writes build output |
 | `lvai_open_file` | `OpenFile` | IDE state |
 | `lvai_find_palette_item` | `FindPaletteItem` | IDE state |

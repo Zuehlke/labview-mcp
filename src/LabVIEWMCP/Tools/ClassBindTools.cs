@@ -448,7 +448,9 @@ internal sealed class ClassBindTools(LvaiConnection connection)
 
     internal sealed record PrivateDataFields(List<string> Labels, HashSet<int> BoundTypedefs,
                                              List<string?> TypedefNames, string? Unavailable,
-                                             List<FieldType>? Types = null)
+                                             List<FieldType>? Types = null,
+                                             List<JsonNode?>? Defaults = null,
+                                             string? DefaultsNote = null)
     {
         public string? TypedefName(int index) =>
             index >= 0 && index < TypedefNames.Count ? TypedefNames[index] : null;
@@ -485,8 +487,16 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                         $"pylabview exited {run.ExitCode} reading the unwrapped private data " +
                         "control.");
 
+                // THE DEFAULTS: the one front-panel object's DefaultData is the whole private
+                // data cluster, flattened - see FlatDefaults for the measurement.
+                byte[]? defaults = null;
+                var heap = Path.Combine(scratch, "pdc_FPHb.xml");
+                if (File.Exists(heap) &&
+                    XDocument.Load(heap).Descendants("DefaultData").FirstOrDefault()?.Value is { } text)
+                    defaults = FlatDefaults.Bytes(text);
+
                 return Parse(XDocument.Load(xml).Root!,
-                             Path.GetFileNameWithoutExtension(classPath) + ".ctl");
+                             Path.GetFileNameWithoutExtension(classPath) + ".ctl", defaults);
             }
             finally
             {
@@ -520,7 +530,8 @@ internal sealed class ClassBindTools(LvaiConnection connection)
         /// IS the field cluster, which is why <see cref="CtlTools"/> read the same bytes correctly
         /// and this did not.
         /// </summary>
-        internal static PrivateDataFields Parse(XElement rsrc, string? ownCtlName = null)
+        internal static PrivateDataFields Parse(XElement rsrc, string? ownCtlName = null,
+                                                byte[]? defaultData = null)
         {
             var vctp = rsrc.Element("VCTP")?.Element("Section");
             if (vctp is null) return new PrivateDataFields([], [], [], "No VCTP in the control.");
@@ -552,7 +563,41 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 position++;
             }
 
-            return new PrivateDataFields(labels, bound, names, null, types);
+            var (defaults, defaultsNote) = ReadDefaults(cluster, flat, defaultData);
+            return new PrivateDataFields(labels, bound, names, null, types, defaults, defaultsNote);
+        }
+
+        /// <summary>
+        /// Each field's default, in field order, decoded from the flattened private data. The walk
+        /// stops at the first type whose flat length is not settled; the fields after it are null,
+        /// and the note names where and why.
+        /// </summary>
+        internal static (List<JsonNode?>? Defaults, string? Note) ReadDefaults(
+            XElement cluster, List<XElement> flat, byte[]? data)
+        {
+            if (data is null) return (null, "No DefaultData was found in the private data control.");
+            var values = new List<JsonNode?>();
+            var pos = 0;
+            string? note = null;
+            foreach (var child in cluster.Elements("TypeDesc"))
+            {
+                if (note is not null) { values.Add(null); continue; }
+                var resolved = Resolve(flat, child);
+                try
+                {
+                    values.Add(FlatDefaults.Read(resolved, flat, data, ref pos, Resolve, FieldLabel));
+                }
+                catch (FlatDefaults.NotDecodable stop)
+                {
+                    values.Add(null);
+                    note = $"Defaults decoded up to field {values.Count}: its {stop.Type} is not " +
+                           "decoded, so it and every field after it are reported as null rather " +
+                           "than guessed.";
+                }
+            }
+            return (values, note ?? (pos == data.Length ? null
+                : $"Decoded {pos} of {data.Length} default bytes - the layout was not fully " +
+                  "accounted for, so read the defaults with care."));
         }
 
         /// <summary>

@@ -424,6 +424,13 @@ helper: measured 2026-09-25, an agent found this route by hand and needed two fa
 minutes, the first because VI Server's `Control VI Type` is one higher than the file flag (writing 1
 saves a PLAIN control, and every call answers `error 0`).
 
+**Then create the class with the field bound in the SAME call** - `lvai_create_class`'s
+`typedefFieldsJson` ({"Config":"...\Typedefs\Channel Config.ctl"}, with `projectPath`) creates the
+field as a placeholder and binds it through lvai_bind_class_fields before it returns, closing the
+project again. Do not create it as `string.Config` and bind it by hand, which is what the third
+TypedefAfterGDevCon build had to do. The paragraphs below are what that call does inside, and the
+route for binding a field of a class that already exists.
+
 Add the field first — it lands with the typedef's own control label as its name and the wrapped type
 as its type, but **de-linked**: NI's provider copies the type and drops the binding, measured on an
 enum, a `double` and a boolean alike.

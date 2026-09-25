@@ -2435,6 +2435,7 @@ literally it argued away 600 usable palette VIs.
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
+| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7 | `lvai_set_constant` — by label, numeric/boolean/string/enum, verified from a fresh export |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |
@@ -2449,7 +2450,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` — open the target (or one member of its class) with `lvai_open_file` first; it converts past the `Unsupported SubVI` refusal and gates on executability. `lvai_validate_aixml` alone always refuses it. Plain VIs and class members measured; a `.ctl` is not accepted |
-| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
+| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`; `lvai_describe_class` reads each field's DEFAULT back |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I add a FIELD to a class that ALREADY has members? | `docs/lvclass-creation.md` §9 | `lvai_add_class_field` — `lvai_create_class` only CREATES and its `overwrite` drops every member, so this looked unreachable and cost a method written to take a value and NOT store it. It is the SAME provider on the same route, and it APPENDS — measured on a fixture with accessors before it was run for real |

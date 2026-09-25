@@ -58,7 +58,7 @@ internal sealed class CtlTools
         `bindable` is the verdict to act on, and `whyNotBindable` names the reason in one sentence.
         `wrappedType` is what the control actually carries - the type a binding would install, and
         the type a generated constant must be authored as. Each entry of `fields` says its `kind`:
-        `enum` with its `items` (pylabview's `Unit*` types), or `numeric` - which is what a RING is
+        `enum` with its `items` (pylabview's `UnitUInt*` types), or `numeric` - which is what a RING is
         too, because a ring keeps its labels on the panel rather than in the type. A field that is a
         typedef instance names it in `typedef` and describes the type inside it.
         AND READ `needsLabviewSave`. A .ctl produced by the fixture route - generate a VI to a .ctl
@@ -324,12 +324,16 @@ internal sealed class CtlTools
 
         var innerType = (string?)inner.Attribute("Type") ?? "";
         var items = inner.Elements("EnumLabel").Select(e => (JsonNode?)e.Value).ToList();
-        if (innerType.StartsWith("Unit", StringComparison.Ordinal) || items.Count > 0)
+        // `UnitUInt8/16/32` are the ENUM types; `UnitFloat*` and `UnitComplex*` are numerics
+        // carrying a physical unit, which is the same "Unit" prefix in pylabview's names and
+        // not an enum at all (LVdatatype.py, 0x15-0x17 against 0x19-0x1E).
+        if (innerType.StartsWith("UnitUInt", StringComparison.Ordinal) || items.Count > 0)
         {
             field["kind"] = "enum";
             field["items"] = new JsonArray([.. items]);
         }
-        else if (innerType.StartsWith("Num", StringComparison.Ordinal))
+        else if (innerType.StartsWith("Num", StringComparison.Ordinal) ||
+                 innerType.StartsWith("Unit", StringComparison.Ordinal))
             field["kind"] = "numeric";      // a ring is one of these; its labels are on the panel
         else if (innerType == "Cluster" && depth < 4)
         {
