@@ -112,11 +112,21 @@ project or opened loose with no project, a subject outside every installation tr
 by `ConvertAIXMLToVI` (`errorCode 0`), the caller ran with the right answer, and it was still
 `execState 1` from disk in a FRESH LabVIEW — so the link is written into the file. Not loaded, or
 merely a member of an active project, it is `Error 53` as before, three times over. **The reason
-nobody saw it: `ValidateAIXML` refuses the same document in every arm**, so `lvai_generate_vi`,
-which validates first, cannot take this route — convert directly and verify by running. Two traps
-come with it: a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as
-a failed validate), and a convert that fails at `Save:Instrument` with a project active leaves a
-path-less VI there that makes the project unclosable (`1019`) until it is saved to a path.
+nobody saw it: `ValidateAIXML` refuses the same document in every arm.** Two traps come with it:
+a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as a failed
+validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
+VI there that makes the project unclosable (`1019`) until it is saved to a path.
+
+**`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
+it (`lvai_generate_vis`, the test generators, the class tools). A validate refusal naming ONLY
+`Unsupported SubVI` lines is converted anyway — under a throwaway `_name`, so a refusal burns
+nothing and the saved VI is still named after its file — with the target folder created first, and
+the result is then gated on `lvai_exec_state` in place of the validation that could not look; the
+answer carries `loadedSubVIs`. Accepted against LabVIEW over raw stdio: not loaded → `53` naming
+the target, then the SAME document and path after opening it → `ok`, `executable: true`, run
+correct; a class chain the same. **A misspelt terminal on such a call is `Error 1` from the
+generator, not a broken VI** — the converter refuses it and writes nothing — and the answer says
+which of the three failure shapes it was, because only the Save-time one leaves the `1019` orphan.
 
 **CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
 member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
@@ -2364,7 +2374,7 @@ literally it argued away 600 usable palette VIs.
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
-| Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_convert_aixml_to_vi` — NOT `lvai_generate_vi` or `lvai_validate_aixml`, which refuse it. Plain VIs and class members measured; a `.ctl` is not accepted |
+| Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` — open the target (or one member of its class) with `lvai_open_file` first; it converts past the `Unsupported SubVI` refusal and gates on executability. `lvai_validate_aixml` alone always refuses it. Plain VIs and class members measured; a `.ctl` is not accepted |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |

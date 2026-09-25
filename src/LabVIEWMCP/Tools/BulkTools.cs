@@ -68,6 +68,17 @@ internal sealed class BulkTools(LvaiConnection connection)
         default - needed when the VI must match a pane that already exists, because a caller's
         wires bind to terminal positions and the same conIdx means different edges on a different
         pattern. It runs before the measurement, so what comes back describes the final pane.
+        IT CALLS YOUR OWN CODE DIRECTLY WHEN THAT CODE IS OPEN IN LABVIEW. ValidateAIXML refuses a
+        Call to a project-local VI or class member in every state, while ConvertAIXMLToVI resolves
+        it by name once the target is loaded - opened through its project, opened loose, or for a
+        class any one member opened. So when validation names ONLY `Unsupported SubVI` targets,
+        this converts anyway, under a throwaway _name so a refusal burns nothing, and then gates
+        on the VI being EXECUTABLE in place of the validation that could not check those calls.
+        The answer says so under `loadedSubVIs`. If the targets were not loaded the convert
+        answers Error 53 and the note names them: open one through its project with
+        lvai_open_file and call again. That replaces lvai_placeholder_subvi + lvai_swap_subvis
+        for a caller of project code; a .ctl is NOT a Call target, and a constant feeding a
+        typedef input still needs lvai_bind_typedef_constants. docs/aixml-call-loaded-vi.md.
         """)]
     public async Task<string> GenerateViAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
@@ -152,15 +163,60 @@ internal sealed class BulkTools(LvaiConnection connection)
 
             var validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds, ct: ct);
             steps.Add(Step("validate", validate));
-            if (Failed(validate))
+
+            // THE LOADED-SUBVI ROUTE. ValidateAIXML refuses a Call to project-local code in EVERY
+            // state, while ConvertAIXMLToVI resolves it by name once the target is OPEN in
+            // LabVIEW - through its project or loose, and for a class once any one member is open.
+            // Measured 2026-09-25, docs/aixml-call-loaded-vi.md. So a refusal that names NOTHING
+            // BUT unresolved Call targets is not a verdict; the conversion is.
+            var unresolved = Failed(validate)
+                ? UnresolvedCallTargetsOnly(Field(validate, "errorMessage"))
+                : null;
+            if (Failed(validate) && unresolved is null)
                 return Outcome(false, "validate", steps, total, viPath, null,
                     "The AIXML was refused, so nothing was written. Read the message under " +
-                    "steps[0]: \"Unsupported SubVI\" is an unresolvable Call target, \"Object " +
-                    "terminal not found\" a misspelled terminal name.");
+                    "steps[0]: \"Object terminal not found\" is a misspelled terminal name. An " +
+                    "\"Unsupported SubVI\" line ON ITS OWN would have been converted anyway, " +
+                    "because a target that is open in LabVIEW resolves at conversion - here " +
+                    "there is at least one other fault, so fix that first.");
 
-            var convert = await aixml.ConvertAixmlToViAsync(aiXmlFilePath, viPath, openVI,
-                                                            timeoutSeconds, ct: ct);
+            // A FAILED CONVERT BURNS THE NAME, so the route converts under a throwaway one. The
+            // saved VI takes its name from the FILE, not from _name - measured - so nothing about
+            // the result changes; what changes is that a refusal leaves only an orphan nobody
+            // will ever ask for.
+            using var throwaway = unresolved is null
+                ? null
+                : ValidationScratch.Create(aiXmlFilePath, preserveName: false,
+                                           prefix: "LVMCP Convert");
+            if (unresolved is not null)
+            {
+                // A SAVE-TIME FAILURE IS THE EXPENSIVE ONE on this route: with a project active it
+                // leaves a path-less VI in the project's instance, and the next project save then
+                // answers Error 1019, so the project cannot be closed. A missing folder is the one
+                // save failure that can be ruled out for free.
+                if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
+                    Directory.CreateDirectory(folder);
+
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "loadedSubVIs",
+                    ["unresolvedAtValidate"] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
+                    ["convertedAs"] = throwaway!.ValidatedAs,
+                    ["note"] = "Validation named ONLY unresolved Call targets, so the conversion " +
+                               "decides: a target open in LabVIEW resolves there. Converted " +
+                               "under a throwaway _name so a refusal cannot burn the real one; " +
+                               "the saved VI is named after its file either way.",
+                });
+            }
+
+            var convert = await aixml.ConvertAixmlToViAsync(throwaway?.Path ?? aiXmlFilePath,
+                                                            viPath, openVI, timeoutSeconds, ct: ct);
             steps.Add(Step("convert", convert));
+            if (Failed(convert) && unresolved is not null &&
+                RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
+                             unresolved, throwaway!.ValidatedAs) is { } routeNote)
+                return Outcome(false, "convert", steps, total, viPath, null, routeNote,
+                    Route(unresolved, null));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     // A DROPPED RPC CAN LEAVE THE FILE BEHIND, and then the pane is a trap rather
@@ -188,7 +244,44 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "name\": something else carries the VI's internal name, and the commonest " +
                     "source is YOUR OWN LAST FAILED VALIDATION of the same _name - measured, " +
                     "twice in a row on the same document. Generate under a fresh name; the old " +
-                    "one stays poisoned until LabVIEW restarts.");
+                    "one stays poisoned until LabVIEW restarts.",
+                    unresolved is null ? null : Route(unresolved, null));
+
+            // EXECUTABILITY STANDS IN FOR THE VALIDATION THAT COULD NOT LOOK. ValidateAIXML
+            // type-checks every Call's wiring and could not do that for the calls it could not
+            // resolve. A misspelt terminal does NOT get past the converter - measured 2026-09-25,
+            // it answers Error 1 and writes nothing - but the converter is known to write a
+            // diagram validation would refuse (a class wire, docs/labview-lunit-testing.md §3), so
+            // a written file is not proof of a sound one. Only on this route: the ordinary one has
+            // already been validated.
+            JsonObject? route = null;
+            if (unresolved is not null)
+            {
+                var reading = await (ReadExecState?.Invoke(viPath, timeoutSeconds, ct)
+                    ?? new ExecStateTools(connection).ReadAsync(
+                        viPath, helperAixmlPath: null, helperViPath: null,
+                        regenerateHelper: false, timeoutSeconds, ct: ct));
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "execState",
+                    ["measured"] = reading is { CouldNotOpen: false },
+                    ["execState"] = reading?.State,
+                    ["meaning"] = reading is null ? null : ExecStateTools.Meaning(reading.State),
+                    ["linkerErrors"] = reading?.LinkerErrors,
+                });
+                route = Route(unresolved,
+                    reading is null or { CouldNotOpen: true } ? null : !reading.Broken);
+
+                if (reading is { Broken: true })
+                    return Outcome(false, "execState", steps, total, viPath, null,
+                        "THE VI WAS WRITTEN, and LabVIEW cannot run it. Validation was skipped " +
+                        "because it could not resolve these Call targets: " +
+                        string.Join(", ", unresolved) + " - so it never checked their wiring, " +
+                        "and the converter wrote something it would have refused. Compare each " +
+                        "Call's wire TYPES against lvai_vi_terminals on its target (a misspelt " +
+                        "terminal NAME does not get this far - the converter refuses it with " +
+                        "Error 1), and read linkerErrors in the execState step.", route);
+            }
 
             // The pattern repair goes BEFORE the measurement, so what gets reported is the pane
             // the caller will actually get. Doing it the other way round measures a pane that is
@@ -205,13 +298,14 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "THE VI WAS WRITTEN and its diagram is sound - what failed is putting it " +
                         "on pattern " + pattern + ". It is still on the station default, so a " +
                         "caller whose wires expect the other pattern will report itself as not " +
-                        "executable. Read the panePattern step.");
+                        "executable. Read the panePattern step.", route);
             }
 
             if (!measurePane)
                 return Outcome(true, null, steps, total, viPath, null,
                     "Generated. The connector pane was NOT measured because measurePane was " +
-                    "false, so nothing here says the terminals are on the right edges.");
+                    "false, so nothing here says the terminals are on the right edges." +
+                    RouteNote(route), route);
 
             var verdict = await new PaneTools(connection).MeasureViAsync(
                 viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
@@ -229,17 +323,126 @@ internal sealed class BulkTools(LvaiConnection connection)
                 return Outcome(true, null, steps, total, viPath, verdict,
                     "Generated, but the pane could not be measured - so this answer does NOT " +
                     "confirm the terminals are placed correctly. Call lvai_connector_pane " +
-                    "yourself to find out why.");
+                    "yourself to find out why." + RouteNote(route), route);
 
             return verdict.Clean
                 ? Outcome(true, null, steps, total, viPath, verdict,
-                    "Generated, and the connector pane follows NI's style guide.")
+                    "Generated, and the connector pane follows NI's style guide." +
+                    RouteNote(route), route)
                 : Outcome(false, "connectorPane", steps, total, viPath, verdict,
                     "THE VI WAS WRITTEN - generation succeeded. What failed is the connector " +
                     "pane: the terminals are not on the edges NI's style guide puts them on. The " +
                     "corrected conIdx values are in the connectorPane step; write them into the " +
-                    "AIXML and call this again. Nothing else about the VI has to change.");
+                    "AIXML and call this again. Nothing else about the VI has to change." +
+                    RouteNote(route), route);
         });
+
+    /// <summary>
+    /// Test seam for the loaded-subVI route's executability check. Null in production, where the
+    /// real <see cref="ExecStateTools"/> helper runs; a test sets it because that helper is a
+    /// generated VI and cannot run against the fake service.
+    /// </summary>
+    internal Func<string, int, CancellationToken, Task<ExecStateReading?>>? ReadExecState
+    {
+        get; init;
+    }
+
+    /// <summary>
+    /// The Call targets a validate refusal names, when it names NOTHING ELSE - or null.
+    ///
+    /// LabVIEW lists each fault as its own line under an <c>Errors:</c> header, and an unresolved
+    /// target reads <c>Unsupported SubVI: IMC Counter.lvclass:Read Count.vi</c>. One line of any
+    /// other kind means a real fault is present, and converting past it would write a diagram
+    /// LabVIEW refused for a reason this route knows nothing about - so it is null, and the
+    /// ordinary stop at validate applies. No <c>Errors:</c> block at all is also null: that shape
+    /// was never measured carrying only SubVI lines.
+    /// </summary>
+    internal static IReadOnlyList<string>? UnresolvedCallTargetsOnly(string? message)
+    {
+        const string header = "Errors:";
+        const string prefix = "Unsupported SubVI:";
+        if (string.IsNullOrEmpty(message)) return null;
+
+        var at = message.IndexOf(header, StringComparison.Ordinal);
+        if (at < 0) return null;
+
+        var lines = message[(at + header.Length)..]
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (lines.Length == 0) return null;
+
+        var names = new List<string>();
+        foreach (var line in lines)
+        {
+            if (!line.StartsWith(prefix, StringComparison.Ordinal)) return null;
+            var name = line[prefix.Length..].Trim();
+            if (name.Length == 0) return null;
+            if (!names.Contains(name, StringComparer.Ordinal)) names.Add(name);
+        }
+        return names;
+    }
+
+    /// <summary>
+    /// The note for a conversion that failed on the loaded-subVI route, chosen by WHERE LabVIEW
+    /// failed - or null to fall back to the ordinary convert note. Measured 2026-09-25, three
+    /// shapes, and they need opposite advice:
+    ///   53 from the generator     - the targets are not loaded; nothing is left behind.
+    ///   1 from the generator      - a misspelt terminal on a call validation could not check;
+    ///                               the converter refuses it and nothing is left behind either.
+    ///   anything at Save:Instrument - resolution passed and the SAVE failed, which with a project
+    ///                               active leaves a path-less VI that makes the project's own
+    ///                               Save answer 1019. The first draft of this note gave that
+    ///                               warning for EVERY failure, including the Error 1 above,
+    ///                               after which the project closed normally.
+    /// </summary>
+    internal static string? RouteFailure(int? code, string? message,
+                                         IReadOnlyList<string> unresolved, string? throwaway)
+    {
+        var generator = message?.Contains("VI generator.vi", StringComparison.Ordinal) == true;
+        var atSave = message?.Contains("Save:Instrument", StringComparison.Ordinal) == true;
+        var targets = string.Join(", ", unresolved);
+
+        if (code == 53 && !atSave)
+            return "Nothing was written, and nothing was burned - the attempt ran under a " +
+                   "throwaway name. These Call targets are NOT LOADED in LabVIEW: " + targets +
+                   ". A project-local VI resolves once it is OPEN - open it through its project " +
+                   "with lvai_open_file (for a class, one member is enough) and call this again. " +
+                   "Otherwise the route is lvai_placeholder_subvi + lvai_swap_subvis. A .ctl is " +
+                   "never a Call target.";
+        if (code == 1 && generator && !atSave)
+            return "Nothing was written. The targets RESOLVED - this is past the not-loaded " +
+                   "case - and the generator then refused the document with Error 1, which is " +
+                   "what a misspelt terminal name on one of these calls produces (measured): " +
+                   targets + ". Validation would have named it, and could not, because it cannot " +
+                   "resolve them. Take each Call's input and output names from lvai_vi_terminals " +
+                   "on its target.";
+        if (atSave)
+            return "The targets RESOLVED and the SAVE failed. That leaves an unsaved VI called '" +
+                   throwaway + "' in LabVIEW, and with a project active the project's own Save " +
+                   "then answers Error 1019, so lvai_close_active_project cannot close it until " +
+                   "that VI is saved to a path - open it BY NAME in the project's application " +
+                   "instance and Save.Instrument it, docs/aixml-call-loaded-vi.md section 3. " +
+                   "1357 means this path is loaded, 1051 that a VI of this FILE's name already " +
+                   "is - including a project item of that name at another path.";
+        return null;
+    }
+
+    /// <summary>The top-level summary of a generation that took the loaded-subVI route.</summary>
+    private static JsonObject Route(IReadOnlyList<string> unresolved, bool? executable) => new()
+    {
+        ["route"] = "loadedSubVIs",
+        ["resolvedAtConversion"] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
+        ["executable"] = executable,
+    };
+
+    private static string RouteNote(JsonObject? route) => route is null
+        ? ""
+        : route["executable"]?.GetValue<bool>() is true
+            ? " Validation was SKIPPED for Call targets it could not resolve - they resolved at " +
+              "conversion because they are open in LabVIEW - and the VI was confirmed executable " +
+              "in its place. The links are in the file; the targets need not stay open."
+            : " Validation was SKIPPED for Call targets it could not resolve, and executability " +
+              "could NOT be read afterwards - so nothing here confirms the wiring of those calls. " +
+              "Run lvai_exec_state on the VI before relying on it.";
 
     /// <summary>One entry in the `steps` array: the sub-tool's own answer, kept whole.</summary>
     private static JsonObject Step(string name, string answer) => new()
@@ -261,7 +464,8 @@ internal sealed class BulkTools(LvaiConnection connection)
     };
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
-                                  string viPath, PaneTools.PaneVerdict? pane, string note)
+                                  string viPath, PaneTools.PaneVerdict? pane, string note,
+                                  JsonObject? route = null)
     {
         total.Stop();
         var result = new JsonObject
@@ -272,6 +476,10 @@ internal sealed class BulkTools(LvaiConnection connection)
             ["viExistsNow"] = File.Exists(viPath),
             ["viBytes"] = File.Exists(viPath) ? new FileInfo(viPath).Length : 0,
         };
+        // Top level rather than only inside `steps`, because it changes what `ok` vouches for:
+        // on this route validation did not look at the unresolved calls, and `executable` is what
+        // stood in for it.
+        if (route is not null) result["loadedSubVIs"] = route.DeepClone();
         if (pane is { Measured: true })
         {
             result["panePattern"] = pane.Pattern;

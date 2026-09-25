@@ -602,9 +602,9 @@ internal sealed class AixmlTools(LvaiConnection connection)
         (`Increment` -> `x+1`, but `Greater?` -> `x > y?` with spaces).
         A Call to a project-local subVI is rejected (Error 53) UNLESS that subVI is OPEN in
         LabVIEW - through its project or loose - when this runs; then it resolves by bare name
-        and the link is written into the file. Validation refuses it either way, so convert
-        directly and verify by running. A failed convert burns the caller's name (1051 next
-        time). Measured 2026-09-25 on plain VIs and on class members (open one member and
+        and the link is written into the file. Validation refuses it either way; lvai_generate_vi
+        converts past that refusal for you, under a throwaway name, and checks executability. A
+        failed convert here burns the caller's name (1051 next time). Measured 2026-09-25 on plain VIs and on class members (open one member and
         the whole class resolves); a .ctl is NOT accepted. docs/aixml-call-loaded-vi.md.
         """)]
     public async Task<string> ConvertAixmlToViAsync(

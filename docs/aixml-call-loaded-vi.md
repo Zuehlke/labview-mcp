@@ -55,10 +55,9 @@ repository measures as the dominant cost (`docs/workflow-economics.md`); it was 
 
 ## 3. What to know before relying on it
 
-**Validation refuses what conversion accepts, so `lvai_generate_vi` cannot use this route as it
-stands.** It validates first and stops at the refusal. Convert with `lvai_convert_aixml_to_vi`
-directly and verify by `lvai_exec_state` and a run. This is the second measured case of conversion
-accepting what validation refuses; the first is the class wire of `docs/labview-lunit-testing.md` §3.
+**Validation refuses what conversion accepts.** This is the second measured case of it; the first
+is the class wire of `docs/labview-lunit-testing.md` §3. This paragraph said "`lvai_generate_vi`
+cannot use this route as it stands" until the same day's section 7, which is where it can.
 
 **An error at `Save:Instrument` means the `Call` RESOLVED.** `Error 53` comes from
 `LV AI Core.lvlibp:VI generator.vi`; `1051`, `1357` and `7` all come from the `Save:Instrument`
@@ -190,7 +189,44 @@ repair is still needed and still works.
 - The first `lvai_coercion_dots` sweep reported `Read Profile.vi` "not found on the diagram" while
   that VI was open in the IDE; after the restart it was found. Not isolated.
 
-## 7. Not measured yet
+## 7. `lvai_generate_vi` takes the route by itself
+
+Built the same day, so every tool that generates through it inherits it - `lvai_generate_vis`, the
+three test generators, the class and LUnit tools. The sequence, all of it visible under `steps`:
+
+1. **Validate as before.** A refusal whose `Errors:` block holds ONLY `Unsupported SubVI:` lines is
+   not a verdict; any other line - including the type grammar refusing a `.ctl` name - keeps the
+   old stop at validate. No `Errors:` block at all also keeps it, because that shape was never seen
+   carrying only SubVI lines.
+2. **Convert under a throwaway `_name`** (`LVMCP Convert <hex>.vi`), because a failed convert burns
+   the name (section 3) and the saved VI is named after its FILE anyway. The target folder is
+   created first: a missing folder is a Save-time failure, and a Save-time failure is the one that
+   leaves the `1019` orphan.
+3. **Gate on `lvai_exec_state`** in place of the validation that could not check those calls.
+4. The answer carries `loadedSubVIs` - `resolvedAtConversion` and `executable` - at the top level,
+   because it changes what `ok` vouches for.
+
+**Accepted against LabVIEW the same day**, over raw MCP stdio against the built exe (the session's
+client still held the old tool list):
+
+| arm | answer |
+|---|---|
+| `IMC Add Offset.vi` NOT loaded | `failedAtStep: convert`, code 53, the note names the target and `lvai_open_file`; converted as `LVMCP Convert 4d43f6231.vi` |
+| the subject opened through its project, then the SAME document onto the SAME path | `ok: true`, 9 501 bytes, `executable: true`, pane clean - so the failed attempt had burned nothing, and the missing `Accept\` folder was created |
+| a run | `2 + 3.5 = 5.5` |
+| the class chain with ONE member opened through its project | `ok: true`, `executable: true`, `7` in and `7` out |
+| the class chain with nothing opened in that LabVIEW | code 53 naming all three members - the earlier runs in that instance had not left the class loaded |
+
+**A sixth arm, a deliberate typo, corrected the first draft.** A caller with `offsett` for `offset` on a loaded call
+answered **`Error 1`, `An input parameter is invalid`, from `VI generator.vi`, and wrote nothing** -
+the converter refuses a misspelt terminal rather than writing a broken VI. The draft had said such a
+typo "lands at the executability gate", and its convert-failure note warned about the `1019` orphan
+for every failure, while this one left the project closing normally. The note now depends on where
+LabVIEW failed: 53 at the generator (not loaded), 1 at the generator (a terminal name), or anything
+at `Save:Instrument` (the only case that leaves an orphan). The gate stays, as the net for what the
+converter does write that validation would have refused.
+
+## 8. Not measured yet
 
 - a **project-library member** (`X.lvlib:VI.vi`) as a target;
 - `ValidateAIXML` in arm D;
