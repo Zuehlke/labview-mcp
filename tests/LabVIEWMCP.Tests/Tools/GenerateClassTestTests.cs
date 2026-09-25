@@ -25,6 +25,111 @@ public sealed class GenerateClassTestTests
     private static XElement Author(params TestTools.ClassCase[] cases) =>
         XElement.Parse(TestTools.ClassTestAixml(@"C:\cls\Test Netzteil.vi", "Netzteil", cases));
 
+    // ------------------------------------------------------------------ the direct route, 2026-09-25
+
+    private const string Err = "cluster{bool.status,int32.code,string.source}";
+
+    /// <summary>An accessor pane in the shape LabVIEW's own export gives NI's wizard accessors.</summary>
+    private static ViTerminals.Result Accessor(string name, bool write, string data, string type)
+    {
+        var inputs = new List<string>
+        {
+            $"<Control _name=\"error in (no error)\" conIdx=\"8\" connection=\"recommended\" type=\"{Err}\" outputs=\"value:1.v\" uid=\"1\" uid_parent=\"root\" value=\"[false,0,]\"/>",
+            "<Control _name=\"Netzteil in\" conIdx=\"11\" connection=\"dynamic\" type=\"ref{UDClassInst}\" outputs=\"value:2.v\" uid=\"2\" uid_parent=\"root\" value=\"\"/>",
+        };
+        var outputs = new List<string>
+        {
+            $"<Indicator _name=\"error out\" conIdx=\"0\" connection=\"recommended\" type=\"{Err}\" inputs=\"value:1.v\" uid=\"3\" uid_parent=\"root\" value=\"[false,0,]\"/>",
+            "<Indicator _name=\"Netzteil out\" conIdx=\"3\" connection=\"dynamic\" type=\"ref{UDClassInst}\" inputs=\"value:2.v\" uid=\"4\" uid_parent=\"root\" value=\"\"/>",
+        };
+        if (write)
+            inputs.Add($"<Control _name=\"{data}\" conIdx=\"10\" connection=\"required\" type=\"{type}\" outputs=\"value:5.v\" uid=\"5\" uid_parent=\"root\" value=\"\"/>");
+        else
+            outputs.Add($"<Indicator _name=\"{data}\" conIdx=\"2\" connection=\"recommended\" type=\"{type}\" inputs=\"value:5.v\" uid=\"5\" uid_parent=\"root\" value=\"\"/>");
+        return ViTerminals.Parse(
+            $"<VI _name=\"Netzteil.lvclass:{name}\" description=\"\">{string.Concat(inputs)}{string.Concat(outputs)}</VI>")!;
+    }
+
+    [Fact]
+    public void AWizardAccessorPairIsReadByTypeNotByName()
+    {
+        // A typedef-bound field: the accessors are named after the FIELD, the data terminal after
+        // the TYPEDEF - measured 2026-09-25 on `Write Profile.vi` / terminal `IMC Setpoint`.
+        var (call, why) = TestTools.DirectAccessorCall.From(
+            Accessor("Write Profile.vi", write: true, "IMC Setpoint", "cluster{double.Setpoint,double.Tolerance}"),
+            Accessor("Read Profile.vi", write: false, "IMC Setpoint", "cluster{double.Setpoint,double.Tolerance}"),
+            @"Netzteil.lvclass\3AWrite Profile.vi", @"Netzteil.lvclass\3ARead Profile.vi");
+
+        Assert.Null(why);
+        Assert.Equal("Netzteil in", call!.WriteClassIn);
+        Assert.Equal("Netzteil out", call.WriteClassOut);
+        Assert.Equal("IMC Setpoint", call.WriteData);
+        Assert.Equal("Netzteil in", call.ReadClassIn);
+        Assert.Equal("IMC Setpoint", call.ReadData);
+    }
+
+    [Fact]
+    public void AVIWithoutClassTerminalsIsNotAnAccessorPairAndSaysSo()
+    {
+        var plain = ViTerminals.Parse(
+            $"<VI _name=\"Plain.vi\" description=\"\"><Control _name=\"x\" conIdx=\"0\" connection=\"required\" type=\"double\" outputs=\"value:1.v\" uid=\"1\" uid_parent=\"root\" value=\"0\"/></VI>")!;
+
+        var (call, why) = TestTools.DirectAccessorCall.From(plain, plain, "a", "b");
+
+        Assert.Null(call);
+        Assert.Contains("class input and output", why);
+    }
+
+    [Fact]
+    public void AClassInALibraryIsCalledByItsLibraryQualifiedName()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "lvaimcp-tests", "qual-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var owned = Path.Combine(folder, "Ofen.lvclass");
+            File.WriteAllText(owned,
+                "<?xml version='1.0' encoding='UTF-8'?><Library LVVersion=\"26008000\">" +
+                "<Property Name=\"NI.Lib.ContainingLib\" Type=\"Str\">Ofen.lvlib</Property></Library>");
+            var loose = Path.Combine(folder, "Netzteil.lvclass");
+            File.WriteAllText(loose, "<?xml version='1.0' encoding='UTF-8'?><Library LVVersion=\"26008000\"/>");
+
+            Assert.Equal(@"Ofen.lvlib\3AOfen.lvclass\3AWrite Profil.vi",
+                TestTools.DirectAccessorCall.Target(owned, Path.Combine(folder, "Write Profil.vi")));
+            Assert.Equal(@"Netzteil.lvclass\3ARead Hersteller.vi",
+                TestTools.DirectAccessorCall.Target(loose, Path.Combine(folder, "Read Hersteller.vi")));
+        }
+        finally { Directory.Delete(folder, recursive: true); }
+    }
+
+    [Fact]
+    public void TheDirectDiagramCallsTheRealAccessorsWithTheirOwnTerminalNamesAndKeepsThePathSeed()
+    {
+        var cases = new[] { Case(1, "Hersteller", "string", "Fluke") };
+        var shapes = new[]
+        {
+            new TestTools.DirectAccessorCall(@"Netzteil.lvclass\3AWrite Hersteller.vi", "Netzteil in",
+                "Hersteller", "Netzteil out", @"Netzteil.lvclass\3ARead Hersteller.vi", "Netzteil in",
+                "Hersteller"),
+        };
+        var root = XElement.Parse(TestTools.ClassTestAixml(@"C:\cls\Test Netzteil.vi", "Netzteil",
+                                                          cases, shapes));
+
+        var write = root.Elements("Call").Single(c =>
+            (string?)c.Attribute("target") == @"Netzteil.lvclass\3AWrite Hersteller.vi");
+        var read = root.Elements("Call").Single(c =>
+            (string?)c.Attribute("target") == @"Netzteil.lvclass\3ARead Hersteller.vi");
+        Assert.StartsWith("Netzteil in:", (string?)write.Attribute("inputs"));
+        Assert.Contains(",Hersteller:", (string?)write.Attribute("inputs"));
+        Assert.StartsWith("Netzteil in:", (string?)read.Attribute("inputs"));
+        Assert.StartsWith("Hersteller:", (string?)read.Attribute("outputs"));
+        Assert.DoesNotContain(root.Elements("Call"), c => ((string?)c.Attribute("target"))!.StartsWith("LVMCP Cls"));
+
+        // the seed is still the PATH constant the Replace turns into the class
+        var seed = root.Elements("Constant").Single(c => (string?)c.Attribute("_name") == "object 1");
+        Assert.Equal("path", (string?)seed.Attribute("type"));
+    }
+
     // ------------------------------------------------------------------ the sockets
 
     [Fact]

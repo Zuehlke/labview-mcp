@@ -372,7 +372,13 @@ internal sealed class TestTools(LvaiConnection connection)
         hand for a three-class hierarchy: sockets generated one at a time, the test authored, then
         nineteen further calls alternating a node listing and a node swap. Everything below happens
         inside this one call.
-        WHY IT IS NOT lvai_generate_test. That tool's placeholder is a pane clone generated through
+        TWO ROUTES, and `route` in the answer says which ran and why. DIRECT, the default since
+        2026-09-25: one accessor is opened through the project that lists the class (found by
+        itself, or projectPath), the test names the REAL accessors - a class with one member open
+        is a legal Call target, docs/aixml-call-loaded-vi.md - each chain's seed `path` constant is
+        turned into the class with {LV.Constant} Replace, and the project is closed. When no single
+        project lists the class, or the accessors do not resolve, the SOCKET route runs:
+        WHY SOCKETS AT ALL. lvai_generate_test's placeholder is a pane clone generated through
         AIXML, and AIXML refuses a class-typed terminal - `Control with type=UDClassInst is not
         supported` - so it answers `stubRefused` for any class member. This route instead authors
         sockets whose class terminals are `path` stand-ins and then uses LabVIEW's own {LV.SubVI}
@@ -454,6 +460,12 @@ internal sealed class TestTools(LvaiConnection connection)
             FAILED is reported whole regardless of this flag, so nothing diagnostic is lost.
             """)]
         bool verbose = false,
+        [Description("""
+            Call the accessors DIRECTLY instead of through sockets: open one of them through the
+            class's project, name the real accessors in the test, turn the seed constants into the
+            class, close the project. On by default. False forces the socket route.
+            """)]
+        bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -532,9 +544,27 @@ internal sealed class TestTools(LvaiConnection connection)
                                         write, read, seed));
             }
 
-            // 1. the sockets, all of them in one call
             var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "classtest");
             Directory.CreateDirectory(scratch);
+
+            // 0. THE DIRECT ROUTE FIRST: a class with one member open is a legal Call target for
+            // every member (docs/aixml-call-loaded-vi.md §4), which removes both sockets per field
+            // and both node swaps. It finishes the job or says why the socket route has to run.
+            var route = new JsonObject { ["route"] = "sockets" };
+            if (!directCall)
+                route["reason"] = "directCall was false.";
+            else
+            {
+                var (done, fallback) = await DirectClassTestAsync(
+                    lvclassPath, className, testViPath, cases, projectPath, testFolderName,
+                    alsoListInProject, scratch, keepAixml, verbose, steps, total, route,
+                    timeoutSeconds, ct);
+                if (done is not null) return done;
+                route["route"] = "sockets";
+                route["reason"] = fallback;
+            }
+
+            // 1. the sockets, all of them in one call
             var socketRoot = SocketDirectory();
             if (socketRoot is null)
                 return Json.Error("noUserLib",
@@ -580,7 +610,7 @@ internal sealed class TestTools(LvaiConnection connection)
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return Outcome(false, "sockets", steps, total, testViPath, null,
                     "The sockets could not all be generated, so the test was not authored. Each " +
-                    "socket's own answer is in the sockets step.");
+                    "socket's own answer is in the sockets step.", route: route);
 
             // 2. the test itself, against those sockets
             var testAixml = Path.Combine(scratch,
@@ -595,7 +625,8 @@ internal sealed class TestTools(LvaiConnection connection)
             { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
-                    "The test VI was not written. The generate step carries LabVIEW's own message.");
+                    "The test VI was not written. The generate step carries LabVIEW's own message.",
+                    route: route);
 
             // 3. swap every socket for its accessor and every path constant for the class - nodes
             //    first, constants last, which is what lvai_swap_subvis enforces.
@@ -625,7 +656,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "swap", steps, total, testViPath, testAixml,
                     "THE TEST VI WAS WRITTEN and still calls the sockets, so it would test " +
                     "nothing. Read the swap step - `socketsNotOnDiagram` and `socketsLeft` say " +
-                    "which half failed.");
+                    "which half failed.", route: route);
 
             if (!keepAixml)
             {
@@ -659,8 +690,196 @@ internal sealed class TestTools(LvaiConnection connection)
                 "break one case on purpose once, because an all-green first run proves very " +
                 "little. THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
                 "needs; open it when you are ready to RUN the suite.",
-                swapAnswer["callTargets"]?.DeepClone());
+                swapAnswer["callTargets"]?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// The round-trip test against the REAL accessors: one member opened through the class's
+    /// project, the accessors named in the Calls, the seed constants replaced by the class, the
+    /// project closed. Returns the finished answer, or null and the reason the socket route has to
+    /// run instead.
+    ///
+    /// WHAT IT REPLACES: two socket VIs per field generated into user.lib, and two node swaps per
+    /// field. What it keeps is the seed: AIXML has no class constant, so each chain still starts at
+    /// a PATH constant that {LV.Constant} Replace turns into the class - measured 2026-09-25, eBad
+    /// straight after the convert (the path is wired into a class input) and execState 1 after the
+    /// Replace, with `42` read back.
+    /// </summary>
+    private async Task<(string? Done, string? Fallback)> DirectClassTestAsync(
+        string lvclassPath, string className, string testViPath, List<ClassCase> cases,
+        string? projectPath, string testFolderName, string? alsoListInProject, string scratch,
+        bool keepAixml, bool verbose, JsonArray steps, Stopwatch total, JsonObject route,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        // 1. the project that owns the class
+        string project;
+        if (projectPath is { Length: > 0 })
+        {
+            project = Path.GetFullPath(projectPath);
+            route["projectFrom"] = "argument";
+        }
+        else
+        {
+            var owners = ProjectMembership.ProjectsListing(lvclassPath);
+            if (owners.Count != 1)
+                return (null, owners.Count == 0
+                    ? $"No .lvproj at or up to {ProjectMembership.LevelsUp} folders above the class " +
+                      "lists it, so there is no project to open an accessor through. Pass " +
+                      "projectPath to take the direct route anyway."
+                    : $"{owners.Count} projects list the class ({string.Join(", ", owners)}); pass " +
+                      "projectPath to choose one.");
+            project = owners[0];
+            route["projectFrom"] = "discovered";
+        }
+        route["projectPath"] = project;
+
+        // 2. each accessor pair as it really spells itself
+        var shapes = new List<DirectAccessorCall>();
+        foreach (var test in cases)
+        {
+            var write = await ExportedTerminalsAsync(test.WriteAccessor, scratch, timeoutSeconds, ct);
+            var read = await ExportedTerminalsAsync(test.ReadAccessor, scratch, timeoutSeconds, ct);
+            if (write is null || read is null)
+                return (null, $"The accessors of '{test.Field}' could not be exported, so their " +
+                              "terminal names are unknown.");
+            var (shape, why) = DirectAccessorCall.From(write, read,
+                DirectAccessorCall.Target(lvclassPath, test.WriteAccessor),
+                DirectAccessorCall.Target(lvclassPath, test.ReadAccessor));
+            if (shape is null) return (null, why);
+            shapes.Add(shape);
+        }
+        steps.Add(new JsonObject
+        {
+            ["step"] = "accessors",
+            ["pairs"] = shapes.Count,
+            ["targets"] = new JsonArray([.. shapes.SelectMany(s =>
+                new[] { (JsonNode)s.WriteTarget, s.ReadTarget })]),
+        });
+
+        // 3. load the class through its project - one member is enough for all of them
+        var open = await new ActionTools(connection).OpenFileAsync(
+            cases[0].WriteAccessor, Path.GetFileName(cases[0].WriteAccessor), project,
+            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
+        steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
+        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+            opened["projectBecameActive"]?.GetValue<bool>() is not true)
+            return (null, "The class's project did not become active, so the class is not known " +
+                          "to be loaded - read the openClass step.");
+
+        // 4. author against the real accessors and generate. `execState` failing HERE is expected
+        //    and is not a failure: the seeds are still paths wired into class inputs.
+        var testAixml = Path.Combine(scratch,
+            Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
+        await File.WriteAllTextAsync(testAixml, ClassTestAixml(testViPath, className, cases, shapes), ct);
+        var generated = await new BulkTools(connection).GenerateViAsync(
+            testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject
+        { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
+        var answer = Read(generated) as JsonObject;
+
+        async Task<string?> CloseAsync()
+        {
+            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+            return null;
+        }
+
+        if (NotResolved(answer))
+        {
+            await CloseAsync();
+            return (null, "The class was opened through its project and its accessors still did " +
+                          "not resolve as Call targets (Error 53 at conversion). Nothing was written.");
+        }
+        if (answer?["viExistsNow"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "generate", steps, total, testViPath, testAixml,
+                "The test VI was not written. The generate step carries LabVIEW's own message.",
+                route: Direct(route)), null);
+        }
+
+        // 5. the seeds become the class - the one Replace this route cannot do without
+        var seeds = new JsonArray([.. cases.Select(test => (JsonNode)new JsonObject
+        { ["label"] = test.SeedLabel, ["class"] = test.SeedClassPath })]);
+        var swapped = await new SwapTools(connection).SwapSubVisAsync(
+            testViPath, null, seeds.ToJsonString(), verify: true, verbose: false,
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, editsJson: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "seeds", ["answer"] = Read(swapped) });
+        var swapAnswer = Read(swapped) as JsonObject;
+        if (swapAnswer?["ok"]?.GetValue<bool>() is not true)
+        {
+            await CloseAsync();
+            return (Outcome(false, "seeds", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and calls the real accessors, but its seed constants are " +
+                "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
+        }
+
+        // 6. executable now, or the direct route produced something the socket route would not
+        var reading = await new ExecStateTools(connection).ReadAsync(
+            testViPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject
+        {
+            ["step"] = "execState",
+            ["execState"] = reading?.State,
+            ["linkerErrors"] = reading?.LinkerErrors,
+        });
+        if (reading is { Broken: true })
+        {
+            await CloseAsync();
+            return (Outcome(false, "execState", steps, total, testViPath, testAixml,
+                "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
+                "read linkerErrors in the execState step.", route: Direct(route)), null);
+        }
+
+        if (!keepAixml)
+        {
+            try { File.Delete(testAixml); }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        }
+
+        // 7. release the class, and list the test where the socket route would have
+        if (projectPath is { Length: > 0 })
+        {
+            var extra = (alsoListInProject ?? "")
+                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                     StringSplitOptions.TrimEntries);
+            steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath, .. extra],
+                                               timeoutSeconds, ct, reopen: false));
+        }
+        else
+            await CloseAsync();
+
+        return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
+            $"Generated. {cases.Count} round trip(s), each calling the class's own Write and Read " +
+            "accessors DIRECTLY - no sockets, no node swaps; only the seed constants were " +
+            "replaced. Run it through Caraya's runner with a Report Path ending in .xml and read " +
+            "the JUnit report - and break one case on purpose once, because an all-green first " +
+            "run proves very little. THE PROJECT IS LEFT CLOSED.",
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+    }
+
+    /// <summary>One VI's terminals off its own export, or null when it could not be exported.</summary>
+    private async Task<ViTerminals.Result?> ExportedTerminalsAsync(
+        string viPath, string scratch, int timeoutSeconds, CancellationToken ct)
+    {
+        var export = Path.Combine(scratch, Path.GetFileNameWithoutExtension(viPath) + ".shape.xml");
+        try
+        {
+            var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
+                viPath, export, returnContent: true, maxContentChars: 0,
+                timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
+            return ViTerminals.Parse(Read(answer)?["xml"]?.GetValue<string>());
+        }
+        finally
+        {
+            try { File.Delete(export); }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        }
+    }
 
     [McpServerTool(Name = "lvai_generate_caraya_test_runner", Destructive = true, OpenWorld = true,
                    Title = "Generate the Caraya suite runner for a set of test VIs")]
@@ -1361,7 +1580,8 @@ internal sealed class TestTools(LvaiConnection connection)
     /// generated and the swap succeeded and the export looked right.
     /// </summary>
     internal static string ClassTestAixml(string testViPath, string className,
-                                          IReadOnlyList<ClassCase> cases)
+                                          IReadOnlyList<ClassCase> cases,
+                                          IReadOnlyList<DirectAccessorCall>? direct = null)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -1372,9 +1592,13 @@ internal sealed class TestTools(LvaiConnection connection)
           .Append($"Caraya round-trip test for {Escape(className)}\\2C generated by ")
           .Append("lvai_generate_class_test.\\0A\\0AEach case writes a value through the class's ")
           .Append("own Write accessor and reads it back through the Read accessor\\2C both called ")
-          .Append("as ORDINARY STATIC SUBVIS. AIXML cannot author a class-typed terminal\\2C so the ")
-          .Append("calls were generated against sockets and swapped for the real accessors with ")
-          .Append("LabVIEW's own Replace\\2C which re-types the wires.\\0A\\0AThe error cluster ")
+          .Append(direct is null
+              ? "as ORDINARY STATIC SUBVIS. AIXML cannot author a class-typed terminal\\2C so the " +
+                "calls were generated against sockets and swapped for the real accessors with " +
+                "LabVIEW's own Replace\\2C which re-types the wires."
+              : "as ORDINARY STATIC SUBVIS\\2C named directly while the class was open in LabVIEW. " +
+                "Each object comes from a class constant.")
+          .Append("\\0A\\0AThe error cluster ")
           .AppendLine("carries the FIRST failure only. Read the JUnit report for all of them.\">");
 
         var uid = UidBase;
@@ -1402,8 +1626,10 @@ internal sealed class TestTools(LvaiConnection connection)
             "uid_parent=\"root\"/>");
 
         var assertions = new List<int>();
-        foreach (var test in cases)
+        for (var index = 0; index < cases.Count; index++)
         {
+            var test = cases[index];
+
             // The class source. Authored as a PATH constant and named, because lvai_swap_subvis
             // finds it by its block diagram label - AIXML's _name becomes that label.
             var seed = uid++;
@@ -1413,16 +1639,30 @@ internal sealed class TestTools(LvaiConnection connection)
             sb.AppendLine(Constant(written, test.DataType, ValueFor(test.DataType, test.Value),
                                    $"written {test.Slot}"));
 
+            // THE REAL ACCESSORS on the direct route, the sockets otherwise - same wiring, only the
+            // target and the terminal names change. The seed is still a PATH constant either way:
+            // AIXML has no class constant, so the converter writes a broken wire into the class
+            // input and the {LV.Constant} Replace afterwards is what makes it a class - measured
+            // 2026-09-25, eBad after the convert and execState 1 after the Replace.
+            var shape = direct?[index];
             var write = uid++;
-            sb.AppendLine($"  <Call target=\"{Escape(test.WriteSocket)}\" " +
-                          $"inputs=\"obj in:{seed}.value,value:{written}.value\" " +
-                          $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" " +
-                          "uid_parent=\"root\"/>");
+            sb.AppendLine(shape is null
+                ? $"  <Call target=\"{Escape(test.WriteSocket)}\" " +
+                  $"inputs=\"obj in:{seed}.value,value:{written}.value\" " +
+                  $"outputs=\"obj out:{write}.obj out\" uid=\"{write}\" uid_parent=\"root\"/>"
+                : $"  <Call target=\"{Escape(shape.WriteTarget)}\" " +
+                  $"inputs=\"{shape.WriteClassIn}:{seed}.value,{shape.WriteData}:{written}.value\" " +
+                  $"outputs=\"{shape.WriteClassOut}:{write}.obj out\" uid=\"{write}\" " +
+                  "uid_parent=\"root\"/>");
 
             var read = uid++;
-            sb.AppendLine($"  <Call target=\"{Escape(test.ReadSocket)}\" " +
-                          $"inputs=\"obj in:{write}.obj out\" " +
-                          $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
+            sb.AppendLine(shape is null
+                ? $"  <Call target=\"{Escape(test.ReadSocket)}\" " +
+                  $"inputs=\"obj in:{write}.obj out\" " +
+                  $"outputs=\"value:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>"
+                : $"  <Call target=\"{Escape(shape.ReadTarget)}\" " +
+                  $"inputs=\"{shape.ReadClassIn}:{write}.obj out\" " +
+                  $"outputs=\"{shape.ReadData}:{read}.value\" uid=\"{read}\" uid_parent=\"root\"/>");
 
             // Expected IS what was written - the constant is reused rather than restated, so the
             // two can never drift apart.
@@ -1627,6 +1867,63 @@ internal sealed class TestTools(LvaiConnection connection)
         public string WriteSocket => $"LVMCP ClsW{Slot}.vi";
         public string ReadSocket => $"LVMCP ClsR{Slot}.vi";
         public string SeedLabel => $"object {Slot}";
+    }
+
+    /// <summary>
+    /// One round trip's two calls as the REAL accessors spell them, for the direct route: the
+    /// qualified Call targets and the terminal names read off each accessor's own export.
+    ///
+    /// THE NAMES ARE READ, NOT ASSUMED. The sockets used generic `obj in` / `value` / `obj out`, and
+    /// NI's wizard does name the class terminals `&lt;Class&gt; in` / `&lt;Class&gt; out` and the data
+    /// terminal after the field - until the field is a typedef: measured 2026-09-25, a field created
+    /// as `Profile` and bound to `IMC Setpoint.ctl` gave accessors named `Read Profile.vi` whose data
+    /// terminal is `IMC Setpoint`. So the class terminals are recognised by TYPE (`ref{UDClassInst}`)
+    /// and the data terminal is the one left over once the error cluster is set aside.
+    /// </summary>
+    internal sealed record DirectAccessorCall(
+        string WriteTarget, string WriteClassIn, string WriteData, string WriteClassOut,
+        string ReadTarget, string ReadClassIn, string ReadData)
+    {
+        private const string ClassType = "ref{UDClassInst}";
+
+        /// <summary>The pair, or null and the reason it could not be recognised.</summary>
+        internal static (DirectAccessorCall? Call, string? Why) From(
+            ViTerminals.Result write, ViTerminals.Result read, string writeTarget, string readTarget)
+        {
+            static ViTerminals.Terminal? One(IEnumerable<ViTerminals.Terminal> terminals,
+                                             Func<ViTerminals.Terminal, bool> which)
+            {
+                var hits = terminals.Where(which).ToList();
+                return hits.Count == 1 ? hits[0] : null;
+            }
+            static bool IsClass(ViTerminals.Terminal t) => t.Type == ClassType;
+            static bool IsData(ViTerminals.Terminal t) => t.Type != ClassType && t.Type != ErrorCluster;
+
+            var writeIn = One(write.Inputs, IsClass);
+            var writeOut = One(write.Outputs, IsClass);
+            var writeData = One(write.Inputs, IsData);
+            var readIn = One(read.Inputs, IsClass);
+            var readData = One(read.Outputs, IsData);
+
+            if (writeIn is null || writeOut is null || readIn is null)
+                return (null, $"'{write.ViName}' / '{read.ViName}' do not carry exactly one class " +
+                              "input and output each, so they are not a wizard accessor pair.");
+            if (writeData is null || readData is null)
+                return (null, $"'{write.ViName}' / '{read.ViName}' do not carry exactly one data " +
+                              "terminal each beside the class and error terminals.");
+
+            return (new DirectAccessorCall(writeTarget, writeIn.Value.Name, writeData.Value.Name,
+                                           writeOut.Value.Name, readTarget, readIn.Value.Name,
+                                           readData.Value.Name), null);
+        }
+
+        /// <summary>
+        /// The Call target for a class member: the class's qualified name (library-owned or not,
+        /// read off the .lvclass) plus the accessor's file name, with every `:` as `\3A`.
+        /// </summary>
+        internal static string Target(string lvclassPath, string accessorPath) =>
+            $"{LvClass.QualifiedName(lvclassPath)}:{Path.GetFileName(accessorPath)}"
+                .Replace(":", @"\3A");
     }
 
     // ------------------------------------------------------------------ authoring

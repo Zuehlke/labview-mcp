@@ -412,9 +412,32 @@ as a failure.
 
 ### 3d. THE STATIC ROUTE: class accessors as ordinary subVI calls, via `{LV.SubVI}` `Replace`
 
-Measured 2026-08-29 in `C:\temp\NetzteilACDC`. Four Caraya test VIs, twelve properties over three
-classes, every accessor a **static subVI call on the test diagram**, `failures="0"` on two
-consecutive runs, and a negative control that fails on demand.
+**SINCE 2026-09-25 `lvai_generate_class_test` CALLS THE ACCESSORS DIRECTLY, and this section's
+socket route is its fallback.** The paragraph below says a direct `Call` to a class accessor is
+refused "even with the owning project open"; that was true of what it measured - the project OPEN,
+no member LOADED, and validation, which refuses such a call in every state. With ONE member opened
+through the project, `ConvertAIXMLToVI` resolves `Class.lvclass\3AWrite X.vi` for every member of
+the class (`docs/aixml-call-loaded-vi.md` §4). The tool now finds the project that lists the class
+(or takes `projectPath`), reads each accessor pair's REAL terminal names off its export - the
+class terminals by type, because a typedef-bound field's data terminal is named after the typedef,
+not the field - opens one accessor through the project, generates the test against the real
+accessors, and closes the project. **The seed stays**: AIXML has no class constant, so each chain
+still starts at a `path` constant; the converter writes it into the class input as a broken wire
+(`eBad`), and the same `{LV.Constant}` `Replace` as before makes it the class (`execState 1`). What
+goes is both sockets and both node swaps per field. `route` in the answer says which route ran.
+
+Accepted 2026-09-25 through a real Caraya run: an `int32` field (`42`) and a typedef-bound cluster
+field (`1.5 / 0.25`, accessors `Write Profile.vi`/`Read Profile.vi`, data terminal `IMC Setpoint`),
+both `pass`, both with the project found by itself. A round trip cannot pass vacuously there: the
+written value differs from the field's default. **It is not faster for ONE field** - 18.0 s direct
+against 11.9 s of socket route plus the 7.4 s project open that route needs first - and it should
+pull ahead per extra field, since each one costs two exports instead of two socket generations and
+two node swaps; that scaling is NOT measured yet.
+
+The rest of this section is the socket route, measured 2026-08-29 in `C:\temp\NetzteilACDC`. Four
+Caraya test VIs, twelve properties over three classes, every accessor a **static subVI call on the
+test diagram**, `failures="0"` on two consecutive runs, and a negative control that fails on
+demand.
 
 **The blocker is narrower than the documents said.** Three spellings of a direct `Call` to a class
 accessor are refused even with the owning project open —

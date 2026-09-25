@@ -136,6 +136,15 @@ the call** (15.7 s against 13.6–15.9 s) — the gain is fewer moving parts, an
 placeholder route FAILS: a test VI in a different folder from its subject, where the pylabview
 retarget leaves `Missing subVI` and `execState 0`. `docs/labview-unit-testing.md` §3.
 
+**`lvai_generate_class_test` CALLS THE ACCESSORS DIRECTLY too** — one accessor opened through the
+class's project makes every member callable, each pair's terminal names are read off its export
+(a typedef-bound field's data terminal is named after the TYPEDEF, not the field), and the test
+calls the real accessors. **The seed `path` constant and its `{LV.Constant}` `Replace` stay**: the
+converter writes the path into the class input as a broken wire, and the Replace turns it into the
+class — measured `eBad` before, `execState 1` after. Sockets and node swaps go. Accepted through
+Caraya on an `int32` and a typedef field; **for ONE field it is not faster** (18.0 s against
+11.9 s + a 7.4 s project open), and the per-field saving is not measured. `docs/labview-unit-testing.md` §3d.
+
 **CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
 member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
 a caller chaining a static `New` method into a dynamic-dispatch `Write` and `Read` converted, ran
