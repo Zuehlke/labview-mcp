@@ -226,6 +226,16 @@ LabVIEW failed: 53 at the generator (not loaded), 1 at the generator (a terminal
 at `Save:Instrument` (the only case that leaves an orphan). The gate stays, as the net for what the
 converter does write that validation would have refused.
 
+**The three Caraya generators name the real subject too, the same day** - each finds the `.lvproj`
+that lists its subject, opens it there, authors against the subject's own name and terminal names,
+and falls back to its old placeholder or socket route when it cannot, saying why in `route`:
+`lvai_generate_test` (`docs/labview-unit-testing.md` §3), `lvai_generate_class_test` (§3d there)
+and `lvai_generate_method_test` (`docs/class-method-tooling.md` §3d). The class-typed two keep one
+`{LV.Constant}` `Replace` per chain for the seed, because a class constant is the one thing this
+route does not give AIXML. Measured against their old routes: no faster for a single subject or one
+field, and **26.2 s -> 15.8 s** for a four-case method suite, where the sockets also needed the
+project opened first.
+
 ## 8. Not measured yet
 
 - a **project-library member** (`X.lvlib:VI.vi`) as a target;

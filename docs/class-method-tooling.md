@@ -207,6 +207,56 @@ assertion after it and report failures the test itself caused.
 An error-code case **fails by design the day the hardware appears**. That is the correct signal, and
 it has to be written into the report or a red suite six months later is a mystery.
 
+#### Two routes since 2026-09-25 - the methods are called DIRECTLY by default
+
+Everything above was built on sockets: one per method call and two per wire-survival case, generated
+into `user.lib\LV_MCP`, then a `{LV.SubVI}` `Replace` per node. None of that is needed once one
+member of the class is open through its project, because every member is then a legal `Call` target
+by its qualified name (`docs/aixml-call-loaded-vi.md` §4). The tool now finds the `.lvproj` that
+lists the class (or takes `projectPath`), opens the first case's method there, authors the suite
+against `IMC Counter.lvclass\3AScale.vi` and the real accessors, turns each seed `path` constant
+into the class with `{LV.Constant}` `Replace` - that one step stays, because AIXML has no class
+constant - reads `execState`, and closes the project. `route` in the answer says which ran and why;
+`directCall: false` forces the sockets.
+
+**The method's shape is read off the export the tool already makes for the required inputs**, so the
+route choice costs no extra LabVIEW round trip. Class terminals are found by TYPE
+(`ref{UDClassInst}`), error terminals by the error-cluster type, and only among PANE terminals - an
+error indicator kept off the pane would otherwise make the pair look ambiguous. Of several
+class-typed inputs the one marked `dynamic` is the dispatch input; several and none dynamic falls
+back rather than guessing.
+
+**A case the method cannot serve is refused before anything is written**
+(`caseNeedsATerminalTheMethodLacks`): a wire-survival case on a method that returns no object, or an
+error-code case on a method with no `error out`. The socket route never checked this - its swap
+dropped the wire the real method lacked and the suite came out unable to run.
+
+Accepted 2026-09-25 against LabVIEW over raw stdio, on two fixture methods added to `IMC Counter`
+with `lvai_add_class_method` - `Describe.vi` (returns a string) and `Scale.vi` (a `required`
+`factor`, returns `2 x factor`) - and one Caraya runner over all three suites:
+
+| arm | answer |
+|---|---|
+| direct, project discovered, four cases (two returned values, one wire survival, one error code) | `route: direct`, `execState 1`, no socket generated, **4 / 4 pass** |
+| direct, two deliberately wrong expectations (`scaled` = 6, `expectFieldValue` 43) | **2 / 2 fail** - both assertion shapes fire on this route |
+| sockets (`directCall: false`), the same four cases | 4 / 4 pass |
+| direct with `projectPath` given | `route.projectFrom: argument`, `execState 1`, project closed - but see below |
+
+**Here, unlike the one-field class test, the direct route is FASTER**: 15.8 s including its own
+project open, against **15.7 s for the sockets plus the 10.6 s open they need first**, because
+their swap refuses to run without an active project. That is 26.2 s against 15.8 s for four cases
+and six sockets. Inside the direct call, generating took 2.7 s, the seed `Replace` 5.0 s and the
+close 1.0 s.
+
+**What the direct route does NOT do: put the test under `testFolderName`.** It generates the test
+while the project is open, so LabVIEW's own save during the close adopts it at TARGET level, and the
+listing step then declines to list the file a second time - `inRequestedFolder: false`,
+`listedElsewhere` naming it. That is the D2 behaviour below, deliberately report-only, and not
+something this route introduced; but on the socket route the same suite landed under `Tests`, so on
+this route it happens every time rather than occasionally. The listing step reads the project
+BEFORE the close, so "not listed before, at target level after" identifies exactly the entry this
+save made - the discriminator a move would need, if moving is ever wanted.
+
 ### 3e. The `lvai_generate_class_test` bug
 
 `DefaultFor` ended `_ => "0"`, so a socket for any **non-scalar** field was authored as

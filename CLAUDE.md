@@ -145,6 +145,16 @@ class — measured `eBad` before, `execState 1` after. Sockets and node swaps go
 Caraya on an `int32` and a typedef field; **for ONE field it is not faster** (18.0 s against
 11.9 s + a 7.4 s project open), and the per-field saving is not measured. `docs/labview-unit-testing.md` §3d.
 
+**`lvai_generate_method_test` CALLS THE METHODS AND ACCESSORS DIRECTLY as well**, same shape: the
+method's class and error terminals are read by TYPE off the export the tool already makes for the
+required inputs, the seed `Replace` stays, and a case the method cannot serve (a wire-survival case
+on a method that returns no object) is REFUSED before anything is written instead of generating a
+suite that cannot run. Accepted through Caraya with a failing control arm, and **here it IS faster —
+15.8 s against 26.2 s** for four cases, because the sockets' swap also needs the project opened
+first. **One gap it makes routine:** the test is generated with the project open, so LabVIEW's save
+adopts it at target level and `testFolderName` ends up `inRequestedFolder: false` — the report-only
+D2 behaviour, every time on this route. `docs/class-method-tooling.md` §3d.
+
 **CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
 member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
 a caller chaining a static `New` method into a dynamic-dispatch `Write` and `Read` converted, ran
@@ -2357,7 +2367,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test LabVIEW code, end to end? | `.claude/agents/labview-caraya-unit-test.md` | `lvai_generate_test` |
 | How do I run a whole Caraya suite and get one report? | `docs/labview-unit-testing.md` §4a | `lvai_generate_caraya_test_runner` |
 | How do I unit-test a CLASS's accessors? | `docs/labview-unit-testing.md` §3d | `lvai_generate_class_test` |
-| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — three case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value` |
+| How do I unit-test a class's METHODS? | `docs/class-method-tooling.md` §3d | `lvai_generate_method_test` — four case shapes: `expectOutput`+`expectValue` for a value the method RETURNS, `expectErrorCode`, `writeField`+`value`, and `expectFieldValue` beside them for a method that CHANGES the field. Calls the real methods directly when the class's project is found |
 | What does a cold build of the WHOLE chain look like, and what does it catch? | `docs/cold-build-thermostat.md` | — |
 | What does a SECOND cold build catch, and which generators are still wrong? | `docs/cold-build-datalogger.md` | — |
 | Do those fixes hold in a real build, and what is still silently wrong? | `docs/cold-build-alarmgate.md` | — |

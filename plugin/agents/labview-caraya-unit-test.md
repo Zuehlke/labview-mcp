@@ -244,7 +244,16 @@ stay the parent's — only the object changes.
 Measured 2026-08-29, cold: **12 sockets, 12 node swaps and 6 constant swaps in 34 s**, verified
 against LabVIEW's own export, where the same thing by hand had cost about forty calls.
 
-What the tool does, so an unexpected answer is readable:
+**TWO ROUTES since 2026-09-25, and `route` in the answer says which ran.** By DEFAULT the tool
+finds the `.lvproj` that lists the class, opens one accessor through it - which makes every member
+of the class a legal `Call` target - and names the REAL accessors, with terminal names read off
+their exports. No sockets, no node swaps; only the seed constants are still replaced, because AIXML
+has no class constant. It closes the project afterwards. When no single project lists the class,
+or the accessors do not resolve, it falls back to the SOCKET route below, and `route.reason` says
+why. `directCall: false` forces the sockets. The direct route opens and closes the project
+itself; the socket route's swap needs one ACTIVE already and answers `noActiveProject` without it.
+
+What the SOCKET route does, so an unexpected answer is readable:
 
 1. **One socket VI per slot**, generated into `<LabVIEW>\user.lib\LV_MCP\`, where a loose VI resolves
    as a `Call` target by bare name. Class terminals are **`path`** — no private data field is a path,
@@ -308,6 +317,16 @@ not know it unless you wrote it down.
 
 Every method must already be a class member with a class-typed pane. If one is not, that is
 `lvai_add_class_method`'s job, not yours — name it and hand back.
+
+**The same two routes as Phase 3b.** By default the methods and accessors are called DIRECTLY
+through the class's project; the sockets are the fallback, `route` says which ran. On the direct
+route a case the method cannot serve - a `writeField` case on a method that returns no object - is
+refused as `caseNeedsATerminalTheMethodLacks` before anything is written; take the case out or
+change its shape, do not force the sockets to get past it. Measured 2026-09-25 on four cases:
+15.8 s direct against 26.2 s for the sockets plus the project open they need. **On the direct
+route the test lands at the project's TOP LEVEL, not in `testFolderName`** - LabVIEW's own save
+adopts it there, because it was generated with the project open. With `projectPath` given the
+`projectEntry` step says so as `inRequestedFolder: false`; name where it is in your report.
 
 ### Phase 4 — The runner: `lvai_generate_caraya_test_runner`, one call
 

@@ -863,7 +863,7 @@ internal sealed class TestTools(LvaiConnection connection)
     }
 
     /// <summary>One VI's terminals off its own export, or null when it could not be exported.</summary>
-    private async Task<ViTerminals.Result?> ExportedTerminalsAsync(
+    internal async Task<ViTerminals.Result?> ExportedTerminalsAsync(
         string viPath, string scratch, int timeoutSeconds, CancellationToken ct)
     {
         var export = Path.Combine(scratch, Path.GetFileNameWithoutExtension(viPath) + ".shape.xml");
