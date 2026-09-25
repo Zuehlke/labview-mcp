@@ -358,6 +358,21 @@ def check_parents(elements: list[_El]) -> list[Finding]:
             )
         else:
             target = f"{named.label()}" if named else "the top-level diagram"
+            # WHICH ONE LabVIEW FOLLOWS depends on the direction, and this message said
+            # "uid_parent" for both until 2026-09-25. Measured that day as a clean A/B: a seed
+            # constant NESTED in a While Loop with uid_parent="root" landed INSIDE the loop
+            # (ValidateAIXML: "While Loop: Is a member of a cycle"), the same constant written at
+            # top level validated and converted. So a nested element follows its NESTING. The
+            # other direction - top level, uid_parent naming a structure - reached the structure
+            # for Node/Control/Indicator/Constant and NOT for FreeLabel (CLAUDE.md, 2026-09-08).
+            follows = (
+                "follows the NESTING, not uid_parent - measured 2026-09-25, a seed constant "
+                'nested in a While Loop with uid_parent="root" landed inside the loop and '
+                "made the diagram a cycle"
+                if parent.tag != "VI"
+                else "honours uid_parent for a Node, Control, Indicator or Constant written at "
+                "top level, and IGNORES it for a FreeLabel, which then lands on root"
+            )
             findings.append(
                 Finding(
                     "error",
@@ -367,8 +382,7 @@ def check_parents(elements: list[_El]) -> list[Finding]:
                     e.path,
                     f'uid_parent="{e.uid_parent}" points at {target}, but the element is '
                     f'lexically nested in {parent.label()} (uid="{expected}"). LabVIEW '
-                    f"follows uid_parent and puts it on the WRONG diagram without "
-                    f"reporting anything.",
+                    f"{follows}. Make the two agree.",
                 )
             )
     return findings

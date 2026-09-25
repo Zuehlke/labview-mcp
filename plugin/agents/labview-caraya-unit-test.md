@@ -232,7 +232,16 @@ into the subject by the error wire. A write-then-read round trip is a Read case 
 its setup; a transaction on a reset file is the transaction with the reset as its setup. Do not
 hand-author AIXML for those any more. **Every expected constant is labelled `expected <n>`** and
 listed in the answer's `expectedConstants` with its case, so the negative control is one
-`lvai_set_constant` call on a suite this tool wrote too.
+`lvai_set_constant` call on a suite this tool wrote too - an array or cluster as the AIXML literal,
+a multi-line message with its real line breaks.
+
+**THE CASES OF ONE TEST VI RUN IN PARALLEL.** Only a case's own error wire orders its setup before
+its subject; nothing orders one case against another. So **every case whose setup WRITES gets its
+own fixture path** (`Fixtures\T01\`, `Fixtures\T02\` ...) - the tool refuses a path a setup writes in
+one case and another case uses, before anything is written. The fourth ATM cold build (2026-09-25)
+found it as 165 tests with 3 failures that came and went. **`lvai_generate_method_test` takes the
+same `setup`** since that build, which hand-authored its method's mutating suite for want of it -
+the setup chain feeds the METHOD's error in.
 
 Two things it will not tell you: a **backslash in a value is written ONCE** - `C:\temp\x` as the
 value, which is `"C:\\temp\\x"` in the JSON text only because JSON escapes it. The tool writes it

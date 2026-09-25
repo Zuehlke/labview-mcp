@@ -89,21 +89,61 @@ public sealed class RunToolsTests : IDisposable
     }
 
     /// <summary>
-    /// A newline inside a value would shift every LATER pair onto the wrong control - the target
-    /// would run with plausible-looking wrong inputs and report success. Refusing beats running.
+    /// A newline inside a value would shift every LATER pair onto the wrong control - so it
+    /// travels ENCODED to a helper that decodes it (the typed one, since 2026-09-25), and is still
+    /// refused for a helper that does not. The refusal is the control arm: an encoding that
+    /// reached a helper unable to reverse it would set the control to the wrong text in silence.
     /// </summary>
     [Fact]
-    public async Task Refuses_a_value_containing_a_line_break_without_running_anything()
+    public async Task A_value_line_break_travels_encoded_to_the_typed_helper()
     {
         await using var server = await ServerWith();
 
         var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
-            WriteVi(), "{\"file name\":\"line one\\nline two\"}",
+            WriteVi(), "{\"message\":\"line one\\nline two\\r\\nthree\",\"other\":\"x\"}",
             helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+
+        var request = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
+        Assert.Equal("line one\u001Eline two\u001D\u001Ethree\nx", request.Inputs["Input Values"]);
+        Assert.Equal("message\nother", request.Inputs["Input Names"]);
+        Assert.Equal("message", Res.Arr(result, "lineBreaksEncoded")[0]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task A_value_line_break_is_refused_for_a_helper_that_does_not_decode()
+    {
+        await using var server = await ServerWith();
+        var legacy = Res.FindRepoFile($"scripts/{RunTools.LegacyHelperAixmlFileName}")!;
+
+        var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            WriteVi(), "{\"file name\":\"line one\\nline two\"}",
+            helperViPath: At("helper.vi"), helperAixmlPath: legacy);
 
         Assert.False(Res.Bool(result, "ok"));
         Assert.Equal("inputContainsNewline", Res.Str(result, "errorKind"));
         Assert.DoesNotContain(server.Service.Received, r => r.Method == "RunVIAsTopLevel");
+    }
+
+    [Fact]
+    public async Task A_line_break_in_a_control_NAME_is_still_refused()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            WriteVi(), "{\"file\\nname\":\"x\"}",
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+
+        Assert.Equal("inputContainsNewline", Res.Str(result, "errorKind"));
+        Assert.DoesNotContain(server.Service.Received, r => r.Method == "RunVIAsTopLevel");
+    }
+
+    [Fact]
+    public void Only_the_typed_helper_decodes_line_breaks()
+    {
+        Assert.True(RunTools.DecodesLineBreaks(ShippedHelperAixml()));
+        Assert.False(RunTools.DecodesLineBreaks(Res.FindRepoFile($"scripts/{RunTools.LegacyHelperAixmlFileName}")!));
+        Assert.False(RunTools.DecodesLineBreaks(Res.FindRepoFile($"scripts/{RunTools.TimedHelperAixmlFileName}")!));
+        Assert.False(RunTools.DecodesLineBreaks(@"C:\nowhere\none.xml"));
     }
 
     [Fact]

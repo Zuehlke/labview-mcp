@@ -209,7 +209,10 @@ three test generators, the class and LUnit tools. The sequence, all of it visibl
    leaves the `1019` orphan.
 3. **Gate on `lvai_exec_state`** in place of the validation that could not check those calls.
 4. The answer carries `loadedSubVIs` - `resolvedAtConversion` and `executable` - at the top level,
-   because it changes what `ok` vouches for.
+   because it changes what `ok` vouches for. **On a failed convert the key says what happened**:
+   `notResolvedAtConversion` for the not-loaded Error 53, `unresolvedAtValidate` when the failure
+   says nothing either way. Until 2026-09-25 it was `resolvedAtConversion` in every case, so an
+   Error 53 answer listed as resolved the very VIs whose absence was the failure.
 
 **Accepted against LabVIEW the same day**, over raw MCP stdio against the built exe (the session's
 client still held the old tool list):

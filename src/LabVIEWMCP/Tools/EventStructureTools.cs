@@ -163,6 +163,22 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 });
             }
 
+            // 1b. THE CHEAP CHECK, because this tool never validates. The fourth ATM cold build of
+            //     2026-09-25 wrote three seed constants inside a loop's <Structure> with
+            //     uid_parent="root"; LabVIEW followed the nesting, the seeds became feedback, and the
+            //     result was eBad - which this step would have named before anything was written.
+            //     Checked, NOT repaired: the frames below are read from THIS file, and a repair
+            //     renumbers uids, so generating from a repaired copy would register the wrong ones.
+            if (AixmlTools.PreCheck(aiXmlFilePath) is { } check && check["errors"]?.GetValue<int>() > 0)
+            {
+                steps.Add(new JsonObject { ["step"] = "check", ["answer"] = check });
+                return Outcome(false, "check", steps, frameList, total, viPath, directory, true,
+                    "The AIXML has a fault LabVIEW accepts silently, so nothing was written - read " +
+                    "the check step. `uidParentContradictsNesting` is an element written inside a " +
+                    "structure whose uid_parent names something else: LabVIEW follows the NESTING. " +
+                    "lvai_check_aixml gives the same findings on its own.");
+            }
+
             // 2. convert, deliberately WITHOUT validating - and UNDER A THROWAWAY _name, the way
             //    lvai_generate_vi's loaded-subVI route does. A failed convert under the real name
             //    leaves that name in LabVIEW's memory, and the ATM cold build of 2026-09-25 met

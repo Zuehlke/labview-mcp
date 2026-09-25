@@ -64,17 +64,22 @@ internal sealed class TestTools(LvaiConnection connection)
         casesJson is a JSON ARRAY, one object per test case:
           [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
         The only case keys are `label`, `inputs`, `expect` and `setup`; ANY OTHER IS REFUSED BY
-        NAME, with the accepted set listed.
+        NAME, with the accepted set listed. It used to be dropped in silence - measured on the
+        sibling tool lvai_generate_method_test, where two agents invented a key, had it discarded
+        and got `ok: true` for a suite that asserted the opposite of what they asked.
         `setup` CALLS OTHER VIs BEFORE THE SUBJECT, in order, each one's `error out` into the next
         one's `error in` and the last into the subject's - a round trip (write, then read back) or a
         reset before a transaction is one case:
           "setup":[{"vi":"C:\\...\\Write Accounts File.vi","inputs":{"accounts path":"...","accounts":"[[1,A]]"}}]
         Direct route only; each setup VI needs an error in/out pair and the subject an `error in`.
         The subject is still called ONCE per case; its outputs are what `expect` asserts.
+        THE CASES OF ONE TEST VI RUN IN PARALLEL - only a case's own error wire orders its setup
+        before its subject - so a path given to a SETUP in one case and used by any other case is
+        REFUSED before anything is written: give every case that writes its own fixture path.
+        Measured on the fourth ATM cold build, where three cases sharing one fixture failed and
+        passed by turns.
         EVERY EXPECTED CONSTANT IS LABELLED `expected <n>` and listed in `expectedConstants` with
-        its case - lvai_set_constant breaks one for a negative control. It used to be dropped in silence - measured on the sibling tool
-        lvai_generate_method_test, where two agents invented a key, had it discarded and got
-        `ok: true` for a suite that asserted the opposite of what they asked.
+        its case - lvai_set_constant breaks one for a negative control.
         `inputs` and `expect` are keyed by the SUBJECT's own terminal names - lvai_vi_terminals
         prints them, and so does this tool's placeholder step. Values are written verbatim into an
         AIXML constant of that terminal's type, so "100" is a double if the terminal is a double;
@@ -320,44 +325,22 @@ internal sealed class TestTools(LvaiConnection connection)
         // 2b. THE SETUP VIs, each read off its own export like the subject, and refused before
         //     anything is opened when it cannot be chained: the error wire is what orders the
         //     calls, so the setup VI needs `error in` and `error out` and the subject `error in`.
-        var setups = new Dictionary<string, SetupShape>(StringComparer.OrdinalIgnoreCase);
-        foreach (var setupVi in cases.SelectMany(c => c.Calls).Select(s => Path.GetFullPath(s.ViPath))
-                                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (!File.Exists(setupVi))
-                return (Json.Error("badArguments", $"A setup call names a VI that does not exist: {setupVi}"), null);
-            var setupExport = await new AixmlTools(connection).ConvertViToAixmlAsync(
-                setupVi, exportPath, returnContent: true, maxContentChars: 0,
-                timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
-            if (Read(setupExport)?["xml"]?.GetValue<string>() is not { Length: > 0 } setupXml ||
-                ViTerminals.Parse(setupXml) is not { } setupSubject)
-                return (Outcome(false, "setup", steps, total, testViPath, null,
-                    $"The setup VI '{setupVi}' could not be exported, so its terminals are unknown.",
-                    route: Direct(route)), null);
-            var setupTerminals = Terminal.From(PlaceholderTools.Terminals(setupSubject, null));
-            if (!setupTerminals.Any(t => t.IsInput && ConnectorPane.IsErrorIn(t.Name)) ||
-                !setupTerminals.Any(t => !t.IsInput && ConnectorPane.IsErrorOut(t.Name)))
-                return (Outcome(false, "setup", steps, total, testViPath, null,
-                    $"The setup VI '{Path.GetFileName(setupVi)}' has no `error in` / `error out` pair, " +
-                    "and the error wire is the only thing that orders a setup call before the " +
-                    "subject.", route: Direct(route)), null);
-            setups[setupVi] = new SetupShape(setupSubject.ViName.Replace(":", @"\3A"), setupTerminals);
-        }
+        var (setups, setupKind, setupWhy) = await SetupShapesAsync(
+            cases.SelectMany(c => c.Calls), exportPath, timeoutSeconds, ct);
+        if (setups is null)
+            return (setupKind == "badArguments"
+                ? Json.Error("badArguments", setupWhy!)
+                : Outcome(false, "setup", steps, total, testViPath, null, setupWhy!,
+                          route: Direct(route)), null);
         if (setups.Count > 0)
         {
             if (!terminals.Any(t => t.IsInput && ConnectorPane.IsErrorIn(t.Name)))
                 return (Outcome(false, "setup", steps, total, testViPath, null,
                     "The cases carry `setup`, and the subject has no `error in` for the last setup " +
                     "call's error to feed - nothing would order the calls.", route: Direct(route)), null);
-            var badSetupInputs = cases.SelectMany(c => c.Calls)
-                .SelectMany(s => s.Inputs.Keys.Where(k =>
-                    !setups[Path.GetFullPath(s.ViPath)].Terminals.Any(t => t.IsInput && t.Name == k))
-                    .Select(k => $"'{k}' on {Path.GetFileName(s.ViPath)}"))
-                .Distinct().ToList();
-            if (badSetupInputs.Count > 0)
+            if (SharedFixturePaths(cases, setups, terminals) is { Count: > 0 } shared)
                 return (Outcome(false, "setup", steps, total, testViPath, null,
-                    "Setup inputs name terminals their VI does not have: " +
-                    string.Join(", ", badSetupInputs) + ".", route: Direct(route)), null);
+                    SharedFixtureNote(shared), route: Direct(route)), null);
             steps.Add(new JsonObject
             {
                 ["step"] = "setupVIs",
@@ -2458,8 +2441,14 @@ internal sealed class TestTools(LvaiConnection connection)
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
+        // THE SUITE NAME IS THE TEST VI'S OWN NAME, as the class and method generators already had
+        // it. It was `Test <subject>` until 2026-09-25, so two test VIs over one subject - the
+        // fourth ATM build split Handle ATM Action into a navigation and a transaction suite -
+        // reported the same JUnit suite name, and lvai_run_caraya_tests could map neither back to
+        // its VI (`testVi: null`). A file name is unique within its folder by construction.
         var title = uid++;
-        sb.AppendLine(Constant(title, "string", $"Test {subjectName}", "Label (VI Title)"));
+        sb.AppendLine(Constant(title, "string", Path.GetFileNameWithoutExtension(testViPath),
+                               "Label (VI Title)"));
 
         var define = uid++;
         sb.AppendLine(
@@ -2481,34 +2470,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
             // THE SETUP CALLS, in order, each one's error out into the next one's error in and the
             // last one's into the SUBJECT's - the error wire is what orders them on the diagram.
-            string? chain = null;
-            foreach (var setup in test.Calls)
-            {
-                var shape = setups![Path.GetFullPath(setup.ViPath)];
-                var setupWired = new List<string>();
-                foreach (var terminal in shape.Terminals.Where(t => t.IsInput))
-                {
-                    if (ConnectorPane.IsErrorIn(terminal.Name))
-                        setupWired.Add($"{terminal.Name}:{chain}");
-                    else if (setup.Inputs.TryGetValue(terminal.Name, out var value))
-                    {
-                        var constant = uid++;
-                        sb.AppendLine(Constant(constant, terminal.Type,
-                                               ValueFor(terminal.Type, value), terminal.Name));
-                        setupWired.Add($"{terminal.Name}:{constant}.value");
-                    }
-                    else setupWired.Add($"{terminal.Name}:");
-                }
-                var setupCall = uid++;
-                var errorOutName = shape.Terminals.First(t => !t.IsInput && ConnectorPane.IsErrorOut(t.Name)).Name;
-                var setupOutputs = shape.Terminals.Where(t => !t.IsInput)
-                    .Select(t => t.Name == errorOutName ? $"{t.Name}:{setupCall}.{t.Name}" : $"{t.Name}:");
-                sb.AppendLine($"  <Call target=\"{Escape(shape.Target)}\" " +
-                              $"inputs=\"{string.Join(",", setupWired)}\" " +
-                              $"outputs=\"{string.Join(",", setupOutputs)}\" uid=\"{setupCall}\" " +
-                              "uid_parent=\"root\"/>");
-                chain = $"{setupCall}.{errorOutName}";
-            }
+            var chain = test.Calls.Count > 0
+                ? EmitSetupCalls(sb, ref uid, test.Calls, setups!)
+                : null;
 
             // One constant per supplied input, typed from the subject's own terminal.
             var wired = new List<string>();
@@ -2599,6 +2563,160 @@ internal sealed class TestTools(LvaiConnection connection)
     /// The `expected <n>` label of every assertion TestAixml writes, with the case and terminal it
     /// checks - in the same order, so the answer can say which constant to break.
     /// </summary>
+    /// <summary>
+    /// Every setup VI the cases name, read off its own export, and the refusals that belong before
+    /// anything is opened: a VI that is not there (<c>badArguments</c>), one that cannot be
+    /// exported, one with no error pair to chain on, and an input naming a terminal it lacks
+    /// (<c>setup</c>). Shared by lvai_generate_test and lvai_generate_method_test, so the two
+    /// cannot come to disagree about what a setup call may be.
+    /// </summary>
+    internal async Task<(Dictionary<string, SetupShape>? Shapes, string? Kind, string? Why)>
+        SetupShapesAsync(IEnumerable<SetupCall> calls, string exportPath, int timeoutSeconds,
+                         CancellationToken ct)
+    {
+        var all = calls.ToList();
+        var setups = new Dictionary<string, SetupShape>(StringComparer.OrdinalIgnoreCase);
+        foreach (var setupVi in all.Select(s => Path.GetFullPath(s.ViPath))
+                                   .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!File.Exists(setupVi))
+                return (null, "badArguments", $"A setup call names a VI that does not exist: {setupVi}");
+            var setupExport = await new AixmlTools(connection).ConvertViToAixmlAsync(
+                setupVi, exportPath, returnContent: true, maxContentChars: 0,
+                timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
+            if (Read(setupExport)?["xml"]?.GetValue<string>() is not { Length: > 0 } setupXml ||
+                ViTerminals.Parse(setupXml) is not { } setupSubject)
+                return (null, "setup",
+                    $"The setup VI '{setupVi}' could not be exported, so its terminals are unknown.");
+            var setupTerminals = Terminal.From(PlaceholderTools.Terminals(setupSubject, null));
+            if (!setupTerminals.Any(t => t.IsInput && ConnectorPane.IsErrorIn(t.Name)) ||
+                !setupTerminals.Any(t => !t.IsInput && ConnectorPane.IsErrorOut(t.Name)))
+                return (null, "setup",
+                    $"The setup VI '{Path.GetFileName(setupVi)}' has no `error in` / `error out` pair, " +
+                    "and the error wire is the only thing that orders a setup call before the " +
+                    "subject.");
+            setups[setupVi] = new SetupShape(setupSubject.ViName.Replace(":", @"\3A"), setupTerminals);
+        }
+
+        var badSetupInputs = all
+            .SelectMany(s => s.Inputs.Keys.Where(k =>
+                !setups[Path.GetFullPath(s.ViPath)].Terminals.Any(t => t.IsInput && t.Name == k))
+                .Select(k => $"'{k}' on {Path.GetFileName(s.ViPath)}"))
+            .Distinct().ToList();
+        if (badSetupInputs.Count > 0)
+            return (null, "setup",
+                "Setup inputs name terminals their VI does not have: " +
+                string.Join(", ", badSetupInputs) + ".");
+        return (setups, null, null);
+    }
+
+    /// <summary>
+    /// One case's setup calls, in order, each one's error out into the next one's error in. Returns
+    /// the LAST call's error out - the net the subject's error in takes - or null when the case
+    /// has no setup. The first call's error in is left unwired: there is nothing before it.
+    /// </summary>
+    internal static string? EmitSetupCalls(StringBuilder sb, ref int uid, IReadOnlyList<SetupCall> calls,
+                                           IReadOnlyDictionary<string, SetupShape> setups)
+    {
+        string? chain = null;
+        foreach (var setup in calls)
+        {
+            var shape = setups[Path.GetFullPath(setup.ViPath)];
+            var setupWired = new List<string>();
+            foreach (var terminal in shape.Terminals.Where(t => t.IsInput))
+            {
+                if (ConnectorPane.IsErrorIn(terminal.Name))
+                    setupWired.Add($"{terminal.Name}:{chain}");
+                else if (setup.Inputs.TryGetValue(terminal.Name, out var value))
+                {
+                    var constant = uid++;
+                    sb.AppendLine(Constant(constant, terminal.Type,
+                                           ValueFor(terminal.Type, value), terminal.Name));
+                    setupWired.Add($"{terminal.Name}:{constant}.value");
+                }
+                else setupWired.Add($"{terminal.Name}:");
+            }
+            var setupCall = uid++;
+            var errorOutName = shape.Terminals.First(t => !t.IsInput && ConnectorPane.IsErrorOut(t.Name)).Name;
+            var setupOutputs = shape.Terminals.Where(t => !t.IsInput)
+                .Select(t => t.Name == errorOutName ? $"{t.Name}:{setupCall}.{t.Name}" : $"{t.Name}:");
+            sb.AppendLine($"  <Call target=\"{Escape(shape.Target)}\" " +
+                          $"inputs=\"{string.Join(",", setupWired)}\" " +
+                          $"outputs=\"{string.Join(",", setupOutputs)}\" uid=\"{setupCall}\" " +
+                          "uid_parent=\"root\"/>");
+            chain = $"{setupCall}.{errorOutName}";
+        }
+        return chain;
+    }
+
+    /// <summary>The refusal for <see cref="SharedFixturePaths"/>, worded once for both generators.</summary>
+    internal static string SharedFixtureNote(List<(string Path, List<string> Cases)> shared) =>
+        "THE CASES OF ONE TEST VI RUN IN PARALLEL, and these paths are given to a SETUP call in " +
+        "one case and used by another: " +
+        string.Join("; ", shared.Select(s =>
+            $"'{s.Path}' in {string.Join(", ", s.Cases.Select(c => $"\"{c}\""))}")) +
+        ". Only a case's own error wire orders its setup before its subject; nothing orders one " +
+        "case against another, so one setup rewrites the file while another case reads it. " +
+        "Measured on the fourth ATM cold build: 165 tests, 3 failures that came and went, a " +
+        "fixture withdrawn twice. Give every case that writes in its setup its OWN fixture path.";
+
+    internal static List<(string Path, List<string> Cases)> SharedFixturePaths(
+        IReadOnlyList<Case> cases, IReadOnlyDictionary<string, SetupShape> setups,
+        IReadOnlyList<Terminal> terminals) =>
+        SharedFixturePaths(
+            [.. cases.Select(test => (test.Label, test.Calls,
+                (IReadOnlyList<string>)[.. test.Inputs
+                    .Where(i => terminals.Any(t => t.IsInput && t.Name == i.Key && t.Type == "path"))
+                    .Select(i => i.Value)]))],
+            setups);
+
+    internal static List<(string Path, List<string> Cases)> SharedFixturePaths(
+        IReadOnlyList<(string Label, IReadOnlyList<SetupCall> Setup, IReadOnlyList<string> InputPaths)> cases,
+        IReadOnlyDictionary<string, SetupShape> setups)
+    {
+        // Every path a case hands a SETUP call (what it may write), and every path it uses at
+        // all (setup and subject). A path in one case's first set and another case's second is a
+        // race: the cases hang off Define Test side by side and LabVIEW runs them in parallel.
+        static string Key(string value)
+        {
+            try { return Path.IsPathRooted(value) ? Path.GetFullPath(value) : value; }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+            { return value; }
+        }
+
+        var written = new List<HashSet<string>>();
+        var used = new List<HashSet<string>>();
+        foreach (var test in cases)
+        {
+            var w = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var call in test.Setup)
+            {
+                if (!setups.TryGetValue(Path.GetFullPath(call.ViPath), out var shape)) continue;
+                foreach (var (name, value) in call.Inputs)
+                    if (value.Length > 0 && shape.Terminals.Any(t => t.IsInput && t.Name == name && t.Type == "path"))
+                        w.Add(Key(value));
+            }
+            var u = new HashSet<string>(w, StringComparer.OrdinalIgnoreCase);
+            foreach (var value in test.InputPaths.Where(v => v.Length > 0))
+                u.Add(Key(value));
+            written.Add(w);
+            used.Add(u);
+        }
+
+        var shared = new Dictionary<string, SortedSet<int>>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < cases.Count; i++)
+            foreach (var path in written[i])
+                for (var j = 0; j < cases.Count; j++)
+                    if (j != i && used[j].Contains(path))
+                    {
+                        if (!shared.TryGetValue(path, out var set)) shared[path] = set = [];
+                        set.Add(i);
+                        set.Add(j);
+                    }
+
+        return [.. shared.Select(s => (s.Key, s.Value.Select(i => cases[i].Label).ToList()))];
+    }
+
     internal static JsonArray ExpectedConstants(IReadOnlyList<Case> cases)
     {
         var list = new JsonArray();
@@ -2959,7 +3077,7 @@ internal sealed class TestTools(LvaiConnection connection)
                             SetupOf(o["setup"] as JsonArray, index));
         }
 
-        private static List<SetupCall> SetupOf(JsonArray? setup, int index)
+        internal static List<SetupCall> SetupOf(JsonArray? setup, int index)
         {
             var calls = new List<SetupCall>();
             foreach (var (entry, i) in (setup ?? []).Select((e, i) => (e, i)))

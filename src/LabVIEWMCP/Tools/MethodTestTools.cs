@@ -104,12 +104,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         express. The answer's `assertions` step lists every assertion each case generated, and
         warns where `writeField` beside `expectOutput`/`expectErrorCode` implies "the field is
         UNCHANGED after the call" - move the field to `seed` if it only has to be set.
+        `setup` CALLS OTHER VIs BEFORE THE METHOD, exactly as in lvai_generate_test - a fixture
+        written before a Deposit, a file reset before a Withdraw:
+          "setup":[{"vi":"C:\\...\\Write Accounts File.vi","inputs":{"accounts path":"...","accounts":"[[1,A,B,10]]"}}]
+        Their chain feeds the METHOD's error in, which is what orders them; a setup error therefore
+        reaches the method, which is the honest outcome. Direct route only. The cases of one test
+        VI RUN IN PARALLEL, so a path given to a setup in one case and used by another is refused -
+        one fixture per writing case.
         WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
         you the value. Say which in your report - a measured string asserted as if it were the spec
         freezes whatever the method happens to do today.
         THE METHOD'S ERROR IS NEVER CHAINED INTO THE ASSERTIONS. A method under test is expected to
         fail with no hardware; chaining it would poison every later assertion and report failures
-        the test itself caused. It is fed `no error` and its `error out` is only unbundled.
+        the test itself caused. It is fed `no error` - or its case's setup chain - and its
+        `error out` is only unbundled.
         EVERY REQUIRED INPUT OF THE METHOD IS WIRED, and that is not optional. A `required` input
         left empty makes the whole suite NOT EXECUTABLE - Caraya answers `7101, At least one test is
         not in a executable state` - and nothing upstream sees it: measured 2026-09-03, this call
@@ -372,7 +380,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                          request.ExpectErrorCode, seed, required!,
                                          request.ExpectOutput, request.ExpectValue,
                                          outputType, outputConIdx,
-                                         request.ExpectFieldValue, seedWrites));
+                                         request.ExpectFieldValue, seedWrites, request.Setup));
                 methodShapes.Add(DirectMethodCall.From(terminals!,
                     TestTools.DirectAccessorCall.Target(lvclassPath, methodVi)));
             }
@@ -396,6 +404,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 route["route"] = "sockets";
                 route["reason"] = fallback;
             }
+
+            // A SETUP CALL NEEDS THE DIRECT ROUTE: the setup VI is called by name, so it has to be
+            // open through the project, and the socket route never opens one.
+            if (cases.Any(c => c.Calls.Count > 0))
+                return Json.Error("setupNeedsDirectRoute",
+                    "A case carries `setup`, which only the DIRECT route can author - each setup VI " +
+                    "is called by name and must be opened through the class's project first. The " +
+                    $"direct route did not run: {route["reason"]}",
+                    new { route = route["reason"]?.GetValue<string>() });
 
             // ---- 1. the sockets: one per method call, plus an accessor pair per wire-survival case
             var socketRoot = TestTools.SocketDirectory();
@@ -683,6 +700,41 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             seedCalls.Add(writes);
         }
 
+        // 2b. THE SETUP VIs, read and refused the way lvai_generate_test does it - the same code.
+        //     A refusal here is final rather than a reason to try the socket route, which cannot
+        //     author a setup call either.
+        var (setups, setupKind, setupWhy) = await tests.SetupShapesAsync(
+            cases.SelectMany(c => c.Calls), Path.Combine(scratch, "setup-export.xml"),
+            timeoutSeconds, ct);
+        if (setups is null)
+            return (setupKind == "badArguments"
+                ? Json.Error("badArguments", setupWhy!)
+                : Outcome(false, "setup", steps, total, testViPath, null, setupWhy!,
+                          route: Direct(route)), null);
+        if (setups.Count > 0)
+        {
+            // the method's error in is what orders the setup before the call
+            var noErrorIn = cases.Where((c, i) => c.Calls.Count > 0 && methods[i].ErrorIn is null)
+                                 .Select(c => c.Method).Distinct().ToList();
+            if (noErrorIn.Count > 0)
+                return (Outcome(false, "setup", steps, total, testViPath, null,
+                    $"{string.Join(", ", noErrorIn)} has no error input, and a case's setup is " +
+                    "ordered before the method only by the error wire.", route: Direct(route)), null);
+            var shared = TestTools.SharedFixturePaths(
+                [.. cases.Select(c => (c.Label, c.Calls,
+                    (IReadOnlyList<string>)[.. c.Required.Where(r => r.Type == "path").Select(r => r.Value)]))],
+                setups);
+            if (shared.Count > 0)
+                return (Outcome(false, "setup", steps, total, testViPath, null,
+                    TestTools.SharedFixtureNote(shared), route: Direct(route)), null);
+            steps.Add(new JsonObject
+            {
+                ["step"] = "setupVIs",
+                ["vis"] = new JsonArray([.. setups.Select(s => (JsonNode)new JsonObject
+                    { ["vi"] = s.Key, ["target"] = s.Value.Target })]),
+            });
+        }
+
         steps.Add(new JsonObject
         {
             ["step"] = "members",
@@ -692,14 +744,17 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         });
 
         // 3. load the class through its project - one member is enough for all of them
+        //    - and every setup VI with it, in the same call
         var open = await new ActionTools(connection).OpenFileAsync(
             cases[0].MethodVi, Path.GetFileName(cases[0].MethodVi), project,
-            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
+            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct,
+            viPaths: setups.Count > 0 ? string.Join("\n", setups.Keys) : null);
         steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
         if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
-            opened["projectBecameActive"]?.GetValue<bool>() is not true)
-            return (null, "The class's project did not become active, so the class is not known " +
-                          "to be loaded - read the openClass step.");
+            opened["projectBecameActive"]?.GetValue<bool>() is not true ||
+            opened["allOpened"]?.GetValue<bool>() is false)
+            return (null, "The class's project did not become active, or a setup VI did not open, " +
+                          "so they are not known to be loaded - read the openClass step.");
 
         async Task CloseAsync()
         {
@@ -713,7 +768,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         var testAixml = Path.Combine(scratch,
             Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
         await File.WriteAllTextAsync(testAixml,
-            MethodTestAixml(testViPath, className, cases, methods, accessors, seedCalls), ct);
+            MethodTestAixml(testViPath, className, cases, methods, accessors, seedCalls, setups), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
             timeoutSeconds, ct: ct);
@@ -996,7 +1051,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                            IReadOnlyList<MethodCase> cases,
                                            IReadOnlyList<DirectMethodCall>? methods = null,
                                            IReadOnlyList<TestTools.DirectAccessorCall?>? accessors = null,
-                                           IReadOnlyList<IReadOnlyList<DirectWriteCall>>? seedCalls = null)
+                                           IReadOnlyList<IReadOnlyList<DirectWriteCall>>? seedCalls = null,
+                                           IReadOnlyDictionary<string, TestTools.SetupShape>? setups = null)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -1099,10 +1155,18 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 objectIn = $"{write}.obj out";
             }
 
-            // The method's own error in is a CONSTANT. Not the Caraya chain - see the class comment.
-            // A real method with no error input gets none, rather than a constant wired to nothing.
+            // THE SETUP CALLS, when the case has any: their chain ends in the method's error in,
+            // which is the only thing that orders them before the call. The Caraya chain still
+            // never reaches the method - a setup VI starts its own.
+            var setupChain = test.Calls.Count > 0 && setups is not null
+                ? TestTools.EmitSetupCalls(sb, ref uid, test.Calls, setups)
+                : null;
+
+            // Otherwise the method's own error in is a CONSTANT. Not the Caraya chain - see the
+            // class comment. A real method with no error input gets none, rather than a constant
+            // wired to nothing.
             var noError = -1;
-            if (method is null || method.ErrorIn is not null)
+            if (setupChain is null && (method is null || method.ErrorIn is not null))
             {
                 noError = uid++;
                 sb.AppendLine(TestTools.Constant(noError, ErrorCluster, "[false,0,]",
@@ -1124,7 +1188,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             var call = uid++;
             var inputs = new List<string>
             { $"{method?.ClassIn ?? "obj in"}:{objectIn}" };
-            if (noError >= 0)
+            if (setupChain is not null)
+                inputs.Add($"{method?.ErrorIn ?? "error in (no error)"}:{setupChain}");
+            else if (noError >= 0)
                 inputs.Add($"{method?.ErrorIn ?? "error in (no error)"}:{noError}.value");
             inputs.AddRange(wired);
 
@@ -1544,9 +1610,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                       string? OutputType = null,
                                       int? OutputConIdx = null,
                                       string? ExpectFieldValue = null,
-                                      IReadOnlyList<SeedWrite>? SeedWrites = null)
+                                      IReadOnlyList<SeedWrite>? SeedWrites = null,
+                                      IReadOnlyList<TestTools.SetupCall>? SetupCalls = null)
     {
         public IReadOnlyList<SeedWrite> Seeds => SeedWrites ?? [];
+        public IReadOnlyList<TestTools.SetupCall> Calls => SetupCalls ?? [];
         public string SeedSocket(int k) => $"LVMCP MthS{Slot}_{k + 1}.vi";
         // EVERY CASE GETS ITS OWN SOCKETS AND ITS OWN CLASS CONSTANT, numbered: lvai_swap_subvis
         // matches by name, so two cases sharing a socket would be indistinguishable and the wrong
@@ -1581,14 +1649,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                              string? ExpectValue = null,
                                              string? OutputType = null,
                                              string? ExpectFieldValue = null,
-                                             IReadOnlyDictionary<string, string>? Seeds = null)
+                                             IReadOnlyDictionary<string, string>? Seeds = null,
+                                             IReadOnlyList<TestTools.SetupCall>? Setup = null)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> Accepted = new(StringComparer.Ordinal)
         {
             "method", "writeField", "readField", "value", "expectFieldValue", "type",
             "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
-            "seed",
+            "seed", "setup",
         };
 
         /// <summary>
@@ -1610,6 +1679,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["expectValue"] = JsonValueKind.String,
             ["outputType"] = JsonValueKind.String,
             ["seed"] = JsonValueKind.Object,
+            ["setup"] = JsonValueKind.Array,
         };
 
         /// <summary>Why a particular wrong kind is worth a sentence of its own.</summary>
@@ -1763,13 +1833,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     }
                 }
 
+                // `setup`: other VIs called before the METHOD, the shape lvai_generate_test takes -
+                // one parser for both, so the two cannot drift apart. Added 2026-09-25: the fourth
+                // ATM cold build hand-authored its method's mutating suite because this tool could
+                // not reset the fixture file before a Deposit.
+                var setup = TestTools.Case.SetupOf(o["setup"] as JsonArray, all.Count);
+
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
                                               o["label"]?.GetValue<string>(), inputs,
                                               expectOutput, expectValue,
                                               o["outputType"]?.GetValue<string>(),
-                                              expectFieldValue, seedFields));
+                                              expectFieldValue, seedFields,
+                                              setup.Count > 0 ? setup : null));
             }
 
             return all;

@@ -691,6 +691,15 @@ wrong part of the VI. This qualifies §2's "document order carries no meaning": 
 probe, and false for `FreeLabel`. `lvai_check_aixml` does NOT catch it — the uid exists, so
 nothing dangles.
 
+**AND THE CONVERSE HOLDS FOR EVERY ELEMENT: WRITTEN INSIDE A STRUCTURE, IT LANDS INSIDE, whatever
+`uid_parent` says.** Measured 2026-09-25 as a clean A/B after the fourth ATM cold build shipped an
+eBad main VI this way: a seed constant nested in a While Loop with `uid_parent="root"` made the
+loop a cycle, and the same constant at top level converted clean. So the nesting decides in both
+directions. `lvai_check_aixml` answers `uidParentContradictsNesting` as an ERROR now, and
+`lvai_generate_vi_with_events` - which never validates - runs that check before it converts;
+`scripts/aixml_lint.py` had caught it as `parent-mismatch` all along, while its message claimed
+LabVIEW followed `uid_parent`. `docs/cold-build-atm-agents-4.md` §2.
+
 **But `auto` is a PREFERENCE, not a verdict, since the placer started maximising clearance.** The
 preferred side is worth about 6 px of clearance in the score, so the other one wins wherever the
 preferred is cramped — measured 2026-09-08, a comment anchored to two accessor calls came out
@@ -2445,7 +2454,8 @@ literally it argued away 600 usable palette VIs.
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
-| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7 | `lvai_set_constant` — by label, numeric/boolean/string/enum, verified from a fresh export |
+| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7, `docs/cold-build-atm-agents-4.md` §5 | `lvai_set_constant` — by label, numeric/boolean/string/enum, an array or cluster as the AIXML literal, a string with line breaks; verified from a fresh export |
+| Why do the cases of one generated test fail by turns, and how does a METHOD test reset a fixture first? | `docs/cold-build-atm-agents-4.md` §3, §4 | the cases of one test VI RUN IN PARALLEL - `lvai_generate_test` and `lvai_generate_method_test` refuse a fixture path a setup writes in one case and another case uses; both take `setup` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |

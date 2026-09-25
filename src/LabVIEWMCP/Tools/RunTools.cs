@@ -70,11 +70,13 @@ internal sealed class RunTools(LvaiConnection connection)
         returns under a compound control's `xml`, so a value read back can be pasted in as the
         next call's input. A bare <Array> or <Cluster> is wrapped in <LvVariant> for you, and
         the indentation between its tags is folded away; the helper then turns it into a Variant
-        that carries its own type, so you never name the type. Since 2026-09-25. A line break
-        INSIDE one of its text values is refused: LabVIEW's Unflatten From XML does not decode
-        &#10;, measured, and a raw one would split the value.
-        A newline in a name or in a NON-XML value is rejected, because the helper's wire format
-        separates them by newlines.
+        that carries its own type, so you never name the type. Since 2026-09-25. Do not write a
+        line break as &#10; there - Unflatten From XML decodes no character reference, measured.
+        A LINE BREAK IN A VALUE IS FINE - a multi-line string, or an XML value with a multi-line
+        member: it travels encoded (LF as 0x1E, CR as 0x1D) and the helper decodes it before it
+        converts anything; `lineBreaksEncoded` names the inputs it applied to. Only the default
+        helper decodes, so with runForMs or the legacy helper a line break is still refused. A
+        line break in a control NAME is always refused - names and values are paired by line.
         A control name that matches nothing on the target's panel is Error 1055 and the target
         does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
         Reading is done through a VI REFERENCE, which is released afterwards, so this does not
@@ -142,19 +144,12 @@ internal sealed class RunTools(LvaiConnection connection)
                                        .Select(i => i.Key).ToList();
             inputs = inputs.Select(i => new KeyValuePair<string, string>(
                 i.Key, CompoundValue(i.Value) ?? i.Value)).ToList();
-            if (Offending(inputs) is { } offender)
+            if (inputs.FirstOrDefault(i => Breaks(i.Key)).Key is { } badName)
                 return Json.Error("inputContainsNewline",
-                    compoundInputs.Contains(offender)
-                        ? $"The XML for '{offender}' carries a line break INSIDE a text value. " +
-                          "Indentation between tags is folded away, but a break inside a value " +
-                          "cannot be: the helper pairs names with values by line, and LabVIEW's " +
-                          "Unflatten From XML does not decode &#10; - measured 2026-09-25, it " +
-                          "arrived as the literal text '&#10;' with no error. Send that string " +
-                          "without the line break."
-                        : $"The control name or value for '{offender}' contains a line break. The " +
-                          "helper pairs names with values by line, so a newline in either would " +
-                          "silently shift every later pair onto the wrong control.",
-                    new { controlName = offender });
+                    $"The control name '{badName}' contains a line break. The helper pairs names " +
+                    "with values by line, so a newline in a name would silently shift every later " +
+                    "pair onto the wrong control.",
+                    new { controlName = badName });
 
             var timed = runForMs > 0;
 
@@ -193,6 +188,30 @@ internal sealed class RunTools(LvaiConnection connection)
             var helperVi = Path.GetFullPath(helperViPath ?? DefaultHelperViPath(timed));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
+
+            // A LINE BREAK IN A VALUE TRAVELS ENCODED, when the helper decodes it. Values used to be
+            // refused outright - which made a multi-line string unreachable here and, through this
+            // tool, in lvai_set_constant: the fourth ATM cold build could not break a multi-line
+            // message expectation for its negative control. The typed helper decodes 0x1E to LF and
+            // 0x1D to CR before it converts anything; the timed and the legacy helper do not, so
+            // for them the refusal stands. Decided from the helper's CONTENT, like runForMs.
+            var decodes = DecodesLineBreaks(aixml);
+            if (inputs.FirstOrDefault(i => Breaks(i.Value) && !decodes).Key is { } undecodable)
+                return Json.Error("inputContainsNewline",
+                    $"The value for '{undecodable}' contains a line break, and the helper " +
+                    $"'{Path.GetFileName(aixml)}' does not decode one - only " +
+                    $"{HelperAixmlFileName} does{(timed ? "; the runForMs helper has not had that change" : "")}. " +
+                    "The helper pairs names with values by line, so the break would shift every " +
+                    "later pair onto the wrong control.",
+                    new { controlName = undecodable });
+            if (inputs.FirstOrDefault(i => i.Value.Contains(EncodedLf) || i.Value.Contains(EncodedCr)).Key
+                is { } ambiguous)
+                return Json.Error("badArguments",
+                    $"The value for '{ambiguous}' contains the control character 0x1E or 0x1D, " +
+                    "which is how a line break travels to the helper - it would arrive as a line " +
+                    "break. Remove it.", new { controlName = ambiguous });
+            var encodedInputs = inputs.Where(i => Breaks(i.Value)).Select(i => i.Key).ToList();
+            inputs = [.. inputs.Select(i => new KeyValuePair<string, string>(i.Key, Encode(i.Value)))];
 
             var helperGenerated = false;
             // A helper built from an OLDER AIXML is rebuilt, not reused: the Enum, Ring, Array
@@ -260,6 +279,9 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["inputsSent"] = JsonValue.Create(inputs.Count);
             if (compoundInputs.Count > 0)
                 payload["compoundInputs"] = new JsonArray(compoundInputs
+                    .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
+            if (encodedInputs.Count > 0)
+                payload["lineBreaksEncoded"] = new JsonArray(encodedInputs
                     .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
@@ -332,9 +354,31 @@ internal sealed class RunTools(LvaiConnection connection)
             : $"<LvVariant><Name>Variant</Name>{xml}</LvVariant>";
     }
 
-    /// <summary>The first name or value carrying a line break, or null when all are clean.</summary>
-    private static string? Offending(IEnumerable<KeyValuePair<string, string>> inputs) =>
-        inputs.FirstOrDefault(i => Breaks(i.Key) || Breaks(i.Value)).Key;
+    /// <summary>What a line feed and a carriage return travel as between this tool and the helper.</summary>
+    internal const string EncodedLf = "\u001E", EncodedCr = "\u001D";
+
+    /// <summary>The constant only a helper that decodes line breaks carries; its presence is the test.</summary>
+    internal const string LineBreakMarker = "encoded line feed";
+
+    /// <summary>A value with its line breaks encoded for the wire - the helper reverses it.</summary>
+    internal static string Encode(string value) =>
+        value.Replace("\r", EncodedCr).Replace("\n", EncodedLf);
+
+    /// <summary>
+    /// Whether a helper decodes line breaks, read from its AIXML like <see cref="CanHonourRunForMs"/>.
+    /// An unreadable file is treated as NOT decoding: the cost of that guess is a refusal the caller
+    /// can read, where the opposite guess would split a value across two controls.
+    /// </summary>
+    internal static bool DecodesLineBreaks(string helperAixmlPath)
+    {
+        try
+        {
+            return File.ReadAllText(helperAixmlPath)
+                .Contains($"_name=\"{LineBreakMarker}\"", StringComparison.Ordinal);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
 
     private static bool Breaks(string? s) =>
         s is not null && (s.Contains('\n') || s.Contains('\r'));

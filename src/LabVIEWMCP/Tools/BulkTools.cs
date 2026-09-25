@@ -156,6 +156,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "top-level diagram instead of inside the structure you named, and reports " +
                         "nothing anywhere - which is why setting it to root here would hide the " +
                         "fault rather than fix it. Name the structure's real uid. " +
+                        "`uidParentContradictsNesting` is its converse: an element written INSIDE " +
+                        "a structure whose uid_parent names something else lands inside it anyway. " +
                         "lvai_convert_aixml_to_vi still generates it if you want LabVIEW's own " +
                         "behaviour.");
                 }
@@ -216,7 +218,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
                 return Outcome(false, "convert", steps, total, viPath, null, routeNote,
-                    Route(unresolved, null));
+                    Route(unresolved, null, Resolution(ErrorCode(convert), Field(convert, "errorMessage"))));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     // A DROPPED RPC CAN LEAVE THE FILE BEHIND, and then the pane is a trap rather
@@ -245,7 +247,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "source is YOUR OWN LAST FAILED VALIDATION of the same _name - measured, " +
                     "twice in a row on the same document. Generate under a fresh name; the old " +
                     "one stays poisoned until LabVIEW restarts.",
-                    unresolved is null ? null : Route(unresolved, null));
+                    unresolved is null ? null
+                        : Route(unresolved, null, Resolution(ErrorCode(convert), Field(convert, "errorMessage"))));
 
             // EXECUTABILITY STANDS IN FOR THE VALIDATION THAT COULD NOT LOOK. ValidateAIXML
             // type-checks every Call's wiring and could not do that for the calls it could not
@@ -270,7 +273,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     ["linkerErrors"] = reading?.LinkerErrors,
                 });
                 route = Route(unresolved,
-                    reading is null or { CouldNotOpen: true } ? null : !reading.Broken);
+                    reading is null or { CouldNotOpen: true } ? null : !reading.Broken, resolved: true);
 
                 if (reading is { Broken: true })
                     return Outcome(false, "execState", steps, total, viPath, null,
@@ -442,13 +445,44 @@ internal sealed class BulkTools(LvaiConnection connection)
         return null;
     }
 
-    /// <summary>The top-level summary of a generation that took the loaded-subVI route.</summary>
-    private static JsonObject Route(IReadOnlyList<string> unresolved, bool? executable) => new()
+    /// <summary>
+    /// The top-level summary of a generation that took the loaded-subVI route. The targets are
+    /// the ones validation could not resolve, and the KEY says what conversion made of them:
+    /// <c>resolvedAtConversion</c> when it wrote the VI (or failed past resolving them),
+    /// <c>notResolvedAtConversion</c> on the not-loaded Error 53, and <c>unresolvedAtValidate</c>
+    /// when the failure says nothing either way.
+    ///
+    /// THIS WAS ALWAYS <c>resolvedAtConversion</c> until 2026-09-25, so an Error 53 answer listed
+    /// under "resolved" the very VIs whose not being loaded was the failure - while the note beside
+    /// it said "NOT LOADED". Found on the fourth ATM cold build; a field that contradicts the
+    /// sentence next to it is read by whoever trusts the field.
+    /// </summary>
+    private static JsonObject Route(IReadOnlyList<string> unresolved, bool? executable,
+                                    bool? resolved) => new()
     {
         ["route"] = "loadedSubVIs",
-        ["resolvedAtConversion"] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
+        [resolved switch
+        {
+            true => "resolvedAtConversion",
+            false => "notResolvedAtConversion",
+            null => "unresolvedAtValidate",
+        }] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
         ["executable"] = executable,
     };
+
+    /// <summary>
+    /// Whether a FAILED conversion got past resolving the Call targets, read the way
+    /// <see cref="RouteFailure"/> reads it: the not-loaded Error 53 did not; a generator Error 1
+    /// or a Save-time failure did; anything else is not known.
+    /// </summary>
+    internal static bool? Resolution(int? code, string? message)
+    {
+        var atSave = message?.Contains("Save:Instrument", StringComparison.Ordinal) == true;
+        var generator = message?.Contains("VI generator.vi", StringComparison.Ordinal) == true;
+        if (code == 53 && !atSave) return false;
+        if (atSave || (code == 1 && generator)) return true;
+        return null;
+    }
 
     private static string RouteNote(JsonObject? route) => route is null
         ? ""

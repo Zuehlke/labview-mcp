@@ -156,6 +156,14 @@ layout: `conIdx=` contains the characters `x=`.
   kind — `FreeLabel`s first (in reverse of the authored order), then controls, constants
   and indicators, then nodes. Since there are no coordinates either, position on the
   diagram is decided entirely by LabVIEW.
+- **But NESTING does carry meaning, and it beats `uid_parent`.** Measured 2026-09-25 as a clean
+  A/B: a seed constant written INSIDE a While Loop's `<Structure>` with `uid_parent="root"`
+  landed inside the loop - ValidateAIXML answered `While Loop: Is a member of a cycle` - while the
+  same constant written at top level converted clean. It cost the fourth ATM cold build an eBad
+  main VI. Keep the two in agreement; `lvai_check_aixml` answers `uidParentContradictsNesting` and
+  `scripts/aixml_lint.py` `parent-mismatch`, and both block before LabVIEW sees the file. (The
+  other direction - top level, `uid_parent` naming a structure - reached the structure for a
+  Node, Control, Indicator or Constant and NOT for a FreeLabel; `docs/diagram-comments.md`.)
 - `connection` without a `conIdx` is dropped on export: a terminal only counts as
   connector-pane-assigned when it has an index.
 - **`conIdx` IS a position, and the map is knowable — see "The connector pane" below.** An
@@ -2968,7 +2976,10 @@ is wired wrongly rather than an error:
   were never created and relied on LabVIEW to say so.
 - **The mapping is injective**, one number per distinct symbol.
 - **Numbering starts above the highest number already in the file**, so a symbol can never take a
-  number the author used.
+  number the author used — **and never below 4200** (`AixmlCheck.SafeUidBase`). Until 2026-09-25
+  it started at the highest number plus one, so a file written only in symbols was numbered 1, 2,
+  3 … inside LabVIEW's reserved range, which costs one DWarn per element per generation: the fourth
+  ATM cold build numbered 36 symbols 1..36 and the next `lvai_status` read 82 events.
 
 ### Starting from a skeleton
 

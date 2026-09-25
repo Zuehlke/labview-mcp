@@ -60,7 +60,7 @@ internal sealed class ConstantTools(LvaiConnection connection)
         [Description(@"Absolute path to the .vi - it is saved in place")] string viPath,
         [Description("The constant's block diagram label, exactly - e.g. 'expected 2'")]
         string constantLabel,
-        [Description("The new value as text - '2', '0.5', 'TRUE', 'CH9', or an enum item name")]
+        [Description("The new value as text - '2', '0.5', 'TRUE', 'CH9', or an enum item name. A string may contain line breaks")]
         string value,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
@@ -71,9 +71,9 @@ internal sealed class ConstantTools(LvaiConnection connection)
                 return Json.Error("fileNotFound", $"No VI at '{vi}'.", new { viPath });
             if (string.IsNullOrEmpty(constantLabel))
                 return Json.Error("badArguments", "constantLabel is empty.");
-            if (value.Contains('\n') || value.Contains('\r'))
-                return Json.Error("badArguments",
-                    "value contains a line break, which the helper's wire format cannot carry.");
+            // A LINE BREAK IS FINE SINCE 2026-09-25: lvai_run_vi_and_read_values encodes it for the
+            // wire and its typed helper decodes it, so the multi-line message expectations the
+            // fourth ATM cold build could not break for a negative control are reachable now.
 
             // ---- 1. which constant, and of what type - from the VI's own export
             var before = await ExportAsync(vi, timeoutSeconds, ct);
@@ -108,9 +108,15 @@ internal sealed class ConstantTools(LvaiConnection connection)
             var after = await ExportAsync(vi, timeoutSeconds, ct);
             var afterValue = after is null ? null
                 : (string?)Constants(after).FirstOrDefault(e => Label(e) == constantLabel)?.Attribute("value");
-            var verified = afterValue is not null && (kind == "Compound"
-                ? LvXmlLiteral.Same(type, value, Unescape(afterValue))
-                : Same(kind, afterValue, text));
+            var verified = afterValue is not null && kind switch
+            {
+                "Compound" => LvXmlLiteral.Same(type, value, Unescape(afterValue)),
+                // a string's export carries AIXML escapes (\0A, \5C) where the caller wrote the
+                // characters themselves - compared raw, a backslash or a line break never matched
+                "String" => string.Equals(Unescape(afterValue, keepSeparators: false), value,
+                                          StringComparison.Ordinal),
+                _ => Same(kind, afterValue, text),
+            };
 
             return Json.Document(new JsonObject
             {
@@ -215,9 +221,10 @@ internal sealed class ConstantTools(LvaiConnection connection)
     /// reports it. The separators inside a compound are never escaped, so resolving first cannot
     /// merge two members.
     /// </summary>
-    internal static string Unescape(string exported) =>
+    internal static string Unescape(string exported, bool keepSeparators = true) =>
         System.Text.RegularExpressions.Regex.Replace(exported, @"\\([0-9A-Fa-f]{2})",
-            m => ((char)System.Convert.ToInt32(m.Groups[1].Value, 16)) is var ch && ch is ',' or '[' or ']'
+            m => ((char)System.Convert.ToInt32(m.Groups[1].Value, 16)) is var ch
+                 && keepSeparators && ch is ',' or '[' or ']'
                 ? m.Value : ch.ToString());
 
     private static bool Truthy(string text) =>
