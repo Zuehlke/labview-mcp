@@ -104,7 +104,30 @@ by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI
 under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
 does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
 seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
-loose or in a project library.
+loose or in a project library — **unless that code is LOADED, and then only for conversion.**
+
+**PROJECT-LOCAL CODE RESOLVES BY BARE NAME ONCE IT IS OPEN IN LabVIEW — measured 2026-09-25 on
+NI's hint, and the sentence above said "does not resolve" flatly until then.** Opened through its
+project or opened loose with no project, a subject outside every installation tree was accepted
+by `ConvertAIXMLToVI` (`errorCode 0`), the caller ran with the right answer, and it was still
+`execState 1` from disk in a FRESH LabVIEW — so the link is written into the file. Not loaded, or
+merely a member of an active project, it is `Error 53` as before, three times over. **The reason
+nobody saw it: `ValidateAIXML` refuses the same document in every arm**, so `lvai_generate_vi`,
+which validates first, cannot take this route — convert directly and verify by running. Two traps
+come with it: a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as
+a failed validate), and a convert that fails at `Save:Instrument` with a project active leaves a
+path-less VI there that makes the project unclosable (`1019`) until it is saved to a path.
+
+**CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
+member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
+a caller chaining a static `New` method into a dynamic-dispatch `Write` and `Read` converted, ran
+(`42` in, `42` out) and was still executable in a fresh LabVIEW. Class wires between the calls need
+nothing — no `path` stand-in, no swap. A `.ctl` open through its project is refused as a `Call`
+target and has no `type=` spelling at all (`Unrecognized or unsupported attribute set`), and a
+control merely labelled like it is not bound to it. So a constant feeding a typedef input still
+arrives bare with a coercion dot, and `lvai_bind_typedef_constants` still repairs it — measured on
+this route with the value kept. Project-library members are the one target kind not measured yet.
+`docs/aixml-call-loaded-vi.md`.
 
 **The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
 scanned `menus\` and `LVAddons\` only, so a `.mnu` anywhere else was invisible — a query for
@@ -1597,7 +1620,13 @@ a window is visible to whoever is at the machine, which is why it is a retry and
 precondition.
 
 **A GENERATED METHOD CANNOT READ ITS OWN FIELDS THROUGH AN AIXML `Call`** — `Error 53, Unsupported
-SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured. So a generated method either takes
+SubVI: AnalogInput.lvclass:Read Physical Channel.vi`, measured — **with the class NOT loaded.**
+Measured 2026-09-25: once one member of the class is open, `ConvertAIXMLToVI` resolves
+`X.lvclass\3AAccessor.vi` for a caller OUTSIDE the class. A method of the SAME class authored that
+way is not measured, and `lvai_add_class_method` converts with the project CLOSED — the state in
+which the call does not resolve — while its validate classifier (`IsClassTypeComplaint`, any
+message containing `.lvclass`) would wave the `Unsupported SubVI: X.lvclass:…` refusal through as
+class-wire strictness. `docs/aixml-call-loaded-vi.md` §4. So a generated method either takes
 its parameters on the connector pane, or reaches its accessors through `lvai_placeholder_subvi` plus
 `lvai_swap_subvis`, **and that route works for accessors — this clause said it collapsed and that was
 wrong.** Written 2026-09-03 from an agent's reasoning rather than a measurement, it claimed
@@ -2335,6 +2364,7 @@ literally it argued away 600 usable palette VIs.
 | How is a `.ctl` built or changed? | `docs/pylabview-controls.md` | `pylv_extract`, `pylv_rebuild` |
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
+| Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_convert_aixml_to_vi` — NOT `lvai_generate_vi` or `lvai_validate_aixml`, which refuse it. Plain VIs and class members measured; a `.ctl` is not accepted |
 | How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
