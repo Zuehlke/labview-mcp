@@ -134,7 +134,18 @@ closes the project; the placeholder route is the fallback, and `route` in the an
 ran and why. Accepted through a real Caraya run with a failing control. **It is NOT faster inside
 the call** (15.7 s against 13.6–15.9 s) — the gain is fewer moving parts, and it passes a case the
 placeholder route FAILS: a test VI in a different folder from its subject, where the pylabview
-retarget leaves `Missing subVI` and `execState 0`. `docs/labview-unit-testing.md` §3.
+retarget leaves `Missing subVI` and `execState 0`. `docs/labview-unit-testing.md` §3. It lists the
+test under `testFolderName` (default `Tests`) since the same day, where it used to leave it wherever
+LabVIEW's save dropped it.
+
+**A WHOLE CLD EXAM HAS NOW BEEN BUILT WITH NO STUB AND NO pyLabVIEW** - the ATM, 2026-09-25,
+five agents, thirteen VIs, Caraya 50/0, audited from the transcripts and the stub folder rather than
+from the agents' reports. The one design cost is the Event Structure, whose registration is still
+pyLabVIEW work, so that build polled instead. The shape that makes it work with parallel agents is
+by DEPENDENCY: leaf VIs in parallel with no project opened, then ONE agent opens the callees and
+generates the callers. **And a line break in a generated `value` is `&#10;`** - a raw one is
+normalised to a space by the XML parser, which silently broke every multi-line test expectation
+until `EscapeValue` wrote the reference. `docs/cold-build-atm-no-stubs.md`.
 
 **`lvai_generate_class_test` CALLS THE ACCESSORS DIRECTLY too** — one accessor opened through the
 class's project makes every member callable, each pair's terminal names are read off its export
@@ -2386,6 +2397,7 @@ literally it argued away 600 usable palette VIs.
 | Which attribute is required even on an UNWIRED terminal? | `docs/cold-build-shakerrig.md` | — |
 | Why is a `-2628` never a mystery, and what does a queued checker fix cost? | `docs/cold-build-conveyorrig.md` | — |
 | How do I write a MULTI-LINE string, an implicit PROPERTY NODE, or an inactivity timeout with no class in sight? | `docs/cold-build-atm-cld.md` | — |
+| Can a whole application be built with NO stub files and NO pyLabVIEW, and how are the agents split? | `docs/cold-build-atm-no-stubs.md` | — |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |

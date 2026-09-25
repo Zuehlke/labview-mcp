@@ -52,7 +52,8 @@ internal sealed class TestTools(LvaiConnection connection)
         2026-09-25: the subject is opened through the .lvproj that lists it (found by itself, or
         projectPath), the test's Call names the subject itself - a loaded project VI is a legal
         Call target, docs/aixml-call-loaded-vi.md - and the project is closed again, which releases
-        the subject and lists the test in it. No placeholder, no retarget, no pylabview. When no
+        the subject; the test is then listed under testFolderName (`projectEntry` step). No
+        placeholder, no retarget, no pylabview. When no
         single project lists the subject, when it will not become active, or when the subject
         still does not resolve, the PLACEHOLDER route runs as before: lvai_placeholder_subvi for a
         call node AIXML is allowed to create, lvai_generate_vi for the test, then pylv_apply's
@@ -99,6 +100,12 @@ internal sealed class TestTools(LvaiConnection connection)
             project. On by default. False forces the placeholder route.
             """)]
         bool directCall = true,
+        [Description("""
+            Virtual folder of the subject's project the test is listed in, on the DIRECT route.
+            LabVIEW's own save adopts the freshly generated test at the project's top level; that
+            entry is moved here. A test listed somewhere else BEFORE the call stays where it is.
+            """)]
+        string testFolderName = "Tests",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -136,8 +143,8 @@ internal sealed class TestTools(LvaiConnection connection)
             else
             {
                 var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
-                                                         projectPath, steps, total, route,
-                                                         timeoutSeconds, ct);
+                                                         projectPath, testFolderName, steps, total,
+                                                         route, timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "placeholder";
                 route["reason"] = fallback;
@@ -231,8 +238,8 @@ internal sealed class TestTools(LvaiConnection connection)
     /// </summary>
     private async Task<(string? Done, string? Fallback)> DirectAsync(
         string viPath, string testViPath, string subjectName, List<Case> cases,
-        string? projectPath, JsonArray steps, Stopwatch total, JsonObject route,
-        int timeoutSeconds, CancellationToken ct)
+        string? projectPath, string testFolderName, JsonArray steps, Stopwatch total,
+        JsonObject route, int timeoutSeconds, CancellationToken ct)
     {
         // 1. the project that owns the subject
         string project;
@@ -315,10 +322,21 @@ internal sealed class TestTools(LvaiConnection connection)
         steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
         var answer = Read(generated) as JsonObject;
 
-        // 5. release the subject whatever happened - a loaded subject blocks its own regeneration
-        var close = await new CloseTools(connection).CloseActiveProjectAsync(
-            projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-        steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
+        // 5. release the subject whatever happened - a loaded subject blocks its own regeneration.
+        //    When a test was written, the release goes through the LISTING step, which closes the
+        //    project and then puts the test in testFolderName. A bare close left it wherever
+        //    LabVIEW's save dropped it - the project's top level, every time, measured 2026-09-25
+        //    on four ATM suites - and a later listing then correctly treated it as placed by
+        //    someone and left it there (docs/class-method-tooling.md D2).
+        if (!NotResolved(answer) && answer?["viExistsNow"]?.GetValue<bool>() is true)
+            steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath],
+                                               timeoutSeconds, ct, reopen: false));
+        else
+        {
+            var close = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
+        }
 
         if (NotResolved(answer))
             return (null, "The subject was opened through its project and still did not resolve " +
@@ -2500,6 +2518,17 @@ internal sealed class TestTools(LvaiConnection connection)
     /// unmeasured change to every value this generator writes. <see cref="Escape"/> stays as it
     /// is for <c>target=</c> and <c>fields=</c>, whose callers pass strings that ALREADY carry
     /// <c>\3A</c> escapes - putting this on those would double-escape them.
+    ///
+    /// AND A LINE BREAK OR A TAB IS A CHARACTER REFERENCE, because XML attribute normalisation
+    /// turns a RAW one into a SPACE before LabVIEW ever sees it. Found 2026-09-25 by a Caraya agent
+    /// on the ATM build: `Your Balance Is:\n$ 550.00` arrived as `Your Balance Is: $ 550.00`, so
+    /// exactly the multi-line expectations failed while every single-line one passed. Measured the
+    /// same day on one probe VI, with the raw newline as the control arm: `&amp;#10;` gave a
+    /// three-character `a\nb`, `&amp;#13;&amp;#10;` four characters, `&amp;#9;` three with no space,
+    /// and the raw newline a space at offset 1. The caller cannot pre-escape it either - LabVIEW's
+    /// own `\0A` spelling would come out of the backslash rule above as `\5C0A`.
     /// </summary>
-    internal static string EscapeValue(string value) => Escape(value).Replace("\\", "\\5C");
+    internal static string EscapeValue(string value) =>
+        Escape(value).Replace("\\", "\\5C")
+                     .Replace("\r", "&#13;").Replace("\n", "&#10;").Replace("\t", "&#9;");
 }

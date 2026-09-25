@@ -26,6 +26,41 @@ public sealed class GenerateTestTests
     private static TestTools.Case OneCase(string label, string input, string expected) =>
         new(label, new() { ["celsius"] = input }, new() { ["fahrenheit"] = expected });
 
+    // ------------------------------------------------------------------ line breaks, 2026-09-25
+
+    [Theory]
+    [InlineData("Your Balance Is:\n$ 550.00")]
+    [InlineData("a\r\nb")]
+    [InlineData("a\tb")]
+    [InlineData("Welcome to Acme Bank\nJennifer Rodriguez\n\nPlease select transaction by using the buttons.")]
+    public void AnExpectedValueKeepsItsLineBreaksAndTabs(string expected)
+    {
+        // Found on the ATM build: a RAW newline in an XML attribute is normalised to a space by the
+        // parser, so exactly the multi-line expectations failed. What LabVIEW reads is what an XML
+        // parser returns for the attribute - so that is what is asserted here, byte for byte.
+        var strings = new List<TestTools.Terminal>
+        {
+            new("kind", "string", IsInput: true),
+            new("message", "string", IsInput: false),
+        };
+        var root = System.Xml.Linq.XElement.Parse(TestTools.TestAixml(
+            @"C:\t\Test Build Message.vi", "Build Message", "LVMCP Stub abc.vi",
+            [new("multi-line", new() { ["kind"] = "x" }, new() { ["message"] = expected })],
+            strings));
+
+        Assert.Contains(root.Elements("Constant"), c => (string?)c.Attribute("value") == expected);
+    }
+
+    [Fact]
+    public void TheBackslashRuleStillHoldsBesideTheLineBreaks()
+    {
+        // The two rules must not interfere: the character references carry no backslash, and a
+        // backslash is still the AIXML escape introducer that has to be written \5C.
+        var constant = TestTools.Constant(4200, "string", "C:\\data\nnext");
+
+        Assert.Contains("value=\"C:\\5Cdata&#10;next\"", constant);
+    }
+
     // ------------------------------------------------------------------ the direct route, 2026-09-25
 
     [Fact]
