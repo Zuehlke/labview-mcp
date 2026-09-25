@@ -128,6 +128,14 @@ correct; a class chain the same. **A misspelt terminal on such a call is `Error 
 generator, not a broken VI** — the converter refuses it and writes nothing — and the answer says
 which of the three failure shapes it was, because only the Save-time one leaves the `1019` orphan.
 
+**`lvai_generate_test` CALLS ITS SUBJECT DIRECTLY by default since the same day** — it finds the
+`.lvproj` that LISTS the subject, opens it there, names the subject in the `Call`, generates and
+closes the project; the placeholder route is the fallback, and `route` in the answer says which
+ran and why. Accepted through a real Caraya run with a failing control. **It is NOT faster inside
+the call** (15.7 s against 13.6–15.9 s) — the gain is fewer moving parts, and it passes a case the
+placeholder route FAILS: a test VI in a different folder from its subject, where the pylabview
+retarget leaves `Missing subVI` and `execState 0`. `docs/labview-unit-testing.md` §3.
+
 **CLASS MEMBERS RESOLVE THE SAME WAY, and a `.ctl` does NOT — measured the same day.** Opening ONE
 member of a class through its project made `X.lvclass\3AMethod.vi` resolvable for every member;
 a caller chaining a static `New` method into a dynamic-dispatch `Write` and `Read` converted, ran

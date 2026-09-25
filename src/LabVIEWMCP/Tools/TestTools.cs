@@ -48,11 +48,18 @@ internal sealed class TestTools(LvaiConnection connection)
     [Description("""
         MUTATING: writes a Caraya unit-test VI that calls viPath as an ordinary static subVI, one
         node per case, and leaves it ready to run.
-        It composes the whole route in one call: lvai_placeholder_subvi for a call node AIXML is
-        allowed to create, lvai_generate_vi for the test, then pylv_apply's retarget to point that
-        node at your VI. Each sub-answer comes back whole under `steps`, so a failure reads the same
-        as calling them by hand. Measured: 18 calls by hand before this existed, 10 of them editing
-        an object heap.
+        TWO ROUTES, and the answer's `route` says which ran and why. DIRECT, the default since
+        2026-09-25: the subject is opened through the .lvproj that lists it (found by itself, or
+        projectPath), the test's Call names the subject itself - a loaded project VI is a legal
+        Call target, docs/aixml-call-loaded-vi.md - and the project is closed again, which releases
+        the subject and lists the test in it. No placeholder, no retarget, no pylabview. When no
+        single project lists the subject, when it will not become active, or when the subject
+        still does not resolve, the PLACEHOLDER route runs as before: lvai_placeholder_subvi for a
+        call node AIXML is allowed to create, lvai_generate_vi for the test, then pylv_apply's
+        retarget to point that node at your VI. Either way the active project is closed at the
+        end. Each sub-answer comes back whole under `steps`, so a failure reads the same as calling
+        them by hand. Measured: 18 calls by hand before this existed, 10 of them editing an object
+        heap.
         casesJson is a JSON ARRAY, one object per test case:
           [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
         The only case keys are `label`, `inputs` and `expect`; ANY OTHER IS REFUSED BY NAME, with
@@ -80,6 +87,18 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <subject>.vi' beside the subject.")]
         string? testViPath = null,
+        [Description("""
+            The .lvproj the subject belongs to, for the DIRECT route. Omit it and the one project
+            at or up to three folders above the subject that LISTS it is used; with none, or with
+            more than one, the placeholder route runs instead and the answer says why.
+            """)]
+        string? projectPath = null,
+        [Description("""
+            Call the subject DIRECTLY instead of through a placeholder: open it through its
+            project, author the test's Call against the subject's own name, generate, close the
+            project. On by default. False forces the placeholder route.
+            """)]
+        bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -107,6 +126,23 @@ internal sealed class TestTools(LvaiConnection connection)
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
 
+            // 0. THE DIRECT ROUTE FIRST. A subject open in LabVIEW is a legal Call target
+            // (docs/aixml-call-loaded-vi.md), which removes the placeholder, the retarget and the
+            // pylabview round trip in between. It either finishes the job or hands back WHY it
+            // could not start, and then the placeholder route below runs as it always has.
+            var route = new JsonObject { ["route"] = "placeholder" };
+            if (!directCall)
+                route["reason"] = "directCall was false.";
+            else
+            {
+                var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
+                                                         projectPath, steps, total, route,
+                                                         timeoutSeconds, ct);
+                if (done is not null) return done;
+                route["route"] = "placeholder";
+                route["reason"] = fallback;
+            }
+
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
                 .PlaceholderSubViAsync(viPath, refresh: false, viPaths: null,
@@ -117,7 +153,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "placeholder", steps, total, testViPath, null,
                     "No placeholder, so there is no call node to give the test. Read the " +
                     "placeholder step - it says whether the subject could be exported and whether " +
-                    "user.lib could be written.");
+                    "user.lib could be written.", route: route);
 
             var stubName = stub["placeholder"]!.GetValue<string>();
             var terminals = Terminal.From(stub["terminals"] as JsonArray);
@@ -125,7 +161,8 @@ internal sealed class TestTools(LvaiConnection connection)
             if (Unknown(cases, terminals) is { } unknown)
                 return Outcome(false, "cases", steps, total, testViPath, null,
                     $"The cases name terminals the subject does not have: {unknown}. The " +
-                    "subject's terminals are listed in the placeholder step under `terminals`.");
+                    "subject's terminals are listed in the placeholder step under `terminals`.",
+                    route: route);
 
             // 2. author and generate against the placeholder
             var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -141,7 +178,8 @@ internal sealed class TestTools(LvaiConnection connection)
 
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, aixmlPath,
-                    "The test VI was not written. The generate step carries LabVIEW's own message.");
+                    "The test VI was not written. The generate step carries LabVIEW's own message.",
+                    route: route);
 
             // 3. point the call node at the subject
             var retarget = new JsonArray(new JsonObject
@@ -161,7 +199,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 return Outcome(false, "retarget", steps, total, testViPath, aixmlPath,
                     "THE TEST VI WAS WRITTEN and is sound - what failed is repointing its call " +
                     $"from '{stubName}' at the subject, so it still calls the placeholder and " +
-                    "would test nothing. Read the retarget step.");
+                    "would test nothing. Read the retarget step.", route: route);
 
             // LabVIEW's own export of the result is the only thing that proves the swap landed.
             var targets = (Read(applied) as JsonObject)?["steps"]?.AsArray()
@@ -171,8 +209,159 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"Generated. {cases.Count} case(s), each a static call to " +
                 $"'{Path.GetFileName(viPath)}'. Run it through Caraya's runner with a Report Path " +
                 "ending in .xml and read the JUnit report - the VI's own error cluster carries " +
-                "only the first failed assertion.", targets?.DeepClone());
+                "only the first failed assertion.", targets?.DeepClone(), route);
         });
+
+    /// <summary>
+    /// The test against the SUBJECT ITSELF: its project opened, its own name as the Call target,
+    /// the project closed again. Returns the finished answer, or null and the reason the
+    /// placeholder route has to run instead.
+    ///
+    /// WHAT IT REPLACES. The placeholder route is export -> clone a stub into user.lib -> generate
+    /// against it -> close the project -> pylabview extract -> retarget -> rebuild -> export to
+    /// verify. None of that is needed when the subject can be named: ConvertAIXMLToVI resolves a
+    /// project VI by bare name once it is loaded, and lvai_generate_vi now converts past the
+    /// validate refusal that always accompanies it and gates on executability instead.
+    ///
+    /// WHY THE PROJECT IS CLOSED AT THE END. Opening the subject is what makes it resolvable, and
+    /// it is also what makes the next regeneration OF THE SUBJECT answer Error 1357. The close
+    /// releases it, and its save lists the new test VI in the project, which is where CLAUDE.md
+    /// wants every generated VI. The placeholder route closed the active project too, inside its
+    /// retarget step.
+    /// </summary>
+    private async Task<(string? Done, string? Fallback)> DirectAsync(
+        string viPath, string testViPath, string subjectName, List<Case> cases,
+        string? projectPath, JsonArray steps, Stopwatch total, JsonObject route,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        // 1. the project that owns the subject
+        string project;
+        if (projectPath is { Length: > 0 })
+        {
+            if (!File.Exists(projectPath))
+                return (Json.Error("badArguments", $"No file at projectPath '{projectPath}'."), null);
+            project = Path.GetFullPath(projectPath);
+            route["projectFrom"] = "argument";
+        }
+        else
+        {
+            var owners = ProjectMembership.ProjectsListing(viPath);
+            if (owners.Count != 1)
+                return (null, owners.Count == 0
+                    ? $"No .lvproj at or up to {ProjectMembership.LevelsUp} folders above the " +
+                      "subject lists it, so there is no project to open it through. A library " +
+                      "or class member is never listed - its library is. Pass projectPath to " +
+                      "take the direct route anyway."
+                    : $"{owners.Count} projects list the subject ({string.Join(", ", owners)}); " +
+                      "pass projectPath to choose one.");
+            project = owners[0];
+            route["projectFrom"] = "discovered";
+        }
+        route["projectPath"] = project;
+        route["listedInProject"] = ProjectMembership.Lists(project, viPath);
+
+        // 2. the subject's own terminals - the same export the placeholder clones its pane from
+        var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                                      $"direct-subject-{Environment.ProcessId}.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(exportPath)!);
+        var export = await new AixmlTools(connection).ConvertViToAixmlAsync(
+            viPath, exportPath, returnContent: true, maxContentChars: 0,
+            timeoutSeconds: timeoutSeconds, refresh: false, ct: ct);
+        if (Read(export)?["xml"]?.GetValue<string>() is not { Length: > 0 } subjectXml ||
+            ViTerminals.Parse(subjectXml) is not { } subject)
+            return (null, "The subject could not be exported, so its terminals are unknown; the " +
+                          "placeholder route reports the same failure in its own words.");
+        if (subject.Instances.Count > 0 || subject.Inputs.Count + subject.Outputs.Count == 0)
+            return (null, "The subject is polymorphic or has no terminals; the placeholder route " +
+                          "refuses it with the specific reason.");
+
+        // A typedef on the pane is not a reason to fall back: the Call is to the REAL subject, so
+        // its terminals carry the typedef and only the constants the test wires in are bare.
+        var typedefs = await new TypedefTools(connection).PaneTypedefsAsync(viPath, timeoutSeconds, ct);
+        var terminals = Terminal.From(PlaceholderTools.Terminals(subject, typedefs));
+        steps.Add(new JsonObject
+        {
+            ["step"] = "subject",
+            ["viName"] = subject.ViName,
+            ["inputs"] = subject.Inputs.Count,
+            ["outputs"] = subject.Outputs.Count,
+            ["typedefTerminals"] = typedefs?.Count,
+        });
+
+        if (Unknown(cases, terminals) is { } unknown)
+            return (Outcome(false, "cases", steps, total, testViPath, null,
+                $"The cases name terminals the subject does not have: {unknown}. The subject's " +
+                "terminals are what lvai_vi_terminals prints for it.", route: Direct(route)), null);
+
+        // 3. load the subject THROUGH its project, which is what makes it resolvable
+        var open = await new ActionTools(connection).OpenFileAsync(
+            viPath, Path.GetFileName(viPath), project, Path.GetFileName(project),
+            checkActive: true, timeoutSeconds, ct);
+        steps.Add(new JsonObject { ["step"] = "openSubject", ["answer"] = Read(open) });
+        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+            opened["projectBecameActive"]?.GetValue<bool>() is not true)
+            return (null, "The subject's project did not become active, so the subject is not " +
+                          "known to be loaded - read the openSubject step.");
+
+        // 4. author the test against the subject's own name, and generate
+        var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                                     Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
+        await File.WriteAllTextAsync(aixmlPath,
+            TestAixml(testViPath, subjectName, subject.ViName.Replace(":", @"\3A"), cases, terminals),
+            ct);
+        var generated = await new BulkTools(connection).GenerateViAsync(
+            aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
+            timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
+        var answer = Read(generated) as JsonObject;
+
+        // 5. release the subject whatever happened - a loaded subject blocks its own regeneration
+        var close = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
+
+        if (NotResolved(answer))
+            return (null, "The subject was opened through its project and still did not resolve " +
+                          "as a Call target (Error 53 at conversion). Nothing was written.");
+
+        if (answer?["viExistsNow"]?.GetValue<bool>() is not true)
+            return (Outcome(false, "generate", steps, total, testViPath, aixmlPath,
+                "The test VI was not written. The generate step carries LabVIEW's own message.",
+                route: Direct(route)), null);
+
+        if (answer["failedAtStep"]?.GetValue<string>() == "execState")
+            return (Outcome(false, "generate", steps, total, testViPath, aixmlPath,
+                "THE TEST VI WAS WRITTEN and LabVIEW cannot run it - read the generate step's " +
+                "execState. The direct route skipped validation for the subject call, which is " +
+                "what executability stands in for.", route: Direct(route)), null);
+
+        var typedefNote = typedefs is { Count: > 0 }
+            ? $" {typedefs.Count} of the subject's terminals are TYPEDEFS, and the case " +
+              "constants wired into them are the bare type, so each wears a coercion dot. Every " +
+              "constant is named after the terminal it feeds, so lvai_bind_typedef_constants can " +
+              "repair them with the project open."
+            : "";
+        return (Outcome(true, null, steps, total, testViPath, aixmlPath,
+            $"Generated. {cases.Count} case(s), each a static call to '{subject.ViName}', called " +
+            "DIRECTLY - no placeholder, no retarget. Run it through Caraya's runner with a Report " +
+            "Path ending in .xml and read the JUnit report - the VI's own error cluster carries " +
+            "only the first failed assertion." + typedefNote,
+            new JsonArray(JsonValue.Create(subject.ViName)), Direct(route)), null);
+    }
+
+    private static JsonObject Direct(JsonObject route)
+    {
+        route["route"] = "direct";
+        return route;
+    }
+
+    /// <summary>The direct route's one reason to fall back after generating: the target never resolved.</summary>
+    internal static bool NotResolved(JsonObject? generated) =>
+        generated?["failedAtStep"]?.GetValue<string>() == "convert" &&
+        generated["loadedSubVIs"] is not null &&
+        generated["steps"]?.AsArray().Any(s =>
+            s?["step"]?.GetValue<string>() == "convert" &&
+            s["errorCode"]?.GetValue<int>() == 53) == true;
 
     [McpServerTool(Name = "lvai_generate_class_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya round-trip test for a class's accessors")]
@@ -1501,8 +1690,12 @@ internal sealed class TestTools(LvaiConnection connection)
                     wired.Add($"{terminal.Name}:");        // unwired: the subject's own default
                     continue;
                 }
+                // NAMED AFTER THE TERMINAL IT FEEDS: that label is how lvai_bind_typedef_constants
+                // finds the constant when the terminal turns out to be a typedef, and with the
+                // direct route the terminal is the subject's own, typedef and all.
                 var constant = uid++;
-                sb.AppendLine(Constant(constant, terminal.Type, ValueFor(terminal.Type, value)));
+                sb.AppendLine(Constant(constant, terminal.Type, ValueFor(terminal.Type, value),
+                                       terminal.Name));
                 wired.Add($"{terminal.Name}:{constant}.value");
             }
 
@@ -1902,8 +2095,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null) =>
-        Json.Document(new JsonObject
+                                  JsonNode? callTargets = null, JsonObject? route = null)
+    {
+        var result = new JsonObject
         {
             ["ok"] = ok,
             ["failedAtStep"] = failedAt,
@@ -1911,10 +2105,14 @@ internal sealed class TestTools(LvaiConnection connection)
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
-            ["steps"] = steps,
-            ["totalElapsedMs"] = total.ElapsedMilliseconds,
-            ["note"] = note,
-        });
+        };
+        // Which route ran, and when it was the placeholder one, why the direct one did not.
+        if (route is not null) result["route"] = route.DeepClone();
+        result["steps"] = steps;
+        result["totalElapsedMs"] = total.ElapsedMilliseconds;
+        result["note"] = note;
+        return Json.Document(result);
+    }
 
     private static JsonNode? Read(string answer)
     {

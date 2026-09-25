@@ -26,6 +26,52 @@ public sealed class GenerateTestTests
     private static TestTools.Case OneCase(string label, string input, string expected) =>
         new(label, new() { ["celsius"] = input }, new() { ["fahrenheit"] = expected });
 
+    // ------------------------------------------------------------------ the direct route, 2026-09-25
+
+    [Fact]
+    public void EveryInputConstantIsNamedAfterTheTerminalItFeeds()
+    {
+        // The label is how lvai_bind_typedef_constants finds a constant, and on the direct route
+        // the terminal is the subject's own - typedef included - so an unnamed constant would be
+        // a coercion dot nothing can repair.
+        var root = System.Xml.Linq.XElement.Parse(Author(OneCase("boiling", "100", "212")));
+        var call = root.Elements("Call").First(c => (string?)c.Attribute("target") == "LVMCP Stub abc.vi");
+        var fed = ((string)call.Attribute("inputs")!).Split(':')[1].Split('.')[0];
+
+        var constant = root.Elements("Constant").Single(c => (string?)c.Attribute("uid") == fed);
+        Assert.Equal("celsius", (string?)constant.Attribute("_name"));
+    }
+
+    [Fact]
+    public void AClassQualifiedSubjectNameReachesTheCallEscapedAndIntact()
+    {
+        var xml = TestTools.TestAixml(@"C:\t\Test Read Count.vi", "Read Count",
+            @"IMC Counter.lvclass\3ARead Count.vi", [OneCase("x", "1", "2")], Terminals);
+        var root = System.Xml.Linq.XElement.Parse(xml);
+
+        Assert.Single(root.Elements("Call"),
+            c => (string?)c.Attribute("target") == @"IMC Counter.lvclass\3ARead Count.vi");
+    }
+
+    [Fact]
+    public void OnlyANotLoadedTargetSendsTheDirectRouteBackToThePlaceholder()
+    {
+        static System.Text.Json.Nodes.JsonObject Answer(string? failedAt, int convertCode, bool route) =>
+            System.Text.Json.Nodes.JsonNode.Parse($$"""
+                {"failedAtStep": {{(failedAt is null ? "null" : $"\"{failedAt}\"")}},
+                 {{(route ? "\"loadedSubVIs\": {\"route\":\"loadedSubVIs\"}," : "")}}
+                 "steps": [{"step":"validate","errorCode":1},{"step":"convert","errorCode":{{convertCode}}}]}
+                """)!.AsObject();
+
+        Assert.True(TestTools.NotResolved(Answer("convert", 53, route: true)));
+        // a typo on the call, a save failure, or a plain convert failure are NOT fallbacks: the
+        // placeholder route would fail the same way or worse, and the answer has to say so
+        Assert.False(TestTools.NotResolved(Answer("convert", 1, route: true)));
+        Assert.False(TestTools.NotResolved(Answer("convert", 53, route: false)));
+        Assert.False(TestTools.NotResolved(Answer(null, 0, route: true)));
+        Assert.False(TestTools.NotResolved(null));
+    }
+
     // ------------------------------------------------------------------ the diagram
 
     [Fact]
