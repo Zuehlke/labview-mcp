@@ -234,10 +234,16 @@ the whole workflow is possible.
    empty VI — regenerating from it would replace the user's VI with nothing. Stop.
 2. `lvai_validate_aixml` on that **untouched** export.
 
-Step 2 is the decisive one, and the reason is structural: **no `Call` target syntax reaches your
-own code.** Not a bare name, not an absolute path, not a library-qualified name even while that
-library is open in the IDE — measured across all of them. So a VI that calls a project-local or
-library-local subVI *cannot be expressed in AIXML that the generator accepts*:
+Step 2 is the decisive one, and what it decides CHANGED on 2026-09-25. **`ValidateAIXML` never
+resolves your own code** - not by bare name, not by path, not library-qualified - so a VI that calls
+a project-local subVI is always refused here. But **`ConvertAIXMLToVI` resolves a project VI by its
+bare name once that VI is LOADED** (`docs/aixml-call-loaded-vi.md`), and `lvai_generate_vi` converts
+past a refusal whose `Errors:` block names ONLY `Unsupported SubVI` lines, then gates on
+`execState`. So such a VI IS regenerable: open each callee named in the refusal through the project
+with `lvai_open_file` (never the VI you are editing - that one must stay unloaded, or the
+regeneration answers `Error 1357`), then regenerate with `lvai_generate_vi` and read `loadedSubVIs`.
+Plain VIs and class members are measured; a PROJECT-LIBRARY member (`X.lvlib:VI.vi`) as a target is
+NOT, so for one of those treat the refusal below as the old stop. A refusal that looks like this:
 
 ```
 Error 53 ... Manager call not supported.
@@ -250,14 +256,22 @@ Read the two messages apart — the distinction is the whole diagnosis:
 
 | Message | Meaning |
 |---|---|
-| `Unsupported SubVI: X` | the target was **never resolved** → this VI cannot be regenerated |
+| `Unsupported SubVI: X` | the target was **not resolved by the validator** → regenerable once X is loaded (open it through the project, then `lvai_generate_vi`); still a stop when X is a project-LIBRARY member (unmeasured) or lives in an `.llb` |
 | `Object terminal not found` | the target **was** resolved, only a terminal name is wrong → fixable |
 
 The second line above is just a knock-on: an unresolved target has no terminals, so its wires
 fail too. Express VIs (`Ex_Inst_*.vi`) fail the same way.
 
-**If the pristine export does not validate, stop.** Nothing has been touched yet, which is the
-point of doing this first. Return:
+**If the pristine export's refusal names ONLY `Unsupported SubVI` lines for plain project VIs or
+class members, PROVE THE ROUND TRIP before stopping.** Open each named callee through the project
+(`lvai_open_file`), then `lvai_generate_vi` the UNTOUCHED export to a SCRATCH path (never the VI's
+own path) and read `loadedSubVIs.executable`. `true` means the VI is regenerable on the loaded
+route: continue, and generate the edited version the same way later. Delete the scratch VI
+afterwards. Nothing of the user's has been touched by that probe.
+
+**Otherwise - any other refusal line, a project-LIBRARY member, an `.llb` target, or a probe that
+comes back not executable - stop.** Nothing has been touched yet, which is the point of doing this
+first. Return:
 
 ```
 CANNOT PROCEED
@@ -267,16 +281,19 @@ Blocking calls (targets the generator cannot resolve):
   - MyLib.lvlib:Helper.vi
   - Utilities/Parse Line.vi
 
-Why: AIXML has no Call target syntax that reaches project- or library-local subVIs,
-so these nodes cannot be written back. Measured across bare names, absolute paths and
-lvlib-qualified names.
+Why: these targets did not resolve even with the callees loaded (or are of a kind the
+loaded route is not measured for: a project-library member, a VI inside an .llb), so
+these nodes cannot be written back.
 
 What can still be done:
   - edit the VI by hand in the IDE (this agent can describe the change precisely)
   - build the new logic as a NEW subVI (labview-vi-generator) and wire it in by hand
 ```
 
-This gate is why most real application VIs are out of reach and most leaf/utility VIs are not.
+This gate used to put most real application VIs out of reach, because 70 % of them call the
+project's own subVIs (`docs/aixml-gap-census.md`). Since the loaded route (2026-09-25) that share
+is reachable in principle; what still stops a VI is a library-member target, an `.llb` target, or
+a construct AIXML cannot carry.
 Find out in two calls rather than after an hour.
 
 ### Phase 3 — Has the new functionality already been built?
@@ -527,9 +544,11 @@ re-apply it.
   earlier — and a **silent `errorCode 0`** since 2026-09-16, measured with the VI closed and again
   with it open in the IDE, the export identical both times. Do not call it and do not re-measure
   it; the user asks for it by name or it does not happen.
-- **No `Call` target syntax reaches your own code** — bare name, absolute path and
+- **`ValidateAIXML` resolves none of your own code** — bare name, absolute path and
   `lvlib:`-qualified name were all measured as `Unsupported SubVI`, the last one even with the
-  library open in the IDE. The boundary is palette reachability, not library membership.
+  library open in the IDE. **`ConvertAIXMLToVI` does resolve a LOADED project VI or class member by
+  bare name** (measured 2026-09-25), which is what the Phase 2 probe above uses; a loaded
+  project-library member is not measured.
 - **`Unsupported SubVI` means unresolved; `Object terminal not found` means resolved.** The
   error message is the discriminator, which is what makes the Phase 2 gate cheap.
 - **AIXML carries no coordinates, and the exporter drops decorations.** `FreeLabel` survives.

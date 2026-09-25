@@ -871,9 +871,22 @@ the `Event Data Node` - so there the documented route stands: a labelled placeho
 into a PRIM input, plus `lvai_set_event_data_fields` as a third build step. Do not generalise the
 shortcut past front-panel events; the two cases look alike on a diagram and are not.
 
-**`lvai_placeholder_subvi` PLUS `lvai_swap_subvis` IS THE ONLY ROUTE BY WHICH A GENERATED VI CALLS
-PROJECT-LOCAL CODE.** AIXML refuses a project VI as a `Call` target outright (`Error 53, Unsupported
-SubVI`), in every spelling. Do not hand-build a stand-in: the clone must match the subject's pane
+**A GENERATED VI CALLS PROJECT-LOCAL CODE BY ITS BARE NAME ONCE THAT CODE IS LOADED - no stub.**
+This paragraph said until 2026-09-25 that `lvai_placeholder_subvi` plus `lvai_swap_subvis` was the
+ONLY route; that is superseded. With each callee opened through its project (`lvai_open_file`),
+`<Call target="Find Account.vi" .../>` converts; `ValidateAIXML` refuses it with `Unsupported
+SubVI` in every state, and `lvai_generate_vi` converts past exactly that refusal by itself and gates
+on `execState` - read `loadedSubVIs` in its answer. `lvai_generate_test`,
+`lvai_generate_class_test` and `lvai_generate_method_test` take the same route by default and say
+so in `route`. Measured over a whole CLD build, 2026-09-25: every caller executable on the first
+generate, zero stubs written (`docs/cold-build-atm-no-stubs.md`). Whoever opened a project closes it
+again (`lvai_close_active_project` with `projectPath`).
+
+**THE PLACEHOLDER ROUTE IS THE FALLBACK**, for when the callee cannot be loaded: other agents share
+the LabVIEW and you may not open a project, or the VI is converted with the project CLOSED - which
+`lvai_add_class_method` and `lvai_lunit_add_test_method` do, so for a class method or an LUnit test
+method calling project code the loaded route is NOT measured and the placeholder stays the route.
+Do not hand-build a stand-in: the clone must match the subject's pane
 terminal for terminal, and an inexact one is `Error 7, Bad Linkage` with nothing in the message
 about panes. Measured 2026-09-16 - an agent whose roster lacked the tool built its own socket VI
 from AIXML, correctly but by luck, with no way to know the rule it was re-deriving.
@@ -917,6 +930,13 @@ signature.** Measured 2026-09-03:
 <Call target="AnalogInput.lvclass\3ARead Physical Channel.vi" .../>
 → Error 53 ... Unsupported SubVI: AnalogInput.lvclass:Read Physical Channel.vi
 ```
+
+That was measured with the class NOT loaded, and it still describes your route: since 2026-09-25 a
+`Call` to a class member resolves once one member of the class is open through its project
+(`docs/aixml-call-loaded-vi.md` §4) - but `lvai_add_class_method` converts with the project CLOSED,
+which is exactly the state in which it does not, and its validate classifier would wave the
+`Unsupported SubVI: X.lvclass:…` refusal through as class-wire strictness. A method of the same
+class calling its own accessors on the loaded route is NOT measured, so do not reach for it here.
 
 So a generated method either takes its parameters **on the connector pane** — which is honest, and
 what a DAQmx wrapper does anyway — or it reaches its accessors through the SOCKET route:

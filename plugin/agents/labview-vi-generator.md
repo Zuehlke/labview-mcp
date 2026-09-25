@@ -622,7 +622,10 @@ Everything here was verified before this agent was written. Treat it as fact.
 - **The `Call` boundary is palette reachability, not library membership.**
   `openg_array.lvlib:Filter 1D Array__ogtk.vi` validated, generated and ran, producing
   byte-identical output in three nodes where a hand-built version needed seven elements.
-  Project-local, library-local and loose `.vi` files are all rejected as "Unsupported SubVI".
+  Project-local, library-local and loose `.vi` files are all rejected as "Unsupported SubVI" BY
+  `ValidateAIXML` - while `ConvertAIXMLToVI` accepts a project VI by bare name once it is LOADED,
+  which `lvai_generate_vi` uses by itself (measured 2026-09-25; see "A GENERATED VI CALLS
+  PROJECT-LOCAL CODE" below).
 - **A palette-VI hit is not necessarily the target string.** `.mnu` files store only the bare
   name, so the `lvlib:` qualifier cannot be printed by the index and is not derivable from the
   palette path either.
