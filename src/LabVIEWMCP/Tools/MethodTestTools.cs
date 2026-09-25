@@ -751,6 +751,26 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
         }
 
+        // 5b. every generated constant that feeds a TYPEDEF terminal carries the typedef - seeds,
+        //     the written value and the method's own inputs alike
+        var candidates = new List<TestTools.TypedefCandidate>();
+        for (var index = 0; index < cases.Count; index++)
+        {
+            var test = cases[index];
+            for (var k = 0; k < test.Seeds.Count; k++)
+                candidates.Add(new(test.Seeds[k].WriteAccessor,
+                    TestTools.ViNameOf(seedCalls[index][k].Target), seedCalls[index][k].Data,
+                    $"seed {test.Seeds[k].Field} {test.Slot}"));
+            if (accessors[index] is { } accessor)
+                candidates.Add(new(test.WriteAccessor!, TestTools.ViNameOf(accessor.WriteTarget),
+                    accessor.WriteData, $"written {test.Slot}"));
+            foreach (var input in test.Required)
+                candidates.Add(new(test.MethodVi, TestTools.ViNameOf(methods[index].Target),
+                    input.Name, $"{input.Name} {test.Slot}"));
+        }
+        steps.Add(await tests.BindTypedefConstantsStepAsync(testViPath, candidates,
+                                                            timeoutSeconds, ct));
+
         // 6. executable now, or the direct route produced something the socket route would not
         var reading = await new ExecStateTools(connection).ReadAsync(
             testViPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,

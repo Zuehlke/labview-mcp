@@ -842,6 +842,13 @@ internal sealed class TestTools(LvaiConnection connection)
                 "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
         }
 
+        // 5b. a written value feeding a TYPEDEF terminal carries the typedef, or it wears a dot
+        steps.Add(await BindTypedefConstantsStepAsync(testViPath,
+            [.. cases.Select((test, index) => new TypedefCandidate(test.WriteAccessor,
+                ViNameOf(shapes[index].WriteTarget), shapes[index].WriteData,
+                $"written {test.Slot}"))],
+            timeoutSeconds, ct));
+
         // 6. executable now, or the direct route produced something the socket route would not
         var reading = await new ExecStateTools(connection).ReadAsync(
             testViPath, helperAixmlPath: null, helperViPath: null, regenerateHelper: false,
@@ -1208,6 +1215,110 @@ internal sealed class TestTools(LvaiConnection connection)
     /// start. Nothing failed and NO TOOL WARNED; trusting the sequence would have generated four
     /// of five suites under an open project.
     /// </param>
+    /// <summary>
+    /// One constant a generated test wires into a subVI terminal: the callee, the node's VI Name
+    /// as LabVIEW reports it, the terminal, and the constant's block diagram label.
+    /// </summary>
+    internal sealed record TypedefCandidate(string CalleeVi, string SubViName, string Terminal,
+                                            string ConstantLabel);
+
+    /// <summary>An AIXML Call target as the node's `VI Name` reads it: `X.lvclass\3AY.vi` -> `X.lvclass:Y.vi`.</summary>
+    internal static string ViNameOf(string aixmlTarget) =>
+        aixmlTarget.Replace("\\3A", ":", StringComparison.Ordinal);
+
+    /// <summary>
+    /// BINDS EVERY GENERATED CONSTANT THAT FEEDS A TYPEDEF TERMINAL, so the test has no coercion dot.
+    ///
+    /// WHY THE GENERATORS DO THIS THEMSELVES. AIXML has no spelling for a typedef constant -
+    /// measured 2026-09-25, thirteen spellings with the `.ctl` loaded, every one refused - so a
+    /// round trip over a typedef field wrote a bare cluster into `Write Config`, which ran, passed
+    /// and wore a coercion dot that only lvai_coercion_dots saw. The repair
+    /// (lvai_bind_typedef_constants) was in neither test agent's roster, so the agent that built the
+    /// TypedefAfterGDevCon suite could only report the dot. Doing it here means it cannot be missed.
+    ///
+    /// WHICH CONSTANTS: only those whose callee's pane control of that name IS a typedef, read
+    /// through VI Server from the callee (one read per callee). The bind itself derives the `.ctl`
+    /// from the terminal, so no path is passed. Needs an ACTIVE project - the direct routes call
+    /// this while the class's project is still open.
+    ///
+    /// REPORTED, NOT GATED. The value is right either way and the suite runs either way; the same
+    /// move on `wiringLost` was retracted after it suppressed correct steps. `stillCoerced` is
+    /// filtered to the bound terminals, because a Caraya assertion's Variant inputs always wear a
+    /// dot and that is not this step's business.
+    /// </summary>
+    internal async Task<JsonObject> BindTypedefConstantsStepAsync(
+        string testViPath, IReadOnlyList<TypedefCandidate> candidates, int timeoutSeconds,
+        CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "typedefConstants" };
+        var typedefs = new TypedefTools(connection);
+        var panes = new Dictionary<string, IReadOnlyDictionary<string, string>?>(
+            StringComparer.OrdinalIgnoreCase);
+        var toBind = new List<TypedefCandidate>();
+        var unreadable = new List<string>();
+        foreach (var candidate in candidates)
+        {
+            if (!panes.TryGetValue(candidate.CalleeVi, out var pane))
+                panes[candidate.CalleeVi] = pane =
+                    await typedefs.PaneTypedefsAsync(candidate.CalleeVi, timeoutSeconds, ct);
+            if (pane is null) unreadable.Add(Path.GetFileName(candidate.CalleeVi));
+            else if (pane.ContainsKey(candidate.Terminal) && !candidate.Terminal.Contains(',')
+                     && !candidate.ConstantLabel.Contains(','))
+                toBind.Add(candidate);
+        }
+
+        if (unreadable.Count > 0)
+            step["calleesNotReadable"] = new JsonArray([.. unreadable.Distinct().Select(n => (JsonNode)n)]);
+        if (toBind.Count == 0)
+        {
+            step["bound"] = 0;
+            step["note"] = unreadable.Count > 0
+                ? "Whether a callee's terminal is a typedef could not be read for the callees " +
+                  "listed, so nothing was bound. Run lvai_coercion_dots on the test."
+                : "No generated constant feeds a typedef terminal - nothing to bind.";
+            return step;
+        }
+
+        var replaced = 0;
+        var still = new JsonArray();
+        var calls = new JsonArray();
+        foreach (var group in toBind.GroupBy(c => c.SubViName, StringComparer.Ordinal))
+        {
+            var answer = await typedefs.BindTypedefConstantsAsync(
+                testViPath, group.Key,
+                string.Join(",", group.Select(c => c.Terminal)),
+                string.Join(",", group.Select(c => c.ConstantLabel)),
+                helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                timeoutSeconds, ct);
+            var parsed = Read(answer) as JsonObject;
+            replaced += parsed?["replaced"]?.GetValue<int>() ?? 0;
+            foreach (var entry in (parsed?["stillCoerced"] as JsonArray ?? []).Select(e => e?.ToString() ?? ""))
+                if (entry.StartsWith(group.Key, StringComparison.Ordinal) &&
+                    group.Any(c => entry.EndsWith("/ " + c.Terminal, StringComparison.Ordinal)))
+                    still.Add(entry);
+            calls.Add(new JsonObject
+            {
+                ["subVi"] = group.Key,
+                ["constants"] = new JsonArray([.. group.Select(c => (JsonNode)c.ConstantLabel)]),
+                ["replaced"] = parsed?["replaced"]?.DeepClone(),
+                ["failed"] = parsed?["failed"]?.DeepClone(),
+                ["hint"] = parsed?["hint"]?.DeepClone(),
+            });
+        }
+
+        step["ok"] = replaced == toBind.Count && still.Count == 0;
+        step["bound"] = replaced;
+        step["asked"] = toBind.Count;
+        step["stillCoerced"] = still;
+        step["calls"] = calls;
+        step["note"] = still.Count == 0 && replaced == toBind.Count
+            ? $"{replaced} constant(s) now carry the typedef their terminal expects - no coercion dot " +
+              "on them. The dots on Caraya's Variant inputs are the ordinary conversion into a Variant."
+            : "Not every typedef constant was bound - read calls. The test still runs and asserts the " +
+              "right value; only the dot remains. lvai_bind_typedef_constants repairs it by hand.";
+        return step;
+    }
+
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
@@ -1955,6 +2066,24 @@ internal sealed class TestTools(LvaiConnection connection)
         // strings rather than types and whose base is numeric. TIMESTAMP IS NOT HERE any more: it
         // is handled with the empty literals above, counted off LabVIEW's own exports.
         return "0";
+    }
+
+    /// <summary>
+    /// A cluster type literal's top-level members, in cluster order, as (type, name) - or null when
+    /// the literal is not a cluster. The order is the one {LV.Cluster} Controls[] indexes by,
+    /// which is what lvai_create_typedef binds elements with.
+    /// </summary>
+    internal static IReadOnlyList<(string Type, string Name)>? ClusterMembers(string type)
+    {
+        var t = type.Trim();
+        if (!t.StartsWith("cluster{", StringComparison.Ordinal) || Braced(t) is not { } inner)
+            return null;
+        return [.. SplitTopLevel(inner).Select(member =>
+        {
+            var memberType = FieldType(member);
+            var name = member.Length > memberType.Length ? member[(memberType.Length + 1)..] : "";
+            return (memberType, name);
+        })];
     }
 
     /// <summary>The text inside the type's outermost braces, or null when they are unbalanced.</summary>

@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates every accessor on dynamic dispatch, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_example_index, mcp__labview__lvai_palette_index, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, mcp__labview__pylv_rebuild, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_resave_ctl, mcp__labview__lvai_bind_class_fields, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_pane_typedef, mcp__labview__lvai_add_class_method, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, Agent, SendMessage
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_create_class, mcp__labview__lvai_create_interface, mcp__labview__lvai_create_accessors, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_example_index, mcp__labview__lvai_palette_index, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__pylv_extract, mcp__labview__pylv_rebuild, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_create_typedef, mcp__labview__lvai_resave_ctl, mcp__labview__lvai_bind_class_fields, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_bind_pane_typedef, mcp__labview__lvai_add_class_method, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_class_test, mcp__labview__lvai_generate_method_test, mcp__labview__lvai_generate_caraya_test_runner, Agent, SendMessage
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -400,6 +400,24 @@ whose type is a **`.ctl` typedef** is therefore a two-step job, and the order ma
 because an accessor generated afterwards carries the typedef, while one generated first keeps the bare
 type and is not refreshed by anything later.
 
+**When the `.ctl` does not exist yet, CREATE IT with `lvai_create_typedef`** — one call per typedef,
+inner ones first, then the cluster that contains them with `elementTypedefsJson` naming which
+elements are instances of which file:
+
+```
+lvai_create_typedef(ctlPath: "...\Typedefs\Range.ctl", type: "cluster{double.Min,double.Max}")
+lvai_create_typedef(ctlPath: "...\Typedefs\Channel Config.ctl",
+    type: "cluster{string.Name,uint16{Off,Voltage,Current}.Channel Mode,cluster{double.Min,double.Max}.Range,int32.Samples}",
+    elementTypedefsJson: {"Channel Mode":"...\Channel Mode.ctl","Range":"...\Range.ctl"},
+    projectPath: "...\X.lvproj")
+```
+
+It works through VI Server alone — **no pylabview, no flag patch, no `lvai_resave_ctl`** — and reads
+its verdict from the saved file. Do NOT reach for the fixture route below or hand-build a VI Server
+helper: measured 2026-09-25, an agent found this route by hand and needed two failed attempts and six
+minutes, the first because VI Server's `Control VI Type` is one higher than the file flag (writing 1
+saves a PLAIN control, and every call answers `error 0`).
+
 Add the field first — it lands with the typedef's own control label as its name and the wrapped type
 as its type, but **de-linked**: NI's provider copies the type and drops the binding, measured on an
 enum, a `double` and a boolean alike.
@@ -429,7 +447,7 @@ If the source is genuinely not a typedef, **say so and use the wrapped type** �
 failure, it is NI shipping an ordinary control, and the field still carries the real type.
 
 **AND READ `needsLabviewSave` IN THE SAME ANSWER — IT IS A HARD STOP LATER, NOT A FIDELITY NOTE.**
-A `.ctl` built the fixture way (generate a VI to a `.ctl` path, then patch `<Instrument Type>` and
+It never fires on a `.ctl` from `lvai_create_typedef`. A `.ctl` built the fixture way (generate a VI to a `.ctl` path, then patch `<Instrument Type>` and
 `TypeDefVI` in the pylabview bundle) has never been written by LabVIEW and still carries that VI's
 CONNECTOR PANE. `lvai_describe_ctl` shows it as `wrappedType: "Function"` with 16 fields where a
 finished control reads `"TypeDef"` with one. Everything that only needs the TYPE reads straight

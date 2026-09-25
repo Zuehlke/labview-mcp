@@ -1,0 +1,28 @@
+<VI _name="lvtd_make_typedef.vi" description="Saves the ONLY front panel control of a carrier VI as a typedef .ctl\2C through VI Server alone - no pylabview. New VI of type Control VI\2C Move (duplicate) the carrier's control onto its panel\2C write Control VI Type\2C Save.Instrument to the target path. THE ENUM IS VI SERVER'S AND IT IS ONE HIGHER than the file flag lvai_describe_ctl reports\3A writing 1 saves a PLAIN control\2C 2 a typedef\2C 3 a strict typedef - measured 2026-09-25 from the saved files. Runs in the addon's own application instance and needs no project. Driven by lvai_create_typedef.">
+  <FreeLabel comment="Carrier control saved as a typedef" uid="4200" uid_parent="root"/>
+  <Control _name="carrier path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="ctl path" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Control _name="kind" type="uint16" uid="4203" uid_parent="root" value="2" outputs="value:4203.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4202.value" outputs="path:4211.path" uid="4211" uid_parent="root"/>
+  <Constant _name="position" outputs="value:4212.value" type="cluster{int32.Left,int32.Top}" uid="4212" uid_parent="root" value="[0,0]"/>
+  <Constant _name="vi type" outputs="value:4213.value" type="uint32{invalid VI type,Standard VI,Control VI,Global VI,Polymorphic VI,Configuration VI,SubSystem,Facade VI,Method VI,Statechart Diagram VI}" uid="4213" uid_parent="root" value="2"/>
+  <Constant _name="duplicate" outputs="value:4214.value" type="bool" uid="4214" uid_parent="root" value="TRUE"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.path" outputs="vi reference:4220.vi,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:4220.vi,error in (no error):4220.err" outputs="Front Panel:4221.panel,reference out:,error out:4221.err" type="{LV.VI}" uid="4221" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4221.panel,error in (no error):4221.err" outputs="Controls[]:4222.ctrls,reference out:,error out:4222.err" type="{LV.Panel}" uid="4222" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4222.ctrls,index:" outputs="element:4223.el" uid="4223" uid_parent="root"/>
+  <Node _name="New VI" inputs="application refnum:,template:,vi type (standard vi):4213.value,error in (no error):4222.err,not connected:,type specifier VI Refnum (for type only):,password:" outputs="vi refnum:4230.nvi,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:4230.nvi,error in (no error):4230.err" outputs="Front Panel:4231.npanel,reference out:,error out:4231.err" type="{LV.VI}" uid="4231" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:4223.el,error in (no error):4231.err,position:4212.value,owner:4231.npanel,duplicate:4214.value" outputs="reference out:,error out:4232.err" target="Move" type="{LV.Control}" uid="4232" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Control VI Type" inputs="reference:4230.nvi,error in (no error):4232.err,Control VI Type:4203.value" outputs="reference out:,error out:4233.err" type="{LV.VI}" uid="4233" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:4230.nvi,error in (no error):4233.err,Path to saved file:4211.path,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4234.err" target="Save.Instrument" type="{LV.VI}" uid="4234" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Control VI Type" inputs="reference:4230.nvi,error in (no error):4234.err" outputs="Control VI Type:4235.kind,reference out:,error out:4235.err" type="{LV.VI}" uid="4235" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4230.nvi,error in (no error):4235.err" outputs="error out:4236.err" uid="4236" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4220.vi,error in (no error):4236.err" outputs="error out:4237.err" uid="4237" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4237.err" outputs="status:4238.status,code:4238.code,source:4238.source" uid="4238" uid_parent="root"/>
+  <Indicator _name="kind after save" type="int32" uid="4240" uid_parent="root" value="0" inputs="value:4235.kind"/>
+  <Indicator _name="status" type="bool" uid="4241" uid_parent="root" value="false" inputs="value:4238.status"/>
+  <Indicator _name="code" type="int32" uid="4242" uid_parent="root" value="0" inputs="value:4238.code"/>
+  <Indicator _name="source" type="string" uid="4243" uid_parent="root" value="" inputs="value:4238.source"/>
+</VI>

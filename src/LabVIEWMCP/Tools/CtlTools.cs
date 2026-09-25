@@ -51,8 +51,10 @@ internal sealed class CtlTools
         `errclust.llb\Error Cluster.ctl` are ordinary controls (`TypeDefVI="0"`). The success and
         the failure look identical from the calling side; only the source tells them apart.
         `controlVIType` is LabVIEW's own enum, reconstructed from the saved file rather than from a
-        running IDE: 0 not a typedef, 1 typedef, 2 strict typedef, 3 class private data. It agrees
-        with `{LV.VI} Control VI Type`, which `scripts/lvctl_kind.xml` reads the slow way.
+        running IDE: 0 not a typedef, 1 typedef, 2 strict typedef, 3 class private data.
+        `{LV.VI} Control VI Type` in VI Server is ONE HIGHER - 1 plain control, 2 typedef, 3 strict -
+        measured 2026-09-25: `scripts/lvctl_kind.xml` read 1 for a file this tool reads 0, and a
+        control saved with 1 written was not a typedef. This text claimed the two agreed until then.
         `bindable` is the verdict to act on, and `whyNotBindable` names the reason in one sentence.
         `wrappedType` is what the control actually carries - the type a binding would install, and
         the type a generated constant must be authored as.

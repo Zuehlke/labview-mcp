@@ -153,6 +153,11 @@ So `type=` has no `.ctl` spelling - the grammar refuses it before anything is lo
 loaded `.ctl` is not a `Call` target either, although a loaded VI is. What NI meant by a control
 being accepted is not established by this; it may be a route this client does not have.
 
+**Re-measured with ten more spellings the same day** (`typedef{...}`, `ctl{...}`, the escaped absolute
+path, an undeclared `typedef=` attribute, a `Node` named after the `.ctl`), all refused, with a
+different `.ctl` loaded through its project - the table is in `docs/cold-build-typedef-gdevcon.md`
+§4. The test generators now bind their constants themselves instead.
+
 **What the direct call DOES change for typedefs.** A fourth fixture, `IMC Oven.lvclass`, has one
 field bound to `IMC Setpoint.ctl` with `lvai_bind_class_fields` before its accessors existed, so
 `Write Profile.vi` takes a real typedef. Called directly from `IMC Oven Chain.vi` with a constant

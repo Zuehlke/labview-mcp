@@ -177,7 +177,9 @@ nothing — no `path` stand-in, no swap. A `.ctl` open through its project is re
 target and has no `type=` spelling at all (`Unrecognized or unsupported attribute set`), and a
 control merely labelled like it is not bound to it. So a constant feeding a typedef input still
 arrives bare with a coercion dot, and `lvai_bind_typedef_constants` still repairs it — measured on
-this route with the value kept. Project-library members are the one target kind not measured yet.
+this route with the value kept. **The test generators run that repair themselves since 2026-09-25**
+(a `typedefConstants` step), and thirteen AIXML spellings for a typedef constant were refused with the
+`.ctl` loaded - `docs/cold-build-typedef-gdevcon.md` §4. Project-library members are the one target kind not measured yet.
 `docs/aixml-call-loaded-vi.md`.
 
 **The index used to compound this by being incomplete, and that is FIXED as of 2026-09-07.** It
@@ -1348,6 +1350,17 @@ and a `String To Path` in every method. A path's literal is the empty one, like 
 tool refuses a field type, probe whether AIXML refuses it too before designing around it** — a
 three-line carrier VI answers it in 165 ms. `docs/lvclass-creation.md` §0.
 
+**A TYPEDEF `.ctl` IS CREATED WITH `lvai_create_typedef` - THROUGH VI SERVER, NO pylabview, NO
+FLAG PATCH.** Measured 2026-09-25: `New VI` (Control VI), `Move` a carrier's control onto it, write
+`{LV.VI}` `Control VI Type`, `Save.Instrument`. It retires the fixture route described in the next
+two paragraphs, and with it `lvai_resave_ctl` and the project-closed ordering. **VI Server's enum is
+ONE HIGHER than the file flag** - writing 1 saves a PLAIN control, 2 a typedef, 3 a strict one - and
+every call answers `error 0` whichever you write, so the tool verifies from the saved file. **Nested
+typedefs** are one `{LV.Control}` `Replace` per cluster element, in the IDE's application instance -
+and **all of them in ONE open and ONE save**: two separate runs left a stray copy of the inner
+typedef at the head of the `.ctl`'s type list, which only a check on `VCTP/TopLevel` saw.
+`docs/cold-build-typedef-gdevcon.md`.
+
 **AND A FLAG-PATCHED `.ctl` IS NOT FINISHED UNTIL LabVIEW HAS SAVED IT — measured 2026-09-18, and
 it is a HARD STOP, not a fidelity loss.** The fixture route this repository uses for every typedef
 (`lvai_generate_vi` to a `.ctl` path, then patch `<Instrument Type>` and `TypeDefVI` in the
@@ -2415,6 +2428,7 @@ literally it argued away 600 usable palette VIs.
 | Can a whole application be built with NO stub files and NO pyLabVIEW, and how are the agents split? | `docs/cold-build-atm-no-stubs.md` | — |
 | How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
 | What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
+| Can a NESTED typedef cluster in a class be built with no pyLabVIEW, and does AIXML have a typedef constant? | `docs/cold-build-typedef-gdevcon.md` | — |
 | How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
@@ -2446,6 +2460,7 @@ literally it argued away 600 usable palette VIs.
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
 | Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
 | A coercion dot whose source is a CONTROL, not a constant | `docs/typedef-disconnect.md` §13a | `lvai_bind_pane_typedef` — `lvai_bind_typedef_constants` finds its target by CONSTANT label and cannot reach a pane control. Needs the owning `.lvclass`, and gates `ok` on the SAVED FILE |
+| How do I CREATE a typedef `.ctl`, with typedefs inside a cluster? | `docs/cold-build-typedef-gdevcon.md` | `lvai_create_typedef` — VI Server alone, verified from the saved file. Create inner typedefs first; `elementTypedefsJson` binds the cluster's elements in one run |
 | NI's accessor wizard answers `Error 1061` on a typedef field | `docs/typedef-disconnect.md` §13 | `lvai_resave_ctl` — a flag-patched `.ctl` still carries the generator's connector pane; `lvai_describe_ctl` flags it as `needsLabviewSave` with `wrappedType: Function` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
