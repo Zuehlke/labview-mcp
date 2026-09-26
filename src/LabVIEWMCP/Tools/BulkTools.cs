@@ -199,7 +199,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             using var throwaway = unresolved is null
                 ? null
                 : ValidationScratch.Create(aiXmlFilePath, preserveName: false,
-                                           prefix: "LVMCP Convert");
+                                           prefix: "LVMCP Convert", unique: true);
 
             // THE TARGET FOLDER IS CREATED ON EVERY ROUTE. ConvertAIXMLToVI does not create it and
             // answers Error 7 at Save:Instrument - and this was done only on the loaded-subVI route

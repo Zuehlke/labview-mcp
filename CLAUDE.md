@@ -124,6 +124,16 @@ PREVIOUS build's file; the tell was `Error 1051` at `Save:Instrument` on a path 
 existed. A LabVIEW restart released it. So restart LabVIEW between two builds of the same
 application, and `grep -a` a generated caller's link paths. `docs/aixml-call-loaded-vi.md` §3.
 
+**AND EVERY VALIDATION LEAVES A SCRATCH VI IN MEMORY THAT NOTHING CAN CLOSE - so there is ONE
+validation name now, not one per call.** The user's exit dialog of 2026-09-26 listed 54 unsaved
+`LVMCP Validate <hash>.vi`. By name they are in NONE of the instances VI Server reaches (helpers',
+IDE main over TCP, active project), with positive controls, and the converter's `1051` does not see
+them either - so they cannot be closed afterwards. `ValidationScratch` hands every validation
+`LVMCP Validate.vi`; a validation under a reused name answers exactly as a fresh one, measured, and
+conversion keeps a unique name because a failed convert burns its own. Whether the exit dialog
+shrinks to one entry needs one LabVIEW exit to confirm; "Don't Save - All" there is always safe.
+`docs/scratch-vis-in-memory.md`.
+
 **`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
 it (`lvai_generate_vis`, the test generators, the class tools). A validate refusal naming ONLY
 `Unsupported SubVI` lines is converted anyway — under a throwaway `_name`, so a refusal burns
@@ -2523,6 +2533,7 @@ literally it argued away 600 usable palette VIs.
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
+| Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, and can they be closed? | `docs/scratch-vis-in-memory.md` | — safe to discard; one fixed validation name since 2026-09-26 |
 | Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |

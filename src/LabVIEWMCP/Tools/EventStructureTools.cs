@@ -185,7 +185,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             //    exactly that: Error 53 (a callee not loaded), then Error 1051 on the retry. The
             //    saved VI is named after its FILE either way.
             using var throwaway = ValidationScratch.Create(aiXmlFilePath, preserveName: false,
-                                                           prefix: "LVMCP Convert");
+                                                           prefix: "LVMCP Convert", unique: true);
             if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
                 Directory.CreateDirectory(folder);
             var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(

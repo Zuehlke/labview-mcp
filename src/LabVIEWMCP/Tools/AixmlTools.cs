@@ -607,11 +607,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ("validatedAs", scratch.Substituted ? JsonValue.Create(scratch.ValidatedAs) : null),
                  ("nameNote", scratch.Substituted
                      ? JsonValue.Create(
-                         "Validated under a throwaway _name, so a refusal here cannot burn the "
-                         + "document's real name. A failed validate registers that name in "
-                         + "LabVIEW's memory and every later ConvertAIXMLToVI for it answers "
-                         + "Error 1051 until a restart - measured on a file that had never "
-                         + "existed on disk.")
+                         "Validated under the scratch _name '" + scratch.ValidatedAs + "', so a "
+                         + "refusal here cannot burn the document's real name - a failed "
+                         + "validate has been measured registering a name so that a later "
+                         + "ConvertAIXMLToVI for it answered Error 1051 until a restart. It is "
+                         + "ONE fixed name for every validation since 2026-09-26: each call used "
+                         + "to mint its own, and NI's validator leaves a VI of that name in "
+                         + "memory, which piled up as dozens of unsaved 'LVMCP Validate' VIs in "
+                         + "LabVIEW's exit dialog. They are safe to discard there.")
                      : null),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });
