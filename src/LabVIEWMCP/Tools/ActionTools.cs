@@ -262,6 +262,24 @@ internal sealed class ActionTools(LvaiConnection connection)
                            + "itself. The project is not open, so editing the file now is safe.",
                 });
 
+        // TWO SAME-NAMED SIBLING FOLDERS ARE THE SAME Error 74, and no file is listed twice. Measured
+        // 2026-09-26 on the eighth ATM build as an A/B on two throwaway projects: two empty `SubVIs`
+        // folders gave 74, one opened with errorCode 0. It happened twice in that build, both times
+        // an empty `<Item … Type="Folder"/>` beside the populated folder a listing step had added.
+        if (projectPath is { Length: > 0 }
+            && LvClass.DuplicateSiblingFolders(projectPath) is { Count: > 0 } folders)
+            return Json.Error("duplicateProjectFolders",
+                $"'{Path.GetFileName(projectPath)}' has two sibling folders of one name: " +
+                string.Join(", ", folders.Select(d => $"'{d.Name}' (line {d.Line})")) +
+                ". LabVIEW answers Error 74 for such a project and opens nothing.",
+                new
+                {
+                    duplicates = folders.Select(d => new { name = d.Name, line = d.Line }),
+                    hint = "Remove the EMPTY one of each pair - the listed line is the second "
+                           + "occurrence; keep whichever holds items. The project is not open, so "
+                           + "editing the file now is safe.",
+                });
+
         return null;
     }
 

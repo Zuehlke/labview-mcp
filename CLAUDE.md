@@ -1641,6 +1641,13 @@ produced ten subVIs in about **11 minutes of wall clock against about 32 minutes
 time**, with no project contention at all — and the swaps then cost two calls, because a socket
 that appears on N nodes needs N calls whatever N is.
 
+**AND AN EMPTY FOLDER IN A `.lvproj` IS WRITTEN SELF-CLOSING - the listing step missed that form
+until 2026-09-26 and added a SECOND same-named folder, and two same-named sibling folders are
+`Error 74` on open, measured as an A/B.** Twice in the eighth ATM build (`SubVIs`, then `Tests`
+through a test generator). Fixed: the empty form is reused, and `lvai_open_file` refuses duplicate
+sibling folders by name (`duplicateProjectFolders`). Write a minimal project with no empty folders;
+the tools create one when they need it. `docs/cold-build-atm-agents-8.md`.
+
 **AND THE ORCHESTRATOR LISTS VIs WITH `lvai_add_vis_to_project`, NEVER BY HAND.** Measured
 2026-09-25 on the agent-driven ATM build: an agent's close saved the project while three helper VIs
 were loaded, LabVIEW listed them at target level, and a hand-written edit then listed the same three
