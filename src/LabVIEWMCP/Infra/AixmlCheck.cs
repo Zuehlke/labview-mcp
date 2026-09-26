@@ -110,6 +110,7 @@ internal static class AixmlCheck
         CheckIndicatorValues(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
+        CheckControlReadBeforeWait(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
 
@@ -591,6 +592,69 @@ internal static class AixmlCheck
                 + "value in the same document: both vanish, the assertion compares empty with empty "
                 + "and PASSES while pinning nothing.",
                 (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// The nodes an iteration BLOCKS on until something arrives - a queue element, a notifier, an
+    /// occurrence. An Event Structure is the same case and is matched as a structure.
+    /// </summary>
+    internal static readonly string[] BlockingNodes =
+    [
+        "Dequeue Element", "Preview Queue Element", "Wait on Notification",
+        "Wait on Notification from Multiple", "Wait for Occurrence",
+    ];
+
+    /// <summary>
+    /// A front-panel <c>&lt;Control&gt;</c> placed directly in a loop whose iteration WAITS -
+    /// on <c>Dequeue Element</c>, a notifier, an occurrence or an Event Structure. WARNING.
+    ///
+    /// A control terminal has no inputs, so LabVIEW reads it the moment the iteration STARTS, in
+    /// parallel with the node that then blocks. The value that reaches the command handler is the
+    /// one the panel held BEFORE the command arrived, not the one the user typed while the loop
+    /// waited. Found 2026-09-26 by the user in the seventh ATM build: the consumer read
+    /// `User Input` beside its `Dequeue Element`, so `Enter` verified the PREVIOUS contents - the
+    /// empty string on a first try - and the menus never filled. Every unit test was green,
+    /// because a unit test hands `Handle ATM Action.vi` the input directly; validation, conversion,
+    /// execState and a runForMs start-up snapshot were green too. Nothing but a person pressing
+    /// the buttons saw it.
+    ///
+    /// THE FIX is to read the control where the event is: in the producer's event frame, sent
+    /// along with the command (`Enter=12345`), or a property node chained after the wait by its
+    /// error wire. A control inside a Case frame is not flagged - its read waits for the selector,
+    /// which normally comes from the wait. Not repaired: moving a terminal changes the design.
+    ///
+    /// A WARNING and not an error because the pattern is sometimes right: over the 739 cached NI
+    /// exports it fires on 5, all of them a POLLED setting - `Stop`, `Dequeue Speed`,
+    /// `Notification Loop Delay (ms)`, plot options beside an Event Structure - where a value one
+    /// iteration old is the intent.
+    /// </summary>
+    private static void CheckControlReadBeforeWait(XElement root, List<Finding> findings)
+    {
+        foreach (var control in root.Descendants().Where(e => e.Name.LocalName == "Control"))
+        {
+            var loop = control.Ancestors().FirstOrDefault(a => a.Name.LocalName == "Structure");
+            if (loop is null) continue;
+            var kind = (string?)loop.Attribute("_name");
+            if (kind is not ("While Loop" or "For Loop")) continue;
+
+            var blocker = loop.Descendants().FirstOrDefault(d =>
+                (d.Name.LocalName == "Node" && BlockingNodes.Contains((string?)d.Attribute("_name")))
+                || (d.Name.LocalName == "Structure" && (string?)d.Attribute("_name") == "Event Structure"));
+            if (blocker is null) continue;
+
+            var name = control.Attribute("_name")?.Value ?? "Control";
+            findings.Add(new Finding(Severity.Warning, "controlReadBeforeWait",
+                $"Control \"{name}\" sits directly in a {kind} that waits on "
+                + $"{(string?)blocker.Attribute("_name")}. A control terminal is read when the "
+                + "iteration STARTS, before the wait returns - so the handler gets the value the "
+                + "panel held before the event, not what the user entered meanwhile. Measured in the "
+                + "seventh ATM build: Enter verified the previous User Input, with every unit test "
+                + "green. Read it where the event is (in the producer's event frame, sent with the "
+                + "command), or through a property node chained after the wait by its error wire. "
+                + "Harmless for a setting POLLED once per iteration, such as a stop button or a "
+                + "delay - 5 of 739 NI examples do that on purpose; wrong for data a command acts on.",
+                (string?)control.Attribute("uid")));
         }
     }
 

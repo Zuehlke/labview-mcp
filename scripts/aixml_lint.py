@@ -1385,6 +1385,61 @@ def check_timestamp_values(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+BLOCKING_NODES = {
+    "Dequeue Element", "Preview Queue Element", "Wait on Notification",
+    "Wait on Notification from Multiple", "Wait for Occurrence",
+}
+
+
+def check_control_read_before_wait(elements: list[_El]) -> list[Finding]:
+    """A front-panel Control placed directly in a loop whose iteration WAITS.
+
+    A control terminal has no inputs, so it is read when the iteration STARTS, in parallel
+    with the Dequeue Element / notifier / occurrence / Event Structure that then blocks - the
+    handler gets the value from BEFORE the event. Found 2026-09-26 in the seventh ATM build:
+    the consumer read `User Input` beside its dequeue, so Enter verified the previous input,
+    with every unit test, validation, execState and a runForMs snapshot green.
+
+    Kept equal to AixmlCheck.CheckControlReadBeforeWait on the C# side. A control inside a
+    Case frame is not flagged: its read waits for the selector.
+    """
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "Control":
+            continue
+        loop = e.lexical_parent
+        while loop is not None and loop.tag != "Structure":
+            loop = loop.lexical_parent
+        if loop is None or loop.el.get("_name") not in ("While Loop", "For Loop"):
+            continue
+        blocker = None
+        for d in loop.el.iter():
+            if (d.tag == "Node" and d.get("_name") in BLOCKING_NODES) or (
+                d.tag == "Structure" and d.get("_name") == "Event Structure"
+            ):
+                blocker = d.get("_name")
+                break
+        if blocker is None:
+            continue
+        findings.append(
+            Finding(
+                "warning",
+                "control-read-before-wait",
+                e.uid,
+                e.label(),
+                e.path,
+                f"this control sits directly in a {loop.el.get('_name')} that waits on {blocker}. "
+                "A control terminal is read when the iteration STARTS, before the wait returns, "
+                "so the handler gets the value from before the event. Read it where the event is "
+                "(in the producer's event frame, sent with the command), or through a property "
+                "node chained after the wait by its error wire. Harmless for a setting POLLED once "
+                "per iteration, such as a stop button or a delay - 5 of 739 NI examples do that "
+                "on purpose; wrong for data a command acts on.",
+            )
+        )
+    return findings
+
+
 def lint_file(path: str) -> list[Finding]:
     try:
         root = ET.parse(path).getroot()
@@ -1424,6 +1479,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_terminal_flags(elements)
     findings += check_indicator_values(elements)
     findings += check_timestamp_values(elements)
+    findings += check_control_read_before_wait(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)
     findings += check_type_grammar(elements)

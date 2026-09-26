@@ -157,6 +157,71 @@ public sealed class AixmlCheckTests
             f => f.Message.Contains("NOT repaired automatically"));
 
     // ----------------------------------------------------------------------------------------
+    // A CONTROL READ IN A LOOP THAT WAITS IS READ BEFORE THE WAIT RETURNS
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The seventh ATM build, reduced: `User Input` read in the consumer loop beside its
+    /// `Dequeue Element`, so `Enter` verified the input from BEFORE the user typed. Found by the
+    /// user pressing the buttons, with every unit test and every cheap check green.
+    /// </summary>
+    private const string ConsumerReadsAControl = """
+        <VI _name="Probe.vi">
+          <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+            <Control _name="User Input" type="string" value="" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+            <Node _name="Dequeue Element" inputs="queue:,timeout in ms (-1):,error in (no error):" outputs="queue out:,element:,timed out?:,error out:" uid="4302" uid_parent="4300"/>
+          </Structure>
+        </VI>
+        """;
+
+    [Fact]
+    public void AControlBesideADequeueIsAWarning() =>
+        Assert.Contains(AixmlCheck.Check(ConsumerReadsAControl),
+            f => f.Code == "controlReadBeforeWait" && f.Uid == "4301"
+                 && f.Severity == AixmlCheck.Severity.Warning);
+
+    /// <summary>The control arm: the same loop with nothing to wait on reads it when it should.</summary>
+    [Fact]
+    public void AControlInALoopThatDoesNotWaitIsClean() =>
+        Assert.DoesNotContain(
+            AixmlCheck.Check(ConsumerReadsAControl.Replace("Dequeue Element", "Increment")),
+            f => f.Code == "controlReadBeforeWait");
+
+    /// <summary>
+    /// The FIX is the shape to leave alone: a control inside its own event frame is read when the
+    /// event fires, which is where the seventh build's `User Input` went.
+    /// </summary>
+    [Fact]
+    public void AControlInsideAnEventFrameIsClean() =>
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="Probe.vi">
+              <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+                <Structure _name="Event Structure" uid="4310" uid_parent="4300">
+                  <CaseFrame selector=" &quot;Enter&quot;\3A Value Change " uid="4320" uid_parent="4310">
+                    <Control _name="User Input" type="string" value="" outputs="value:4321.value" uid="4321" uid_parent="4320"/>
+                  </CaseFrame>
+                </Structure>
+              </Structure>
+            </VI>
+            """), f => f.Code == "controlReadBeforeWait");
+
+    /// <summary>And a control in a Case frame waits for its selector, which comes from the wait.</summary>
+    [Fact]
+    public void AControlInsideACaseFrameIsClean() =>
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="Probe.vi">
+              <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+                <Node _name="Dequeue Element" inputs="queue:,timeout in ms (-1):,error in (no error):" outputs="queue out:,element:4302.element,timed out?:,error out:" uid="4302" uid_parent="4300"/>
+                <Structure _name="Case Structure" selectin="4302.element" uid="4310" uid_parent="4300">
+                  <CaseFrame selector="&quot;Enter&quot;" selectout="" uid="4320" uid_parent="4310">
+                    <Control _name="User Input" type="string" value="" outputs="value:4321.value" uid="4321" uid_parent="4320"/>
+                  </CaseFrame>
+                </Structure>
+              </Structure>
+            </VI>
+            """), f => f.Code == "controlReadBeforeWait");
+
+    // ----------------------------------------------------------------------------------------
     // A NON-EMPTY `timestamp` VALUE IS DISCARDED
     // ----------------------------------------------------------------------------------------
 

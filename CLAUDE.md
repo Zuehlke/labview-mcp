@@ -789,6 +789,32 @@ with the elements along it. **An over-budget VI is not done**: the call still an
 the VI is written and valid, and the agent definitions treat `withinBudget: false` as a reason to
 fold and regenerate. Calibration and procedure in `docs/diagram-size.md`.
 
+**A PRODUCER/CONSUMER THAT PASSES EVERY CHECK CAN STILL NOT WORK - found by the user 2026-09-26
+on the seventh ATM build, and nothing in the toolchain saw it.** The consumer read `User Input`
+as a control terminal beside its `Dequeue Element`. A terminal has no inputs, so LabVIEW reads it
+when the iteration STARTS, before the dequeue returns: `Enter` verified the text from BEFORE the
+user typed, and the menus never filled. Validation, `execState 1`, 58 Caraya tests - which hand
+the handler its input directly - and a `runForMs` start-up snapshot were all green. Three rules
+came out of it:
+
+- **A value the consumer needs travels WITH the command**, read in the producer's event frame
+  (`Enter=23456`, or a cluster element). `lvai_check_aixml` answers `controlReadBeforeWait` and
+  `scripts/aixml_lint.py` `control-read-before-wait` for the shape - a WARNING, because over 739 NI
+  exports it fires on 5, all a setting polled once per iteration on purpose (`Stop`, a delay).
+- **An event-driven VI is verified by DRIVING an event**: `lvai_run_vi_and_read_values` with
+  `runForMs` and `signalsJson`, which fires each control's Value Change through
+  `Value (Signaling)` before the snapshot. A start-up snapshot proves start-up. A LATCHED boolean
+  cannot be signalled (`Error 1193`), so what it triggers stays with the handler's unit test.
+- **Typing counts as activity** where a spec has an inactivity timeout: register the string
+  control's own `Value Change` and write `Update While Typing?` = TRUE at start-up - the catalogue
+  lists it as read-only and it is writable at run time, measured through an implicit property node.
+
+**Drive a UI VI through `signalsJson`, not through a probe of your own.** Four hand-built probes
+lost their reference to the running target within 300 ms (`Error 1026`, then `1055` on its control
+references), the target reading `Execution:State` 2 just before - run through the default helper and through
+`lvai_run_vi_as_top_level` alike - and a copy of `lvai_run_for_ms.xml` with the signal step added
+did not. The discriminator is not established. `docs/cold-build-atm-agents-7.md`.
+
 **A GENERATED TEST VI HAS THE SAME BUDGET - measured 2026-09-26, when the sixth ATM build's
 thirteen-case method test came out 4345 x 4084 px with every answer green.** The test generators had
 been exempted as "internal"; they measure their test VI now and answer `diagramSize`. About 310 px
@@ -2533,6 +2559,8 @@ literally it argued away 600 usable palette VIs.
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
+| How do I check that an event-driven VI REACTS, not just that it starts? | `docs/cold-build-atm-agents-7.md` | `lvai_run_vi_and_read_values` `runForMs` + `signalsJson` |
+| Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
 | Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, and can they be closed? | `docs/scratch-vis-in-memory.md` | — safe to discard; one fixed validation name since 2026-09-26 |
 | Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |

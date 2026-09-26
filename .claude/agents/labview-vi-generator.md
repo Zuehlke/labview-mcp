@@ -476,6 +476,27 @@ impossible.
    reports the *helper's* error code: a target VI that itself failed shows that in its own
    `error out` under `values`, not in `errorCode`.
 
+5. **AN EVENT-DRIVEN VI IS VERIFIED BY DRIVING AN EVENT, NOT BY ITS START-UP SNAPSHOT.** Call
+   `lvai_run_vi_and_read_values` with `runForMs` AND `signalsJson` - the events a user would cause,
+   in order, e.g. `[{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}]`
+   - and check that the panel CHANGED the way the contract says: a message, a menu, a `disabled`
+   state. A snapshot with no signals proves only that start-up ran. Measured 2026-09-26 on the
+   seventh ATM build: validation, `execState 1`, 58 unit tests and a start-up snapshot were all
+   green while the consumer read `User Input` before the user had typed, and the user found it by
+   pressing the buttons. A LATCHED boolean (an `Enter` button) cannot be signalled - Error 1193,
+   reported under `signals` - so what it triggers is covered by the handler's unit test, and the
+   report says that this one step was not driven.
+
+**AND A VALUE THE CONSUMER NEEDS TRAVELS WITH THE COMMAND.** In a producer/consumer, read a
+control in the PRODUCER's event frame and put its value into the queue element (`Enter=23456`, or a
+cluster). A control terminal placed in the consumer loop beside `Dequeue Element` is read when the
+iteration STARTS - before the dequeue returns - so the handler sees the panel as it was before the
+event. `lvai_check_aixml` answers `controlReadBeforeWait` for exactly that shape; treat it as a
+defect unless the control is a setting deliberately polled once per iteration (a stop button, a
+delay). And if the specification counts typing as activity (an inactivity timeout), register the
+string control's own `Value Change` and write `Update While Typing?` = TRUE on it at start-up -
+measured writable at run time through an implicit property node.
+
 ### Phase 6b — One comment always; PLACING them is optional
 
 Two different things, with two different price tags, and the rule of this repository since

@@ -565,6 +565,28 @@ def test_measured_against_labview(directory: str) -> None:
          '<Indicator _name="p" type="path" value="" inputs="value:4200.path" uid="4300" '
          'uid_parent="root"/>',
          "clean", None),
+        # FOUND 2026-09-26 by the user in the seventh ATM build: the consumer read User Input
+        # beside its Dequeue Element, so Enter verified the value from BEFORE the user typed,
+        # with every unit test, validation, execState and a runForMs snapshot green.
+        ("a Control in a loop that waits on Dequeue Element",
+         '<Structure _name="While Loop" count="" uid="4300" uid_parent="root">'
+         '<Control _name="User Input" type="string" value="" outputs="value:4301.value" '
+         'uid="4301" uid_parent="4300"/>'
+         '<Node _name="Dequeue Element" inputs="queue:,timeout in ms (-1):,error in (no error):" '
+         'outputs="queue out:,element:,timed out?:,error out:" uid="4302" uid_parent="4300"/>'
+         '<Indicator _name="o" type="string" value="" inputs="value:4301.value" uid="4303" '
+         'uid_parent="4300"/>'
+         '</Structure>',
+         "warning", "control-read-before-wait"),
+        # THE CONTROL: the same control in a loop that does not wait is read when it should be.
+        ("a Control in a loop with nothing to wait on",
+         '<Structure _name="While Loop" count="" uid="4300" uid_parent="root">'
+         '<Control _name="User Input" type="string" value="" outputs="value:4301.value" '
+         'uid="4301" uid_parent="4300"/>'
+         '<Indicator _name="o" type="string" value="" inputs="value:4301.value" uid="4303" '
+         'uid_parent="4300"/>'
+         '</Structure>',
+         "clean", None),
         # MEASURED 2026-09-15 with a six-constant probe converted and exported back: string,
         # path, double, int32 and bool all kept their literal; `timestamp` alone came back
         # value="". LabVIEW ACCEPTS the document - errorCode 0, 4119 bytes - so this is a

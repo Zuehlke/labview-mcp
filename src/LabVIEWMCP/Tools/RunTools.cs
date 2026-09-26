@@ -137,11 +137,39 @@ internal sealed class RunTools(LvaiConnection connection)
             THE WHOLE SERVICE until LabVIEW is killed. Measured 2026-09-16; it cost two restarts.
             """)]
         int runForMs = 0,
+        [Description("""
+            EVENTS TO FIRE while the VI runs, with runForMs only: a JSON ARRAY, in order, e.g.
+            [{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}].
+            After runForMs has elapsed each control is written with Value (Signaling) - which fires
+            its Value Change event exactly as a click or a keystroke would - and signalGapMs is
+            waited after each one; the snapshot comes after the last. Values are text: a boolean
+            TRUE/1, a numeric its number, a string its text, a cluster or array LabVIEW XML.
+            THIS IS WHAT A START-UP SNAPSHOT CANNOT SEE. The seventh ATM build passed validation,
+            execState, 58 unit tests and a runForMs snapshot while its consumer read User Input
+            before the user had typed; only driving an event would have shown it.
+            A LATCHED BOOLEAN CANNOT BE SIGNALLED - LabVIEW refuses Value (Signaling) on one with
+            Error 1193, reported under `signals`. The snapshot is taken either way.
+            """)]
+        string? signalsJson = null,
+        [Description("Wait after each signal, so the target handles it before the next")]
+        int signalGapMs = 500,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
+
+            List<KeyValuePair<string, string>> signals;
+            try { signals = ParseSignals(signalsJson); }
+            catch (ArgumentException bad)
+            {
+                return Json.Error("badArguments", bad.Message, new { signalsJson });
+            }
+            if (signals.Count > 0 && runForMs <= 0)
+                return Json.Error("badArguments",
+                    "signalsJson needs runForMs: signals are fired while the VI RUNS, after runForMs " +
+                    "has elapsed, and a VI run without runForMs is waited on until it ends.",
+                    new { signalCount = signals.Count, runForMs });
 
             var inputs = Rpc.ParseStringMap(inputsJson, nameof(inputsJson)).ToList();
             var compoundInputs = inputs.Where(i => CompoundValue(i.Value) is not null)
@@ -246,7 +274,20 @@ internal sealed class RunTools(LvaiConnection connection)
                     "control that is not set keeps its own default.",
                     new { inputName = empty, inputCount = inputs.Count });
 
+            if (signals.Count > 0 && !CanSignal(aixml))
+                return Json.Error("badArguments",
+                    $"The helper '{Path.GetFileName(aixml)}' has no '{SignalNamesControlName}' " +
+                    $"control, so it cannot fire signals. Omit helperAixmlPath to use " +
+                    $"{TimedHelperAixmlFileName}, which can.", new { helperAixmlPath = aixml });
+
             var request = HelperRequest(helperVi, viPath, inputs, timed ? runForMs : 0);
+            if (signals.Count > 0)
+            {
+                request.Inputs[SignalNamesControlName] = string.Join("\n", signals.Select(s => s.Key));
+                request.Inputs["Signal Values"] = string.Join("\n", signals.Select(s => s.Value));
+                request.Inputs["signal gap ms"] =
+                    Math.Max(0, signalGapMs).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
 
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
@@ -294,6 +335,32 @@ internal sealed class RunTools(LvaiConnection connection)
                 response.Outputs.TryGetValue("disabled labels xml", out var disabledLabels);
                 response.Outputs.TryGetValue("disabled xml", out var disabledStates);
                 payload["disabled"] = DisabledStates(disabledLabels, disabledStates);
+            }
+            if (signals.Count > 0)
+            {
+                response.Outputs.TryGetValue("signal error xml", out var signalErrorXml);
+                var signalCode = HelperErrorCode(signalErrorXml);
+                payload["signals"] = new JsonObject
+                {
+                    ["sent"] = new JsonArray(signals.Select(s => (JsonNode?)new JsonObject
+                    {
+                        ["control"] = s.Key, ["value"] = s.Value,
+                    }).ToArray()),
+                    ["gapMs"] = Math.Max(0, signalGapMs),
+                    ["errorCode"] = signalCode is { } sc ? JsonValue.Create(sc) : null,
+                    ["errorXml"] = signalErrorXml,
+                    ["note"] = signalCode switch
+                    {
+                        null or 0 => "Every signal was written; the snapshot was taken after the last gap.",
+                        1193 => "Error 1193: a LATCHED boolean cannot be written with Value (Signaling). " +
+                                "The signals after it were NOT sent; the snapshot was still taken. Test " +
+                                "what that button triggers through the handler's own unit test instead.",
+                        1055 or 1026 => $"Error {signalCode}: a signal names no control on the target's panel. " +
+                                        "The signals from there on were NOT sent; the snapshot was still taken.",
+                        _ => $"Error {signalCode} stopped the signals at that point; the snapshot was " +
+                             "still taken. errorXml names the source.",
+                    },
+                };
             }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["note"] = JsonValue.Create(
@@ -484,6 +551,66 @@ internal sealed class RunTools(LvaiConnection connection)
                     _ => null,
                 },
             });
+    }
+
+    /// <summary>The timed runner's control that takes the signal list; its presence is the test.</summary>
+    internal const string SignalNamesControlName = "Signal Names";
+
+    /// <summary>
+    /// The signals to fire, in order. A JSON ARRAY rather than an object, because order is the
+    /// point - a card goes in before its account number is typed. Refused rather than guessed:
+    /// an unknown key, a missing control, and a line break or an empty value anywhere, because
+    /// names and values are paired BY LINE inside the helper, as the inputs are.
+    /// </summary>
+    internal static List<KeyValuePair<string, string>> ParseSignals(string? signalsJson)
+    {
+        var list = new List<KeyValuePair<string, string>>();
+        if (string.IsNullOrWhiteSpace(signalsJson)) return list;
+
+        JsonNode? root;
+        try { root = JsonNode.Parse(signalsJson); }
+        catch (JsonException bad)
+        {
+            throw new ArgumentException($"signalsJson is not JSON: {bad.Message}");
+        }
+        if (root is not JsonArray array)
+            throw new ArgumentException(
+                "signalsJson must be a JSON ARRAY of {\"control\":…,\"value\":…}, in order - an object " +
+                "cannot say which signal comes first.");
+
+        foreach (var item in array)
+        {
+            if (item is not JsonObject entry)
+                throw new ArgumentException("Every signal must be an object {\"control\":…,\"value\":…}.");
+            if (entry.Select(p => p.Key).FirstOrDefault(k => k is not ("control" or "value")) is { } unknown)
+                throw new ArgumentException(
+                    $"Unknown key '{unknown}' in a signal; the only keys are control and value.");
+            var control = entry["control"]?.ToString();
+            var value = entry["value"] is JsonValue v ? v.ToString() : entry["value"]?.ToJsonString();
+            if (string.IsNullOrEmpty(control))
+                throw new ArgumentException("A signal has no 'control'.");
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentException(
+                    $"The signal for '{control}' has no value. Names and values are paired by line, " +
+                    "so an empty value would shift every later signal onto the wrong control.");
+            if (Breaks(control) || Breaks(value))
+                throw new ArgumentException(
+                    $"The signal for '{control}' contains a line break; names and values are paired by line.");
+            list.Add(new(control, value));
+        }
+        return list;
+    }
+
+    /// <summary>Whether a helper can fire signals, read from its AIXML like <see cref="CanHonourRunForMs"/>.</summary>
+    internal static bool CanSignal(string helperAixmlPath)
+    {
+        try
+        {
+            return File.ReadAllText(helperAixmlPath)
+                .Contains($"_name=\"{SignalNamesControlName}\"", StringComparison.Ordinal);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>
