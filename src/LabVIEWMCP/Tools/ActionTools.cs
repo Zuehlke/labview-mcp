@@ -484,7 +484,7 @@ internal sealed class ActionTools(LvaiConnection connection)
             {
                 await new BulkTools(connection).GenerateViAsync(
                     source, helper, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, measureDiagram: false);
                 if (!File.Exists(helper))
                     return (null, "not checked - the read-only helper could not be generated.", null);
             }

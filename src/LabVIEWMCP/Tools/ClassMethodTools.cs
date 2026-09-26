@@ -259,7 +259,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     source, helperVi, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, measureDiagram: false);
                 prologue.Add(new JsonObject { ["step"] = "helper", ["answer"] = Read(built) });
                 if (!File.Exists(helperVi))
                     return Json.Document(new JsonObject

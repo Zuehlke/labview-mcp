@@ -856,8 +856,28 @@ Everything here was verified before this agent was written. Treat it as fact.
 
 ## Diagram size and cohesion — a standing user rule
 
-**Keep the block diagram around 1920 x 1080**, a guideline and not a gate, and **factor cohesive
-groups into subVIs** instead of spreading them across the caller.
+**THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's
+rule, restated 2026-09-25 after three agent builds in a row shipped the ATM main VI at 3306, 3456
+and 4152 px wide with every other check green. A rule nobody measured was advice; it is a budget
+now, with two numbers and a fixed procedure:
+
+1. **Before generating**, `lvai_check_aixml` answers `diagramChain`: the longest dependency chain in
+   STAGES (a Node or a Call is one stage, a structure is one plus the longest chain inside it) and
+   the elements along it. **The budget is 10 stages** - one stage renders about 145-185 px, so 10
+   leaves room for long constants and labels. Over budget: restructure BEFORE you generate.
+2. **After generating**, `lvai_generate_vi` and `lvai_generate_vi_with_events` answer `diagramSize`
+   - the RENDERED top-level diagram in px - which is the verdict. **`withinBudget: false` means the
+   VI is not done**: fold a stretch of `longestChain` into a new subVI, regenerate, and read
+   `diagramSize` again. Only when a contract genuinely forbids it may a VI stay over, and then your
+   report gives the measured size and the reason.
+3. **Plan the hierarchy up front.** A caller that orchestrates more than about eight steps is two
+   levels, not one: group consecutive steps that belong together (initialise the panel, update the
+   display, run a transaction) into a subVI each, and let the top level call those.
+4. **A generated TEST VI has the same budget.** `lvai_generate_test`, `lvai_generate_class_test`,
+   `lvai_generate_method_test` and the Caraya runner answer `diagramSize` for the test VI they
+   wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
+   method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
+   per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
 
 **A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
 only in which control they point at is the canonical case: one call taking the group and one value
@@ -874,9 +894,12 @@ documentation that renaming a control silently drops it out of its group.
 
 **Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
 sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
-unmoved. Getting the width down means merging sequential subVIs, which is the opposite of this rule:
-report that trade rather than taking it silently. AIXML carries no coordinates, so a long pipeline
-cannot be wrapped onto a second row.
+unmoved. **So width comes down by folding a SEQUENTIAL stretch of the chain into ONE new subVI**: a
+subVI that performs four consecutive stages puts one call where four were, and the caller's chain is
+three stages shorter. This paragraph used to read "getting the width down means merging sequential
+subVIs, the opposite of this rule" - it is not the opposite, it is the same rule one level up: the
+new subVI is the merge. Pulling out PARALLEL groups buys height. AIXML carries no coordinates, so a
+long pipeline cannot be wrapped onto a second row - only shortened.
 
 **Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
 sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a

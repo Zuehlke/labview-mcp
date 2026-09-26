@@ -70,6 +70,27 @@ arm A on `IMC Multiply Caller.vi` was followed, with the target now loaded, by
 same `_name`; the identical document under `_name="IMC Multiply Caller 2.vi"` converted clean. So
 never probe with a real name: a control arm costs the name for the rest of the session.
 
+**A SAME-NAMED VI FROM AN EARLIER BUILD, STILL IN MEMORY, CAPTURES A BARE-NAME `Call` - and
+nothing reports it.** Measured 2026-09-25 in the sixth ATM build, on a LabVIEW instance 2.2 h old
+that had run the fifth build and an acceptance copy of it:
+
+- a brand-new target path answered `Error 1051` at `Save:Instrument` for four file-layer names and
+  `Handle ATM Action.vi` - a NAME conflict, with no failed validate of that name anywhere in the
+  session, so the tool note's "your own last failed validation" was not the cause;
+- a throwaway caller with `<Call target="Read Accounts File.vi">`, NOTHING opened, **validated with
+  `errorCode 0`** - no `Unsupported SubVI` line - converted, ran, and its saved link records named
+  `C:\temp\ATM_Agents_5\...\SubVIs\Read Accounts File.vi`: the previous build's file;
+- the addon instance's `Application:All VIs In Memory` (419 names, all library VIs) listed none of
+  them, so they sat in some other application instance. Which one, and which earlier call left them
+  there, is not established.
+
+That is the first measured case of `ValidateAIXML` ACCEPTING a project-local target, and it is the
+dangerous direction: a caller generated in that state validates, converts and runs while silently
+linked to another build. A LabVIEW restart released them (measured: every name generated cleanly
+afterwards); nothing lighter was tried. **Check the links of every generated caller** - `grep -a`
+the `.vi` for path strings, where relative `..\SubVIs\...` records are right and an absolute path
+into another folder is the defect - and treat an unexplained `1051` on a new path as this.
+
 **With a project active, a generated VI lives in the PROJECT's application instance.** Read through
 `{LV.Project}` `Application` -> `Application:All VIs In Memory`, the project context held exactly
 the subject and a path-less `IMC Caller.vi`. At the next save LabVIEW adopted into the `.lvproj`

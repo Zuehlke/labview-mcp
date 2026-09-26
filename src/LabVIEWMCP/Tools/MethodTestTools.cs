@@ -1484,8 +1484,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null, JsonObject? route = null) =>
-        Json.Document(new JsonObject
+                                  JsonNode? callTargets = null, JsonObject? route = null)
+    {
+        var size = TestTools.GeneratedDiagramSize(steps);
+        return Json.Document(new JsonObject
         {
             ["ok"] = ok,
             ["failedAtStep"] = failedAt,
@@ -1494,10 +1496,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
+            ["diagramSize"] = size,
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
-            ["note"] = note,
+            ["note"] = note + TestTools.TestSizeNote(size),
         });
+    }
 
     // ------------------------------------------------------------------ the cases
 

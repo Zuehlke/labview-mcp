@@ -133,6 +133,38 @@ public class BulkGenerateViTests
     }
 
     [Fact]
+    public async Task A_broken_result_on_the_loaded_route_still_reports_its_diagram_size()
+    {
+        // The ROUTINE shape for a class method and for a caller whose class seed is still a path:
+        // broken until a later step repairs it, with the diagram already final. The sixth ATM
+        // build (2026-09-26) got no size back for its class method, because this outcome returned
+        // before the size step.
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ErrorCodeByMethod["ValidateAIXML"] = 1;
+        server.Service.ErrorCodeByMethod["ConvertAIXMLToVI"] = 0;
+        server.Service.ErrorMessage = Refusal("Unsupported SubVI: Local.vi");
+        server.Service.ViFileContent = "a generated VI";
+        var measured = 0;
+
+        var result = await new BulkTools(server.Connection)
+        {
+            ReadExecState = Reads(0),
+            MeasureDiagram = (_, _, _) =>
+            {
+                measured++;
+                return Task.FromResult<((int, int)?, string?)>(((2600, 700), @"C:\x\d.png"));
+            },
+        }.GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
+
+        Assert.Equal("execState", Res.Str(result, "failedAtStep"));
+        Assert.Equal(1, measured);
+        var size = Res.Obj(result)["diagramSize"]!;
+        Assert.Equal(2600, size["width"]!.GetValue<int>());
+        Assert.False(size["withinBudget"]!.GetValue<bool>());
+        Assert.Contains("OVER THE SIZE BUDGET", Res.Str(result, "note"));
+    }
+
+    [Fact]
     public async Task Targets_that_are_not_loaded_are_named_and_nothing_else_runs()
     {
         await using var server = await LvaiTestServer.StartAsync();
@@ -234,8 +266,10 @@ public class BulkGenerateViTests
         await using var server = await LvaiTestServer.StartAsync();
         server.Service.ViFileContent = "a generated VI";
 
+        // the diagram-size step is covered in DiagramSizeTests; this one is about the two RPCs
         var result = await new BulkTools(server.Connection).GenerateViAsync(
-            server.TempPath("in.xml"), server.TempPath("Out.vi"), measurePane: false);
+            server.TempPath("in.xml"), server.TempPath("Out.vi"), measurePane: false,
+            measureDiagram: false);
 
         Assert.True(Res.Bool(result, "ok"));
         Assert.True(Res.IsNull(result, "failedAtStep"));

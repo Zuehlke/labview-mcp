@@ -372,12 +372,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
         {
             var plain = AixmlCheck.Summarise(AixmlCheck.Check(text));
             plain["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+            plain["diagramChain"] = ChainEstimate(text);
             return Task.FromResult(Json.Document(Timed(plain, clock)));
         }
 
         var repaired = AixmlCheck.Fix(text);
         var answer = AixmlCheck.Summarise(repaired.Remaining);
         answer["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+        answer["diagramChain"] = ChainEstimate(text);
         answer["repairs"] =
             new JsonArray([.. repaired.Repairs.Select(r => (JsonNode)r.ToJson())]);
 
@@ -408,6 +410,33 @@ internal sealed class AixmlTools(LvaiConnection connection)
                             + "elements, so uids in your notes may be stale. No wire name changed - "
                             + "a wire name is a token, not a reference to a uid.";
         return Task.FromResult(Json.Document(Timed(answer, clock)));
+    }
+
+    /// <summary>
+    /// The longest dependency chain of the document, BEFORE anything is generated - the cheap half
+    /// of the size rule (DiagramSize). Not a finding: a long chain is not a fault LabVIEW would
+    /// accept silently, it is a diagram that will render too wide, and the answer names the
+    /// elements along the chain so the stretch to fold into a subVI is visible.
+    /// </summary>
+    internal static JsonObject? ChainEstimate(string text)
+    {
+        if (DiagramSize.Chain(text) is not { } chain) return null;
+        var over = chain.Stages > DiagramSize.MaxChainStages;
+        return new JsonObject
+        {
+            ["longestChainStages"] = chain.Stages,
+            ["budgetStages"] = DiagramSize.MaxChainStages,
+            ["withinBudget"] = !over,
+            ["longestChain"] = chain.Chain,
+            ["note"] = over
+                ? $"The longest chain is {chain.Stages} stages against a budget of " +
+                  $"{DiagramSize.MaxChainStages} - one stage renders about 145-185 px, so this " +
+                  "diagram will come out wider than 1920 px. Fold a SEQUENTIAL stretch of " +
+                  "`longestChain` (inside the widest structure, if that is where it runs) into " +
+                  "ONE new subVI before generating."
+                : "Within the chain budget. The render after generation is still the verdict: " +
+                  "long constants and labels widen a diagram without adding a stage.",
+        };
     }
 
     /// <summary>

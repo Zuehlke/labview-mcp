@@ -98,12 +98,22 @@ internal sealed class BulkTools(LvaiConnection connection)
             """)]
         int? panePattern = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description("""
+            Render the generated block diagram and report its size under `diagramSize`, with the
+            longest dependency chain read off the AIXML. On by default: the rule is a diagram of
+            about 1920 x 1080, and three agent builds in a row shipped main VIs 3306-4152 px wide
+            while every other check was green. An over-budget diagram does not fail the call - the
+            VI is written - but the answer says so and names the chain to fold into a subVI.
+            Costs one render, 90-320 ms measured.
+            """)]
+        bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
             var aixml = new AixmlTools(connection);
+            var sourceAixml = aiXmlFilePath;
 
             // A .vim TARGET IS REFUSED BEFORE ANYTHING IS WRITTEN. ConvertAIXMLToVI accepts one
             // and produces a BROKEN malleable VI while this tool reports ok: true with
@@ -190,15 +200,18 @@ internal sealed class BulkTools(LvaiConnection connection)
                 ? null
                 : ValidationScratch.Create(aiXmlFilePath, preserveName: false,
                                            prefix: "LVMCP Convert");
+
+            // THE TARGET FOLDER IS CREATED ON EVERY ROUTE. ConvertAIXMLToVI does not create it and
+            // answers Error 7 at Save:Instrument - and this was done only on the loaded-subVI route
+            // until 2026-09-25, so an ordinary generation into a new folder failed with a note about
+            // 1357 and 1051 that sends the reader hunting a memory conflict for a missing folder.
+            // On the loaded route it matters more still: there a Save-time failure with a project
+            // active leaves a path-less VI that makes the project unclosable (1019).
+            if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
+                Directory.CreateDirectory(folder);
+
             if (unresolved is not null)
             {
-                // A SAVE-TIME FAILURE IS THE EXPENSIVE ONE on this route: with a project active it
-                // leaves a path-less VI in the project's instance, and the next project save then
-                // answers Error 1019, so the project cannot be closed. A missing folder is the one
-                // save failure that can be ruled out for free.
-                if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
-                    Directory.CreateDirectory(folder);
-
                 steps.Add(new JsonObject
                 {
                     ["step"] = "loadedSubVIs",
@@ -246,7 +259,11 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "name\": something else carries the VI's internal name, and the commonest " +
                     "source is YOUR OWN LAST FAILED VALIDATION of the same _name - measured, " +
                     "twice in a row on the same document. Generate under a fresh name; the old " +
-                    "one stays poisoned until LabVIEW restarts.",
+                    "one stays poisoned until LabVIEW restarts. THE OTHER MEASURED SOURCE is a " +
+                    "same-named VI from ANOTHER FOLDER still in memory - an earlier build of the " +
+                    "same application, 2026-09-25 - and then a bare-name Call to that name links " +
+                    "to the OTHER folder's file without any error: do not generate callers until " +
+                    "LabVIEW has been restarted, and grep their link paths afterwards.",
                     unresolved is null ? null
                         : Route(unresolved, null, Resolution(ErrorCode(convert), Field(convert, "errorMessage"))));
 
@@ -275,7 +292,17 @@ internal sealed class BulkTools(LvaiConnection connection)
                 route = Route(unresolved,
                     reading is null or { CouldNotOpen: true } ? null : !reading.Broken, resolved: true);
 
+                // THE SIZE IS MEASURED HERE TOO, because this is the ROUTINE outcome for a class
+                // method and for any caller whose class seed is still a path: both are broken until
+                // a later step repairs them, and the diagram is already final. Returning before the
+                // size step skipped the measurement on exactly the VIs it was built for - found by
+                // the sixth ATM build on 2026-09-26, whose class method came back with no size.
                 if (reading is { Broken: true })
+                {
+                    var brokenSize = measureDiagram
+                        ? await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct)
+                        : null;
+                    if (brokenSize is not null) steps.Add(brokenSize);
                     return Outcome(false, "execState", steps, total, viPath, null,
                         "THE VI WAS WRITTEN, and LabVIEW cannot run it. Validation was skipped " +
                         "because it could not resolve these Call targets: " +
@@ -283,7 +310,9 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "and the converter wrote something it would have refused. Compare each " +
                         "Call's wire TYPES against lvai_vi_terminals on its target (a misspelt " +
                         "terminal NAME does not get this far - the converter refuses it with " +
-                        "Error 1), and read linkerErrors in the execState step.", route);
+                        "Error 1), and read linkerErrors in the execState step." +
+                        (brokenSize?["note"]?.GetValue<string>() ?? ""), route, brokenSize);
+                }
             }
 
             // The pattern repair goes BEFORE the measurement, so what gets reported is the pane
@@ -304,11 +333,21 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "executable. Read the panePattern step.", route);
             }
 
+            // THE SIZE, after any pane repair (a render loads the VI, and a pylabview rebuild
+            // after that would write under LabVIEW's loaded copy) and before the pane measurement.
+            JsonObject? size = null;
+            if (measureDiagram)
+            {
+                size = await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct);
+                steps.Add(size);
+            }
+            var sizeNote = size?["note"]?.GetValue<string>() ?? "";
+
             if (!measurePane)
                 return Outcome(true, null, steps, total, viPath, null,
                     "Generated. The connector pane was NOT measured because measurePane was " +
                     "false, so nothing here says the terminals are on the right edges." +
-                    RouteNote(route), route);
+                    RouteNote(route) + sizeNote, route, size);
 
             var verdict = await new PaneTools(connection).MeasureViAsync(
                 viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
@@ -326,19 +365,44 @@ internal sealed class BulkTools(LvaiConnection connection)
                 return Outcome(true, null, steps, total, viPath, verdict,
                     "Generated, but the pane could not be measured - so this answer does NOT " +
                     "confirm the terminals are placed correctly. Call lvai_connector_pane " +
-                    "yourself to find out why." + RouteNote(route), route);
+                    "yourself to find out why." + RouteNote(route) + sizeNote, route, size);
 
             return verdict.Clean
                 ? Outcome(true, null, steps, total, viPath, verdict,
                     "Generated, and the connector pane follows NI's style guide." +
-                    RouteNote(route), route)
+                    RouteNote(route) + sizeNote, route, size)
                 : Outcome(false, "connectorPane", steps, total, viPath, verdict,
                     "THE VI WAS WRITTEN - generation succeeded. What failed is the connector " +
                     "pane: the terminals are not on the edges NI's style guide puts them on. The " +
                     "corrected conIdx values are in the connectorPane step; write them into the " +
                     "AIXML and call this again. Nothing else about the VI has to change." +
-                    RouteNote(route), route);
+                    RouteNote(route) + sizeNote, route, size);
         });
+
+    /// <summary>
+    /// The `diagramSize` step: one render of the written VI plus the longest chain of its AIXML.
+    /// Shared with lvai_generate_vi_with_events, which builds the main VIs that ran largest.
+    /// </summary>
+    internal async Task<JsonObject> DiagramSizeStepAsync(string aixmlPath, string viPath,
+                                                         int timeoutSeconds, CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+        DiagramSize.ChainResult? chain = null;
+        try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        var (measured, png) = await (MeasureDiagram?.Invoke(viPath, timeoutSeconds, ct)
+            ?? new RenderTools(connection).TopLevelSizeAsync(viPath, timeoutSeconds, ct));
+        var step = DiagramSize.Step(measured, chain);
+        step["png"] = png;
+        step["elapsedMs"] = watch.ElapsedMilliseconds;
+        return step;
+    }
+
+    /// <summary>Test seam for the render behind `diagramSize`; null in production.</summary>
+    internal Func<string, int, CancellationToken, Task<((int Width, int Height)? Size, string? Png)>>? MeasureDiagram
+    {
+        get; init;
+    }
 
     /// <summary>
     /// Test seam for the loaded-subVI route's executability check. Null in production, where the
@@ -515,7 +579,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string viPath, PaneTools.PaneVerdict? pane, string note,
-                                  JsonObject? route = null)
+                                  JsonObject? route = null, JsonObject? size = null)
     {
         total.Stop();
         var result = new JsonObject
@@ -536,6 +600,16 @@ internal sealed class BulkTools(LvaiConnection connection)
             result["paneViolations"] = pane.Violations;
             result["paneWarnings"] = pane.Warnings;
         }
+        // Top level as well, because it is a verdict a reader should not have to dig for: the
+        // size rule held for weeks only in prose, and a number inside `steps` is read by nobody.
+        if (size is not null)
+            result["diagramSize"] = new JsonObject
+            {
+                ["width"] = size["width"]?.DeepClone(),
+                ["height"] = size["height"]?.DeepClone(),
+                ["withinBudget"] = size["withinBudget"]?.DeepClone(),
+                ["longestChainStages"] = size["longestChainStages"]?.DeepClone(),
+            };
         result["steps"] = steps;
         // Wall clock for the whole sequence, against the per-step elapsedMs inside `steps`. The
         // difference between them is this server's own overhead, which is the only way to tell a

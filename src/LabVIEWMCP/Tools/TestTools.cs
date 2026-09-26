@@ -1253,6 +1253,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) ?? "", reportFileName),
             ["testCount"] = testCount,
             ["aixml"] = aixmlPath,
+            ["diagramSize"] = GeneratedDiagramSize(steps),
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
             ["note"] = note,
@@ -3161,11 +3162,37 @@ internal sealed class TestTools(LvaiConnection connection)
         if (expectedConstants is not null) result["expectedConstants"] = expectedConstants;
         // Which route ran, and when it was the placeholder one, why the direct one did not.
         if (route is not null) result["route"] = route.DeepClone();
+        var size = GeneratedDiagramSize(steps);
+        if (size is not null) result["diagramSize"] = size;
         result["steps"] = steps;
         result["totalElapsedMs"] = total.ElapsedMilliseconds;
-        result["note"] = note;
+        result["note"] = note + TestSizeNote(size);
         return Json.Document(result);
     }
+
+    /// <summary>
+    /// The test VI's own `diagramSize`, lifted out of its generate step - or null when that step
+    /// did not measure. A generated TEST VI is a deliverable like any other and has the same
+    /// 1920 x 1080 budget: the sixth ATM build (2026-09-26) produced a thirteen-case method test of
+    /// 4345 x 4084 px, and nothing said so, because the test generators passed
+    /// <c>measureDiagram: false</c> on the grounds that a test VI was internal.
+    /// </summary>
+    internal static JsonObject? GeneratedDiagramSize(JsonArray steps) =>
+        steps.OfType<JsonObject>()
+             .LastOrDefault(s => s["step"]?.GetValue<string>() == "generate")?["answer"]
+             is JsonObject answer && answer["diagramSize"] is JsonObject size
+            ? (JsonObject)size.DeepClone()
+            : null;
+
+    /// <summary>What to do when a generated test VI is over the size budget, or "" when it is not.</summary>
+    internal static string TestSizeNote(JsonObject? size) =>
+        size?["withinBudget"]?.GetValue<bool>() is false
+            ? $" THE TEST VI IS OVER THE 1920 x 1080 BUDGET: {size["width"]} x {size["height"]} px. " +
+              "Every case adds its own row of calls and assertions, so the height grows with the " +
+              "case count - measured 2026-09-26, 13 cases gave 4084 px, about 310 px per case. " +
+              "Split the cases over several test VIs of about three each and list them all in one " +
+              "runner; what the suite asserts does not change."
+            : "";
 
     private static JsonNode? Read(string answer)
     {

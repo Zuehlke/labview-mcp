@@ -325,7 +325,7 @@ internal sealed class SwapTools(LvaiConnection connection)
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     aixml, helperVi, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, measureDiagram: false);
                 steps.Add(new JsonObject { ["step"] = "helper", ["answer"] = Json.Slim(Parse(built), verbose) });
                 if (!File.Exists(helperVi))
                     return Json.Document(new JsonObject

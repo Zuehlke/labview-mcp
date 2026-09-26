@@ -94,7 +94,7 @@ internal sealed class MalleableTools(LvaiConnection connection)
 
             // ---------------------------------------------------------------- 1. the ordinary VI
             var generate = await new BulkTools(connection)
-                .GenerateViAsync(aiXmlFilePath, intermediate, timeoutSeconds: timeoutSeconds, ct: ct);
+                .GenerateViAsync(aiXmlFilePath, intermediate, timeoutSeconds: timeoutSeconds, ct: ct, measureDiagram: false);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Parse(generate) });
             if (Parse(generate)?["ok"]?.GetValue<bool>() != true)
                 return Outcome(false, "generate", steps, total, vim, intermediate, targetExisted,

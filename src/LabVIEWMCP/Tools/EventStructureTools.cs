@@ -350,6 +350,14 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring. " +
                     DataFieldNote(reading, afterWiringWillStillBeBad: false));
 
+            // 8. THE SIZE. This tool builds the main VIs, which are the ones that came out largest:
+            //    3306, 3456 and 4152 px wide over three agent builds, with this answer silent about
+            //    it every time. Measured last, on the finished file - the rebuild is done, so the
+            //    render cannot load a copy something is about to write under.
+            var size = await new BulkTools(connection).DiagramSizeStepAsync(
+                aiXmlFilePath, viPath, timeoutSeconds, ct);
+            steps.Add(size);
+
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
                 $"Registered {toRegister.Count} event(s) - " +
                 $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
@@ -357,7 +365,9 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 "LabVIEW can run the result. " +
                 DataFieldNote(reading, afterWiringWillStillBeBad: false) +
                 "A diagram comment too long for its box is cut off in silence: call " +
-                "lvai_render_diagrams and look, which is the only check that sees it.");
+                "lvai_render_diagrams and look, which is the only check that sees it." +
+                (size["note"]?.GetValue<string>() ?? ""),
+                size);
         });
 
     // ---------------------------------------------------------------- plumbing
@@ -481,7 +491,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, JsonArray frames,
                                   Stopwatch total, string viPath, string directory,
-                                  bool keepBundle, string note)
+                                  bool keepBundle, string note, JsonObject? size = null)
     {
         if (!keepBundle && ok)
         {
@@ -494,6 +504,13 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             ["failedAtStep"] = failedAt,
             ["viPath"] = viPath,
             ["viExistsNow"] = File.Exists(viPath),
+            ["diagramSize"] = size is null ? null : new JsonObject
+            {
+                ["width"] = size["width"]?.DeepClone(),
+                ["height"] = size["height"]?.DeepClone(),
+                ["withinBudget"] = size["withinBudget"]?.DeepClone(),
+                ["longestChainStages"] = size["longestChainStages"]?.DeepClone(),
+            },
             ["eventFrames"] = frames,
             ["bundleDirectory"] = ok && !keepBundle ? null : directory,
             ["steps"] = steps,

@@ -117,6 +117,13 @@ a FAILED convert burns the caller's `_name` (`1051` on the next convert, the sam
 validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
 VI there that makes the project unclosable (`1019`) until it is saved to a path.
 
+**AND A SAME-NAMED VI FROM AN EARLIER BUILD, STILL IN MEMORY, CAPTURES THE CALL IN SILENCE -
+measured 2026-09-25.** On an instance that had run the previous ATM build, a bare-name `Call` to
+`Read Accounts File.vi` with NOTHING opened validated `errorCode 0`, converted, ran, and linked to the
+PREVIOUS build's file; the tell was `Error 1051` at `Save:Instrument` on a path that had never
+existed. A LabVIEW restart released it. So restart LabVIEW between two builds of the same
+application, and `grep -a` a generated caller's link paths. `docs/aixml-call-loaded-vi.md` §3.
+
 **`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
 it (`lvai_generate_vis`, the test generators, the class tools). A validate refusal naming ONLY
 `Unsupported SubVI` lines is converted anyway — under a throwaway `_name`, so a refusal burns
@@ -754,7 +761,26 @@ twice" rule with a number on it.
 **A BLOCK DIAGRAM STAYS AROUND 1920 x 1080, AND A REPEATED OPERATION BECOMES ONE GENERIC SUBVI.**
 The user's standing rule of 2026-09-16, given three times over one build and sharpened each time.
 Diagrams have been coming out too large; factor cohesive groups out rather than spreading them
-across the caller. The size is a GUIDELINE, not a gate.
+across the caller.
+
+**AND SINCE 2026-09-25 IT IS A MEASURED BUDGET, NOT A GUIDELINE - the user's correction after the
+rule held only in prose.** Rendered that day, the ATM main VI of three consecutive agent builds came
+out **3306, 3456 and 4152 px wide**, its state machine 2116, 2963 and 2012, and not one answer in
+any of those builds said so. So the size is measured where it is made: `lvai_generate_vi` and
+`lvai_generate_vi_with_events` render the result (90-460 ms) and answer `diagramSize` with the
+top-level diagram in px and `withinBudget` against 1920 x 1080; `lvai_check_aixml` answers
+`diagramChain` BEFORE anything is generated - the longest dependency chain in stages, budget 10,
+with the elements along it. **An over-budget VI is not done**: the call still answers `ok` because
+the VI is written and valid, and the agent definitions treat `withinBudget: false` as a reason to
+fold and regenerate. Calibration and procedure in `docs/diagram-size.md`.
+
+**A GENERATED TEST VI HAS THE SAME BUDGET - measured 2026-09-26, when the sixth ATM build's
+thirteen-case method test came out 4345 x 4084 px with every answer green.** The test generators had
+been exempted as "internal"; they measure their test VI now and answer `diagramSize`. About 310 px
+of height per case, so plan about THREE cases per test VI and list them all in one runner. And
+`lvai_generate_vi` measures on `failedAtStep: execState` too, which is the ROUTINE outcome for a class
+method or a caller whose class seed is still a path - it returned before the size step there, so the
+VIs the budget matters most for came back unmeasured.
 
 **The worked example is the one to copy.** Six `Property Node`s writing `Disabled`, one per
 front-panel object, chained across the middle of a loop, became one call taking a group of controls
@@ -780,11 +806,14 @@ structure for the day the creation route is settled.
 **WIDTH FOLLOWS THE LONGEST DEPENDENCY CHAIN; HEIGHT FOLLOWS WHAT SITS IN PARALLEL.** Measured over
 three rounds on one main VI: pulling ten parallel nodes into subVIs took the height from 1094 to
 880 px and moved the width by 23 px. Then replacing ONE call with two sequential ones put 131 px of
-width straight back. So **factoring parallel work is what the size rule can buy**; width only comes
-down by making the chain SHORTER, which means merging sequential subVIs back together - the opposite
-of the rule. Put that trade to the caller rather than optimising it silently, and note that AIXML
-carries no coordinates, so a long pipeline cannot be wrapped onto a second row the way a developer
-would. `docs/cold-build-atm-cld.md` section 11.
+width straight back. So **factoring parallel work buys height**, and width only comes down by making
+the chain SHORTER. **That is done by folding a SEQUENTIAL stretch of the chain into ONE new subVI** -
+one call where four stages were. This paragraph used to call that "merging sequential subVIs back
+together - the opposite of the rule", and it is not the opposite: it is the same rule one level up,
+a hierarchy instead of a flat caller. The chain is also calibrated now: one stage renders about
+145-185 px on the big diagrams (25 stages 4152 px, 12 stages 2012), so 1920 px is 11-12 stages.
+AIXML carries no coordinates, so a long pipeline cannot be wrapped onto a second row - only
+shortened. `docs/cold-build-atm-cld.md` section 11, `docs/diagram-size.md`.
 
 **AND A REGENERATION COSTS THE WHOLE SWAP CYCLE, so do not regenerate for a comment.** Rewriting a
 generated subVI from AIXML puts its placeholder sockets back and destroys its icon - measured on a
@@ -2486,6 +2515,7 @@ literally it argued away 600 usable palette VIs.
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
+| Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

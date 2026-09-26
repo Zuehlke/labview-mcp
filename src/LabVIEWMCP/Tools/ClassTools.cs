@@ -321,7 +321,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var carrier = await new BulkTools(connection).GenerateViAsync(
                     carrierAixml, carrierPath, openVI: false, measurePane: false,
-                    panePattern: null, timeoutSeconds, ct: ct);
+                    panePattern: null, timeoutSeconds, ct: ct, measureDiagram: false);
                 steps.Add(Step("carrier", carrier));
                 if (!File.Exists(carrierPath))
                     return Outcome(false, "carrier", steps, total, classPath, null,

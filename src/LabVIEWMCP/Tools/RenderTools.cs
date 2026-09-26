@@ -131,6 +131,7 @@ internal sealed class RenderTools(LvaiConnection connection)
 
         var results = new JsonArray();
         var renderedCount = 0;
+        var basesUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var target in targets)
         {
@@ -138,7 +139,10 @@ internal sealed class RenderTools(LvaiConnection connection)
             // The HTML base name decides the PNG names, so it has to be unique per VI and free
             // of characters LabVIEW strips. Spaces are the common case: "Clamp Array.vi" would
             // otherwise collide with anything else whose name differs only by them.
-            var htmlBase = SafeBaseName(Path.GetFileNameWithoutExtension(viPath));
+            // AND UNIQUE WITHIN THE CALL: two VIs of one file name from two folders - the main VI
+            // of three builds, measured 2026-09-25 - got one base, the later render overwrote the
+            // earlier PNGs, and all three answered `rendered: true` pointing at the same picture.
+            var htmlBase = UniqueBase(SafeBaseName(Path.GetFileNameWithoutExtension(viPath)), basesUsed);
             var htmlPath = Path.Combine(outputs, htmlBase + ".html");
 
             var startedUtc = DateTime.UtcNow;
@@ -233,6 +237,39 @@ internal sealed class RenderTools(LvaiConnection connection)
     {
         var kept = new string([.. name.Where(char.IsLetterOrDigit)]);
         return kept.Length > 0 ? kept : "diagram";
+    }
+
+    /// <summary>
+    /// <paramref name="candidate"/>, or it with a counter when an earlier VI in the same call
+    /// already took it. The counter goes BEFORE LabVIEW's own <c>d</c>/<c>dN</c> suffix, so
+    /// <c>ATMMain2d.png</c> can never be read as frame 2 of <c>ATMMain</c>.
+    /// </summary>
+    internal static string UniqueBase(string candidate, HashSet<string> used)
+    {
+        var name = candidate;
+        for (var n = 2; !used.Add(name); n++) name = $"{candidate}{n}";
+        return name;
+    }
+
+    /// <summary>
+    /// The top-level block diagram's pixel size, from one render into a fresh folder - the
+    /// measurement the generators report as `diagramSize`. Null when no picture appeared.
+    /// </summary>
+    internal async Task<((int Width, int Height)? Size, string? Png)> TopLevelSizeAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "diagramsize",
+                                  $"{Path.GetFileNameWithoutExtension(viPath)}-{Guid.NewGuid():N}"[..^24]);
+        // A measurement must never cost the generation it measures: whatever goes wrong here is an
+        // unknown size, reported as one, and never an exception out of the generator.
+        try
+        {
+            var answer = await RenderDiagramsAsync(viPath, outputDirectory: folder,
+                                                   timeoutSeconds: timeoutSeconds, ct: ct);
+            var png = (JsonNode.Parse(answer)?["results"]?[0]?["diagrams"]?[0])?.GetValue<string>();
+            return png is null ? (null, null) : (DiagramSize.PngSize(png), png);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) { return (null, null); }
     }
 
     /// <summary>

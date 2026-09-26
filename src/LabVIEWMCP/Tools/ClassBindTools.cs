@@ -207,7 +207,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                 {
                     var built = await new BulkTools(connection).GenerateViAsync(
                         source, vi, openVI: false, measurePane: false, panePattern: null,
-                        timeoutSeconds, ct: ct);
+                        timeoutSeconds, ct: ct, measureDiagram: false);
                     if (!File.Exists(vi))
                         return Json.Document(new JsonObject
                         {

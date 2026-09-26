@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="Handle ATM Action.vi" description="ATM state machine, one command per call. Takes the current phase (Idle, Account, Menu, Deposit, Withdraw), the verified account, the message on screen, a command (Card Inserted, Card Removed, Enter, Left 0-2, Right 0-2, Timeout) and the user input, and returns the next phase, account, message, menu name and the panel flags. Account transactions go through the ATM Accounts class on the accounts file at accounts path. A command that does not apply in the current phase changes nothing. Errors from the class or the message builder are passed to error out.">
+
+  <FreeLabel comment="One command per call; state goes in and out." uid="lbl1" uid_parent="root"/>
+
+  <Control _name="phase" outputs="value:c_phase.value" type="string" value="" conIdx="0" connection="recommended" description="Current phase: Idle, Account, Menu, Deposit or Withdraw." uid="c_phase" uid_parent="root"/>
+  <Control _name="account" outputs="value:c_acc.value" type="string" value="" conIdx="1" connection="recommended" description="Account number verified in this session, empty before verification." uid="c_acc" uid_parent="root"/>
+  <Control _name="current message" outputs="value:c_msg.value" type="string" value="" conIdx="2" connection="recommended" description="Message currently shown; returned unchanged when the command changes nothing." uid="c_msg" uid_parent="root"/>
+  <Control _name="command" outputs="value:c_cmd.value" type="string" value="" conIdx="3" connection="recommended" description="Command to process: Card Inserted, Card Removed, Enter, Left 0-2, Right 0-2 or Timeout." uid="c_cmd" uid_parent="root"/>
+  <Control _name="user input" outputs="value:c_ui.value" type="string" value="" conIdx="4" connection="recommended" description="Text in the User Input field: an account number or an amount." uid="c_ui" uid_parent="root"/>
+  <Control _name="accounts path" outputs="value:c_path.value" type="path" value="" conIdx="5" connection="required" description="Path of the comma-separated accounts file." uid="c_path" uid_parent="root"/>
+  <Control _name="error in" outputs="value:c_err.value" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" conIdx="7" connection="recommended" description="Error from a previous step; passed on to error out." uid="c_err" uid_parent="root"/>
+
+  <Constant _name="Accounts Seed" outputs="value:seed.value" type="path" value="" uid="seed" uid_parent="root"/>
+  <Call target="ATM Accounts.lvclass\3AWrite File Path 1.vi" inputs="error in (no error):c_err.value,ATM Accounts in:seed.value,File Path:c_path.value" outputs="error out:wfp.error out,ATM Accounts out:wfp.ATM Accounts out" uid="wfp" uid_parent="root"/>
+
+  <Constant _name="Main menu name" outputs="value:k_main.value" type="string" value="Main" uid="k_main" uid_parent="root"/>
+  <Call target="Get ATM Menu.vi" inputs="menu:k_main.value,error in:wfp.error out" outputs="left menu:,right menu:,left actions:gm.left actions,right actions:gm.right actions,error out:gm.error out" uid="gm" uid_parent="root"/>
+
+  <Structure _name="Case Structure" selectin="c_phase.value" label="Command to action" uid="sa" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:c_cmd.value" uid="sa_i1" uid_parent="sa"/>
+    <Tunnel _id="In2" inputs="value:gm.left actions" uid="sa_i2" uid_parent="sa"/>
+    <Tunnel _id="In3" inputs="value:gm.right actions" uid="sa_i3" uid_parent="sa"/>
+    <Tunnel _id="In4" inputs="value:c_phase.value" uid="sa_i4" uid_parent="sa"/>
+
+    <CaseFrame selector="&quot;Idle&quot;" selectout="" uid="fa_idle" uid_parent="sa">
+      <Tunnel _id="In1" outputs="value:fa_idle_cmd.value" uid="fa_idle_cmd" uid_parent="fa_idle"/>
+      <Tunnel _id="In2" outputs="value:" uid="fa_idle_i2" uid_parent="fa_idle"/>
+      <Tunnel _id="In3" outputs="value:" uid="fa_idle_i3" uid_parent="fa_idle"/>
+      <Tunnel _id="In4" outputs="value:" uid="fa_idle_i4" uid_parent="fa_idle"/>
+      <Structure _name="Case Structure" selectin="fa_idle_cmd.value" uid="si" uid_parent="fa_idle">
+        <CaseFrame selector="&quot;Card Inserted&quot;" selectout="" uid="si_f1" uid_parent="si">
+          <Constant outputs="value:si_k1.value" type="string" value="Start" uid="si_k1" uid_parent="si_f1"/>
+          <Tunnel _id="Out1" inputs="value:si_k1.value" uid="si_f1_o1" uid_parent="si_f1"/>
+        </CaseFrame>
+        <CaseFrame selector="Default" selectout="" uid="si_f2" uid_parent="si">
+          <Constant outputs="value:si_k2.value" type="string" value="None" uid="si_k2" uid_parent="si_f2"/>
+          <Tunnel _id="Out1" inputs="value:si_k2.value" uid="si_f2_o1" uid_parent="si_f2"/>
+        </CaseFrame>
+        <Tunnel _id="Out1" outputs="value:si_o1.value" uid="si_o1" uid_parent="si"/>
+      </Structure>
+      <Tunnel _id="Out1" inputs="value:si_o1.value" uid="fa_idle_o1" uid_parent="fa_idle"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Account&quot;" selectout="" uid="fa_acc" uid_parent="sa">
+      <Tunnel _id="In1" outputs="value:fa_acc_cmd.value" uid="fa_acc_cmd" uid_parent="fa_acc"/>
+      <Tunnel _id="In2" outputs="value:" uid="fa_acc_i2" uid_parent="fa_acc"/>
+      <Tunnel _id="In3" outputs="value:" uid="fa_acc_i3" uid_parent="fa_acc"/>
+      <Tunnel _id="In4" outputs="value:" uid="fa_acc_i4" uid_parent="fa_acc"/>
+      <Structure _name="Case Structure" selectin="fa_acc_cmd.value" uid="sc" uid_parent="fa_acc">
+        <CaseFrame selector="&quot;Enter&quot;" selectout="" uid="sc_f1" uid_parent="sc">
+          <Constant outputs="value:sc_k1.value" type="string" value="Verify" uid="sc_k1" uid_parent="sc_f1"/>
+          <Tunnel _id="Out1" inputs="value:sc_k1.value" uid="sc_f1_o1" uid_parent="sc_f1"/>
+        </CaseFrame>
+        <CaseFrame selector="&quot;Timeout&quot;,&quot;Card Removed&quot;" selectout="" uid="sc_f2" uid_parent="sc">
+          <Constant outputs="value:sc_k2.value" type="string" value="Terminate" uid="sc_k2" uid_parent="sc_f2"/>
+          <Tunnel _id="Out1" inputs="value:sc_k2.value" uid="sc_f2_o1" uid_parent="sc_f2"/>
+        </CaseFrame>
+        <CaseFrame selector="Default" selectout="" uid="sc_f3" uid_parent="sc">
+          <Constant outputs="value:sc_k3.value" type="string" value="None" uid="sc_k3" uid_parent="sc_f3"/>
+          <Tunnel _id="Out1" inputs="value:sc_k3.value" uid="sc_f3_o1" uid_parent="sc_f3"/>
+        </CaseFrame>
+        <Tunnel _id="Out1" outputs="value:sc_o1.value" uid="sc_o1" uid_parent="sc"/>
+      </Structure>
+      <Tunnel _id="Out1" inputs="value:sc_o1.value" uid="fa_acc_o1" uid_parent="fa_acc"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Menu&quot;,&quot;Deposit&quot;,&quot;Withdraw&quot;" selectout="" uid="fa_menu" uid_parent="sa">
+      <Tunnel _id="In1" outputs="value:fa_menu_cmd.value" uid="fa_menu_cmd" uid_parent="fa_menu"/>
+      <Tunnel _id="In2" outputs="value:fa_menu_la.value" uid="fa_menu_la" uid_parent="fa_menu"/>
+      <Tunnel _id="In3" outputs="value:fa_menu_ra.value" uid="fa_menu_ra" uid_parent="fa_menu"/>
+      <Tunnel _id="In4" outputs="value:fa_menu_ph.value" uid="fa_menu_ph" uid_parent="fa_menu"/>
+      <Structure _name="Case Structure" selectin="fa_menu_cmd.value" uid="sm" uid_parent="fa_menu">
+        <Tunnel _id="In1" inputs="value:fa_menu_cmd.value" uid="sm_i1" uid_parent="sm"/>
+        <Tunnel _id="In2" inputs="value:fa_menu_la.value" uid="sm_i2" uid_parent="sm"/>
+        <Tunnel _id="In3" inputs="value:fa_menu_ra.value" uid="sm_i3" uid_parent="sm"/>
+        <Tunnel _id="In4" inputs="value:fa_menu_ph.value" uid="sm_i4" uid_parent="sm"/>
+        <CaseFrame selector="&quot;Left 0&quot;,&quot;Left 1&quot;,&quot;Left 2&quot;" selectout="" uid="sm_f1" uid_parent="sm">
+          <Tunnel _id="In1" outputs="value:sm_f1_cmd.value" uid="sm_f1_cmd" uid_parent="sm_f1"/>
+          <Tunnel _id="In2" outputs="value:sm_f1_la.value" uid="sm_f1_la" uid_parent="sm_f1"/>
+          <Tunnel _id="In3" outputs="value:" uid="sm_f1_i3" uid_parent="sm_f1"/>
+          <Tunnel _id="In4" outputs="value:" uid="sm_f1_i4" uid_parent="sm_f1"/>
+          <Constant outputs="value:sm_f1_off.value" type="int32" value="5" uid="sm_f1_off" uid_parent="sm_f1"/>
+          <Node _name="Decimal String To Number" inputs="string:sm_f1_cmd.value,offset:sm_f1_off.value" outputs="number:sm_f1_n.number" uid="sm_f1_n" uid_parent="sm_f1"/>
+          <Node _name="Index Array" inputs="array:sm_f1_la.value,index:sm_f1_n.number" outputs="element:sm_f1_e.element" uid="sm_f1_e" uid_parent="sm_f1"/>
+          <Tunnel _id="Out1" inputs="value:sm_f1_e.element" uid="sm_f1_o1" uid_parent="sm_f1"/>
+        </CaseFrame>
+        <CaseFrame selector="&quot;Right 0&quot;,&quot;Right 1&quot;,&quot;Right 2&quot;" selectout="" uid="sm_f2" uid_parent="sm">
+          <Tunnel _id="In1" outputs="value:sm_f2_cmd.value" uid="sm_f2_cmd" uid_parent="sm_f2"/>
+          <Tunnel _id="In2" outputs="value:" uid="sm_f2_i2" uid_parent="sm_f2"/>
+          <Tunnel _id="In3" outputs="value:sm_f2_ra.value" uid="sm_f2_ra" uid_parent="sm_f2"/>
+          <Tunnel _id="In4" outputs="value:" uid="sm_f2_i4" uid_parent="sm_f2"/>
+          <Constant outputs="value:sm_f2_off.value" type="int32" value="6" uid="sm_f2_off" uid_parent="sm_f2"/>
+          <Node _name="Decimal String To Number" inputs="string:sm_f2_cmd.value,offset:sm_f2_off.value" outputs="number:sm_f2_n.number" uid="sm_f2_n" uid_parent="sm_f2"/>
+          <Node _name="Index Array" inputs="array:sm_f2_ra.value,index:sm_f2_n.number" outputs="element:sm_f2_e.element" uid="sm_f2_e" uid_parent="sm_f2"/>
+          <Tunnel _id="Out1" inputs="value:sm_f2_e.element" uid="sm_f2_o1" uid_parent="sm_f2"/>
+        </CaseFrame>
+        <CaseFrame selector="&quot;Enter&quot;" selectout="" uid="sm_f3" uid_parent="sm">
+          <Tunnel _id="In1" outputs="value:" uid="sm_f3_i1" uid_parent="sm_f3"/>
+          <Tunnel _id="In2" outputs="value:" uid="sm_f3_i2" uid_parent="sm_f3"/>
+          <Tunnel _id="In3" outputs="value:" uid="sm_f3_i3" uid_parent="sm_f3"/>
+          <Tunnel _id="In4" outputs="value:sm_f3_ph.value" uid="sm_f3_ph" uid_parent="sm_f3"/>
+          <Constant outputs="value:sm_f3_k.value" type="string" value="Do " uid="sm_f3_k" uid_parent="sm_f3"/>
+          <Node _name="Concatenate Strings" inputs="string:sm_f3_k.value,string:sm_f3_ph.value" outputs="concatenated string:sm_f3_c.concatenated string" uid="sm_f3_c" uid_parent="sm_f3"/>
+          <Tunnel _id="Out1" inputs="value:sm_f3_c.concatenated string" uid="sm_f3_o1" uid_parent="sm_f3"/>
+        </CaseFrame>
+        <CaseFrame selector="&quot;Timeout&quot;,&quot;Card Removed&quot;" selectout="" uid="sm_f4" uid_parent="sm">
+          <Tunnel _id="In1" outputs="value:" uid="sm_f4_i1" uid_parent="sm_f4"/>
+          <Tunnel _id="In2" outputs="value:" uid="sm_f4_i2" uid_parent="sm_f4"/>
+          <Tunnel _id="In3" outputs="value:" uid="sm_f4_i3" uid_parent="sm_f4"/>
+          <Tunnel _id="In4" outputs="value:" uid="sm_f4_i4" uid_parent="sm_f4"/>
+          <Constant outputs="value:sm_f4_k.value" type="string" value="Terminate" uid="sm_f4_k" uid_parent="sm_f4"/>
+          <Tunnel _id="Out1" inputs="value:sm_f4_k.value" uid="sm_f4_o1" uid_parent="sm_f4"/>
+        </CaseFrame>
+        <CaseFrame selector="Default" selectout="" uid="sm_f5" uid_parent="sm">
+          <Tunnel _id="In1" outputs="value:" uid="sm_f5_i1" uid_parent="sm_f5"/>
+          <Tunnel _id="In2" outputs="value:" uid="sm_f5_i2" uid_parent="sm_f5"/>
+          <Tunnel _id="In3" outputs="value:" uid="sm_f5_i3" uid_parent="sm_f5"/>
+          <Tunnel _id="In4" outputs="value:" uid="sm_f5_i4" uid_parent="sm_f5"/>
+          <Constant outputs="value:sm_f5_k.value" type="string" value="None" uid="sm_f5_k" uid_parent="sm_f5"/>
+          <Tunnel _id="Out1" inputs="value:sm_f5_k.value" uid="sm_f5_o1" uid_parent="sm_f5"/>
+        </CaseFrame>
+        <Tunnel _id="Out1" outputs="value:sm_o1.value" uid="sm_o1" uid_parent="sm"/>
+      </Structure>
+      <Tunnel _id="Out1" inputs="value:sm_o1.value" uid="fa_menu_o1" uid_parent="fa_menu"/>
+    </CaseFrame>
+
+    <CaseFrame selector="Default" selectout="" uid="fa_def" uid_parent="sa">
+      <Tunnel _id="In1" outputs="value:" uid="fa_def_i1" uid_parent="fa_def"/>
+      <Tunnel _id="In2" outputs="value:" uid="fa_def_i2" uid_parent="fa_def"/>
+      <Tunnel _id="In3" outputs="value:" uid="fa_def_i3" uid_parent="fa_def"/>
+      <Tunnel _id="In4" outputs="value:" uid="fa_def_i4" uid_parent="fa_def"/>
+      <Constant outputs="value:fa_def_k.value" type="string" value="None" uid="fa_def_k" uid_parent="fa_def"/>
+      <Tunnel _id="Out1" inputs="value:fa_def_k.value" uid="fa_def_o1" uid_parent="fa_def"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:sa_o1.value" uid="sa_o1" uid_parent="sa"/>
+  </Structure>
+
+  <Structure _name="Case Structure" selectin="sa_o1.value" label="Perform action" uid="sb" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:wfp.ATM Accounts out" uid="sb_i1" uid_parent="sb"/>
+    <Tunnel _id="In2" inputs="value:gm.error out" uid="sb_i2" uid_parent="sb"/>
+    <Tunnel _id="In3" inputs="value:c_phase.value" uid="sb_i3" uid_parent="sb"/>
+    <Tunnel _id="In4" inputs="value:c_acc.value" uid="sb_i4" uid_parent="sb"/>
+    <Tunnel _id="In5" inputs="value:c_msg.value" uid="sb_i5" uid_parent="sb"/>
+    <Tunnel _id="In6" inputs="value:c_ui.value" uid="sb_i6" uid_parent="sb"/>
+
+    <CaseFrame selector="&quot;Start&quot;" selectout="" uid="b1" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:" uid="b1_i1" uid_parent="b1"/>
+      <Tunnel _id="In2" outputs="value:b1_err.value" uid="b1_err" uid_parent="b1"/>
+      <Tunnel _id="In3" outputs="value:" uid="b1_i3" uid_parent="b1"/>
+      <Tunnel _id="In4" outputs="value:b1_acc.value" uid="b1_acc" uid_parent="b1"/>
+      <Tunnel _id="In5" outputs="value:" uid="b1_i5" uid_parent="b1"/>
+      <Tunnel _id="In6" outputs="value:" uid="b1_i6" uid_parent="b1"/>
+      <Constant outputs="value:b1_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="0" uid="b1_kind" uid_parent="b1"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b1_kind.value,error in:b1_err.value" outputs="message:b1_m.message,error out:b1_m.error out" uid="b1_m" uid_parent="b1"/>
+      <Constant outputs="value:b1_ph.value" type="string" value="Account" uid="b1_ph" uid_parent="b1"/>
+      <Constant outputs="value:b1_t.value" type="bool" value="true" uid="b1_t" uid_parent="b1"/>
+      <Constant outputs="value:b1_f.value" type="bool" value="false" uid="b1_f" uid_parent="b1"/>
+      <Tunnel _id="Out1" inputs="value:b1_ph.value" uid="b1_o1" uid_parent="b1"/>
+      <Tunnel _id="Out2" inputs="value:b1_acc.value" uid="b1_o2" uid_parent="b1"/>
+      <Tunnel _id="Out3" inputs="value:b1_m.message" uid="b1_o3" uid_parent="b1"/>
+      <Tunnel _id="Out4" inputs="value:b1_t.value" uid="b1_o4" uid_parent="b1"/>
+      <Tunnel _id="Out5" inputs="value:b1_f.value" uid="b1_o5" uid_parent="b1"/>
+      <Tunnel _id="Out6" inputs="value:b1_m.error out" uid="b1_o6" uid_parent="b1"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Verify&quot;" selectout="" uid="b2" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:b2_cls.value" uid="b2_cls" uid_parent="b2"/>
+      <Tunnel _id="In2" outputs="value:b2_err.value" uid="b2_err" uid_parent="b2"/>
+      <Tunnel _id="In3" outputs="value:" uid="b2_i3" uid_parent="b2"/>
+      <Tunnel _id="In4" outputs="value:b2_acc.value" uid="b2_acc" uid_parent="b2"/>
+      <Tunnel _id="In5" outputs="value:" uid="b2_i5" uid_parent="b2"/>
+      <Tunnel _id="In6" outputs="value:b2_ui.value" uid="b2_ui" uid_parent="b2"/>
+      <Constant outputs="value:b2_tr.value" type="string" value="Verify" uid="b2_tr" uid_parent="b2"/>
+      <Call target="ATM Accounts.lvclass\3AApply Transaction.vi" inputs="ATM Accounts in:b2_cls.value,transaction:b2_tr.value,account number:b2_ui.value,error in:b2_err.value" outputs="ATM Accounts out:,success:b2_ap.success,balance:,first name:b2_ap.first name,last name:b2_ap.last name,error out:b2_ap.error out" uid="b2_ap" uid_parent="b2"/>
+      <Constant outputs="value:b2_pm.value" type="string" value="Menu" uid="b2_pm" uid_parent="b2"/>
+      <Constant outputs="value:b2_pa.value" type="string" value="Account" uid="b2_pa" uid_parent="b2"/>
+      <Node _name="Select" inputs="t:b2_pm.value,s:b2_ap.success,f:b2_pa.value" outputs="s? t\3Af:b2_s1.s? t\3Af" uid="b2_s1" uid_parent="b2"/>
+      <Node _name="Select" inputs="t:b2_ui.value,s:b2_ap.success,f:b2_acc.value" outputs="s? t\3Af:b2_s2.s? t\3Af" uid="b2_s2" uid_parent="b2"/>
+      <Constant outputs="value:b2_k1.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="1" uid="b2_k1" uid_parent="b2"/>
+      <Constant outputs="value:b2_k2.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="2" uid="b2_k2" uid_parent="b2"/>
+      <Node _name="Select" inputs="t:b2_k1.value,s:b2_ap.success,f:b2_k2.value" outputs="s? t\3Af:b2_s3.s? t\3Af" uid="b2_s3" uid_parent="b2"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b2_s3.s? t\3Af,first name:b2_ap.first name,last name:b2_ap.last name,error in:b2_ap.error out" outputs="message:b2_m.message,error out:b2_m.error out" uid="b2_m" uid_parent="b2"/>
+      <Node _name="Not" inputs="x:b2_ap.success" outputs=".not. x?:b2_n..not. x?" uid="b2_n" uid_parent="b2"/>
+      <Constant outputs="value:b2_f.value" type="bool" value="false" uid="b2_f" uid_parent="b2"/>
+      <Tunnel _id="Out1" inputs="value:b2_s1.s? t\3Af" uid="b2_o1" uid_parent="b2"/>
+      <Tunnel _id="Out2" inputs="value:b2_s2.s? t\3Af" uid="b2_o2" uid_parent="b2"/>
+      <Tunnel _id="Out3" inputs="value:b2_m.message" uid="b2_o3" uid_parent="b2"/>
+      <Tunnel _id="Out4" inputs="value:b2_n..not. x?" uid="b2_o4" uid_parent="b2"/>
+      <Tunnel _id="Out5" inputs="value:b2_f.value" uid="b2_o5" uid_parent="b2"/>
+      <Tunnel _id="Out6" inputs="value:b2_m.error out" uid="b2_o6" uid_parent="b2"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Balance&quot;" selectout="" uid="b3" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:b3_cls.value" uid="b3_cls" uid_parent="b3"/>
+      <Tunnel _id="In2" outputs="value:b3_err.value" uid="b3_err" uid_parent="b3"/>
+      <Tunnel _id="In3" outputs="value:" uid="b3_i3" uid_parent="b3"/>
+      <Tunnel _id="In4" outputs="value:b3_acc.value" uid="b3_acc" uid_parent="b3"/>
+      <Tunnel _id="In5" outputs="value:" uid="b3_i5" uid_parent="b3"/>
+      <Tunnel _id="In6" outputs="value:" uid="b3_i6" uid_parent="b3"/>
+      <Constant outputs="value:b3_tr.value" type="string" value="Balance" uid="b3_tr" uid_parent="b3"/>
+      <Call target="ATM Accounts.lvclass\3AApply Transaction.vi" inputs="ATM Accounts in:b3_cls.value,transaction:b3_tr.value,account number:b3_acc.value,error in:b3_err.value" outputs="ATM Accounts out:,success:,balance:b3_ap.balance,first name:,last name:,error out:b3_ap.error out" uid="b3_ap" uid_parent="b3"/>
+      <Constant outputs="value:b3_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="9" uid="b3_kind" uid_parent="b3"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b3_kind.value,amount:b3_ap.balance,error in:b3_ap.error out" outputs="message:b3_m.message,error out:b3_m.error out" uid="b3_m" uid_parent="b3"/>
+      <Constant outputs="value:b3_ph.value" type="string" value="Menu" uid="b3_ph" uid_parent="b3"/>
+      <Constant outputs="value:b3_f.value" type="bool" value="false" uid="b3_f" uid_parent="b3"/>
+      <Tunnel _id="Out1" inputs="value:b3_ph.value" uid="b3_o1" uid_parent="b3"/>
+      <Tunnel _id="Out2" inputs="value:b3_acc.value" uid="b3_o2" uid_parent="b3"/>
+      <Tunnel _id="Out3" inputs="value:b3_m.message" uid="b3_o3" uid_parent="b3"/>
+      <Tunnel _id="Out4" inputs="value:b3_f.value" uid="b3_o4" uid_parent="b3"/>
+      <Tunnel _id="Out5" inputs="value:b3_f.value" uid="b3_o5" uid_parent="b3"/>
+      <Tunnel _id="Out6" inputs="value:b3_m.error out" uid="b3_o6" uid_parent="b3"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Terminate&quot;" selectout="" uid="b4" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:" uid="b4_i1" uid_parent="b4"/>
+      <Tunnel _id="In2" outputs="value:b4_err.value" uid="b4_err" uid_parent="b4"/>
+      <Tunnel _id="In3" outputs="value:" uid="b4_i3" uid_parent="b4"/>
+      <Tunnel _id="In4" outputs="value:" uid="b4_i4" uid_parent="b4"/>
+      <Tunnel _id="In5" outputs="value:" uid="b4_i5" uid_parent="b4"/>
+      <Tunnel _id="In6" outputs="value:" uid="b4_i6" uid_parent="b4"/>
+      <Constant outputs="value:b4_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="3" uid="b4_kind" uid_parent="b4"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b4_kind.value,error in:b4_err.value" outputs="message:b4_m.message,error out:b4_m.error out" uid="b4_m" uid_parent="b4"/>
+      <Constant outputs="value:b4_ph.value" type="string" value="Idle" uid="b4_ph" uid_parent="b4"/>
+      <Constant outputs="value:b4_acc.value" type="string" value="" uid="b4_acc" uid_parent="b4"/>
+      <Constant outputs="value:b4_t.value" type="bool" value="true" uid="b4_t" uid_parent="b4"/>
+      <Constant outputs="value:b4_f.value" type="bool" value="false" uid="b4_f" uid_parent="b4"/>
+      <Tunnel _id="Out1" inputs="value:b4_ph.value" uid="b4_o1" uid_parent="b4"/>
+      <Tunnel _id="Out2" inputs="value:b4_acc.value" uid="b4_o2" uid_parent="b4"/>
+      <Tunnel _id="Out3" inputs="value:b4_m.message" uid="b4_o3" uid_parent="b4"/>
+      <Tunnel _id="Out4" inputs="value:b4_f.value" uid="b4_o4" uid_parent="b4"/>
+      <Tunnel _id="Out5" inputs="value:b4_t.value" uid="b4_o5" uid_parent="b4"/>
+      <Tunnel _id="Out6" inputs="value:b4_m.error out" uid="b4_o6" uid_parent="b4"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Deposit&quot;" selectout="" uid="b5" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:" uid="b5_i1" uid_parent="b5"/>
+      <Tunnel _id="In2" outputs="value:b5_err.value" uid="b5_err" uid_parent="b5"/>
+      <Tunnel _id="In3" outputs="value:" uid="b5_i3" uid_parent="b5"/>
+      <Tunnel _id="In4" outputs="value:b5_acc.value" uid="b5_acc" uid_parent="b5"/>
+      <Tunnel _id="In5" outputs="value:" uid="b5_i5" uid_parent="b5"/>
+      <Tunnel _id="In6" outputs="value:" uid="b5_i6" uid_parent="b5"/>
+      <Constant outputs="value:b5_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="4" uid="b5_kind" uid_parent="b5"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b5_kind.value,error in:b5_err.value" outputs="message:b5_m.message,error out:b5_m.error out" uid="b5_m" uid_parent="b5"/>
+      <Constant outputs="value:b5_ph.value" type="string" value="Deposit" uid="b5_ph" uid_parent="b5"/>
+      <Constant outputs="value:b5_t.value" type="bool" value="true" uid="b5_t" uid_parent="b5"/>
+      <Constant outputs="value:b5_f.value" type="bool" value="false" uid="b5_f" uid_parent="b5"/>
+      <Tunnel _id="Out1" inputs="value:b5_ph.value" uid="b5_o1" uid_parent="b5"/>
+      <Tunnel _id="Out2" inputs="value:b5_acc.value" uid="b5_o2" uid_parent="b5"/>
+      <Tunnel _id="Out3" inputs="value:b5_m.message" uid="b5_o3" uid_parent="b5"/>
+      <Tunnel _id="Out4" inputs="value:b5_t.value" uid="b5_o4" uid_parent="b5"/>
+      <Tunnel _id="Out5" inputs="value:b5_f.value" uid="b5_o5" uid_parent="b5"/>
+      <Tunnel _id="Out6" inputs="value:b5_m.error out" uid="b5_o6" uid_parent="b5"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Withdraw&quot;" selectout="" uid="b6" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:" uid="b6_i1" uid_parent="b6"/>
+      <Tunnel _id="In2" outputs="value:b6_err.value" uid="b6_err" uid_parent="b6"/>
+      <Tunnel _id="In3" outputs="value:" uid="b6_i3" uid_parent="b6"/>
+      <Tunnel _id="In4" outputs="value:b6_acc.value" uid="b6_acc" uid_parent="b6"/>
+      <Tunnel _id="In5" outputs="value:" uid="b6_i5" uid_parent="b6"/>
+      <Tunnel _id="In6" outputs="value:" uid="b6_i6" uid_parent="b6"/>
+      <Constant outputs="value:b6_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="6" uid="b6_kind" uid_parent="b6"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b6_kind.value,error in:b6_err.value" outputs="message:b6_m.message,error out:b6_m.error out" uid="b6_m" uid_parent="b6"/>
+      <Constant outputs="value:b6_ph.value" type="string" value="Withdraw" uid="b6_ph" uid_parent="b6"/>
+      <Constant outputs="value:b6_t.value" type="bool" value="true" uid="b6_t" uid_parent="b6"/>
+      <Constant outputs="value:b6_f.value" type="bool" value="false" uid="b6_f" uid_parent="b6"/>
+      <Tunnel _id="Out1" inputs="value:b6_ph.value" uid="b6_o1" uid_parent="b6"/>
+      <Tunnel _id="Out2" inputs="value:b6_acc.value" uid="b6_o2" uid_parent="b6"/>
+      <Tunnel _id="Out3" inputs="value:b6_m.message" uid="b6_o3" uid_parent="b6"/>
+      <Tunnel _id="Out4" inputs="value:b6_t.value" uid="b6_o4" uid_parent="b6"/>
+      <Tunnel _id="Out5" inputs="value:b6_f.value" uid="b6_o5" uid_parent="b6"/>
+      <Tunnel _id="Out6" inputs="value:b6_m.error out" uid="b6_o6" uid_parent="b6"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;FastCash&quot;" selectout="" uid="b7" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:b7_cls.value" uid="b7_cls" uid_parent="b7"/>
+      <Tunnel _id="In2" outputs="value:b7_err.value" uid="b7_err" uid_parent="b7"/>
+      <Tunnel _id="In3" outputs="value:" uid="b7_i3" uid_parent="b7"/>
+      <Tunnel _id="In4" outputs="value:b7_acc.value" uid="b7_acc" uid_parent="b7"/>
+      <Tunnel _id="In5" outputs="value:" uid="b7_i5" uid_parent="b7"/>
+      <Tunnel _id="In6" outputs="value:" uid="b7_i6" uid_parent="b7"/>
+      <Constant _name="Fast Cash amount" outputs="value:b7_amt.value" type="double" value="50" uid="b7_amt" uid_parent="b7"/>
+      <Constant outputs="value:b7_tr.value" type="string" value="Withdraw" uid="b7_tr" uid_parent="b7"/>
+      <Call target="ATM Accounts.lvclass\3AApply Transaction.vi" inputs="ATM Accounts in:b7_cls.value,transaction:b7_tr.value,account number:b7_acc.value,amount:b7_amt.value,error in:b7_err.value" outputs="ATM Accounts out:,success:b7_ap.success,balance:,first name:,last name:,error out:b7_ap.error out" uid="b7_ap" uid_parent="b7"/>
+      <Constant outputs="value:b7_k1.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="7" uid="b7_k1" uid_parent="b7"/>
+      <Constant outputs="value:b7_k2.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="8" uid="b7_k2" uid_parent="b7"/>
+      <Node _name="Select" inputs="t:b7_k1.value,s:b7_ap.success,f:b7_k2.value" outputs="s? t\3Af:b7_s.s? t\3Af" uid="b7_s" uid_parent="b7"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b7_s.s? t\3Af,amount:b7_amt.value,error in:b7_ap.error out" outputs="message:b7_m.message,error out:b7_m.error out" uid="b7_m" uid_parent="b7"/>
+      <Constant outputs="value:b7_ph.value" type="string" value="Menu" uid="b7_ph" uid_parent="b7"/>
+      <Constant outputs="value:b7_f.value" type="bool" value="false" uid="b7_f" uid_parent="b7"/>
+      <Tunnel _id="Out1" inputs="value:b7_ph.value" uid="b7_o1" uid_parent="b7"/>
+      <Tunnel _id="Out2" inputs="value:b7_acc.value" uid="b7_o2" uid_parent="b7"/>
+      <Tunnel _id="Out3" inputs="value:b7_m.message" uid="b7_o3" uid_parent="b7"/>
+      <Tunnel _id="Out4" inputs="value:b7_f.value" uid="b7_o4" uid_parent="b7"/>
+      <Tunnel _id="Out5" inputs="value:b7_f.value" uid="b7_o5" uid_parent="b7"/>
+      <Tunnel _id="Out6" inputs="value:b7_m.error out" uid="b7_o6" uid_parent="b7"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Do Deposit&quot;" selectout="" uid="b8" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:b8_cls.value" uid="b8_cls" uid_parent="b8"/>
+      <Tunnel _id="In2" outputs="value:b8_err.value" uid="b8_err" uid_parent="b8"/>
+      <Tunnel _id="In3" outputs="value:" uid="b8_i3" uid_parent="b8"/>
+      <Tunnel _id="In4" outputs="value:b8_acc.value" uid="b8_acc" uid_parent="b8"/>
+      <Tunnel _id="In5" outputs="value:" uid="b8_i5" uid_parent="b8"/>
+      <Tunnel _id="In6" outputs="value:b8_ui.value" uid="b8_ui" uid_parent="b8"/>
+      <Node _name="Fract/Exp String To Number" inputs="string:b8_ui.value" outputs="number:b8_num.number" uid="b8_num" uid_parent="b8"/>
+      <Constant outputs="value:b8_tr.value" type="string" value="Deposit" uid="b8_tr" uid_parent="b8"/>
+      <Call target="ATM Accounts.lvclass\3AApply Transaction.vi" inputs="ATM Accounts in:b8_cls.value,transaction:b8_tr.value,account number:b8_acc.value,amount:b8_num.number,error in:b8_err.value" outputs="ATM Accounts out:,success:,balance:,first name:,last name:,error out:b8_ap.error out" uid="b8_ap" uid_parent="b8"/>
+      <Constant outputs="value:b8_kind.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="5" uid="b8_kind" uid_parent="b8"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b8_kind.value,amount:b8_num.number,error in:b8_ap.error out" outputs="message:b8_m.message,error out:b8_m.error out" uid="b8_m" uid_parent="b8"/>
+      <Constant outputs="value:b8_ph.value" type="string" value="Menu" uid="b8_ph" uid_parent="b8"/>
+      <Constant outputs="value:b8_f.value" type="bool" value="false" uid="b8_f" uid_parent="b8"/>
+      <Tunnel _id="Out1" inputs="value:b8_ph.value" uid="b8_o1" uid_parent="b8"/>
+      <Tunnel _id="Out2" inputs="value:b8_acc.value" uid="b8_o2" uid_parent="b8"/>
+      <Tunnel _id="Out3" inputs="value:b8_m.message" uid="b8_o3" uid_parent="b8"/>
+      <Tunnel _id="Out4" inputs="value:b8_f.value" uid="b8_o4" uid_parent="b8"/>
+      <Tunnel _id="Out5" inputs="value:b8_f.value" uid="b8_o5" uid_parent="b8"/>
+      <Tunnel _id="Out6" inputs="value:b8_m.error out" uid="b8_o6" uid_parent="b8"/>
+    </CaseFrame>
+
+    <CaseFrame selector="&quot;Do Withdraw&quot;" selectout="" uid="b9" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:b9_cls.value" uid="b9_cls" uid_parent="b9"/>
+      <Tunnel _id="In2" outputs="value:b9_err.value" uid="b9_err" uid_parent="b9"/>
+      <Tunnel _id="In3" outputs="value:" uid="b9_i3" uid_parent="b9"/>
+      <Tunnel _id="In4" outputs="value:b9_acc.value" uid="b9_acc" uid_parent="b9"/>
+      <Tunnel _id="In5" outputs="value:" uid="b9_i5" uid_parent="b9"/>
+      <Tunnel _id="In6" outputs="value:b9_ui.value" uid="b9_ui" uid_parent="b9"/>
+      <Node _name="Fract/Exp String To Number" inputs="string:b9_ui.value" outputs="number:b9_num.number" uid="b9_num" uid_parent="b9"/>
+      <Constant outputs="value:b9_tr.value" type="string" value="Withdraw" uid="b9_tr" uid_parent="b9"/>
+      <Call target="ATM Accounts.lvclass\3AApply Transaction.vi" inputs="ATM Accounts in:b9_cls.value,transaction:b9_tr.value,account number:b9_acc.value,amount:b9_num.number,error in:b9_err.value" outputs="ATM Accounts out:,success:b9_ap.success,balance:,first name:,last name:,error out:b9_ap.error out" uid="b9_ap" uid_parent="b9"/>
+      <Constant outputs="value:b9_k1.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="7" uid="b9_k1" uid_parent="b9"/>
+      <Constant outputs="value:b9_k2.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="8" uid="b9_k2" uid_parent="b9"/>
+      <Node _name="Select" inputs="t:b9_k1.value,s:b9_ap.success,f:b9_k2.value" outputs="s? t\3Af:b9_s.s? t\3Af" uid="b9_s" uid_parent="b9"/>
+      <Call target="Build ATM Message.vi" inputs="message kind:b9_s.s? t\3Af,amount:b9_num.number,error in:b9_ap.error out" outputs="message:b9_m.message,error out:b9_m.error out" uid="b9_m" uid_parent="b9"/>
+      <Constant outputs="value:b9_ph.value" type="string" value="Menu" uid="b9_ph" uid_parent="b9"/>
+      <Constant outputs="value:b9_f.value" type="bool" value="false" uid="b9_f" uid_parent="b9"/>
+      <Tunnel _id="Out1" inputs="value:b9_ph.value" uid="b9_o1" uid_parent="b9"/>
+      <Tunnel _id="Out2" inputs="value:b9_acc.value" uid="b9_o2" uid_parent="b9"/>
+      <Tunnel _id="Out3" inputs="value:b9_m.message" uid="b9_o3" uid_parent="b9"/>
+      <Tunnel _id="Out4" inputs="value:b9_f.value" uid="b9_o4" uid_parent="b9"/>
+      <Tunnel _id="Out5" inputs="value:b9_f.value" uid="b9_o5" uid_parent="b9"/>
+      <Tunnel _id="Out6" inputs="value:b9_m.error out" uid="b9_o6" uid_parent="b9"/>
+    </CaseFrame>
+
+    <CaseFrame selector="Default" selectout="" uid="b0" uid_parent="sb">
+      <Tunnel _id="In1" outputs="value:" uid="b0_i1" uid_parent="b0"/>
+      <Tunnel _id="In2" outputs="value:b0_err.value" uid="b0_err" uid_parent="b0"/>
+      <Tunnel _id="In3" outputs="value:b0_ph.value" uid="b0_ph" uid_parent="b0"/>
+      <Tunnel _id="In4" outputs="value:b0_acc.value" uid="b0_acc" uid_parent="b0"/>
+      <Tunnel _id="In5" outputs="value:b0_msg.value" uid="b0_msg" uid_parent="b0"/>
+      <Tunnel _id="In6" outputs="value:" uid="b0_i6" uid_parent="b0"/>
+      <Constant outputs="value:b0_f.value" type="bool" value="false" uid="b0_f" uid_parent="b0"/>
+      <Tunnel _id="Out1" inputs="value:b0_ph.value" uid="b0_o1" uid_parent="b0"/>
+      <Tunnel _id="Out2" inputs="value:b0_acc.value" uid="b0_o2" uid_parent="b0"/>
+      <Tunnel _id="Out3" inputs="value:b0_msg.value" uid="b0_o3" uid_parent="b0"/>
+      <Tunnel _id="Out4" inputs="value:b0_f.value" uid="b0_o4" uid_parent="b0"/>
+      <Tunnel _id="Out5" inputs="value:b0_f.value" uid="b0_o5" uid_parent="b0"/>
+      <Tunnel _id="Out6" inputs="value:b0_err.value" uid="b0_o6" uid_parent="b0"/>
+    </CaseFrame>
+
+    <Tunnel _id="Out1" outputs="value:sb_o1.value" uid="sb_o1" uid_parent="sb"/>
+    <Tunnel _id="Out2" outputs="value:sb_o2.value" uid="sb_o2" uid_parent="sb"/>
+    <Tunnel _id="Out3" outputs="value:sb_o3.value" uid="sb_o3" uid_parent="sb"/>
+    <Tunnel _id="Out4" outputs="value:sb_o4.value" uid="sb_o4" uid_parent="sb"/>
+    <Tunnel _id="Out5" outputs="value:sb_o5.value" uid="sb_o5" uid_parent="sb"/>
+    <Tunnel _id="Out6" outputs="value:sb_o6.value" uid="sb_o6" uid_parent="sb"/>
+  </Structure>
+
+  <Structure _name="Case Structure" selectin="sb_o1.value" label="Menu for phase" uid="sd" uid_parent="root">
+    <CaseFrame selector="&quot;Menu&quot;,&quot;Deposit&quot;,&quot;Withdraw&quot;" selectout="" uid="sd_f1" uid_parent="sd">
+      <Constant outputs="value:sd_k1.value" type="string" value="Main" uid="sd_k1" uid_parent="sd_f1"/>
+      <Tunnel _id="Out1" inputs="value:sd_k1.value" uid="sd_f1_o1" uid_parent="sd_f1"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" selectout="" uid="sd_f2" uid_parent="sd">
+      <Constant outputs="value:sd_k2.value" type="string" value="" uid="sd_k2" uid_parent="sd_f2"/>
+      <Tunnel _id="Out1" inputs="value:sd_k2.value" uid="sd_f2_o1" uid_parent="sd_f2"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:sd_o1.value" uid="sd_o1" uid_parent="sd"/>
+  </Structure>
+
+  <Constant outputs="value:k_idle.value" type="string" value="Idle" uid="k_idle" uid_parent="root"/>
+  <Node _name="Not Equal?" inputs="x:sb_o1.value,y:k_idle.value" outputs="x != y?:ne.x != y?" uid="ne" uid_parent="root"/>
+
+  <Indicator _name="phase out" inputs="value:sb_o1.value" type="string" value="" conIdx="20" connection="recommended" description="Phase after this command." uid="o_phase" uid_parent="root"/>
+  <Indicator _name="account out" inputs="value:sb_o2.value" type="string" value="" conIdx="21" connection="recommended" description="Verified account after this command; empty after the session ends." uid="o_acc" uid_parent="root"/>
+  <Indicator _name="message" inputs="value:sb_o3.value" type="string" value="" conIdx="22" connection="recommended" description="Message to show on the ATM screen." uid="o_msg" uid_parent="root"/>
+  <Indicator _name="menu" inputs="value:sd_o1.value" type="string" value="" conIdx="23" connection="recommended" description="Menu to show: Main in the Menu, Deposit and Withdraw phases, empty otherwise." uid="o_menu" uid_parent="root"/>
+  <Indicator _name="input enabled" inputs="value:ne.x != y?" type="bool" value="false" conIdx="24" connection="recommended" description="TRUE when User Input and Enter should be enabled (every phase except Idle)." uid="o_ie" uid_parent="root"/>
+  <Indicator _name="focus input" inputs="value:sb_o4.value" type="bool" value="false" conIdx="25" connection="recommended" description="TRUE when key focus should move to User Input." uid="o_fi" uid_parent="root"/>
+  <Indicator _name="stop" inputs="value:sb_o5.value" type="bool" value="false" conIdx="26" connection="recommended" description="TRUE when the session has ended and the card is returned." uid="o_stop" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:sb_o6.value" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" conIdx="27" connection="recommended" description="Error from the class calls or the message builder, or error in." uid="o_err" uid_parent="root"/>
+</VI>

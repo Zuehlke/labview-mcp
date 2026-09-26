@@ -114,6 +114,7 @@ internal static class Json
         [
             "ok", "errorCode", "errorKind", "errorMessage", "errorSource", "failedAtStep",
             "elapsedMs", "totalElapsedMs", "viBytes", "viExistsNow", "closed", "nothingToClose",
+            "diagramSize",
         ];
 
         var slim = new JsonObject();
