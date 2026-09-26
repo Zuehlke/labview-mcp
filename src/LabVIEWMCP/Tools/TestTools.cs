@@ -2144,15 +2144,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"uid=\"{assertion}\" uid_parent=\"root\"/>");
         }
 
-        var last = $"{assertions[0]}.error out";
-        foreach (var assertion in assertions.Skip(1))
-        {
-            var merge = uid++;
-            sb.AppendLine($"  <Node _name=\"Merge Errors\" inputs=\"error in:{last}," +
-                          $"error in:{assertion}.error out\" outputs=\"error out:{merge}.error out\" " +
-                          $"uid=\"{merge}\" uid_parent=\"root\"/>");
-            last = $"{merge}.error out";
-        }
+        var last = MergeAssertionErrors(sb, ref uid, assertions);
 
         var errorOut = uid++;
         sb.AppendLine(
@@ -2535,17 +2527,8 @@ internal sealed class TestTools(LvaiConnection connection)
             }
         }
 
-        // Merge Errors takes two at a time, so a chain of them collapses the assertions into one
-        // wire. It keeps the FIRST error, which is why the report matters more than this cluster.
-        var last = $"{assertions[0]}.error out";
-        foreach (var assertion in assertions.Skip(1))
-        {
-            var merge = uid++;
-            sb.AppendLine($"  <Node _name=\"Merge Errors\" inputs=\"error in:{last}," +
-                          $"error in:{assertion}.error out\" outputs=\"error out:{merge}.error out\" " +
-                          $"uid=\"{merge}\" uid_parent=\"root\"/>");
-            last = $"{merge}.error out";
-        }
+        // It keeps the FIRST error, which is why the report matters more than this cluster.
+        var last = MergeAssertionErrors(sb, ref uid, assertions);
 
         var errorOut = uid++;
         sb.AppendLine(
@@ -2764,6 +2747,38 @@ internal sealed class TestTools(LvaiConnection connection)
     internal const string TestComment = "Each case is one chain asserted by Caraya";
 
     internal const string RunnerComment = "Test paths are relative to this VI";
+
+    /// <summary>
+    /// Every assertion's error wire merged into ONE, as a BALANCED tree of two-input
+    /// <c>Merge Errors</c>, and the net that carries the result.
+    ///
+    /// IT WAS A LINEAR CHAIN until 2026-09-26, and the chain is the diagram's longest dependency
+    /// path: n assertions put n-1 merges one after another, and a test VI's WIDTH grew with every
+    /// assertion - measured in the sixth ATM build, 7 assertions rendered 1827 and 1880 px wide,
+    /// against the 1920 px budget. A tree needs the same n-1 merges at a depth of ceil(log2 n), so
+    /// 7 assertions are 3 merges deep instead of 6. Pairs are taken in order and the left input is
+    /// always the earlier one, so the FIRST failed assertion is still the one that survives -
+    /// the same verdict the chain gave.
+    /// </summary>
+    internal static string MergeAssertionErrors(StringBuilder sb, ref int uid, IReadOnlyList<int> assertions)
+    {
+        var level = assertions.Select(a => $"{a}.error out").ToList();
+        while (level.Count > 1)
+        {
+            var next = new List<string>();
+            for (var i = 0; i < level.Count; i += 2)
+            {
+                if (i + 1 == level.Count) { next.Add(level[i]); continue; }
+                var merge = uid++;
+                sb.AppendLine($"  <Node _name=\"Merge Errors\" inputs=\"error in:{level[i]}," +
+                              $"error in:{level[i + 1]}\" outputs=\"error out:{merge}.error out\" " +
+                              $"uid=\"{merge}\" uid_parent=\"root\"/>");
+                next.Add($"{merge}.error out");
+            }
+            level = next;
+        }
+        return level[0];
+    }
 
     internal static string DiagramComment(int uid, string text = TestComment) =>
         $"  <FreeLabel comment=\"{Escape(text)}\" uid=\"{uid}\" uid_parent=\"root\"/>";

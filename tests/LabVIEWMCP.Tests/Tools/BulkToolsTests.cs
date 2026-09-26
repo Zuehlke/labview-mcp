@@ -133,6 +133,46 @@ public class BulkGenerateViTests
     }
 
     [Fact]
+    public async Task A_batch_runs_its_pane_pattern_entries_last_and_answers_in_the_given_order()
+    {
+        // A pane repair closes the project, which unloads the callees of every entry after it:
+        // measured 2026-09-26, one pattern entry early in a batch cost Error 53 on the rest. The
+        // entries here have no AIXML, so nothing reaches LabVIEW - what is pinned is the order.
+        await using var server = await LvaiTestServer.StartAsync();
+        string Missing(string name) => server.TempPath(name + ".xml").Replace("\\", "\\\\");
+        string Vi(string name) => server.TempPath(name + ".vi").Replace("\\", "\\\\");
+        var pairs = $$"""
+            [{"aixml":"{{Missing("a")}}","vi":"{{Vi("A")}}","panePattern":4815},
+             {"aixml":"{{Missing("b")}}","vi":"{{Vi("B")}}"},
+             {"aixml":"{{Missing("c")}}","vi":"{{Vi("C")}}"}]
+            """;
+
+        var result = await new BulkTools(server.Connection).GenerateVisAsync(pairs);
+
+        var results = Res.Obj(result)["results"]!.AsArray();
+        Assert.EndsWith("A.vi", results[0]!["vi"]!.GetValue<string>());   // the order asked for
+        Assert.EndsWith("B.vi", results[1]!["vi"]!.GetValue<string>());
+        Assert.EndsWith("C.vi", results[2]!["vi"]!.GetValue<string>());
+        var ranLast = Res.Obj(result)["ranLast"]!.AsArray();
+        Assert.Single(ranLast);
+        Assert.EndsWith("A.vi", ranLast[0]!.GetValue<string>());
+        Assert.Contains("ran LAST", Res.Str(result, "note"));
+    }
+
+    [Fact]
+    public async Task A_batch_without_pane_patterns_reports_no_reorder()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        var pairs = $$"""
+            [{"aixml":"{{server.TempPath("x.xml").Replace("\\", "\\\\")}}","vi":"{{server.TempPath("X.vi").Replace("\\", "\\\\")}}"}]
+            """;
+
+        var result = await new BulkTools(server.Connection).GenerateVisAsync(pairs);
+
+        Assert.Null(Res.Obj(result)["ranLast"]);
+    }
+
+    [Fact]
     public async Task A_broken_result_on_the_loaded_route_still_reports_its_diagram_size()
     {
         // The ROUTINE shape for a class method and for a caller whose class seed is still a path:

@@ -1283,15 +1283,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             }
         }
 
-        var last = $"{assertions[0]}.error out";
-        foreach (var assertion in assertions.Skip(1))
-        {
-            var merge = uid++;
-            sb.AppendLine($"  <Node _name=\"Merge Errors\" inputs=\"error in:{last}," +
-                          $"error in:{assertion}.error out\" outputs=\"error out:{merge}.error out\" " +
-                          $"uid=\"{merge}\" uid_parent=\"root\"/>");
-            last = $"{merge}.error out";
-        }
+        var last = TestTools.MergeAssertionErrors(sb, ref uid, assertions);
 
         var errorOut = uid++;
         sb.AppendLine(

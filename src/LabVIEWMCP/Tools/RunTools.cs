@@ -126,6 +126,10 @@ internal sealed class RunTools(LvaiConnection connection)
             not a stop button - it kills the VI where it stands and runs NO cleanup the diagram may
             contain, so a VI that closes files or releases hardware on its normal path does not do
             that here.
+            IT ALSO ANSWERS `disabled`: every control's label with its Disabled state at the snapshot
+            (0 enabled, 1 disabled, 2 disabled and greyed out) - the one thing a snapshot of values
+            cannot show, and nothing can look afterwards because the VI leaves memory. Since
+            2026-09-26; null when that read failed.
             IT PICKS ITS OWN HELPER, and a helperAixmlPath naming the untimed one is corrected
             rather than obeyed - the answer says so in `helperOverridden`. Only lvai_run_for_ms.vi
             has a `run for ms` control; lvai_run_and_read.vi waits for the target to finish, so
@@ -285,6 +289,12 @@ internal sealed class RunTools(LvaiConnection connection)
                     .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
+            if (timed)
+            {
+                response.Outputs.TryGetValue("disabled labels xml", out var disabledLabels);
+                response.Outputs.TryGetValue("disabled xml", out var disabledStates);
+                payload["disabled"] = DisabledStates(disabledLabels, disabledStates);
+            }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["note"] = JsonValue.Create(
                 "errorCode here is RunVIAsTopLevel's, NOT the helper's - read helperErrorCode " +
@@ -295,7 +305,10 @@ internal sealed class RunTools(LvaiConnection connection)
                       "target ran, so `values` is empty and nothing was set. Error 1055 here " +
                       "means a control name matched nothing on the target's panel. Error 91 " +
                       "means a value did not fit its control - on an ENUM or RING, text that is " +
-                      "neither one of its item names (exact, case-sensitive) nor a number." +
+                      "neither one of its item names (exact, case-sensitive) nor a number. A " +
+                      "CLASS control cannot be set at all, from text or from XML - measured " +
+                      "2026-09-26 - so test a class method with lvai_generate_method_test, whose " +
+                      "`seed` builds the object." +
                       (compoundInputs.Count > 0
                           ? " A refusal from Unflatten From XML means the XML given for " +
                             string.Join(", ", compoundInputs) + " is not a LabVIEW value - " +
@@ -314,6 +327,47 @@ internal sealed class RunTools(LvaiConnection connection)
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
+
+    /// <summary>
+    /// Every front-panel control's <c>Disabled</c> at the snapshot, as <c>[{label, disabled}]</c> -
+    /// or null when the helper did not read it (an older helper, or a read that failed on its own
+    /// error chain).
+    ///
+    /// ADDED 2026-09-26, because a snapshot of VALUES could not answer "which controls can the
+    /// user operate right now", and nothing can look afterwards: the helper closes its reference
+    /// and the VI leaves memory. The sixth ATM build had to generate a scratch probe that ran the
+    /// main VI itself to see that six controls read 2. A list rather than a map, because two
+    /// controls may carry one label.
+    /// </summary>
+    internal static JsonArray? DisabledStates(string? labelsXml, string? statesXml)
+    {
+        static List<string>? Vals(string? xml)
+        {
+            if (string.IsNullOrWhiteSpace(xml)) return null;
+            try
+            {
+                var root = System.Xml.Linq.XElement.Parse(xml);
+                return [.. root.Elements()
+                               .Where(e => e.Name.LocalName is not ("Name" or "Dimsize"))
+                               .Select(e => (string?)e.Element("Val") ?? "")];
+            }
+            catch (System.Xml.XmlException) { return null; }
+        }
+
+        var labels = Vals(labelsXml);
+        var states = Vals(statesXml);
+        if (labels is null || states is null || labels.Count != states.Count || labels.Count == 0)
+            return null;
+
+        var list = new JsonArray();
+        for (var i = 0; i < labels.Count; i++)
+            list.Add(new JsonObject
+            {
+                ["label"] = labels[i],
+                ["disabled"] = int.TryParse(states[i], out var d) ? d : null,
+            });
+        return list;
+    }
 
     private static readonly Regex CompoundRoot = new(
         @"^\s*(?:<\?xml[^>]*\?>\s*)?<(LvVariant|Array|Cluster)[\s>]", RegexOptions.CultureInvariant);

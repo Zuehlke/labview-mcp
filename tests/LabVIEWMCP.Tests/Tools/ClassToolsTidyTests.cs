@@ -1,3 +1,4 @@
+using LabVIEWMcp.Tests.Support;
 using LabVIEWMcp.Tools;
 using Xunit;
 
@@ -335,5 +336,60 @@ public class ClassToolsTidyTests
             Assert.Contains(names, n => n.Contains("Gone.vi", StringComparison.Ordinal));
         }
         finally { Directory.Delete(root, recursive: true); }
+    }
+
+    /// <summary>
+    /// A SCRATCH PROBE UNDER %TEMP% IS A STRAY EVEN WHILE ITS FILE EXISTS. Measured 2026-09-26:
+    /// the sixth ATM build's close-save listed four probe VIs from the session scratchpad in
+    /// ATM.lvproj, and the sweep let them stand because the files were still there and the
+    /// scratchpad is none of our helper trees. They only went because the agent deleted them first.
+    /// </summary>
+    [Fact]
+    public void A_VI_under_temp_is_swept_from_a_project_that_does_not_live_there()
+    {
+        var scratch = Path.Combine(Path.GetTempPath(), "claude-scratch-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        var probe = Path.Combine(scratch, "Probe ATM Panel.vi");
+        File.WriteAllText(probe, "a probe");
+        try
+        {
+            // a project NOT under %TEMP% - it need not exist, the URL resolves against its path
+            var project = Path.Combine(Path.GetPathRoot(scratch)!, "NotTemp-" + Guid.NewGuid().ToString("N"),
+                                       "ATM.lvproj");
+            // THE CONTROL: an existing VI outside %TEMP% must survive the same pass
+            var kept = Path.Combine(RepoTree.Root, "CLAUDE.md");
+            string Url(string target) => Path.GetRelativePath(project, target).Replace('\\', '/');
+            var xml = $"""
+                <?xml version='1.0' encoding='UTF-8'?>
+                <Project Type="Project" LVVersion="26008000">
+                	<Item Name="My Computer" Type="My Computer">
+                		<Item Name="Probe ATM Panel.vi" Type="VI" URL="{Url(probe)}"/>
+                		<Item Name="Real.vi" Type="VI" URL="{Url(kept)}"/>
+                	</Item>
+                </Project>
+                """;
+
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+
+            Assert.Equal(1, removed);
+            Assert.Contains(names, n => n.Contains("Probe ATM Panel.vi") && n.Contains("%TEMP%"));
+            Assert.DoesNotContain("Probe ATM Panel.vi", text);
+            Assert.Contains("Real.vi", text);
+            Assert.True(File.Exists(probe));   // the entry goes, the file is not ours to delete
+        }
+        finally { Directory.Delete(scratch, recursive: true); }
+    }
+
+    [Fact]
+    public void A_project_that_lives_under_temp_keeps_its_temp_items()
+    {
+        // Nothing distinguishes such a project's own items from strays, so the rule stands aside.
+        var temp = Path.GetTempPath();
+        Assert.False(ClassTools.IsTempStray(Path.Combine(temp, "a", "x.vi"),
+                                            Path.Combine(temp, "b", "p.lvproj")));
+        Assert.True(ClassTools.IsTempStray(Path.Combine(temp, "a", "x.vi"), @"D:\Work\p.lvproj"));
+        Assert.False(ClassTools.IsTempStray(@"D:\Work\x.vi", @"D:\Work\p.lvproj"));
+        // a directory whose NAME merely starts like %TEMP% is not under it
+        Assert.False(ClassTools.IsTempStray(@"C:\TempData\x.vi", @"D:\Work\p.lvproj", tempRoot: @"C:\Temp"));
     }
 }

@@ -594,6 +594,11 @@ the AIXML with those numbers, generate — then call with `viPath` to confirm wh
 For an **existing** VI only `viPath` is honest: it carries whatever pane it was given, on whatever
 machine, possibly rotated.
 
+**UNLESS THE AIXML NAMES A `conIdx` THE DEFAULT PATTERN DOES NOT HAVE - then the generator picks a
+larger one by itself.** Measured 2026-09-25: five outputs need conIdx up to 19, and the VI came out
+on **4834** (6x2x2x2x2x6) with no pylabview step and no project close. Author such a pane against
+`lvai_connector_pane pattern=4834`. `docs/aixml-reference.md` §2.
+
 It answers three ways: no argument for the station default plus all 36 patterns, `viPath` to measure
 and review one VI, `pattern` for one pattern's map without LabVIEW. **32 of the 36 have measured
 geometry** — the pattern property is read-only in VI Server, so the rest need a VI that already uses
@@ -1701,7 +1706,10 @@ the names it removed — and `swept: false` plus the reason when it was given no
 that is silent when skipped is one the reader assumes ran. **What it cannot reach it says outright**:
 a VI adopted from a directory OUTSIDE every one of our trees stays, since nothing distinguishes it
 from one the user shares from a sibling folder on purpose, and a rule wide enough to catch it would
-delete those. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
+delete those. **The one exception is the user's `%TEMP%`, since 2026-09-26**: a VI there is swept
+even while its file exists, unless the project itself lives under `%TEMP%` - the sixth ATM build's
+close-save listed four probe VIs from the session scratchpad, which is under `%TEMP%` and none of
+our named trees, and no real project keeps code in a temp directory. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
 noticed is not the step that caused it.** `docs/cold-build-weighbridge.md` §3a, §4, §8.
 
 **"THE CLOSE IS THE ONLY PLACE A SWEEP CAN SEE THEM" IS TOO NARROW - `Save All This Library.vi`

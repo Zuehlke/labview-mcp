@@ -2471,6 +2471,22 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return match.Value;
                 }
 
+                // A VI UNDER %TEMP% IS A STRAY EVEN THOUGH ITS FILE EXISTS - unless the project
+                // lives there itself. LabVIEW's save adopts every VI it has open, and a session's
+                // scratch probes live in the session scratchpad under %TEMP%, which none of the
+                // helper trees above names. Measured 2026-09-26: the sixth ATM build's close-save
+                // listed four probe VIs from the scratchpad in ATM.lvproj, and they only went
+                // because the agent had deleted the files first. No real project keeps code in the
+                // user's temp directory; a project that sits there (a test fixture, a scratch run)
+                // is left alone, because then nothing distinguishes its own items from strays.
+                if (string.Equals(type, "VI", StringComparison.Ordinal)
+                    && File.Exists(resolved) && IsTempStray(resolved, projectPath))
+                {
+                    dangling++;
+                    names.Add(match.Groups["name"].Value + " (under %TEMP%: " + url + ")");
+                    return "";
+                }
+
                 if (File.Exists(resolved) || System.IO.Directory.Exists(resolved))
                     return match.Value;
 
@@ -2505,6 +2521,19 @@ internal sealed class ClassTools(LvaiConnection connection)
             });
 
         return (text, removed + dangling, names);
+    }
+
+    /// <summary>
+    /// A file under the user's temp directory, listed by a project that does NOT itself live
+    /// there. <paramref name="tempRoot"/> is for tests; production uses <see cref="Path.GetTempPath"/>.
+    /// </summary>
+    internal static bool IsTempStray(string resolvedPath, string projectPath, string? tempRoot = null)
+    {
+        var temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(tempRoot ?? Path.GetTempPath()));
+        static bool Under(string path, string root) =>
+            path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return Under(Path.GetFullPath(resolvedPath), temp)
+               && !Under(Path.GetFullPath(projectPath), temp);
     }
 
     /// <summary>The Name attribute of one matched item, for the removal listing.</summary>

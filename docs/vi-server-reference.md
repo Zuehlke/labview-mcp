@@ -474,6 +474,16 @@ buried in `helperErrorXml`. `helperErrorCode` and `helperFailed` now surface it 
 setter — its use case is a top-level UI VI, which usually takes no inputs at all — and the tool's
 answer says so when inputs are passed alongside `runForMs`.
 
+**It reads every control's `Disabled` since 2026-09-26**, answered as `disabled`:
+`[{label, disabled}]`, 0 enabled, 1 disabled, 2 disabled and greyed out. A snapshot of values cannot
+show whether a control can be operated, and nothing can look afterwards - the helper closes its
+reference and the VI leaves memory - so the sixth ATM build had to generate a probe VI that ran the
+main VI itself to see six controls read 2. The read uses `{LV.VI}` `Front Panel` ->
+`{LV.Panel}` `Controls[]` -> `{LV.Control}` `read+Label.Text,read+Disabled` (an `array{uint8}`),
+after the snapshot and on its OWN error chain, so a failed read leaves `disabled` null and never
+costs the values or the abort. The VI reference is carried through that loop on a shift register,
+which is what orders `Close Reference` after it even when the panel has no controls.
+
 ## Reading where a VI's terminals actually sit: `Connector Pane:Reference`
 
 The third capability with no RPC behind it, and the one that catches a whole class of silent defect:

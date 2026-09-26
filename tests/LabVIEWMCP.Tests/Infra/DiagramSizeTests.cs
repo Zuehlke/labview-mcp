@@ -200,6 +200,62 @@ public sealed class DiagramSizeTests
     }
 
     [Fact]
+    public void Assertions_merge_as_a_balanced_tree_so_width_stops_growing_with_their_count()
+    {
+        // The sixth ATM build: a LINEAR chain made seven assertions 1827-1880 px wide.
+        var sb = new System.Text.StringBuilder();
+        var uid = 9000;
+        var last = TestTools.MergeAssertionErrors(sb, ref uid, [1, 2, 3, 4, 5, 6, 7]);
+
+        var aixml = "<VI _name=\"t.vi\" description=\"d\">\n" + sb +
+                    $"  <Indicator _name=\"error out\" inputs=\"value:{last}\" type=\"string\" uid=\"8000\" uid_parent=\"root\" value=\"\"/>\n</VI>";
+        var merges = System.Xml.Linq.XElement.Parse(aixml).Elements("Node").ToList();
+
+        Assert.Equal(6, merges.Count);                                // n-1 merges, as before
+        Assert.Equal(3, DiagramSize.Chain(aixml).Stages);             // ceil(log2 7), not 6
+        // THE FIRST FAILED ASSERTION STILL WINS: the earliest pair is merged left-first
+        Assert.Equal("error in:1.error out,error in:2.error out",
+                     (string)merges[0].Attribute("inputs")!);
+    }
+
+    [Fact]
+    public void One_assertion_needs_no_merge()
+    {
+        var sb = new System.Text.StringBuilder();
+        var uid = 9000;
+        Assert.Equal("5.error out", TestTools.MergeAssertionErrors(sb, ref uid, [5]));
+        Assert.Equal(0, sb.Length);
+        Assert.Equal(9000, uid);
+    }
+
+    [Fact]
+    public void A_runForMs_snapshot_reports_every_controls_disabled_state()
+    {
+        const string labels = """
+            <Array><Name>labels</Name><Dimsize>3</Dimsize>
+            <String><Name></Name><Val>User Input</Val></String>
+            <String><Name></Name><Val>Enter</Val></String>
+            <String><Name></Name><Val>Card Simulator</Val></String>
+            </Array>
+            """;
+        const string states = """
+            <Array><Name>states</Name><Dimsize>3</Dimsize>
+            <U8><Name></Name><Val>2</Val></U8><U8><Name></Name><Val>2</Val></U8><U8><Name></Name><Val>0</Val></U8>
+            </Array>
+            """;
+
+        var list = RunTools.DisabledStates(labels, states)!;
+
+        Assert.Equal(3, list.Count);
+        Assert.Equal("User Input", list[0]!["label"]!.GetValue<string>());
+        Assert.Equal(2, list[0]!["disabled"]!.GetValue<int>());
+        Assert.Equal(0, list[2]!["disabled"]!.GetValue<int>());
+        // an older helper, or a read that failed on its own chain, answers null - never a guess
+        Assert.Null(RunTools.DisabledStates(null, states));
+        Assert.Null(RunTools.DisabledStates(labels, "<Array><Dimsize>1</Dimsize><U8><Val>2</Val></U8></Array>"));
+    }
+
+    [Fact]
     public void A_slimmed_sub_answer_keeps_its_diagram_size()
     {
         // The class test tool slims its generate step; the size is a verdict, not evidence.

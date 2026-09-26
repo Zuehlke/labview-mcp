@@ -105,6 +105,12 @@ silence this document opens with, one generator further along.
   `diagramSize` at top level, with a note to split when it is over. Plan **about three cases per
   test VI**. Carriers and one-off helpers stay unmeasured.
 
+**And the width of a test VI no longer grows with its assertion count.** The generators merged the
+assertions' error wires as a CHAIN of two-input `Merge Errors`, n-1 of them in a row, which is the
+diagram's longest path: 7 assertions rendered 1827 and 1880 px wide. They merge as a BALANCED tree
+now - the same n-1 merges, ceil(log2 n) deep, so 7 assertions are 3 stages instead of 6, and the
+earlier input is always on the left, so the first failed assertion still decides `error out`.
+
 **And `lvai_generate_vi` skipped the measurement on its most important route.** The loaded-subVI
 route gates on `execState`, and a class method (class terminals still `path` stand-ins) or a caller
 whose class seed is still a path is BROKEN at that point by design - so the call returned before

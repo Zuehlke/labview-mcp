@@ -213,6 +213,14 @@ a pattern when that file can be read, and it is why everything generated on this
 anything inside AIXML or the VI Server API. `lvai_connector_pane` with no argument reads it for you.
 The file is read-only to us: read it, quote it, never write a key to it.
 
+**One exception, measured 2026-09-25: a `conIdx` the default pattern does not HAVE makes the
+generator pick a larger pattern by itself.** `Find Account.vi` needed five outputs plus `error out`,
+and 4833's right edge has four output slots plus the error corner, so its AIXML named conIdx up to
+19 - and the VI came out on **4834** (20 terminals, 6x2x2x2x2x6) with no pylabview step, no
+`panePattern` and no project close, first on a probe and then on the real VI. The numbers then mean
+4834's slots, so ask `lvai_connector_pane pattern=4834` for them before authoring, and measure the
+result with `viPath`. What the generator picks for other overshoots is not measured.
+
 **Take the whole style-guide block that call prints — not four numbers.** This paragraph said "prints
 the four `conIdx` values to write", and that phrasing is itself the cause of a bug that shipped three
 times: the tool prints **six** entries — `first input`, **`more inputs`**, `error in`, `first output`,

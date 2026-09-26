@@ -628,7 +628,10 @@ internal sealed class BulkTools(LvaiConnection connection)
                    Title = "Generate several VIs from AIXML in one call")]
     [Description("""
         MUTATING: several AIXML files through the whole lvai_generate_vi sequence - validate,
-        convert, measure the pane - in ONE call, applied in the order given.
+        convert, measure the pane - in ONE call, applied in the order given, EXCEPT that entries
+        with a `panePattern` run after the ones without: a pane repair closes the project, which
+        unloads the callees of everything after it (measured 2026-09-26, Error 53). `results` is
+        in the order given, and `ranLast` names what moved.
         USE IT FOR BOILERPLATE SETS, which is where it pays: the socket VIs a class unit test needs
         are one per test slot and fully determined by the subject's pane. Measured 2026-08-29 over a
         three-class hierarchy, generating them one at a time cost 34 calls of lvai_generate_vi for
@@ -665,21 +668,38 @@ internal sealed class BulkTools(LvaiConnection connection)
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
             var total = Stopwatch.StartNew();
-            var results = new JsonArray();
+            var answers = new JsonNode?[requests.Count];
             int generated = 0, failed = 0, removed = 0;
 
-            foreach (var request in requests)
+            // A PANE REPAIR CLOSES THE PROJECT, AND EVERY ENTRY AFTER IT LOSES ITS LOADED CALLEES.
+            // `panePattern` is a pylabview rebuild, which closes the active project first - and a
+            // closed project is an UNLOADED one, so a later entry calling project code by name
+            // answered Error 53. Measured 2026-09-26 in the sixth ATM build: one pattern entry
+            // early in a batch cost a reopen and a second batch. So the entries WITHOUT a pattern
+            // run first and the pattern entries last, each group in the order given; `results`
+            // stays in the order asked for. Nothing is lost by it: generating a VI does not load
+            // it, so a later entry could never have called an earlier one without an open anyway.
+            var order = Enumerable.Range(0, requests.Count)
+                .OrderBy(i => requests[i].PanePattern is null ? 0 : 1)
+                .ToList();
+            var movedLast = order.Where((original, position) => original != position)
+                .Where(i => requests[i].PanePattern is not null)
+                .Select(i => (JsonNode?)JsonValue.Create(requests[i].Vi))
+                .ToArray();
+
+            foreach (var index in order)
             {
+                var request = requests[index];
                 if (!File.Exists(request.Aixml))
                 {
                     failed++;
-                    results.Add(new JsonObject
+                    answers[index] = new JsonObject
                     {
                         ["vi"] = request.Vi,
                         ["aixml"] = request.Aixml,
                         ["ok"] = false,
                         ["note"] = $"No AIXML at '{request.Aixml}', so this VI was not attempted.",
-                    });
+                    };
                     continue;
                 }
 
@@ -708,14 +728,21 @@ internal sealed class BulkTools(LvaiConnection connection)
                                                     or UnauthorizedAccessException) { }
                 }
 
-                results.Add(new JsonObject
+                answers[index] = new JsonObject
                 {
                     ["vi"] = request.Vi,
                     ["aixml"] = wrote && !keepAixml ? null : request.Aixml,
                     ["ok"] = wrote,
                     ["answer"] = parsed,
-                });
+                };
             }
+
+            var reordered = movedLast.Length > 0
+                ? $" {movedLast.Length} entr{(movedLast.Length == 1 ? "y" : "ies")} with a " +
+                  "panePattern ran LAST (named under `ranLast`), because a pane repair closes " +
+                  "the project and would unload the callees of every entry after it; `results` " +
+                  "is in the order you gave."
+                : "";
 
             return Json.Document(new JsonObject
             {
@@ -724,15 +751,17 @@ internal sealed class BulkTools(LvaiConnection connection)
                 ["generated"] = generated,
                 ["failed"] = failed,
                 ["aixmlDeleted"] = removed,
-                ["results"] = results,
+                ["ranLast"] = movedLast.Length > 0 ? new JsonArray(movedLast) : null,
+                ["results"] = new JsonArray(answers),
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = failed == 0
-                    ? $"{generated} VI(s) generated in order. " + (keepAixml
+                    ? $"{generated} VI(s) generated{(movedLast.Length == 0 ? " in order" : "")}. " + (keepAixml
                         ? "The AIXML sources were kept."
-                        : $"{removed} AIXML source(s) deleted - the .vi is the artefact.")
+                        : $"{removed} AIXML source(s) deleted - the .vi is the artefact.") +
+                      reordered
                     : $"{failed} of {requests.Count} did NOT generate; their AIXML was kept and is " +
                       "named in `results`. Each entry carries the same answer lvai_generate_vi " +
-                      "would have given, so read that rather than this summary.",
+                      "would have given, so read that rather than this summary." + reordered,
             });
         });
 
