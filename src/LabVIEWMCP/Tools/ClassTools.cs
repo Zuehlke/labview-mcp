@@ -2362,7 +2362,7 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// lvproj-structure.md section 5, and getting it wrong here would delete live items.
     /// </summary>
     internal static (string Text, int Removed, List<string> Names) StripHelperItems(
-        string projectXml, string? projectPath = null)
+        string projectXml, string? projectPath = null, string? tempRoot = null)
     {
         // WHAT WAS REMOVED, NOT JUST HOW MANY. This returned a bare count until 2026-09-15, and
         // that count sent a diagnosis after the wrong mechanism entirely: a `strayVisRemoved: 5`
@@ -2480,7 +2480,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // user's temp directory; a project that sits there (a test fixture, a scratch run)
                 // is left alone, because then nothing distinguishes its own items from strays.
                 if (string.Equals(type, "VI", StringComparison.Ordinal)
-                    && File.Exists(resolved) && IsTempStray(resolved, projectPath))
+                    && File.Exists(resolved) && IsTempStray(resolved, projectPath, tempRoot))
                 {
                     dangling++;
                     names.Add(match.Groups["name"].Value + " (under %TEMP%: " + url + ")");
