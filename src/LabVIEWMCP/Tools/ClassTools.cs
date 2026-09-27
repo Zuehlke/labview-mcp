@@ -92,6 +92,9 @@ internal sealed class ClassTools(LvaiConnection connection)
             `string.Manufacturer,int32.Year Of Manufacture`. A DEFAULT is `<type>.<name>=<value>`,
             e.g. `double.Gain=1,bool.Enabled=true` - without one a field defaults to its type's
             empty value (0, false, ""). Not for timestamp fields. Omit for empty private data.
+            A TYPEDEF field from typedefFieldsJson may be PLACED here as `typedef.<name>`, e.g.
+            `typedef.Config,double.Gain=1` - it then keeps that position. Left out, it goes after
+            every field listed here. Naming it here with a real type (`string.Config`) is refused.
             """)]
         string? fields = null,
         [Description("""
@@ -99,6 +102,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             existing typedef .ctl, e.g. {"Config":"C:\\T\\Typedefs\\Channel Config.ctl"}. Each
             is created as a placeholder and then bound to its .ctl with lvai_bind_class_fields in
             the same call, so the field keeps its name and carries the typedef. Needs projectPath.
+            Do NOT also list it in `fields` with a type; write `typedef.<name>` there to fix its
+            position, or leave it out and it comes after the fields listed there.
             Create the accessors AFTER this call - an accessor made before the bind keeps the bare
             type. Until 2026-09-25 this took two calls and a placeholder type chosen by hand.
             """)]
@@ -167,13 +172,14 @@ internal sealed class ClassTools(LvaiConnection connection)
                     "'Auto.lvclass' and not a path.");
 
             List<LvClass.Field> parsed;
-            try { parsed = LvClass.ParseFields(fields); }
+            try { parsed = LvClass.ParseFields(fields, allowTypedefMarkers: true); }
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
-            // Typedef fields ride in as placeholders and are bound to their .ctl after creation.
+            // Typedef fields ride in as placeholders and are bound to their .ctl after creation;
+            // a `typedef.X` marker in fields decides where X's placeholder sits.
             var (typedefFields, typedefRefusal) = TypedefFieldRequest(typedefFieldsJson, parsed, projectPath);
             if (typedefRefusal is not null) return typedefRefusal;
-            parsed.AddRange(typedefFields.Select(t => new LvClass.Field("string", t.Field)));
+            parsed = WithTypedefPlaceholders(parsed, typedefFields);
 
             // pylabview is NO LONGER a precondition here. It was, while the private data control
             // was built by converting a generated VI; LabVIEW's own provider VIs need none of it.
@@ -315,7 +321,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var carrier = await new BulkTools(connection).GenerateViAsync(
                     carrierAixml, carrierPath, openVI: false, measurePane: false,
-                    panePattern: null, timeoutSeconds, ct: ct);
+                    panePattern: null, timeoutSeconds, ct: ct, measureDiagram: false);
                 steps.Add(Step("carrier", carrier));
                 if (!File.Exists(carrierPath))
                     return Outcome(false, "carrier", steps, total, classPath, null,
@@ -459,7 +465,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                         a => a.EndsWith(name, StringComparison.OrdinalIgnoreCase)))
                     .ToList();
 
-                steps.Add(new JsonObject
+                var verifyStep = new JsonObject
                 {
                     ["step"] = "verify",
                     ["privateDataBytes"] = info.PrivateDataBytes,
@@ -481,7 +487,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["interfacesAsked"] = interfacePaths.Count,
                     ["interfacesOpened"] = provider.InterfacesOpened,
                     ["interfacesLinked"] = interfacePaths.Count - missingInterfaces.Count,
-                });
+                };
+                steps.Add(verifyStep);
 
                 TryDelete(projectUsed);   // the throwaway; the work directory follows in `finally`
 
@@ -527,11 +534,18 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return Outcome(false, "bindTypedefFields", steps, total, classPath, null,
                         TypedefBindFailedNote);
 
+                // THE BYTE COUNT IS READ AGAIN AFTER THE BIND, which rewrites the private data: the
+                // sixth TypedefAfterGDevCon build's note said 6 120 bytes, measured before it, for
+                // a file holding 8 432.
+                var bytes = typedefFields.Count > 0 ? LvClass.Read(classPath).PrivateDataBytes
+                                                    : info.PrivateDataBytes;
+                if (typedefFields.Count > 0) verifyStep["privateDataBytesAfterBind"] = bytes;
+
                 return Outcome(true, null, steps, total, classPath, null,
                     (typedefFields.Count > 0
                         ? $"{typedefFields.Count} typedef field(s) bound to their .ctl. " : "")
                     + $"Created and verified from the class file: {provider.FieldsAdded} field(s), "
-                    + $"{info.PrivateDataBytes} bytes of private data, inherits from "
+                    + $"{bytes} bytes of private data, inherits from "
                     + $"'{inherits ?? "LabVIEW Object"}'{interfaceNote}. The private data control "
                     + "is LabVIEW's own - "
                     + "NI's provider VIs built it - so it carries a real type space and compiles.");
@@ -563,7 +577,14 @@ internal sealed class ClassTools(LvaiConnection connection)
     internal static (List<TypedefField> Fields, string? Refusal) TypedefFieldRequest(
         string? json, IReadOnlyList<LvClass.Field> scalar, string? projectPath)
     {
-        if (string.IsNullOrWhiteSpace(json)) return ([], null);
+        var markers = scalar.Where(f => f.Type == LvClass.TypedefMarker).Select(f => f.Name).ToList();
+        if (string.IsNullOrWhiteSpace(json))
+            return markers.Count == 0
+                ? ([], null)
+                : ([], Json.Error("badArguments",
+                    $"`typedef.{markers[0]}` in fields marks where a typedef field goes, and " +
+                    "typedefFieldsJson names no .ctl for it. Add " +
+                    $"{{\"{markers[0]}\":\"<path>.ctl\"}} there."));
         JsonObject? map;
         try { map = JsonNode.Parse(json) as JsonObject; }
         catch (System.Text.Json.JsonException e)
@@ -588,12 +609,40 @@ internal sealed class ClassTools(LvaiConnection connection)
                 return ([], Json.Error("fileNotFound",
                     $"The typedef for field '{name}' is not an existing .ctl: '{path}'. Create it " +
                     "first - lvai_create_typedef does that through VI Server."));
-            if (scalar.Any(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)))
+            if (scalar.FirstOrDefault(f => f.Type != LvClass.TypedefMarker &&
+                    string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) is { } twice)
                 return ([], Json.Error("badArguments",
-                    $"'{name}' is in both `fields` and typedefFieldsJson. Name it once."));
+                    $"'{name}' is in both `fields` (as {twice.Type}.{twice.Name}) and " +
+                    "typedefFieldsJson. Its type comes from the .ctl, so it cannot also be a " +
+                    $"{twice.Type}. To place it among the other fields write `typedef.{name}` in " +
+                    "fields; left out of fields, it goes after them."));
             fields.Add(new TypedefField(name, path));
         }
+        if (markers.FirstOrDefault(m => !fields.Any(f =>
+                string.Equals(f.Field, m, StringComparison.OrdinalIgnoreCase))) is { } unnamed)
+            return ([], Json.Error("badArguments",
+                $"`typedef.{unnamed}` in fields marks where a typedef field goes, and " +
+                "typedefFieldsJson names no .ctl for it."));
         return (fields, null);
+    }
+
+    /// <summary>
+    /// The field list the carrier is built from: a `typedef.X` marker becomes X's placeholder IN
+    /// PLACE, and a typedef field with no marker is appended after the rest. The bind replaces
+    /// the placeholder's type and keeps its position.
+    /// </summary>
+    internal static List<LvClass.Field> WithTypedefPlaceholders(
+        IReadOnlyList<LvClass.Field> parsed, IReadOnlyList<TypedefField> typedefs)
+    {
+        const string placeholder = "string";
+        var placed = parsed
+            .Select(f => f.Type == LvClass.TypedefMarker ? new LvClass.Field(placeholder, f.Name) : f)
+            .ToList();
+        placed.AddRange(typedefs
+            .Where(t => !parsed.Any(f => f.Type == LvClass.TypedefMarker &&
+                                         string.Equals(f.Name, t.Field, StringComparison.OrdinalIgnoreCase)))
+            .Select(t => new LvClass.Field(placeholder, t.Field)));
+        return placed;
     }
 
     private const string TypedefBindFailedNote =
@@ -987,6 +1036,17 @@ internal sealed class ClassTools(LvaiConnection connection)
             member list for.
             """)]
         bool includeFields = true,
+        [Description("""
+            Read each member VI's own saved file with pylabview (no LabVIEW, about 250 ms per VI,
+            four at a time) for two things. `dynamicDispatch` where the .lvclass records no
+            IsStaticMethod: a connector pane terminal flagged 0x8000 means dynamic dispatch,
+            measured against NI's own IsStaticMethod on 149 of 149 class members, and
+            `dynamicDispatchFrom` says which source answered. And `paneTypedefs`: every pane
+            terminal that carries a typedef, with the .ctl it names - so an accessor still bound
+            to its field's typedef reads [{"terminal":"Channel Config","typedef":"Channel
+            Config.ctl"}]. Pass false to skip the file reads. On by default.
+            """)]
+        bool readMemberFiles = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         Rpc.GuardAsync(async () =>
@@ -1049,15 +1109,47 @@ internal sealed class ClassTools(LvaiConnection connection)
                 }
             }
 
+            // DISPATCH: from the .lvclass where it records IsStaticMethod, otherwise from the
+            // member's own connector pane. NI's wizard writes no IsStaticMethod, so every accessor
+            // read null here until 2026-09-25 (fourth TypedefAfterGDevCon build).
+            // The same file read also names the TYPEDEFS on each member's pane - the sixth build's
+            // agent searched an accessor's bytes by hand to see whether `Channel Config.ctl` was
+            // still on its data terminal.
+            var dispatch = new (bool? Value, string? From)[info.Members.Count];
+            var paneFacts = new PaneDispatch.Facts?[info.Members.Count];
+            var bundle = readMemberFiles ? PyLabview.Locate() : null;
+            using (var gate = new SemaphoreSlim(4))
+                await Task.WhenAll(info.Members.Select(async (member, i) =>
+                {
+                    if (member.DynamicDispatch is { } recorded) dispatch[i] = (recorded, "lvclass");
+                    if (bundle is null || member.Type != "VI") return;
+                    await gate.WaitAsync(ct);
+                    try
+                    {
+                        var vi = Path.GetFullPath(Path.Combine(info.Path, member.Url));
+                        paneFacts[i] = await PaneDispatch.ReadAsync(
+                            bundle, vi, Rpc.ClampToolWait(timeoutSeconds), ct);
+                        if (dispatch[i].From is null && paneFacts[i]?.DynamicDispatch is { } fromPane)
+                            dispatch[i] = (fromPane, "connectorPane");
+                    }
+                    finally { gate.Release(); }
+                }));
+
             var members = new JsonArray();
-            foreach (var member in info.Members)
+            foreach (var (member, i) in info.Members.Select((m, i) => (m, i)))
                 members.Add(new JsonObject
                 {
                     ["name"] = member.Name,
                     ["url"] = member.Url,
                     ["kind"] = member.Type,
                     ["scope"] = member.Scope,
-                    ["dynamicDispatch"] = member.DynamicDispatch,
+                    ["dynamicDispatch"] = dispatch[i].Value,
+                    ["dynamicDispatchFrom"] = dispatch[i].From,
+                    // null = the file was not read; [] = read, and no pane terminal is a typedef
+                    ["paneTypedefs"] = paneFacts[i] is { } facts
+                        ? new JsonArray([.. facts.Typedefs.Select(t => (JsonNode)new JsonObject
+                            { ["terminal"] = t.Terminal, ["typedef"] = t.Typedef })])
+                        : null,
                 });
 
             var ancestors = new JsonArray();
@@ -1123,6 +1215,12 @@ internal sealed class ClassTools(LvaiConnection connection)
                 ["fieldsDefaultsNote"] = fieldsDefaultsNote,
                 ["memberCount"] = info.Members.Count,
                 ["members"] = members,
+                ["memberFilesNote"] = !readMemberFiles
+                    ? "Members' files not read - readMemberFiles was false, so dynamicDispatch is " +
+                      "only set where the .lvclass records IsStaticMethod and paneTypedefs is null."
+                    : bundle is null
+                        ? "Members' files not read: " + PyLabview.NotProvisionedMessage()
+                        : null,
                 ["note"] = info.PrivateDataBytes switch
                 {
                     -1 => "The flattened private data property does not decode. That is what " +
@@ -2132,10 +2230,10 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 // THE DISPATCH EVIDENCE, so nobody has to grep the class file for it. Runs that
                 // used this tool all ended with `lvai_describe_class` plus a shell grep for
-                // `NI.ClassItem.Flags`, because describe_class reports dynamicDispatch as null -
-                // the class file does not carry it under that name - and 0 versus 16777216 in the
-                // flags is what actually settles it. Read off the file, so it says what was
-                // written rather than what was asked for.
+                // `NI.ClassItem.Flags`, because describe_class reported dynamicDispatch as null -
+                // the class file does not carry it for wizard accessors. Since 2026-09-25
+                // describe_class reads it off each member's connector pane instead, which is the
+                // answer to use; these raw counts stay as they are and decode nothing.
                 final["memberNames"] = MemberNamesOnDisk(lvclassPath);
                 final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
 
@@ -2373,6 +2471,22 @@ internal sealed class ClassTools(LvaiConnection connection)
                     return match.Value;
                 }
 
+                // A VI UNDER %TEMP% IS A STRAY EVEN THOUGH ITS FILE EXISTS - unless the project
+                // lives there itself. LabVIEW's save adopts every VI it has open, and a session's
+                // scratch probes live in the session scratchpad under %TEMP%, which none of the
+                // helper trees above names. Measured 2026-09-26: the sixth ATM build's close-save
+                // listed four probe VIs from the scratchpad in ATM.lvproj, and they only went
+                // because the agent had deleted the files first. No real project keeps code in the
+                // user's temp directory; a project that sits there (a test fixture, a scratch run)
+                // is left alone, because then nothing distinguishes its own items from strays.
+                if (string.Equals(type, "VI", StringComparison.Ordinal)
+                    && File.Exists(resolved) && IsTempStray(resolved, projectPath))
+                {
+                    dangling++;
+                    names.Add(match.Groups["name"].Value + " (under %TEMP%: " + url + ")");
+                    return "";
+                }
+
                 if (File.Exists(resolved) || System.IO.Directory.Exists(resolved))
                     return match.Value;
 
@@ -2407,6 +2521,19 @@ internal sealed class ClassTools(LvaiConnection connection)
             });
 
         return (text, removed + dangling, names);
+    }
+
+    /// <summary>
+    /// A file under the user's temp directory, listed by a project that does NOT itself live
+    /// there. <paramref name="tempRoot"/> is for tests; production uses <see cref="Path.GetTempPath"/>.
+    /// </summary>
+    internal static bool IsTempStray(string resolvedPath, string projectPath, string? tempRoot = null)
+    {
+        var temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(tempRoot ?? Path.GetTempPath()));
+        static bool Under(string path, string root) =>
+            path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return Under(Path.GetFullPath(resolvedPath), temp)
+               && !Under(Path.GetFullPath(projectPath), temp);
     }
 
     /// <summary>The Name attribute of one matched item, for the removal listing.</summary>
@@ -2468,7 +2595,12 @@ internal sealed class ClassTools(LvaiConnection connection)
             privateDataItem = pdcName,
             classIndex,
             fieldCount,
+            // FIELDS, one entry of `created` each - the name reads like a VI count, and the sixth
+            // TypedefAfterGDevCon build reported `accessorsCreated: 2` for four VIs. Kept for the
+            // callers that read it; accessorVisCreated is the VI count.
             accessorsCreated = created.Count,
+            accessorVisCreated = readNames.Count(n => !string.IsNullOrEmpty(n)) +
+                                 writeNames.Count(n => !string.IsNullOrEmpty(n)),
             created,
             // Only when the lookup failed, and then it is the whole diagnosis: a -1 is either an
             // empty list (no project, or none loaded yet) or a path that differs from LabVIEW's

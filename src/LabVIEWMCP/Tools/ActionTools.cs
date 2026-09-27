@@ -162,6 +162,11 @@ internal sealed class ActionTools(LvaiConnection connection)
                " Checked with scripts/lvai_active_project.xml, which only reads.";
     }
 
+    /// <summary>The paths in a viPaths argument: one per line, blank lines and padding dropped.</summary>
+    internal static List<string> ViPathList(string? viPaths) =>
+        [.. (viPaths ?? "").Split(['\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
     internal static string? OpenFilePrecheck(
         string? viPath, string? viName, string? projectPath, string? projectName)
     {
@@ -257,6 +262,24 @@ internal sealed class ActionTools(LvaiConnection connection)
                            + "itself. The project is not open, so editing the file now is safe.",
                 });
 
+        // TWO SAME-NAMED SIBLING FOLDERS ARE THE SAME Error 74, and no file is listed twice. Measured
+        // 2026-09-26 on the eighth ATM build as an A/B on two throwaway projects: two empty `SubVIs`
+        // folders gave 74, one opened with errorCode 0. It happened twice in that build, both times
+        // an empty `<Item … Type="Folder"/>` beside the populated folder a listing step had added.
+        if (projectPath is { Length: > 0 }
+            && LvClass.DuplicateSiblingFolders(projectPath) is { Count: > 0 } folders)
+            return Json.Error("duplicateProjectFolders",
+                $"'{Path.GetFileName(projectPath)}' has two sibling folders of one name: " +
+                string.Join(", ", folders.Select(d => $"'{d.Name}' (line {d.Line})")) +
+                ". LabVIEW answers Error 74 for such a project and opens nothing.",
+                new
+                {
+                    duplicates = folders.Select(d => new { name = d.Name, line = d.Line }),
+                    hint = "Remove the EMPTY one of each pair - the listed line is the second "
+                           + "occurrence; keep whichever holds items. The project is not open, so "
+                           + "editing the file now is safe.",
+                });
+
         return null;
     }
 
@@ -308,9 +331,58 @@ internal sealed class ActionTools(LvaiConnection connection)
             """)]
         bool checkActive = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description("""
+            MORE VIs to open in the same call, ONE ABSOLUTE PATH PER LINE - each through the same
+            project pair when one is given, which is what makes project-local code resolvable as
+            an AIXML Call target. The first one stands in for viPath when that is empty. Added
+            2026-09-25: loading five callees for a direct Call cost five round trips in the third
+            ATM cold build. `alsoOpened` reports each one's own error code.
+            """)]
+        string? viPaths = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            var extra = ViPathList(viPaths);
+            if (viPath is not { Length: > 0 } && extra.Count > 0)
+            {
+                viPath = extra[0];
+                viName = Path.GetFileName(viPath);
+                extra.RemoveAt(0);
+            }
+            foreach (var more in extra.Where(p => !File.Exists(p)))
+                return Json.Error("fileNotFound", $"viPaths names a file that does not exist: {more}",
+                    new { checkedPath = more, openedNothing = true });
+
+            if (extra.Count > 0)
+            {
+                var first = await OpenFileAsync(viPath, viName, projectPath, projectName,
+                                                checkActive, timeoutSeconds, ct);
+                var answer = JsonNode.Parse(first) as JsonObject;
+                if (answer is null || answer["errorCode"]?.GetValue<int>() is not 0)
+                    return first;                        // the first refusal says why; stop there
+                var also = new JsonArray();
+                foreach (var more in extra)
+                {
+                    var r = await connection.InvokeAsync((c, t) =>
+                        c.OpenFileAsync(new OpenFileRequest
+                        {
+                            ViPath = more,
+                            ViName = Path.GetFileName(more),
+                            ProjectPath = projectPath ?? "",
+                            ProjectName = projectName ?? "",
+                        }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+                    also.Add(new JsonObject
+                    {
+                        ["viPath"] = more,
+                        ["errorCode"] = r.ErrorCode,
+                        ["errorMessage"] = r.ErrorMessage,
+                    });
+                }
+                answer["alsoOpened"] = also;
+                answer["allOpened"] = also.All(a => a!["errorCode"]!.GetValue<int>() == 0);
+                return Json.Document(answer);
+            }
+
             if (OpenFilePrecheck(viPath, viName, projectPath, projectName) is { } refusal)
                 return refusal;
 
@@ -430,7 +502,7 @@ internal sealed class ActionTools(LvaiConnection connection)
             {
                 await new BulkTools(connection).GenerateViAsync(
                     source, helper, openVI: false, measurePane: false, panePattern: null,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, measureDiagram: false);
                 if (!File.Exists(helper))
                     return (null, "not checked - the read-only helper could not be generated.", null);
             }

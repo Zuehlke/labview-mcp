@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -379,7 +379,14 @@ If you are building from scratch, read `lvai_aixml_reference` for the element gr
 ### Phase 5 — Project membership
 
 The RPCs do not do this: `lvai_convert_aixml_to_vi` takes a `viPath` and nothing else, and **no
-RPC writes a `.lvproj`**. Membership is an edit to the project XML, which you make yourself.
+RPC writes a `.lvproj`**. **`lvai_add_vis_to_project` does it for you - use it, AFTER Phase 6 has
+written the file**: it closes the project, lists the VIs under one folder as a file edit, moves an
+entry LabVIEW's save left at target level instead of listing it twice, and refuses a path with no
+file behind it. It was not on this agent's list until 2026-09-25, and the third ATM cold build left
+`Handle ATM Action.vi` at target level for the orchestrator to move. **When the orchestrator says
+other agents are running and you may not open or close a project, do NOT call it** - report the
+paths and let the orchestrator list them. The hand-edit route below remains for a project that does
+not exist yet.
 
 **If there is no project**, write one first. Use the verified blank skeleton in
 `lvai_lvproj_reference` §2 (also in the README's *Creating a project*) — `LVVersion="26008000"`
@@ -468,6 +475,27 @@ impossible.
    about eight minutes per VI; the harness is shipped. Note also that `lvai_run_vi_and_read_values`
    reports the *helper's* error code: a target VI that itself failed shows that in its own
    `error out` under `values`, not in `errorCode`.
+
+5. **AN EVENT-DRIVEN VI IS VERIFIED BY DRIVING AN EVENT, NOT BY ITS START-UP SNAPSHOT.** Call
+   `lvai_run_vi_and_read_values` with `runForMs` AND `signalsJson` - the events a user would cause,
+   in order, e.g. `[{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}]`
+   - and check that the panel CHANGED the way the contract says: a message, a menu, a `disabled`
+   state. A snapshot with no signals proves only that start-up ran. Measured 2026-09-26 on the
+   seventh ATM build: validation, `execState 1`, 58 unit tests and a start-up snapshot were all
+   green while the consumer read `User Input` before the user had typed, and the user found it by
+   pressing the buttons. A LATCHED boolean (an `Enter` button) cannot be signalled - Error 1193,
+   reported under `signals` - so what it triggers is covered by the handler's unit test, and the
+   report says that this one step was not driven.
+
+**AND A VALUE THE CONSUMER NEEDS TRAVELS WITH THE COMMAND.** In a producer/consumer, read a
+control in the PRODUCER's event frame and put its value into the queue element (`Enter=23456`, or a
+cluster). A control terminal placed in the consumer loop beside `Dequeue Element` is read when the
+iteration STARTS - before the dequeue returns - so the handler sees the panel as it was before the
+event. `lvai_check_aixml` answers `controlReadBeforeWait` for exactly that shape; treat it as a
+defect unless the control is a setting deliberately polled once per iteration (a stop button, a
+delay). And if the specification counts typing as activity (an inactivity timeout), register the
+string control's own `Value Change` and write `Update While Typing?` = TRUE on it at start-up -
+measured writable at run time through an implicit property node.
 
 ### Phase 6b — One comment always; PLACING them is optional
 
@@ -660,8 +688,28 @@ Everything here was verified before this agent was written. Treat it as fact.
 
 ## Diagram size and cohesion — a standing user rule
 
-**Keep the block diagram around 1920 x 1080**, a guideline and not a gate, and **factor cohesive
-groups into subVIs** instead of spreading them across the caller.
+**THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's
+rule, restated 2026-09-25 after three agent builds in a row shipped the ATM main VI at 3306, 3456
+and 4152 px wide with every other check green. A rule nobody measured was advice; it is a budget
+now, with two numbers and a fixed procedure:
+
+1. **Before generating**, `lvai_check_aixml` answers `diagramChain`: the longest dependency chain in
+   STAGES (a Node or a Call is one stage, a structure is one plus the longest chain inside it) and
+   the elements along it. **The budget is 10 stages** - one stage renders about 145-185 px, so 10
+   leaves room for long constants and labels. Over budget: restructure BEFORE you generate.
+2. **After generating**, `lvai_generate_vi` and `lvai_generate_vi_with_events` answer `diagramSize`
+   - the RENDERED top-level diagram in px - which is the verdict. **`withinBudget: false` means the
+   VI is not done**: fold a stretch of `longestChain` into a new subVI, regenerate, and read
+   `diagramSize` again. Only when a contract genuinely forbids it may a VI stay over, and then your
+   report gives the measured size and the reason.
+3. **Plan the hierarchy up front.** A caller that orchestrates more than about eight steps is two
+   levels, not one: group consecutive steps that belong together (initialise the panel, update the
+   display, run a transaction) into a subVI each, and let the top level call those.
+4. **A generated TEST VI has the same budget.** `lvai_generate_test`, `lvai_generate_class_test`,
+   `lvai_generate_method_test` and the Caraya runner answer `diagramSize` for the test VI they
+   wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
+   method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
+   per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
 
 **A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
 only in which control they point at is the canonical case: one call taking the group and one value
@@ -678,9 +726,12 @@ documentation that renaming a control silently drops it out of its group.
 
 **Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
 sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
-unmoved. Getting the width down means merging sequential subVIs, which is the opposite of this rule:
-report that trade rather than taking it silently. AIXML carries no coordinates, so a long pipeline
-cannot be wrapped onto a second row.
+unmoved. **So width comes down by folding a SEQUENTIAL stretch of the chain into ONE new subVI**: a
+subVI that performs four consecutive stages puts one call where four were, and the caller's chain is
+three stages shorter. This paragraph used to read "getting the width down means merging sequential
+subVIs, the opposite of this rule" - it is not the opposite, it is the same rule one level up: the
+new subVI is the merge. Pulling out PARALLEL groups buys height. AIXML carries no coordinates, so a
+long pipeline cannot be wrapped onto a second row - only shortened.
 
 **Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
 sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a

@@ -163,16 +163,68 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 });
             }
 
-            // 2. convert, deliberately WITHOUT validating
+            // 1b. THE CHEAP CHECK, because this tool never validates. The fourth ATM cold build of
+            //     2026-09-25 wrote three seed constants inside a loop's <Structure> with
+            //     uid_parent="root"; LabVIEW followed the nesting, the seeds became feedback, and the
+            //     result was eBad - which this step would have named before anything was written.
+            //     Checked, NOT repaired: the frames below are read from THIS file, and a repair
+            //     renumbers uids, so generating from a repaired copy would register the wrong ones.
+            if (AixmlTools.PreCheck(aiXmlFilePath) is { } check && check["errors"]?.GetValue<int>() > 0)
+            {
+                steps.Add(new JsonObject { ["step"] = "check", ["answer"] = check });
+                return Outcome(false, "check", steps, frameList, total, viPath, directory, true,
+                    "The AIXML has a fault LabVIEW accepts silently, so nothing was written - read " +
+                    "the check step. `uidParentContradictsNesting` is an element written inside a " +
+                    "structure whose uid_parent names something else: LabVIEW follows the NESTING. " +
+                    "lvai_check_aixml gives the same findings on its own.");
+            }
+
+            // 2. convert, deliberately WITHOUT validating - and UNDER A THROWAWAY _name, the way
+            //    lvai_generate_vi's loaded-subVI route does. A failed convert under the real name
+            //    leaves that name in LabVIEW's memory, and the ATM cold build of 2026-09-25 met
+            //    exactly that: Error 53 (a callee not loaded), then Error 1051 on the retry. The
+            //    saved VI is named after its FILE either way.
+            using var throwaway = ValidationScratch.Create(aiXmlFilePath, preserveName: false,
+                                                           prefix: "LVMCP Convert", unique: true);
+            if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
+                Directory.CreateDirectory(folder);
             var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                aiXmlFilePath, viPath, openVI: false, timeoutSeconds, ct: ct);
+                throwaway.Path, viPath, openVI: false, timeoutSeconds, ct: ct);
             steps.Add(Step("convert", convert));
             if (ErrorCode(convert) is not 0)
+            {
+                // ERROR 53 NAMES NOTHING, so ask the validator, which does. Its other complaints
+                // (event frames with no events) are expected for this tool and are left out; the
+                // Unsupported SubVI lines are the callees that must be OPEN for the Call to resolve.
+                IReadOnlyList<string>? missing = null;
+                if (ErrorCode(convert) == 53)
+                {
+                    var validate = await new AixmlTools(connection).ValidateAixmlAsync(
+                        aiXmlFilePath, timeoutSeconds, ct: ct);
+                    missing = BulkTools.UnsupportedSubVIs(Field(validate, "errorMessage"));
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "whichCallTargets",
+                        ["unsupportedSubVIs"] = new JsonArray([.. (missing ?? []).Select(n => (JsonNode)n)]),
+                        ["note"] = "Asked of lvai_validate_aixml because ConvertAIXMLToVI's Error 53 " +
+                                   "names no target. Every name here must be OPEN in LabVIEW - open " +
+                                   "them through their project, lvai_open_file with viPaths - before " +
+                                   "this call can resolve them.",
+                    });
+                }
                 return Outcome(false, "convert", steps, frameList, total, viPath, directory, true,
-                    "ConvertAIXMLToVI refused the document, so nothing else ran. Note that this " +
-                    "tool skips validation, so the message here is the generator's own and may be " +
-                    "terser than lvai_validate_aixml would be - run lvai_check_aixml for the " +
-                    "faults the validator misses.");
+                    missing is { Count: > 0 }
+                        ? $"Error 53: these Call targets are NOT LOADED in LabVIEW: " +
+                          string.Join(", ", missing.Select(m => $"'{m}'")) + ". Open them through " +
+                          "their project (lvai_open_file with projectPath and viPaths) and call " +
+                          "again - the document was converted under a throwaway name, so the " +
+                          "real one is not burned and the same viPath works on the retry."
+                        : "ConvertAIXMLToVI refused the document, so nothing else ran. Note that " +
+                          "this tool skips validation, so the message here is the generator's own " +
+                          "and may be terser than lvai_validate_aixml would be - run " +
+                          "lvai_check_aixml for the faults the validator misses. It converted under " +
+                          "a throwaway name, so a retry at the same viPath is not blocked by 1051.");
+            }
 
             // 3. extract
             var extract = await new PyLabviewTools(connection).ExtractAsync(
@@ -298,6 +350,14 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring. " +
                     DataFieldNote(reading, afterWiringWillStillBeBad: false));
 
+            // 8. THE SIZE. This tool builds the main VIs, which are the ones that came out largest:
+            //    3306, 3456 and 4152 px wide over three agent builds, with this answer silent about
+            //    it every time. Measured last, on the finished file - the rebuild is done, so the
+            //    render cannot load a copy something is about to write under.
+            var size = await new BulkTools(connection).DiagramSizeStepAsync(
+                aiXmlFilePath, viPath, timeoutSeconds, ct);
+            steps.Add(size);
+
             return Outcome(true, null, steps, frameList, total, viPath, directory, keepBundle,
                 $"Registered {toRegister.Count} event(s) - " +
                 $"{toRegister.Count(f => f.Control is not null)} front-panel, " +
@@ -305,7 +365,9 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 "LabVIEW can run the result. " +
                 DataFieldNote(reading, afterWiringWillStillBeBad: false) +
                 "A diagram comment too long for its box is cut off in silence: call " +
-                "lvai_render_diagrams and look, which is the only check that sees it.");
+                "lvai_render_diagrams and look, which is the only check that sees it." +
+                (size["note"]?.GetValue<string>() ?? ""),
+                size);
         });
 
     // ---------------------------------------------------------------- plumbing
@@ -429,7 +491,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, JsonArray frames,
                                   Stopwatch total, string viPath, string directory,
-                                  bool keepBundle, string note)
+                                  bool keepBundle, string note, JsonObject? size = null)
     {
         if (!keepBundle && ok)
         {
@@ -442,6 +504,13 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             ["failedAtStep"] = failedAt,
             ["viPath"] = viPath,
             ["viExistsNow"] = File.Exists(viPath),
+            ["diagramSize"] = size is null ? null : new JsonObject
+            {
+                ["width"] = size["width"]?.DeepClone(),
+                ["height"] = size["height"]?.DeepClone(),
+                ["withinBudget"] = size["withinBudget"]?.DeepClone(),
+                ["longestChainStages"] = size["longestChainStages"]?.DeepClone(),
+            },
             ["eventFrames"] = frames,
             ["bundleDirectory"] = ok && !keepBundle ? null : directory,
             ["steps"] = steps,

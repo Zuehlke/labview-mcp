@@ -151,7 +151,9 @@ public sealed class TypedefBuild3FindingsTests
 
     [Theory]
     [InlineData("path", "C:\\x")]
-    [InlineData("cluster{double.Min,double.Max}", "[0,1]")]
+    // a cluster of scalars IS settable since 2026-09-25 (LvXmlLiteral); one member short is not
+    [InlineData("cluster{double.Min,double.Max}", "[0]")]
+    [InlineData("cluster{uint16{Off,On}.Mode,double.Max}", "[0,1]")]
     [InlineData("double", "two")]
     [InlineData("uint16{Off,On}", "5")]
     public void WhatCannotBeConvertedHonestlyIsRefused(string type, string value) =>
@@ -174,7 +176,8 @@ public sealed class TypedefBuild3FindingsTests
             """{"errorCode":91,"errorMessage":"Error 91 occurred"}""", verified: true))!;
         Assert.True(verified["ok"]!.GetValue<bool>());
         Assert.Equal(0, verified["errorCode"]!.GetValue<int>());
-        Assert.Equal(91, verified["runnerErrorCode"]!.GetValue<int>());
+        // the known 91 is dropped since the fourth build (TypedefBuild4FindingsTests)
+        Assert.Null(verified["runnerErrorCode"]);
 
         // control: an unverified run keeps LabVIEW's code where it was, and is not ok
         var failed = JsonNode.Parse(IconTools.Verdict(

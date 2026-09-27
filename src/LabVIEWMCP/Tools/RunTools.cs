@@ -62,11 +62,21 @@ internal sealed class RunTools(LvaiConnection connection)
         The helper reads the target's panel, asks each named control what it is, and converts
         before setting - so a path, a double, an integer and a boolean can all be set by passing
         their text ("C:\\data\\in.csv", "12.5", "42", "true"). Measured 2026-09-16 on one control
-        of each type. ARRAY AND CLUSTER CONTROLS STILL CANNOT BE SET: there is no general
-        text-to-composite conversion, they fall through to the string case, and the call then
-        fails rather than silently leaving them at their defaults.
-        A newline in a name or value is rejected, because the helper's wire format separates
-        them by newlines.
+        of each type.
+        AN ENUM OR A TEXT RING takes an item NAME ("withdraw", exact and case-sensitive) or an
+        index ("2"). Text that is neither is refused by Ctrl Val.Set BEFORE the run - it used to
+        be the case that nothing but a string could be set at all.
+        AN ARRAY OR A CLUSTER takes LabVIEW's own XML for the value - exactly what this tool
+        returns under a compound control's `xml`, so a value read back can be pasted in as the
+        next call's input. A bare <Array> or <Cluster> is wrapped in <LvVariant> for you, and
+        the indentation between its tags is folded away; the helper then turns it into a Variant
+        that carries its own type, so you never name the type. Since 2026-09-25. Do not write a
+        line break as &#10; there - Unflatten From XML decodes no character reference, measured.
+        A LINE BREAK IN A VALUE IS FINE - a multi-line string, or an XML value with a multi-line
+        member: it travels encoded (LF as 0x1E, CR as 0x1D) and the helper decodes it before it
+        converts anything; `lineBreaksEncoded` names the inputs it applied to. Only the default
+        helper decodes, so with runForMs or the legacy helper a line break is still refused. A
+        line break in a control NAME is always refused - names and values are paired by line.
         A control name that matches nothing on the target's panel is Error 1055 and the target
         does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
         Reading is done through a VI REFERENCE, which is released afterwards, so this does not
@@ -77,9 +87,10 @@ internal sealed class RunTools(LvaiConnection connection)
         [Description("""
             Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv","count":"42"}.
             Keys are control labels, values are always TEXT - the helper converts each one to
-            whatever type the named control actually is. String, path, numeric and boolean
-            controls all work; array and cluster controls do not. Omit for a VI that needs no
-            inputs.
+            whatever type the named control actually is. String, path, numeric, boolean, enum
+            and ring controls take plain text; an array or cluster control takes its value as
+            LabVIEW XML (<Array>…</Array>, <Cluster>…</Cluster>, or wrapped in <LvVariant>).
+            Omit for a VI that needs no inputs.
             """)]
         string? inputsJson = null,
         [Description("""
@@ -115,6 +126,10 @@ internal sealed class RunTools(LvaiConnection connection)
             not a stop button - it kills the VI where it stands and runs NO cleanup the diagram may
             contain, so a VI that closes files or releases hardware on its normal path does not do
             that here.
+            IT ALSO ANSWERS `disabled`: every control's label with its Disabled state at the snapshot
+            (0 enabled, 1 disabled, 2 disabled and greyed out) - the one thing a snapshot of values
+            cannot show, and nothing can look afterwards because the VI leaves memory. Since
+            2026-09-26; null when that read failed.
             IT PICKS ITS OWN HELPER, and a helperAixmlPath naming the untimed one is corrected
             rather than obeyed - the answer says so in `helperOverridden`. Only lvai_run_for_ms.vi
             has a `run for ms` control; lvai_run_and_read.vi waits for the target to finish, so
@@ -122,19 +137,51 @@ internal sealed class RunTools(LvaiConnection connection)
             THE WHOLE SERVICE until LabVIEW is killed. Measured 2026-09-16; it cost two restarts.
             """)]
         int runForMs = 0,
+        [Description("""
+            EVENTS TO FIRE while the VI runs, with runForMs only: a JSON ARRAY, in order, e.g.
+            [{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}].
+            After runForMs has elapsed each control is written with Value (Signaling) - which fires
+            its Value Change event exactly as a click or a keystroke would - and signalGapMs is
+            waited after each one; the snapshot comes after the last. Values are text: a boolean
+            TRUE/1, a numeric its number, a string its text, a cluster or array LabVIEW XML.
+            THIS IS WHAT A START-UP SNAPSHOT CANNOT SEE. The seventh ATM build passed validation,
+            execState, 58 unit tests and a runForMs snapshot while its consumer read User Input
+            before the user had typed; only driving an event would have shown it.
+            A LATCHED BOOLEAN CANNOT BE SIGNALLED - LabVIEW refuses Value (Signaling) on one with
+            Error 1193, reported under `signals`. The snapshot is taken either way.
+            """)]
+        string? signalsJson = null,
+        [Description("Wait after each signal, so the target handles it before the next")]
+        int signalGapMs = 500,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
+            List<KeyValuePair<string, string>> signals;
+            try { signals = ParseSignals(signalsJson); }
+            catch (ArgumentException bad)
+            {
+                return Json.Error("badArguments", bad.Message, new { signalsJson });
+            }
+            if (signals.Count > 0 && runForMs <= 0)
+                return Json.Error("badArguments",
+                    "signalsJson needs runForMs: signals are fired while the VI RUNS, after runForMs " +
+                    "has elapsed, and a VI run without runForMs is waited on until it ends.",
+                    new { signalCount = signals.Count, runForMs });
+
             var inputs = Rpc.ParseStringMap(inputsJson, nameof(inputsJson)).ToList();
-            if (Offending(inputs) is { } offender)
+            var compoundInputs = inputs.Where(i => CompoundValue(i.Value) is not null)
+                                       .Select(i => i.Key).ToList();
+            inputs = inputs.Select(i => new KeyValuePair<string, string>(
+                i.Key, CompoundValue(i.Value) ?? i.Value)).ToList();
+            if (inputs.FirstOrDefault(i => Breaks(i.Key)).Key is { } badName)
                 return Json.Error("inputContainsNewline",
-                    $"The control name or value for '{offender}' contains a line break. The " +
-                    "helper pairs names with values by line, so a newline in either would " +
-                    "silently shift every later pair onto the wrong control.",
-                    new { controlName = offender });
+                    $"The control name '{badName}' contains a line break. The helper pairs names " +
+                    "with values by line, so a newline in a name would silently shift every later " +
+                    "pair onto the wrong control.",
+                    new { controlName = badName });
 
             var timed = runForMs > 0;
 
@@ -174,8 +221,35 @@ internal sealed class RunTools(LvaiConnection connection)
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
+            // A LINE BREAK IN A VALUE TRAVELS ENCODED, when the helper decodes it. Values used to be
+            // refused outright - which made a multi-line string unreachable here and, through this
+            // tool, in lvai_set_constant: the fourth ATM cold build could not break a multi-line
+            // message expectation for its negative control. The typed helper decodes 0x1E to LF and
+            // 0x1D to CR before it converts anything; the timed and the legacy helper do not, so
+            // for them the refusal stands. Decided from the helper's CONTENT, like runForMs.
+            var decodes = DecodesLineBreaks(aixml);
+            if (inputs.FirstOrDefault(i => Breaks(i.Value) && !decodes).Key is { } undecodable)
+                return Json.Error("inputContainsNewline",
+                    $"The value for '{undecodable}' contains a line break, and the helper " +
+                    $"'{Path.GetFileName(aixml)}' does not decode one - only " +
+                    $"{HelperAixmlFileName} does{(timed ? "; the runForMs helper has not had that change" : "")}. " +
+                    "The helper pairs names with values by line, so the break would shift every " +
+                    "later pair onto the wrong control.",
+                    new { controlName = undecodable });
+            if (inputs.FirstOrDefault(i => i.Value.Contains(EncodedLf) || i.Value.Contains(EncodedCr)).Key
+                is { } ambiguous)
+                return Json.Error("badArguments",
+                    $"The value for '{ambiguous}' contains the control character 0x1E or 0x1D, " +
+                    "which is how a line break travels to the helper - it would arrive as a line " +
+                    "break. Remove it.", new { controlName = ambiguous });
+            var encodedInputs = inputs.Where(i => Breaks(i.Value)).Select(i => i.Key).ToList();
+            inputs = [.. inputs.Select(i => new KeyValuePair<string, string>(i.Key, Encode(i.Value)))];
+
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            // A helper built from an OLDER AIXML is rebuilt, not reused: the Enum, Ring, Array
+            // and Cluster frames went into the AIXML on 2026-09-25, and a cached VI from before
+            // that would have kept refusing them with no sign that a newer helper exists.
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } generationFailure) return generationFailure;
@@ -200,7 +274,20 @@ internal sealed class RunTools(LvaiConnection connection)
                     "control that is not set keeps its own default.",
                     new { inputName = empty, inputCount = inputs.Count });
 
+            if (signals.Count > 0 && !CanSignal(aixml))
+                return Json.Error("badArguments",
+                    $"The helper '{Path.GetFileName(aixml)}' has no '{SignalNamesControlName}' " +
+                    $"control, so it cannot fire signals. Omit helperAixmlPath to use " +
+                    $"{TimedHelperAixmlFileName}, which can.", new { helperAixmlPath = aixml });
+
             var request = HelperRequest(helperVi, viPath, inputs, timed ? runForMs : 0);
+            if (signals.Count > 0)
+            {
+                request.Inputs[SignalNamesControlName] = string.Join("\n", signals.Select(s => s.Key));
+                request.Inputs["Signal Values"] = string.Join("\n", signals.Select(s => s.Value));
+                request.Inputs["signal gap ms"] =
+                    Math.Max(0, signalGapMs).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
 
             var stopwatch = Stopwatch.StartNew();
             var response = await connection.InvokeAsync((c, t) =>
@@ -235,8 +322,46 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["helperAixmlPath"] = JsonValue.Create(Path.GetFullPath(aixml));
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
             payload["inputsSent"] = JsonValue.Create(inputs.Count);
+            if (compoundInputs.Count > 0)
+                payload["compoundInputs"] = new JsonArray(compoundInputs
+                    .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
+            if (encodedInputs.Count > 0)
+                payload["lineBreaksEncoded"] = new JsonArray(encodedInputs
+                    .Select(n => (JsonNode?)JsonValue.Create(n)).ToArray());
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
             payload["runForMs"] = JsonValue.Create(timed ? runForMs : 0);
+            if (timed)
+            {
+                response.Outputs.TryGetValue("disabled labels xml", out var disabledLabels);
+                response.Outputs.TryGetValue("disabled xml", out var disabledStates);
+                payload["disabled"] = DisabledStates(disabledLabels, disabledStates);
+            }
+            if (signals.Count > 0)
+            {
+                response.Outputs.TryGetValue("signal error xml", out var signalErrorXml);
+                var signalCode = HelperErrorCode(signalErrorXml);
+                payload["signals"] = new JsonObject
+                {
+                    ["sent"] = new JsonArray(signals.Select(s => (JsonNode?)new JsonObject
+                    {
+                        ["control"] = s.Key, ["value"] = s.Value,
+                    }).ToArray()),
+                    ["gapMs"] = Math.Max(0, signalGapMs),
+                    ["errorCode"] = signalCode is { } sc ? JsonValue.Create(sc) : null,
+                    ["errorXml"] = signalErrorXml,
+                    ["note"] = signalCode switch
+                    {
+                        null or 0 => "Every signal was written; the snapshot was taken after the last gap.",
+                        1193 => "Error 1193: a LATCHED boolean cannot be written with Value (Signaling). " +
+                                "The signals after it were NOT sent; the snapshot was still taken. Test " +
+                                "what that button triggers through the handler's own unit test instead.",
+                        1055 or 1026 => $"Error {signalCode}: a signal names no control on the target's panel. " +
+                                        "The signals from there on were NOT sent; the snapshot was still taken.",
+                        _ => $"Error {signalCode} stopped the signals at that point; the snapshot was " +
+                             "still taken. errorXml names the source.",
+                    },
+                };
+            }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["note"] = JsonValue.Create(
                 "errorCode here is RunVIAsTopLevel's, NOT the helper's - read helperErrorCode " +
@@ -245,7 +370,17 @@ internal sealed class RunTools(LvaiConnection connection)
                 (helperCode is not null and not 0
                     ? $" helperFailed is TRUE ({helperCode}): the helper stopped before the " +
                       "target ran, so `values` is empty and nothing was set. Error 1055 here " +
-                      "means a control name matched nothing on the target's panel."
+                      "means a control name matched nothing on the target's panel. Error 91 " +
+                      "means a value did not fit its control - on an ENUM or RING, text that is " +
+                      "neither one of its item names (exact, case-sensitive) nor a number. A " +
+                      "CLASS control cannot be set at all, from text or from XML - measured " +
+                      "2026-09-26 - so test a class method with lvai_generate_method_test, whose " +
+                      "`seed` builds the object." +
+                      (compoundInputs.Count > 0
+                          ? " A refusal from Unflatten From XML means the XML given for " +
+                            string.Join(", ", compoundInputs) + " is not a LabVIEW value - " +
+                            "copy the `xml` this tool returns for that control."
+                          : "")
                     : "") +
                 (timed
                     ? $" These values are a SNAPSHOT taken {runForMs} ms after the VI started, and " +
@@ -260,9 +395,111 @@ internal sealed class RunTools(LvaiConnection connection)
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         });
 
-    /// <summary>The first name or value carrying a line break, or null when all are clean.</summary>
-    private static string? Offending(IEnumerable<KeyValuePair<string, string>> inputs) =>
-        inputs.FirstOrDefault(i => Breaks(i.Key) || Breaks(i.Value)).Key;
+    /// <summary>
+    /// Every front-panel control's <c>Disabled</c> at the snapshot, as <c>[{label, disabled}]</c> -
+    /// or null when the helper did not read it (an older helper, or a read that failed on its own
+    /// error chain).
+    ///
+    /// ADDED 2026-09-26, because a snapshot of VALUES could not answer "which controls can the
+    /// user operate right now", and nothing can look afterwards: the helper closes its reference
+    /// and the VI leaves memory. The sixth ATM build had to generate a scratch probe that ran the
+    /// main VI itself to see that six controls read 2. A list rather than a map, because two
+    /// controls may carry one label.
+    /// </summary>
+    internal static JsonArray? DisabledStates(string? labelsXml, string? statesXml)
+    {
+        static List<string>? Vals(string? xml)
+        {
+            if (string.IsNullOrWhiteSpace(xml)) return null;
+            try
+            {
+                var root = System.Xml.Linq.XElement.Parse(xml);
+                return [.. root.Elements()
+                               .Where(e => e.Name.LocalName is not ("Name" or "Dimsize"))
+                               .Select(e => (string?)e.Element("Val") ?? "")];
+            }
+            catch (System.Xml.XmlException) { return null; }
+        }
+
+        var labels = Vals(labelsXml);
+        var states = Vals(statesXml);
+        if (labels is null || states is null || labels.Count != states.Count || labels.Count == 0)
+            return null;
+
+        var list = new JsonArray();
+        for (var i = 0; i < labels.Count; i++)
+            list.Add(new JsonObject
+            {
+                ["label"] = labels[i],
+                ["disabled"] = int.TryParse(states[i], out var d) ? d : null,
+            });
+        return list;
+    }
+
+    private static readonly Regex CompoundRoot = new(
+        @"^\s*(?:<\?xml[^>]*\?>\s*)?<(LvVariant|Array|Cluster)[\s>]", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A value given as LabVIEW XML, made fit for the helper's Array and Cluster frames - or null
+    /// when the value is not XML for a compound, in which case it is sent exactly as given.
+    ///
+    /// The helper feeds it to Unflatten From XML with a VARIANT as the type, which yields a
+    /// variant carrying the value's own type - measured 2026-09-25 on a 2D string array, round
+    /// trip exact. Two things have to happen first. The value must be ONE line, because names and
+    /// values are paired by line, so indentation between tags is dropped. And the root must be
+    /// <c>LvVariant</c>, because that is what Unflatten From XML into a variant reads; a bare
+    /// <c>&lt;Array&gt;</c> or <c>&lt;Cluster&gt;</c> - the shape this tool returns under a
+    /// control's <c>xml</c> - is wrapped, so a value read back can be passed straight in.
+    ///
+    /// A LINE BREAK INSIDE A TEXT VALUE IS LEFT IN, so the newline guard refuses it. The first
+    /// version wrote it as <c>&amp;#10;</c>, and LabVIEW's Unflatten From XML does NOT decode a
+    /// character reference: measured 2026-09-25 on an error cluster, the source came back as the
+    /// literal text <c>acceptance&amp;#10;second line</c> with no error anywhere. LabVIEW's own XML
+    /// carries a raw line break there, which this wire format cannot.
+    ///
+    /// ONLY THOSE THREE ROOTS are recognised. A string control may legitimately be given text that
+    /// starts with an angle bracket, and rewriting that would change the string.
+    /// </summary>
+    internal static string? CompoundValue(string value)
+    {
+        var root = CompoundRoot.Match(value);
+        if (!root.Success) return null;
+
+        var xml = value.Trim();
+        if (xml.StartsWith("<?xml", StringComparison.Ordinal))
+            xml = xml[(xml.IndexOf("?>", StringComparison.Ordinal) + 2)..].TrimStart();
+        xml = Regex.Replace(xml, @">[ \t]*(?:\r\n|\r|\n)\s*<", "><");
+
+        return root.Groups[1].Value == "LvVariant"
+            ? xml
+            : $"<LvVariant><Name>Variant</Name>{xml}</LvVariant>";
+    }
+
+    /// <summary>What a line feed and a carriage return travel as between this tool and the helper.</summary>
+    internal const string EncodedLf = "\u001E", EncodedCr = "\u001D";
+
+    /// <summary>The constant only a helper that decodes line breaks carries; its presence is the test.</summary>
+    internal const string LineBreakMarker = "encoded line feed";
+
+    /// <summary>A value with its line breaks encoded for the wire - the helper reverses it.</summary>
+    internal static string Encode(string value) =>
+        value.Replace("\r", EncodedCr).Replace("\n", EncodedLf);
+
+    /// <summary>
+    /// Whether a helper decodes line breaks, read from its AIXML like <see cref="CanHonourRunForMs"/>.
+    /// An unreadable file is treated as NOT decoding: the cost of that guess is a refusal the caller
+    /// can read, where the opposite guess would split a value across two controls.
+    /// </summary>
+    internal static bool DecodesLineBreaks(string helperAixmlPath)
+    {
+        try
+        {
+            return File.ReadAllText(helperAixmlPath)
+                .Contains($"_name=\"{LineBreakMarker}\"", StringComparison.Ordinal);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
 
     private static bool Breaks(string? s) =>
         s is not null && (s.Contains('\n') || s.Contains('\r'));
@@ -314,6 +551,66 @@ internal sealed class RunTools(LvaiConnection connection)
                     _ => null,
                 },
             });
+    }
+
+    /// <summary>The timed runner's control that takes the signal list; its presence is the test.</summary>
+    internal const string SignalNamesControlName = "Signal Names";
+
+    /// <summary>
+    /// The signals to fire, in order. A JSON ARRAY rather than an object, because order is the
+    /// point - a card goes in before its account number is typed. Refused rather than guessed:
+    /// an unknown key, a missing control, and a line break or an empty value anywhere, because
+    /// names and values are paired BY LINE inside the helper, as the inputs are.
+    /// </summary>
+    internal static List<KeyValuePair<string, string>> ParseSignals(string? signalsJson)
+    {
+        var list = new List<KeyValuePair<string, string>>();
+        if (string.IsNullOrWhiteSpace(signalsJson)) return list;
+
+        JsonNode? root;
+        try { root = JsonNode.Parse(signalsJson); }
+        catch (JsonException bad)
+        {
+            throw new ArgumentException($"signalsJson is not JSON: {bad.Message}");
+        }
+        if (root is not JsonArray array)
+            throw new ArgumentException(
+                "signalsJson must be a JSON ARRAY of {\"control\":…,\"value\":…}, in order - an object " +
+                "cannot say which signal comes first.");
+
+        foreach (var item in array)
+        {
+            if (item is not JsonObject entry)
+                throw new ArgumentException("Every signal must be an object {\"control\":…,\"value\":…}.");
+            if (entry.Select(p => p.Key).FirstOrDefault(k => k is not ("control" or "value")) is { } unknown)
+                throw new ArgumentException(
+                    $"Unknown key '{unknown}' in a signal; the only keys are control and value.");
+            var control = entry["control"]?.ToString();
+            var value = entry["value"] is JsonValue v ? v.ToString() : entry["value"]?.ToJsonString();
+            if (string.IsNullOrEmpty(control))
+                throw new ArgumentException("A signal has no 'control'.");
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentException(
+                    $"The signal for '{control}' has no value. Names and values are paired by line, " +
+                    "so an empty value would shift every later signal onto the wrong control.");
+            if (Breaks(control) || Breaks(value))
+                throw new ArgumentException(
+                    $"The signal for '{control}' contains a line break; names and values are paired by line.");
+            list.Add(new(control, value));
+        }
+        return list;
+    }
+
+    /// <summary>Whether a helper can fire signals, read from its AIXML like <see cref="CanHonourRunForMs"/>.</summary>
+    internal static bool CanSignal(string helperAixmlPath)
+    {
+        try
+        {
+            return File.ReadAllText(helperAixmlPath)
+                .Contains($"_name=\"{SignalNamesControlName}\"", StringComparison.Ordinal);
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>

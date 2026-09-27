@@ -103,12 +103,14 @@ internal static class AixmlCheck
 
         CheckDuplicateUids(elements, findings);
         CheckParents(root, elements, findings);
+        CheckNesting(root, findings);
         CheckRings(root, findings);
         CheckEnums(root, findings);
         CheckTerminalWireRules(root, findings);
         CheckIndicatorValues(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
+        CheckControlReadBeforeWait(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
 
@@ -301,6 +303,43 @@ internal static class AixmlCheck
                 + "LabVIEW does NOT reject this: it places the element on the TOP-LEVEL diagram and "
                 + "reports nothing. Measured - an element meant to sit inside a structure ends up "
                 + "outside it, changing what the diagram does.",
+                (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// An element written INSIDE a container - a <c>&lt;Structure&gt;</c>, a <c>&lt;CaseFrame&gt;</c>,
+    /// a <c>&lt;ShiftReg&gt;</c> - whose <c>uid_parent</c> names something else. THE XML NESTING
+    /// WINS, so the element lands inside the container whatever <c>uid_parent</c> says.
+    ///
+    /// FOUND on the fourth ATM cold build, 2026-09-25: three shift-register seed constants written
+    /// inside the consumer loop's <c>&lt;Structure&gt;</c> with <c>uid_parent="root"</c> landed
+    /// INSIDE the loop, turned the seeds into feedback, and left <c>ATM Main.vi</c> eBad. MEASURED
+    /// the same day as a clean A/B, one While Loop and one seed constant feeding its shift register,
+    /// the two documents differing only in where the constant is written: nested, ValidateAIXML
+    /// answers <c>While Loop: Is a member of a cycle</c>; at document top level, errorCode 0 and a
+    /// 6 954-byte VI. It is the converse of the FreeLabel case CLAUDE.md records, where the same
+    /// <c>uid_parent</c> at top level does NOT reach the loop - in both, the nesting decides.
+    ///
+    /// NOT REPAIRED: the author wrote one intent into the nesting and another into the attribute,
+    /// and which one was meant is not in the document.
+    /// </summary>
+    private static void CheckNesting(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.Descendants())
+        {
+            if ((string?)element.Attribute("uid_parent") is not { Length: > 0 } parent) continue;
+            if (element.Parent is not { } container || container == root) continue;
+            if ((string?)container.Attribute("uid") is not { Length: > 0 } containerUid) continue;
+            if (parent == containerUid) continue;
+
+            findings.Add(new Finding(Severity.Error, "uidParentContradictsNesting",
+                $"<{element.Name.LocalName}> is written inside <{container.Name.LocalName}> "
+                + $"uid=\"{containerUid}\" but says uid_parent=\"{parent}\". LabVIEW follows the "
+                + "NESTING, not the attribute - measured 2026-09-25: a seed constant nested in a "
+                + "While Loop with uid_parent=\"root\" landed inside the loop and made the diagram a "
+                + "cycle. Move the element to where uid_parent says it belongs (document top level "
+                + "for root), or change uid_parent to the container's uid.",
                 (string?)element.Attribute("uid")));
         }
     }
@@ -553,6 +592,69 @@ internal static class AixmlCheck
                 + "value in the same document: both vanish, the assertion compares empty with empty "
                 + "and PASSES while pinning nothing.",
                 (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// The nodes an iteration BLOCKS on until something arrives - a queue element, a notifier, an
+    /// occurrence. An Event Structure is the same case and is matched as a structure.
+    /// </summary>
+    internal static readonly string[] BlockingNodes =
+    [
+        "Dequeue Element", "Preview Queue Element", "Wait on Notification",
+        "Wait on Notification from Multiple", "Wait for Occurrence",
+    ];
+
+    /// <summary>
+    /// A front-panel <c>&lt;Control&gt;</c> placed directly in a loop whose iteration WAITS -
+    /// on <c>Dequeue Element</c>, a notifier, an occurrence or an Event Structure. WARNING.
+    ///
+    /// A control terminal has no inputs, so LabVIEW reads it the moment the iteration STARTS, in
+    /// parallel with the node that then blocks. The value that reaches the command handler is the
+    /// one the panel held BEFORE the command arrived, not the one the user typed while the loop
+    /// waited. Found 2026-09-26 by the user in the seventh ATM build: the consumer read
+    /// `User Input` beside its `Dequeue Element`, so `Enter` verified the PREVIOUS contents - the
+    /// empty string on a first try - and the menus never filled. Every unit test was green,
+    /// because a unit test hands `Handle ATM Action.vi` the input directly; validation, conversion,
+    /// execState and a runForMs start-up snapshot were green too. Nothing but a person pressing
+    /// the buttons saw it.
+    ///
+    /// THE FIX is to read the control where the event is: in the producer's event frame, sent
+    /// along with the command (`Enter=12345`), or a property node chained after the wait by its
+    /// error wire. A control inside a Case frame is not flagged - its read waits for the selector,
+    /// which normally comes from the wait. Not repaired: moving a terminal changes the design.
+    ///
+    /// A WARNING and not an error because the pattern is sometimes right: over the 739 cached NI
+    /// exports it fires on 5, all of them a POLLED setting - `Stop`, `Dequeue Speed`,
+    /// `Notification Loop Delay (ms)`, plot options beside an Event Structure - where a value one
+    /// iteration old is the intent.
+    /// </summary>
+    private static void CheckControlReadBeforeWait(XElement root, List<Finding> findings)
+    {
+        foreach (var control in root.Descendants().Where(e => e.Name.LocalName == "Control"))
+        {
+            var loop = control.Ancestors().FirstOrDefault(a => a.Name.LocalName == "Structure");
+            if (loop is null) continue;
+            var kind = (string?)loop.Attribute("_name");
+            if (kind is not ("While Loop" or "For Loop")) continue;
+
+            var blocker = loop.Descendants().FirstOrDefault(d =>
+                (d.Name.LocalName == "Node" && BlockingNodes.Contains((string?)d.Attribute("_name")))
+                || (d.Name.LocalName == "Structure" && (string?)d.Attribute("_name") == "Event Structure"));
+            if (blocker is null) continue;
+
+            var name = control.Attribute("_name")?.Value ?? "Control";
+            findings.Add(new Finding(Severity.Warning, "controlReadBeforeWait",
+                $"Control \"{name}\" sits directly in a {kind} that waits on "
+                + $"{(string?)blocker.Attribute("_name")}. A control terminal is read when the "
+                + "iteration STARTS, before the wait returns - so the handler gets the value the "
+                + "panel held before the event, not what the user entered meanwhile. Measured in the "
+                + "seventh ATM build: Enter verified the previous User Input, with every unit test "
+                + "green. Read it where the event is (in the producer's event frame, sent with the "
+                + "command), or through a property node chained after the wait by its error wire. "
+                + "Harmless for a setting POLLED once per iteration, such as a stop button or a "
+                + "delay - 5 of 739 NI examples do that on purpose; wrong for data a command acts on.",
+                (string?)control.Attribute("uid")));
         }
     }
 

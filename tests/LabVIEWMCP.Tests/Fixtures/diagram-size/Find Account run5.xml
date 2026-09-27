@@ -1,0 +1,29 @@
+<VI _name="Find Account.vi" description="Looks up an account number in the accounts table: exact match on column 0 after trimming whitespace on both sides. Returns the row, names and balance; found is FALSE and row is -1 when there is no match.">
+<Control _name="accounts" conIdx="0" connection="required" description="Accounts table: one row per account, columns number, first name, last name, balance." outputs="value:acc.value" type="array.2{string}" uid="acc" uid_parent="root" value="[]"/>
+<Control _name="account number" conIdx="5" connection="required" description="Account number to look up." outputs="value:num.value" type="string" uid="num" uid_parent="root" value=""/>
+<Control _name="error in" conIdx="11" connection="recommended" description="Error in, passed through." outputs="value:ein.value" type="cluster{bool.status,int32.code,string.source}" uid="ein" uid_parent="root" value="[false,0,]"/>
+<Constant _name="Number Column" outputs="value:c0.value" type="int32" uid="c0" uid_parent="root" value="0"/>
+<Node _name="Index Array" dimensions="2" inputs="array:acc.value,disabled index (row):,index (col):c0.value" outputs="element:col.element" uid="col" uid_parent="root"/>
+<Structure _name="For Loop" count="" maxin="" maxout="" uid="loop" uid_parent="root">
+  <Tunnel _id="In1" inputs="value:col.element" mode="index" outputs="value:tin.value" uid="tin" uid_parent="loop"/>
+  <Call adapt="true" instance="Trim Whitespace (string).vi" target="Trim Whitespace.vi" inputs="string:tin.value" outputs="trimmed string:tr.trimmed string" uid="tr" uid_parent="loop"/>
+  <Tunnel _id="Out1" inputs="value:tr.trimmed string" mode="index" outputs="value:tout.value" uid="tout" uid_parent="loop"/>
+</Structure>
+<Call adapt="true" instance="Trim Whitespace (string).vi" target="Trim Whitespace.vi" inputs="string:num.value" outputs="trimmed string:tn.trimmed string" uid="tn" uid_parent="root"/>
+<Node _name="Search 1D Array" inputs="1D array:tout.value,element:tn.trimmed string" outputs="index of element:srch.index of element" uid="srch" uid_parent="root"/>
+<Constant _name="Zero" outputs="value:z.value" type="int32" uid="z" uid_parent="root" value="0"/>
+<Node _name="Greater Or Equal?" inputs="x:srch.index of element,y:z.value" outputs="x &gt;= y?:ge.x &gt;= y?" uid="ge" uid_parent="root"/>
+<Constant _name="First Column" outputs="value:c1.value" type="int32" uid="c1" uid_parent="root" value="1"/>
+<Constant _name="Last Column" outputs="value:c2.value" type="int32" uid="c2" uid_parent="root" value="2"/>
+<Constant _name="Balance Column" outputs="value:c3.value" type="int32" uid="c3" uid_parent="root" value="3"/>
+<Node _name="Index Array" dimensions="2" inputs="array:acc.value,index (row):srch.index of element,disabled index (col):" outputs="element:rowa.element" uid="rowa" uid_parent="root"/>
+<Node _name="Index Array" inputs="array:rowa.element,index:c1.value,index:c2.value,index:c3.value" outputs="element:ix.first,element:ix.last,element:ix.bal" uid="ix" uid_parent="root"/>
+<Node _name="Fract/Exp String To Number" inputs="string:ix.bal" outputs="number:fx.number" uid="fx" uid_parent="root"/>
+<Indicator _name="found" conIdx="4" connection="recommended" description="TRUE when the account number is in the table." inputs="value:ge.x &gt;= y?" type="bool" uid="found" uid_parent="root" value="false"/>
+<Indicator _name="row" conIdx="6" connection="recommended" description="Row of the account in the table, -1 if not found." inputs="value:srch.index of element" type="int32" uid="rowi" uid_parent="root" value="0"/>
+<Indicator _name="first name" conIdx="8" connection="recommended" description="First name of the account holder, empty if not found." inputs="value:ix.first" type="string" uid="fn" uid_parent="root" value=""/>
+<Indicator _name="last name" conIdx="10" connection="recommended" description="Last name of the account holder, empty if not found." inputs="value:ix.last" type="string" uid="ln" uid_parent="root" value=""/>
+<Indicator _name="balance" conIdx="14" connection="recommended" description="Balance of the account, 0 if not found." inputs="value:fx.number" type="double" uid="bi" uid_parent="root" value="0"/>
+<Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:ein.value" type="cluster{bool.status,int32.code,string.source}" uid="eout" uid_parent="root" value="[false,0,]"/>
+<FreeLabel comment="Exact match on trimmed account numbers" uid="lbl" uid_parent="root"/>
+</VI>

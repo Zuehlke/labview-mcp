@@ -1,4 +1,4 @@
-<VI _name="lvbd_set_constant.vi" description="Sets the VALUE of ONE block diagram constant\2C found by its LABEL\2C and saves the VI in place - the edit a negative control needs\2C without regenerating the test. The value arrives as text and is converted by `kind`\3A Digital through Fract/Exp String To Number\2C Boolean from TRUE or 1\2C anything else as the string itself. The diagram's All Objects[] are searched for a Constant whose Label text equals the label\3B objects that are not constants fail To More Specific Class inside the loop and are skipped. Reports the label it found - empty when none matched\2C in which case nothing is written. Driven by lvai_set_constant\2C which checks the result by exporting the VI again.">
+<VI _name="lvbd_set_constant.vi" description="Sets the VALUE of ONE block diagram constant\2C found by its LABEL\2C and saves the VI in place - the edit a negative control needs\2C without regenerating the test. The value arrives as text and is converted by `kind`\3A Digital through Fract/Exp String To Number\2C Boolean from TRUE or 1\2C Compound - an array or a cluster - from LabVIEW's own XML wrapped in LvVariant\2C through Unflatten From XML into a Variant\2C which lvai_set_constant builds from the AIXML literal and the constant's exported type\3B anything else as the string itself. The diagram's All Objects[] are searched for a Constant whose Label text equals the label\3B objects that are not constants fail To More Specific Class inside the loop and are skipped. Reports the label it found - empty when none matched\2C in which case nothing is written. Driven by lvai_set_constant\2C which checks the result by exporting the VI again.">
   <FreeLabel comment="One labelled constant gets a new value" uid="4200" uid_parent="root"/>
   <Control _name="vi path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
   <Control _name="constant label" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
@@ -51,6 +51,15 @@
       <Node _name="Or" inputs="x:4427.a,y:4428.b" outputs="x .or. y?:4429.bool" uid="4429" uid_parent="4420"/>
       <Node _name="Property Node" fields="write+Value" type="{LV.Constant}" inputs="reference:4421.value,error in (no error):4423.value,Value:4429.bool" outputs="reference out:,error out:4430.err" uid="4430" uid_parent="4420"/>
       <Tunnel _id="Out1" inputs="value:4430.err" uid="4431" uid_parent="4420"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;Compound&quot;" selectout="" uid="4480" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:4481.value" uid="4481" uid_parent="4480"/>
+      <Tunnel _id="In2" outputs="value:4482.value" uid="4482" uid_parent="4480"/>
+      <Tunnel _id="In3" outputs="value:4483.value" uid="4483" uid_parent="4480"/>
+      <Constant _name="variant type" outputs="value:4484.value" type="variant" uid="4484" uid_parent="4480" value=""/>
+      <Node _name="Unflatten From XML" inputs="xml string:4482.value,type:4484.value,error in (no error):4483.value" outputs="value:4485.value,error out:4485.error out" uid="4485" uid_parent="4480"/>
+      <Node _name="Property Node" fields="write+Value" type="{LV.Constant}" inputs="reference:4481.value,error in (no error):4485.error out,Value:4485.value" outputs="reference out:,error out:4486.err" uid="4486" uid_parent="4480"/>
+      <Tunnel _id="Out1" inputs="value:4486.err" uid="4487" uid_parent="4480"/>
     </CaseFrame>
     <CaseFrame selector="Default" selectout="" uid="4440" uid_parent="4400">
       <Tunnel _id="In1" outputs="value:4441.value" uid="4441" uid_parent="4440"/>

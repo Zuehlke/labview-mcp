@@ -1,0 +1,58 @@
+# Scratch VIs left in LabVIEW's memory - where they are, and what can be done
+
+The user's report of 2026-09-26: exiting LabVIEW after a day of builds raised **"Save changes?
+(Exit)" with 54 affected items**, every one an unsaved `LVMCP Validate <hash>.vi` except a single
+`LVMCP Convert <hash>.vi`. Those are the scratch `_name`s our tools hand to NI's `ValidateAIXML` and
+`ConvertAIXMLToVI` so that a refusal cannot burn a document's real name (`Infra/ValidationScratch.cs`).
+NI's generator keeps a VI of that name in memory, and nothing released them.
+
+## 1. They cannot be closed afterwards - measured
+
+Probed by name with `Open VI Reference` (a STRING wired to `vi path` - a path made of a bare name is
+resolved beside the calling VI instead and answers `Error 7`), in every application instance a
+generated helper can reach:
+
+| instance | how it is reached | positive control | scratch VI by name |
+|---|---|---|---|
+| the helpers' own (the addon's) | `Open VI Reference` unwired, or `Open Application Reference` with no machine name | the running helper `lvai_run_and_read_typed.vi`: found | `1004`, not in memory |
+| the IDE's main instance | `Open Application Reference` `localhost`, VI Server over TCP (`server.tcp.enabled=True` in this station's LabVIEW.ini) | a VI opened loose with `lvai_open_file`: found, panel open | `1004` |
+| the active project's | `Project:Active Project` -> `Application` | - | `1004`, for a type refusal made while that project was active |
+
+Probed names: failed validates of both kinds (a type refusal and an `Error 53` `Unsupported
+SubVI`), with and without a project active, and a successful one. **None was found anywhere.**
+`Application:All VIs In Memory` is no help: in the helpers' instance it lists 419 library VIs and
+not even the running helper, and over TCP it answers `Error 1032`.
+
+**The converter does not see them either.** Its `1051` ("a file of that name already exists in
+memory") is the only other oracle, and a convert under a scratch name straight after a failed
+validate of that name - type refusal and `Error 53` alike - answered `errorCode 0`. So the
+leftovers sit in a context of NI's own that neither VI Server nor the converter's name check
+reaches. The 2026-09-09 measurement of a validate burning a name (`LVMCP Poison Probe.vi`, recorded
+in `Infra/ValidationScratch.cs`) did not reproduce on this LabVIEW; that is recorded, not explained.
+
+## 2. What was changed: ONE validation name instead of one per call
+
+`ValidationScratch` now hands every VALIDATION the fixed name `LVMCP Validate.vi`; a CONVERSION keeps
+a unique `LVMCP Convert <hash>.vi`, because a failed convert is measured to burn its name for the
+next convert. Measured before the change, on one name:
+
+| sequence under `LVMCP Validate Fixed.vi` | answer |
+|---|---|
+| type refusal, the same again | the same refusal both times |
+| a sound document | `errorCode 0` |
+| `Unsupported SubVI` (`Error 53`) | correct message |
+| a sound document | `errorCode 0` |
+| convert after a type refusal, and after an `Error 53` | `errorCode 0` both, no `1051` |
+
+So a reused validation name costs nothing measurable. **What it buys is NOT confirmed yet**: the
+exit dialog is the only place the leftovers are visible, so whether it now lists one validation VI
+instead of one per call needs one LabVIEW exit after a working session. Until then, the dialog's
+**"Don't Save - All"** is safe: nothing of value is in any `LVMCP Validate` / `LVMCP Convert` VI.
+
+## 3. What CAN be closed: a VI opened loose in the IDE
+
+Measured the same day: `Open Application Reference` `localhost` -> `Open VI Reference` by name ->
+`{LV.VI}` `FP.Close` -> close both references removed a loose VI from the main instance (the probe
+answered `1004` afterwards). `lvai_close_vi` reaches only a project member through the project's
+instance, so this is the route for a VI opened with `lvai_open_file` and no project. It needs VI
+Server over TCP enabled for localhost, which is a station setting; it is not a tool yet.

@@ -90,7 +90,7 @@ suite ran 2/0 and 1/0.
 
 ## 5. AN EDIT TO THE INNER `.ctl` PROPAGATES - on load, not on disk
 
-Measured the same day on a copy of the delivery (`C:	emp\TypedefPropagation\`): `Channel Mode.ctl`
+Measured the same day on a copy of the delivery (`C:\temp\TypedefPropagation\`): `Channel Mode.ctl`
 edited in place in the IDE's application instance (`{LV.Enum}` write `Strings []`, `Save.Instrument`)
 from `Off,Voltage,Current` to `Off,Voltage,Current,Resistance`, with a control arm - a VI whose
 cluster is a bare copy that was never linked.
@@ -115,7 +115,7 @@ that, so re-save the dependents before trusting one.
 
 ## 6. The second cold build, with the tool - and its three findings FIXED
 
-Same task, `C:	emp\TypedefAfterGDevCon2\`, `labview-class-generator` plus the Caraya handoff: about
+Same task, `C:\temp\TypedefAfterGDevCon2\`, `labview-class-generator` plus the Caraya handoff: about
 7:20 end to end against about 12 minutes, the typedefs in **0:42 against 6:09**. No `pylv_*` call, no
 disconnect or flatten, no new stub file, 3/0 with a negative control that failed exactly one case.
 Three things did not work as promised, all fixed the same day and accepted over raw stdio:
@@ -131,7 +131,7 @@ Three things did not work as promised, all fixed the same day and accepted over 
 
 ## 7. The third cold build - and its five findings FIXED
 
-`C:	emp\TypedefAfterGDevCon3\`, same task, with every fix of §6 in use: about 7:55 end to end,
+`C:\temp\TypedefAfterGDevCon3\`, same task, with every fix of §6 in use: about 7:55 end to end,
 typedefs in 0:29, all three `.ctl` listed, the Config round trip without `type`, the Gain default
 through `expectDefault`, `lvai_run_caraya_tests` naming the negative control's failure, no
 `pylv_*` call, no stub. Five things still took a detour, all fixed the same day:
@@ -148,6 +148,59 @@ The same pass found a mistake in §6's enum fix: pylabview's `Unit` prefix is no
 `UnitUInt8/16/32` are enums, `UnitFloat*` and `UnitComplex*` are numerics with a physical unit;
 `lvai_describe_ctl` now names only the first `enum`.
 
-## 8. Not established
+## 8. The fourth cold build - and its five findings FIXED
 
-- The suite has no negative control yet.
+`C:\temp\TypedefAfterGDevCon4\`, same task: about 5 minutes end to end (typedefs 25 s, class
+24 s, accessors 72 s, tests 2:40), no repair between the phases, 3/0, and a negative control
+through `lvai_set_constant` that failed exactly `Gain defaults to 1`. Five things were still
+friction, all fixed the same day and accepted over raw stdio:
+
+| finding | fix | acceptance |
+|---|---|---|
+| `lvai_create_class` refused `string.Config` in `fields` beside `typedefFieldsJson` without saying what to write instead, and appended the typedef field after the scalars - `Gain` 0, `Config` 1 | a typedef field is PLACED with `typedef.Config` in `fields`; left out it still goes last; naming it with a real type is refused with that spelling in the message | `typedef.Config,double.Gain=1` -> `Channel3` reads `Config` (bound, `Channel Config.ctl`) at 0 and `Gain` (default 1) at 1; `string.Config` refused naming `typedef.Config` |
+| `lvai_coercion_dots` answered `clean: false` for six dots that were all on Caraya's Variant inputs, and the agent read 55 terminals to see there was nothing to repair | the helper also reads `{LV.Terminal} Type Descriptor[1]`; a dot on a Variant (`0x53` in the low byte) is `intoVariant`, counted under `coercedIntoVariant`, and leaves `clean` true. The helper VI is now rebuilt when its AIXML is newer | measured codes on `Assert Equal Value_Variant.vi`: Actual/Expected `0x4053`, a double `0x400A`, an error cluster `0x4050`, a class `0x4070`, the typedef `Channel Config` input `0x4050`. The delivery's test: `clean: true`, `coerced: 0`, `coercedIntoVariant: 6` |
+| `lvai_describe_class` answered `dynamicDispatch: null` for every member - the wizard writes no `IsStaticMethod` | where the `.lvclass` has no `IsStaticMethod`, the member's own saved file is read: a CONNECTOR PANE terminal flagged `0x8000` is dynamic dispatch. `dynamicDispatchFrom` names the source | the rule against NI's own `IsStaticMethod` on a random 150 of the station's 1 148 class members that record it: 52 dynamic all carry the bit, 97 static none, 1 unreadable. Live: all four Channel accessors `true`; NI's `Lever.lvclass` `Multiply Force.vi` `true`, `Pry.vi` `false` |
+| the cluster `value` for `lvai_generate_class_test` was undocumented and guessed | documented: elements in order, bracketed, a nested cluster bracketed again, a string unquoted, an enum as its INDEX | LabVIEW's export of the saved test read `[CH1,1,[-10,10],1000]` back unchanged |
+| `lvai_set_vi_icon` still carried `runnerErrorCode 91` beside `ok: true`; the Caraya runner had NO `error in` and no `conIdx` at all, and nothing measured its pane | the known 91 is dropped on a verified run, another runner code is still kept; the runner carries `error in` (8), `Report Path used` (2) and `error out` (0) on pattern 4815, fixed by the generate step and measured | icon: `ok: true`, `errorCode 0`, no `runnerErrorCode`. Runner: `paneViolations: 0`, `lvai_connector_pane` "follows NI's style guide", 3/0 |
+
+NI's wizard names an accessor's error input `error in (no error)`. The house rule governs VIs we
+create, so that stays.
+
+## 9. The fifth cold build - and its four findings FIXED
+
+`C:\temp\TypedefAfterGDevCon5\`, same task: about 8:25 end to end (typedefs 30 s, class 24 s,
+accessors with icons 105 s, tests 4:28), no LabVIEW restart. Every fix of §8 held: `Config` placed
+first and bound, `Gain` default 1, all four accessors `dynamicDispatch: true` from the pane, 0 real
+dots beside 6 `intoVariant`, the cluster value written without a guess, 3/0 and a negative control
+that failed exactly `Gain defaults to 1`. Four findings, fixed the same day and accepted over raw
+stdio on a copy of the delivery:
+
+| finding | fix | acceptance |
+|---|---|---|
+| the runner ran pyLabVIEW: §8's fix forced pattern 4815 through the generate step's pylabview pane rebuild, and the build had been asked for none | the runner is authored with the STATION pattern's own `conIdx` (from `LabVIEW.ini`, like the test generators) and generated with no `panePattern` | generate sub-steps `validate`, `convert`, `connectorPane` and nothing else; pattern 4833, `Report Path used` at 4, `paneViolations: 0`; 3/0 |
+| the class and method test generators labelled the test VI's OWN input `error in (no error)` | `error in`; the Caraya callee terminals keep NI's spelling | a fresh class test's export: its only control is `error in`, and `Define Test`'s input still reads `error in (no error)` |
+| `lvai_describe_ctl`'s note said the file value "matches" VI Server's `Control VI Type` beside a description saying it is one lower | the note says the file value is one lower | `Channel Config.ctl`: `controlVIType: 1` with that note |
+| `lvai_generate_class_test` called a default case a round trip, and listed a Write for it that is not on the diagram | the note counts round trips and default cases apart, the `accessors` step lists only the Read for a default case, and the note and description name the negative-control route (`lvai_set_constant` on an `expected <n>`; a round trip's `written <n>` feeds both sides) | "2 round trip(s) and 1 default case(s)"; five targets for three cases, the default case's Read alone |
+
+LUnit's scaffold still names its test methods' input `error in (no error)` - that route follows
+LUnit's own template and was not in this build.
+
+## 10. The sixth cold build - and its five findings FIXED
+
+`C:\temp\TypedefAfterGDevCon6\`, same task: about 9:23 end to end (typedefs 24 s, class 23 s,
+accessors with icons 2:11, tests 4:21), no restart, no pyLabVIEW call, 3/0 and the negative control
+exact. Every fix of §9 held. Five findings, fixed the same day and accepted over raw stdio on a
+copy of the delivery:
+
+| finding | fix | acceptance |
+|---|---|---|
+| the generated test VIs and the runner carried NO diagram comment, against the rule that every generated VI carries one | one position-independent `<FreeLabel>` under 45 characters in the class, method and plain test and in the runner; the sockets stay bare | test: `Each case is one chain asserted by Caraya`; runner: `Test paths are relative to this VI`; 2/0 |
+| nothing said whether an ACCESSOR's pane still carries the field's typedef; the agent searched the file's bytes | `lvai_describe_class` reads each member's file once for dispatch AND `paneTypedefs`: a pane slot's TypeID is a flat id in the same section, and a `TypeDef` entry there names the `.ctl` and, through its inner type, the terminal. `readMemberFiles` replaces `includeDispatch` | Read/Write Config: `[{"terminal":"Channel Config","typedef":"Channel Config.ctl"}]`; Read/Write Gain: `[]` |
+| `lvai_create_class`'s note gave the private data size from BEFORE the typedef bind | read again after the bind; the verify step carries `privateDataBytesAfterBind` | 6 133 before, 8 421 after, in the note and in `lvai_describe_class` alike |
+| `lvai_create_accessors`'s `accessorsCreated: 2` counts fields and was read as four VIs short | `accessorVisCreated` beside it; `accessorsCreated` keeps its meaning for the callers that read it | `accessorsCreated: 2`, `accessorVisCreated: 4`, `membersAfter: 4` |
+| the pre-seed generate step's own note explained the expected break by wire types | that note and hint move to `noteBeforeSeeds` / `hintBeforeSeeds` where the break is the expected one; a real failure keeps them | `notExecutableYetIsExpected: true`, inner `note` gone, `noteBeforeSeeds` present |
+
+## 11. Not established
+
+- A comma inside a string element of a cluster case value.
+- The dispatch rule on a member whose file pylabview cannot parse - it answers `null` there.

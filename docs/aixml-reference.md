@@ -156,6 +156,14 @@ layout: `conIdx=` contains the characters `x=`.
   kind — `FreeLabel`s first (in reverse of the authored order), then controls, constants
   and indicators, then nodes. Since there are no coordinates either, position on the
   diagram is decided entirely by LabVIEW.
+- **But NESTING does carry meaning, and it beats `uid_parent`.** Measured 2026-09-25 as a clean
+  A/B: a seed constant written INSIDE a While Loop's `<Structure>` with `uid_parent="root"`
+  landed inside the loop - ValidateAIXML answered `While Loop: Is a member of a cycle` - while the
+  same constant written at top level converted clean. It cost the fourth ATM cold build an eBad
+  main VI. Keep the two in agreement; `lvai_check_aixml` answers `uidParentContradictsNesting` and
+  `scripts/aixml_lint.py` `parent-mismatch`, and both block before LabVIEW sees the file. (The
+  other direction - top level, `uid_parent` naming a structure - reached the structure for a
+  Node, Control, Indicator or Constant and NOT for a FreeLabel; `docs/diagram-comments.md`.)
 - `connection` without a `conIdx` is dropped on export: a terminal only counts as
   connector-pane-assigned when it has an index.
 - **`conIdx` IS a position, and the map is knowable — see "The connector pane" below.** An
@@ -204,6 +212,14 @@ a pattern when that file can be read, and it is why everything generated on this
 `4x2x2x4`.** So the pattern of a *new* VI **is** knowable before you generate — just not from
 anything inside AIXML or the VI Server API. `lvai_connector_pane` with no argument reads it for you.
 The file is read-only to us: read it, quote it, never write a key to it.
+
+**One exception, measured 2026-09-25: a `conIdx` the default pattern does not HAVE makes the
+generator pick a larger pattern by itself.** `Find Account.vi` needed five outputs plus `error out`,
+and 4833's right edge has four output slots plus the error corner, so its AIXML named conIdx up to
+19 - and the VI came out on **4834** (20 terminals, 6x2x2x2x2x6) with no pylabview step, no
+`panePattern` and no project close, first on a probe and then on the real VI. The numbers then mean
+4834's slots, so ask `lvai_connector_pane pattern=4834` for them before authoring, and measure the
+result with `viPath`. What the generator picks for other overshoots is not measured.
 
 **Take the whole style-guide block that call prints — not four numbers.** This paragraph said "prints
 the four `conIdx` values to write", and that phrasing is itself the cause of a bug that shipped three
@@ -2968,7 +2984,10 @@ is wired wrongly rather than an error:
   were never created and relied on LabVIEW to say so.
 - **The mapping is injective**, one number per distinct symbol.
 - **Numbering starts above the highest number already in the file**, so a symbol can never take a
-  number the author used.
+  number the author used — **and never below 4200** (`AixmlCheck.SafeUidBase`). Until 2026-09-25
+  it started at the highest number plus one, so a file written only in symbols was numbered 1, 2,
+  3 … inside LabVIEW's reserved range, which costs one DWarn per element per generation: the fourth
+  ATM cold build numbered 36 symbols 1..36 and the next `lvai_status` read 82 events.
 
 ### Starting from a skeleton
 

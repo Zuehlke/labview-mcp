@@ -20,7 +20,8 @@ namespace LabVIEWMcp.Infra;
 ///      original path. Existing AIXML cannot be perturbed by a bug in this class.
 ///   2. The mapping is injective by construction (one dictionary entry per distinct symbol) and
 ///      cannot collide with a number already in the file, because numbering starts above the
-///      highest numeric uid present. Two symbols sharing a number would produce a VI that
+///      highest numeric uid present - and never below <see cref="AixmlCheck.SafeUidBase"/>, so a
+///      symbol never lands in LabVIEW's reserved range. Two symbols sharing a number would produce a VI that
 ///      validates, runs, and is wired wrongly - the one failure mode worth this much care.
 ///   3. Substitution happens only where a net reference can legally appear: as a whole
 ///      <c>uid</c>/<c>uid_parent</c> value, or immediately before the dot of a
@@ -107,8 +108,13 @@ internal static class SymbolicUids
         if (symbols.Count == 0)
             return new Result(aixmlPath, new Dictionary<string, int>(), false);
 
-        // Above every number already present, so a symbol can never take a number the author used.
-        var next = highest + 1;
+        // Above every number already present, so a symbol can never take a number the author used -
+        // AND NEVER BELOW AixmlCheck.SafeUidBase. This started at highest + 1 until 2026-09-25, so a
+        // document written entirely in symbols was numbered 1, 2, 3 ... - inside LabVIEW's reserved
+        // range, one DWarn per element per generation (CLAUDE.md, "THE UID BASE IS 4200"). Found on
+        // the fourth ATM cold build: 36 symbols numbered 1..36, and the next lvai_status read 82
+        // events, the last "trying to override with non-reserved UID, request: 31".
+        var next = Math.Max(highest + 1, AixmlCheck.SafeUidBase);
         var map = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var symbol in symbols) map[symbol] = next++;
 

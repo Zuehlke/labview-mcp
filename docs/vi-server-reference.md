@@ -408,7 +408,7 @@ Two details that cost a round trip each:
   `Flatten To XML`. This also keeps the two apart cleanly: a target VI that *reports* an error is
   a successful harness run, and only `error xml` says whether the harness itself worked.
 
-### The way IN: typed since 2026-09-16, and why it only needs four cases
+### The way IN: typed since 2026-09-16, and why numerics need only one case
 
 This section read "inputs are unchanged by any of this — they still cross as strings, so only string
 controls can be set" until the limit was measured as a *cost* rather than a caveat: in one build
@@ -432,17 +432,34 @@ format is unchanged, two newline-separated lists paired by position — and the 
 | path | `Path` | `String To Path` |
 | double **and** int32 | **`Digital`** | `Fract/Exp String To Number` → DBL |
 | boolean | `Boolean` | `To Upper Case`, then `= "TRUE"` or `= "1"` |
-| array / cluster | `Array` / `Cluster` | none — see below |
+| enum / text ring | `Enum` / `Ring` | the item NAME looked up in `{LV.Enum}` / `{LV.Ring}` `Strings []`, else a number — since 2026-09-25 |
+| array / cluster | `Array` / `Cluster` | `Unflatten From XML` with a VARIANT as its type — since 2026-09-25, see below |
 
 **One numeric case suffices because `Ctrl Val.Set` COERCES.** Both representations answer `Digital`,
 and an I32 control fed a DBL variant read back `42`. Without that measurement the case structure
 would have needed a `Representation` branch per numeric type — twelve frames instead of one.
 
-**Array and cluster controls remain unreachable, and they fail LOUDLY.** There is no general
-text-to-composite conversion without a runtime type. They fall to the string frame, and
-`Control Value:Set` answers **`Error 91`** with the target never run — measured by passing
-`"[true,true,,]"` to a cluster control. That is the right failure: silently leaving a compound
-control at its default is what the caller could not have detected.
+**Array and cluster controls ARE reachable since 2026-09-25 — this paragraph said "they remain
+unreachable: there is no general text-to-composite conversion without a runtime type".** That was
+true of TEXT and false of LabVIEW's own XML: `Unflatten From XML` wired with a **Variant constant
+as its `type`** yields a variant that carries the value's own type, and `Ctrl Val.Set` takes it.
+Measured on a 2D string array (round trip exact) and an error cluster (status, code and source all
+arrived). So the value goes in as the XML this tool already returns under a compound control's
+`xml`, and a table read back from one VI can be passed straight into the next. The server wraps a
+bare `<Array>` or `<Cluster>` in `<LvVariant>` and folds the indentation between tags, because the
+wire format is one line per value.
+
+**What does NOT survive that route: a line break inside a string member.** The first version wrote
+it as `&#10;`, and **`Unflatten From XML` decodes no character reference** — the error cluster's
+source came back as the literal text `acceptance&#10;second line`, `error 0`. So the server now
+refuses such a value (`inputContainsNewline`, naming the control) rather than send it.
+
+**An enum or ring takes an item NAME or an index.** The name is looked up in the control's own
+`Strings []`, exact and case-sensitive. The trap on the way: `Fract/Exp String To Number` reads
+`Balanse` as `0`, so a plain name-else-number fallback sets ITEM 0 and runs the target with it. The
+frame asks whether the text was a name OR parsed at all (`offset past number > 0`) and otherwise
+hands `Ctrl Val.Set` the STRING, which answers **`Error 91`** before the run — measured, with the
+typo `Balanse` against `Balance`, and the name and the index both setting the right message.
 
 **A name that matches nothing is `Error 1055`**, from the `Class Name` property node — so it fires
 in the LOOKUP, before any control is set, and the target does not run. Note the lookup happens first,
@@ -456,6 +473,16 @@ buried in `helperErrorXml`. `helperErrorCode` and `helperFailed` now surface it 
 `helperAixmlPath`. `lvai_run_for_ms.vi`, the `runForMs` runner, has **not** been given the typed
 setter — its use case is a top-level UI VI, which usually takes no inputs at all — and the tool's
 answer says so when inputs are passed alongside `runForMs`.
+
+**It reads every control's `Disabled` since 2026-09-26**, answered as `disabled`:
+`[{label, disabled}]`, 0 enabled, 1 disabled, 2 disabled and greyed out. A snapshot of values cannot
+show whether a control can be operated, and nothing can look afterwards - the helper closes its
+reference and the VI leaves memory - so the sixth ATM build had to generate a probe VI that ran the
+main VI itself to see six controls read 2. The read uses `{LV.VI}` `Front Panel` ->
+`{LV.Panel}` `Controls[]` -> `{LV.Control}` `read+Label.Text,read+Disabled` (an `array{uint8}`),
+after the snapshot and on its OWN error chain, so a failed read leaves `disabled` null and never
+costs the values or the abort. The VI reference is carried through that loop on a shift register,
+which is what orders `Close Reference` after it even when the panel has no controls.
 
 ## Reading where a VI's terminals actually sit: `Connector Pane:Reference`
 

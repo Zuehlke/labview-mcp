@@ -372,12 +372,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
         {
             var plain = AixmlCheck.Summarise(AixmlCheck.Check(text));
             plain["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+            plain["diagramChain"] = ChainEstimate(text);
             return Task.FromResult(Json.Document(Timed(plain, clock)));
         }
 
         var repaired = AixmlCheck.Fix(text);
         var answer = AixmlCheck.Summarise(repaired.Remaining);
         answer["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
+        answer["diagramChain"] = ChainEstimate(text);
         answer["repairs"] =
             new JsonArray([.. repaired.Repairs.Select(r => (JsonNode)r.ToJson())]);
 
@@ -408,6 +410,33 @@ internal sealed class AixmlTools(LvaiConnection connection)
                             + "elements, so uids in your notes may be stale. No wire name changed - "
                             + "a wire name is a token, not a reference to a uid.";
         return Task.FromResult(Json.Document(Timed(answer, clock)));
+    }
+
+    /// <summary>
+    /// The longest dependency chain of the document, BEFORE anything is generated - the cheap half
+    /// of the size rule (DiagramSize). Not a finding: a long chain is not a fault LabVIEW would
+    /// accept silently, it is a diagram that will render too wide, and the answer names the
+    /// elements along the chain so the stretch to fold into a subVI is visible.
+    /// </summary>
+    internal static JsonObject? ChainEstimate(string text)
+    {
+        if (DiagramSize.Chain(text) is not { } chain) return null;
+        var over = chain.Stages > DiagramSize.MaxChainStages;
+        return new JsonObject
+        {
+            ["longestChainStages"] = chain.Stages,
+            ["budgetStages"] = DiagramSize.MaxChainStages,
+            ["withinBudget"] = !over,
+            ["longestChain"] = chain.Chain,
+            ["note"] = over
+                ? $"The longest chain is {chain.Stages} stages against a budget of " +
+                  $"{DiagramSize.MaxChainStages} - one stage renders about 145-185 px, so this " +
+                  "diagram will come out wider than 1920 px. Fold a SEQUENTIAL stretch of " +
+                  "`longestChain` (inside the widest structure, if that is where it runs) into " +
+                  "ONE new subVI before generating."
+                : "Within the chain budget. The render after generation is still the verdict: " +
+                  "long constants and labels widen a diagram without adding a stage.",
+        };
     }
 
     /// <summary>
@@ -578,11 +607,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ("validatedAs", scratch.Substituted ? JsonValue.Create(scratch.ValidatedAs) : null),
                  ("nameNote", scratch.Substituted
                      ? JsonValue.Create(
-                         "Validated under a throwaway _name, so a refusal here cannot burn the "
-                         + "document's real name. A failed validate registers that name in "
-                         + "LabVIEW's memory and every later ConvertAIXMLToVI for it answers "
-                         + "Error 1051 until a restart - measured on a file that had never "
-                         + "existed on disk.")
+                         "Validated under the scratch _name '" + scratch.ValidatedAs + "', so a "
+                         + "refusal here cannot burn the document's real name - a failed "
+                         + "validate has been measured registering a name so that a later "
+                         + "ConvertAIXMLToVI for it answered Error 1051 until a restart. It is "
+                         + "ONE fixed name for every validation since 2026-09-26: each call used "
+                         + "to mint its own, and NI's validator leaves a VI of that name in "
+                         + "memory, which piled up as dozens of unsaved 'LVMCP Validate' VIs in "
+                         + "LabVIEW's exit dialog. They are safe to discard there.")
                      : null),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
         });

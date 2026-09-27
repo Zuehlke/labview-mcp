@@ -298,6 +298,11 @@ height follows how much sits in parallel**. The ATM consumer is an inherently se
 dequeue, index, resolve, handle, track, panel, controls, apply, menu, cluster, case, indicators — and
 every subVI extracted so far removed parallel work, which is exactly the half that sets height.
 
+**Corrected 2026-09-25** (`docs/diagram-size.md`): the second bullet below calls shortening the chain
+"merging sequential stages back into one subVI … in direct tension with the instruction". It is not
+in tension - folding a sequential stretch into ONE NEW subVI is exactly how the chain gets shorter,
+and it is the same rule one level up. The size is measured by the generators now.
+
 So the 1920 guideline splits into two different problems:
 
 - **Height** is what factoring fixes, and it works well — one call in place of ten nodes.

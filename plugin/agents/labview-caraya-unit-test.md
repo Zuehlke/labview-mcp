@@ -2,7 +2,7 @@
 name: labview-caraya-unit-test
 description: >-
   Writes and runs Caraya unit tests for LabVIEW code — settles what is worth asserting, builds one test VI per group of cases with the subject called as an ORDINARY STATIC SUBVI, runs the suite through a generated Caraya runner, and reads the JUnit report. It does NOT run a negative control unless the task asks for one, and says so in its report when it did not. Handles plain VIs and CLASS code alike, including accessors, which look untestable because AIXML refuses a class-typed terminal and are not. Use whenever the user asks for unit tests, e.g. "schreib Unit Tests für …", "teste diese Klasse", "erstelle Caraya Tests", "add unit tests for this VI", "test the accessors". This is the DEFAULT unit-test agent — Caraya is the framework unless the user asks for another one (LUnit, VI Tester), in which case use that framework's agent instead. MUTATING — it writes .vi files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test, so the subject's side effects happen. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory for the test VIs, (c) the .lvproj path if one exists, (d) any specific cases or values the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it stops and returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_generate_test, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, mcp__plugin_labview-mcp_labview__lvai_run_caraya_tests, mcp__plugin_labview-mcp_labview__lvai_set_constant, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_generate_test, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, mcp__plugin_labview-mcp_labview__lvai_run_caraya_tests, mcp__plugin_labview-mcp_labview__lvai_set_constant, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -227,8 +227,26 @@ the second row, if the pane did not already tell you.
 [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
 ```
 
-Two things it will not tell you: a **backslash in a value must be doubled** (`C:\\temp\\x`), because
-the value is written verbatim into an AIXML constant; and a **failed validation poisons the test
+**A CASE MAY CALL OTHER VIs FIRST** with `setup` - `[{"vi":"<abs path>","inputs":{...}}]`, chained
+into the subject by the error wire. A write-then-read round trip is a Read case with the Write as
+its setup; a transaction on a reset file is the transaction with the reset as its setup. Do not
+hand-author AIXML for those any more. **Every expected constant is labelled `expected <n>`** and
+listed in the answer's `expectedConstants` with its case, so the negative control is one
+`lvai_set_constant` call on a suite this tool wrote too - an array or cluster as the AIXML literal,
+a multi-line message with its real line breaks.
+
+**THE CASES OF ONE TEST VI RUN IN PARALLEL.** Only a case's own error wire orders its setup before
+its subject; nothing orders one case against another. So **every case whose setup WRITES gets its
+own fixture path** (`Fixtures\T01\`, `Fixtures\T02\` ...) - the tool refuses a path a setup writes in
+one case and another case uses, before anything is written. The fourth ATM cold build (2026-09-25)
+found it as 165 tests with 3 failures that came and went. **`lvai_generate_method_test` takes the
+same `setup`** since that build, which hand-authored its method's mutating suite for want of it -
+the setup chain feeds the METHOD's error in.
+
+Two things it will not tell you: a **backslash in a value is written ONCE** - `C:\temp\x` as the
+value, which is `"C:\\temp\\x"` in the JSON text only because JSON escapes it. The tool writes it
+as AIXML's `\5C` itself; this line said "must be doubled" until 2026-09-25, when a suite whose
+setup and subject both took single-backslash paths ran green. And a **failed validation poisons the test
 name** — the phantom stays under that `_name` until LabVIEW restarts, so retry under a **fresh**
 name rather than the same one.
 
@@ -294,7 +312,9 @@ field `Config`); the tool reads the type off that terminal by itself since 2026-
 answer carries a `typedefConstants` step: the written constant is re-pointed to the typedef so the
 Write call has no coercion dot. **Confirm it with `lvai_coercion_dots` on the finished test VI** -
 the Write and Read accessor calls must show none; the dots on Caraya's `Actual`/`Expected` inputs
-are the ordinary conversion into a Variant and are expected. A dot left on an accessor call is
+are the ordinary conversion into a Variant, which the tool reports as `intoVariant` under
+`coercedIntoVariant` and leaves out of `clean` - so `clean: true` is the whole check and there are
+no terminals to read by hand. A dot left on an accessor call is
 repaired with `lvai_bind_typedef_constants` (the constant is labelled `written <n>`), with the
 class's project active.
 
@@ -447,8 +467,13 @@ at all, and one stray `LVMCP ClsR1.vi` adopted out of `user.lib`. Their whole re
 fehlen im Projekt!"*. Nothing in any tool answer showed either half — every file was on disk and
 every assertion passed.
 
-**If you ever write the entries by hand** — an older build, or a runner the tool did not generate —
-two rules, and the order is not optional:
+**A test VI you authored yourself** (AIXML through `lvai_generate_vi`/`lvai_generate_vis`) is
+listed with **`lvai_add_vis_to_project`** and `folderName` `Tests` - it closes the project, edits the
+file, moves an entry LabVIEW's save left at target level into the folder instead of listing it
+twice, and sweeps the strays. The third ATM cold build (2026-09-25) moved three such entries by hand
+because this tool was not on this agent's list.
+
+**If you ever write the entries by hand** anyway — two rules, and the order is not optional:
 
 1. **`lvai_close_active_project` FIRST.** A `.lvproj` edited while LabVIEW holds it open is destroyed
    by the next close, because the close SAVES. Edit the file, then re-open it for the user.
@@ -525,8 +550,28 @@ State, in this order:
 
 ## Diagram size and cohesion — a standing user rule
 
-**Keep the block diagram around 1920 x 1080**, a guideline and not a gate, and **factor cohesive
-groups into subVIs** instead of spreading them across the caller.
+**THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's
+rule, restated 2026-09-25 after three agent builds in a row shipped the ATM main VI at 3306, 3456
+and 4152 px wide with every other check green. A rule nobody measured was advice; it is a budget
+now, with two numbers and a fixed procedure:
+
+1. **Before generating**, `lvai_check_aixml` answers `diagramChain`: the longest dependency chain in
+   STAGES (a Node or a Call is one stage, a structure is one plus the longest chain inside it) and
+   the elements along it. **The budget is 10 stages** - one stage renders about 145-185 px, so 10
+   leaves room for long constants and labels. Over budget: restructure BEFORE you generate.
+2. **After generating**, `lvai_generate_vi` and `lvai_generate_vi_with_events` answer `diagramSize`
+   - the RENDERED top-level diagram in px - which is the verdict. **`withinBudget: false` means the
+   VI is not done**: fold a stretch of `longestChain` into a new subVI, regenerate, and read
+   `diagramSize` again. Only when a contract genuinely forbids it may a VI stay over, and then your
+   report gives the measured size and the reason.
+3. **Plan the hierarchy up front.** A caller that orchestrates more than about eight steps is two
+   levels, not one: group consecutive steps that belong together (initialise the panel, update the
+   display, run a transaction) into a subVI each, and let the top level call those.
+4. **A generated TEST VI has the same budget.** `lvai_generate_test`, `lvai_generate_class_test`,
+   `lvai_generate_method_test` and the Caraya runner answer `diagramSize` for the test VI they
+   wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
+   method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
+   per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
 
 **A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
 only in which control they point at is the canonical case: one call taking the group and one value
@@ -543,9 +588,12 @@ documentation that renaming a control silently drops it out of its group.
 
 **Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
 sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
-unmoved. Getting the width down means merging sequential subVIs, which is the opposite of this rule:
-report that trade rather than taking it silently. AIXML carries no coordinates, so a long pipeline
-cannot be wrapped onto a second row.
+unmoved. **So width comes down by folding a SEQUENTIAL stretch of the chain into ONE new subVI**: a
+subVI that performs four consecutive stages puts one call where four were, and the caller's chain is
+three stages shorter. This paragraph used to read "getting the width down means merging sequential
+subVIs, the opposite of this rule" - it is not the opposite, it is the same rule one level up: the
+new subVI is the merge. Pulling out PARALLEL groups buys height. AIXML carries no coordinates, so a
+long pipeline cannot be wrapped onto a second row - only shortened.
 
 **Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
 sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a

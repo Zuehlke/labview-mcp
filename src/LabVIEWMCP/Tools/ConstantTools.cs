@@ -22,8 +22,13 @@ namespace LabVIEWMcp.Tools;
 /// was in the saved file on the next export and in the VI's output on the next run - a double
 /// written into the int32 and the enum constants is converted by LabVIEW.
 ///
-/// Numeric, boolean, string and enum constants only: a cluster, array or path has no text form the
-/// helper converts, and a guessed conversion would write a wrong value in silence.
+/// Numeric, boolean, string and enum constants - and since 2026-09-25 ARRAYS and CLUSTERS of those,
+/// written as the same AIXML literal the generators author (<c>[[1,Ada],[2,Alan]]</c>). The third
+/// ATM build found why that mattered: lvai_generate_test now labels its expectations for exactly
+/// this tool, and the first subject it was accepted on returns a 2D string array, which this tool
+/// refused. LvXmlLiteral builds LabVIEW's own XML from the literal and the constant's EXPORTED type,
+/// and the helper sets it through Unflatten From XML into a variant. A path is still refused: its
+/// literal carries AIXML escapes, and nobody has measured what comes back.
 /// </summary>
 [McpServerToolType]
 internal sealed class ConstantTools(LvaiConnection connection)
@@ -40,8 +45,11 @@ internal sealed class ConstantTools(LvaiConnection connection)
         Before 2026-09-25 that cost two full regenerations of about 56 s each.
         The value is TEXT and is converted to the constant's own type, read off the VI's export:
         a number for any integer, float or enum constant (an enum also takes an item name), TRUE /
-        FALSE or 1 / 0 for a boolean, the text itself for a string. A cluster, array or path
-        constant is refused rather than guessed at.
+        FALSE or 1 / 0 for a boolean, the text itself for a string. AN ARRAY OR A CLUSTER takes
+        the AIXML literal - `[[9,X,Y,1]]` for an array.2{string}, `[true,5000,src]` for an error
+        cluster - which is the form lvai_generate_test lists under `expectedConstants`; its
+        members may be string, bool or numeric. A path, or an enum inside a compound, is refused
+        rather than guessed at.
         THE VERDICT IS THE FILE: the VI is exported again afterwards and `verified` says the
         constant now holds the value asked for. `before` and `after` are both from exports.
         A label that is not on the diagram, or is on it twice, is refused with the labels that
@@ -52,7 +60,7 @@ internal sealed class ConstantTools(LvaiConnection connection)
         [Description(@"Absolute path to the .vi - it is saved in place")] string viPath,
         [Description("The constant's block diagram label, exactly - e.g. 'expected 2'")]
         string constantLabel,
-        [Description("The new value as text - '2', '0.5', 'TRUE', 'CH9', or an enum item name")]
+        [Description("The new value as text - '2', '0.5', 'TRUE', 'CH9', or an enum item name. A string may contain line breaks")]
         string value,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
@@ -63,9 +71,9 @@ internal sealed class ConstantTools(LvaiConnection connection)
                 return Json.Error("fileNotFound", $"No VI at '{vi}'.", new { viPath });
             if (string.IsNullOrEmpty(constantLabel))
                 return Json.Error("badArguments", "constantLabel is empty.");
-            if (value.Contains('\n') || value.Contains('\r'))
-                return Json.Error("badArguments",
-                    "value contains a line break, which the helper's wire format cannot carry.");
+            // A LINE BREAK IS FINE SINCE 2026-09-25: lvai_run_vi_and_read_values encodes it for the
+            // wire and its typed helper decodes it, so the multi-line message expectations the
+            // fourth ATM cold build could not break for a negative control are reachable now.
 
             // ---- 1. which constant, and of what type - from the VI's own export
             var before = await ExportAsync(vi, timeoutSeconds, ct);
@@ -100,7 +108,15 @@ internal sealed class ConstantTools(LvaiConnection connection)
             var after = await ExportAsync(vi, timeoutSeconds, ct);
             var afterValue = after is null ? null
                 : (string?)Constants(after).FirstOrDefault(e => Label(e) == constantLabel)?.Attribute("value");
-            var verified = afterValue is not null && Same(kind, afterValue, text);
+            var verified = afterValue is not null && kind switch
+            {
+                "Compound" => LvXmlLiteral.Same(type, value, Unescape(afterValue)),
+                // a string's export carries AIXML escapes (\0A, \5C) where the caller wrote the
+                // characters themselves - compared raw, a backslash or a line break never matched
+                "String" => string.Equals(Unescape(afterValue, keepSeparators: false), value,
+                                          StringComparison.Ordinal),
+                _ => Same(kind, afterValue, text),
+            };
 
             return Json.Document(new JsonObject
             {
@@ -156,6 +172,13 @@ internal sealed class ConstantTools(LvaiConnection connection)
         var t = type.Trim();
         if (t == "bool") return ("Boolean", value, null);
         if (t == "string") return ("String", value, null);
+        if (LvXmlLiteral.IsCompound(t))
+        {
+            var (xml, why) = LvXmlLiteral.Build(t, value);
+            return xml is null
+                ? (null, value, $"'{value}' cannot be set on a `{t}` constant: {why}")
+                : ("Compound", xml, null);
+        }
 
         var brace = t.IndexOf('{');
         var bare = brace < 0 ? t : t[..brace];
@@ -191,6 +214,18 @@ internal sealed class ConstantTools(LvaiConnection connection)
                                    StringComparison.OrdinalIgnoreCase),
         _ => string.Equals(exported, written, StringComparison.Ordinal),
     };
+
+    /// <summary>
+    /// An exported literal with its AIXML escapes resolved (<c>\5C</c> to a backslash). Only the
+    /// EXPORTED side needs it: the caller's literal is plain text, the way lvai_generate_test
+    /// reports it. The separators inside a compound are never escaped, so resolving first cannot
+    /// merge two members.
+    /// </summary>
+    internal static string Unescape(string exported, bool keepSeparators = true) =>
+        System.Text.RegularExpressions.Regex.Replace(exported, @"\\([0-9A-Fa-f]{2})",
+            m => ((char)System.Convert.ToInt32(m.Groups[1].Value, 16)) is var ch
+                 && keepSeparators && ch is ',' or '[' or ']'
+                ? m.Value : ch.ToString());
 
     private static bool Truthy(string text) =>
         text.Trim().Equals("TRUE", StringComparison.OrdinalIgnoreCase) || text.Trim() == "1";

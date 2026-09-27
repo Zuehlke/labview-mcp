@@ -62,7 +62,7 @@ internal sealed class ValidationScratch : IDisposable
     /// must still reach LabVIEW so that LabVIEW's own diagnosis is what the caller sees.
     /// </summary>
     internal static ValidationScratch Create(string aixmlPath, bool preserveName,
-                                             string prefix = "LVMCP Validate")
+                                             string prefix = "LVMCP Validate", bool unique = false)
     {
         if (preserveName) return new ValidationScratch(aixmlPath, null, [], null);
 
@@ -89,9 +89,25 @@ internal sealed class ValidationScratch : IDisposable
 
         var originals = carriers.Select(e => e.Attribute("_name")!.Value).ToList();
 
-        // Unique per call, so a refusal can never burn a name a later call wants - not even this
-        // same document's, validated twice.
-        var throwaway = $"{prefix} {Guid.NewGuid():N}"[..(prefix.Length + 10)] + ".vi";
+        // ONE FIXED NAME FOR VALIDATION, A UNIQUE ONE FOR CONVERSION - since 2026-09-26.
+        //
+        // Every validation used to mint its own `LVMCP Validate <hash>.vi`, and NI's validator keeps
+        // a VI of that name in memory somewhere: the user's LabVIEW listed 54 of them, UNSAVED, in
+        // its "Save changes? (Exit)" dialog. They cannot be closed afterwards - by name they are in
+        // NONE of the application instances VI Server reaches (the helpers' own, the IDE's main
+        // instance over TCP, the active project's), with a positive control in two of the three,
+        // and the converter's own 1051 check does not see them either. So the remedy is to stop
+        // multiplying them: a validation under a name already used is measured to answer exactly
+        // as a fresh one does - the same refusal twice, then `errorCode 0` for a sound document,
+        // then `Unsupported SubVI` correctly, then 0 again - and a CONVERT under that name straight
+        // after a type refusal or an Error 53 refusal answered 0, not 1051. Nothing ever converts
+        // under the validation name, so even a name LabVIEW did keep would cost nothing.
+        //
+        // CONVERSION STAYS UNIQUE (`unique: true`): a failed convert burns its name for the next
+        // convert (1051), measured 2026-09-25, and the loaded route converts under this scratch.
+        var throwaway = unique
+            ? $"{prefix} {Guid.NewGuid():N}"[..(prefix.Length + 10)] + ".vi"
+            : $"{prefix}.vi";
         foreach (var element in carriers) element.SetAttributeValue("_name", throwaway);
 
         try

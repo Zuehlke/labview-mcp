@@ -1,4 +1,4 @@
-<VI _name="lvai_run_for_ms.vi" description="Start a VI\2C let it run for a while\2C read every control and indicator\2C then ABORT it.\0A\0AWHY A SECOND RUNNER. lvai_run_and_read.vi wires Wait until done = TRUE\2C so it waits for termination. Every real application is an event or polling loop that never terminates on its own\3A the call times out and the VI keeps running. That is why a top-level VI could not be checked at all without first generating a scriptable copy of it - which is work the caller should not have to do to look at their own program.\0A\0AWHAT YOU GET IS A SNAPSHOT\2C and that is not a limitation to gloss over. The values are whatever the front panel held at the moment run for ms elapsed\3B a loop that has not reached its second state yet will show the first. Abort is not a stop button either - it kills the VI where it stands and runs NO cleanup the diagram may contain\2C so a VI that closes files or releases hardware on its normal path does not do that here.\0A\0AORDERING is enforced by the Case frame around the wait\2C not by layout\3A a structure produces its output tunnels only once every node inside it has finished\2C so Ctrl Val.Get All cannot read before the wait has elapsed. The frame also skips the wait when Run VI already failed\2C which turns a bad start into a fast answer instead of a pointless delay.">
+<VI _name="lvai_run_for_ms.vi" description="Start a VI\2C let it run for a while\2C read every control and indicator\2C then ABORT it.\0A\0AWHY A SECOND RUNNER. lvai_run_and_read.vi wires Wait until done = TRUE\2C so it waits for termination. Every real application is an event or polling loop that never terminates on its own\3A the call times out and the VI keeps running. That is why a top-level VI could not be checked at all without first generating a scriptable copy of it - which is work the caller should not have to do to look at their own program.\0A\0AWHAT YOU GET IS A SNAPSHOT\2C and that is not a limitation to gloss over. The values are whatever the front panel held at the moment run for ms elapsed\3B a loop that has not reached its second state yet will show the first. Abort is not a stop button either - it kills the VI where it stands and runs NO cleanup the diagram may contain\2C so a VI that closes files or releases hardware on its normal path does not do that here.\0A\0AORDERING is enforced by the Case frame around the wait\2C not by layout\3A a structure produces its output tunnels only once every node inside it has finished\2C so Ctrl Val.Get All cannot read before the wait has elapsed. The frame also skips the wait when Run VI already failed\2C which turns a bad start into a fast answer instead of a pointless delay.\0A\0ADISABLED IS READ TOO\2C because a snapshot of values cannot show whether a control can be operated\2C and the VI leaves memory when this helper closes its reference - so nothing can look afterwards. It runs on its own error chain\3A a failed read leaves the two disabled indicators empty and never costs the snapshot or the abort.\0A\0ASIGNALS come after the first wait and before the snapshot. Each name in Signal Names is written with Value (Signaling)\2C which fires its Value Change event exactly as a click or a keystroke would\2C and signal gap ms is waited after each. The VI reference is threaded through that loop\2C so the snapshot cannot start before the last signal has been handled. Added 2026-09-26: the seventh ATM build passed every check including a start-up snapshot while its consumer read User Input before the user typed - a start-up snapshot cannot see a fault that needs an event to happen.">
 
   <Control _name="VI Path" conIdx="0" connection="required" description="Absolute path of the VI to run\2C as a string. Converted to a path inside." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
   <Control _name="Input Names" conIdx="5" connection="optional" description="Names of the target's controls to set before running\2C one per line." outputs="value:5010.value" type="string" uid="5010" uid_parent="root" value=""/>
@@ -56,13 +56,125 @@
     <Tunnel _id="Out1" outputs="value:5440.err" uid="5440" uid_parent="5320"/>
   </Structure>
 
-  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:5300.reference out,error in (no error):5440.err" outputs="reference out:5500.reference out,error out:5500.error out,Controls:5500.Controls" uid="5500" uid_parent="root"/>
+  <FreeLabel comment="Signals: one Value (Signaling) per name after the first wait." uid="6001" uid_parent="root"/>
+  <Control _name="Signal Names" description="Controls to write with Value (Signaling) after run for ms has elapsed\2C one per line and in order. Each write fires that control's Value Change event\2C which is what drives an event-driven VI past its start-up state." outputs="value:6000.value" type="string" uid="6000" uid_parent="root" value=""/>
+  <Control _name="Signal Values" description="Values for Signal Names\2C one per line\2C paired by position. A boolean takes TRUE or 1\2C a numeric its number\2C a string its text\2C anything else LabVIEW XML." outputs="value:6002.value" type="string" uid="6002" uid_parent="root" value=""/>
+  <Control _name="signal gap ms" description="Wait after each signal so the target handles it before the next one or the snapshot\2C as a string." outputs="value:6004.value" type="string" uid="6004" uid_parent="root" value="500"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:6000.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:6010.names" uid="6010" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:6002.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:6011.values" uid="6011" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:6004.value" outputs="number:6012.gap" uid="6012" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:5300.reference out,error in (no error):5440.err" outputs="Front Panel:6020.panel,reference out:,error out:6020.err" uid="6020" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:6020.panel,error in (no error):6020.err" outputs="Controls[]:6021.controls,reference out:,error out:6021.err" uid="6021" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="6030" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:6021.controls" mode="index" outputs="value:6031.ctl" uid="6031" uid_parent="6030"/>
+    <Node _name="Property Node" fields="read+Label.Text" type="{LV.Control}" inputs="reference:6031.ctl,error in (no error):" outputs="Label.Text:6032.label,reference out:,error out:" uid="6032" uid_parent="6030"/>
+    <Tunnel _id="Out1" inputs="value:6032.label" mode="index" outputs="value:6033.labels" uid="6033" uid_parent="6030"/>
+  </Structure>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="6100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:6010.names" mode="index" outputs="value:6101.name" uid="6101" uid_parent="6100"/>
+    <Tunnel _id="In2" inputs="value:6011.values" mode="index" outputs="value:6102.value" uid="6102" uid_parent="6100"/>
+    <Tunnel _id="In3" inputs="value:6033.labels" outputs="value:6103.labels" uid="6103" uid_parent="6100"/>
+    <Tunnel _id="In4" inputs="value:6021.controls" outputs="value:6104.controls" uid="6104" uid_parent="6100"/>
+    <Tunnel _id="In5" inputs="value:6012.gap" outputs="value:6105.gap" uid="6105" uid_parent="6100"/>
+    <Node _name="Search 1D Array" inputs="1D array:6103.labels,element:6101.name,start index (0):" outputs="index of element:6110.idx" uid="6110" uid_parent="6100"/>
+    <Node _name="Index Array" inputs="array:6104.controls,index:6110.idx" outputs="element:6111.ctl" uid="6111" uid_parent="6100"/>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.Control}" inputs="reference:6111.ctl,error in (no error):6190.err" outputs="Class Name:6112.class,reference out:,error out:6112.err" uid="6112" uid_parent="6100"/>
+    <Structure _name="Case Structure" selectin="6112.class" uid="6120" uid_parent="6100">
+      <Tunnel _id="In1" inputs="value:6102.value" uid="6121" uid_parent="6120"/>
+      <Tunnel _id="In2" inputs="value:6112.err" uid="6122" uid_parent="6120"/>
+      <Tunnel _id="Out1" outputs="value:6123.variant" uid="6123" uid_parent="6120"/>
+      <Tunnel _id="Out2" outputs="value:6124.err" uid="6124" uid_parent="6120"/>
+      <CaseFrame selector="&quot;Boolean&quot;" selectout="" uid="6130" uid_parent="6120">
+        <Tunnel _id="In1" outputs="value:6131.value" uid="6131" uid_parent="6130"/>
+        <Tunnel _id="In2" outputs="value:6132.err" uid="6132" uid_parent="6130"/>
+        <Constant _name="True Text" outputs="value:6133.value" type="string" uid="6133" uid_parent="6130" value="TRUE"/>
+        <Constant _name="One Text" outputs="value:6134.value" type="string" uid="6134" uid_parent="6130" value="1"/>
+        <Node _name="To Upper Case" inputs="string:6131.value" outputs="all upper case string:6135.upper" uid="6135" uid_parent="6130"/>
+        <Node _name="Equal?" inputs="x:6135.upper,y:6133.value" outputs="x = y?:6136.t" uid="6136" uid_parent="6130"/>
+        <Node _name="Equal?" inputs="x:6135.upper,y:6134.value" outputs="x = y?:6137.o" uid="6137" uid_parent="6130"/>
+        <Node _name="Or" inputs="x:6136.t,y:6137.o" outputs="x .or. y?:6138.b" uid="6138" uid_parent="6130"/>
+        <Node _name="To Variant" inputs="anything:6138.b" outputs="Variant:6139.v" uid="6139" uid_parent="6130"/>
+        <Tunnel _id="Out1" inputs="value:6139.v" uid="6140" uid_parent="6130"/>
+        <Tunnel _id="Out2" inputs="value:6132.err" uid="6141" uid_parent="6130"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;String&quot;" selectout="" uid="6150" uid_parent="6120">
+        <Tunnel _id="In1" outputs="value:6151.value" uid="6151" uid_parent="6150"/>
+        <Tunnel _id="In2" outputs="value:6152.err" uid="6152" uid_parent="6150"/>
+        <Node _name="To Variant" inputs="anything:6151.value" outputs="Variant:6153.v" uid="6153" uid_parent="6150"/>
+        <Tunnel _id="Out1" inputs="value:6153.v" uid="6154" uid_parent="6150"/>
+        <Tunnel _id="Out2" inputs="value:6152.err" uid="6155" uid_parent="6150"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Digital&quot;" selectout="" uid="6160" uid_parent="6120">
+        <Tunnel _id="In1" outputs="value:6161.value" uid="6161" uid_parent="6160"/>
+        <Tunnel _id="In2" outputs="value:6162.err" uid="6162" uid_parent="6160"/>
+        <Node _name="Fract/Exp String To Number" inputs="string:6161.value" outputs="number:6163.number" uid="6163" uid_parent="6160"/>
+        <Node _name="To Variant" inputs="anything:6163.number" outputs="Variant:6164.v" uid="6164" uid_parent="6160"/>
+        <Tunnel _id="Out1" inputs="value:6164.v" uid="6165" uid_parent="6160"/>
+        <Tunnel _id="Out2" inputs="value:6162.err" uid="6166" uid_parent="6160"/>
+      </CaseFrame>
+      <CaseFrame selector="Default" selectout="" uid="6170" uid_parent="6120">
+        <Tunnel _id="In1" outputs="value:6171.value" uid="6171" uid_parent="6170"/>
+        <Tunnel _id="In2" outputs="value:6172.err" uid="6172" uid_parent="6170"/>
+        <Constant _name="variant type" outputs="value:6173.value" type="variant" uid="6173" uid_parent="6170" value=""/>
+        <Node _name="Unflatten From XML" inputs="xml string:6171.value,type:6173.value,error in (no error):6172.err" outputs="value:6174.value,error out:6174.err" uid="6174" uid_parent="6170"/>
+        <Tunnel _id="Out1" inputs="value:6174.value" uid="6175" uid_parent="6170"/>
+        <Tunnel _id="Out2" inputs="value:6174.err" uid="6176" uid_parent="6170"/>
+      </CaseFrame>
+    </Structure>
+    <Node _name="Property Node" fields="write+Value (Signaling)" type="{LV.Control}" inputs="reference:6111.ctl,error in (no error):6124.err,Value (Signaling):6123.variant" outputs="reference out:,error out:6180.err" uid="6180" uid_parent="6100"/>
+    <Structure _name="Case Structure" selectin="6180.err" uid="6181" uid_parent="6100">
+      <Tunnel _id="In1" inputs="value:6180.err" uid="6182" uid_parent="6181"/>
+      <Tunnel _id="In2" inputs="value:6105.gap" uid="6183" uid_parent="6181"/>
+      <Tunnel _id="Out1" outputs="value:6184.err" uid="6184" uid_parent="6181"/>
+      <CaseFrame selector="No Error" selectout="" uid="6185" uid_parent="6181">
+        <Tunnel _id="In1" outputs="value:6186.err" uid="6186" uid_parent="6185"/>
+        <Tunnel _id="In2" outputs="value:6187.gap" uid="6187" uid_parent="6185"/>
+        <Node _name="Wait (ms)" inputs="milliseconds to wait:6187.gap" outputs="millisecond timer value:" uid="6188" uid_parent="6185"/>
+        <Tunnel _id="Out1" inputs="value:6186.err" uid="6189" uid_parent="6185"/>
+      </CaseFrame>
+      <CaseFrame selector="Error" selectout="" uid="6195" uid_parent="6181">
+        <Tunnel _id="In1" outputs="value:6196.err" uid="6196" uid_parent="6195"/>
+        <Tunnel _id="In2" outputs="value:" uid="6197" uid_parent="6195"/>
+        <Tunnel _id="Out1" inputs="value:6196.err" uid="6198" uid_parent="6195"/>
+      </CaseFrame>
+    </Structure>
+    <ShiftReg uid="6191" uid_parent="6100">
+      <Left inputs="value:6021.err" outputs="value:6190.err" uid="6190" uid_parent="6191"/>
+      <Right inputs="value:6184.err" outputs="value:6192.err" uid="6192" uid_parent="6191"/>
+    </ShiftReg>
+    <ShiftReg uid="6193" uid_parent="6100">
+      <Left inputs="value:5300.reference out" outputs="value:6194.ref" uid="6194" uid_parent="6193"/>
+      <Right inputs="value:6194.ref" outputs="value:6199.ref" uid="6199" uid_parent="6193"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Flatten To XML" inputs="anything:6192.err" outputs="xml string:6200.xml" uid="6200" uid_parent="root"/>
+  <Indicator _name="signal error xml" description="The signal step's own error cluster as flattened XML. It runs on its own chain\2C so a signal that fails never costs the snapshot or the abort. Error 1193 is a LATCHED boolean\2C which Value (Signaling) cannot write." inputs="value:6200.xml" type="string" uid="6201" uid_parent="root" value=""/>
+
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:6199.ref,error in (no error):5440.err" outputs="reference out:5500.reference out,error out:5500.error out,Controls:5500.Controls" uid="5500" uid_parent="root"/>
   <Node _name="Flatten To XML" inputs="anything:5500.Controls" outputs="xml string:5510.xml" uid="5510" uid_parent="root"/>
 
   <Node _name="Invoke Node" target="Abort VI" type="{LV.VI}" inputs="reference:5500.reference out,error in (no error):5500.error out" outputs="reference out:,error out:5520.error out" uid="5520" uid_parent="root"/>
-  <Node _name="Close Reference" inputs="reference:5120.vi reference,error in (no error):5520.error out" outputs="error out:5530.error out" uid="5530" uid_parent="root"/>
+  <FreeLabel comment="Disabled is read on its own error chain." uid="5700" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:5500.reference out,error in (no error):" outputs="Front Panel:5710.panel,reference out:,error out:5710.error out" uid="5710" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:5710.panel,error in (no error):5710.error out" outputs="Controls[]:5720.controls,reference out:,error out:" uid="5720" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5730" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5720.controls" mode="index" outputs="value:5740.ctl" uid="5740" uid_parent="5730"/>
+    <Node _name="Property Node" fields="read+Label.Text,read+Disabled" type="{LV.Control}" inputs="reference:5740.ctl,error in (no error):" outputs="Label.Text:5750.label,Disabled:5750.disabled,reference out:,error out:" uid="5750" uid_parent="5730"/>
+    <Tunnel _id="Out1" inputs="value:5750.label" mode="index" outputs="value:5760.labels" uid="5760" uid_parent="5730"/>
+    <Tunnel _id="Out2" inputs="value:5750.disabled" mode="index" outputs="value:5770.states" uid="5770" uid_parent="5730"/>
+    <ShiftReg uid="5780" uid_parent="5730">
+      <Left inputs="value:5500.reference out" outputs="value:5790.ref" uid="5790" uid_parent="5780"/>
+      <Right inputs="value:5790.ref" outputs="value:5800.ref" uid="5800" uid_parent="5780"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Flatten To XML" inputs="anything:5760.labels" outputs="xml string:5810.xml" uid="5810" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5770.states" outputs="xml string:5820.xml" uid="5820" uid_parent="root"/>
+
+  <Node _name="Close Reference" inputs="reference:5800.ref,error in (no error):5520.error out" outputs="error out:5530.error out" uid="5530" uid_parent="root"/>
   <Node _name="Flatten To XML" inputs="anything:5530.error out" outputs="xml string:5540.xml" uid="5540" uid_parent="root"/>
 
   <Indicator _name="values xml" conIdx="4" connection="recommended" description="Every control and indicator of the target at the moment run for ms elapsed\2C name and value\2C as flattened XML. A snapshot\2C not a final result." inputs="value:5510.xml" type="string" uid="5600" uid_parent="root" value=""/>
+  <Indicator _name="disabled labels xml" conIdx="8" connection="recommended" description="The label of every front-panel control\2C in panel order\2C as flattened XML - paired by position with disabled xml." inputs="value:5810.xml" type="string" uid="5620" uid_parent="root" value=""/>
+  <Indicator _name="disabled xml" conIdx="10" connection="recommended" description="Disabled of every front-panel control\2C read after the snapshot\3A 0 enabled\2C 1 disabled\2C 2 disabled and greyed out." inputs="value:5820.xml" type="string" uid="5630" uid_parent="root" value=""/>
   <Indicator _name="error xml" conIdx="6" connection="recommended" description="This helper's own error cluster\2C flattened to XML." inputs="value:5540.xml" type="string" uid="5610" uid_parent="root" value=""/>
 </VI>

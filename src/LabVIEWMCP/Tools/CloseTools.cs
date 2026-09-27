@@ -293,7 +293,8 @@ internal sealed class CloseTools(LvaiConnection connection)
                     : "") + (removed > 0
                     ? "Items LabVIEW adopted into the project during this session were removed - "
                     + "see strayVisRemovedNames. This sweep reaches our own temp trees, "
-                    + "<userlib>/LV_MCP sockets, and entries whose file is not there. A VI adopted "
+                    + "<userlib>/LV_MCP sockets, entries whose file is not there, and any VI under "
+                    + "%TEMP% when the project itself does not live there. A VI adopted "
                     + "from any OTHER directory is left alone and is not reported, because nothing "
                     + "here can distinguish it from one the user listed on purpose."
                     : duplicates.Count > 0 ? "" : "Nothing to remove."),

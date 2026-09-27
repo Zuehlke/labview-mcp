@@ -87,6 +87,14 @@ Verified against LabVIEW 2026 on 2026-08-25, driving the built exe over raw stdi
 | the same AIXML with the corrected 4833 set | `ok true`, pattern 4833, 0 violations, **1 135 ms** |
 | a `Call` to a project-local subVI | `ok true` never reached: `failedAtStep validate`, `Unsupported SubVI: …`, **no VI written**, 796 ms |
 
+**In `lvai_generate_vis`, entries with a `panePattern` run LAST** since 2026-09-26. The pane repair
+is a pylabview rebuild that closes the active project first, and a closed project is an unloaded
+one: in the sixth ATM build one pattern entry early in a batch left every later entry that called
+project code with `Error 53`, and cost a reopen and a second batch. The entries without a pattern
+now run first, each group in the order given; `results` keeps the order asked for, and `ranLast`
+names the entries that moved. Nothing depended on the old order: generating a VI does not load it,
+so a later entry could never call an earlier one without an open in between anyway.
+
 ## `pylv_apply`
 
 ```

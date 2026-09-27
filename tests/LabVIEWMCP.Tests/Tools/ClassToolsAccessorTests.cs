@@ -79,7 +79,8 @@ public class ClassToolsAccessorTests
         var result = Describe(Runner());
 
         Assert.True(result["ok"]!.GetValue<bool>());
-        Assert.Equal(2, result["accessorsCreated"]!.GetValue<int>());
+        Assert.Equal(2, result["accessorsCreated"]!.GetValue<int>());     // fields
+        Assert.Equal(4, result["accessorVisCreated"]!.GetValue<int>());   // VIs, sixth build
         Assert.Equal(5, result["fieldCount"]!.GetValue<int>());
 
         var first = (JsonObject)result["created"]!.AsArray()[0]!;

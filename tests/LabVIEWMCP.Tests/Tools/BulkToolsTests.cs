@@ -133,6 +133,78 @@ public class BulkGenerateViTests
     }
 
     [Fact]
+    public async Task A_batch_runs_its_pane_pattern_entries_last_and_answers_in_the_given_order()
+    {
+        // A pane repair closes the project, which unloads the callees of every entry after it:
+        // measured 2026-09-26, one pattern entry early in a batch cost Error 53 on the rest. The
+        // entries here have no AIXML, so nothing reaches LabVIEW - what is pinned is the order.
+        await using var server = await LvaiTestServer.StartAsync();
+        string Missing(string name) => server.TempPath(name + ".xml").Replace("\\", "\\\\");
+        string Vi(string name) => server.TempPath(name + ".vi").Replace("\\", "\\\\");
+        var pairs = $$"""
+            [{"aixml":"{{Missing("a")}}","vi":"{{Vi("A")}}","panePattern":4815},
+             {"aixml":"{{Missing("b")}}","vi":"{{Vi("B")}}"},
+             {"aixml":"{{Missing("c")}}","vi":"{{Vi("C")}}"}]
+            """;
+
+        var result = await new BulkTools(server.Connection).GenerateVisAsync(pairs);
+
+        var results = Res.Obj(result)["results"]!.AsArray();
+        Assert.EndsWith("A.vi", results[0]!["vi"]!.GetValue<string>());   // the order asked for
+        Assert.EndsWith("B.vi", results[1]!["vi"]!.GetValue<string>());
+        Assert.EndsWith("C.vi", results[2]!["vi"]!.GetValue<string>());
+        var ranLast = Res.Obj(result)["ranLast"]!.AsArray();
+        Assert.Single(ranLast);
+        Assert.EndsWith("A.vi", ranLast[0]!.GetValue<string>());
+        Assert.Contains("ran LAST", Res.Str(result, "note"));
+    }
+
+    [Fact]
+    public async Task A_batch_without_pane_patterns_reports_no_reorder()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        var pairs = $$"""
+            [{"aixml":"{{server.TempPath("x.xml").Replace("\\", "\\\\")}}","vi":"{{server.TempPath("X.vi").Replace("\\", "\\\\")}}"}]
+            """;
+
+        var result = await new BulkTools(server.Connection).GenerateVisAsync(pairs);
+
+        Assert.Null(Res.Obj(result)["ranLast"]);
+    }
+
+    [Fact]
+    public async Task A_broken_result_on_the_loaded_route_still_reports_its_diagram_size()
+    {
+        // The ROUTINE shape for a class method and for a caller whose class seed is still a path:
+        // broken until a later step repairs it, with the diagram already final. The sixth ATM
+        // build (2026-09-26) got no size back for its class method, because this outcome returned
+        // before the size step.
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ErrorCodeByMethod["ValidateAIXML"] = 1;
+        server.Service.ErrorCodeByMethod["ConvertAIXMLToVI"] = 0;
+        server.Service.ErrorMessage = Refusal("Unsupported SubVI: Local.vi");
+        server.Service.ViFileContent = "a generated VI";
+        var measured = 0;
+
+        var result = await new BulkTools(server.Connection)
+        {
+            ReadExecState = Reads(0),
+            MeasureDiagram = (_, _, _) =>
+            {
+                measured++;
+                return Task.FromResult<((int, int)?, string?)>(((2600, 700), @"C:\x\d.png"));
+            },
+        }.GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
+
+        Assert.Equal("execState", Res.Str(result, "failedAtStep"));
+        Assert.Equal(1, measured);
+        var size = Res.Obj(result)["diagramSize"]!;
+        Assert.Equal(2600, size["width"]!.GetValue<int>());
+        Assert.False(size["withinBudget"]!.GetValue<bool>());
+        Assert.Contains("OVER THE SIZE BUDGET", Res.Str(result, "note"));
+    }
+
+    [Fact]
     public async Task Targets_that_are_not_loaded_are_named_and_nothing_else_runs()
     {
         await using var server = await LvaiTestServer.StartAsync();
@@ -234,8 +306,10 @@ public class BulkGenerateViTests
         await using var server = await LvaiTestServer.StartAsync();
         server.Service.ViFileContent = "a generated VI";
 
+        // the diagram-size step is covered in DiagramSizeTests; this one is about the two RPCs
         var result = await new BulkTools(server.Connection).GenerateViAsync(
-            server.TempPath("in.xml"), server.TempPath("Out.vi"), measurePane: false);
+            server.TempPath("in.xml"), server.TempPath("Out.vi"), measurePane: false,
+            measureDiagram: false);
 
         Assert.True(Res.Bool(result, "ok"));
         Assert.True(Res.IsNull(result, "failedAtStep"));

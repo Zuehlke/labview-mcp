@@ -21,10 +21,12 @@ namespace LabVIEWMcp.Tests.Tools;
 /// answer `Digital`**. That is why numerics need ONE case and not one per representation: the same
 /// probe set an I32 control from a DBL variant and read back 42, so <c>Ctrl Val.Set</c> coerces.
 ///
-/// WHAT IS STILL NOT SUPPORTED, deliberately: Array and Cluster controls. There is no general
-/// text-to-composite conversion without a runtime type, and inventing one per shape is not
-/// something a helper can do. They fall to the string case and the call fails, rather than
-/// appearing to work and leaving the control at its default.
+/// ENUM, RING, ARRAY AND CLUSTER SINCE 2026-09-25. This paragraph said "deliberately not
+/// supported: there is no general text-to-composite conversion without a runtime type", and that
+/// was true of TEXT - the conversion exists for LabVIEW's own XML: Unflatten From XML with a
+/// VARIANT as its type yields a variant that carries the value's type, measured on a 2D string
+/// array. An enum or ring looks its item name up in its own Strings [], and text that is neither a
+/// name nor a number is sent as a string so Ctrl Val.Set refuses it before the run.
 ///
 /// THESE TESTS READ THE SHIPPED FILE, not a fixture. The claim is about what
 /// <c>scripts\lvai_run_and_read_typed.xml</c> contains; a fixture asserting the string it was
@@ -68,6 +70,10 @@ public sealed class TypedRunHelperTests
     [InlineData("&quot;Path&quot;")]
     [InlineData("&quot;Digital&quot;")]
     [InlineData("&quot;Boolean&quot;")]
+    [InlineData("&quot;Enum&quot;")]
+    [InlineData("&quot;Ring&quot;")]
+    [InlineData("&quot;Array&quot;")]
+    [InlineData("&quot;Cluster&quot;")]
     [InlineData("Default")]
     public void TypedHelperBranchesOnEveryMeasuredClassName(string selector)
     {
@@ -84,7 +90,7 @@ public sealed class TypedRunHelperTests
     {
         var xml = TypedHelper();
         var setters = xml.Split("target=\"Ctrl Val.Set\"").Length - 1;
-        Assert.Equal(4, setters);
+        Assert.Equal(8, setters);   // Path, Digital, Boolean, Enum, Ring, Array, Cluster, Default
     }
 
     /// <summary>The conversions each branch needs, by node name.</summary>
@@ -92,9 +98,33 @@ public sealed class TypedRunHelperTests
     [InlineData("String To Path")]                 // Path
     [InlineData("Fract/Exp String To Number")]     // Digital, DBL and I32 alike
     [InlineData("To Upper Case")]                  // Boolean, so "true"/"TRUE"/"True" all work
+    [InlineData("Unflatten From XML")]             // Array and Cluster, from LabVIEW's own XML
     public void TypedHelperCarriesItsConverters(string node)
     {
         Assert.Contains($"_name=\"{node}\"", TypedHelper());
+    }
+
+    /// <summary>
+    /// AN ENUM NAME THAT MATCHES NOTHING MUST NOT BECOME ITEM 0. Fract/Exp String To Number reads
+    /// "withdrwa" as 0, so the plain name-else-number fallback would set the first item and run the
+    /// target with it. The frame asks whether the text was a name OR parsed at all (offset past
+    /// number &gt; 0), and otherwise hands Ctrl Val.Set the STRING, which it refuses.
+    /// </summary>
+    [Theory]
+    [InlineData("Enum")]
+    [InlineData("Ring")]
+    public void ANamedNumericFrameSendsUnmatchedTextAsAString(string kind)
+    {
+        var frame = System.Xml.Linq.XElement.Parse(TypedHelper()).Descendants("CaseFrame")
+            .Single(f => (string?)f.Attribute("selector") == $"\"{kind}\"");
+        var nodes = frame.Elements("Node").ToList();
+
+        Assert.Contains(nodes, n => ((string?)n.Attribute("outputs"))!.StartsWith("offset past number:", StringComparison.Ordinal));
+        Assert.Equal(2, nodes.Count(n => (string?)n.Attribute("_name") == "To Variant"));
+        var set = nodes.Single(n => (string?)n.Attribute("target") == "Ctrl Val.Set");
+        var variantSelect = nodes.Single(n => (string?)n.Attribute("_name") == "Select" &&
+                                              ((string)n.Attribute("inputs")!).Contains(".Variant,", StringComparison.Ordinal));
+        Assert.Contains($"Value:{variantSelect.Attribute("uid")!.Value}.", (string)set.Attribute("inputs")!);
     }
 
     /// <summary>
@@ -108,6 +138,7 @@ public sealed class TypedRunHelperTests
         Assert.Contains("read+Class Name", xml);
         Assert.Contains("read+Label.Text", xml);
         Assert.Contains("read+Controls[]", xml);
+        Assert.Contains("read+Strings []", xml);   // an enum or ring by item NAME
     }
 
     /// <summary>

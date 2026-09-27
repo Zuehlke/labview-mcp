@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="ATM Main.vi" description="Automatic Teller Machine main VI, built from NI's Producer/Consumer (Events) template. The producer loop turns front-panel events (Card Simulator, Enter, Left Buttons, Right Buttons) into command strings on a queue; the consumer loop dequeues them with a 10 s inactivity timeout outside the Idle phase, runs Handle ATM Action.vi and updates the panel. The accounts file is ATM accounts.txt beside this VI. When the session ends the consumer releases the queue and writes Card Simulator with a signalling write, so the producer's next enqueue fails and it stops. The expected invalid-queue error (1122) of that shutdown is removed; every other error from either loop is merged into error out.">
+
+  <FreeLabel comment="Releasing the queue stops the producer loop." uid="lbl_root" uid_parent="root"/>
+
+  <Control _name="error in" outputs="value:c_err.value" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" conIdx="11" connection="recommended" description="Error from a previous step. With an error here the VI does not start a session." uid="c_err" uid_parent="root"/>
+
+  <Node _name="Current VI's Path" outputs="path:cvp.path" uid="cvp" uid_parent="root"/>
+  <Node _name="Strip Path" inputs="path:cvp.path" outputs="stripped path:sp.stripped path,name:" uid="sp" uid_parent="root"/>
+  <Constant _name="accounts file name" outputs="value:k_fn.value" type="string" value="ATM accounts.txt" uid="k_fn" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:sp.stripped path,name or relative path:k_fn.value" outputs="appended path:bp.appended path" uid="bp" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:,error in (no error):c_err.value" outputs="Front Panel:pfp.fp,reference out:,error out:pfp.error out" uid="pfp" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:pfp.fp,error in (no error):pfp.error out" outputs="Controls[]:pc.ctls,reference out:,error out:pc.error out" uid="pc" uid_parent="root"/>
+
+  <Constant _name="Welcome kind" outputs="value:k_wel.value" type="uint16{Welcome,Main Menu,Verification Failed,Session Terminated,Deposit Prompt,Deposit Complete,Withdrawal Prompt,Withdrawal Complete,Withdrawal Failed,Balance}" value="0" uid="k_wel" uid_parent="root"/>
+  <Call target="Build ATM Message.vi" inputs="message kind:k_wel.value,error in:pc.error out" outputs="message:bm.message,error out:bm.error out" uid="bm" uid_parent="root"/>
+  <Constant _name="ATM Messages label" outputs="value:k_lm.value" type="string" value="ATM Messages" uid="k_lm" uid_parent="root"/>
+  <Call target="Set Control Value.vi" inputs="controls:pc.ctls,label:k_lm.value,value:bm.message,error in:bm.error out" outputs="error out:sv1.error out" uid="sv1" uid_parent="root"/>
+  <Constant _name="no menu" outputs="value:k_nomenu.value" type="string" value="" uid="k_nomenu" uid_parent="root"/>
+  <Call target="Get ATM Menu.vi" inputs="menu:k_nomenu.value,error in:sv1.error out" outputs="left menu:gm0.left menu,right menu:gm0.right menu,left actions:,right actions:,error out:gm0.error out" uid="gm0" uid_parent="root"/>
+  <Constant _name="Left Menu label" outputs="value:k_llm.value" type="string" value="Left Menu" uid="k_llm" uid_parent="root"/>
+  <Call target="Set Control Value.vi" inputs="controls:pc.ctls,label:k_llm.value,value:gm0.left menu,error in:gm0.error out" outputs="error out:sv2.error out" uid="sv2" uid_parent="root"/>
+  <Constant _name="Right Menu label" outputs="value:k_lrm.value" type="string" value="Right Menu" uid="k_lrm" uid_parent="root"/>
+  <Call target="Set Control Value.vi" inputs="controls:pc.ctls,label:k_lrm.value,value:gm0.right menu,error in:sv2.error out" outputs="error out:sv3.error out" uid="sv3" uid_parent="root"/>
+  <Constant _name="session controls" outputs="value:k_all.value" type="array{string}" value="[User Input,Enter,Left Buttons,Right Buttons,Left Menu,Right Menu]" uid="k_all" uid_parent="root"/>
+  <Constant _name="disable all" outputs="value:k_true.value" type="bool" value="true" uid="k_true" uid_parent="root"/>
+  <Call target="Set Controls Disabled.vi" inputs="controls:pc.ctls,labels:k_all.value,disabled:k_true.value,error in:sv3.error out" outputs="error out:sd0.error out" uid="sd0" uid_parent="root"/>
+
+  <FixedConst _name="0STR" outputs="value:k_qt.value" uid="k_qt" uid_parent="root"/>
+  <Node _name="Obtain Queue" inputs="name (unnamed):,element data type:k_qt.value,create if not found? (T):,error in (no error):sd0.error out,max queue size (-1\2C unlimited):" outputs="queue out:oq.queue out,created new?:,error out:oq.error out" uid="oq" uid_parent="root"/>
+
+  <Constant _name="initial phase" outputs="value:k_idle0.value" type="string" value="Idle" uid="k_idle0" uid_parent="root"/>
+  <Constant _name="initial account" outputs="value:k_acc0.value" type="string" value="" uid="k_acc0" uid_parent="root"/>
+  <Constant _name="initial timeout" outputs="value:k_to0.value" type="int32" value="-1" uid="k_to0" uid_parent="root"/>
+
+  <Structure _name="While Loop" count="" label="Consumer" uid="cl" uid_parent="root">
+    <FreeLabel comment="One command per iteration." uid="lbl_cons" uid_parent="cl"/>
+    <Tunnel _id="In1" inputs="value:oq.queue out" outputs="value:cl_q.value" uid="cl_q" uid_parent="cl"/>
+    <Tunnel _id="In2" inputs="value:bp.appended path" outputs="value:cl_p.value" uid="cl_p" uid_parent="cl"/>
+    <Tunnel _id="In3" inputs="value:pc.ctls" outputs="value:cl_c.value" uid="cl_c" uid_parent="cl"/>
+    <ShiftReg uid="sr_ph" uid_parent="cl">
+      <Left inputs="value:k_idle0.value" outputs="value:sr_ph_l.value" uid="sr_ph_l" uid_parent="sr_ph"/>
+      <Right inputs="value:h.phase out" outputs="value:" uid="sr_ph_r" uid_parent="sr_ph"/>
+    </ShiftReg>
+    <ShiftReg uid="sr_acc" uid_parent="cl">
+      <Left inputs="value:k_acc0.value" outputs="value:sr_acc_l.value" uid="sr_acc_l" uid_parent="sr_acc"/>
+      <Right inputs="value:h.account out" outputs="value:" uid="sr_acc_r" uid_parent="sr_acc"/>
+    </ShiftReg>
+    <ShiftReg uid="sr_msg" uid_parent="cl">
+      <Left inputs="value:bm.message" outputs="value:sr_msg_l.value" uid="sr_msg_l" uid_parent="sr_msg"/>
+      <Right inputs="value:h.message" outputs="value:" uid="sr_msg_r" uid_parent="sr_msg"/>
+    </ShiftReg>
+    <ShiftReg uid="sr_to" uid_parent="cl">
+      <Left inputs="value:k_to0.value" outputs="value:sr_to_l.value" uid="sr_to_l" uid_parent="sr_to"/>
+      <Right inputs="value:tosel.s? t\3Af" outputs="value:" uid="sr_to_r" uid_parent="sr_to"/>
+    </ShiftReg>
+    <ShiftReg uid="sr_err" uid_parent="cl">
+      <Left inputs="value:oq.error out" outputs="value:sr_err_l.value" uid="sr_err_l" uid_parent="sr_err"/>
+      <Right inputs="value:cs.o1" outputs="value:sr_err_r.value" uid="sr_err_r" uid_parent="sr_err"/>
+    </ShiftReg>
+
+    <Node _name="Dequeue Element" inputs="queue:cl_q.value,timeout in ms (-1):sr_to_l.value,error in (no error):sr_err_l.value" outputs="queue out:,element:dq.element,timed out?:dq.timed out?,error out:dq.error out" uid="dq" uid_parent="cl"/>
+    <Constant _name="timeout command" outputs="value:k_tocmd.value" type="string" value="Timeout" uid="k_tocmd" uid_parent="cl"/>
+    <Node _name="Select" inputs="t:k_tocmd.value,s:dq.timed out?,f:dq.element" outputs="s? t\3Af:cmd.s? t\3Af" uid="cmd" uid_parent="cl"/>
+    <Control _name="User Input" outputs="value:ui.value" type="string" value="" description="Account number or amount typed by the user." uid="ui" uid_parent="cl"/>
+    <Call target="Handle ATM Action.vi" inputs="phase:sr_ph_l.value,account:sr_acc_l.value,current message:sr_msg_l.value,command:cmd.s? t\3Af,user input:ui.value,accounts path:cl_p.value,error in:dq.error out" outputs="phase out:h.phase out,account out:h.account out,message:h.message,menu:h.menu,input enabled:h.input enabled,focus input:h.focus input,stop:h.stop,error out:h.error out" uid="h" uid_parent="cl"/>
+    <Indicator _name="ATM Messages" inputs="value:h.message" type="string" value="" description="Message shown on the ATM screen." uid="atmmsg" uid_parent="cl"/>
+    <Call target="Get ATM Menu.vi" inputs="menu:h.menu,error in:h.error out" outputs="left menu:gm.left menu,right menu:gm.right menu,left actions:,right actions:,error out:gm.error out" uid="gm" uid_parent="cl"/>
+    <Indicator _name="Left Menu" inputs="value:gm.left menu" type="cluster{string.RFS String,string.RFS String 2,string.RFS String 3}" value="[,,]" description="Captions beside the left function buttons." uid="lmenu" uid_parent="cl"/>
+    <Indicator _name="Right Menu" inputs="value:gm.right menu" type="cluster{string.RFS String,string.RFS String 2,string.RFS String 3}" value="[,,]" description="Captions beside the right function buttons." uid="rmenu" uid_parent="cl"/>
+    <Constant _name="empty menu" outputs="value:k_em.value" type="string" value="" uid="k_em" uid_parent="cl"/>
+    <Node _name="Equal?" inputs="x:h.menu,y:k_em.value" outputs="x = y?:meq.x = y?" uid="meq" uid_parent="cl"/>
+    <Constant _name="menu controls" outputs="value:k_mc.value" type="array{string}" value="[Left Buttons,Right Buttons,Left Menu,Right Menu]" uid="k_mc" uid_parent="cl"/>
+    <Call target="Set Controls Disabled.vi" inputs="controls:cl_c.value,labels:k_mc.value,disabled:meq.x = y?,error in:gm.error out" outputs="error out:sdm.error out" uid="sdm" uid_parent="cl"/>
+    <Node _name="Not" inputs="x:h.input enabled" outputs=".not. x?:nie..not. x?" uid="nie" uid_parent="cl"/>
+    <Constant _name="input controls" outputs="value:k_ic.value" type="array{string}" value="[User Input,Enter]" uid="k_ic" uid_parent="cl"/>
+    <Call target="Set Controls Disabled.vi" inputs="controls:cl_c.value,labels:k_ic.value,disabled:nie..not. x?,error in:sdm.error out" outputs="error out:sdi.error out" uid="sdi" uid_parent="cl"/>
+
+    <Structure _name="Case Structure" selectin="h.focus input" label="Focus" uid="cf" uid_parent="cl">
+      <Tunnel _id="In1" inputs="value:cl_c.value" uid="cf_i1" uid_parent="cf"/>
+      <Tunnel _id="In2" inputs="value:sdi.error out" uid="cf_i2" uid_parent="cf"/>
+      <CaseFrame selector="True" selectout="" uid="cf_t" uid_parent="cf">
+        <Tunnel _id="In1" outputs="value:cf_t_c.value" uid="cf_t_c" uid_parent="cf_t"/>
+        <Tunnel _id="In2" outputs="value:cf_t_e.value" uid="cf_t_e" uid_parent="cf_t"/>
+        <Constant _name="User Input label" outputs="value:k_uil.value" type="string" value="User Input" uid="k_uil" uid_parent="cf_t"/>
+        <Call target="Set Control Focus.vi" inputs="controls:cf_t_c.value,label:k_uil.value,error in:cf_t_e.value" outputs="error out:scf.error out" uid="scf" uid_parent="cf_t"/>
+        <Tunnel _id="Out1" inputs="value:scf.error out" uid="cf_t_o" uid_parent="cf_t"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="cf_f" uid_parent="cf">
+        <Tunnel _id="In1" outputs="value:" uid="cf_f_c" uid_parent="cf_f"/>
+        <Tunnel _id="In2" outputs="value:cf_f_e.value" uid="cf_f_e" uid_parent="cf_f"/>
+        <Tunnel _id="Out1" inputs="value:cf_f_e.value" uid="cf_f_o" uid_parent="cf_f"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:cf.o1" uid="cf_o1" uid_parent="cf"/>
+    </Structure>
+
+    <Structure _name="Case Structure" selectin="h.stop" label="Session end" uid="cs" uid_parent="cl">
+      <Tunnel _id="In1" inputs="value:cl_c.value" uid="cs_i1" uid_parent="cs"/>
+      <Tunnel _id="In2" inputs="value:cf.o1" uid="cs_i2" uid_parent="cs"/>
+      <CaseFrame selector="True" selectout="" uid="cs_t" uid_parent="cs">
+        <Tunnel _id="In1" outputs="value:cs_t_c.value" uid="cs_t_c" uid_parent="cs_t"/>
+        <Tunnel _id="In2" outputs="value:cs_t_e.value" uid="cs_t_e" uid_parent="cs_t"/>
+        <Constant _name="Card Simulator label" outputs="value:k_csl.value" type="string" value="Card Simulator" uid="k_csl" uid_parent="cs_t"/>
+        <Constant _name="card out" outputs="value:k_cso.value" type="bool" value="false" uid="k_cso" uid_parent="cs_t"/>
+        <Call target="Set Control Value.vi" inputs="controls:cs_t_c.value,label:k_csl.value,value:k_cso.value,error in:cs_t_e.value" outputs="error out:scv.error out" uid="scv" uid_parent="cs_t"/>
+        <Tunnel _id="Out1" inputs="value:scv.error out" uid="cs_t_o" uid_parent="cs_t"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="cs_f" uid_parent="cs">
+        <Tunnel _id="In1" outputs="value:" uid="cs_f_c" uid_parent="cs_f"/>
+        <Tunnel _id="In2" outputs="value:cs_f_e.value" uid="cs_f_e" uid_parent="cs_f"/>
+        <Tunnel _id="Out1" inputs="value:cs_f_e.value" uid="cs_f_o" uid_parent="cs_f"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:cs.o1" uid="cs_o1" uid_parent="cs"/>
+    </Structure>
+
+    <Constant _name="idle phase" outputs="value:k_idle.value" type="string" value="Idle" uid="k_idle" uid_parent="cl"/>
+    <Node _name="Equal?" inputs="x:h.phase out,y:k_idle.value" outputs="x = y?:peq.x = y?" uid="peq" uid_parent="cl"/>
+    <Constant _name="wait forever" outputs="value:k_inf.value" type="int32" value="-1" uid="k_inf" uid_parent="cl"/>
+    <Constant _name="inactivity ms" outputs="value:k_10s.value" type="int32" value="10000" uid="k_10s" uid_parent="cl"/>
+    <Node _name="Select" inputs="t:k_inf.value,s:peq.x = y?,f:k_10s.value" outputs="s? t\3Af:tosel.s? t\3Af" uid="tosel" uid_parent="cl"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:cs.o1" outputs="status:ub.status" uid="ub" uid_parent="cl"/>
+    <Node _name="Or" inputs="x:h.stop,y:ub.status" outputs="x .or. y?:cor.x .or. y?" uid="cor" uid_parent="cl"/>
+    <Condition inputs="value:cor.x .or. y?" uid="cl_cond" uid_parent="cl" value="stop"/>
+  </Structure>
+
+  <Node _name="Release Queue" inputs="queue:oq.queue out,force destroy? (F):,error in (no error):sr_err_r.value" outputs="queue name:,remaining elements:,error out:rq.error out" uid="rq" uid_parent="root"/>
+  <Constant _name="wake producer" outputs="value:k_wake.value" type="bool" value="false" uid="k_wake" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" type="{LV.Boolean}" link="Card Simulator" inputs="error in (no error):rq.error out,Value (Signaling):k_wake.value" outputs="error out:wk.error out" uid="wk" uid_parent="root"/>
+
+  <Structure _name="While Loop" count="" label="Producer" uid="pl" uid_parent="root">
+    <FreeLabel comment="Front-panel events become queued commands." uid="lbl_prod" uid_parent="pl"/>
+    <Tunnel _id="In1" inputs="value:oq.queue out" outputs="value:pl_q.value" uid="pl_q" uid_parent="pl"/>
+    <Tunnel _id="In2" inputs="value:pc.ctls" outputs="value:pl_c.value" uid="pl_c" uid_parent="pl"/>
+    <ShiftReg uid="psr" uid_parent="pl">
+      <Left inputs="value:oq.error out" outputs="value:psr_l.value" uid="psr_l" uid_parent="psr"/>
+      <Right inputs="value:es.o1" outputs="value:psr_r.value" uid="psr_r" uid_parent="psr"/>
+    </ShiftReg>
+
+    <Structure _name="Event Structure" uid="es" uid_parent="pl">
+      <Tunnel _id="In1" cond="true" inputs="value:pl_q.value" uid="es_i1" uid_parent="es"/>
+      <Tunnel _id="In2" cond="true" inputs="value:psr_l.value" uid="es_i2" uid_parent="es"/>
+      <Tunnel _id="In3" cond="true" inputs="value:pl_c.value" uid="es_i3" uid_parent="es"/>
+
+      <CaseFrame selector=" &quot;Card Simulator&quot;\3A Value Change " uid="e1" uid_parent="es">
+        <Tunnel _id="In1" outputs="value:e1_q.value" uid="e1_q" uid_parent="e1"/>
+        <Tunnel _id="In2" outputs="value:e1_e.value" uid="e1_e" uid_parent="e1"/>
+        <Tunnel _id="In3" outputs="value:" uid="e1_c" uid_parent="e1"/>
+        <Control _name="Card Simulator" outputs="value:cardsim.value" type="bool" value="false" description="Insert (TRUE) or remove (FALSE) the bank card." uid="cardsim" uid_parent="e1"/>
+        <Constant outputs="value:e1_k1.value" type="string" value="Card Inserted" uid="e1_k1" uid_parent="e1"/>
+        <Constant outputs="value:e1_k2.value" type="string" value="Card Removed" uid="e1_k2" uid_parent="e1"/>
+        <Node _name="Select" inputs="t:e1_k1.value,s:cardsim.value,f:e1_k2.value" outputs="s? t\3Af:e1_s.s? t\3Af" uid="e1_s" uid_parent="e1"/>
+        <Node _name="Enqueue Element" inputs="queue:e1_q.value,element:e1_s.s? t\3Af,timeout in ms (-1):,error in (no error):e1_e.value" outputs="queue out:,timed out?:,error out:e1_enq.error out" uid="e1_enq" uid_parent="e1"/>
+        <Tunnel _id="Out1" inputs="value:e1_enq.error out" uid="e1_o1" uid_parent="e1"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Enter&quot;\3A Value Change " uid="e2" uid_parent="es">
+        <Tunnel _id="In1" outputs="value:e2_q.value" uid="e2_q" uid_parent="e2"/>
+        <Tunnel _id="In2" outputs="value:e2_e.value" uid="e2_e" uid_parent="e2"/>
+        <Tunnel _id="In3" outputs="value:" uid="e2_c" uid_parent="e2"/>
+        <Control _name="Enter" outputs="value:" style="latched" type="bool" value="false" description="Confirms the User Input (E)." uid="enter" uid_parent="e2"/>
+        <Constant outputs="value:e2_k.value" type="string" value="Enter" uid="e2_k" uid_parent="e2"/>
+        <Node _name="Enqueue Element" inputs="queue:e2_q.value,element:e2_k.value,timeout in ms (-1):,error in (no error):e2_e.value" outputs="queue out:,timed out?:,error out:e2_enq.error out" uid="e2_enq" uid_parent="e2"/>
+        <Tunnel _id="Out1" inputs="value:e2_enq.error out" uid="e2_o1" uid_parent="e2"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Left Buttons&quot;\3A Value Change " uid="e3" uid_parent="es">
+        <Tunnel _id="In1" outputs="value:e3_q.value" uid="e3_q" uid_parent="e3"/>
+        <Tunnel _id="In2" outputs="value:e3_e.value" uid="e3_e" uid_parent="e3"/>
+        <Tunnel _id="In3" outputs="value:e3_c.value" uid="e3_c" uid_parent="e3"/>
+        <Control _name="Left Buttons" outputs="value:lb.value" type="cluster{bool.Func Button,bool.Func Button 2,bool.Func Button 3}" value="[false,false,false]" description="Function buttons on the left of the screen." uid="lb" uid_parent="e3"/>
+        <Call target="Get Pressed Button Index.vi" inputs="buttons:lb.value,error in:e3_e.value" outputs="index:e3_gp.index,error out:e3_gp.error out" uid="e3_gp" uid_parent="e3"/>
+        <Constant outputs="value:e3_z.value" type="int32" value="0" uid="e3_z" uid_parent="e3"/>
+        <Node _name="Greater Or Equal?" inputs="x:e3_gp.index,y:e3_z.value" outputs="x &gt;= y?:e3_ge.x &gt;= y?" uid="e3_ge" uid_parent="e3"/>
+        <Structure _name="Case Structure" selectin="e3_ge.x &gt;= y?" uid="e3_cs" uid_parent="e3">
+          <Tunnel _id="In1" inputs="value:e3_q.value" uid="e3_cs_i1" uid_parent="e3_cs"/>
+          <Tunnel _id="In2" inputs="value:e3_gp.index" uid="e3_cs_i2" uid_parent="e3_cs"/>
+          <Tunnel _id="In3" inputs="value:e3_gp.error out" uid="e3_cs_i3" uid_parent="e3_cs"/>
+          <CaseFrame selector="True" selectout="" uid="e3_t" uid_parent="e3_cs">
+            <Tunnel _id="In1" outputs="value:e3_t_q.value" uid="e3_t_q" uid_parent="e3_t"/>
+            <Tunnel _id="In2" outputs="value:e3_t_i.value" uid="e3_t_i" uid_parent="e3_t"/>
+            <Tunnel _id="In3" outputs="value:e3_t_e.value" uid="e3_t_e" uid_parent="e3_t"/>
+            <Constant outputs="value:e3_fmt.value" type="string" value="Left %d" uid="e3_fmt" uid_parent="e3_t"/>
+            <Node _name="Format Into String" inputs="initial string:,error in:e3_t_e.value,input 1:e3_t_i.value,format string:e3_fmt.value" outputs="resulting string:e3_fs.resulting string,error out:e3_fs.error out" uid="e3_fs" uid_parent="e3_t"/>
+            <Node _name="Enqueue Element" inputs="queue:e3_t_q.value,element:e3_fs.resulting string,timeout in ms (-1):,error in (no error):e3_fs.error out" outputs="queue out:,timed out?:,error out:e3_enq.error out" uid="e3_enq" uid_parent="e3_t"/>
+            <Tunnel _id="Out1" inputs="value:e3_enq.error out" uid="e3_t_o" uid_parent="e3_t"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="e3_f" uid_parent="e3_cs">
+            <Tunnel _id="In1" outputs="value:" uid="e3_f_q" uid_parent="e3_f"/>
+            <Tunnel _id="In2" outputs="value:" uid="e3_f_i" uid_parent="e3_f"/>
+            <Tunnel _id="In3" outputs="value:e3_f_e.value" uid="e3_f_e" uid_parent="e3_f"/>
+            <Tunnel _id="Out1" inputs="value:e3_f_e.value" uid="e3_f_o" uid_parent="e3_f"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:e3_cs.o1" uid="e3_cs_o1" uid_parent="e3_cs"/>
+        </Structure>
+        <Constant _name="Left Buttons label" outputs="value:e3_lbl.value" type="string" value="Left Buttons" uid="e3_lbl" uid_parent="e3"/>
+        <Constant _name="buttons released" outputs="value:e3_rst.value" type="cluster{bool.Func Button,bool.Func Button 2,bool.Func Button 3}" value="[false,false,false]" uid="e3_rst" uid_parent="e3"/>
+        <Call target="Set Control Value.vi" inputs="controls:e3_c.value,label:e3_lbl.value,value:e3_rst.value,error in:e3_cs.o1" outputs="error out:e3_sv.error out" uid="e3_sv" uid_parent="e3"/>
+        <Tunnel _id="Out1" inputs="value:e3_sv.error out" uid="e3_o1" uid_parent="e3"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Right Buttons&quot;\3A Value Change " uid="e4" uid_parent="es">
+        <Tunnel _id="In1" outputs="value:e4_q.value" uid="e4_q" uid_parent="e4"/>
+        <Tunnel _id="In2" outputs="value:e4_e.value" uid="e4_e" uid_parent="e4"/>
+        <Tunnel _id="In3" outputs="value:e4_c.value" uid="e4_c" uid_parent="e4"/>
+        <Control _name="Right Buttons" outputs="value:rb.value" type="cluster{bool.Func Button,bool.Func Button 2,bool.Func Button 3}" value="[false,false,false]" description="Function buttons on the right of the screen." uid="rb" uid_parent="e4"/>
+        <Call target="Get Pressed Button Index.vi" inputs="buttons:rb.value,error in:e4_e.value" outputs="index:e4_gp.index,error out:e4_gp.error out" uid="e4_gp" uid_parent="e4"/>
+        <Constant outputs="value:e4_z.value" type="int32" value="0" uid="e4_z" uid_parent="e4"/>
+        <Node _name="Greater Or Equal?" inputs="x:e4_gp.index,y:e4_z.value" outputs="x &gt;= y?:e4_ge.x &gt;= y?" uid="e4_ge" uid_parent="e4"/>
+        <Structure _name="Case Structure" selectin="e4_ge.x &gt;= y?" uid="e4_cs" uid_parent="e4">
+          <Tunnel _id="In1" inputs="value:e4_q.value" uid="e4_cs_i1" uid_parent="e4_cs"/>
+          <Tunnel _id="In2" inputs="value:e4_gp.index" uid="e4_cs_i2" uid_parent="e4_cs"/>
+          <Tunnel _id="In3" inputs="value:e4_gp.error out" uid="e4_cs_i3" uid_parent="e4_cs"/>
+          <CaseFrame selector="True" selectout="" uid="e4_t" uid_parent="e4_cs">
+            <Tunnel _id="In1" outputs="value:e4_t_q.value" uid="e4_t_q" uid_parent="e4_t"/>
+            <Tunnel _id="In2" outputs="value:e4_t_i.value" uid="e4_t_i" uid_parent="e4_t"/>
+            <Tunnel _id="In3" outputs="value:e4_t_e.value" uid="e4_t_e" uid_parent="e4_t"/>
+            <Constant outputs="value:e4_fmt.value" type="string" value="Right %d" uid="e4_fmt" uid_parent="e4_t"/>
+            <Node _name="Format Into String" inputs="initial string:,error in:e4_t_e.value,input 1:e4_t_i.value,format string:e4_fmt.value" outputs="resulting string:e4_fs.resulting string,error out:e4_fs.error out" uid="e4_fs" uid_parent="e4_t"/>
+            <Node _name="Enqueue Element" inputs="queue:e4_t_q.value,element:e4_fs.resulting string,timeout in ms (-1):,error in (no error):e4_fs.error out" outputs="queue out:,timed out?:,error out:e4_enq.error out" uid="e4_enq" uid_parent="e4_t"/>
+            <Tunnel _id="Out1" inputs="value:e4_enq.error out" uid="e4_t_o" uid_parent="e4_t"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="e4_f" uid_parent="e4_cs">
+            <Tunnel _id="In1" outputs="value:" uid="e4_f_q" uid_parent="e4_f"/>
+            <Tunnel _id="In2" outputs="value:" uid="e4_f_i" uid_parent="e4_f"/>
+            <Tunnel _id="In3" outputs="value:e4_f_e.value" uid="e4_f_e" uid_parent="e4_f"/>
+            <Tunnel _id="Out1" inputs="value:e4_f_e.value" uid="e4_f_o" uid_parent="e4_f"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:e4_cs.o1" uid="e4_cs_o1" uid_parent="e4_cs"/>
+        </Structure>
+        <Constant _name="Right Buttons label" outputs="value:e4_lbl.value" type="string" value="Right Buttons" uid="e4_lbl" uid_parent="e4"/>
+        <Constant _name="buttons released" outputs="value:e4_rst.value" type="cluster{bool.Func Button,bool.Func Button 2,bool.Func Button 3}" value="[false,false,false]" uid="e4_rst" uid_parent="e4"/>
+        <Call target="Set Control Value.vi" inputs="controls:e4_c.value,label:e4_lbl.value,value:e4_rst.value,error in:e4_cs.o1" outputs="error out:e4_sv.error out" uid="e4_sv" uid_parent="e4"/>
+        <Tunnel _id="Out1" inputs="value:e4_sv.error out" uid="e4_o1" uid_parent="e4"/>
+      </CaseFrame>
+
+      <Tunnel _id="Out1" cond="true" outputs="value:es.o1" uid="es_o1" uid_parent="es"/>
+    </Structure>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:es.o1" outputs="status:pub.status" uid="pub" uid_parent="pl"/>
+    <Condition inputs="value:pub.status" uid="pl_cond" uid_parent="pl" value="stop"/>
+  </Structure>
+
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:psr_r.value" outputs="code:pcode.code" uid="pcode" uid_parent="root"/>
+  <Constant _name="queue released code" outputs="value:k_1122.value" type="int32" value="1122" uid="k_1122" uid_parent="root"/>
+  <Node _name="Equal?" inputs="x:pcode.code,y:k_1122.value" outputs="x = y?:peq2.x = y?" uid="peq2" uid_parent="root"/>
+  <Constant _name="no error" outputs="value:k_noerr.value" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" uid="k_noerr" uid_parent="root"/>
+  <Node _name="Select" inputs="t:k_noerr.value,s:peq2.x = y?,f:psr_r.value" outputs="s? t\3Af:pfilt.s? t\3Af" uid="pfilt" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:wk.error out,error in:pfilt.s? t\3Af" outputs="error out:me.error out" uid="me" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:me.error out" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" conIdx="15" connection="recommended" description="error in, or the first error from either loop; the shutdown's invalid-queue error is removed." uid="o_err" uid_parent="root"/>
+</VI>

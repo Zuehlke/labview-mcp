@@ -98,12 +98,22 @@ internal sealed class BulkTools(LvaiConnection connection)
             """)]
         int? panePattern = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description("""
+            Render the generated block diagram and report its size under `diagramSize`, with the
+            longest dependency chain read off the AIXML. On by default: the rule is a diagram of
+            about 1920 x 1080, and three agent builds in a row shipped main VIs 3306-4152 px wide
+            while every other check was green. An over-budget diagram does not fail the call - the
+            VI is written - but the answer says so and names the chain to fold into a subVI.
+            Costs one render, 90-320 ms measured.
+            """)]
+        bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
             var aixml = new AixmlTools(connection);
+            var sourceAixml = aiXmlFilePath;
 
             // A .vim TARGET IS REFUSED BEFORE ANYTHING IS WRITTEN. ConvertAIXMLToVI accepts one
             // and produces a BROKEN malleable VI while this tool reports ok: true with
@@ -156,6 +166,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "top-level diagram instead of inside the structure you named, and reports " +
                         "nothing anywhere - which is why setting it to root here would hide the " +
                         "fault rather than fix it. Name the structure's real uid. " +
+                        "`uidParentContradictsNesting` is its converse: an element written INSIDE " +
+                        "a structure whose uid_parent names something else lands inside it anyway. " +
                         "lvai_convert_aixml_to_vi still generates it if you want LabVIEW's own " +
                         "behaviour.");
                 }
@@ -187,16 +199,19 @@ internal sealed class BulkTools(LvaiConnection connection)
             using var throwaway = unresolved is null
                 ? null
                 : ValidationScratch.Create(aiXmlFilePath, preserveName: false,
-                                           prefix: "LVMCP Convert");
+                                           prefix: "LVMCP Convert", unique: true);
+
+            // THE TARGET FOLDER IS CREATED ON EVERY ROUTE. ConvertAIXMLToVI does not create it and
+            // answers Error 7 at Save:Instrument - and this was done only on the loaded-subVI route
+            // until 2026-09-25, so an ordinary generation into a new folder failed with a note about
+            // 1357 and 1051 that sends the reader hunting a memory conflict for a missing folder.
+            // On the loaded route it matters more still: there a Save-time failure with a project
+            // active leaves a path-less VI that makes the project unclosable (1019).
+            if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
+                Directory.CreateDirectory(folder);
+
             if (unresolved is not null)
             {
-                // A SAVE-TIME FAILURE IS THE EXPENSIVE ONE on this route: with a project active it
-                // leaves a path-less VI in the project's instance, and the next project save then
-                // answers Error 1019, so the project cannot be closed. A missing folder is the one
-                // save failure that can be ruled out for free.
-                if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
-                    Directory.CreateDirectory(folder);
-
                 steps.Add(new JsonObject
                 {
                     ["step"] = "loadedSubVIs",
@@ -216,7 +231,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
                 return Outcome(false, "convert", steps, total, viPath, null, routeNote,
-                    Route(unresolved, null));
+                    Route(unresolved, null, Resolution(ErrorCode(convert), Field(convert, "errorMessage"))));
             if (Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     // A DROPPED RPC CAN LEAVE THE FILE BEHIND, and then the pane is a trap rather
@@ -244,8 +259,13 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "name\": something else carries the VI's internal name, and the commonest " +
                     "source is YOUR OWN LAST FAILED VALIDATION of the same _name - measured, " +
                     "twice in a row on the same document. Generate under a fresh name; the old " +
-                    "one stays poisoned until LabVIEW restarts.",
-                    unresolved is null ? null : Route(unresolved, null));
+                    "one stays poisoned until LabVIEW restarts. THE OTHER MEASURED SOURCE is a " +
+                    "same-named VI from ANOTHER FOLDER still in memory - an earlier build of the " +
+                    "same application, 2026-09-25 - and then a bare-name Call to that name links " +
+                    "to the OTHER folder's file without any error: do not generate callers until " +
+                    "LabVIEW has been restarted, and grep their link paths afterwards.",
+                    unresolved is null ? null
+                        : Route(unresolved, null, Resolution(ErrorCode(convert), Field(convert, "errorMessage"))));
 
             // EXECUTABILITY STANDS IN FOR THE VALIDATION THAT COULD NOT LOOK. ValidateAIXML
             // type-checks every Call's wiring and could not do that for the calls it could not
@@ -270,9 +290,19 @@ internal sealed class BulkTools(LvaiConnection connection)
                     ["linkerErrors"] = reading?.LinkerErrors,
                 });
                 route = Route(unresolved,
-                    reading is null or { CouldNotOpen: true } ? null : !reading.Broken);
+                    reading is null or { CouldNotOpen: true } ? null : !reading.Broken, resolved: true);
 
+                // THE SIZE IS MEASURED HERE TOO, because this is the ROUTINE outcome for a class
+                // method and for any caller whose class seed is still a path: both are broken until
+                // a later step repairs them, and the diagram is already final. Returning before the
+                // size step skipped the measurement on exactly the VIs it was built for - found by
+                // the sixth ATM build on 2026-09-26, whose class method came back with no size.
                 if (reading is { Broken: true })
+                {
+                    var brokenSize = measureDiagram
+                        ? await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct)
+                        : null;
+                    if (brokenSize is not null) steps.Add(brokenSize);
                     return Outcome(false, "execState", steps, total, viPath, null,
                         "THE VI WAS WRITTEN, and LabVIEW cannot run it. Validation was skipped " +
                         "because it could not resolve these Call targets: " +
@@ -280,7 +310,9 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "and the converter wrote something it would have refused. Compare each " +
                         "Call's wire TYPES against lvai_vi_terminals on its target (a misspelt " +
                         "terminal NAME does not get this far - the converter refuses it with " +
-                        "Error 1), and read linkerErrors in the execState step.", route);
+                        "Error 1), and read linkerErrors in the execState step." +
+                        (brokenSize?["note"]?.GetValue<string>() ?? ""), route, brokenSize);
+                }
             }
 
             // The pattern repair goes BEFORE the measurement, so what gets reported is the pane
@@ -301,11 +333,21 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "executable. Read the panePattern step.", route);
             }
 
+            // THE SIZE, after any pane repair (a render loads the VI, and a pylabview rebuild
+            // after that would write under LabVIEW's loaded copy) and before the pane measurement.
+            JsonObject? size = null;
+            if (measureDiagram)
+            {
+                size = await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct);
+                steps.Add(size);
+            }
+            var sizeNote = size?["note"]?.GetValue<string>() ?? "";
+
             if (!measurePane)
                 return Outcome(true, null, steps, total, viPath, null,
                     "Generated. The connector pane was NOT measured because measurePane was " +
                     "false, so nothing here says the terminals are on the right edges." +
-                    RouteNote(route), route);
+                    RouteNote(route) + sizeNote, route, size);
 
             var verdict = await new PaneTools(connection).MeasureViAsync(
                 viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
@@ -323,19 +365,44 @@ internal sealed class BulkTools(LvaiConnection connection)
                 return Outcome(true, null, steps, total, viPath, verdict,
                     "Generated, but the pane could not be measured - so this answer does NOT " +
                     "confirm the terminals are placed correctly. Call lvai_connector_pane " +
-                    "yourself to find out why." + RouteNote(route), route);
+                    "yourself to find out why." + RouteNote(route) + sizeNote, route, size);
 
             return verdict.Clean
                 ? Outcome(true, null, steps, total, viPath, verdict,
                     "Generated, and the connector pane follows NI's style guide." +
-                    RouteNote(route), route)
+                    RouteNote(route) + sizeNote, route, size)
                 : Outcome(false, "connectorPane", steps, total, viPath, verdict,
                     "THE VI WAS WRITTEN - generation succeeded. What failed is the connector " +
                     "pane: the terminals are not on the edges NI's style guide puts them on. The " +
                     "corrected conIdx values are in the connectorPane step; write them into the " +
                     "AIXML and call this again. Nothing else about the VI has to change." +
-                    RouteNote(route), route);
+                    RouteNote(route) + sizeNote, route, size);
         });
+
+    /// <summary>
+    /// The `diagramSize` step: one render of the written VI plus the longest chain of its AIXML.
+    /// Shared with lvai_generate_vi_with_events, which builds the main VIs that ran largest.
+    /// </summary>
+    internal async Task<JsonObject> DiagramSizeStepAsync(string aixmlPath, string viPath,
+                                                         int timeoutSeconds, CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+        DiagramSize.ChainResult? chain = null;
+        try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        var (measured, png) = await (MeasureDiagram?.Invoke(viPath, timeoutSeconds, ct)
+            ?? new RenderTools(connection).TopLevelSizeAsync(viPath, timeoutSeconds, ct));
+        var step = DiagramSize.Step(measured, chain);
+        step["png"] = png;
+        step["elapsedMs"] = watch.ElapsedMilliseconds;
+        return step;
+    }
+
+    /// <summary>Test seam for the render behind `diagramSize`; null in production.</summary>
+    internal Func<string, int, CancellationToken, Task<((int Width, int Height)? Size, string? Png)>>? MeasureDiagram
+    {
+        get; init;
+    }
 
     /// <summary>
     /// Test seam for the loaded-subVI route's executability check. Null in production, where the
@@ -345,6 +412,22 @@ internal sealed class BulkTools(LvaiConnection connection)
     internal Func<string, int, CancellationToken, Task<ExecStateReading?>>? ReadExecState
     {
         get; init;
+    }
+
+    /// <summary>
+    /// Every <c>Unsupported SubVI:</c> target in a validate refusal, whatever else it lists -
+    /// the list lvai_generate_vi_with_events names when ConvertAIXMLToVI's Error 53 names nothing.
+    /// </summary>
+    internal static IReadOnlyList<string> UnsupportedSubVIs(string? message)
+    {
+        const string prefix = "Unsupported SubVI:";
+        if (string.IsNullOrEmpty(message)) return [];
+        return [.. message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
+                                              StringSplitOptions.TrimEntries)
+                          .Where(l => l.StartsWith(prefix, StringComparison.Ordinal))
+                          .Select(l => l[prefix.Length..].Trim())
+                          .Where(n => n.Length > 0)
+                          .Distinct(StringComparer.Ordinal)];
     }
 
     /// <summary>
@@ -426,13 +509,44 @@ internal sealed class BulkTools(LvaiConnection connection)
         return null;
     }
 
-    /// <summary>The top-level summary of a generation that took the loaded-subVI route.</summary>
-    private static JsonObject Route(IReadOnlyList<string> unresolved, bool? executable) => new()
+    /// <summary>
+    /// The top-level summary of a generation that took the loaded-subVI route. The targets are
+    /// the ones validation could not resolve, and the KEY says what conversion made of them:
+    /// <c>resolvedAtConversion</c> when it wrote the VI (or failed past resolving them),
+    /// <c>notResolvedAtConversion</c> on the not-loaded Error 53, and <c>unresolvedAtValidate</c>
+    /// when the failure says nothing either way.
+    ///
+    /// THIS WAS ALWAYS <c>resolvedAtConversion</c> until 2026-09-25, so an Error 53 answer listed
+    /// under "resolved" the very VIs whose not being loaded was the failure - while the note beside
+    /// it said "NOT LOADED". Found on the fourth ATM cold build; a field that contradicts the
+    /// sentence next to it is read by whoever trusts the field.
+    /// </summary>
+    private static JsonObject Route(IReadOnlyList<string> unresolved, bool? executable,
+                                    bool? resolved) => new()
     {
         ["route"] = "loadedSubVIs",
-        ["resolvedAtConversion"] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
+        [resolved switch
+        {
+            true => "resolvedAtConversion",
+            false => "notResolvedAtConversion",
+            null => "unresolvedAtValidate",
+        }] = new JsonArray([.. unresolved.Select(n => (JsonNode)n)]),
         ["executable"] = executable,
     };
+
+    /// <summary>
+    /// Whether a FAILED conversion got past resolving the Call targets, read the way
+    /// <see cref="RouteFailure"/> reads it: the not-loaded Error 53 did not; a generator Error 1
+    /// or a Save-time failure did; anything else is not known.
+    /// </summary>
+    internal static bool? Resolution(int? code, string? message)
+    {
+        var atSave = message?.Contains("Save:Instrument", StringComparison.Ordinal) == true;
+        var generator = message?.Contains("VI generator.vi", StringComparison.Ordinal) == true;
+        if (code == 53 && !atSave) return false;
+        if (atSave || (code == 1 && generator)) return true;
+        return null;
+    }
 
     private static string RouteNote(JsonObject? route) => route is null
         ? ""
@@ -465,7 +579,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string viPath, PaneTools.PaneVerdict? pane, string note,
-                                  JsonObject? route = null)
+                                  JsonObject? route = null, JsonObject? size = null)
     {
         total.Stop();
         var result = new JsonObject
@@ -486,6 +600,16 @@ internal sealed class BulkTools(LvaiConnection connection)
             result["paneViolations"] = pane.Violations;
             result["paneWarnings"] = pane.Warnings;
         }
+        // Top level as well, because it is a verdict a reader should not have to dig for: the
+        // size rule held for weeks only in prose, and a number inside `steps` is read by nobody.
+        if (size is not null)
+            result["diagramSize"] = new JsonObject
+            {
+                ["width"] = size["width"]?.DeepClone(),
+                ["height"] = size["height"]?.DeepClone(),
+                ["withinBudget"] = size["withinBudget"]?.DeepClone(),
+                ["longestChainStages"] = size["longestChainStages"]?.DeepClone(),
+            };
         result["steps"] = steps;
         // Wall clock for the whole sequence, against the per-step elapsedMs inside `steps`. The
         // difference between them is this server's own overhead, which is the only way to tell a
@@ -504,7 +628,10 @@ internal sealed class BulkTools(LvaiConnection connection)
                    Title = "Generate several VIs from AIXML in one call")]
     [Description("""
         MUTATING: several AIXML files through the whole lvai_generate_vi sequence - validate,
-        convert, measure the pane - in ONE call, applied in the order given.
+        convert, measure the pane - in ONE call, applied in the order given, EXCEPT that entries
+        with a `panePattern` run after the ones without: a pane repair closes the project, which
+        unloads the callees of everything after it (measured 2026-09-26, Error 53). `results` is
+        in the order given, and `ranLast` names what moved.
         USE IT FOR BOILERPLATE SETS, which is where it pays: the socket VIs a class unit test needs
         are one per test slot and fully determined by the subject's pane. Measured 2026-08-29 over a
         three-class hierarchy, generating them one at a time cost 34 calls of lvai_generate_vi for
@@ -541,21 +668,38 @@ internal sealed class BulkTools(LvaiConnection connection)
             catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
 
             var total = Stopwatch.StartNew();
-            var results = new JsonArray();
+            var answers = new JsonNode?[requests.Count];
             int generated = 0, failed = 0, removed = 0;
 
-            foreach (var request in requests)
+            // A PANE REPAIR CLOSES THE PROJECT, AND EVERY ENTRY AFTER IT LOSES ITS LOADED CALLEES.
+            // `panePattern` is a pylabview rebuild, which closes the active project first - and a
+            // closed project is an UNLOADED one, so a later entry calling project code by name
+            // answered Error 53. Measured 2026-09-26 in the sixth ATM build: one pattern entry
+            // early in a batch cost a reopen and a second batch. So the entries WITHOUT a pattern
+            // run first and the pattern entries last, each group in the order given; `results`
+            // stays in the order asked for. Nothing is lost by it: generating a VI does not load
+            // it, so a later entry could never have called an earlier one without an open anyway.
+            var order = Enumerable.Range(0, requests.Count)
+                .OrderBy(i => requests[i].PanePattern is null ? 0 : 1)
+                .ToList();
+            var movedLast = order.Where((original, position) => original != position)
+                .Where(i => requests[i].PanePattern is not null)
+                .Select(i => (JsonNode?)JsonValue.Create(requests[i].Vi))
+                .ToArray();
+
+            foreach (var index in order)
             {
+                var request = requests[index];
                 if (!File.Exists(request.Aixml))
                 {
                     failed++;
-                    results.Add(new JsonObject
+                    answers[index] = new JsonObject
                     {
                         ["vi"] = request.Vi,
                         ["aixml"] = request.Aixml,
                         ["ok"] = false,
                         ["note"] = $"No AIXML at '{request.Aixml}', so this VI was not attempted.",
-                    });
+                    };
                     continue;
                 }
 
@@ -584,14 +728,21 @@ internal sealed class BulkTools(LvaiConnection connection)
                                                     or UnauthorizedAccessException) { }
                 }
 
-                results.Add(new JsonObject
+                answers[index] = new JsonObject
                 {
                     ["vi"] = request.Vi,
                     ["aixml"] = wrote && !keepAixml ? null : request.Aixml,
                     ["ok"] = wrote,
                     ["answer"] = parsed,
-                });
+                };
             }
+
+            var reordered = movedLast.Length > 0
+                ? $" {movedLast.Length} entr{(movedLast.Length == 1 ? "y" : "ies")} with a " +
+                  "panePattern ran LAST (named under `ranLast`), because a pane repair closes " +
+                  "the project and would unload the callees of every entry after it; `results` " +
+                  "is in the order you gave."
+                : "";
 
             return Json.Document(new JsonObject
             {
@@ -600,15 +751,17 @@ internal sealed class BulkTools(LvaiConnection connection)
                 ["generated"] = generated,
                 ["failed"] = failed,
                 ["aixmlDeleted"] = removed,
-                ["results"] = results,
+                ["ranLast"] = movedLast.Length > 0 ? new JsonArray(movedLast) : null,
+                ["results"] = new JsonArray(answers),
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = failed == 0
-                    ? $"{generated} VI(s) generated in order. " + (keepAixml
+                    ? $"{generated} VI(s) generated{(movedLast.Length == 0 ? " in order" : "")}. " + (keepAixml
                         ? "The AIXML sources were kept."
-                        : $"{removed} AIXML source(s) deleted - the .vi is the artefact.")
+                        : $"{removed} AIXML source(s) deleted - the .vi is the artefact.") +
+                      reordered
                     : $"{failed} of {requests.Count} did NOT generate; their AIXML was kept and is " +
                       "named in `results`. Each entry carries the same answer lvai_generate_vi " +
-                      "would have given, so read that rather than this summary.",
+                      "would have given, so read that rather than this summary." + reordered,
             });
         });
 

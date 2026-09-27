@@ -117,6 +117,23 @@ a FAILED convert burns the caller's `_name` (`1051` on the next convert, the sam
 validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
 VI there that makes the project unclosable (`1019`) until it is saved to a path.
 
+**AND A SAME-NAMED VI FROM AN EARLIER BUILD, STILL IN MEMORY, CAPTURES THE CALL IN SILENCE -
+measured 2026-09-25.** On an instance that had run the previous ATM build, a bare-name `Call` to
+`Read Accounts File.vi` with NOTHING opened validated `errorCode 0`, converted, ran, and linked to the
+PREVIOUS build's file; the tell was `Error 1051` at `Save:Instrument` on a path that had never
+existed. A LabVIEW restart released it. So restart LabVIEW between two builds of the same
+application, and `grep -a` a generated caller's link paths. `docs/aixml-call-loaded-vi.md` §3.
+
+**AND EVERY VALIDATION LEAVES A SCRATCH VI IN MEMORY THAT NOTHING CAN CLOSE - so there is ONE
+validation name now, not one per call.** The user's exit dialog of 2026-09-26 listed 54 unsaved
+`LVMCP Validate <hash>.vi`. By name they are in NONE of the instances VI Server reaches (helpers',
+IDE main over TCP, active project), with positive controls, and the converter's `1051` does not see
+them either - so they cannot be closed afterwards. `ValidationScratch` hands every validation
+`LVMCP Validate.vi`; a validation under a reused name answers exactly as a fresh one, measured, and
+conversion keeps a unique name because a failed convert burns its own. Whether the exit dialog
+shrinks to one entry needs one LabVIEW exit to confirm; "Don't Save - All" there is always safe.
+`docs/scratch-vis-in-memory.md`.
+
 **`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
 it (`lvai_generate_vis`, the test generators, the class tools). A validate refusal naming ONLY
 `Unsupported SubVI` lines is converted anyway — under a throwaway `_name`, so a refusal burns
@@ -480,11 +497,19 @@ named control what it is (`Class Name`), and converts first. Values still go IN 
 
 **The measurement that keeps it to four cases: a DBL and an I32 control BOTH answer `Digital`, and
 `Ctrl Val.Set` COERCES** — an I32 control fed a DBL variant read back `42`. So there is one numeric
-case, not one per representation. **ARRAY AND CLUSTER CONTROLS ARE STILL UNREACHABLE** and fail
-loudly rather than silently: `Error 91` from `Control Value:Set`, with the target not run. A control
-name matching nothing on the panel is `Error 1055` from the helper's own property node, also before
-the run — **and `errorCode` on the answer is `RunVIAsTopLevel`'s, which reads 0 for both**, so read
-`helperFailed` / `helperErrorCode` instead. `lvai_run_for_ms.vi`, the `runForMs` helper, has NOT had
+case, not one per representation. A control name matching nothing on the panel is `Error 1055`
+from the helper's own property node, before the run — **and `errorCode` on the answer is
+`RunVIAsTopLevel`'s, which reads 0 for it**, so read `helperFailed` / `helperErrorCode` instead.
+
+**ENUM, RING, ARRAY AND CLUSTER CONTROLS ARE SETTABLE SINCE 2026-09-25 — this clause said "ARRAY AND
+CLUSTER CONTROLS ARE STILL UNREACHABLE" and agents built harness VIs around it.** An enum takes an
+item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns — because
+`Unflatten From XML` with a Variant as its `type` yields a variant carrying its own type. Two traps,
+both measured: a name-else-number fallback turns a TYPO into item 0 (so unmatched text now goes in as
+a string and `Ctrl Val.Set` refuses it, `Error 91`), and `Unflatten From XML` decodes NO character
+reference, so a line break inside a string member is refused rather than sent as `&#10;`.
+`lvai_set_constant` takes an array or cluster the same way, as the AIXML literal.
+`docs/vi-server-reference.md`, `docs/cold-build-atm-agents-3.md`. `lvai_run_for_ms.vi`, the `runForMs` helper, has NOT had
 the typed setter and is still string-only; the answer says so when inputs are passed with `runForMs`.
 
 This clause used to say "write the result to a file and inspect that". That worked, and it cost
@@ -578,6 +603,11 @@ call with **no argument** reads it and prints the four `conIdx` values to write.
 the AIXML with those numbers, generate — then call with `viPath` to confirm what you actually got.
 For an **existing** VI only `viPath` is honest: it carries whatever pane it was given, on whatever
 machine, possibly rotated.
+
+**UNLESS THE AIXML NAMES A `conIdx` THE DEFAULT PATTERN DOES NOT HAVE - then the generator picks a
+larger one by itself.** Measured 2026-09-25: five outputs need conIdx up to 19, and the VI came out
+on **4834** (6x2x2x2x2x6) with no pylabview step and no project close. Author such a pane against
+`lvai_connector_pane pattern=4834`. `docs/aixml-reference.md` §2.
 
 It answers three ways: no argument for the station default plus all 36 patterns, `viPath` to measure
 and review one VI, `pattern` for one pattern's map without LabVIEW. **32 of the 36 have measured
@@ -683,6 +713,15 @@ wrong part of the VI. This qualifies §2's "document order carries no meaning": 
 probe, and false for `FreeLabel`. `lvai_check_aixml` does NOT catch it — the uid exists, so
 nothing dangles.
 
+**AND THE CONVERSE HOLDS FOR EVERY ELEMENT: WRITTEN INSIDE A STRUCTURE, IT LANDS INSIDE, whatever
+`uid_parent` says.** Measured 2026-09-25 as a clean A/B after the fourth ATM cold build shipped an
+eBad main VI this way: a seed constant nested in a While Loop with `uid_parent="root"` made the
+loop a cycle, and the same constant at top level converted clean. So the nesting decides in both
+directions. `lvai_check_aixml` answers `uidParentContradictsNesting` as an ERROR now, and
+`lvai_generate_vi_with_events` - which never validates - runs that check before it converts;
+`scripts/aixml_lint.py` had caught it as `parent-mismatch` all along, while its message claimed
+LabVIEW followed `uid_parent`. `docs/cold-build-atm-agents-4.md` §2.
+
 **But `auto` is a PREFERENCE, not a verdict, since the placer started maximising clearance.** The
 preferred side is worth about 6 px of clearance in the score, so the other one wins wherever the
 preferred is cramped — measured 2026-09-08, a comment anchored to two accessor calls came out
@@ -737,7 +776,52 @@ twice" rule with a number on it.
 **A BLOCK DIAGRAM STAYS AROUND 1920 x 1080, AND A REPEATED OPERATION BECOMES ONE GENERIC SUBVI.**
 The user's standing rule of 2026-09-16, given three times over one build and sharpened each time.
 Diagrams have been coming out too large; factor cohesive groups out rather than spreading them
-across the caller. The size is a GUIDELINE, not a gate.
+across the caller.
+
+**AND SINCE 2026-09-25 IT IS A MEASURED BUDGET, NOT A GUIDELINE - the user's correction after the
+rule held only in prose.** Rendered that day, the ATM main VI of three consecutive agent builds came
+out **3306, 3456 and 4152 px wide**, its state machine 2116, 2963 and 2012, and not one answer in
+any of those builds said so. So the size is measured where it is made: `lvai_generate_vi` and
+`lvai_generate_vi_with_events` render the result (90-460 ms) and answer `diagramSize` with the
+top-level diagram in px and `withinBudget` against 1920 x 1080; `lvai_check_aixml` answers
+`diagramChain` BEFORE anything is generated - the longest dependency chain in stages, budget 10,
+with the elements along it. **An over-budget VI is not done**: the call still answers `ok` because
+the VI is written and valid, and the agent definitions treat `withinBudget: false` as a reason to
+fold and regenerate. Calibration and procedure in `docs/diagram-size.md`.
+
+**A PRODUCER/CONSUMER THAT PASSES EVERY CHECK CAN STILL NOT WORK - found by the user 2026-09-26
+on the seventh ATM build, and nothing in the toolchain saw it.** The consumer read `User Input`
+as a control terminal beside its `Dequeue Element`. A terminal has no inputs, so LabVIEW reads it
+when the iteration STARTS, before the dequeue returns: `Enter` verified the text from BEFORE the
+user typed, and the menus never filled. Validation, `execState 1`, 58 Caraya tests - which hand
+the handler its input directly - and a `runForMs` start-up snapshot were all green. Three rules
+came out of it:
+
+- **A value the consumer needs travels WITH the command**, read in the producer's event frame
+  (`Enter=23456`, or a cluster element). `lvai_check_aixml` answers `controlReadBeforeWait` and
+  `scripts/aixml_lint.py` `control-read-before-wait` for the shape - a WARNING, because over 739 NI
+  exports it fires on 5, all a setting polled once per iteration on purpose (`Stop`, a delay).
+- **An event-driven VI is verified by DRIVING an event**: `lvai_run_vi_and_read_values` with
+  `runForMs` and `signalsJson`, which fires each control's Value Change through
+  `Value (Signaling)` before the snapshot. A start-up snapshot proves start-up. A LATCHED boolean
+  cannot be signalled (`Error 1193`), so what it triggers stays with the handler's unit test.
+- **Typing counts as activity** where a spec has an inactivity timeout: register the string
+  control's own `Value Change` and write `Update While Typing?` = TRUE at start-up - the catalogue
+  lists it as read-only and it is writable at run time, measured through an implicit property node.
+
+**Drive a UI VI through `signalsJson`, not through a probe of your own.** Four hand-built probes
+lost their reference to the running target within 300 ms (`Error 1026`, then `1055` on its control
+references), the target reading `Execution:State` 2 just before - run through the default helper and through
+`lvai_run_vi_as_top_level` alike - and a copy of `lvai_run_for_ms.xml` with the signal step added
+did not. The discriminator is not established. `docs/cold-build-atm-agents-7.md`.
+
+**A GENERATED TEST VI HAS THE SAME BUDGET - measured 2026-09-26, when the sixth ATM build's
+thirteen-case method test came out 4345 x 4084 px with every answer green.** The test generators had
+been exempted as "internal"; they measure their test VI now and answer `diagramSize`. About 310 px
+of height per case, so plan about THREE cases per test VI and list them all in one runner. And
+`lvai_generate_vi` measures on `failedAtStep: execState` too, which is the ROUTINE outcome for a class
+method or a caller whose class seed is still a path - it returned before the size step there, so the
+VIs the budget matters most for came back unmeasured.
 
 **The worked example is the one to copy.** Six `Property Node`s writing `Disabled`, one per
 front-panel object, chained across the middle of a loop, became one call taking a group of controls
@@ -763,11 +847,14 @@ structure for the day the creation route is settled.
 **WIDTH FOLLOWS THE LONGEST DEPENDENCY CHAIN; HEIGHT FOLLOWS WHAT SITS IN PARALLEL.** Measured over
 three rounds on one main VI: pulling ten parallel nodes into subVIs took the height from 1094 to
 880 px and moved the width by 23 px. Then replacing ONE call with two sequential ones put 131 px of
-width straight back. So **factoring parallel work is what the size rule can buy**; width only comes
-down by making the chain SHORTER, which means merging sequential subVIs back together - the opposite
-of the rule. Put that trade to the caller rather than optimising it silently, and note that AIXML
-carries no coordinates, so a long pipeline cannot be wrapped onto a second row the way a developer
-would. `docs/cold-build-atm-cld.md` section 11.
+width straight back. So **factoring parallel work buys height**, and width only comes down by making
+the chain SHORTER. **That is done by folding a SEQUENTIAL stretch of the chain into ONE new subVI** -
+one call where four stages were. This paragraph used to call that "merging sequential subVIs back
+together - the opposite of the rule", and it is not the opposite: it is the same rule one level up,
+a hierarchy instead of a flat caller. The chain is also calibrated now: one stage renders about
+145-185 px on the big diagrams (25 stages 4152 px, 12 stages 2012), so 1920 px is 11-12 stages.
+AIXML carries no coordinates, so a long pipeline cannot be wrapped onto a second row - only
+shortened. `docs/cold-build-atm-cld.md` section 11, `docs/diagram-size.md`.
 
 **AND A REGENERATION COSTS THE WHOLE SWAP CYCLE, so do not regenerate for a comment.** Rewriting a
 generated subVI from AIXML puts its placeholder sockets back and destroys its icon - measured on a
@@ -1554,6 +1641,13 @@ produced ten subVIs in about **11 minutes of wall clock against about 32 minutes
 time**, with no project contention at all — and the swaps then cost two calls, because a socket
 that appears on N nodes needs N calls whatever N is.
 
+**AND AN EMPTY FOLDER IN A `.lvproj` IS WRITTEN SELF-CLOSING - the listing step missed that form
+until 2026-09-26 and added a SECOND same-named folder, and two same-named sibling folders are
+`Error 74` on open, measured as an A/B.** Twice in the eighth ATM build (`SubVIs`, then `Tests`
+through a test generator). Fixed: the empty form is reused, and `lvai_open_file` refuses duplicate
+sibling folders by name (`duplicateProjectFolders`). Write a minimal project with no empty folders;
+the tools create one when they need it. `docs/cold-build-atm-agents-8.md`.
+
 **AND THE ORCHESTRATOR LISTS VIs WITH `lvai_add_vis_to_project`, NEVER BY HAND.** Measured
 2026-09-25 on the agent-driven ATM build: an agent's close saved the project while three helper VIs
 were loaded, LabVIEW listed them at target level, and a hand-written edit then listed the same three
@@ -1655,7 +1749,10 @@ the names it removed — and `swept: false` plus the reason when it was given no
 that is silent when skipped is one the reader assumes ran. **What it cannot reach it says outright**:
 a VI adopted from a directory OUTSIDE every one of our trees stays, since nothing distinguishes it
 from one the user shares from a sibling folder on purpose, and a rule wide enough to catch it would
-delete those. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
+delete those. **The one exception is the user's `%TEMP%`, since 2026-09-26**: a VI there is swept
+even while its file exists, unless the project itself lives under `%TEMP%` - the sixth ATM build's
+close-save listed four probe VIs from the session scratchpad, which is under `%TEMP%` and none of
+our named trees, and no real project keeps code in a temp directory. Same distinction as the `[Executing: …]` tag on a DWarn — **the step where damage is
 noticed is not the step that caused it.** `docs/cold-build-weighbridge.md` §3a, §4, §8.
 
 **"THE CLOSE IS THE ONLY PLACE A SWEEP CAN SEE THEM" IS TOO NARROW - `Save All This Library.vi`
@@ -2429,13 +2526,16 @@ literally it argued away 600 usable palette VIs.
 | How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
 | What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
 | Can a NESTED typedef cluster in a class be built with no pyLabVIEW, and does AIXML have a typedef constant? | `docs/cold-build-typedef-gdevcon.md` | — |
+| Can a generated test call other VIs FIRST - a write before a read? How do I break an ARRAY expectation for a negative control? | `docs/cold-build-atm-agents-3.md` | `lvai_generate_test` `setup` (direct route; every expectation is labelled `expected <n>` and listed in `expectedConstants`), then `lvai_set_constant` with the AIXML literal |
+| How do I load SEVERAL callees before a direct Call, and which ones does an `Error 53` want? | `docs/cold-build-atm-agents-3.md` | `lvai_open_file` `viPaths`; `lvai_generate_vi_with_events` names them under `unsupportedSubVIs` |
 | How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
 | Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
 | How do I repoint many subVI nodes or class constants? | `docs/labview-unit-testing.md` §3d | `lvai_swap_subvis` |
-| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7 | `lvai_set_constant` — by label, numeric/boolean/string/enum, verified from a fresh export |
+| How do I change ONE constant of an existing VI - a negative control, say - without regenerating it? | `docs/cold-build-typedef-gdevcon.md` §7, `docs/cold-build-atm-agents-4.md` §5 | `lvai_set_constant` — by label, numeric/boolean/string/enum, an array or cluster as the AIXML literal, a string with line breaks; verified from a fresh export |
+| Why do the cases of one generated test fail by turns, and how does a METHOD test reset a fixture first? | `docs/cold-build-atm-agents-4.md` §3, §4 | the cases of one test VI RUN IN PARALLEL - `lvai_generate_test` and `lvai_generate_method_test` refuse a fixture path a setup writes in one case and another case uses; both take `setup` |
 | How do I generate several VIs from AIXML at once? | `docs/bulk-operations.md` | `lvai_generate_vis` |
 | Why did a tool call fail with no detail? | `docs/tool-argument-errors.md` | — |
 | WHICH RELEASE is this install, and do the plugin and the zip differ? | `docs/release-versioning.md` | `LabVIEWMCP --version`, `lvai_status`/`pylv_status` (`serverVersion`), `scripts/Compare-Installs.ps1` |
@@ -2450,7 +2550,7 @@ literally it argued away 600 usable palette VIs.
 | How do I unit-test generated code? | `docs/labview-unit-testing.md` | `lvai_generate_test` |
 | How does a GENERATED VI call my own code? | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi` |
 | Can a `Call` reach my own code DIRECTLY, if it is open in LabVIEW? | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` — open the target (or one member of its class) with `lvai_open_file` first; it converts past the `Unsupported SubVI` refusal and gates on executability. `lvai_validate_aixml` alone always refuses it. Plain VIs and class members measured; a `.ctl` is not accepted |
-| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`; `lvai_describe_class` reads each field's DEFAULT back |
+| How do I create a `.lvclass` and its private data? | `docs/lvclass-creation.md` | `lvai_create_class` — a TYPEDEF field in the same call with `typedefFieldsJson`, placed with `typedef.<name>` in `fields`; `lvai_describe_class` reads each field's DEFAULT, each member's dispatch and the typedefs on each member's pane back |
 | How do I create an INTERFACE and script its methods? | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_create_class`'s `parentInterfaces`, `lvai_add_class_method` |
 | What does a class inherit from, and who may call what? | `docs/lvclass-creation.md`, `docs/lvlib-lvclass-structure.md` | `lvai_describe_class` |
 | How do I add a FIELD to a class that ALREADY has members? | `docs/lvclass-creation.md` §9 | `lvai_add_class_field` — `lvai_create_class` only CREATES and its `overwrite` drops every member, so this looked unreachable and cost a method written to take a value and NOT store it. It is the SAME provider on the same route, and it APPENDS — measured on a fixture with accessors before it was run for real |
@@ -2459,13 +2559,17 @@ literally it argued away 600 usable palette VIs.
 | Is this `.ctl` a typedef, and what does it wrap? | `docs/class-method-tooling.md` §1a | `lvai_describe_ctl` |
 | How do I bind typedefs onto a class's private data fields? | `docs/class-method-tooling.md` §3b | `lvai_bind_class_fields` |
 | How do I bind a TYPEDEF onto a class's private data field? | `scripts/lvpdc_README.md`, `docs/vi-server-reference.md` | `scripts/lvpdc_*.xml` |
-| Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` |
+| Why does my generated call have COERCION DOTS? | `docs/typedef-constants.md` | `lvai_coercion_dots`, `lvai_bind_typedef_constants` — a dot on a VARIANT input is `intoVariant` and not a finding |
 | A coercion dot whose source is a CONTROL, not a constant | `docs/typedef-disconnect.md` §13a | `lvai_bind_pane_typedef` — `lvai_bind_typedef_constants` finds its target by CONSTANT label and cannot reach a pane control. Needs the owning `.lvclass`, and gates `ok` on the SAVED FILE |
 | How do I CREATE a typedef `.ctl`, with typedefs inside a cluster? | `docs/cold-build-typedef-gdevcon.md` | `lvai_create_typedef` — VI Server alone, verified from the saved file. Create inner typedefs first; `elementTypedefsJson` binds the cluster's elements in one run |
 | NI's accessor wizard answers `Error 1061` on a typedef field | `docs/typedef-disconnect.md` §13 | `lvai_resave_ctl` — a flag-patched `.ctl` still carries the generator's connector pane; `lvai_describe_ctl` flags it as `needsLabviewSave` with `wrappedType: Function` |
 | How do I FIX a connector pane without regenerating? | `docs/connector-pane-repair.md`, `docs/connector-pane-typecodes.tsv` | `scripts/pylv-conpane.py` |
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
+| How do I check that an event-driven VI REACTS, not just that it starts? | `docs/cold-build-atm-agents-7.md` | `lvai_run_vi_and_read_values` `runForMs` + `signalsJson` |
+| Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
+| Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, and can they be closed? | `docs/scratch-vis-in-memory.md` | — safe to discard; one fixed validation name since 2026-09-26 |
+| Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

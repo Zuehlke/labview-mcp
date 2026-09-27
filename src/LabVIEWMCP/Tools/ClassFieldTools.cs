@@ -182,7 +182,7 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
 
             var carrier = await new BulkTools(connection).GenerateViAsync(
                 carrierAixml, carrierVi, openVI: false, measurePane: false,
-                timeoutSeconds: timeoutSeconds, ct: ct);
+                timeoutSeconds: timeoutSeconds, ct: ct, measureDiagram: false);
             steps.Add(new JsonObject { ["step"] = "carrier", ["answer"] = Read(carrier) });
             if (!File.Exists(carrierVi))
                 return Json.Error("carrierNotGenerated",

@@ -265,7 +265,18 @@ internal static class LvClass
     /// comma because that is what the AIXML cluster grammar uses, which also means a field NAME
     /// cannot contain one - said here rather than discovered from a malformed type string.
     /// </summary>
-    public static List<Field> ParseFields(string? spec)
+    public static List<Field> ParseFields(string? spec) => ParseFields(spec, allowTypedefMarkers: false);
+
+    /// <summary>The type a <c>typedef.&lt;name&gt;</c> position marker parses to.</summary>
+    public const string TypedefMarker = "typedef";
+
+    /// <summary>
+    /// As above; with <paramref name="allowTypedefMarkers"/> a <c>typedef.&lt;name&gt;</c> entry is
+    /// accepted as a POSITION marker for a field whose .ctl lvai_create_class's typedefFieldsJson
+    /// names. Before 2026-09-25 a typedef field could not be placed at all - it was appended after
+    /// every scalar, so `Config, Gain` came out as Gain 0, Config 1.
+    /// </summary>
+    public static List<Field> ParseFields(string? spec, bool allowTypedefMarkers)
     {
         var fields = new List<Field>();
         if (string.IsNullOrWhiteSpace(spec)) return fields;
@@ -296,6 +307,17 @@ internal static class LvClass
                     throw new ArgumentException($"'{entry}' has a default but no field name.");
                 if (DefaultProblem(type, fieldDefault) is { } problem)
                     throw new ArgumentException($"'{entry}': {problem}");
+            }
+
+            if (allowTypedefMarkers && type == TypedefMarker)
+            {
+                if (fieldDefault is not null)
+                    throw new ArgumentException(
+                        $"'{entry}': a typedef field takes its default from the .ctl, not from here.");
+                if (fields.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)))
+                    throw new ArgumentException($"'{name}' appears twice.");
+                fields.Add(new Field(TypedefMarker, name));
+                continue;
             }
 
             if (!Literals.ContainsKey(type))
@@ -1090,6 +1112,30 @@ internal static class LvClass
         catch (System.Xml.XmlException) { return []; }
     }
 
+    /// <summary>
+    /// Every folder that has a same-named SIBLING folder, as (name, line of the second one). Two
+    /// such folders make LabVIEW refuse the project with Error 74 - measured 2026-09-26 as an A/B.
+    /// Empty when the file cannot be read, so a bad read never blocks an open.
+    /// </summary>
+    public static IReadOnlyList<(string Name, int Line)> DuplicateSiblingFolders(string projectPath)
+    {
+        try
+        {
+            var root = XDocument.Load(projectPath, LoadOptions.SetLineInfo).Root;
+            if (root is null) return [];
+            return [.. root.DescendantsAndSelf()
+                .SelectMany(parent => parent.Elements("Item")
+                    .Where(i => (string?)i.Attribute("Type") == "Folder")
+                    .GroupBy(i => (string?)i.Attribute("Name") ?? "", StringComparer.Ordinal)
+                    .Where(g => g.Count() > 1)
+                    .SelectMany(g => g.Skip(1)))
+                .Select(i => ((string?)i.Attribute("Name") ?? "", ((System.Xml.IXmlLineInfo)i).LineNumber))];
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+        catch (System.Xml.XmlException) { return []; }
+    }
+
     public static int AddVisToProject(string projectPath, string folderName,
                                       IReadOnlyList<(string Name, string Url)> vis)
     {
@@ -1119,6 +1165,25 @@ internal static class LvClass
         var folderOpen = $"<Item Name=\"{Xml(folderName)}\" Type=\"Folder\">";
         var folderIndex = lines.FindIndex(l => l.TrimStart().StartsWith(folderOpen,
                                                                        StringComparison.Ordinal));
+
+        // AN EMPTY FOLDER IS WRITTEN SELF-CLOSING, and it is the SAME folder. Measured 2026-09-26 on
+        // the eighth ATM build: a hand-written minimal .lvproj carried `<Item Name="SubVIs"
+        // Type="Folder"/>`, this method looked only for the open tag, added a second `SubVIs` folder
+        // beside it - and LabVIEW answered Error 74 ("Memory or data structure corrupt") on the next
+        // open. Two same-named sibling folders are what 74 means here, measured as an A/B. So the
+        // empty form is expanded in place into an open and a close tag, and the VIs go inside it.
+        if (folderIndex < 0)
+        {
+            var folderEmpty = $"<Item Name=\"{Xml(folderName)}\" Type=\"Folder\"/>";
+            var emptyIndex = lines.FindIndex(l => l.Trim() == folderEmpty);
+            if (emptyIndex >= 0)
+            {
+                var emptyIndent = Indent(lines[emptyIndex]);
+                lines[emptyIndex] = $"{emptyIndent}{folderOpen}";
+                lines.Insert(emptyIndex + 1, $"{emptyIndent}</Item>");
+                folderIndex = emptyIndex;
+            }
+        }
 
         int at;
         string indent;

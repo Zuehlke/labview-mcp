@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -588,8 +588,28 @@ happens, and say what the old text claimed.
 
 ## Diagram size and cohesion — a standing user rule
 
-**Keep the block diagram around 1920 x 1080**, a guideline and not a gate, and **factor cohesive
-groups into subVIs** instead of spreading them across the caller.
+**THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's
+rule, restated 2026-09-25 after three agent builds in a row shipped the ATM main VI at 3306, 3456
+and 4152 px wide with every other check green. A rule nobody measured was advice; it is a budget
+now, with two numbers and a fixed procedure:
+
+1. **Before generating**, `lvai_check_aixml` answers `diagramChain`: the longest dependency chain in
+   STAGES (a Node or a Call is one stage, a structure is one plus the longest chain inside it) and
+   the elements along it. **The budget is 10 stages** - one stage renders about 145-185 px, so 10
+   leaves room for long constants and labels. Over budget: restructure BEFORE you generate.
+2. **After generating**, `lvai_generate_vi` and `lvai_generate_vi_with_events` answer `diagramSize`
+   - the RENDERED top-level diagram in px - which is the verdict. **`withinBudget: false` means the
+   VI is not done**: fold a stretch of `longestChain` into a new subVI, regenerate, and read
+   `diagramSize` again. Only when a contract genuinely forbids it may a VI stay over, and then your
+   report gives the measured size and the reason.
+3. **Plan the hierarchy up front.** A caller that orchestrates more than about eight steps is two
+   levels, not one: group consecutive steps that belong together (initialise the panel, update the
+   display, run a transaction) into a subVI each, and let the top level call those.
+4. **A generated TEST VI has the same budget.** `lvai_generate_test`, `lvai_generate_class_test`,
+   `lvai_generate_method_test` and the Caraya runner answer `diagramSize` for the test VI they
+   wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
+   method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
+   per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
 
 **A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
 only in which control they point at is the canonical case: one call taking the group and one value
@@ -606,9 +626,12 @@ documentation that renaming a control silently drops it out of its group.
 
 **Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
 sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
-unmoved. Getting the width down means merging sequential subVIs, which is the opposite of this rule:
-report that trade rather than taking it silently. AIXML carries no coordinates, so a long pipeline
-cannot be wrapped onto a second row.
+unmoved. **So width comes down by folding a SEQUENTIAL stretch of the chain into ONE new subVI**: a
+subVI that performs four consecutive stages puts one call where four were, and the caller's chain is
+three stages shorter. This paragraph used to read "getting the width down means merging sequential
+subVIs, the opposite of this rule" - it is not the opposite, it is the same rule one level up: the
+new subVI is the merge. Pulling out PARALLEL groups buys height. AIXML carries no coordinates, so a
+long pipeline cannot be wrapped onto a second row - only shortened.
 
 **Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
 sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a
