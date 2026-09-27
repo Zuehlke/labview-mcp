@@ -347,17 +347,25 @@ public class ClassToolsTidyTests
     [Fact]
     public void A_VI_under_temp_is_swept_from_a_project_that_does_not_live_there()
     {
-        var scratch = Path.Combine(Path.GetTempPath(), "claude-scratch-" + Guid.NewGuid().ToString("N"));
+        // The temp root is INJECTED, and the whole layout lives in one directory of our own. The
+        // control used to be the repo's CLAUDE.md against the real %TEMP%, which held only while
+        // the checkout was not itself under %TEMP% - a clone in a scratchpad swept it too and
+        // answered 2 instead of 1, and the v1.8.2 release run failed on this test.
+        var root = Path.Combine(Path.GetTempPath(), "lvmcp-temp-" + Guid.NewGuid().ToString("N"));
+        var fakeTemp = Path.Combine(root, "temp");
+        var work = Path.Combine(root, "work");
+        var scratch = Path.Combine(fakeTemp, "claude-scratch");
         Directory.CreateDirectory(scratch);
+        Directory.CreateDirectory(work);
         var probe = Path.Combine(scratch, "Probe ATM Panel.vi");
         File.WriteAllText(probe, "a probe");
         try
         {
-            // a project NOT under %TEMP% - it need not exist, the URL resolves against its path
-            var project = Path.Combine(Path.GetPathRoot(scratch)!, "NotTemp-" + Guid.NewGuid().ToString("N"),
-                                       "ATM.lvproj");
-            // THE CONTROL: an existing VI outside %TEMP% must survive the same pass
-            var kept = Path.Combine(RepoTree.Root, "CLAUDE.md");
+            // a project NOT under the temp root - it need not exist, the URL resolves against its path
+            var project = Path.Combine(work, "ATM", "ATM.lvproj");
+            // THE CONTROL: an existing VI outside the temp root must survive the same pass
+            var kept = Path.Combine(work, "Real.vi");
+            File.WriteAllText(kept, "a real VI");
             string Url(string target) => Path.GetRelativePath(project, target).Replace('\\', '/');
             var xml = $"""
                 <?xml version='1.0' encoding='UTF-8'?>
@@ -369,7 +377,7 @@ public class ClassToolsTidyTests
                 </Project>
                 """;
 
-            var (text, removed, names) = ClassTools.StripHelperItems(xml, project);
+            var (text, removed, names) = ClassTools.StripHelperItems(xml, project, tempRoot: fakeTemp);
 
             Assert.Equal(1, removed);
             Assert.Contains(names, n => n.Contains("Probe ATM Panel.vi") && n.Contains("%TEMP%"));
@@ -377,7 +385,7 @@ public class ClassToolsTidyTests
             Assert.Contains("Real.vi", text);
             Assert.True(File.Exists(probe));   // the entry goes, the file is not ours to delete
         }
-        finally { Directory.Delete(scratch, recursive: true); }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
