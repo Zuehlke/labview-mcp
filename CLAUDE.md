@@ -4,6 +4,30 @@ Rules that came out of building this server, written down so they survive a new 
 fresh session. They are not style preferences — each one is here because ignoring it cost real
 work.
 
+## Agents first
+
+**LabVIEW work is DELEGATED to the matching `labview-*` agent, not done in the main session.**
+The user's standing rule of 2026-09-27. Work directly only when the user asks for it in that
+session.
+
+| Request | Agent |
+|---|---|
+| a new VI | `labview-vi-generator` |
+| change an existing VI | `labview-vi-editor` |
+| a class, class hierarchy or interface | `labview-class-generator` |
+| unit tests (default framework) | `labview-caraya-unit-test` |
+| LUnit / VI Tester tests, only when named | `labview-lunit-unit-test` / `labview-vitester-unit-test` |
+| documentation | `labview-doc-generator` |
+| a DQMH module or event | `labview-dqmh-module` |
+
+The reason is what the agent definitions carry: a session working directly never reads them, and
+a rule that lives only there is invisible to it — twelve German comments and sixteen German
+descriptions shipped exactly that way (see "Everything you write INTO a VI is English"). Relay an
+agent's `NEEDS CLARIFICATION` block to the user verbatim and continue THAT agent via
+`SendMessage`; never answer it on the user's behalf. Parallel agents share one LabVIEW, so the
+project-open/close and swap rules under "ONE AGENT, ONE OUTPUT DIRECTORY" apply to every
+multi-agent task.
+
 ## Generating LabVIEW code
 
 **First decide what kind of thing you are looking for.** This routing question comes before any
