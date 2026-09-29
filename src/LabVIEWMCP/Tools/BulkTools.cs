@@ -94,7 +94,10 @@ internal sealed class BulkTools(LvaiConnection connection)
             Applied after generation by the same pylabview step as
             pylv_apply {"op":"conpane"}, so it moves NO terminal and no caller has to change; it
             also closes the active project first, because a rebuild under a loaded VI writes the
-            file while LabVIEW keeps serving its stale copy.
+            file while LabVIEW keeps serving its stale copy. The VI comes back SOURCE-ONLY: its
+            compiled code is stripped so LabVIEW recompiles it, because the stale copy of that code
+            was measured running the old VI (wrong result, no error) and reported crashing 64-bit
+            LabVIEW. docs/pylabview-stale-compiled-code.md.
             """)]
         int? panePattern = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
@@ -871,6 +874,13 @@ internal sealed class BulkTools(LvaiConnection connection)
         2026-08-24 on one VI pair: 0 VICD blocks generated, ran and wrote its files; 3 VICD blocks
         returned 1039 "VI was aborted" and then wedged LabVIEW into a restart. Hence closeProject
         defaults to true and runs FIRST.
+        AND EVERY EDIT STRIPS THE COMPILED CODE before the rebuild (`stripCompiled` step), marking
+        the VI source-only so LabVIEW recompiles it from the diagram on load. Closing the project
+        is not enough: a VI CONVERTED while its callees were loaded already carries VICD when it
+        is written. Measured 2026-09-29: a conpane-only edit on such a VI ran and returned 0 where
+        the unedited VI returns 8 - error out clean, execState 1 - and a 64-bit user saw the same
+        route crash LabVIEW. The rebuilt file is then checked for a VICD block, and one left
+        behind fails the call.
         Needs no running LabVIEW for the pylabview half. closeProject and verify do; when LabVIEW
         is unreachable both are reported as skipped, with why - an unreachable LabVIEW cannot be
         holding the VI in memory either, so skipping the close is safe rather than silent.
@@ -991,12 +1001,39 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "before this one have been applied to it.");
             }
 
+            // 3c. THE STRIP, after every edit and never optional. A VI converted while its
+            //     callees are loaded carries COMPILED CODE (VICD and friends), and pylabview
+            //     copies it through unparsed - so after any heap edit it describes the VI as it
+            //     was BEFORE the edit, and LabVIEW runs that. Measured 2026-09-29 on a crash
+            //     report: a conpane-only change 4833 -> 4834 gave result 0 where the unedited VI
+            //     gives 8, error out clean, execState 1, and LabVIEW's own log reading "was
+            //     trying to execute when it had not been compiled correctly". The same file with
+            //     this strip gave 8. A reporter on 64-bit LabVIEW saw it as a hard crash.
+            var strip = await RunScriptAsync(bundle, scripts, "pylv-strip-compiled.py",
+                [directory, Path.GetFileNameWithoutExtension(mainXml)], "stripCompiled",
+                timeoutSeconds, ct);
+            steps.Add(strip);
+            if (strip["exitCode"]?.GetValue<int>() != 0)
+                return PyOutcome(false, "stripCompiled", steps, total, viPath, directory, true,
+                    "The edits applied but stripping the compiled code failed, so the rebuild was " +
+                    "NOT run: a rebuild without it writes a VI whose compiled code describes the " +
+                    "diagram before the edit. The .vi on disk is untouched; the bundle is kept.");
+
             // 4. rebuild
             var rebuild = await new PyLabviewTools(connection).RebuildAsync(mainXml, viPath, timeoutSeconds, ct: ct);
             steps.Add(Step("rebuild", rebuild));
             if (!Succeeded(rebuild))
                 return PyOutcome(false, "rebuild", steps, total, viPath, directory, true,
                     "The edits applied but the rebuild failed. The bundle is kept.");
+
+            // Ask the FILE, not the session: execState and a run both read LabVIEW's view, and
+            // both were green over the stale compiled code this step exists to remove.
+            if (ContainsCompiledCode(viPath))
+                return PyOutcome(false, "stripCompiled", steps, total, viPath, directory, true,
+                    "The rebuilt file STILL carries compiled code (a VICD block), so LabVIEW may " +
+                    "run the VI as it was before the edit - measured as a silently wrong result " +
+                    "on 32-bit and reported as a crash on 64-bit. Do not use this VI; the bundle " +
+                    "is kept.");
 
             // 5. verify - the third gate pylv_rebuild names and cannot check
             JsonObject? verifyStep = null;
@@ -1149,6 +1186,18 @@ internal sealed class BulkTools(LvaiConnection connection)
                              "usual cause and it never mentions linking."
                            : "");
         return step;
+    }
+
+    /// <summary>
+    /// Whether a saved .vi still carries compiled code. The resource map names each block by its
+    /// four-character type, so a VICD block leaves the ASCII bytes <c>VICD</c> in the file. Measured
+    /// 2026-09-29: present in a VI converted while its callee was loaded, absent after
+    /// pylv-strip-compiled.py and in a VI converted with nothing loaded.
+    /// </summary>
+    internal static bool ContainsCompiledCode(string viPath)
+    {
+        if (!File.Exists(viPath)) return false;
+        return File.ReadAllBytes(viPath).AsSpan().IndexOf("VICD"u8) >= 0;
     }
 
     private static string PyOutcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,

@@ -2206,6 +2206,16 @@ heap edits differed. So the order is: **close the project → extract → edit �
 LabVIEW load it.** A regeneration hitting `Error 1357` is a reason to close the project, never a
 reason to open it.
 
+**AND CLOSING THE PROJECT IS NOT ENOUGH WHEN THE VI WAS CONVERTED WITH ITS CALLEES LOADED — the
+file already carries `VICD` the moment it is written, so `pylv_apply` STRIPS THE COMPILED CODE on
+every edit since 2026-09-29.** Found from a user's crash report blaming a Flat Sequence; reproduced
+as a 2x2 A/B here, and the Flat Sequence was not the variable: a `panePattern` rebuild alone gave
+`result 0` where the unedited VI gives `8`, with `error out` clean, `execState 1` and every answer
+`ok`, while LabVIEW's log read `was trying to execute when it had not been compiled correctly`. On
+the user's 64-bit LabVIEW the same route CRASHED. The strip makes the VI source-only, and the saved
+file is checked for a leftover `VICD` afterwards, because no session-level reading saw this.
+`docs/pylabview-stale-compiled-code.md`.
+
 **Not every working measurement becomes a tool.** A repeatable operation on the user's own LabVIEW
 code gets productised — helper file under `scripts/`, an `lvai_*` tool, tests, docs, on its own
 branch. A one-shot investigation of NI's internals gets written down instead: `lvai_inventory.xml`
@@ -2567,6 +2577,7 @@ literally it argued away 600 usable palette VIs.
 | Is what is PUBLISHED actually the workflow's artefact? | `docs/release-versioning.md` §2a, §2b | `scripts/Assert-PublishedRelease.ps1` |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
+| A pylabview-edited VI returns a WRONG result with no error, or crashes 64-bit LabVIEW | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` strips the compiled code since 2026-09-29; grep the file for `VICD` |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | Where does a session's time actually go, and what should we build next? | `docs/workflow-economics.md` | — |

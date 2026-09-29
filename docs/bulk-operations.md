@@ -102,7 +102,15 @@ pylv_apply { viPath, operationsJson?, closeProject?, verify?, bundleDirectory?, 
 ```
 
 Closes the active project, extracts the VI with pylabview, runs the operations in the order given,
-rebuilds, and AIXML-exports the result so LabVIEW gets a vote. The bundle is an implementation
+**strips the compiled code** (`stripCompiled`), rebuilds, checks the saved file for a leftover
+`VICD` block, and AIXML-exports the result so LabVIEW gets a vote.
+
+**The strip is not optional and has no switch.** A VI converted while its callees were loaded
+carries compiled code, and pylabview copies it through unparsed — so after any edit LabVIEW runs the
+VI as it was BEFORE the edit. Measured 2026-09-29 on a `conpane`-only change: result `0` where the
+unedited VI gives `8`, `error out` clean, `execState 1`; a 64-bit user saw the same route crash
+LabVIEW. The VI comes back source-only and LabVIEW recompiles it on load.
+`pylabview-stale-compiled-code.md` has the whole measurement. The bundle is an implementation
 detail: deleted on success, **kept and named on failure**, so a failed operation leaves something to
 look at.
 
