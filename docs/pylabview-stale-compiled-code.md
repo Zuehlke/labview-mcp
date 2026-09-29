@@ -63,8 +63,23 @@ that no longer matches the diagram.
 `PyApplyCompiledCodeTests` runs a `conpane` edit through `pylv_apply` with the real pylabview bundle
 and asserts no `VICD` remains. **With the strip removed the test fails** — the negative control was
 run, and the file check itself answered `failedAtStep: stripCompiled`, so both layers catch it
-independently. Not yet re-run against a live LabVIEW through the rebuilt server: the client has to
-be restarted first.
+independently.
+
+**Accepted against a live LabVIEW the same evening**, after a client and LabVIEW restart, through
+the rebuilt server (its DLL checked for the new strings, the server process started after the
+build). The same two arms through `lvai_generate_vi` with `panePattern: 4834` and the callee open,
+each run from a fresh byte-identical copy, beside the OLD unfixed files as the control in the
+same LabVIEW instance:
+
+| file | `stripCompiled` step | `VICD` in file | result | LabVIEW log |
+|---|---|---|---|---|
+| B, Flat Sequence, fixed | `dropped: VICD, GCDI, NUID, SUID, BNID` | no | **8** | silent |
+| D, no Flat Sequence, fixed | same | no | **8** | silent |
+| B, Flat Sequence, from before the fix | — | yes | **0** | `had not been compiled correctly` |
+| D, no Flat Sequence, from before the fix | — | yes | **0** | `had not been compiled correctly` |
+
+The fixed file shrank from 11 312 to 9 064 bytes. The fixed B was then opened in the IDE and both
+fixed VIs rendered; the only two DWarn events in the log are the two control files'.
 
 ## Observations along the way, not investigated
 
@@ -72,7 +87,11 @@ be restarted first.
   answered `Error 53, Unsupported SubVI: Repro Callee.vi` as `CLAUDE.md` describes; arms B, C and
   D — same callee, same open project, run afterwards — validated with `errorCode 0`. `CLAUDE.md`
   says the validator "refuses the same document in every arm". What changed between A and B is
-  that a caller linking the callee was now in memory; not tested further.
+  that a caller linking the callee was now in memory; not tested further. **It did NOT recur in the
+  acceptance run**: there both generations were refused with `Error 53` at validation, the second
+  one included. One difference between the runs: in the first, arm A's caller had been opened in the
+  IDE with `lvai_open_file` before the later arms; in the acceptance run nothing was opened before
+  both generations had finished. Whether that is the discriminator is not established.
 - **Not every converted VI carries compiled code.** The callee, converted with NO project open and
   nothing loaded, has no `VICD`; every caller converted with the callee loaded has it.
   `pylv-strip-compiled.py`'s header says `ConvertAIXMLToVI` writes compiled code itself, from a
