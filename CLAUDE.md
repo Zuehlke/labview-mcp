@@ -1091,8 +1091,20 @@ VI whose EXISTING FRONT PANEL must survive cannot be edited at all.** Layout, de
 control styling and the icon are re-decided by LabVIEW every time. Where that panel is the point —
 a customer's supplied panel, an exam template, anything with artwork — **say so and let the user
 choose the route**; do not go hunting for a way in, and do not quietly regenerate and list the loss
-afterwards. The only other doors are VI Server diagram scripting (unmeasured here) and a rebuild of
-the panel, and both are the user's call, not yours.
+afterwards. The only other doors are VI Server diagram scripting and a rebuild of the panel, and
+both are the user's call, not yours.
+
+**THE SCRIPTING DOOR IS MEASURED NOW, AND IT OPENS - 2026-09-30, on the Car Wash exam template.**
+This paragraph said "(unmeasured here)" until then. A generated SCAFFOLD's diagram goes into a copy
+of the supplied VI through `{LV.TopLevelDiagram}` `Select All` / `Copy Selection` / `Paste`; each
+pasted duplicate control (`Start 2`, ...) is then swapped for the supplied one - its terminal
+`Move`d into place, the duplicate deleted, the recorded `{LV.Wire}` `Terminals[]` ends reconnected
+with `Connect Wire` - and `{LV.VI}` `BD.Remove Bad Wires` clears the loose ends the deletes leave,
+without which the VI is eBad. Result: `execState 1`, every panel terminal feeding the sink it fed in
+the scaffold, typedef bindings kept, the first state running correctly, and a front panel render
+**byte-identical** to the untouched template, for about 0.6 s of LabVIEW. It is a PROBE, not a tool
+yet: terminal positions land offset by the loop's diagram origin, pairing by the `" 2"` suffix is
+fragile, and it uses the system clipboard. `docs/keep-supplied-front-panel.md`.
 
 **There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
 The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
@@ -1578,8 +1590,11 @@ closing note is right for the case it was written for and silently wrong for thi
 does not assert one repair any more: it returns `repairs`, both of them, with the question that picks
 between them. **Branching it automatically was NOT built, and the reason is a hazard rather than
 effort** — telling the two apart means reading the coerced terminal's `Connected Wire` and then the
-wire's source, and there is no `{LV.Wire}` in the VI Server catalogue at all. Authoring a helper
-against an uncatalogued class is the measured signature that preceded three LabVIEW deaths.
+wire's source. This paragraph said "there is no `{LV.Wire}` in the VI Server catalogue at all", and
+**that is false** - `lvai_vi_server_reference cls=LV.Wire` answers 23 methods and 27 properties,
+`Terminals[]` among them, and `scripts/lvai_wire_dyn_events.xml` has read it since 2026-09-11
+(corrected 2026-09-30, `docs/keep-supplied-front-panel.md`). So the stated hazard does not apply
+and the branching is buildable; it simply has not been built.
 
 **AND `Save.Instrument` ALONE DOES NOT COMMIT A `Replace` ON A PLAIN VI EITHER — this file has said
 it of a class MEMBER since 2026-09-02 and the limit is wider.** Measured 2026-09-18 on a throwaway VI
@@ -2529,6 +2544,7 @@ literally it argued away 600 usable palette VIs.
 | How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
 | How does the handler READ the user event's PAYLOAD? | `scripts/aixml-skeletons/user-event-two-loops.md`, `experiments/pylabview/event-data-fields/` (source tree only) | `lvai_set_event_data_fields` — third call of the route; author a labelled placeholder constant into a PRIM input first, and field index 4 is the first payload item |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
+| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | — probe helpers in `experiments/panel-graft/` (source tree only); not a tool yet |
 | How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |

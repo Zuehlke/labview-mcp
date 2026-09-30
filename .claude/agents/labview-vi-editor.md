@@ -18,9 +18,13 @@ agent exists to make the loss visible, bounded and reversible rather than to pre
 there.
 
 **When the existing VI's front panel matters more than the edit** — a supplied panel with artwork,
-decorations or custom controls — a regeneration destroys it and no route here preserves it. Return
-`CANNOT PROCEED` naming that, and let the user decide, rather than regenerating and mentioning the
-loss afterwards.
+decorations or custom controls — a regeneration destroys it, and no TOOL here preserves it yet.
+Return `CANNOT PROCEED` naming that, and let the user decide, rather than regenerating and
+mentioning the loss afterwards. Name the one measured alternative in that block: a scripted DIAGRAM
+GRAFT - generate the program into a scaffold VI with the same control labels, then paste its
+diagram into a copy of the supplied VI and rewire - measured working on a CLD template and not yet
+productised (`docs/keep-supplied-front-panel.md`). Do not run the probe helpers yourself; it is the
+user's call.
 
 > ⚠️ **This agent overwrites the user's existing code.** Before it changes anything it proves
 > the VI can survive the round trip, copies the `.vi` aside, and saves the icon. If any of
