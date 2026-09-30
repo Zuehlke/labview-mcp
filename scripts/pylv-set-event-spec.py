@@ -148,6 +148,15 @@ def main(bundle, base, diagram_idx, control, label=None):
 
     es = s.index('class="eventStruct"')
     en = s.index('<EventNodeEvents', es)
+    # An Event Structure whose every static event was bound to a DELETED control has NO spec
+    # left, and pylabview then writes the list self-closing: <EventNodeEvents elements="0" />.
+    # Measured 2026-09-30 after lvai_graft_diagram deleted a scaffold's pasted duplicates. Open
+    # it into a pair so the append path below has a closing tag to insert before.
+    empty = re.compile(r'<EventNodeEvents elements="0"\s*/>').match(s, en)
+    if empty:
+        outer = s[s.rindex('\n', 0, en) + 1:en]
+        s = (s[:en] + '<EventNodeEvents elements="0">\n' + outer + '  </EventNodeEvents>'
+             + s[empty.end():])
     end = s.index('</EventNodeEvents>', en)
 
     # find the EventSpec whose diagramIdx matches
@@ -174,8 +183,9 @@ def main(bundle, base, diagram_idx, control, label=None):
         # has to be cloned, because the frame is already there.
         proto = re.search(r'( *)<SL__arrayElement class="EventSpec">.*?</SL__arrayElement>',
                           s[en:end], re.S)
-        assert proto, "no EventSpec to use as a shape"
-        ind = proto.group(1)
+        # No spec left to copy the indentation from (the emptied list above): indent one step
+        # inside the EventNodeEvents element, which is where every spec sits.
+        ind = proto.group(1) if proto else s[s.rindex('\n', 0, en) + 1:en] + '  '
         rows = [u'<SL__arrayElement class="EventSpec">',
                 u'  <diagramIdx>%s</diagramIdx>' % diagram_idx,
                 u'  <source>0</source>',

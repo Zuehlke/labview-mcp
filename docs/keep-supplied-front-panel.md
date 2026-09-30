@@ -248,6 +248,15 @@ Measured the same day on the Car Wash template with a scaffold that echoes the s
 put the new indicator ABOVE the existing layout, growing the panel upwards, in the default style;
 every supplied object stayed where it was.
 
+### 6c. Event Structures - the graft re-registers them
+
+A static front-panel event is bound to the control it was registered on, and the swap deletes
+the pasted duplicates - so a producer loop came back with every frame's selector EMPTY and the VI
+eBad (measured 2026-09-30). The graft now writes the scaffold's front-panel specs again after the
+swap, by control LABEL, onto the supplied controls, and answers `events`; `pylv-set-event-spec.py`
+learned to open the emptied `<EventNodeEvents elements="0" />`. It CLOSES the project for that
+pylabview edit and leaves it closed. User-event frames are not touched. `docs/cold-build-carwash-pc.md`.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or

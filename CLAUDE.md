@@ -2580,6 +2580,7 @@ literally it argued away 600 usable palette VIs.
 | How do user events, an Event Structure and a class behind an interface build together, and can a class method call its own accessors without a stub? | `docs/cold-build-sensor-monitor-events.md` | — |
 | What does an agent-driven PRODUCER/CONSUMER build with a class cost, and what did it find? | `docs/cold-build-atm-agents-pc.md` | — |
 | What does a cold CLD build into a SUPPLIED panel cost, and where did the time go? | `docs/cold-build-carwash-graft.md` | `lvai_graft_diagram` |
+| Does the graft carry an EVENT STRUCTURE and a NEW control, and what did a producer/consumer build cost? | `docs/cold-build-carwash-pc.md` | `lvai_graft_diagram` (`events`, `allowNewControls`) |
 | Can a NESTED typedef cluster in a class be built with no pyLabVIEW, and does AIXML have a typedef constant? | `docs/cold-build-typedef-gdevcon.md` | — |
 | Can a generated test call other VIs FIRST - a write before a read? How do I break an ARRAY expectation for a negative control? | `docs/cold-build-atm-agents-3.md` | `lvai_generate_test` `setup` (direct route; every expectation is labelled `expected <n>` and listed in `expectedConstants`), then `lvai_set_constant` with the AIXML literal |
 | How do I load SEVERAL callees before a direct Call, and which ones does an `Error 53` want? | `docs/cold-build-atm-agents-3.md` | `lvai_open_file` `viPaths`; `lvai_generate_vi_with_events` names them under `unsupportedSubVIs` |

@@ -185,6 +185,26 @@ internal sealed class GraftTools(LvaiConnection connection)
             if (rewireCode != 0)
                 return HelperFailed("rewire", rewireCode, rewireValues, output, swaps);
 
+            // ---- 5b. put the EVENT registrations back. A static front-panel event is bound to the
+            //      control it was registered on, and the swap deleted the duplicates it was bound
+            //      to - measured 2026-09-30 on a producer loop: every frame came back with an EMPTY
+            //      selector and the VI was eBad. The spec writer resolves a control by LABEL, so
+            //      writing the scaffold's specs again lands them on the SUPPLIED controls.
+            var events = await ReregisterEventsAsync(Path.Combine(work, "scaffold.xml"), output,
+                                                     work, timeoutSeconds, ct);
+            if (events?["ok"]?.GetValue<bool>() == false)
+                return Json.Document(new JsonObject
+                {
+                    ["ok"] = false,
+                    ["errorKind"] = "eventReregistrationFailed",
+                    ["error"] = "The diagram was grafted but its Event Structure's registrations " +
+                                "could not be written back onto the supplied controls, so the VI " +
+                                "is not executable. outputViPath holds the attempt.",
+                    ["outputViPath"] = output,
+                    ["swaps"] = swaps,
+                    ["events"] = events,
+                });
+
             // ---- 6. the verdict, from the file
             var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
                 output, timeoutSeconds: timeoutSeconds, ct: ct));
@@ -226,6 +246,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["typedefsKept"] = typedefs.Kept,
                 ["panelIdentical"] = panelIdentical,
                 ["diagramChanged"] = diagramChanged,
+                ["events"] = events,
                 ["note"] = ok
                     ? (plan.New.Count > 0
                         ? $"Grafted, with {plan.New.Count} NEW control(s) added where LabVIEW put them " +
@@ -543,6 +564,80 @@ internal sealed class GraftTools(LvaiConnection connection)
     }
 
     // ------------------------------------------------------------------ plumbing
+
+    /// <summary>
+    /// Writes the scaffold's front-panel event specs again onto the grafted VI, or null when the
+    /// scaffold has no Event Structure. The same chain lvai_generate_vi_with_events runs after its
+    /// convert - strip the compiled code, one spec per frame, rebuild - preceded by a project
+    /// CLOSE, because pylabview writes the file while LabVIEW would keep serving the copy the
+    /// helpers just edited. The project is left closed, and the answer says so.
+    /// User-event frames are not touched: they are not bound to a panel control.
+    /// </summary>
+    private async Task<JsonObject?> ReregisterEventsAsync(string scaffoldXml, string output, string work,
+                                                          int timeoutSeconds, CancellationToken ct)
+    {
+        if (!File.Exists(scaffoldXml)) return null;
+        var reading = EventFrames.Read(scaffoldXml);
+        if (reading.Frames.Count == 0) return null;
+        var frames = reading.Frames.Where(f => f.Control is not null).ToList();
+        if (frames.Count == 0) return null;
+
+        var steps = new JsonArray();
+        JsonObject Result(bool ok, string note) => new()
+        {
+            ["ok"] = ok,
+            ["framesRegistered"] = ok ? frames.Count : 0,
+            ["frames"] = new JsonArray(frames.Select(f => (JsonNode)$"[{f.Index}] {f.Control}: {f.Trigger}").ToArray()),
+            ["userEventFramesLeftAlone"] = reading.Frames.Count(f => f.UserEvent is not null),
+            ["projectClosed"] = true,
+            ["steps"] = steps,
+            ["note"] = note,
+        };
+        if (PyLabview.Locate() is not { } bundle)
+            return Result(false, PyLabview.NotProvisionedMessage());
+        if (StatusTools.ScriptsDirectory() is not { } scripts)
+            return Result(false, "The scripts folder next to the exe is missing.");
+
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+            timeoutSeconds: timeoutSeconds, ct: ct);
+        steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = JsonNode.Parse(closed) });
+
+        var directory = Path.Combine(work, "events");
+        var extract = JsonNode.Parse(await new PyLabviewTools(connection).ExtractAsync(
+            output, directory, annotate: false, timeoutSeconds, ct: ct));
+        steps.Add(new JsonObject { ["step"] = "extract", ["answer"] = extract?.DeepClone() });
+        if (extract?["mainXml"]?.GetValue<string>() is not { } mainXml)
+            return Result(false, "pylabview could not read the grafted VI back.");
+        var baseName = Path.GetFileNameWithoutExtension(mainXml);
+
+        var strip = await EventStructureTools.RunScriptAsync(bundle, scripts, "pylv-strip-compiled.py",
+            [directory, baseName], "strip", timeoutSeconds, ct);
+        steps.Add(strip);
+        if (strip["exitCode"]?.GetValue<int>() != 0)
+            return Result(false, "Stripping the compiled code failed; nothing was registered.");
+
+        foreach (var frame in frames)
+        {
+            var step = await EventStructureTools.RunScriptAsync(bundle, scripts, "pylv-set-event-spec.py",
+                [directory, baseName, frame.Index.ToString(), .. frame.SpecArguments],
+                $"register[{frame.Index}] {frame.Control}", timeoutSeconds, ct);
+            steps.Add(step);
+            if (step["exitCode"]?.GetValue<int>() != 0)
+                return Result(false, $"Registering frame {frame.Index} ('{frame.Control}') failed - " +
+                                     "read that step's stdout and stderr: it names whether the label " +
+                                     "was not found or the heap had a shape the writer did not expect.");
+        }
+
+        var rebuild = JsonNode.Parse(await new PyLabviewTools(connection).RebuildAsync(
+            mainXml, output, timeoutSeconds, ct: ct));
+        steps.Add(new JsonObject { ["step"] = "rebuild", ["answer"] = rebuild?.DeepClone() });
+        return rebuild?["ok"]?.GetValue<bool>() == true
+            ? Result(true, $"{frames.Count} front-panel event frame(s) registered again on the supplied " +
+                           "controls. The active project was CLOSED for the pylabview edit and is " +
+                           "left closed.")
+            : Result(false, "Every spec was written but the rebuild failed.");
+    }
 
     private async Task<XElement?> ExportAsync(string vi, string target, int timeoutSeconds, CancellationToken ct)
     {
