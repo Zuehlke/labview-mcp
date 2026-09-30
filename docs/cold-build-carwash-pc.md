@@ -95,6 +95,34 @@ shipped helpers were shortened to pass it. `docs/keep-supplied-front-panel.md` Â
 passed `C:/Temp/...` and got 1025; the same path with backslashes opened. A LabVIEW restart had
 been spent on it first. `lvai_open_file` normalises rooted paths now.
 
+## Third build, the same evening: the hardened graft in use
+
+Same prompts, same design, fresh LabVIEW, empty folder (`C:\Temp\CarWashPC3`). The only change:
+`switchActionControls` in the graft call instead of a hand-built helper, and a 45-character comment
+limit in every prompt.
+
+| phase | wall | previous |
+|---|---|---|
+| setup | 0:18 | 0:09 |
+| A - 7 leaf subVIs, two agents | **5:32** (4:17 each) | 5:51 |
+| listing + prompt | 0:36 | 0:31 |
+| B - 7 more subVIs, scaffold, graft + switch, drive | **19:13** (agent 18:00) | 21:18 |
+| C - Caraya, 5 test VIs, 30 assertions, 0 failures | **5:02** (agent 4:11) | 4:45 |
+| **total** | **30:41** | 32:34 |
+
+Graft: `ok: true` first time the plan passed, `framesRegistered 4`, `typedefsKept`,
+`switchActions {Start, stop, Info: true}`, top-level diagram 1572 x 913. No latch helper, no
+clipped-comment rework - the 2:35 and 2:43 of the previous build are gone. All five driven checks
+behaved as specified.
+
+**What it found:** the graft's new unwired-terminal refusal was too narrow. `IsWired` counted only
+`inputs=`, so `Start`, which fed nothing but a Case structure's `selectin`, was refused as
+`scaffoldTerminalUnwired`; the agent routed it into a spare tunnel as a workaround. Fixed the same
+evening: `selectin` and `maxin` count as sinks, with a unit test and a control arm. Not yet
+re-run live. And `lvai_run_vi_and_read_values` with `runForMs` reported "the helper stopped before
+the target ran" with `helperErrorCode 1000` from its own `Abort VI` when the target had ALREADY
+ended (the stop test) - the values were there; the note is wrong for that case. Not fixed.
+
 ## By hand
 
 - Place and style the new **Info** button: LabVIEW put it far left of the existing layout, in the

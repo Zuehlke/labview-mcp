@@ -129,6 +129,33 @@ public sealed class GraftToolsTests
     }
 
     [Fact]
+    public void A_control_feeding_only_a_case_selector_is_wired()
+    {
+        // measured 2026-09-30: Start fed only `selectin` and the plan refused it as unwired
+        var scaffold = Fixture("scaffold.xml");
+        var stop = scaffold.Descendants("Control").Single(e => (string?)e.Attribute("_name") == "stop");
+        var net = ((string)stop.Attribute("outputs")!).Split(':')[1];
+        foreach (var e in scaffold.Descendants().Where(e => e != stop))
+        {
+            var inputs = (string?)e.Attribute("inputs");
+            if (inputs is not null && inputs.Contains(":" + net))
+                e.SetAttributeValue("inputs", string.Join(",",
+                    inputs.Split(',').Select(p => p.EndsWith(":" + net) ? p[..(p.LastIndexOf(':') + 1)] : p)));
+        }
+        var root = scaffold.Descendants("Structure").First();
+        scaffold.Add(new XElement("Structure", new XAttribute("_name", "Case Structure"),
+            new XAttribute("selectin", net), new XAttribute("uid", "0"),
+            new XAttribute("uid_parent", (string)root.Attribute("uid_parent")!)));
+
+        Assert.Null(GraftTools.Plan(Fixture("supplied panel.xml"), scaffold).Refusal);
+
+        // control arm: the same scaffold without the selector sink is refused
+        scaffold.Elements("Structure").Last().Remove();
+        Assert.Equal("scaffoldTerminalUnwired",
+                     Kind(GraftTools.Plan(Fixture("supplied panel.xml"), scaffold).Refusal));
+    }
+
+    [Fact]
     public void An_indicator_with_no_source_is_unwired_too()
     {
         var scaffold = Fixture("scaffold.xml");

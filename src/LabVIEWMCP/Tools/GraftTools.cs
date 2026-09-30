@@ -496,7 +496,9 @@ internal sealed class GraftTools(LvaiConnection connection)
 
     /// <summary>
     /// Whether a terminal carries a wire in its export: a control whose net something reads, an
-    /// indicator whose net something writes.
+    /// indicator whose net something writes. A control is read through `inputs` AND through a
+    /// structure's `selectin` (case selector) or `maxin` (loop count) - a Start button feeding only
+    /// a Case selector was refused as unwired on 2026-09-30.
     /// </summary>
     internal static bool IsWired(XElement vi, Terminal t)
     {
@@ -504,8 +506,12 @@ internal sealed class GraftTools(LvaiConnection connection)
             return Net((string?)t.Element.Attribute("inputs")) is not null;
         var net = Net((string?)t.Element.Attribute("outputs"));
         return net is not null && vi.Descendants().Any(e => e != t.Element
-            && Pins((string?)e.Attribute("inputs")).Any(p => p.Net == net));
+            && (Pins((string?)e.Attribute("inputs")).Any(p => p.Net == net)
+                || SinkNet(e, "selectin") == net || SinkNet(e, "maxin") == net));
     }
+
+    private static string? SinkNet(XElement e, string attribute) =>
+        (string?)e.Attribute(attribute) is { Length: > 0 } net ? net : null;
 
     private static string Describe(XElement e) =>
         $"{e.Name.LocalName}:{(string?)e.Attribute("_name") ?? (string?)e.Attribute("_id") ?? (string?)e.Attribute("selector") ?? ""}";
