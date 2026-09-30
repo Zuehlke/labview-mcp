@@ -14,7 +14,7 @@
   <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
   <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi reference,error out:20.error out" uid="20" uid_parent="root"/>
 
-  <FreeLabel comment="One Ctrl Val.Set per name/value pair. The error wire through the shift register is what orders them before Run VI." uid="90" uid_parent="root"/>
+  <FreeLabel comment="Set every input, then Run VI." uid="90" uid_parent="root"/>
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
     <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>

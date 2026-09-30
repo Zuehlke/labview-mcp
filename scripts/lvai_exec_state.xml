@@ -2,7 +2,7 @@
 
   <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI to interrogate\2C as a string." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
 
-  <FreeLabel comment="Read only: a VI reference is opened and closed, which does not burn the path." uid="5010" uid_parent="root"/>
+  <FreeLabel comment="Read only: open, read, close the reference." uid="5010" uid_parent="root"/>
 
   <Node _name="String To Path" inputs="string:5000.value" outputs="path:5020.path" uid="5020" uid_parent="root"/>
   <Node _name="Open VI Reference" inputs="vi path:5020.path,error in (no error):" outputs="vi reference:5030.vi reference,error out:5030.error out" uid="5030" uid_parent="root"/>
@@ -11,7 +11,7 @@
 
   <Node _name="Number To Decimal String" inputs="number:5040.state" outputs="decimal integer string:5050.text" uid="5050" uid_parent="root"/>
 
-  <FreeLabel comment="A reference that never opened must not read as eBad; that case answers -1." uid="5051" uid_parent="root"/>
+  <FreeLabel comment="A reference that never opened answers -1." uid="5051" uid_parent="root"/>
   <Node _name="Unbundle By Name" fields="status" inputs="input cluster:5030.error out" outputs="status:5052.status" uid="5052" uid_parent="root"/>
   <Constant _name="could not open" type="string" value="-1" outputs="value:5053.value" uid="5053" uid_parent="root"/>
   <Node _name="Select" inputs="s:5052.status,t:5053.value,f:5050.text" outputs="s? t\3Af:5054.state" uid="5054" uid_parent="root"/>

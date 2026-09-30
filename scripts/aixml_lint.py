@@ -1341,6 +1341,41 @@ def check_indicator_values(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+COMMENT_CLIP_LENGTH = 45  # kept equal to AixmlCheck.CommentClipLength
+
+
+def check_comment_length(elements: list[_El]) -> list[Finding]:
+    """A diagram comment over about 45 characters is measured being CUT OFF in silence.
+
+    LabVIEW sizes the label box from the space it finds, not from the text, so only a render
+    shows the clip, and the fix is a full regeneration - 2:43 of rework for one 47-character
+    comment on 2026-09-30. Counted with every \\XX escape as one character. Kept equal to
+    AixmlCheck.CheckCommentLength on the C# side.
+    """
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "FreeLabel":
+            continue
+        comment = e.el.get("comment") or ""
+        length = len(re.sub(r"\\[0-9A-Fa-f]{2}", "x", comment))
+        if length <= COMMENT_CLIP_LENGTH:
+            continue
+        findings.append(
+            Finding(
+                "warning",
+                "comment-may-be-clipped",
+                e.uid,
+                e.label(),
+                e.path,
+                f"this diagram comment is {length} characters. LabVIEW sizes the box from the "
+                "space it finds, not from the text, so a comment over about "
+                f"{COMMENT_CLIP_LENGTH} characters is cut off in silence - only a render shows it. "
+                "Shorten it; put the long explanation in the VI description.",
+            )
+        )
+    return findings
+
+
 def check_timestamp_values(elements: list[_El]) -> list[Finding]:
     """A `timestamp` carrying a non-empty `value` - which ConvertAIXMLToVI DISCARDS.
 
@@ -1479,6 +1514,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_terminal_flags(elements)
     findings += check_indicator_values(elements)
     findings += check_timestamp_values(elements)
+    findings += check_comment_length(elements)
     findings += check_control_read_before_wait(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)

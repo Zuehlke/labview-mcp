@@ -232,6 +232,11 @@ template controls arrive duplicated and the eight wires have to be re-made again
 That is perhaps five minutes in the IDE and it is unavoidable today — but it was not part of the
 estimate when the route was chosen, and a caller picking between routes deserves it.
 
+**"Unavoidable" was wrong, measured 2026-09-30:** the paste and the rewiring are both scriptable
+(`{LV.TopLevelDiagram}` `Copy Selection` / `Paste`, `{LV.Terminal}` `Move` and `Connect Wire`,
+`{LV.VI}` `BD.Remove Bad Wires`), and a scripted graft onto the Car Wash template came out
+executable with its panel byte-identical. `docs/keep-supplied-front-panel.md`.
+
 ---
 
 ## 10. What the suite proves, and what it does not

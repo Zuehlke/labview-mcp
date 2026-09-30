@@ -1117,8 +1117,11 @@ The working repair is `{LV.Control}` `Replace` on the method's own pane plus the
 **`lvai_coercion_dots` returns `repairs` now**, both of them, with the question that picks between
 them. **Branching it automatically was considered and NOT built**, and the reason is a hazard rather
 than effort: telling a constant from a control means reading the coerced terminal's `Connected Wire`
-and then that wire's source object, and **there is no `{LV.Wire}` class in the VI Server catalogue at
-all** - the query answers nothing and lists 153 other classes. §"validation is not risk-free" in
+and then that wire's source object. **This paragraph said "there is no `{LV.Wire}` class in the VI
+Server catalogue at all - the query answers nothing and lists 153 other classes", and that is
+false** (corrected 2026-09-30): `cls=LV.Wire` answers 23 methods and 27 properties including
+`Terminals[]`, and `scripts/lvai_wire_dyn_events.xml` reads it. `docs/keep-supplied-front-panel.md`
+used it to rewire seven panel terminals. §"validation is not risk-free" in
 `CLAUDE.md` records authoring AIXML against classes the catalogue does not list as the signature that
 preceded three LabVIEW deaths, fired while LabVIEW PARSES the document. Naming both repairs is
 strictly better than asserting the wrong one and costs no risk.

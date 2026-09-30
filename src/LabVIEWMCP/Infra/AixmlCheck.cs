@@ -110,6 +110,7 @@ internal static class AixmlCheck
         CheckIndicatorValues(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
+        CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
@@ -592,6 +593,35 @@ internal static class AixmlCheck
                 + "value in the same document: both vanish, the assertion compares empty with empty "
                 + "and PASSES while pinning nothing.",
                 (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>The longest diagram comment measured rendering whole; kept equal to the lint's.</summary>
+    internal const int CommentClipLength = 45;
+
+    /// <summary>
+    /// A diagram comment longer than about 45 characters. LabVIEW sizes the label box from the
+    /// space it finds, not from the text, so a long caption is CUT OFF in silence and only a render
+    /// shows it - measured 2026-09-16 (79 characters shipped as "... which control the user") and
+    /// again 2026-09-30, when a 47-character comment cost a whole regenerate-graft-switch cycle,
+    /// 2:43, to fix. There is no cheap in-place repair, so the warning has to come BEFORE the
+    /// generation. Counted with every `\XX` escape as the one character it stands for.
+    /// A WARNING, not repaired: shortening prose is the author's call.
+    /// </summary>
+    private static void CheckCommentLength(XElement root, List<Finding> findings)
+    {
+        foreach (var label in root.Descendants("FreeLabel"))
+        {
+            if ((string?)label.Attribute("comment") is not { } comment) continue;
+            var length = System.Text.RegularExpressions.Regex.Replace(comment, @"\\[0-9A-Fa-f]{2}", "x").Length;
+            if (length <= CommentClipLength) continue;
+            findings.Add(new Finding(Severity.Warning, "commentMayBeClipped",
+                $"This diagram comment is {length} characters. LabVIEW sizes the box from the space it "
+                + "finds, not from the text, so a comment over about "
+                + $"{CommentClipLength} characters is measured being CUT OFF in silence - only a render "
+                + "shows it, and the fix is a full regeneration. Shorten it to "
+                + $"{CommentClipLength} or fewer; put the long explanation in the VI description.",
+                (string?)label.Attribute("uid")));
         }
     }
 

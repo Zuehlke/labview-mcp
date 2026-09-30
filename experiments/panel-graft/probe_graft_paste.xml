@@ -1,0 +1,30 @@
+<VI _name="probe_graft_paste.vi" description="Probe: copy the whole block diagram of Source VI and paste it into Target VI through TopLevelDiagram Select All, Copy Selection and Paste, in the IDE application instance. Saves Target in place and lists its front panel control labels afterwards.">
+  <FreeLabel comment="Scripted clipboard graft, no rewiring yet." uid="4200" uid_parent="root"/>
+  <Control _name="Source Path" conIdx="1" connection="recommended" description="VI whose diagram is copied." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Control _name="Target Path" conIdx="2" connection="recommended" description="VI the diagram is pasted into." outputs="value:4211.value" type="string" uid="4211" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4212.path" uid="4212" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4211.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:4220.proj,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4220.proj,error in (no error):4220.error out" outputs="Application:4221.app,reference out:,error out:4221.error out" uid="4221" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4221.app,vi path:4212.path,error in (no error):4221.error out" outputs="vi reference:4222.vi reference,error out:4222.error out" uid="4222" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4221.app,vi path:4213.path,error in (no error):4222.error out" outputs="vi reference:4223.vi reference,error out:4223.error out" uid="4223" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4223.error out" outputs="Block Diagram:4230.diagram,reference out:,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Select All" type="{LV.TopLevelDiagram}" inputs="reference:4230.diagram,error in (no error):4230.error out" outputs="reference out:,error out:4231.error out" uid="4231" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Copy Selection" type="{LV.TopLevelDiagram}" inputs="reference:4230.diagram,error in (no error):4231.error out" outputs="reference out:,error out:4232.error out" uid="4232" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4223.vi reference,error in (no error):4232.error out" outputs="Block Diagram:4240.diagram,reference out:,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Paste" type="{LV.TopLevelDiagram}" inputs="reference:4240.diagram,error in (no error):4240.error out" outputs="reference out:,error out:4241.error out" uid="4241" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4223.vi reference,error in (no error):4241.error out" outputs="reference out:,error out:4242.error out" uid="4242" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4223.vi reference,error in (no error):4242.error out" outputs="Front Panel:4250.panel,reference out:,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4250.panel,error in (no error):4250.error out" outputs="Controls[]:4251.ctrls,reference out:,error out:4251.error out" uid="4251" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4260" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4251.ctrls" mode="index" outputs="value:4261.ctrl" uid="4261" uid_parent="4260"/>
+    <Node _name="Property Node" fields="read+Label.Text" type="{LV.Control}" inputs="reference:4261.ctrl,error in (no error):" outputs="Label.Text:4262.text,reference out:,error out:" uid="4262" uid_parent="4260"/>
+    <Tunnel _id="Out1" inputs="value:4262.text" mode="index" outputs="value:4263.value" uid="4263" uid_parent="4260"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4222.vi reference,error in (no error):4251.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4223.vi reference,error in (no error):4270.error out" outputs="error out:4271.error out" uid="4271" uid_parent="root"/>
+  <Indicator _name="Target Control Labels" inputs="value:4263.value" type="array{string}" uid="4280" uid_parent="root" value="[]"/>
+  <Indicator _name="Stage Errors" inputs="value:4232.error out" type="cluster{bool.status,int32.code,string.source}" uid="4281" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4271.error out" type="cluster{bool.status,int32.code,string.source}" uid="4282" uid_parent="root" value="[false,0,]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:" type="cluster{bool.status,int32.code,string.source}" uid="4283" uid_parent="root" value="[false,0,]"/>
+</VI>

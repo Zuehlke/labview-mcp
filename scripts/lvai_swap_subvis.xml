@@ -10,7 +10,7 @@
   <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:22.vi reference,error in (no error):22.error out" outputs="Block Diagram:24.bd,reference out:,error out:24.error out" uid="24" uid_parent="root"/>
   <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:24.bd,error in (no error):24.error out" outputs="All Objects[]:26.objs,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
 
-  <FreeLabel comment="SubVI nodes are collected by Traverse for GObjects\2C not by {LV.Diagram} SubVIs[]\3A that property lists the TOP diagram only\2C so a call inside a While Loop or a Case frame was invisible and came back as socketsNotOnDiagram. Traverse walks the whole block diagram." uid="25" uid_parent="root"/>
+  <FreeLabel comment="Traverse finds calls inside structures too." uid="25" uid_parent="root"/>
   <Constant _name="SubVI Class Name" outputs="value:27.value" type="string" uid="27" uid_parent="root" value="SubVI"/>
   <Constant _name="Block Diagram" outputs="value:28.value" type="uint16{FP,BD,Other}" uid="28" uid_parent="root" value="1"/>
   <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:22.vi reference,Class Name:27.value,error in (no error):26.error out,Traverse Target:28.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:29.dup,References:29.subvis,# of Refs:,error out:29.error out" uid="29" uid_parent="root"/>

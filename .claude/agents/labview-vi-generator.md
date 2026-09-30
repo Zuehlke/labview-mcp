@@ -1,8 +1,8 @@
 ---
 name: labview-vi-generator
 description: >-
-  MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis
+  MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. (d) a SUPPLIED VI whose front panel must be used, if the task has one (an exam template, a customer panel) - the program is then built as a scaffold and GRAFTED into that VI with lvai_graft_diagram, and the supplied panel survives untouched. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -230,6 +230,7 @@ it an icon.
 | Target `.lvproj` | The ladder in Phase 0. |
 | Target `.vi` path | `<project dir>\<VI Name>.vi`, name derived from the task in LabVIEW's convention: `Title Case With Spaces.vi`, a verb first (`Read Config File.vi`, not `ConfigReader.vi`). |
 | Icon text | Derived from the VI name (Phase 7). |
+| A SUPPLIED VI whose front panel must be used (an exam template, a customer panel) | None - without one the VI is generated whole. With one, the program is built as a scaffold and grafted into it (Phase 6g), and the supplied VI's path and name are the target. |
 | Language of descriptions | **English**, unless the task prompt explicitly asked otherwise. A German request does not imply German descriptions. |
 
 ## Workflow
@@ -598,6 +599,70 @@ Do NOT drive `scripts/lvdoc_print.xml` by hand. Measured on one three-VI run, th
 runs plus 3 `mkdir` calls where 1 would have done — about 100 s of the 1000 s that run took, in a
 run whose tools accounted for only 120 s of it.
 
+### Phase 6g — A SUPPLIED front panel: build a scaffold, then graft
+
+Only when the task hands you a VI whose front panel must be used as it is - an exam template
+("use the provided VI, do not rename its controls"), a customer's panel. **Never regenerate that
+VI**: AIXML carries no geometry, decorations, styling or typedef identity, so a regeneration
+destroys exactly what was supplied. `lvai_graft_diagram` puts your diagram into it instead.
+Measured on the Car Wash CLD template: executable, wiring identical to the scaffold, typedef
+bindings kept, panel render byte-identical. `docs/keep-supplied-front-panel.md`.
+
+**ONLY FOR THE MAIN GUI - the user's rule of 2026-09-30.** This route is for the ONE top-level VI
+whose front panel is the supplied or user-facing GUI. The graft call itself takes seconds, but the
+route around it - a scaffold with exactly the panel's terminals, an active project, event
+re-registration, switch actions - costs minutes and has failure modes of its own, and a subVI's
+panel carries nothing worth it. **Never graft a subVI**: generate subVIs normally, even when a
+supplied subVI panel exists, unless the user explicitly asks to keep that panel.
+
+1. **Export the supplied VI** (`lvai_convert_vi_to_aixml`) - after opening its project, not the VI.
+   Its diagram must be EMPTY (only `<Control>`/`<Indicator>` lines); if it already holds code, the
+   graft refuses it (`panelDiagramNotEmpty`) and this is an EDIT - hand it back rather than
+   regenerating. Its terminals ARE your Phase 1 contract: labels, kinds and types are fixed, so
+   copy them verbatim. A typedef comes out as a bare cluster - write it bare too; the graft keeps
+   the supplied control's binding.
+2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` beside the supplied VI: the same
+   terminals plus your diagram. **Add no control the panel lacks - UNLESS THE TASK ASKS FOR A NEW
+   ONE.** Then put it on the scaffold with its own label and pass `allowNewControls: true` to the
+   graft: it is added to the supplied panel, wired as in the scaffold, and listed under
+   `newControls` - but PLACED BY LabVIEW and in the DEFAULT STYLE (measured 2026-09-30: above the
+   existing layout), so say in your report that the user tidies the layout by hand. Never add one
+   the task did not ask for. A panel control the program does not need may be left out (it is
+   reported under `panelControlsUnused`). The rule
+   that every VI we create carries `error in`/`error out` does NOT apply to this panel: it is the
+   user's, and a terminal they did not supply is exactly what the graft refuses.
+3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
+   run. It IS the program; the graft only moves it. Diagram size and comment rules apply to it.
+4. **Graft IN PLACE** - the supplied VI keeps its path and name. Copy it into your scratch folder
+   first (`Copy-Item`), then:
+   ```
+   lvai_graft_diagram  panelViPath=<that copy>  scaffoldViPath=<the scaffold>
+                       outputViPath=<the supplied VI's own path>  overwrite=true
+   ```
+   It needs an ACTIVE project (`lvai_open_file` on the project - `Error 1055` otherwise) and the
+   supplied VI must not have been opened itself, or LabVIEW keeps serving the copy it loaded.
+   **Every scaffold terminal must be WIRED** - an unwired one is refused (`scaffoldTerminalUnwired`),
+   because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
+   the supplied controls by the graft itself (`events`), which then leaves the project CLOSED -
+   reopen it before anything that needs it.
+   **Latched buttons a test must signal** (a latched boolean refuses `Value (Signaling)`, Error
+   1193): when the user allowed switch action, pass `switchActionControls` with one label per line -
+   set in the same run, verified from the saved file under `switchActions`. Do NOT build a helper for
+   it; that cost 2:35 in each of two builds.
+5. **`ok` is the verdict**, read from the file: `execState 1`, `leftoverDuplicates` empty,
+   `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a
+   failed graft - report the field; the tool has already put the plain supplied copy back. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
+   an event-driven VI) and render it: the grafted diagram is the scaffold's, but its terminals are
+   the supplied ones.
+6. **Keep the supplied icon.** Phase 7 applies to the scaffold at most; the supplied VI gets a new
+   icon only when the task asks for one.
+7. **Report the scaffold** as a by-product that can be deleted and dropped from the project.
+
+**SHARED LabVIEW: the graft goes through the SYSTEM CLIPBOARD.** If the task prompt says other
+agents are running, do NOT graft - stop after step 3 and report the scaffold path, the supplied
+path and the exact `lvai_graft_diagram` call, so the orchestrator grafts. Two grafts at once
+paste each other's diagrams.
+
 ### Phase 7 — The icon, last
 
 **One call. Do not draw the PNG yourself.**
@@ -638,7 +703,9 @@ State, in this order:
 4. Paths: the `.vi`, the `.lvproj`, and whether the project was created by this run.
 5. **Verification**: the validate result, and the run — with the actual inputs and outputs, not
    "it worked". Say plainly if an output could not be read back and how you checked instead.
-6. Icon: applied and `verified`, or not, and why.
+6. Icon: applied and `verified`, or not, and why. For a grafted VI: the supplied icon was kept.
+6b. For a supplied panel (Phase 6g): the graft's verdict fields, `panelControlsUnused`, and the
+    scaffold path as a deletable by-product.
 7. **What the user must do by hand** — above all, closing a project so it could be edited, or
    re-opening it to see the new item.
 8. Assumptions you made instead of asking.

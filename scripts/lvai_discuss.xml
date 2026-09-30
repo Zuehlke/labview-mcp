@@ -3,7 +3,7 @@
   <Control _name="Target Name" conIdx="5" connection="required" description="The name Nigel shows for the file. NI's own callback passes the file name." outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
   <Control _name="File Type" conIdx="7" connection="optional" description="VI or PROJECT\2C uppercase. Empty or unrecognised means VI\2C which is what the IDE's own Discuss command hardcodes." outputs="value:4204.value" type="string" uid="4204" uid_parent="root" value="VI"/>
 
-  <FreeLabel comment="NI's two stages over VI Server: the chat is launched first, then the discuss request is pushed and its error read back." uid="4206" uid_parent="root"/>
+  <FreeLabel comment="Launch the chat, then push the request." uid="4206" uid_parent="root"/>
 
   <Constant _name="PROJECT literal" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value="PROJECT"/>
   <Constant _name="fileType if project" outputs="value:4212.value" type="uint32{DISCUSS_FILE_TYPE_UNSPECIFIED,DISCUSS_FILE_TYPE_VI,DISCUSS_FILE_TYPE_PROJECT}" uid="4212" uid_parent="root" value="2"/>
