@@ -1110,6 +1110,15 @@ Phase 6g) for a supplied VI whose diagram is EMPTY. A diagram that already holds
 so a panel over existing code still has no route. It uses the SYSTEM CLIPBOARD: the orchestrator
 grafts, one at a time, never parallel agents. `docs/keep-supplied-front-panel.md`.
 
+**GRAFT ONLY THE MAIN GUI - the user's rule of 2026-09-30.** The graft call itself costs seconds,
+but the route around it - a scaffold with the panel's own labels, a project, event re-registration,
+switch actions - costs minutes, and a subVI's panel carries nothing worth them. So a subVI is
+regenerated like any other, unless the user asks to keep that subVI's panel. Since the same day the
+graft refuses an UNWIRED scaffold terminal (`scaffoldTerminalUnwired` - it used to surface as a
+`1055` misread as "no active project"), puts the plain supplied copy back on ANY failure instead of
+leaving a half-graft, and sets latched buttons to Switch When Pressed itself
+(`switchActionControls`, verified from the export as `switchActions`).
+
 **There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
 The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
 a generated helper can call them. Two capabilities already work this way and neither could be built
@@ -1531,6 +1540,12 @@ becomes three calls and a LabVIEW start.
 gets the honest `Error 7, File not found`; only the PROJECT path lies, and it lies by naming a
 subsystem the caller never touched. `lvai_open_file` refuses a path that is not there now
 (`errorKind: fileNotFound`) and names 1025 in the refusal.
+
+**AND FORWARD SLASHES IN AN EXISTING PATH GET THE SAME `1025` - measured 2026-09-30 as an A/B on one
+project.** `C:/Temp/.../Car Wash.lvproj` answered 1025, the same path with backslashes opened it.
+.NET accepts both spellings, so the existence check passed and nothing before the RPC noticed; a
+LabVIEW restart was spent on it before the A/B. `lvai_open_file` normalises every rooted path with
+`Path.GetFullPath` now.
 
 **IT COST TWO WRITTEN-UP DIAGNOSES BEFORE ANYONE RAN `ls`, and that is the rule worth keeping.**
 The symptom was three `1025` answers for `C:\temp\ActorFW_first\Presse\Presse.lvproj`. First

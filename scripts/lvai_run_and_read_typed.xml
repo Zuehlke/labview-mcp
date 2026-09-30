@@ -29,7 +29,7 @@
     <Tunnel _id="Out1" inputs="value:52.Label.Text" mode="index" outputs="value:56.value" uid="56" uid_parent="50"/>
   </Structure>
 
-  <FreeLabel comment="The second loop sets one control per name, by its own type." uid="91" uid_parent="root"/>
+  <FreeLabel comment="Set each control by its own type." uid="91" uid_parent="root"/>
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="100" uid_parent="root">
     <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:101.value" uid="101" uid_parent="100"/>

@@ -1,10 +1,12 @@
 <VI _name="lvbd_graft_rewire.vi" description="Second half of lvai_graft_diagram. After lvbd_graft_paste, every supplied control X has a pasted duplicate that carries the wires. For each pair named in Originals and Duplicates this helper reads the duplicate terminal's wire ends, moves the ORIGINAL terminal onto the duplicate terminal's diagram and position, optionally copies the duplicate's description, deletes the duplicate, and connects the original to the recorded ends. It then removes the loose wire ends the deletes leave behind and saves the VI in place.\0A\0AWHY BD.Remove Bad Wires IS NOT OPTIONAL\3A deleting a control removes its terminal but leaves the wire's loose end at every former sink. Measured 2026-09-30\3A without it the grafted VI is eBad, with it executable.\0A\0AWHY THE TERMINAL IS MOVED TWICE\3A Position reads in pane coordinates while Move takes a position relative to the OWNER diagram, so a terminal moved into a loop landed offset by the loop's diagram origin, measured at about 425 by 22 px. The first Move reveals the offset, the second applies target + target - landed, which is correct whichever convention Move really uses.\0A\0ACONTROLS ARE FOUND BY LABEL, and their references are read once before the loop, so a deletion cannot shift a later lookup. A control terminal is a SOURCE, so its former SINKS are reconnected; an indicator terminal is a SINK, so its former SOURCE is. Auto Route? is wired TRUE, because at its FALSE default LabVIEW registers the wire and draws nothing.\0A\0AOpened in the IDE application instance through Application\3AProject\3AActive Project.">
-  <FreeLabel comment="One iteration per supplied control and its duplicate." uid="4200" uid_parent="root"/>
+  <FreeLabel comment="One iteration per control and duplicate." uid="4200" uid_parent="root"/>
   <Control _name="Target Path" conIdx="1" connection="recommended" description="The VI holding the pasted diagram. Saved in place." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
   <Control _name="Originals" conIdx="2" connection="recommended" description="Labels of the supplied controls, one per pair." outputs="value:4211.value" type="array{string}" uid="4211" uid_parent="root" value="[]"/>
   <Control _name="Duplicates" conIdx="3" connection="recommended" description="Labels of their pasted duplicates, in the same order." outputs="value:4214.value" type="array{string}" uid="4214" uid_parent="root" value="[]"/>
   <Control _name="Copy Descriptions" conIdx="4" connection="recommended" description="TRUE copies a non-empty description from the duplicate onto the supplied control before the duplicate is deleted." outputs="value:4215.value" type="bool" uid="4215" uid_parent="root" value="true"/>
   <Control _name="error in" conIdx="11" connection="recommended" description="Error chain in." outputs="value:4212.value" type="cluster{bool.status,int32.code,string.source}" uid="4212" uid_parent="root" value="[false,0,]"/>
+  <Control _name="Switch Labels" description="Labels of boolean controls whose Mechanical Action is set to Switch When Pressed, in the same run and before the save. Empty sets none." outputs="value:4216.value" type="array{string}" uid="4216" uid_parent="root" value="[]"/>
+  <Constant _name="Boolean Class" outputs="value:4217.value" type="ref{LV.Boolean}" uid="4217" uid_parent="root" value=""/>
   <Node _name="String To Path" inputs="string:4210.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
   <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):4212.value" outputs="Project\3AActive Project:4220.proj,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
   <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4220.proj,error in (no error):4220.error out" outputs="Application:4221.app,reference out:,error out:4221.error out" uid="4221" uid_parent="root"/>
@@ -102,7 +104,22 @@
     <Tunnel _id="Out8" inputs="value:4354.ftop" mode="index" outputs="value:4397.value" uid="4397" uid_parent="4300"/>
   </Structure>
 
-  <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4305.value" outputs="reference out:,error out:4400.error out" uid="4400" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4500" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4216.value" mode="index" outputs="value:4501.label" uid="4501" uid_parent="4500"/>
+    <Tunnel _id="In2" inputs="value:4233.value" outputs="value:4502.labels" uid="4502" uid_parent="4500"/>
+    <Tunnel _id="In3" inputs="value:4224.ctrls" outputs="value:4503.ctrls" uid="4503" uid_parent="4500"/>
+    <Tunnel _id="In4" inputs="value:4217.value" outputs="value:4504.cls" uid="4504" uid_parent="4500"/>
+    <ShiftReg uid="4505" uid_parent="4500">
+      <Left inputs="value:4305.value" outputs="value:4506.err" uid="4506" uid_parent="4505"/>
+      <Right inputs="value:4512.error out" outputs="value:4507.value" uid="4507" uid_parent="4505"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:4502.labels,element:4501.label" outputs="index of element:4508.index of element" uid="4508" uid_parent="4500"/>
+    <Node _name="Index Array" inputs="array:4503.ctrls,index:4508.index of element" outputs="element:4509.element" uid="4509" uid_parent="4500"/>
+    <Node _name="To More Specific Class" inputs="reference:4509.element,error in:4506.err,target class:4504.cls" outputs="specific class reference:4510.bool,error out:4510.err" uid="4510" uid_parent="4500"/>
+    <Constant _name="Switch When Pressed" outputs="value:4511.value" type="uint16" uid="4511" uid_parent="4500" value="0"/>
+    <Node _name="Property Node" fields="write+Mechanical Action" type="{LV.Boolean}" inputs="reference:4510.bool,error in (no error):4510.err,Mechanical Action:4511.value" outputs="reference out:,error out:4512.error out" uid="4512" uid_parent="4500"/>
+  </Structure>
+  <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4507.value" outputs="reference out:,error out:4400.error out" uid="4400" uid_parent="root"/>
   <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4400.error out" outputs="reference out:,error out:4401.error out" uid="4401" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4222.vi reference,error in (no error):4401.error out" outputs="error out:4402.error out" uid="4402" uid_parent="root"/>
   <Indicator _name="Sinks Reconnected" inputs="value:4390.value" type="array{int32}" uid="4410" uid_parent="root" value="[]"/>

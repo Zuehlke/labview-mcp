@@ -65,6 +65,13 @@ internal sealed class GraftTools(LvaiConnection connection)
         otherwise). USES THE SYSTEM CLIPBOARD: whatever the user had copied is replaced, and two
         grafts at once would paste each other's diagrams - run it from the orchestrator only, one
         at a time. The scaffold's file name must differ from the output's.
+        SWITCH ACTION: switchActionControls sets the named boolean controls to Switch When Pressed
+        in the same IDE session, before the save, and switchActions reports each from the saved
+        file - a latched boolean cannot be signalled by a test (Error 1193).
+        A FAILED STEP LEAVES NO HALF-GRAFT: outputViPath is put back to the plain supplied copy.
+        An unwired scaffold terminal is refused up front (scaffoldTerminalUnwired).
+        ONLY FOR THE MAIN GUI: use it for the one top-level VI whose front panel is supplied or
+        user-facing. A subVI's panel carries nothing worth this route - regenerate subVIs.
         TO GRAFT IN PLACE - the supplied VI must keep its path and name, as an exam requires - copy
         it aside first and pass that COPY as panelViPath and the original path as outputViPath with
         overwrite true. Do not open the supplied VI itself before: LabVIEW would keep serving the
@@ -84,6 +91,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool comparePanel = true,
         [Description("Allow scaffold controls the supplied panel does not have: they are added as new controls, placed by LabVIEW")]
         bool allowNewControls = false,
+        [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - e.g. latched buttons a test must be able to signal. Set in the same run, verified from the saved file")]
+        string? switchActionControls = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -113,11 +122,22 @@ internal sealed class GraftTools(LvaiConnection connection)
             if (panelExport is null || scaffoldExport is null)
                 return Json.Error("exportFailed",
                     $"'{Path.GetFileName(panelExport is null ? output : scaffold)}' could not be exported.");
+            var switches = Lines(switchActionControls);
             var plan = Plan(panelExport, scaffoldExport, allowNewControls);
-            if (plan.Refusal is not null)
+            var refusal = plan.Refusal ?? SwitchRefusal(panelExport, scaffoldExport, switches);
+            if (refusal is not null)
             {
                 if (!outputExisted) File.Delete(output);
-                return plan.Refusal;
+                return refusal;
+            }
+
+            // A failed step past this point leaves outputViPath HALF-GRAFTED - measured when an
+            // unwired scaffold terminal stopped the rewire. Every failure below puts the plain
+            // supplied copy back, so the file on disk is never a partial result.
+            string Failed(string answer)
+            {
+                try { File.Copy(panel, output, overwrite: true); } catch (IOException) { }
+                return answer;
             }
 
             string? panelBefore = null, diagramBefore = null;
@@ -140,19 +160,20 @@ internal sealed class GraftTools(LvaiConnection connection)
             var pasteValues = pasted?["values"] as JsonObject;
             var pasteCode = ErrorCode(pasteValues);
             if (pasteCode != 0)
-                return HelperFailed("paste", pasteCode, pasteValues, output);
+                return Failed(HelperFailed("paste", pasteCode, pasteValues, output));
             var before = StringArray(pasteValues, "Labels Before");
             var after = StringArray(pasteValues, "Labels After");
 
             // ---- 4. pair the duplicates with the supplied controls
             var pairing = Pair(before, after, plan.Labels, plan.New);
             if (pairing.Unpaired.Count > 0 || pairing.Leftover.Count > 0)
-                return Json.Error("pairingFailed",
+                return Failed(Json.Error("pairingFailed",
                     "The paste did not produce exactly one duplicate per scaffold control, so the " +
-                    "duplicates cannot be swapped safely. outputViPath now holds the pasted diagram " +
-                    "WITH its duplicates; rerun with overwrite true after fixing the cause.",
+                    "duplicates cannot be swapped safely. outputViPath was put back to the plain " +
+                    "supplied copy; LabVIEW may still hold the pasted one in memory, so close the " +
+                    "project before a retry.",
                     new { unpaired = pairing.Unpaired, leftoverNewControls = pairing.Leftover,
-                          labelsBefore = before, labelsAfter = after, outputViPath = output });
+                          labelsBefore = before, labelsAfter = after, outputViPath = output }));
 
             // ---- 5. swap and clean up
             var rewired = JsonNode.Parse(await run.RunViAndReadValuesAsync(rewireHelper.Vi!,
@@ -162,6 +183,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                     ["Originals"] = ArrayXml("Originals", pairing.Pairs.Select(p => p.Original)),
                     ["Duplicates"] = ArrayXml("Duplicates", pairing.Pairs.Select(p => p.Duplicate)),
                     ["Copy Descriptions"] = copyDescriptions ? "true" : "false",
+                    ["Switch Labels"] = ArrayXml("Switch Labels", switches),
                 }.ToJsonString(), timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
             var rewireValues = rewired?["values"] as JsonObject;
             var rewireCode = ErrorCode(rewireValues);
@@ -182,8 +204,11 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["placed"] = At(targetLeft, i) is { } tl && At(targetTop, i) is { } tt
                              && At(finalLeft, i) == tl && At(finalTop, i) == tt,
             }).ToArray());
+            // The paste helper reached the IDE through the active project a moment ago, so a 1055
+            // from the rewire is NOT "no project": it is an invalid reference inside the swap.
             if (rewireCode != 0)
-                return HelperFailed("rewire", rewireCode, rewireValues, output, swaps);
+                return Failed(HelperFailed("rewire", rewireCode, rewireValues, output, swaps,
+                                           projectProvedActive: true));
 
             // ---- 5b. put the EVENT registrations back. A static front-panel event is bound to the
             //      control it was registered on, and the swap deleted the duplicates it was bound
@@ -193,17 +218,17 @@ internal sealed class GraftTools(LvaiConnection connection)
             var events = await ReregisterEventsAsync(Path.Combine(work, "scaffold.xml"), output,
                                                      work, timeoutSeconds, ct);
             if (events?["ok"]?.GetValue<bool>() == false)
-                return Json.Document(new JsonObject
+                return Failed(Json.Document(new JsonObject
                 {
                     ["ok"] = false,
                     ["errorKind"] = "eventReregistrationFailed",
                     ["error"] = "The diagram was grafted but its Event Structure's registrations " +
-                                "could not be written back onto the supplied controls, so the VI " +
-                                "is not executable. outputViPath holds the attempt.",
+                                "could not be written back onto the supplied controls. outputViPath " +
+                                "was put back to the plain supplied copy.",
                     ["outputViPath"] = output,
                     ["swaps"] = swaps,
                     ["events"] = events,
-                });
+                }));
 
             // ---- 6. the verdict, from the file
             var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
@@ -223,8 +248,10 @@ internal sealed class GraftTools(LvaiConnection connection)
 
             // With new controls the panel is SUPPOSED to change, so the image comparison can only
             // be reported; everything else still decides.
+            var switchVerdict = grafted is null ? null : SwitchVerdict(grafted, switches);
             var ok = execState == 1 && check is { Clean: true } && typedefs.Kept
-                     && (plan.New.Count > 0 || panelIdentical != false) && diagramChanged != false;
+                     && (plan.New.Count > 0 || panelIdentical != false) && diagramChanged != false
+                     && (switches.Count == 0 || switchVerdict?.All(kv => kv.Value) == true);
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
@@ -247,6 +274,10 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["panelIdentical"] = panelIdentical,
                 ["diagramChanged"] = diagramChanged,
                 ["events"] = events,
+                // label -> true when the saved file no longer carries style="latched" for it
+                ["switchActions"] = switchVerdict is null || switches.Count == 0 ? null
+                    : new JsonObject(switchVerdict.Select(kv =>
+                        new KeyValuePair<string, JsonNode?>(kv.Key, kv.Value))),
                 ["note"] = ok
                     ? (plan.New.Count > 0
                         ? $"Grafted, with {plan.New.Count} NEW control(s) added where LabVIEW put them " +
@@ -342,6 +373,18 @@ internal sealed class GraftTools(LvaiConnection connection)
                 "A scaffold control differs from the supplied one of the same label in kind or type. " +
                 "A typedef is compared by the type it wraps - both exports write it bare.",
                 new { mismatched }), [], [], []);
+
+        // AN UNWIRED SCAFFOLD TERMINAL BREAKS THE SWAP: its duplicate has no wire, the rewire reads
+        // an invalid reference and answers 1055 - measured 2026-09-30 on a `stop` whose loop was
+        // stopped by a constant. There are no wire ends to move, so wire it or leave it out.
+        var unwired = s.Where(t => !IsWired(scaffold, t)).Select(t => t.Label).ToArray();
+        if (unwired.Length > 0)
+            return new(Json.Error("scaffoldTerminalUnwired",
+                "These scaffold terminals are wired to nothing. The graft moves each supplied " +
+                "control onto its duplicate's wire ends, and an unwired duplicate has none - the swap " +
+                "fails on it. Wire each one, or remove it from the scaffold (a supplied control the " +
+                "scaffold leaves out simply stays on the panel, listed under panelControlsUnused).",
+                new { unwired }), [], [], []);
 
         var used = s.Select(t => t.Label).ToHashSet();
         return new(null, s.Select(t => t.Label).Where(byLabel.ContainsKey).ToArray(),
@@ -451,6 +494,19 @@ internal sealed class GraftTools(LvaiConnection connection)
         return string.Join("/", chain) + " -> " + string.Join(",", ends);
     }
 
+    /// <summary>
+    /// Whether a terminal carries a wire in its export: a control whose net something reads, an
+    /// indicator whose net something writes.
+    /// </summary>
+    internal static bool IsWired(XElement vi, Terminal t)
+    {
+        if (t.Kind != "Control")
+            return Net((string?)t.Element.Attribute("inputs")) is not null;
+        var net = Net((string?)t.Element.Attribute("outputs"));
+        return net is not null && vi.Descendants().Any(e => e != t.Element
+            && Pins((string?)e.Attribute("inputs")).Any(p => p.Net == net));
+    }
+
     private static string Describe(XElement e) =>
         $"{e.Name.LocalName}:{(string?)e.Attribute("_name") ?? (string?)e.Attribute("_id") ?? (string?)e.Attribute("selector") ?? ""}";
 
@@ -549,18 +605,67 @@ internal sealed class GraftTools(LvaiConnection connection)
         a is null || b is null || !File.Exists(a) || !File.Exists(b)
             ? null : File.ReadAllBytes(a).AsSpan().SequenceEqual(File.ReadAllBytes(b));
 
-    private static string HelperFailed(string step, int? code, JsonObject? values, string output,
-                                       JsonArray? swaps = null)
+    /// <summary>
+    /// A helper's failure as an answer. `Error 1055` means "no active project" ONLY when nothing
+    /// has yet proved one active: measured 2026-09-30, the rewire answered 1055 with the project
+    /// plainly active, because an unwired scaffold terminal handed it an invalid wire reference -
+    /// and calling that noActiveProject sent the reader after the wrong cause.
+    /// </summary>
+    internal static string HelperFailed(string step, int? code, JsonObject? values, string output,
+                                        JsonArray? swaps = null, bool projectProvedActive = false)
     {
         var source = (values?["error out"] as JsonObject)?["xml"]?.GetValue<string>();
-        return Json.Error(code == 1055 ? "noActiveProject" : $"{step}Failed",
-            code == 1055
-                ? "No project is active in the IDE. Open one with lvai_open_file first - the graft " +
-                  "edits the VI in the IDE's own application instance, reached through the active project."
-                : $"The {step} helper answered error {code?.ToString() ?? "(unreadable)"}. " +
-                  "outputViPath holds a partial graft; the supplied VI is untouched.",
+        var noProject = code == 1055 && !projectProvedActive;
+        var kind = noProject ? "noActiveProject"
+                 : code == 1055 ? $"{step}ReferenceInvalid"
+                 : $"{step}Failed";
+        var message = noProject
+            ? "No project is active in the IDE. Open one with lvai_open_file first - the graft edits " +
+              "the VI in the IDE's own application instance, reached through the active project."
+            : code == 1055
+                ? $"The {step} helper met an invalid reference (Error 1055) although the project is " +
+                  "active - the paste reached it. The usual cause is a scaffold terminal with no wire, " +
+                  "which the plan now refuses; read errorOut for the node."
+                : $"The {step} helper answered error {code?.ToString() ?? "(unreadable)"}.";
+        return Json.Error(kind,
+            message + " outputViPath was put back to the plain supplied copy; the supplied VI is untouched.",
             new { step, errorCode = code, errorOut = source, outputViPath = output,
                   swaps = swaps?.ToJsonString() });
+    }
+
+    /// <summary>The labels of a one-per-line argument, trimmed, blanks dropped.</summary>
+    internal static List<string> Lines(string? text) =>
+        (text ?? "").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.Ordinal).ToList();
+
+    /// <summary>
+    /// Refuses a switch-action label that is not a boolean CONTROL of the grafted panel - supplied
+    /// or scaffold (a new one) - before anything is pasted. An indicator has no mechanical action.
+    /// </summary>
+    internal static string? SwitchRefusal(XElement panel, XElement scaffold, IReadOnlyList<string> labels)
+    {
+        if (labels.Count == 0) return null;
+        var booleans = Terminals(panel).Concat(Terminals(scaffold))
+            .Where(t => t.Kind == "Control" && t.Type == "bool").Select(t => t.Label).ToHashSet();
+        var bad = labels.Where(l => !booleans.Contains(l)).ToArray();
+        return bad.Length == 0 ? null
+            : Json.Error("switchActionNotABooleanControl",
+                "switchActionControls names labels that are not boolean controls of the panel or the " +
+                "scaffold. Only a boolean CONTROL has a mechanical action.",
+                new { notBooleanControls = bad, booleanControls = booleans.Order().ToArray() });
+    }
+
+    /// <summary>
+    /// For each requested label, whether the SAVED file no longer marks it latched. The export
+    /// writes `style="latched"` on a latched boolean and nothing on a switch, so this is read from
+    /// the file rather than from the helper's own write - a helper that saved before its writes
+    /// answered error 0 and changed nothing, measured on the previous build.
+    /// </summary>
+    internal static Dictionary<string, bool> SwitchVerdict(XElement grafted, IReadOnlyList<string> labels)
+    {
+        var byLabel = Terminals(grafted).GroupBy(t => t.Label).ToDictionary(g => g.Key, g => g.First());
+        return labels.ToDictionary(l => l, l =>
+            byLabel.TryGetValue(l, out var t) && (string?)t.Element.Attribute("style") != "latched");
     }
 
     // ------------------------------------------------------------------ plumbing

@@ -85,6 +85,16 @@ About **6:40 of phase B was avoidable** - the three items below.
 7. **The Info popup is not testable automatically**: `One Button Dialog` is modal, and a modal
    dialog stops the whole gRPC service. The user tests it by hand.
 
+**Done the same day:** 1, 2 and 3 - the graft refuses an unwired scaffold terminal, classifies
+the `1055` correctly and restores the supplied copy on failure; `switchActionControls` replaces the
+hand-built latch helper (accepted, 3.0 s); `lvai_check_aixml` and `scripts/aixml_lint.py` warn on a
+comment over 45 characters (`commentMayBeClipped` / `comment-may-be-clipped`), and 18 comments in
+shipped helpers were shortened to pass it. `docs/keep-supplied-front-panel.md` §6d.
+
+**And one `Error 1025` of this session was forward slashes, not LabVIEW.** The acceptance call
+passed `C:/Temp/...` and got 1025; the same path with backslashes opened. A LabVIEW restart had
+been spent on it first. `lvai_open_file` normalises rooted paths now.
+
 ## By hand
 
 - Place and style the new **Info** button: LabVIEW put it far left of the existing layout, in the

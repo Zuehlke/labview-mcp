@@ -10,7 +10,7 @@
   <Constant _name="string format" outputs="value:5060.value" type="string" uid="5060" uid_parent="root" value="%s"/>
   <Constant _name="do not wait" outputs="value:5070.value" type="bool" uid="5070" uid_parent="root" value="false"/>
 
-  <FreeLabel comment="One Ctrl Val.Set per name/value pair; the error wire through the shift register orders them before Run VI." uid="5080" uid_parent="root"/>
+  <FreeLabel comment="Set every input, then Run VI." uid="5080" uid_parent="root"/>
 
   <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:5010.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:5090.names" uid="5090" uid_parent="root"/>
   <Node _name="Spreadsheet String To Array" inputs="format string:5060.value,spreadsheet string:5020.value,array type (2D Dbl):5050.value,delimiter (Tab):5040.value" outputs="array:5100.values" uid="5100" uid_parent="root"/>
@@ -32,7 +32,7 @@
 
   <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:5120.vi reference,error in (no error):5270.value,Wait until done:5070.value" outputs="reference out:5300.reference out,error out:5300.error out" uid="5300" uid_parent="root"/>
 
-  <FreeLabel comment="The Case frame is what orders the wait before the read; a structure finishes only when every node inside it has." uid="5305" uid_parent="root"/>
+  <FreeLabel comment="The Case frame orders wait before read." uid="5305" uid_parent="root"/>
 
   <Node _name="Unbundle By Name" fields="status" inputs="input cluster:5300.error out" outputs="status:5310.status" uid="5310" uid_parent="root"/>
 
@@ -56,7 +56,7 @@
     <Tunnel _id="Out1" outputs="value:5440.err" uid="5440" uid_parent="5320"/>
   </Structure>
 
-  <FreeLabel comment="Signals: one Value (Signaling) per name after the first wait." uid="6001" uid_parent="root"/>
+  <FreeLabel comment="One Value (Signaling) per signal." uid="6001" uid_parent="root"/>
   <Control _name="Signal Names" description="Controls to write with Value (Signaling) after run for ms has elapsed\2C one per line and in order. Each write fires that control's Value Change event\2C which is what drives an event-driven VI past its start-up state." outputs="value:6000.value" type="string" uid="6000" uid_parent="root" value=""/>
   <Control _name="Signal Values" description="Values for Signal Names\2C one per line\2C paired by position. A boolean takes TRUE or 1\2C a numeric its number\2C a string its text\2C anything else LabVIEW XML." outputs="value:6002.value" type="string" uid="6002" uid_parent="root" value=""/>
   <Control _name="signal gap ms" description="Wait after each signal so the target handles it before the next one or the snapshot\2C as a string." outputs="value:6004.value" type="string" uid="6004" uid_parent="root" value="500"/>

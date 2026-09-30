@@ -163,6 +163,13 @@ internal sealed class ActionTools(LvaiConnection connection)
     }
 
     /// <summary>The paths in a viPaths argument: one per line, blank lines and padding dropped.</summary>
+    /// <summary>
+    /// A rooted path in Windows form - backslashes, no `..` - or the input unchanged when it is
+    /// empty or relative. LabVIEW's OpenFile does not accept forward slashes (Error 1025).
+    /// </summary>
+    internal static string? NormalizedPath(string? path) =>
+        path is { Length: > 0 } && Path.IsPathRooted(path.Trim()) ? Path.GetFullPath(path.Trim()) : path;
+
     internal static List<string> ViPathList(string? viPaths) =>
         [.. (viPaths ?? "").Split(['\r', '\n'],
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
@@ -342,7 +349,14 @@ internal sealed class ActionTools(LvaiConnection connection)
         string? viPaths = null) =>
         await Rpc.GuardAsync(async () =>
         {
-            var extra = ViPathList(viPaths);
+            // FORWARD SLASHES ARE NORMALISED FIRST. Measured 2026-09-30 as an A/B on one existing
+            // project: `C:/Temp/.../Accept.lvproj` answered Error 1025 twice - the code LabVIEW gives
+            // a project it cannot find - and the same path with backslashes opened at once. .NET's
+            // File.Exists accepts both, so the pre-check passed and the 1025 read like a broken IDE;
+            // it cost a LabVIEW restart that was never needed.
+            viPath = NormalizedPath(viPath);
+            projectPath = NormalizedPath(projectPath);
+            var extra = ViPathList(viPaths).Select(p => NormalizedPath(p)!).ToList();
             if (viPath is not { Length: > 0 } && extra.Count > 0)
             {
                 viPath = extra[0];

@@ -34,7 +34,7 @@
       <Tunnel _id="In3" inputs="value:accEmpty.empty?"     uid="oIn3" uid_parent="outer"/>
 
       <CaseFrame selector="True" selectout="" uid="keep" uid_parent="outer">
-        <FreeLabel comment="No data in this block \2D keep what has already been accumulated."
+        <FreeLabel comment="No data: keep the accumulated array."
                    uid="keepLabel" uid_parent="keep"/>
         <Tunnel _id="In1"  outputs="value:kIn1.value" uid="kIn1" uid_parent="keep"/>
         <Tunnel _id="In2"  outputs="value:"           uid="kIn2" uid_parent="keep"/>
@@ -52,7 +52,7 @@
           <Tunnel _id="In2" inputs="value:wIn2.value" uid="iIn2" uid_parent="inner"/>
 
           <CaseFrame selector="True" selectout="" uid="seedFrame" uid_parent="inner">
-            <FreeLabel comment="Accumulator still empty \2D take this block as the seed."
+            <FreeLabel comment="Empty accumulator: this block is the seed."
                        uid="seedLabel" uid_parent="seedFrame"/>
             <Tunnel _id="In1"  outputs="value:"           uid="sIn1" uid_parent="seedFrame"/>
             <Tunnel _id="In2"  outputs="value:sIn2.value" uid="sIn2" uid_parent="seedFrame"/>

@@ -115,6 +115,82 @@ public sealed class GraftToolsTests
     }
 
     [Fact]
+    public void An_unwired_scaffold_terminal_is_refused_before_the_paste()
+    {
+        // the measured failure: `stop` fed nothing, and the rewire answered 1055 on it
+        var scaffold = Fixture("scaffold.xml");
+        scaffold.Descendants("Control").Single(e => (string?)e.Attribute("_name") == "stop")
+                .SetAttributeValue("outputs", "value:");
+
+        var plan = GraftTools.Plan(Fixture("supplied panel.xml"), scaffold);
+
+        Assert.Equal("scaffoldTerminalUnwired", Kind(plan.Refusal));
+        Assert.Contains("stop", plan.Refusal!);
+    }
+
+    [Fact]
+    public void An_indicator_with_no_source_is_unwired_too()
+    {
+        var scaffold = Fixture("scaffold.xml");
+        scaffold.Descendants("Indicator").Single(e => (string?)e.Attribute("_name") == "Elapsed Time")
+                .SetAttributeValue("inputs", "value:");
+
+        Assert.Equal("scaffoldTerminalUnwired",
+                     Kind(GraftTools.Plan(Fixture("supplied panel.xml"), scaffold).Refusal));
+    }
+
+    [Fact]
+    public void Error_1055_is_no_active_project_only_until_the_paste_has_proved_one()
+    {
+        var values = new JsonObject
+        {
+            ["error out"] = new JsonObject
+            {
+                ["xml"] = "<Cluster><Name>error out</Name><NumElts>3</NumElts><Boolean><Name>status</Name><Val>1</Val></Boolean><I32><Name>code</Name><Val>1055</Val></I32><String><Name>source</Name><Val>Property Node in lvbd_graft_rewire.vi</Val></String></Cluster>",
+            },
+        };
+
+        Assert.Equal("noActiveProject", Kind(GraftTools.HelperFailed("paste", 1055, values, "x.vi")));
+        Assert.Equal("rewireReferenceInvalid",
+                     Kind(GraftTools.HelperFailed("rewire", 1055, values, "x.vi", projectProvedActive: true)));
+        Assert.Equal("rewireFailed",
+                     Kind(GraftTools.HelperFailed("rewire", 7, values, "x.vi", projectProvedActive: true)));
+    }
+
+    [Fact]
+    public void Only_boolean_controls_can_be_switched()
+    {
+        var panel = Fixture("supplied panel.xml");
+        var scaffold = Fixture("scaffold.xml");
+
+        Assert.Null(GraftTools.SwitchRefusal(panel, scaffold, ["Start", "stop"]));
+        var refused = GraftTools.SwitchRefusal(panel, scaffold, ["Start", "Wash Entry", "Wash Options", "Nope"]);
+        Assert.Equal("switchActionNotABooleanControl", Kind(refused));
+        Assert.Contains("Wash Entry", refused!);   // an indicator
+        Assert.Contains("Wash Options", refused!); // a cluster
+        Assert.Contains("Nope", refused!);
+    }
+
+    [Fact]
+    public void The_switch_verdict_is_read_from_the_saved_files_style()
+    {
+        // the supplied export carries style="latched" on Start and stop - the control arm
+        var latched = GraftTools.SwitchVerdict(Fixture("supplied panel.xml"), ["Start", "stop"]);
+        Assert.All(latched.Values, v => Assert.False(v));
+
+        var switched = Fixture("supplied panel.xml");
+        foreach (var e in switched.Descendants("Control")) e.SetAttributeValue("style", null);
+        Assert.All(GraftTools.SwitchVerdict(switched, ["Start", "stop"]).Values, v => Assert.True(v));
+    }
+
+    [Fact]
+    public void Switch_labels_are_one_per_line()
+    {
+        Assert.Equal(["Start", "stop", "Info"], GraftTools.Lines("Start\r\nstop\n\n  Info  \nstop"));
+        Assert.Empty(GraftTools.Lines(null));
+    }
+
+    [Fact]
     public void A_label_whose_type_differs_is_refused()
     {
         var panel = Fixture("supplied panel.xml");

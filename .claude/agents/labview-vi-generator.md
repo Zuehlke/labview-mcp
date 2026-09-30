@@ -608,6 +608,13 @@ destroys exactly what was supplied. `lvai_graft_diagram` puts your diagram into 
 Measured on the Car Wash CLD template: executable, wiring identical to the scaffold, typedef
 bindings kept, panel render byte-identical. `docs/keep-supplied-front-panel.md`.
 
+**ONLY FOR THE MAIN GUI - the user's rule of 2026-09-30.** This route is for the ONE top-level VI
+whose front panel is the supplied or user-facing GUI. The graft call itself takes seconds, but the
+route around it - a scaffold with exactly the panel's terminals, an active project, event
+re-registration, switch actions - costs minutes and has failure modes of its own, and a subVI's
+panel carries nothing worth it. **Never graft a subVI**: generate subVIs normally, even when a
+supplied subVI panel exists, unless the user explicitly asks to keep that panel.
+
 1. **Export the supplied VI** (`lvai_convert_vi_to_aixml`) - after opening its project, not the VI.
    Its diagram must be EMPTY (only `<Control>`/`<Indicator>` lines); if it already holds code, the
    graft refuses it (`panelDiagramNotEmpty`) and this is an EDIT - hand it back rather than
@@ -634,9 +641,17 @@ bindings kept, panel render byte-identical. `docs/keep-supplied-front-panel.md`.
    ```
    It needs an ACTIVE project (`lvai_open_file` on the project - `Error 1055` otherwise) and the
    supplied VI must not have been opened itself, or LabVIEW keeps serving the copy it loaded.
+   **Every scaffold terminal must be WIRED** - an unwired one is refused (`scaffoldTerminalUnwired`),
+   because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
+   the supplied controls by the graft itself (`events`), which then leaves the project CLOSED -
+   reopen it before anything that needs it.
+   **Latched buttons a test must signal** (a latched boolean refuses `Value (Signaling)`, Error
+   1193): when the user allowed switch action, pass `switchActionControls` with one label per line -
+   set in the same run, verified from the saved file under `switchActions`. Do NOT build a helper for
+   it; that cost 2:35 in each of two builds.
 5. **`ok` is the verdict**, read from the file: `execState 1`, `leftoverDuplicates` empty,
-   `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`. A false there is a failed graft -
-   report the field. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
+   `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a
+   failed graft - report the field; the tool has already put the plain supplied copy back. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
    an event-driven VI) and render it: the grafted diagram is the scaffold's, but its terminals are
    the supplied ones.
 6. **Keep the supplied icon.** Phase 7 applies to the scaffold at most; the supplied VI gets a new

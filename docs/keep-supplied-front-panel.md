@@ -257,11 +257,33 @@ swap, by control LABEL, onto the supplied controls, and answers `events`; `pylv-
 learned to open the emptied `<EventNodeEvents elements="0" />`. It CLOSES the project for that
 pylabview edit and leaves it closed. User-event frames are not touched. `docs/cold-build-carwash-pc.md`.
 
+### 6d. Hardening after the second build (2026-09-30)
+
+Three findings of `docs/cold-build-carwash-pc.md` became code the same day:
+
+- **An unwired scaffold terminal is refused in the plan** (`scaffoldTerminalUnwired`, naming the
+  terminals). It has no wire ends to move, and the rewire helper used to fail on it with `1055`,
+  which the tool then reported as `noActiveProject` while a project was active. A `1055` from a
+  helper that has already proved the project active is now `rewireReferenceInvalid`.
+- **No half-graft.** Any failure after the paste copies the plain supplied VI back to the output,
+  so a refused call leaves the file as it was.
+- **`switchActionControls`** - boolean labels, one per line - are set to Switch When Pressed
+  (`Mechanical Action` = 0) in the rewire helper's own IDE session, before its save. A label that
+  is not a boolean control on both panels is refused before anything is written
+  (`switchActionNotABooleanControl`); the answer carries `switchActions`, read from the export
+  (`style` no longer `latched`), and gates `ok`. Accepted on `C:\Temp\GraftSwitchAccept`:
+  `ok: true` in 3.0 s, `switchActions {stop: true}`, and a `signalsJson` run then signalled `stop`
+  - which `Error 1193` had refused on the latched original.
+
+**Scope, the user's rule of the same day: the graft is for the MAIN GUI only.** The call is
+seconds; the route around it is minutes, and a subVI's panel is not worth them.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or
   `Replace` with a styled `.ctl` - unmeasured).
-- A driven wash cycle: `Start` and `stop` are latched and cannot be signalled (`Error 1193`).
+- A driven wash cycle through the typedef cluster `Wash Options` (latched buttons are solved by
+  `switchActionControls`).
 - Coercion dots inside Case frames: `lvai_coercion_dots` does not descend into structures.
 - A supplied panel over EXISTING code has no route: the graft refuses it, and deleting the old
   diagram first would take the panel terminals with it.

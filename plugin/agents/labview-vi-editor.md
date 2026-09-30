@@ -413,6 +413,11 @@ The documentation is part of this file, not a later step:
 This REPLACES Phase 6 when the panel must survive and the Phase 2 export shows an empty diagram
 (only `<Control>`/`<Indicator>` lines). A regeneration would destroy the panel; the graft keeps it.
 
+**ONLY FOR THE MAIN GUI - the user's rule of 2026-09-30.** Use it for the one top-level VI whose
+front panel is the supplied or user-facing GUI. A subVI is regenerated as Phase 6 describes, even
+when its panel "should survive", unless the user explicitly asks to keep that subVI's panel - the
+route costs minutes, and a subVI's panel carries nothing worth them.
+
 1. **The export is the contract.** Its `<Control>`/`<Indicator>` lines fix every label, kind and
    type - copy them verbatim. A typedef comes out as a bare cluster: write it bare in the scaffold
    too, the graft keeps the SUPPLIED control's binding.
@@ -434,10 +439,15 @@ This REPLACES Phase 6 when the panel must survive and the Phase 2 export shows a
                        outputViPath=<the supplied VI's own path>  overwrite=true
    ```
    It needs an ACTIVE project (the owning one, opened in Phase 2 - `Error 1055` otherwise), and the
-   supplied VI must NOT have been opened: LabVIEW would keep serving the copy it loaded.
+   supplied VI must NOT have been opened: LabVIEW would keep serving the copy it loaded. Every
+   scaffold terminal must be WIRED (`scaffoldTerminalUnwired` otherwise). Event frames are
+   re-registered by the graft (`events`), which then leaves the project closed. Latched buttons a
+   test must signal: with the user's consent pass `switchActionControls`, one label per line -
+   never a hand-built helper.
 5. **`ok` is the verdict**, and it is read from the file: `execState 1`, `leftoverDuplicates`
-   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`. Anything else false is a
-   failed graft - report the field, never "grafted with minor issues".
+   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
+   else false is a failed graft - report the field, never "grafted with minor issues"; the tool
+   has already put the plain supplied copy back.
 6. **Keep the supplied icon** - Phase 8 has nothing to restore, and a new icon is only applied
    when the task asks for one.
 7. **Report the scaffold** as a by-product that can be deleted (and dropped from the project); it
