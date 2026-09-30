@@ -615,9 +615,13 @@ bindings kept, panel render byte-identical. `docs/keep-supplied-front-panel.md`.
    copy them verbatim. A typedef comes out as a bare cluster - write it bare too; the graft keeps
    the supplied control's binding.
 2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` beside the supplied VI: the same
-   terminals plus your diagram. **Add no control the panel lacks** - the graft refuses one, because
-   pasted it would land on the supplied panel as a new, unplaced control. A panel control the
-   program does not need may be left out (it is reported under `panelControlsUnused`). The rule
+   terminals plus your diagram. **Add no control the panel lacks - UNLESS THE TASK ASKS FOR A NEW
+   ONE.** Then put it on the scaffold with its own label and pass `allowNewControls: true` to the
+   graft: it is added to the supplied panel, wired as in the scaffold, and listed under
+   `newControls` - but PLACED BY LabVIEW and in the DEFAULT STYLE (measured 2026-09-30: above the
+   existing layout), so say in your report that the user tidies the layout by hand. Never add one
+   the task did not ask for. A panel control the program does not need may be left out (it is
+   reported under `panelControlsUnused`). The rule
    that every VI we create carries `error in`/`error out` does NOT apply to this panel: it is the
    user's, and a terminal they did not supply is exactly what the graft refuses.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a

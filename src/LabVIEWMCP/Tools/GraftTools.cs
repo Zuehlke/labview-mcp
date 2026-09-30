@@ -46,9 +46,13 @@ internal sealed class GraftTools(LvaiConnection connection)
         or any customer panel that must not be regenerated. The supplied VI itself is never changed.
         THE SCAFFOLD is an ordinary generated VI whose controls and indicators carry EXACTLY the
         supplied labels and types (the supplied VI's AIXML export gives both) and whose diagram is
-        the finished, verified program. Refused before anything is pasted when a scaffold control
-        is not on the supplied panel (it would land on the panel as a new, unplaced control), when
-        a label's kind or type differs, or when the supplied diagram already holds code.
+        the finished, verified program. Refused before anything is pasted when a label's kind or
+        type differs, when the supplied diagram already holds code, and - unless allowNewControls -
+        when a scaffold control is not on the supplied panel.
+        NEW CONTROLS (allowNewControls true): a scaffold control whose label the panel lacks is
+        pasted as a NEW control, wired as in the scaffold, and listed under newControls. LabVIEW
+        places it and gives it the default style - tidy the layout by hand afterwards. The panel is
+        then no longer identical, so panelIdentical is reported but does not decide ok.
         HOW: LabVIEW's scripted clipboard pastes the scaffold diagram, which makes a duplicate of
         every supplied control ('Start 2'); each duplicate's terminal is replaced by the supplied
         one at the same place and reconnected to the same wire ends, the loose ends are removed,
@@ -78,6 +82,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool copyDescriptions = true,
         [Description("Render the panel before and after and compare the images byte for byte")]
         bool comparePanel = true,
+        [Description("Allow scaffold controls the supplied panel does not have: they are added as new controls, placed by LabVIEW")]
+        bool allowNewControls = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -107,7 +113,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             if (panelExport is null || scaffoldExport is null)
                 return Json.Error("exportFailed",
                     $"'{Path.GetFileName(panelExport is null ? output : scaffold)}' could not be exported.");
-            var plan = Plan(panelExport, scaffoldExport);
+            var plan = Plan(panelExport, scaffoldExport, allowNewControls);
             if (plan.Refusal is not null)
             {
                 if (!outputExisted) File.Delete(output);
@@ -139,7 +145,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             var after = StringArray(pasteValues, "Labels After");
 
             // ---- 4. pair the duplicates with the supplied controls
-            var pairing = Pair(before, after, plan.Labels);
+            var pairing = Pair(before, after, plan.Labels, plan.New);
             if (pairing.Unpaired.Count > 0 || pairing.Leftover.Count > 0)
                 return Json.Error("pairingFailed",
                     "The paste did not produce exactly one duplicate per scaffold control, so the " +
@@ -184,7 +190,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                 output, timeoutSeconds: timeoutSeconds, ct: ct));
             var execState = (int?)exec?["execState"];
             var grafted = await ExportAsync(output, Path.Combine(work, "grafted.xml"), timeoutSeconds, ct);
-            var check = grafted is null ? null : Verify(panelExport, scaffoldExport, grafted);
+            var check = grafted is null ? null : Verify(panelExport, scaffoldExport, grafted, plan.New);
             var typedefs = TypedefReferences(File.ReadAllBytes(panel), File.ReadAllBytes(output));
 
             bool? panelIdentical = null, diagramChanged = null;
@@ -195,8 +201,10 @@ internal sealed class GraftTools(LvaiConnection connection)
                 diagramChanged = SameBytes(diagramBefore, diagramAfter) is { } same ? !same : null;
             }
 
+            // With new controls the panel is SUPPOSED to change, so the image comparison can only
+            // be reported; everything else still decides.
             var ok = execState == 1 && check is { Clean: true } && typedefs.Kept
-                     && panelIdentical != false && diagramChanged != false;
+                     && (plan.New.Count > 0 || panelIdentical != false) && diagramChanged != false;
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
@@ -206,6 +214,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["execState"] = execState,
                 ["controlsGrafted"] = pairing.Pairs.Count,
                 ["panelControlsUnused"] = new JsonArray(plan.Unused.Select(u => (JsonNode)u).ToArray()),
+                ["newControls"] = new JsonArray(plan.New.Select(u => (JsonNode)u).ToArray()),
                 ["swaps"] = swaps,
                 ["leftoverDuplicates"] = check is null ? null
                     : new JsonArray(check.Leftover.Select(l => (JsonNode)l).ToArray()),
@@ -218,8 +227,12 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["panelIdentical"] = panelIdentical,
                 ["diagramChanged"] = diagramChanged,
                 ["note"] = ok
-                    ? "Grafted. The supplied panel is unchanged and the program is the scaffold's; " +
-                      "run it (lvai_run_vi_and_read_values runForMs) to see it behave, and render it " +
+                    ? (plan.New.Count > 0
+                        ? $"Grafted, with {plan.New.Count} NEW control(s) added where LabVIEW put them " +
+                          "and in the default style - tidy the panel layout by hand. The supplied " +
+                          "controls are unchanged. "
+                        : "Grafted. The supplied panel is unchanged and the program is the scaffold's. ") +
+                      "Run it (lvai_run_vi_and_read_values runForMs) to see it behave, and render it " +
                       "to look at the diagram. The clipboard now holds the scaffold's diagram."
                     : "The grafted VI failed a check above - read execState, leftoverDuplicates, " +
                       "wiringMismatches, typedefsKept and panelIdentical. outputViPath holds the " +
@@ -263,7 +276,8 @@ internal sealed class GraftTools(LvaiConnection connection)
                                     (string?)e.Attribute("type") ?? "", e))
           .ToList();
 
-    internal sealed record GraftPlan(string? Refusal, IReadOnlyList<string> Labels, IReadOnlyList<string> Unused);
+    internal sealed record GraftPlan(string? Refusal, IReadOnlyList<string> Labels, IReadOnlyList<string> Unused,
+                                     IReadOnlyList<string> New);
 
     /// <summary>
     /// Whether the scaffold can be grafted onto the supplied panel, from the two exports alone. The
@@ -271,7 +285,7 @@ internal sealed class GraftTools(LvaiConnection connection)
     /// control the panel lacks lands on it as a new control, and a diagram that already holds code
     /// would be merged with the scaffold's rather than replaced.
     /// </summary>
-    internal static GraftPlan Plan(XElement panel, XElement scaffold)
+    internal static GraftPlan Plan(XElement panel, XElement scaffold, bool allowNewControls = false)
     {
         var p = Terminals(panel);
         var s = Terminals(scaffold);
@@ -280,24 +294,25 @@ internal sealed class GraftTools(LvaiConnection connection)
         if (dupPanel.Length > 0 || dupScaffold.Length > 0)
             return new(Json.Error("labelsNotUnique",
                 "Controls are paired by label, so every label must be unique on both panels.",
-                new { panel = dupPanel, scaffold = dupScaffold }), [], []);
+                new { panel = dupPanel, scaffold = dupScaffold }), [], [], []);
 
         var code = panel.Descendants().Count(e => e.Name.LocalName is "Node" or "Structure" or "Constant");
         if (code > 0)
             return new(Json.Error("panelDiagramNotEmpty",
                 $"The supplied VI's diagram already holds {code} node(s), structure(s) or constant(s). " +
                 "The graft replaces an EMPTY diagram; merging two programs is not what it does.",
-                new { elements = code }), [], []);
+                new { elements = code }), [], [], []);
 
         var byLabel = p.ToDictionary(t => t.Label);
         var missing = s.Where(t => !byLabel.ContainsKey(t.Label)).Select(t => t.Label).ToArray();
-        if (missing.Length > 0)
+        if (missing.Length > 0 && !allowNewControls)
             return new(Json.Error("scaffoldControlsNotOnPanel",
                 "These scaffold controls are not on the supplied panel. Pasted, each would become a " +
-                "new, unplaced control on it - rename them to a supplied label or remove them.",
-                new { missing, panelLabels = p.Select(t => t.Label).ToArray() }), [], []);
+                "new, unplaced control on it - rename them to a supplied label, remove them, or pass " +
+                "allowNewControls true to add them on purpose.",
+                new { missing, panelLabels = p.Select(t => t.Label).ToArray() }), [], [], []);
 
-        var mismatched = s.Where(t => byLabel[t.Label] is var q && (q.Kind != t.Kind || q.Type != t.Type))
+        var mismatched = s.Where(t => byLabel.TryGetValue(t.Label, out var q) && (q.Kind != t.Kind || q.Type != t.Type))
                           .Select(t => new { label = t.Label, scaffold = $"{t.Kind} {t.Type}",
                                              panel = $"{byLabel[t.Label].Kind} {byLabel[t.Label].Type}" })
                           .ToArray();
@@ -305,11 +320,11 @@ internal sealed class GraftTools(LvaiConnection connection)
             return new(Json.Error("controlTypeMismatch",
                 "A scaffold control differs from the supplied one of the same label in kind or type. " +
                 "A typedef is compared by the type it wraps - both exports write it bare.",
-                new { mismatched }), [], []);
+                new { mismatched }), [], [], []);
 
         var used = s.Select(t => t.Label).ToHashSet();
-        return new(null, s.Select(t => t.Label).ToArray(),
-                   p.Select(t => t.Label).Where(l => !used.Contains(l)).ToArray());
+        return new(null, s.Select(t => t.Label).Where(byLabel.ContainsKey).ToArray(),
+                   p.Select(t => t.Label).Where(l => !used.Contains(l)).ToArray(), missing);
     }
 
     internal sealed record Pairing(IReadOnlyList<(string Original, string Duplicate)> Pairs,
@@ -322,10 +337,15 @@ internal sealed class GraftTools(LvaiConnection connection)
     /// " " plus digits, exactly one per scaffold label.
     /// </summary>
     internal static Pairing Pair(IReadOnlyList<string> before, IReadOnlyList<string> after,
-                                 IReadOnlyList<string> scaffoldLabels)
+                                 IReadOnlyList<string> scaffoldLabels, IReadOnlyList<string>? newLabels = null)
     {
         var fresh = after.ToList();
         foreach (var b in before) fresh.Remove(b);
+        // A NEW control clashes with nothing on the panel, so it keeps its own label - it is not a
+        // duplicate to swap, and it must not be mistaken for a leftover either.
+        var unpairedNew = new List<string>();
+        foreach (var n in newLabels ?? [])
+            if (!fresh.Remove(n)) unpairedNew.Add(n);
         var pairs = new List<(string, string)>();
         var unpaired = new List<string>();
         foreach (var label in scaffoldLabels)
@@ -339,7 +359,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             }
             else unpaired.Add(label);
         }
-        return new(pairs, unpaired, fresh);
+        return new(pairs, [.. unpaired, .. unpairedNew], fresh);
     }
 
     internal sealed record Check(bool Clean, IReadOnlyList<string> Leftover, bool WiringMatches,
@@ -350,9 +370,11 @@ internal sealed class GraftTools(LvaiConnection connection)
     /// terminal feeding - or fed by - the same element and terminal inside the same structure chain,
     /// and the same number of nodes, structures, frames, tunnels and constants.
     /// </summary>
-    internal static Check Verify(XElement panel, XElement scaffold, XElement grafted)
+    internal static Check Verify(XElement panel, XElement scaffold, XElement grafted,
+                                 IReadOnlyList<string>? newLabels = null)
     {
         var panelLabels = Terminals(panel).Select(t => t.Label).ToHashSet();
+        panelLabels.UnionWith(newLabels ?? []);
         var graftedTerminals = Terminals(grafted);
         var leftover = graftedTerminals.Select(t => t.Label).Where(l => !panelLabels.Contains(l)).ToList();
 

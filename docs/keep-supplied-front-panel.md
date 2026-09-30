@@ -232,8 +232,26 @@ It also ran while a DIFFERENT `Car Wash.vi` - the previous acceptance's output -
 and run minutes earlier, the same-name shape `CLAUDE.md` warns about; no `1051`, and the verdict
 would have caught a stale copy (`wiringMatchesScaffold`, `diagramChanged`).
 
+### 6b. New controls - `allowNewControls`
+
+The user's decision of 2026-09-30: new controls may simply be ADDED, and the layout tidied by hand
+afterwards. So a scaffold control whose label the supplied panel lacks is refused by default
+(`scaffoldControlsNotOnPanel`) and accepted with `allowNewControls: true`: the paste creates it as a
+new control under its own label - no clash, so no numeric suffix - already wired, and it is listed
+under `newControls`, excluded from the pairing and from the leftover check. `panelIdentical` is
+then reported but no longer decides `ok`, since the panel is meant to change.
+
+Measured the same day on the Car Wash template with a scaffold that echoes the slider into a new
+`Position Echo` indicator: without the option the call refused in 1.0 s; with it, `ok: true` in
+1.8 s, the two supplied controls swapped and placed, wiring equal to the scaffold, typedefs kept,
+`panelIdentical: false`. A run with the slider signalled to 3 read `Position Echo = 3.0`. LabVIEW
+put the new indicator ABOVE the existing layout, growing the panel upwards, in the default style;
+every supplied object stayed where it was.
+
 ### Still open
 
+- Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or
+  `Replace` with a styled `.ctl` - unmeasured).
 - A driven wash cycle: `Start` and `stop` are latched and cannot be signalled (`Error 1193`).
 - Coercion dots inside Case frames: `lvai_coercion_dots` does not descend into structures.
 - A supplied panel over EXISTING code has no route: the graft refuses it, and deleting the old

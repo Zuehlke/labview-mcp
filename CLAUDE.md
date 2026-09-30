@@ -2548,7 +2548,7 @@ literally it argued away 600 usable palette VIs.
 | How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
 | How does the handler READ the user event's PAYLOAD? | `scripts/aixml-skeletons/user-event-two-loops.md`, `experiments/pylabview/event-data-fields/` (source tree only) | `lvai_set_event_data_fields` — third call of the route; author a labelled placeholder constant into a PRIM input first, and field index 4 is the first payload item |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
-| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram` — generate the program as a SCAFFOLD with the panel's own labels and types, then graft; the supplied diagram must be empty |
+| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram` — generate the program as a SCAFFOLD with the panel's own labels and types, then graft; the supplied diagram must be empty. NEW controls: `allowNewControls`, placed by LabVIEW, layout by hand |
 | How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |

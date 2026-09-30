@@ -55,6 +55,66 @@ public sealed class GraftToolsTests
     }
 
     [Fact]
+    public void A_new_scaffold_control_is_accepted_only_when_asked_for()
+    {
+        var scaffold = Fixture("scaffold.xml");
+        var start = scaffold.Descendants("Control").Single(e => (string?)e.Attribute("_name") == "Start");
+        var extra = new XElement(start);
+        extra.SetAttributeValue("_name", "Debug Mode");
+        extra.SetAttributeValue("uid", "9990");
+        start.AddAfterSelf(extra);
+
+        var refused = GraftTools.Plan(Fixture("supplied panel.xml"), scaffold);
+        var allowed = GraftTools.Plan(Fixture("supplied panel.xml"), scaffold, allowNewControls: true);
+
+        Assert.Equal("scaffoldControlsNotOnPanel", Kind(refused.Refusal));
+        Assert.Null(allowed.Refusal);
+        Assert.Equal(["Debug Mode"], allowed.New);
+        // a new control is not swapped, so it is not among the labels to pair
+        Assert.DoesNotContain("Debug Mode", allowed.Labels);
+        Assert.Equal(7, allowed.Labels.Count);
+    }
+
+    [Fact]
+    public void A_new_control_keeps_its_label_and_is_neither_a_duplicate_nor_a_leftover()
+    {
+        var pairing = GraftTools.Pair(Before, [.. After, "Debug Mode"], SuppliedLabels, ["Debug Mode"]);
+        var control = GraftTools.Pair(Before, [.. After, "Debug Mode"], SuppliedLabels);
+
+        Assert.Equal(7, pairing.Pairs.Count);
+        Assert.Empty(pairing.Leftover);
+        Assert.Empty(pairing.Unpaired);
+        // without declaring it, the same paste leaves it over - which is what refuses the swap
+        Assert.Equal(["Debug Mode"], control.Leftover);
+    }
+
+    [Fact]
+    public void A_declared_new_control_the_paste_did_not_produce_is_unpaired()
+    {
+        var pairing = GraftTools.Pair(Before, After, SuppliedLabels, ["Debug Mode"]);
+
+        Assert.Equal(["Debug Mode"], pairing.Unpaired);
+    }
+
+    [Fact]
+    public void A_declared_new_control_on_the_graft_is_not_a_leftover()
+    {
+        var grafted = Fixture("grafted.xml");
+        var start = grafted.Descendants("Control").Single(e => (string?)e.Attribute("_name") == "Start");
+        var extra = new XElement(start);
+        extra.SetAttributeValue("_name", "Debug Mode");
+        extra.SetAttributeValue("uid", "9992");
+        extra.SetAttributeValue("outputs", "value:");
+        start.AddAfterSelf(extra);
+
+        var allowed = GraftTools.Verify(Fixture("supplied panel.xml"), Fixture("scaffold.xml"), grafted, ["Debug Mode"]);
+        var control = GraftTools.Verify(Fixture("supplied panel.xml"), Fixture("scaffold.xml"), grafted);
+
+        Assert.Empty(allowed.Leftover);
+        Assert.Equal(["Debug Mode"], control.Leftover);
+    }
+
+    [Fact]
     public void A_label_whose_type_differs_is_refused()
     {
         var panel = Fixture("supplied panel.xml");

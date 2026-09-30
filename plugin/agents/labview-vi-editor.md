@@ -417,8 +417,11 @@ This REPLACES Phase 6 when the panel must survive and the Phase 2 export shows a
    type - copy them verbatim. A typedef comes out as a bare cluster: write it bare in the scaffold
    too, the graft keeps the SUPPLIED control's binding.
 2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` in the same folder: those same
-   terminals plus the diagram. **Add no control the panel does not have** - the graft refuses one,
-   because pasted it would land on the user's panel as a new, unplaced control. A panel control the
+   terminals plus the diagram. **Add no control the panel does not have - UNLESS THE CHANGE ASKS
+   FOR A NEW ONE.** Then give it its own label on the scaffold and pass `allowNewControls: true`
+   to the graft: it is added to the user's panel, wired, and listed under `newControls`, but placed
+   by LabVIEW in the default style (measured: above the existing layout) - report that the user
+   tidies the layout by hand. Never add one the change did not ask for. A panel control the
    program does not need may be left out; it stays on the panel, unwired, and is reported under
    `panelControlsUnused`. The error-cluster rule for new VIs adds nothing here: the panel is the
    user's, and a terminal on it that the user did not supply is exactly what the graft refuses.
