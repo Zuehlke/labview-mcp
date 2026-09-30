@@ -1,0 +1,174 @@
+<VI _name="Car Wash.vi" description="">
+  <FreeLabel comment="Release the state queue" uid="626" uid_parent="root"/>
+  <FreeLabel comment="Create the state queue and post the first state" uid="624" uid_parent="root"/>
+  <Constant _name="Car Wash State Type" outputs="value:645.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="645" uid_parent="root" value="0"/>
+  <Constant _name="First State" outputs="value:685.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="685" uid_parent="root" value="0"/>
+  <Constant _name="Startup Car Wash Data" outputs="value:722.value" type="cluster{array{int32}.Step List,int32.Step Pointer,double.Elapsed Time,uint32.Last Tick,bool.Wash In Progress}" uid="722" uid_parent="root" value="[[],0,0,0,false]"/>
+  <Node _name="Current VI's Path" outputs="path:628.path" uid="628" uid_parent="root"/>
+  <Node _name="Obtain Queue" inputs="name (unnamed):,element data type:645.value,create if not found? (T):,error in (no error):,max queue size (-1\2C unlimited):" outputs="queue out:656.queue out,created new?:,error out:656.error out" uid="656" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:628.path" outputs="string:634.string" uid="634" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:656.queue out,element:685.value,timeout in ms (-1):,error in (no error):656.error out" outputs="queue out:,timed out?:,error out:696.error out" uid="696" uid_parent="root"/>
+  <Structure _name="While Loop" count="" uid="805" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:656.queue out" outputs="value:807.value" uid="807" uid_parent="805"/>
+    <Tunnel _id="In2" inputs="value:634.string" outputs="value:811.value" uid="811" uid_parent="805"/>
+    <FreeLabel comment="Post the state that runs next" uid="2121" uid_parent="805"/>
+    <FreeLabel comment="Stop Program overrides the dequeued state with Shutdown" uid="2123" uid_parent="805"/>
+    <FreeLabel comment="One state per iteration\2C paced at 50 ms" uid="2125" uid_parent="805"/>
+    <Constant _name="Shutdown State" outputs="value:850.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="850" uid_parent="805" value="5"/>
+    <Constant _name="Loop Rate (ms)" outputs="value:864.value" type="int32" uid="864" uid_parent="805" value="50"/>
+    <Control _name="Car Position Slider" outputs="value:176.value" type="uint8" uid="176" uid_parent="805" value="0"/>
+    <Control _name="Wash Options" outputs="value:208.value" type="cluster{bool.Underbody Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry}" uid="208" uid_parent="805" value="[false,false,false,false,false,false,false,false]"/>
+    <Control _name="stop" outputs="value:317.value" style="latched" type="bool" uid="317" uid_parent="805" value="false"/>
+    <Control _name="Start" outputs="value:345.value" style="latched" type="bool" uid="345" uid_parent="805" value="false"/>
+    <Node _name="Dequeue Element" inputs="queue:807.value,timeout in ms (-1):,error in (no error):" outputs="queue out:,element:873.element,timed out?:,error out:" uid="873" uid_parent="805"/>
+    <Node _name="Wait (ms)" inputs="milliseconds to wait:864.value" outputs="millisecond timer value:" uid="2101" uid_parent="805"/>
+    <Node _name="Select" inputs="t:850.value,s:317.value,f:873.element" outputs="s? t\3Af:896.s? t\3Af" uid="896" uid_parent="805"/>
+    <Structure _name="Case Structure" selectin="896.s? t\3Af" uid="910" uid_parent="805">
+      <Tunnel _id="In1" inputs="value:921.value" uid="921" uid_parent="910"/>
+      <Tunnel _id="In2" inputs="value:176.value" uid="930" uid_parent="910"/>
+      <Tunnel _id="In3" inputs="value:208.value" uid="939" uid_parent="910"/>
+      <Tunnel _id="In4" inputs="value:345.value" uid="948" uid_parent="910"/>
+      <Tunnel _id="In5" inputs="value:811.value" uid="957" uid_parent="910"/>
+      <Tunnel _id="In6" inputs="value:966.value" uid="966" uid_parent="910"/>
+      <CaseFrame selector="&quot;Initialize&quot;" selectout="" uid="1022" uid_parent="910">
+        <FreeLabel comment="Vacant and ready\3A reset LEDs\2C timer\2C slider and Entry Console" uid="1103" uid_parent="1022"/>
+        <Tunnel _id="In1" outputs="value:" uid="924" uid_parent="1022"/>
+        <Tunnel _id="In2" outputs="value:" uid="933" uid_parent="1022"/>
+        <Tunnel _id="In3" outputs="value:" uid="942" uid_parent="1022"/>
+        <Tunnel _id="In4" outputs="value:" uid="951" uid_parent="1022"/>
+        <Tunnel _id="In5" outputs="value:960.value" uid="960" uid_parent="1022"/>
+        <Tunnel _id="In6" outputs="value:969.value" uid="969" uid_parent="1022"/>
+        <Constant _name="Next State Idle" outputs="value:1031.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1031" uid_parent="1022" value="1"/>
+        <Constant _name="Keep Running" outputs="value:1045.value" type="bool" uid="1045" uid_parent="1022" value="false"/>
+        <Call inputs="Main VI Path:960.value,error in (no error):969.value" outputs="Car Wash Data:1052.Car Wash Data,Car Wash Indicators:1052.Car Wash Indicators,error out:1052.error out" target="Initialize Car Wash.vi" uid="1052" uid_parent="1022"/>
+        <Tunnel _id="Out1" inputs="value:1052.Car Wash Data" uid="978" uid_parent="1022"/>
+        <Tunnel _id="Out2" inputs="value:1052.Car Wash Indicators" uid="987" uid_parent="1022"/>
+        <Tunnel _id="Out3" inputs="value:1031.value" uid="996" uid_parent="1022"/>
+        <Tunnel _id="Out4" inputs="value:1052.error out" uid="1005" uid_parent="1022"/>
+        <Tunnel _id="Out5" inputs="value:1045.value" uid="1014" uid_parent="1022"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Idle&quot;" selectout="" uid="1126" uid_parent="910">
+        <FreeLabel comment="Wash vacant\3A wait for Start" uid="1270" uid_parent="1126"/>
+        <Tunnel _id="In1" outputs="value:925.value" uid="925" uid_parent="1126"/>
+        <Tunnel _id="In2" outputs="value:" uid="934" uid_parent="1126"/>
+        <Tunnel _id="In3" outputs="value:" uid="943" uid_parent="1126"/>
+        <Tunnel _id="In4" outputs="value:952.value" uid="952" uid_parent="1126"/>
+        <Tunnel _id="In5" outputs="value:" uid="961" uid_parent="1126"/>
+        <Tunnel _id="In6" outputs="value:970.value" uid="970" uid_parent="1126"/>
+        <Constant _name="Next State Configure Wash" outputs="value:1135.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1135" uid_parent="1126" value="2"/>
+        <Constant _name="Stay Idle" outputs="value:1149.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1149" uid_parent="1126" value="1"/>
+        <Constant _name="All LEDs Off" outputs="value:1163.value" type="cluster{bool.Under Body Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry,bool.Vehicle Out of Position}" uid="1163" uid_parent="1126" value="[false,false,false,false,false,false,false,false,false]"/>
+        <Constant _name="Keep Running" outputs="value:1249.value" type="bool" uid="1249" uid_parent="1126" value="false"/>
+        <Node _name="Select" inputs="t:1135.value,s:952.value,f:1149.value" outputs="s? t\3Af:1256.s? t\3Af" uid="1256" uid_parent="1126"/>
+        <Tunnel _id="Out1" inputs="value:925.value" uid="979" uid_parent="1126"/>
+        <Tunnel _id="Out2" inputs="value:1163.value" uid="988" uid_parent="1126"/>
+        <Tunnel _id="Out3" inputs="value:1256.s? t\3Af" uid="997" uid_parent="1126"/>
+        <Tunnel _id="Out4" inputs="value:970.value" uid="1006" uid_parent="1126"/>
+        <Tunnel _id="Out5" inputs="value:1249.value" uid="1015" uid_parent="1126"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Configure Wash&quot;" selectout="" uid="1296" uid_parent="910">
+        <FreeLabel comment="Start pressed\3A build the step list and lock the Entry Console" uid="1377" uid_parent="1296"/>
+        <Tunnel _id="In1" outputs="value:926.value" uid="926" uid_parent="1296"/>
+        <Tunnel _id="In2" outputs="value:" uid="935" uid_parent="1296"/>
+        <Tunnel _id="In3" outputs="value:944.value" uid="944" uid_parent="1296"/>
+        <Tunnel _id="In4" outputs="value:" uid="953" uid_parent="1296"/>
+        <Tunnel _id="In5" outputs="value:962.value" uid="962" uid_parent="1296"/>
+        <Tunnel _id="In6" outputs="value:971.value" uid="971" uid_parent="1296"/>
+        <Constant _name="Next State Wash Step" outputs="value:1305.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1305" uid_parent="1296" value="3"/>
+        <Constant _name="Keep Running" outputs="value:1319.value" type="bool" uid="1319" uid_parent="1296" value="false"/>
+        <Call inputs="Wash Options:944.value,Car Wash Data In:926.value,Main VI Path:962.value,error in (no error):971.value" outputs="Car Wash Data Out:1326.Car Wash Data Out,Car Wash Indicators:1326.Car Wash Indicators,error out:1326.error out" target="Configure Wash.vi" uid="1326" uid_parent="1296"/>
+        <Tunnel _id="Out1" inputs="value:1326.Car Wash Data Out" uid="980" uid_parent="1296"/>
+        <Tunnel _id="Out2" inputs="value:1326.Car Wash Indicators" uid="989" uid_parent="1296"/>
+        <Tunnel _id="Out3" inputs="value:1305.value" uid="998" uid_parent="1296"/>
+        <Tunnel _id="Out4" inputs="value:1326.error out" uid="1007" uid_parent="1296"/>
+        <Tunnel _id="Out5" inputs="value:1319.value" uid="1016" uid_parent="1296"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Wash Step&quot;" selectout="" uid="1406" uid_parent="910">
+        <FreeLabel comment="Run the active step until it is complete\2C then take the next one" uid="1515" uid_parent="1406"/>
+        <Tunnel _id="In1" outputs="value:927.value" uid="927" uid_parent="1406"/>
+        <Tunnel _id="In2" outputs="value:936.value" uid="936" uid_parent="1406"/>
+        <Tunnel _id="In3" outputs="value:" uid="945" uid_parent="1406"/>
+        <Tunnel _id="In4" outputs="value:" uid="954" uid_parent="1406"/>
+        <Tunnel _id="In5" outputs="value:" uid="963" uid_parent="1406"/>
+        <Tunnel _id="In6" outputs="value:972.value" uid="972" uid_parent="1406"/>
+        <Constant _name="Next State Wash Complete" outputs="value:1415.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1415" uid_parent="1406" value="4"/>
+        <Constant _name="Stay In Wash Step" outputs="value:1429.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1429" uid_parent="1406" value="3"/>
+        <Constant _name="Keep Running" outputs="value:1443.value" type="bool" uid="1443" uid_parent="1406" value="false"/>
+        <Call inputs="Car Position:936.value,Car Wash Data In:927.value" outputs="Car Wash Data Out:1464.Car Wash Data Out,Car Wash Indicators:1464.Car Wash Indicators,Wash Complete?:1464.Wash Complete?" target="Execute Wash Step.vi" uid="1464" uid_parent="1406"/>
+        <Node _name="Select" inputs="t:1415.value,s:1464.Wash Complete?,f:1429.value" outputs="s? t\3Af:1450.s? t\3Af" uid="1450" uid_parent="1406"/>
+        <Tunnel _id="Out1" inputs="value:1464.Car Wash Data Out" uid="981" uid_parent="1406"/>
+        <Tunnel _id="Out2" inputs="value:1464.Car Wash Indicators" uid="990" uid_parent="1406"/>
+        <Tunnel _id="Out3" inputs="value:1450.s? t\3Af" uid="999" uid_parent="1406"/>
+        <Tunnel _id="Out4" inputs="value:972.value" uid="1008" uid_parent="1406"/>
+        <Tunnel _id="Out5" inputs="value:1443.value" uid="1017" uid_parent="1406"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Wash Complete&quot;" selectout="" uid="1547" uid_parent="910">
+        <FreeLabel comment="Vehicle has reached Exit\3A back to the vacant state" uid="1736" uid_parent="1547"/>
+        <FreeLabel comment="All steps done\3A Vehicle Out of Position is the exit prompt" uid="1738" uid_parent="1547"/>
+        <Tunnel _id="In1" outputs="value:928.value" uid="928" uid_parent="1547"/>
+        <Tunnel _id="In2" outputs="value:937.value" uid="937" uid_parent="1547"/>
+        <Tunnel _id="In3" outputs="value:" uid="946" uid_parent="1547"/>
+        <Tunnel _id="In4" outputs="value:" uid="955" uid_parent="1547"/>
+        <Tunnel _id="In5" outputs="value:" uid="964" uid_parent="1547"/>
+        <Tunnel _id="In6" outputs="value:973.value" uid="973" uid_parent="1547"/>
+        <Constant _name="Exit Prompt LEDs" outputs="value:1556.value" type="cluster{bool.Under Body Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry,bool.Vehicle Out of Position}" uid="1556" uid_parent="1547" value="[false,false,false,false,false,false,false,false,true]"/>
+        <Constant _name="Elapsed Time Reset" outputs="value:1642.value" type="double" uid="1642" uid_parent="1547" value="0"/>
+        <Constant _name="Exit Position" outputs="value:1654.value" type="uint8" uid="1654" uid_parent="1547" value="4"/>
+        <Constant _name="Next State Initialize" outputs="value:1666.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1666" uid_parent="1547" value="0"/>
+        <Constant _name="Stay In Wash Complete" outputs="value:1680.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1680" uid_parent="1547" value="4"/>
+        <Constant _name="Keep Running" outputs="value:1694.value" type="bool" uid="1694" uid_parent="1547" value="false"/>
+        <Node _name="Bundle By Name" fields="Elapsed Time" inputs="Elapsed Time:1642.value,input cluster:928.value" outputs="output cluster:1701.output cluster" uid="1701" uid_parent="1547"/>
+        <Node _name="Equal?" inputs="x:937.value,y:1654.value" outputs="x = y?:1711.x = y?" uid="1711" uid_parent="1547"/>
+        <Node _name="Select" inputs="t:1666.value,s:1711.x = y?,f:1680.value" outputs="s? t\3Af:1722.s? t\3Af" uid="1722" uid_parent="1547"/>
+        <Tunnel _id="Out1" inputs="value:1701.output cluster" uid="982" uid_parent="1547"/>
+        <Tunnel _id="Out2" inputs="value:1556.value" uid="991" uid_parent="1547"/>
+        <Tunnel _id="Out3" inputs="value:1722.s? t\3Af" uid="1000" uid_parent="1547"/>
+        <Tunnel _id="Out4" inputs="value:973.value" uid="1009" uid_parent="1547"/>
+        <Tunnel _id="Out5" inputs="value:1694.value" uid="1018" uid_parent="1547"/>
+      </CaseFrame>
+      <CaseFrame selector="&quot;Shutdown&quot;" selectout="" uid="1776" uid_parent="910">
+        <FreeLabel comment="Stop Program\3A restore the vacant front panel\2C then stop the loop" uid="2039" uid_parent="1776"/>
+        <Tunnel _id="In1" outputs="value:929.value" uid="929" uid_parent="1776"/>
+        <Tunnel _id="In2" outputs="value:" uid="938" uid_parent="1776"/>
+        <Tunnel _id="In3" outputs="value:" uid="947" uid_parent="1776"/>
+        <Tunnel _id="In4" outputs="value:" uid="956" uid_parent="1776"/>
+        <Tunnel _id="In5" outputs="value:965.value" uid="965" uid_parent="1776"/>
+        <Tunnel _id="In6" outputs="value:974.value" uid="974" uid_parent="1776"/>
+        <Constant _name="Entry Console Enabled" outputs="value:1785.value" type="bool" uid="1785" uid_parent="1776" value="true"/>
+        <Constant _name="All LEDs Off" outputs="value:1795.value" type="cluster{bool.Under Body Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry,bool.Vehicle Out of Position}" uid="1795" uid_parent="1776" value="[false,false,false,false,false,false,false,false,false]"/>
+        <Constant _name="Elapsed Time Reset" outputs="value:1881.value" type="double" uid="1881" uid_parent="1776" value="0"/>
+        <Constant _name="Wash Vacant" outputs="value:1893.value" type="bool" uid="1893" uid_parent="1776" value="false"/>
+        <Constant _name="Stay In Shutdown" outputs="value:1903.value" type="uint16{Initialize,Idle,Configure Wash,Wash Step,Wash Complete,Shutdown}" uid="1903" uid_parent="1776" value="5"/>
+        <Constant _name="Stop The Application" outputs="value:1917.value" type="bool" uid="1917" uid_parent="1776" value="true"/>
+        <Call inputs="Main VI Path:965.value,Enabled?:1785.value,error in (no error):974.value" outputs="error out:1937.error out" target="Set Wash Options Enabled.vi" uid="1937" uid_parent="1776"/>
+        <Node _name="Bundle By Name" fields="Elapsed Time,Wash In Progress" inputs="Elapsed Time:1881.value,Wash In Progress:1893.value,input cluster:929.value" outputs="output cluster:1924.output cluster" uid="1924" uid_parent="1776"/>
+        <Call inputs="Main VI Path:965.value,error in (no error):1937.error out" outputs="error out:1988.error out" target="Reset Car Position Slider.vi" uid="1988" uid_parent="1776"/>
+        <Tunnel _id="Out1" inputs="value:1924.output cluster" uid="983" uid_parent="1776"/>
+        <Tunnel _id="Out2" inputs="value:1795.value" uid="992" uid_parent="1776"/>
+        <Tunnel _id="Out3" inputs="value:1903.value" uid="1001" uid_parent="1776"/>
+        <Tunnel _id="Out4" inputs="value:1988.error out" uid="1010" uid_parent="1776"/>
+        <Tunnel _id="Out5" inputs="value:1917.value" uid="1019" uid_parent="1776"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:975.value" uid="975" uid_parent="910"/>
+      <Tunnel _id="Out2" outputs="value:984.value" uid="984" uid_parent="910"/>
+      <Tunnel _id="Out3" outputs="value:993.value" uid="993" uid_parent="910"/>
+      <Tunnel _id="Out4" outputs="value:1002.value" uid="1002" uid_parent="910"/>
+      <Tunnel _id="Out5" outputs="value:1011.value" uid="1011" uid_parent="910"/>
+    </Structure>
+    <Node _name="Unbundle By Name" fields="Elapsed Time,Wash In Progress" inputs="input cluster:975.value" outputs="Elapsed Time:2109.Elapsed Time,Wash In Progress:2109.Wash In Progress" uid="2109" uid_parent="805"/>
+    <Node _name="Enqueue Element" inputs="queue:807.value,element:993.value,timeout in ms (-1):,error in (no error):" outputs="queue out:,timed out?:,error out:" uid="2078" uid_parent="805"/>
+    <Indicator _name="Car Wash Indicators" inputs="value:984.value" type="cluster{bool.Under Body Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry,bool.Vehicle Out of Position}" uid="68" uid_parent="805" value="[false,false,false,false,false,false,false,false,false]"/>
+    <Indicator _name="Wash Entry" inputs="value:2109.Wash In Progress" type="bool" uid="302" uid_parent="805" value="false"/>
+    <Indicator _name="Elapsed Time" inputs="value:2109.Elapsed Time" type="double" uid="329" uid_parent="805" value="0"/>
+    <Condition inputs="value:1011.value" uid="845" uid_parent="805" value="stop"/>
+    <ShiftReg uid="816" uid_parent="805">
+      <Left inputs="value:722.value" outputs="value:921.value" uid="820" uid_parent="816"/>
+      <Right inputs="value:975.value" outputs="value:" uid="818" uid_parent="816"/>
+    </ShiftReg>
+    <ShiftReg uid="825" uid_parent="805">
+      <Left inputs="value:696.error out" outputs="value:966.value" uid="829" uid_parent="825"/>
+      <Right inputs="value:1002.value" outputs="value:827.value" uid="827" uid_parent="825"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Release Queue" inputs="queue:656.queue out,force destroy? (F):,error in (no error):827.value" outputs="queue name:,remaining elements:,error out:" uid="2187" uid_parent="root"/>
+</VI>

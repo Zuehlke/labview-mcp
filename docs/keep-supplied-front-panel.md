@@ -176,3 +176,65 @@ property. A panel-into-generated-VI route would have to copy each of them.
 **Recommendation:** productise it as one tool (working name `lvai_graft_diagram`), with items 1,
 3, 4 and 5 of §4 built in, the §3 checks as its verdict, and item 6 in its description. Items 1
 and 3 need one more measurement each before they are written as fact.
+
+---
+
+## 6. The tool: `lvai_graft_diagram` (built the same day)
+
+The recommendation above was carried out. Helpers `scripts/lvbd_graft_paste.xml` and
+`scripts/lvbd_graft_rewire.xml`; C# in `src/LabVIEWMCP/Tools/GraftTools.cs`; tests in
+`GraftToolsTests.cs` against the three exports of the §2 run (`tests/.../Fixtures/graft/`), each
+check with a control arm that must fail.
+
+### What §4 became
+
+| §4 item | now |
+|---|---|
+| 1. terminal positions offset | **FIXED, measured.** The rewire helper moves each terminal TWICE: the first `Move` lands it and `Position` is read back, the second applies `target + target - landed`. On a fresh copy all 7 terminals came out at exactly the duplicate's coordinates (`Final Left/Top` = `Target Left/Top`), and the render shows them where the scaffold had them. So `Position` reads pane coordinates and `Move` takes owner-relative ones - the correction is right whichever convention holds, which is why it was built that way rather than on the inferred offset |
+| 2. loose ends | `BD.Remove Bad Wires` runs inside the rewire helper; a supplied diagram with code is refused, so it cannot remove anything of the user's |
+| 3. pairing by `" 2"` | the paste helper returns the labels BEFORE and AFTER the paste; a duplicate is a new label equal to its original plus `" "` plus digits, exactly one per scaffold control. A prefix (`Start Delay 2` is not `Start`'s) and two candidates for one label are both tested: the second is REFUSED (`pairingFailed`), never guessed |
+| 4. extra scaffold control | refused before the paste (`scaffoldControlsNotOnPanel`), with a kind or type mismatch (`controlTypeMismatch`) and a non-empty supplied diagram (`panelDiagramNotEmpty`) beside it |
+| 5. descriptions | `copyDescriptions` (default on) copies a non-empty scaffold description onto the supplied control before the duplicate is deleted |
+| 6. clipboard | in the description; the agents graft only when no other agent runs |
+| 7. IDE instance | `Error 1055` is answered as `noActiveProject` |
+
+### Acceptance, 2026-09-30 - the built exe over raw stdio
+
+A client fetches its tool list at session start, so the new tool was called through
+`experiments/panel-graft/call_tool.py`. Supplied VI: the ORIGINAL template in the exam folder
+(the tool only copies it - its MD5 was unchanged afterwards). Output: a solution folder with its
+own `Controls\` and `SubVIs\`, **not listed in the active project**, which had not been measured
+before and works.
+
+| | result |
+|---|---|
+| wall clock | **6.4 s** for export ×3, two renders, both helpers, `execState` |
+| verdict | `ok: true`, `execState 1`, 7 of 7 grafted and `placed`, no leftover, `wiringMatchesScaffold`, `nodeCountsMatch`, `panelIdentical`, `diagramChanged` |
+| typedef references | 2 -> 4 for each `.ctl` - more, never fewer; the pasted diagram names them too |
+| run, `runForMs` 1500 | Initialize state reached, all LEDs off, Wash Vacant, 0.00 s |
+| control arm | the finished SOLUTION VI offered as the "supplied" panel: `panelDiagramNotEmpty`, 46 elements, 0.9 s, and no output file left behind |
+| project afterwards | the close sweep removed `lvbd_graft_paste.vi` and `lvbd_graft_rewire.vi`, which LabVIEW had adopted - the reason the helpers live under `%TEMP%\LabVIEWMCP\helpers`; a probe helper kept elsewhere stayed listed |
+
+### 6a. In place - the shape the agents use
+
+An exam wants the supplied VI at its own path and under its own name, so the agents copy it aside
+and graft FROM the copy INTO the original path. Measured the same day: the template folder copied
+as a solution, `Car Wash.vi` and the scaffold both LISTED in the active project, the copy in a
+scratch folder, `overwrite: true`.
+
+| | result |
+|---|---|
+| verdict | `ok: true`, **2.2 s** with the helpers already generated, 7 of 7 `placed` |
+| the copy grafted from | MD5 unchanged - the tool never writes its `panelViPath` |
+| afterwards | `execState 1` from a fresh open; the close sweep found nothing to remove, and both VIs still listed |
+
+It also ran while a DIFFERENT `Car Wash.vi` - the previous acceptance's output - had been loaded
+and run minutes earlier, the same-name shape `CLAUDE.md` warns about; no `1051`, and the verdict
+would have caught a stale copy (`wiringMatchesScaffold`, `diagramChanged`).
+
+### Still open
+
+- A driven wash cycle: `Start` and `stop` are latched and cannot be signalled (`Error 1193`).
+- Coercion dots inside Case frames: `lvai_coercion_dots` does not descend into structures.
+- A supplied panel over EXISTING code has no route: the graft refuses it, and deleting the old
+  diagram first would take the panel terminals with it.

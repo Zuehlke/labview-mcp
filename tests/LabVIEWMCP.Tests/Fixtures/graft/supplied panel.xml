@@ -1,0 +1,9 @@
+<VI _name="Car Wash.vi" description="">
+  <Control _name="Car Position Slider" outputs="value:" type="uint8" uid="176" uid_parent="root" value="0"/>
+  <Control _name="Wash Options" outputs="value:" type="cluster{bool.Underbody Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry}" uid="208" uid_parent="root" value="[false,false,false,false,false,false,false,false]"/>
+  <Control _name="stop" outputs="value:" style="latched" type="bool" uid="317" uid_parent="root" value="false"/>
+  <Control _name="Start" outputs="value:" style="latched" type="bool" uid="345" uid_parent="root" value="false"/>
+  <Indicator _name="Car Wash Indicators" inputs="value:" type="cluster{bool.Under Body Wash,bool.Bug Remover,bool.Pre-Soak,bool.High Pressure Wash,bool.Low Pressure Wax,bool.Spot Free Rinse,bool.Tire Shine Foam,bool.Air Dry,bool.Vehicle Out of Position}" uid="68" uid_parent="root" value="[false,false,false,false,false,false,false,false,false]"/>
+  <Indicator _name="Wash Entry" inputs="value:" type="bool" uid="302" uid_parent="root" value="false"/>
+  <Indicator _name="Elapsed Time" inputs="value:" type="double" uid="329" uid_parent="root" value="0"/>
+</VI>

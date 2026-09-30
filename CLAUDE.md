@@ -13,6 +13,7 @@ session.
 | Request | Agent |
 |---|---|
 | a new VI | `labview-vi-generator` |
+| implement a SUPPLIED VI whose front panel must be kept (exam template) | `labview-vi-generator` - pass the supplied VI; it grafts (Phase 6g) |
 | change an existing VI | `labview-vi-editor` |
 | a class, class hierarchy or interface | `labview-class-generator` |
 | unit tests (default framework) | `labview-caraya-unit-test` |
@@ -1102,9 +1103,12 @@ pasted duplicate control (`Start 2`, ...) is then swapped for the supplied one -
 with `Connect Wire` - and `{LV.VI}` `BD.Remove Bad Wires` clears the loose ends the deletes leave,
 without which the VI is eBad. Result: `execState 1`, every panel terminal feeding the sink it fed in
 the scaffold, typedef bindings kept, the first state running correctly, and a front panel render
-**byte-identical** to the untouched template, for about 0.6 s of LabVIEW. It is a PROBE, not a tool
-yet: terminal positions land offset by the loop's diagram origin, pairing by the `" 2"` suffix is
-fragile, and it uses the system clipboard. `docs/keep-supplied-front-panel.md`.
+**byte-identical** to the untouched template, for about 0.6 s of LabVIEW. **`lvai_graft_diagram`
+does it in one call since the same day** - accepted over raw stdio at 6.4 s end to end, `ok: true`,
+with a live refusal as control - and `labview-vi-generator` / `labview-vi-editor` use it (their
+Phase 6g) for a supplied VI whose diagram is EMPTY. A diagram that already holds code is refused,
+so a panel over existing code still has no route. It uses the SYSTEM CLIPBOARD: the orchestrator
+grafts, one at a time, never parallel agents. `docs/keep-supplied-front-panel.md`.
 
 **There is a FOURTH interface, and it is the right one whenever the artefact is COMPILER OUTPUT.**
 The IDE's own project providers live under `resource\Framework\Providers\` and are ordinary VIs, so
@@ -2544,7 +2548,7 @@ literally it argued away 600 usable palette VIs.
 | How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
 | How does the handler READ the user event's PAYLOAD? | `scripts/aixml-skeletons/user-event-two-loops.md`, `experiments/pylabview/event-data-fields/` (source tree only) | `lvai_set_event_data_fields` — third call of the route; author a labelled placeholder constant into a PRIM input first, and field index 4 is the first payload item |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
-| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | — probe helpers in `experiments/panel-graft/` (source tree only); not a tool yet |
+| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram` — generate the program as a SCAFFOLD with the panel's own labels and types, then graft; the supplied diagram must be empty |
 | How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
