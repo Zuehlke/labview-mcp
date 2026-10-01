@@ -72,6 +72,9 @@ internal sealed class RunTools(LvaiConnection connection)
         the indentation between its tags is folded away; the helper then turns it into a Variant
         that carries its own type, so you never name the type. Since 2026-09-25. Do not write a
         line break as &#10; there - Unflatten From XML decodes no character reference, measured.
+        AN EMPTY ARRAY NEEDS ONE ELEMENT AS A TYPE TEMPLATE, as LabVIEW writes it: Dimsize 0 plus
+        e.g. <String><Name></Name><Val></Val></String>. Without it the helper cannot tell the type
+        (Error 1103), so it is refused here (emptyArrayWithoutTemplate). Measured 2026-10-01.
         A LINE BREAK IN A VALUE IS FINE - a multi-line string, or an XML value with a multi-line
         member: it travels encoded (LF as 0x1E, CR as 0x1D) and the helper decodes it before it
         converts anything; `lineBreaksEncoded` names the inputs it applied to. Only the default
@@ -174,6 +177,15 @@ internal sealed class RunTools(LvaiConnection connection)
             var inputs = Rpc.ParseStringMap(inputsJson, nameof(inputsJson)).ToList();
             var compoundInputs = inputs.Where(i => CompoundValue(i.Value) is not null)
                                        .Select(i => i.Key).ToList();
+            if (inputs.FirstOrDefault(i => CompoundValue(i.Value) is { } x && EmptyArrayWithoutTemplate(x))
+                    .Key is { } untyped)
+                return Json.Error("emptyArrayWithoutTemplate",
+                    $"The value for '{untyped}' is an EMPTY array with no element in it. Unflatten From " +
+                    "XML takes the element type from an element, so the helper would refuse it with " +
+                    "Error 1103 before the VI runs. Write it the way LabVIEW does: Dimsize 0 plus ONE " +
+                    "empty element as a type template, e.g. <Array><Name>x</Name><Dimsize>0</Dimsize>" +
+                    "<String><Name></Name><Val></Val></String></Array>. Measured 2026-10-01.",
+                    new { controlName = untyped });
             inputs = inputs.Select(i => new KeyValuePair<string, string>(
                 i.Key, CompoundValue(i.Value) ?? i.Value)).ToList();
             if (inputs.FirstOrDefault(i => Breaks(i.Key)).Key is { } badName)
@@ -473,6 +485,23 @@ internal sealed class RunTools(LvaiConnection connection)
         return root.Groups[1].Value == "LvVariant"
             ? xml
             : $"<LvVariant><Name>Variant</Name>{xml}</LvVariant>";
+    }
+
+    /// <summary>
+    /// Whether a compound value holds an array with a dimension of 0 that carries no
+    /// element. LabVIEW's own XML for an empty array keeps one element as a type template, and
+    /// Unflatten From XML into a variant needs it: without it the helper answers Error 1103.
+    /// Measured 2026-10-01 through lvai_graft_diagram, which wrote empty label lists that way.
+    /// </summary>
+    internal static bool EmptyArrayWithoutTemplate(string xml)
+    {
+        try
+        {
+            return System.Xml.Linq.XElement.Parse(xml).DescendantsAndSelf("Array").Any(a =>
+                a.Elements("Dimsize").Any(d => d.Value.Trim() == "0")
+                && !a.Elements().Any(e => e.Name.LocalName is not ("Name" or "Dimsize")));
+        }
+        catch (System.Xml.XmlException) { return false; }
     }
 
     /// <summary>What a line feed and a carriage return travel as between this tool and the helper.</summary>

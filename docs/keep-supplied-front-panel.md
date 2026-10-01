@@ -278,6 +278,94 @@ Three findings of `docs/cold-build-carwash-pc.md` became code the same day:
 **Scope, the user's rule of the same day: the graft is for the MAIN GUI only.** The call is
 seconds; the route around it is minutes, and a subVI's panel is not worth them.
 
+### 6e. Every graft WITHOUT `switchActionControls` failed - fixed 2026-10-01
+
+**Symptom.** Four calls in a row on 2026-10-01 answered `rewireFailed` with *"The rewire helper
+answered error (unreadable)"*, `errorCode: null`, `errorOut: null` - grafting
+`C:\Temp\WebBrowser\Web Browser Demo Program.vi` into a copy of `WebBrowser.vi`, whose panel holds
+only a LabVIEW 2026 native Web Browser control, with `allowNewControls` (all seven scaffold
+controls are new, so nothing is paired). Both helpers ran clean when called by hand. Reproduced
+here first time on a fresh copy.
+
+**Cause: an EMPTY array was written with no element.** `ArrayXml` sent an empty list as
+`<Array><Name>Switch Labels</Name><Dimsize>0</Dimsize></Array>`. The run tool's helper turns an
+array input into a value with `Unflatten From XML` and a VARIANT as the type, which takes the type
+from an ELEMENT - and there was none, so it answered **`Error 1103`** at `Unflatten From XML in
+lvai_run_and_read_typed.vi` and the rewire helper never started. LabVIEW's own XML for an empty
+array carries Dimsize 0 **plus one empty element as a type template** - the READ side of the tool
+already knew that (`StringArray` honours Dimsize for exactly that reason, and the test fixture
+says so in a comment), the WRITE side did not. Measured as an A/B by calling the rewire helper with
+the tool's own inputs: without the template `1103`; with it, error 0 and every output read back.
+
+**Why "even when the list was empty" was the whole story, and the line-break guess was not.**
+`Switch Labels` is sent on EVERY call and is empty unless `switchActionControls` is given, so every
+graft since §6d without that argument failed - whether or not any controls were paired. §6d was
+accepted only WITH a switch label (`{stop}`), and the Car Wash acceptances of §6 to §6c predate the
+input. No value contained a line break.
+
+**Why the error was unreadable.** The graft read only the GRAFT helper's `error out` from the run
+tool's `values`. When the run tool's OWN helper refuses an input, the target never runs, `values`
+is empty, and the reason sits one field over in the same answer (`helperErrorCode`,
+`helperErrorXml`). Nothing read it.
+
+**The fix.** `ArrayXml` writes the template element for an empty list. `ReadHelperError` reads the
+graft helper's `error out` first and falls back to the run helper's error, the RPC's, and a run-tool
+refusal; the failure answer now names `errorCode`, `errorSource` (the cluster's `source` as text,
+not raw XML), `failedIn` (`runHelper` or `<step>Helper`), and a refused input has its own kind,
+`<step>InputRefused` - so a `1055` from the run helper, which means a control NAME matched nothing,
+is no longer read as `noActiveProject`. `swaps` travels as an array rather than as a JSON string.
+And `lvai_run_vi_and_read_values` itself now refuses a template-less empty array by name
+(`emptyArrayWithoutTemplate`) instead of letting the helper answer `1103`.
+
+**Accepted** with the built exe over raw stdio, same fresh copy, same arguments: `ok: true` in
+15.7 s, `execState 1`, all seven new controls wired as in the scaffold (`wiringMatchesScaffold`,
+`nodeCountsMatch`), both front-panel event frames (`Go`, `Stop`) registered again. Regression tests
+in `GraftToolsTests.cs`: the empty-array template, the run-helper refusal in the measured answer
+shape, a run-helper `1055`, and an answer with no error anywhere.
+
+**A second acceptance, from scratch, the same morning** (`C:\Temp\WebBrowserScratch`): a new
+project, seven subVIs and a scaffold built by `labview-vi-generator` in 9 min 40 s, then grafted
+with `allowNewControls` AND `switchActionControls` `Go`/`Stop` - an empty pair list and a non-empty
+switch list in one call. `ok: true` in **3.6 s**, `execState 1`, eight new controls,
+`switchActions {Go: true, Stop: true}`, both event frames registered again. Run with `runForMs` and
+`Go` signalled, the program found the native Web Browser control on the supplied panel BY LABEL -
+which the scaffold alone cannot, since AIXML exports that control as a plain `string` indicator and
+cannot create it - and navigated it. Its own `Wait For Page Load.vi` then answered `Error 53` from
+`Execute JavaScript`: a defect of the generated program, not of the graft. Diagnosed and fixed the
+same morning in the subVIs alone (the grafted VI's file stayed byte-identical), two causes:
+
+- **`Execute JavaScript` needs the control's front panel OPEN IN THE SAME APPLICATION INSTANCE** -
+  without it there is no live browser behind the control and every call is `Error 53`, while a
+  `Value` write still succeeds. `lvai_run_vi_and_read_values` runs the target in the addon's
+  instance and never opens its panel; opening the panel in the IDE does NOT help, because that is
+  another instance's copy. A/B on two probes differing only in one `FP.Open`: 4 of 4 calls
+  `Error 53` closed, 4 of 4 clean open. The navigate subVI now opens its owning VI's panel when it
+  is closed - so a helper run shows the window, and a panel left open by an ABORTED run keeps the
+  VI in memory, which is `Error 1357` on the next regeneration until it is closed (`FP.Close` in
+  the same instance).
+- **The script is a function body and needs `return`**, as NI's examples write it; without one the
+  answer is `undefined`, so the load poll could never succeed.
+
+Verified: `https://www.ni.com` and a local `file:///` page both come back with URL, title and
+`Ready`, and pressing `Go` twice on one URL reloads instead of timing out.
+
+### 6f. The connector pane is the SUPPLIED VI's - expected, and not said until now
+
+The output is a copy of the supplied VI, and the paste moves diagram objects only. So the pane -
+pattern and assignments - is whatever the supplied VI had, and **nothing of the scaffold's pane
+travels**. Measured 2026-10-01: supplied `WebBrowser.vi` 4833 with 0 of 16 assigned, scaffold 4833
+with `error in` 11 and `error out` 15, graft 4833 with **0 of 16** - its `error in` and `error out`
+arrived as NEW controls and sit on the panel only.
+
+That is the intended behaviour for the route's purpose - a supplied VI keeps its icon, properties
+and pane alike, and a main GUI is not called as a subVI. Two consequences worth knowing:
+
+- **A new control never gets a pane slot.** Where the result must be callable, assign it afterwards
+  with `{LV.ConnectorPane}` in the IDE's application instance - not built into the tool.
+- **A supplied pane with assignments is expected to survive**, because the supplied controls are
+  never deleted - only their duplicates are. That half is NOT measured: every graft so far had an
+  empty supplied pane or did not measure it.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or

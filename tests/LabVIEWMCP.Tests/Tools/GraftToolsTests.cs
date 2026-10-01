@@ -177,11 +177,63 @@ public sealed class GraftToolsTests
             },
         };
 
-        Assert.Equal("noActiveProject", Kind(GraftTools.HelperFailed("paste", 1055, values, "x.vi")));
+        var error = GraftTools.ReadHelperError(new JsonObject { ["values"] = values });
+        Assert.Equal(new GraftTools.HelperError(1055, "Property Node in lvbd_graft_rewire.vi", false), error);
+        Assert.Equal("noActiveProject", Kind(GraftTools.HelperFailed("paste", error, "x.vi")));
         Assert.Equal("rewireReferenceInvalid",
-                     Kind(GraftTools.HelperFailed("rewire", 1055, values, "x.vi", projectProvedActive: true)));
+                     Kind(GraftTools.HelperFailed("rewire", error, "x.vi", projectProvedActive: true)));
         Assert.Equal("rewireFailed",
-                     Kind(GraftTools.HelperFailed("rewire", 7, values, "x.vi", projectProvedActive: true)));
+                     Kind(GraftTools.HelperFailed("rewire", error with { Code = 7 }, "x.vi", projectProvedActive: true)));
+    }
+
+    /// <summary>
+    /// The 2026-10-01 regression, in the shape lvai_run_vi_and_read_values really answered: the
+    /// run helper refused an input, so `values` is empty and the reason is in helperErrorCode and
+    /// helperErrorXml. It used to read as "error (unreadable)" with errorCode null.
+    /// </summary>
+    [Fact]
+    public void A_refusal_by_the_run_helper_is_read_and_named()
+    {
+        var answer = new JsonObject
+        {
+            ["errorCode"] = 0,
+            ["values"] = new JsonObject(),
+            ["helperErrorXml"] = "<Cluster>\r\n<Name>error out</Name>\r\n<NumElts>3</NumElts>\r\n<Boolean>\r\n<Name>status</Name>\r\n<Val>1</Val>\r\n</Boolean>\r\n<I32>\r\n<Name>code</Name>\r\n<Val>1103</Val>\r\n</I32>\r\n<String>\r\n<Name>source</Name>\r\n<Val>Unflatten From XML in lvai_run_and_read_typed.vi</Val>\r\n</String>\r\n</Cluster>\r\n",
+            ["helperErrorCode"] = 1103,
+            ["helperFailed"] = true,
+        };
+
+        var error = GraftTools.ReadHelperError(answer);
+        Assert.Equal(new GraftTools.HelperError(1103, "Unflatten From XML in lvai_run_and_read_typed.vi", true), error);
+
+        var refused = JsonNode.Parse(GraftTools.HelperFailed("rewire", error, "x.vi", [],
+                                                             projectProvedActive: true))!;
+        Assert.Equal("rewireInputRefused", (string?)refused["errorKind"]);
+        Assert.Equal(1103, (int?)refused["detail"]!["errorCode"]);
+        Assert.Equal("runHelper", (string?)refused["detail"]!["failedIn"]);
+        Assert.Contains("Unflatten From XML", (string?)refused["error"]);
+        Assert.DoesNotContain("unreadable", (string?)refused["error"]);
+        // swaps travel as an array now, not as a JSON string inside a string
+        Assert.IsType<JsonArray>(refused["detail"]!["swaps"]);
+    }
+
+    [Fact]
+    public void A_run_helper_1055_is_not_read_as_no_active_project()
+    {
+        var error = new GraftTools.HelperError(1055, "Property Node in lvai_run_and_read_typed.vi", true);
+
+        Assert.Equal("pasteInputRefused", Kind(GraftTools.HelperFailed("paste", error, "x.vi")));
+    }
+
+    [Fact]
+    public void An_answer_with_no_error_anywhere_is_code_null_and_says_so()
+    {
+        var error = GraftTools.ReadHelperError(new JsonObject { ["values"] = new JsonObject() });
+
+        Assert.Null(error.Code);
+        var failed = JsonNode.Parse(GraftTools.HelperFailed("rewire", error, "x.vi"))!;
+        Assert.Equal("rewireFailed", (string?)failed["errorKind"]);
+        Assert.Contains("no error cluster", (string?)failed["error"]);
     }
 
     [Fact]
@@ -397,6 +449,37 @@ public sealed class GraftToolsTests
 
         Assert.Equal("2", (string?)root.Element("Dimsize"));
         Assert.Equal(["A & B", "<x>"], root.Elements("String").Select(e => e.Element("Val")!.Value));
+    }
+
+    /// <summary>
+    /// The 2026-10-01 regression: an empty label list was written with no element, Unflatten From
+    /// XML refused it with Error 1103, and every graft without switchActionControls failed. LabVIEW
+    /// writes an empty array as Dimsize 0 plus one template element, and so must this.
+    /// </summary>
+    [Fact]
+    public void An_empty_label_array_carries_a_type_template_like_LabVIEWs_own()
+    {
+        var xml = GraftTools.ArrayXml("Switch Labels", []);
+        var root = XElement.Parse(xml);
+
+        Assert.Equal("0", (string?)root.Element("Dimsize"));
+        var template = Assert.Single(root.Elements("String"));
+        Assert.Equal("", template.Element("Val")!.Value);
+        Assert.False(RunTools.EmptyArrayWithoutTemplate(RunTools.CompoundValue(xml)!));
+        // and it reads back as empty, through the same reader the answers go through
+        Assert.Empty(GraftTools.StringArray(new JsonObject { ["a"] = new JsonObject { ["xml"] = xml } }, "a"));
+    }
+
+    [Fact]
+    public void The_run_tool_recognises_an_empty_array_with_no_template()
+    {
+        Assert.True(RunTools.EmptyArrayWithoutTemplate(
+            RunTools.CompoundValue("<Array><Name>x</Name><Dimsize>0</Dimsize></Array>")!));
+        Assert.False(RunTools.EmptyArrayWithoutTemplate(
+            RunTools.CompoundValue("<Array><Name>x</Name><Dimsize>1</Dimsize><String><Name></Name><Val>a</Val></String></Array>")!));
+        // a non-empty cluster holding an empty array without a template is the same fault, one level in
+        Assert.True(RunTools.EmptyArrayWithoutTemplate(RunTools.CompoundValue(
+            "<Cluster><Name>c</Name><NumElts>1</NumElts><Array><Name>a</Name><Dimsize>0</Dimsize></Array></Cluster>")!));
     }
 
     [Fact]
