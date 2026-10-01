@@ -323,6 +323,32 @@ And `lvai_run_vi_and_read_values` itself now refuses a template-less empty array
 in `GraftToolsTests.cs`: the empty-array template, the run-helper refusal in the measured answer
 shape, a run-helper `1055`, and an answer with no error anywhere.
 
+**A second acceptance, from scratch, the same morning** (`C:\Temp\WebBrowserScratch`): a new
+project, seven subVIs and a scaffold built by `labview-vi-generator` in 9 min 40 s, then grafted
+with `allowNewControls` AND `switchActionControls` `Go`/`Stop` - an empty pair list and a non-empty
+switch list in one call. `ok: true` in **3.6 s**, `execState 1`, eight new controls,
+`switchActions {Go: true, Stop: true}`, both event frames registered again. Run with `runForMs` and
+`Go` signalled, the program found the native Web Browser control on the supplied panel BY LABEL -
+which the scaffold alone cannot, since AIXML exports that control as a plain `string` indicator and
+cannot create it - and navigated it. Its own `Wait For Page Load.vi` then answered `Error 53` from
+`Execute JavaScript`: a defect of the generated program, not of the graft. Diagnosed and fixed the
+same morning in the subVIs alone (the grafted VI's file stayed byte-identical), two causes:
+
+- **`Execute JavaScript` needs the control's front panel OPEN IN THE SAME APPLICATION INSTANCE** -
+  without it there is no live browser behind the control and every call is `Error 53`, while a
+  `Value` write still succeeds. `lvai_run_vi_and_read_values` runs the target in the addon's
+  instance and never opens its panel; opening the panel in the IDE does NOT help, because that is
+  another instance's copy. A/B on two probes differing only in one `FP.Open`: 4 of 4 calls
+  `Error 53` closed, 4 of 4 clean open. The navigate subVI now opens its owning VI's panel when it
+  is closed - so a helper run shows the window, and a panel left open by an ABORTED run keeps the
+  VI in memory, which is `Error 1357` on the next regeneration until it is closed (`FP.Close` in
+  the same instance).
+- **The script is a function body and needs `return`**, as NI's examples write it; without one the
+  answer is `undefined`, so the load poll could never succeed.
+
+Verified: `https://www.ni.com` and a local `file:///` page both come back with URL, title and
+`Ready`, and pressing `Go` twice on one URL reloads instead of timing out.
+
 ### 6f. The connector pane is the SUPPLIED VI's - expected, and not said until now
 
 The output is a copy of the supplied VI, and the paste moves diagram objects only. So the pane -
