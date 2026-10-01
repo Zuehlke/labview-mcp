@@ -53,6 +53,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         pasted as a NEW control, wired as in the scaffold, and listed under newControls. LabVIEW
         places it and gives it the default style - tidy the layout by hand afterwards. The panel is
         then no longer identical, so panelIdentical is reported but does not decide ok.
+        THE CONNECTOR PANE IS THE SUPPLIED VI'S: nothing of the scaffold's pane travels, so a new
+        control - error in and error out included - gets no slot. Assign one afterwards if needed.
         HOW: LabVIEW's scripted clipboard pastes the scaffold diagram, which makes a duplicate of
         every supplied control ('Start 2'); each duplicate's terminal is replaced by the supplied
         one at the same place and reconnected to the same wire ends, the loose ends are removed,
@@ -158,9 +160,9 @@ internal sealed class GraftTools(LvaiConnection connection)
                 new JsonObject { ["Source Path"] = scaffold, ["Target Path"] = output }.ToJsonString(),
                 timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
             var pasteValues = pasted?["values"] as JsonObject;
-            var pasteCode = ErrorCode(pasteValues);
-            if (pasteCode != 0)
-                return Failed(HelperFailed("paste", pasteCode, pasteValues, output));
+            var pasteError = ReadHelperError(pasted);
+            if (pasteError.Code != 0)
+                return Failed(HelperFailed("paste", pasteError, output));
             var before = StringArray(pasteValues, "Labels Before");
             var after = StringArray(pasteValues, "Labels After");
 
@@ -186,7 +188,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                     ["Switch Labels"] = ArrayXml("Switch Labels", switches),
                 }.ToJsonString(), timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
             var rewireValues = rewired?["values"] as JsonObject;
-            var rewireCode = ErrorCode(rewireValues);
+            var rewireError = ReadHelperError(rewired);
             var pairCodes = IntArray(rewireValues, "Pair Error Codes");
             var sinks = IntArray(rewireValues, "Sinks Reconnected");
             var sources = IntArray(rewireValues, "Sources Reconnected");
@@ -206,8 +208,8 @@ internal sealed class GraftTools(LvaiConnection connection)
             }).ToArray());
             // The paste helper reached the IDE through the active project a moment ago, so a 1055
             // from the rewire is NOT "no project": it is an invalid reference inside the swap.
-            if (rewireCode != 0)
-                return Failed(HelperFailed("rewire", rewireCode, rewireValues, output, swaps,
+            if (rewireError.Code != 0)
+                return Failed(HelperFailed("rewire", rewireError, output, swaps,
                                            projectProvedActive: true));
 
             // ---- 5b. put the EVENT registrations back. A static front-panel event is bound to the
@@ -561,12 +563,21 @@ internal sealed class GraftTools(LvaiConnection connection)
         return new(kept, json);
     }
 
-    /// <summary>A string array control's LabVIEW XML, as lvai_run_vi_and_read_values takes it.</summary>
+    /// <summary>
+    /// A string array control's LabVIEW XML, as lvai_run_vi_and_read_values takes it.
+    ///
+    /// AN EMPTY ARRAY STILL CARRIES ONE ELEMENT, as a type template - which is how LabVIEW itself
+    /// writes one (Dimsize 0 plus an empty String). Without it Unflatten From XML into a variant has
+    /// no element to take the type from and refuses the value with Error 1103, so the run helper
+    /// stops before the graft helper starts. Measured 2026-10-01: every graft with no
+    /// switchActionControls - and every one whose pairs were all new controls - failed that way,
+    /// 4 of 4 on a Web Browser panel, while the same call with the template ran clean.
+    /// </summary>
     internal static string ArrayXml(string name, IEnumerable<string> items)
     {
         var list = items.ToList();
         var sb = new StringBuilder($"<Array><Name>{SecurityElement.Escape(name)}</Name><Dimsize>{list.Count}</Dimsize>");
-        foreach (var item in list)
+        foreach (var item in list.Count == 0 ? [""] : list)
             sb.Append("<String><Name></Name><Val>").Append(SecurityElement.Escape(item)).Append("</Val></String>");
         return sb.Append("</Array>").ToString();
     }
@@ -593,16 +604,48 @@ internal sealed class GraftTools(LvaiConnection connection)
     }
 
     /// <summary>The code in a helper's `error out` cluster, or null when it cannot be read.</summary>
-    internal static int? ErrorCode(JsonObject? values)
+    internal static int? ErrorCode(JsonObject? values) =>
+        ErrorCluster((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>()).Code;
+
+    /// <summary>The code and source of a flattened LabVIEW error cluster, or nulls.</summary>
+    internal static (int? Code, string? Source) ErrorCluster(string? xml)
     {
-        var xml = (values?["error out"] as JsonObject)?["xml"]?.GetValue<string>();
-        if (xml is null) return null;
+        if (string.IsNullOrWhiteSpace(xml)) return (null, null);
         try
         {
-            var code = XElement.Parse(xml).Elements("I32").FirstOrDefault(e => (string?)e.Element("Name") == "code");
-            return int.TryParse(code?.Element("Val")?.Value, out var c) ? c : null;
+            var root = XElement.Parse(xml);
+            string? Val(string element, string name) => root.Elements(element)
+                .FirstOrDefault(e => (string?)e.Element("Name") == name)?.Element("Val")?.Value;
+            return (int.TryParse(Val("I32", "code"), out var c) ? c : null, Val("String", "source"));
         }
-        catch (System.Xml.XmlException) { return null; }
+        catch (System.Xml.XmlException) { return (null, null); }
+    }
+
+    /// <summary>Who stopped a graft helper's run, and with what.</summary>
+    /// <param name="InRunHelper">True when lvai_run_vi_and_read_values' OWN helper failed - it
+    /// refused an input before the graft helper started, so that helper has no `error out`.</param>
+    internal sealed record HelperError(int? Code, string? Source, bool InRunHelper);
+
+    /// <summary>
+    /// The error of one lvai_run_vi_and_read_values answer for a graft helper. The graft helper's
+    /// own `error out` decides when it ran; when it did NOT, the run helper's `helperErrorCode` and
+    /// `helperErrorXml` hold the reason. Until 2026-10-01 only the first was read, so a refused
+    /// input came back as "error (unreadable)" with `errorCode: null` - four times in a row on one
+    /// graft, while the reason (1103, Unflatten From XML) sat one field over in the same answer.
+    /// </summary>
+    internal static HelperError ReadHelperError(JsonObject? answer)
+    {
+        var values = answer?["values"] as JsonObject;
+        var (code, source) = ErrorCluster((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>());
+        if (code is not null) return new(code, source, false);
+        if (answer?["helperErrorCode"] is JsonValue h && h.TryGetValue<int>(out var hc) && hc != 0)
+            return new(hc, ErrorCluster(answer["helperErrorXml"]?.GetValue<string>()).Source, true);
+        if (answer?["errorCode"] is JsonValue r && r.TryGetValue<int>(out var rc) && rc != 0)
+            return new(rc, answer["errorMessage"]?.GetValue<string>(), true);
+        // A Guard refusal from the run tool itself: {ok:false, errorKind, error}.
+        if (answer?["errorKind"]?.GetValue<string>() is { } kind)
+            return new(null, $"{kind}: {answer["error"]?.GetValue<string>()}", true);
+        return new(null, null, false);
     }
 
     private static int? At(IReadOnlyList<int?> list, int i) => i < list.Count ? list[i] : null;
@@ -617,26 +660,51 @@ internal sealed class GraftTools(LvaiConnection connection)
     /// plainly active, because an unwired scaffold terminal handed it an invalid wire reference -
     /// and calling that noActiveProject sent the reader after the wrong cause.
     /// </summary>
-    internal static string HelperFailed(string step, int? code, JsonObject? values, string output,
+    internal static string HelperFailed(string step, HelperError error, string output,
                                         JsonArray? swaps = null, bool projectProvedActive = false)
     {
-        var source = (values?["error out"] as JsonObject)?["xml"]?.GetValue<string>();
-        var noProject = code == 1055 && !projectProvedActive;
-        var kind = noProject ? "noActiveProject"
-                 : code == 1055 ? $"{step}ReferenceInvalid"
-                 : $"{step}Failed";
-        var message = noProject
-            ? "No project is active in the IDE. Open one with lvai_open_file first - the graft edits " +
-              "the VI in the IDE's own application instance, reached through the active project."
-            : code == 1055
-                ? $"The {step} helper met an invalid reference (Error 1055) although the project is " +
-                  "active - the paste reached it. The usual cause is a scaffold terminal with no wire, " +
-                  "which the plan now refuses; read errorOut for the node."
-                : $"The {step} helper answered error {code?.ToString() ?? "(unreadable)"}.";
+        var code = error.Code;
+        var at = error.Source is { Length: > 0 } s ? $" at '{s}'" : "";
+        string kind, message;
+        if (error.InRunHelper)
+        {
+            // The graft helper never started, so none of its own diagnoses apply - a 1055 here is
+            // a control NAME the run helper could not find, not a missing project.
+            kind = $"{step}InputRefused";
+            message = $"The {step} helper never ran: lvai_run_vi_and_read_values' own helper stopped " +
+                      $"on error {code?.ToString() ?? "(none reported)"}{at} while setting its inputs." +
+                      (code == 1103
+                          ? " Error 1103 from Unflatten From XML means an array or cluster input was not " +
+                            "a LabVIEW value; an EMPTY array written without a type template is the " +
+                            "measured cause, and this tool writes one now - report it if it recurs."
+                          : "");
+        }
+        else if (code == 1055 && !projectProvedActive)
+        {
+            kind = "noActiveProject";
+            message = "No project is active in the IDE. Open one with lvai_open_file first - the graft " +
+                      "edits the VI in the IDE's own application instance, reached through the active project.";
+        }
+        else if (code == 1055)
+        {
+            kind = $"{step}ReferenceInvalid";
+            message = $"The {step} helper met an invalid reference (Error 1055){at} although the project " +
+                      "is active - the paste reached it. The usual cause is a scaffold terminal with no " +
+                      "wire, which the plan now refuses.";
+        }
+        else
+        {
+            kind = $"{step}Failed";
+            message = code is null
+                ? $"The {step} helper returned no error cluster and no reason - neither the helper nor " +
+                  "the run helper reported a code."
+                : $"The {step} helper answered error {code}{at}.";
+        }
         return Json.Error(kind,
             message + " outputViPath was put back to the plain supplied copy; the supplied VI is untouched.",
-            new { step, errorCode = code, errorOut = source, outputViPath = output,
-                  swaps = swaps?.ToJsonString() });
+            new { step, errorCode = code, errorSource = error.Source,
+                  failedIn = error.InRunHelper ? "runHelper" : $"{step}Helper",
+                  outputViPath = output, swaps });
     }
 
     /// <summary>The labels of a one-per-line argument, trimmed, blanks dropped.</summary>
