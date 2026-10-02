@@ -623,6 +623,12 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    EDIT - hand it back rather than regenerating. Its terminals ARE your Phase 1 contract: labels, kinds and types are fixed, so
    copy them verbatim. A typedef comes out as a bare cluster - write it bare too; the graft keeps
    the supplied control's binding.
+   **EXPORT A RENAMED COPY, NOT THE SUPPLIED FILE** - the supplied VI, your scratch copy and the
+   output usually share one file name, and LabVIEW holds one VI per name in an instance: loading
+   the original under that name and then converting or grafting to another path with it is the
+   `Error 1051` shape. Copy it to e.g. `<name> Export Copy.vi` and export that (measured
+   2026-10-02 by the second Web Browser acceptance). And when the task says the supplied file
+   itself must NOT change, the output goes where the task names, not onto the supplied path.
 2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` beside the supplied VI: the same
    terminals plus your diagram. **Add no control the panel lacks - UNLESS THE TASK ASKS FOR A NEW
    ONE.** Then put it on the scaffold with its own label and pass `allowNewControls: true` to the
@@ -640,6 +646,16 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    error dialog, a modal that stops the whole gRPC service during a test run - and do not reach for
    `Simple Error Handler.vi` (it lives in an `.llb`, so it is not callable by bare name): return
    `NEEDS CLARIFICATION` asking whether an `error out` indicator may be added.
+   **EVERY EVENT BUTTON MUST BE WIRED IN THE SCAFFOLD, even one whose value the program never
+   needs** - the graft refuses an unwired terminal (`scaffoldTerminalUnwired`). The pattern that
+   keeps the user's click count right: put the button's terminal INSIDE its own Value Change
+   frame and wire it to a Case selector whose TRUE case does the work. A LATCHED button read in
+   its own frame answers TRUE for the press and resets itself on that read, so one click is one
+   action. Do NOT switch the DELIVERED VI's buttons to Switch When Pressed to make them testable:
+   with that guard a human then needs two clicks per action (the second only releases the
+   button) - which follows from Switch When Pressed, as the 2026-10-02 browser acceptance build
+   pointed out for its Back/Forward; nobody clicked it by hand. The latch behaviour is LabVIEW's
+   documented Latch When Released semantics, not a measurement of ours.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
    run. It IS the program; the graft only moves it. Diagram size and comment rules apply to it.
 4. **Graft IN PLACE** - the supplied VI keeps its path and name. Copy it into your scratch folder
@@ -654,10 +670,16 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
    the supplied controls by the graft itself (`events`), which then leaves the project CLOSED -
    reopen it before anything that needs it.
+   **Before you REGENERATE a scaffold that calls a project-local subVI, open that subVI again**
+   (`lvai_open_file` with the project and `viPaths`): the graft closes the project and a run
+   unloads the hierarchy, so the convert answers `Error 53` naming the subVI rather than 1357 -
+   measured 2026-10-02; the answer's unsupported-subVI list names exactly what to open.
    **Latched buttons a test must signal** (a latched boolean refuses `Value (Signaling)`, Error
-   1193): when the user allowed switch action, pass `switchActionControls` with one label per line -
-   set in the same run, verified from the saved file under `switchActions`. Do NOT build a helper for
-   it; that cost 2:35 in each of two builds.
+   1193): graft a SECOND, test-only copy for that - same scaffold, `outputViPath=<name> Test.vi`,
+   `switchActionControls` naming ONLY the buttons your test drives - bind it like the deliverable,
+   and drive that copy. The deliverable keeps the supplied mechanical actions. A graft is
+   seconds, so the copy is cheap. Report the test copy as a by-product. Do NOT build a helper for
+   switch actions; that cost 2:35 in each of two builds.
 5. **`ok` is the verdict**, read from the file: `execState 1`, `leftoverDuplicates` empty,
    `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a
    failed graft - report the field; the tool has already put the plain supplied copy back. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
@@ -690,6 +712,10 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    A run that opened the panel leaves it open; `lvai_run_vi_and_read_values` closes it again
    afterwards (`panelClosedAfterRun`), which is what keeps the next regeneration onto that path
    from answering `Error 1357`. Leave that on.
+   ONE stand-in serves EVERY `{LV.WebBrowser}` node - the navigation methods (`NavigateBackward`,
+   `NavigateForward`, `ReloadPage`, `StopLoadingPage`) exactly like `ExecuteJavaScript` - and one
+   bind reconnects all of its sinks (`sinksReconnected` 2 for two loops, measured). Their method
+   names come from an export of NI's `Navigation History Methods.vi`, not from the catalogue.
    A reference to a control AIXML CAN create needs none of this: write
    `<Node _name="VI Server Reference" element="<label>" outputs="<label>:<net>"/>` directly.
 6. **Keep the supplied icon.** Phase 7 applies to the scaffold at most; the supplied VI gets a new

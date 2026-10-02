@@ -1137,6 +1137,16 @@ whole in the scaffold came out clipped after the graft. And on a supplied panel:
 `error out` indicator only when new controls are allowed, otherwise ask - an unwired error output
 raises the automatic error dialog, a modal that stops the gRPC service.
 
+**A SECOND ACCEPTANCE on NI's `Navigation History Methods.vi` held too** - one stand-in fed five
+`{LV.WebBrowser}` method nodes, one bind reconnected both loops, Back/Forward titles correct - and
+named five guidance gaps, now in both agents' Phase 6g. The one that changes a deliverable: **an
+event button stays LATCHED in the delivered VI** (read in its own frame it answers TRUE once and
+resets, so a TRUE-guarded Case is one click per action); a test that must signal it drives a
+SECOND, test-only graft with `switchActionControls`. Switching the deliverable means a human clicks
+twice per action behind that guard - Switch When Pressed semantics, not clicked by hand. Also: export a RENAMED copy of the supplied VI (same file name, `Error 1051`), and
+re-open a scaffold's project-local subVIs before regenerating it after a graft or a run
+(`Error 53`). `docs/keep-supplied-front-panel.md` §6g.
+
 **`lvai_convert_aixml_to_vi` ANSWERS `executable` NOW** (`checkExecutable`, on by default): it still
 writes what the validator refuses - the route for class methods and loaded subVIs - but a broken
 result comes back `ok: false` with a `warning` instead of a clean `errorCode 0`. Internal callers

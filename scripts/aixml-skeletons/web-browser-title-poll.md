@@ -43,3 +43,12 @@ sends a notification, `timed out?` turns FALSE, and the loop ends without a stop
 The labels are the supplied panel's (`URL String`, `Stop`, `Web Browser Control`); adapt them to
 yours. Running it opens its panel, and `lvai_run_vi_and_read_values` closes that panel again
 afterwards (`panelClosedAfterRun`), so the next regeneration onto the same path is not `Error 1357`.
+
+## Navigation and buttons
+
+The same `WB Ref` stand-in feeds the navigation methods as well - `NavigateBackward`,
+`NavigateForward`, `ReloadPage`, `StopLoadingPage` (names from NI's `Navigation History Methods.vi`)
+- and one `lvai_bind_control_references` call reconnects every node on it, measured on a browser
+build where it fed both loops. Each button's terminal sits inside its own Value Change frame, wired
+to a Case selector whose TRUE case acts; keep the delivered buttons LATCHED (one click, one action)
+and drive a separate test-only graft with `switchActionControls`.

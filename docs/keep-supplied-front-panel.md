@@ -441,6 +441,25 @@ them opens its panel and about twenty tools run one. A missing answer is now rep
 error. Same lesson as everywhere in this repository: the test written beside a fix did not verify
 it - the live run did.
 
+**A SECOND acceptance, in a new project and a fresh session, on a harder panel** - NI's
+`Navigation History Methods.vi`, whose code calls four `{LV.WebBrowser}` methods through `link=`.
+The task: a small browser with Back, Forward, Reload and Stop Load, plus a new `Page Title` that
+follows every navigation. `labview-vi-generator`, about 10 minutes: `replaceDiagram` emptied the
+copy (all 7 controls kept, 6 event frames registered again), ONE `WB Ref` stand-in fed all five
+method nodes in two loops and one bind reconnected both (`sinksReconnected: 2`), and driven with
+`signalsJson` the titles came out `Page One`, `Page Two`, Back `Page One`, Forward `Page Two`.
+`panelClosedAfterRun` answered `closed: true` after every run, and the scaffold regenerated
+afterwards without `1357`. The supplied file was unchanged by hash. No tool defect; five gaps in
+the agents' guidance, closed the same day:
+
+| gap | fix in `labview-vi-generator` / `labview-vi-editor` Phase 6g |
+|---|---|
+| the supplied VI, its copy and the output share one file name - exporting the original under it risks `Error 1051` | export a RENAMED copy; an output the task places elsewhere is not "the supplied VI's own path" |
+| every scaffold terminal must be wired, also an event button whose value is never needed, with no pattern given | the button's terminal inside its own Value Change frame, wired to a Case selector whose TRUE case acts - a LATCHED button reads TRUE for the press and resets on that read (LabVIEW's documented latch semantics), so one click is one action |
+| which buttons to switch for a test - switching the DELIVERED Back/Forward means a human clicks twice per action behind that guard (Switch When Pressed semantics, as the agent pointed out; not clicked by hand) | the deliverable keeps its mechanical actions; tests drive a SECOND, test-only graft with `switchActionControls` naming only the driven buttons |
+| that the navigation methods ride the same stand-in | one stand-in serves every `{LV.WebBrowser}` node; method names from NI's example export |
+| after a graft (project closed) or a run (hierarchy unloaded) a scaffold calling a project-local subVI regenerates as `Error 53` | re-open that subVI with `lvai_open_file` `viPaths` first; the convert's unsupported-subVI list names it |
+
 The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
 `checkExecutable` absent from the schemas it displayed - while both reached the server and worked.
 A parameter missing from a displayed schema is therefore not proof that it is missing from the server;

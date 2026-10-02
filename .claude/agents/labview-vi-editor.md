@@ -422,7 +422,9 @@ route costs minutes, and a subVI's panel carries nothing worth them.
 
 1. **The export is the contract.** Its `<Control>`/`<Indicator>` lines fix every label, kind and
    type - copy them verbatim. A typedef comes out as a bare cluster: write it bare in the scaffold
-   too, the graft keeps the SUPPLIED control's binding.
+   too, the graft keeps the SUPPLIED control's binding. **Export a RENAMED copy** of the supplied
+   VI, never the file itself: the original, the backup and the output share one file name, and
+   loading the original under it before a graft to another path is the `Error 1051` shape.
 2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` in the same folder: those same
    terminals plus the diagram. **Add no control the panel does not have - UNLESS THE CHANGE ASKS
    FOR A NEW ONE.** Then give it its own label on the scaffold and pass `allowNewControls: true`
@@ -437,6 +439,10 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    it dangling - an unwired error output raises LabVIEW's automatic error dialog, a modal that
    stops the whole gRPC service - and `Simple Error Handler.vi` is not callable by bare name (it
    lives in an `.llb`): return `NEEDS CLARIFICATION` asking whether an `error out` may be added.
+   **Every event button must be WIRED in the scaffold**, even one whose value the program never
+   needs: put its terminal inside its own Value Change frame, wired to a Case selector whose TRUE
+   case does the work. A LATCHED button read there answers TRUE for the press and resets itself,
+   so one click is one action - keep it latched in the deliverable (see step 4 for tests).
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
    `execState`, a run. It IS the program; the graft only moves it.
 4. **Graft IN PLACE**, because the supplied VI keeps its path and name. The Phase 4 backup is the
@@ -448,9 +454,15 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    It needs an ACTIVE project (the owning one, opened in Phase 2 - `Error 1055` otherwise), and the
    supplied VI must NOT have been opened: LabVIEW would keep serving the copy it loaded. Every
    scaffold terminal must be WIRED (`scaffoldTerminalUnwired` otherwise). Event frames are
-   re-registered by the graft (`events`), which then leaves the project closed. Latched buttons a
-   test must signal: with the user's consent pass `switchActionControls`, one label per line -
-   never a hand-built helper.
+   re-registered by the graft (`events`), which then leaves the project closed - and a run
+   unloads the hierarchy, so before REGENERATING a scaffold that calls a project-local subVI,
+   open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
+   naming it. Latched buttons a test must signal: graft a SECOND, test-only copy
+   (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
+   too and drive that one; the deliverable keeps the user's mechanical actions, because a switched
+   button behind a TRUE guard needs two clicks per action (Switch When Pressed semantics, pointed
+   out by the 2026-10-02 acceptance build, not clicked by hand). Never a
+   hand-built helper.
 5. **`ok` is the verdict**, and it is read from the file: `execState 1`, `leftoverDuplicates`
    empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
    else false is a failed graft - report the field, never "grafted with minor issues"; the tool
@@ -463,7 +475,10 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    `Invalid method`. Wire a refnum STAND-IN control (`type="ref{LV.WebBrowser}"`) on the scaffold,
    graft with `allowNewControls: true`, then `lvai_bind_control_references viPath=<grafted VI>
    bindingsJson={"WB Ref":"Web Browser Control"}` turns it into a bound reference of the real
-   control. At run time `Execute JavaScript` needs the panel open in the running instance and may
+   control. One stand-in serves EVERY `{LV.WebBrowser}` node - navigation methods
+   (`NavigateBackward`, `NavigateForward`, `ReloadPage`, `StopLoadingPage`, names from NI's
+   `Navigation History Methods.vi`) as well as `ExecuteJavaScript` - and one bind reconnects all
+   of its sinks. At run time `Execute JavaScript` needs the panel open in the running instance and may
    answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
    unwired `{LV.VI}` reference) and POLLS - not in an Event Structure Timeout frame, which AIXML
    cannot author, but in a second loop paced by `Wait on Notification`, as
