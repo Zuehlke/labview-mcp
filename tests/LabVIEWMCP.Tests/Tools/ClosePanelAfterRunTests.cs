@@ -35,7 +35,7 @@ public sealed class ClosePanelAfterRunTests
         var skeleton = Script("aixml-skeletons", "web-browser-title-poll.xml");
 
         Assert.Contains("_name=\"Wait on Notification\"", skeleton);
-        Assert.Contains("target=\"ExecuteJavaScript\"", skeleton);
+        Assert.Contains("target=\"ExecuteJavaScript\"", Script("aixml-skeletons", "web-browser-read-page-title.xml"));
         Assert.Contains("type=\"ref{LV.WebBrowser}\"", skeleton);
         Assert.DoesNotContain("Timeout", skeleton.Replace("timeout in ms", ""), StringComparison.Ordinal);
         Assert.DoesNotContain(LabVIEWMcp.Infra.AixmlCheck.Check(skeleton),

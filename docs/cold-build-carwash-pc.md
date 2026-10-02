@@ -81,7 +81,8 @@ About **6:40 of phase B was avoidable** - the three items below.
    IEEE754 happens to round both to the same double; a tolerance needs Caraya's
    `Assert Almost Equal_Float.vi`, which the generator does not wire.
 6. **The graft leaves the project closed** after re-registering events; the next step had to
-   reopen it. Reopening it itself would save one call.
+   reopen it. Reopening it itself would save one call. **Done 2026-10-02** - the fifth Web Browser
+   acceptance paid that call once per graft; the graft reopens it now (`events.projectReopened`).
 7. **The Info popup is not testable automatically**: `One Button Dialog` is modal, and a modal
    dialog stops the whole gRPC service. The user tests it by hand.
 

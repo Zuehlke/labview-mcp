@@ -822,7 +822,9 @@ internal sealed class GraftTools(LvaiConnection connection)
     /// scaffold has no Event Structure. The same chain lvai_generate_vi_with_events runs after its
     /// convert - strip the compiled code, one spec per frame, rebuild - preceded by a project
     /// CLOSE, because pylabview writes the file while LabVIEW would keep serving the copy the
-    /// helpers just edited. The project is left closed, and the answer says so.
+    /// helpers just edited. The project that was active is OPENED AGAIN afterwards (`projectReopened`):
+    /// lvai_bind_control_references needs it active, and leaving it closed cost one lvai_open_file per
+    /// graft in the fifth Web Browser acceptance, 2026-10-02.
     /// User-event frames are not touched: they are not bound to a panel control.
     /// </summary>
     private async Task<JsonObject?> ReregisterEventsAsync(string scaffoldXml, string output, string work,
@@ -835,6 +837,7 @@ internal sealed class GraftTools(LvaiConnection connection)
         if (frames.Count == 0) return null;
 
         var steps = new JsonArray();
+        bool? reopened = null;
         JsonObject Result(bool ok, string note) => new()
         {
             ["ok"] = ok,
@@ -842,6 +845,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             ["frames"] = new JsonArray(frames.Select(f => (JsonNode)$"[{f.Index}] {f.Control}: {f.Trigger}").ToArray()),
             ["userEventFramesLeftAlone"] = reading.Frames.Count(f => f.UserEvent is not null),
             ["projectClosed"] = true,
+            ["projectReopened"] = reopened,
             ["steps"] = steps,
             ["note"] = note,
         };
@@ -850,6 +854,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         if (StatusTools.ScriptsDirectory() is not { } scripts)
             return Result(false, "The scripts folder next to the exe is missing.");
 
+        // Read BEFORE the close - afterwards nothing is active to read.
+        var (wasActive, _, activePath) = await new ActionTools(connection).ProjectIsActiveAsync(timeoutSeconds, ct: ct);
         var closed = await new CloseTools(connection).CloseActiveProjectAsync(
             helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
             timeoutSeconds: timeoutSeconds, ct: ct);
@@ -884,11 +890,29 @@ internal sealed class GraftTools(LvaiConnection connection)
         var rebuild = JsonNode.Parse(await new PyLabviewTools(connection).RebuildAsync(
             mainXml, output, timeoutSeconds, ct: ct));
         steps.Add(new JsonObject { ["step"] = "rebuild", ["answer"] = rebuild?.DeepClone() });
-        return rebuild?["ok"]?.GetValue<bool>() == true
+        var rebuilt = rebuild?["ok"]?.GetValue<bool>() == true;
+
+        // Only after the file is final: opening the project earlier would let LabVIEW serve the
+        // copy pylabview is replacing.
+        if (wasActive is true && activePath is { Length: > 0 } && File.Exists(activePath))
+        {
+            var open = JsonNode.Parse(await new ActionTools(connection).OpenFileAsync(
+                projectPath: activePath, projectName: Path.GetFileName(activePath),
+                timeoutSeconds: timeoutSeconds, ct: ct));
+            steps.Add(new JsonObject { ["step"] = "reopenProject", ["answer"] = open?.DeepClone() });
+            reopened = open?["projectBecameActive"]?.GetValue<bool>() == true;
+        }
+        var projectNote = reopened switch
+        {
+            true => " The active project was closed for the pylabview edit and OPENED AGAIN.",
+            false => " The active project was closed for the pylabview edit and did NOT become active " +
+                     "again - open it before lvai_bind_control_references (read the reopenProject step).",
+            null => " No project was active before, so none was reopened.",
+        };
+        return rebuilt
             ? Result(true, $"{frames.Count} front-panel event frame(s) registered again on the supplied " +
-                           "controls. The active project was CLOSED for the pylabview edit and is " +
-                           "left closed.")
-            : Result(false, "Every spec was written but the rebuild failed.");
+                           "controls." + projectNote)
+            : Result(false, "Every spec was written but the rebuild failed." + projectNote);
     }
 
     internal static async Task<XElement?> ExportAsync(LvaiConnection connection, string vi, string target, int timeoutSeconds, CancellationToken ct)

@@ -116,6 +116,19 @@ public sealed class DiagramSizeTests
         Assert.True(AixmlTools.ChainEstimate(Fixture("Find Account run5.xml"))!["withinBudget"]!.GetValue<bool>());
     }
 
+    [Fact]
+    public void A_chain_exactly_at_the_budget_is_flagged_because_it_rendered_over()
+    {
+        // The fifth Web Browser acceptance's second scaffold: ten stages, rendered 1977 px wide.
+        var estimate = AixmlTools.ChainEstimate(Fixture("Browser History v2.xml"))!;
+        Assert.Equal(10, estimate["longestChainStages"]!.GetValue<double>());
+        Assert.True(estimate["withinBudget"]!.GetValue<bool>());
+        Assert.True(estimate["atBudget"]!.GetValue<bool>());
+        Assert.Contains("1977 px", estimate["note"]!.GetValue<string>());
+
+        Assert.False(AixmlTools.ChainEstimate(Fixture("Find Account run5.xml"))!["atBudget"]!.GetValue<bool>());
+    }
+
     // ------------------------------------------------------------------ the generator
 
     private static string Aixml(LvaiTestServer server)

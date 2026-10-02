@@ -422,13 +422,23 @@ internal sealed class AixmlTools(LvaiConnection connection)
     {
         if (DiagramSize.Chain(text) is not { } chain) return null;
         var over = chain.Stages > DiagramSize.MaxChainStages;
+        // AT the budget is not safely within it: measured 2026-10-02, ten stages rendered 1797 px
+        // (the ATM main VI) and 1977 px (a Web Browser program, two loops with Case structures
+        // nested in them), so the per-stage width of a structure-heavy diagram is ~200 px.
+        var atBudget = chain.Stages == DiagramSize.MaxChainStages;
         return new JsonObject
         {
             ["longestChainStages"] = chain.Stages,
             ["budgetStages"] = DiagramSize.MaxChainStages,
             ["withinBudget"] = !over,
+            ["atBudget"] = atBudget,
             ["longestChain"] = chain.Chain,
-            ["note"] = over
+            ["note"] = atBudget
+                ? $"The longest chain is exactly the budget of {DiagramSize.MaxChainStages} stages, and " +
+                  "that is not safely within it: ten stages have rendered 1797 px and 1977 px, the wider " +
+                  "one with Case structures nested in loops (~200 px a stage). If the chain runs through " +
+                  "nested structures, fold one stage into a subVI now; otherwise the render decides."
+                : over
                 ? $"The longest chain is {chain.Stages} stages against a budget of " +
                   $"{DiagramSize.MaxChainStages} - one stage renders about 145-185 px, so this " +
                   "diagram will come out wider than 1920 px. Fold a SEQUENTIAL stretch of " +

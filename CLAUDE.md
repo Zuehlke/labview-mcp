@@ -1156,6 +1156,11 @@ bind call), never a Local Variable the graft would leave bound to the deleted du
 ACCEPTANCE, NI's `Display a URL.vi` with its start-up load, failed no tool**: the value reaches the
 browser by writing it back with `write+Value (Signaling)`, which fires the control's own frame, and
 that build's scaffold is now the skeleton - including `(no title)` for a loaded untitled page.
+**A FIFTH, on `Navigation History Methods.vi`, showed that immediate start-up signal losing its
+navigation 2 of 2**: it fires from the poll loop once the browser first answers now, and the title read
+is its own subVI (`web-browser-read-page-title.xml`). The round-3 "Stop not seen" reproduced as a
+DELAY after Back/Forward (late at 3-4 s, on time at 6-10 s, cause open); `diagramChain` answers
+`atBudget` at exactly 10 stages, which rendered 1977 px; and the graft reopens the project it closed.
 
 **`lvai_convert_aixml_to_vi` ANSWERS `executable` NOW** (`checkExecutable`, on by default): it still
 writes what the validator refuses - the route for class methods and loaded subVIs - but a broken

@@ -42,10 +42,16 @@ public sealed class TargetEndedBeforeAbortTests
         // The third acceptance read an empty title right after a navigation - the browser's
         // initial about:blank is complete with no title - and the fourth needed an untitled page
         // to say so instead of keeping the previous title. Both rules live in the one script.
-        var skeleton = File.ReadAllText(Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root,
-            "scripts", "aixml-skeletons", "web-browser-title-poll.xml"));
-        Assert.Contains("if(d.readyState!='complete'||d.URL=='about\\3Ablank')", skeleton);
-        Assert.Contains("return d.title||'(no title)';", skeleton);
-        Assert.Contains("write+Value (Signaling)", skeleton);
+        // Since the fifth acceptance the script lives in the read subVI, and the start-up signal
+        // is gated on that subVI's Ready? - fired right after FP.Open it lost its navigation 2 of 2.
+        string Skeleton(string name) => File.ReadAllText(Path.Combine(
+            LabVIEWMcp.Tests.Support.RepoTree.Root, "scripts", "aixml-skeletons", name));
+        var read = Skeleton("web-browser-read-page-title.xml");
+        Assert.Contains("||d.URL=='about\\3Ablank')", read);
+        Assert.Contains("return d.title||'(no title)';", read);
+        var program = Skeleton("web-browser-title-poll.xml");
+        Assert.Contains("target=\"Read Page Title.vi\"", program);
+        Assert.Contains("write+Value (Signaling)", program);
+        Assert.Contains("x:rpt.Ready?,y:srS.value", program);
     }
 }

@@ -448,13 +448,20 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    `lvai_bind_control_references` call - never through a Local Variable, which the graft would
    leave bound to the deleted duplicate. To make that value reach what only the control's event
    frame touches (a URL into the browser), write it back on the same reference with
-   `write+Value (Signaling)`: the frame then handles start-up and every later change alike. Merge
-   its error into the final `Merge Errors`, not into a loop's shift register (chain budget).
+   `write+Value (Signaling)`: the frame then handles start-up and every later change alike. For a
+   Web Browser fire it from the poll loop once the browser first answers a script, never right
+   after `FP.Open` (navigation lost 2 of 2) - `scripts/aixml-skeletons/web-browser-title-poll.xml`
+   and its `Read Page Title.vi` carry the shape. The event loop's chain starts from a `No Error`
+   constant in its shift register.
    The scaffold carries no `conIdx` and no `error in`.
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
    `execState`, a run. It IS the program; the graft only moves it. A scaffold built on reference
    STAND-INS cannot show behaviour by running (its references are null until the bind): check
-   `execState` and a short start-up run, and test on the grafted, bound VI.
+   `execState` and a short start-up run, and test on the grafted, bound VI. A start-up test needs
+   `runForMs` 12000 (cold browser per run), and 6 s between signals after Back/Forward.
+   The graft reopens the project it closed for the event registration (`events.projectReopened`),
+   so the bind can follow directly. A subVI generated on the way gets its own icon; the grafted
+   VI keeps the supplied one.
 4. **Graft IN PLACE**, because the supplied VI keeps its path and name - unless the task names
    another output or says the supplied file must not change; then `outputViPath` is the path the
    task names. The Phase 4 backup is the copy to graft FROM:
@@ -465,7 +472,8 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    It needs an ACTIVE project (the owning one, opened in Phase 2 - `Error 1055` otherwise), and the
    supplied VI must NOT have been opened: LabVIEW would keep serving the copy it loaded. Every
    scaffold terminal must be WIRED (`scaffoldTerminalUnwired` otherwise). Event frames are
-   re-registered by the graft (`events`), which then leaves the project closed - and a run
+   re-registered by the graft (`events`), which closes the project for that edit and reopens it
+   (`events.projectReopened`) - and a run
    unloads the hierarchy, so before REGENERATING a scaffold that calls a project-local subVI,
    open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
    naming it. Latched buttons a test must signal: graft a SECOND, test-only copy
@@ -673,7 +681,9 @@ re-apply it.
   the original VI did — if it bundles a cluster, that part cannot be regenerated.
 - **A polymorphic VI needs `adapt="true"` and `instance="…"` beside `target`**, with the
   instance's terminal names. A pristine export already carries all three; keep them.
-- **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error.
+- **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error. **So does a Python string literal**: `'\3A'` is an OCTAL escape there (`\x03` then `A`), so
+  a `str.replace` aimed at AIXML text silently matches nothing - write the patterns as raw
+  strings (`r'\3A'`), as the fifth Web Browser acceptance found.
 
 ## If `ApplyAIXMLToVI` is ever reopened
 

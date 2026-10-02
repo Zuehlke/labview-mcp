@@ -492,10 +492,21 @@ re-run independently afterwards with the same result. No tool failed; six gaps, 
 | `lvai_add_vis_to_project` has no target-level listing and defaults to `SubVIs` | the parameter and the agent say to name the folder for what it holds - `Application` for a main GUI |
 | `switchActions: {Stop: true}` did not say whether this call switched it | `switchActionsWereLatched` answers it from the supplied panel's export |
 
-**Still open**: in one of eight runs of the third build the program did not end on a signalled
-`Stop` and an identical later run did. An `Execute JavaScript` call blocking during a navigation is
-the hypothesis; it is not reproduced - the fourth build ended on `Stop` in all its runs - so nothing
-was changed for it.
+**A FIFTH acceptance, NI's `Navigation History Methods.vi` with its start-up load**
+(`C:\Temp\WBAcceptance5`): Back, Forward, Reload, Stop Load and Stop, `Page Title`, the URL loaded at
+start-up. `labview-vi-generator`, about 11 minutes, `execState 1`, the supplied file unchanged by MD5,
+every behaviour driven and passing - after the agent changed the design. Re-checked independently:
+start-up `page2` read `Page Two` on the deliverable; page3, Back, Stop with 10 s gaps read `Page One`
+and ended (`targetEndedBeforeAbort: true`, `error out` 0). No tool failed; five findings, closed the
+same day:
+
+| finding | fix |
+|---|---|
+| the round-4 start-up - `Value (Signaling)` right after `FP.Open` - lost its navigation 2 of 2, the browser stayed `about:blank` | fired from the poll loop once, on the browser's first answer to the script; the title read moved into `Read Page Title.vi`. That scaffold is the skeleton now (two documents), re-measured on `Display a URL.vi`: 1466 x 609 px, start-up title after 6 s in 3 of 5 cold runs, after 12 s in 1 of 1, the URL in the control every time |
+| `Stop` and the title were LATE after Back/Forward - the round-3 "Stop not seen" reproduced, as a delay | 3-4 s gaps late (agent, and my re-check), 6-10 s on time; documented with the numbers, cause not established. Tests leave 6 s after a history navigation |
+| `diagramChain` said 10 stages, within budget, for a scaffold rendered 1977 px | `atBudget: true` at exactly the budget, with a note: ten stages have rendered 1797 and 1977 px, ~200 px a stage where structures nest. Fixture: that scaffold |
+| every graft closed the project and the bind needed it again - one `lvai_open_file` per graft | the graft reopens the project it closed (`events.projectReopened`); accepted over raw stdio as open -> graft -> bind with nothing in between, `projectReopened: true` and the bind `ok` |
+| the test copy's place, the icon of a subVI made on the way, the event loop's error start, the scaffold adopted into the project, Python's `'\3A'` | written into both agents |
 
 The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
 `checkExecutable` absent from the schemas it displayed - while both reached the server and worked.

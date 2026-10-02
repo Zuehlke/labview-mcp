@@ -666,11 +666,15 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    as the browser - `{"WB Ref":"Web Browser Control","URL Ref":"URL String"}`. Measured
    2026-10-02 on a plain VI: bound, `execState 1`, the read returned the control's value.
    **To make the start-up value REACH something that only its event frame touches** (the URL
-   into the browser), write it straight back with a second Property Node on the same reference,
+   into the browser), write it back with a second Property Node on the same reference,
    `write+Value (Signaling)` - that fires the control's own Value Change frame, so start-up and
-   every later change take ONE path. Merge that node's error into the final `Merge Errors`
-   directly; chained into the poll loop's shift register it made the chain 11 stages, over the
-   budget. Measured end to end by the fourth Web Browser acceptance; the skeleton carries it.
+   every later change take ONE path. **For a Web Browser, NOT right after `FP.Open`**: the fifth
+   acceptance measured that losing its navigation 2 of 2 (the browser stayed `about:blank`). Fire
+   it from the poll loop, ONCE, on the first iteration where the browser answers the script
+   (`Ready?` of `Read Page Title.vi`, a `Start Pending` shift register) - the skeleton carries it.
+   **The event loop's error chain starts from a `No Error` constant** in its shift register
+   (`cluster{bool.status,int32.code,string.source}`, `value="[false,0,]"`); `Merge Errors` takes
+   the event loop, the poll loop and the start-up read - one input each.
    **The scaffold carries NO `conIdx` and NO `error in`**: it is a by-product, and nothing of
    its pane travels into the graft - only an `error out` INDICATOR, under the error rule above.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
@@ -678,6 +682,13 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    **A scaffold built on reference STAND-INS (step 5b) proves nothing by running**: its
    references are null until the bind, so nothing loads and the values say nothing. Check
    `execState` and at most a short start-up run; test behaviour on the grafted, bound VI.
+   **The skeleton plus the panel's own frames can go over the size budget** - six frames on the
+   round-4 skeleton rendered 1963 px, and gating the start-up made it 1977 at a chain of exactly 10
+   (`diagramChain` now answers `atBudget` for that). The fold that worked is the browser read:
+   `Read Page Title.vi`, generated from `web-browser-read-page-title.xml` and opened with
+   `lvai_open_file` `viPaths` before the scaffold is generated (1619 px). A subVI made this way is
+   an ordinary generated VI - it gets its own icon (Phase 7) and is listed under `SubVIs`; only the
+   GRAFTED VI keeps the supplied icon.
 4. **Graft** - copy the supplied VI into your scratch folder first (`Copy-Item`), then:
    ```
    lvai_graft_diagram  panelViPath=<that copy>  scaffoldViPath=<the scaffold>
@@ -691,8 +702,11 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    supplied VI must not have been opened itself, or LabVIEW keeps serving the copy it loaded.
    **Every scaffold terminal must be WIRED** - an unwired one is refused (`scaffoldTerminalUnwired`),
    because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
-   the supplied controls by the graft itself (`events`), which then leaves the project CLOSED -
-   reopen it before anything that needs it.
+   the supplied controls by the graft itself (`events`); the graft closes the project for that
+   pylabview edit and OPENS IT AGAIN afterwards (`events.projectReopened`), so the bind can follow
+   directly - only on `projectReopened: false` open it yourself. LabVIEW's close-save may list the
+   SCAFFOLD in the project at target level: move it with `lvai_add_vis_to_project`
+   `folderName: By-products`.
    **Before you REGENERATE a scaffold that calls a project-local subVI, open that subVI again**
    (`lvai_open_file` with the project and `viPaths`): the graft closes the project and a run
    unloads the hierarchy, so the convert answers `Error 53` naming the subVI rather than 1357 -
@@ -701,7 +715,8 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    1193): graft a SECOND, test-only copy for that - same scaffold, `outputViPath=<name> Test.vi`,
    `switchActionControls` naming ONLY the buttons your test drives - bind it like the deliverable,
    and drive that copy. The deliverable keeps the supplied mechanical actions. A graft is
-   seconds, so the copy is cheap. Report the test copy as a by-product. **Include `Stop`** when
+   seconds, so the copy is cheap. Put it beside the scaffold with the other by-products, NOT in the
+   project, and graft it AGAIN after every scaffold change. Report it as a by-product. **Include `Stop`** when
    a test must end the program - only an ENDED run gives a real `error out`; a snapshot of an
    aborted one shows the indicator's default (the answer's `targetEndedBeforeAbort` says which).
    **Every graft onto the test copy replaces it with an UNBOUND one**: bind it again after each. Do NOT build a helper for
@@ -726,7 +741,10 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    lvai_bind_control_references  viPath=<the grafted VI>  bindingsJson={"WB Ref":"Web Browser Control"}
    ```
    which replaces the stand-in with a BOUND reference of the real control. `ok` is decided from the
-   file. At run time `Execute JavaScript` needs the panel OPEN in the running instance and can
+   file. **Timing in a test**: a start-up load needs `runForMs` of 12000 - the browser starts cold
+   each run, and after 6 s the title was there in 3 of 5 runs; after `Back`/`Forward` leave 6 s
+   before the next signal, because `Stop` and the title were measured late at 3-4 s and on time at
+   6-10 s (skeleton `.md`, "Stop is DELAYED"). At run time `Execute JavaScript` needs the panel OPEN in the running instance and can
    answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
    UNWIRED `{LV.VI}` reference) and POLLS. **Do not build the poll as an Event Structure Timeout
    frame** - AIXML has no timeout terminal on one. Copy the measured shape in
@@ -842,7 +860,9 @@ Everything here was verified before this agent was written. Treat it as fact.
   names are the instance's. Export the polymorphic wrapper to get them — its AIXML is one `Call`
   per instance.
 - **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure surfaces as an XML parse
-  error.
+  error. **So does a Python string literal**: `'\3A'` is an OCTAL escape there (`\x03` then `A`), so
+  a `str.replace` aimed at AIXML text silently matches nothing - write the patterns as raw
+  strings (`r'\3A'`), as the fifth Web Browser acceptance found.
 
 ## Diagram size and cohesion — a standing user rule
 
