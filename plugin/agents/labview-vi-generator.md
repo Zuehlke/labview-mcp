@@ -656,6 +656,15 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    button) - which follows from Switch When Pressed, as the 2026-10-02 browser acceptance build
    pointed out for its Back/Forward; nobody clicked it by hand. The latch behaviour is LabVIEW's
    documented Latch When Released semantics, not a measurement of ours.
+   **AN ACTION AT START-UP ON A SUPPLIED CONTROL** (load the default URL, apply a setting):
+   its terminal already sits in its event frame, and a Local Variable in the scaffold would be
+   bound to the pasted DUPLICATE, which the graft deletes. Read it through a reference instead:
+   a stand-in control of the control's class (`URL Ref`, `type="ref{LV.String}"`) feeding a
+   `{LV.String}` Property Node `read+Value` before the event loop, then bind it in the same call
+   as the browser - `{"WB Ref":"Web Browser Control","URL Ref":"URL String"}`. Measured
+   2026-10-02 on a plain VI: bound, `execState 1`, the read returned the control's value.
+   **The scaffold carries NO `conIdx` and NO `error in`**: it is a by-product, and nothing of
+   its pane travels into the graft - only an `error out` INDICATOR, under the error rule above.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
    run. It IS the program; the graft only moves it. Diagram size and comment rules apply to it.
 4. **Graft IN PLACE** - the supplied VI keeps its path and name. Copy it into your scratch folder
@@ -678,7 +687,10 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    1193): graft a SECOND, test-only copy for that - same scaffold, `outputViPath=<name> Test.vi`,
    `switchActionControls` naming ONLY the buttons your test drives - bind it like the deliverable,
    and drive that copy. The deliverable keeps the supplied mechanical actions. A graft is
-   seconds, so the copy is cheap. Report the test copy as a by-product. Do NOT build a helper for
+   seconds, so the copy is cheap. Report the test copy as a by-product. **Include `Stop`** when
+   a test must end the program - only an ENDED run gives a real `error out`; a snapshot of an
+   aborted one shows the indicator's default (the answer's `targetEndedBeforeAbort` says which).
+   **Every graft onto the test copy replaces it with an UNBOUND one**: bind it again after each. Do NOT build a helper for
    switch actions; that cost 2:35 in each of two builds.
 5. **`ok` is the verdict**, read from the file: `execState 1`, `leftoverDuplicates` empty,
    `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a

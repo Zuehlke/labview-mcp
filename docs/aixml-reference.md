@@ -937,7 +937,10 @@ spurious differences on every shift register.
 
 - `selectin` on the `Structure` is the wire feeding the selector.
 - `selector` on each `CaseFrame` is the case label as typed in LabVIEW: `"No Error"`,
-  `"Error"`, `"0"`, `"Default"`, an enum label, a string.
+  `"Error"`, `"0"`, `"Default"`, an enum label, a string. **A BOOLEAN selector's frames are
+  `selector="True"` and `selector="False"`** - capital first letter, as the shipped skeletons and
+  `scripts/lvai_add_class_method.xml` write them. A lookup for `Case Structure` did not return this
+  until 2026-10-02, and the third Web Browser acceptance build had to grep the skeletons for it.
 - `selectout` optionally exposes the selector value inside the frame; `""` when unused. The net is
   named after the frame's **own** `uid` — `selectout="400.value"` on `uid="400"`, and a node inside
   reads `400.value`. That is how the offending value reaches an error message in a `Default` frame.

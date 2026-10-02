@@ -28,7 +28,7 @@ sends a notification, `timed out?` turns FALSE, and the loop ends without a stop
 | `Obtain Notifier` (`bool`) | the stop signal shared by both loops; released after both end |
 | `FP.Open` on an unwired `{LV.VI}` reference | opens the program's OWN panel - `This VI` |
 | `Wait on Notification`, `timeout in ms (-1)` = 250 | paces the poll and ends it |
-| script `return document.readyState === 'complete' ? document.title : 'LV_PENDING';` | a FUNCTION BODY, so it needs `return` |
+| script `var d=document;return d.readyState=='complete'&&d.title?d.title:'LV_PENDING';` (kept short: the constant's text sets the diagram's width, and the longer spelling pushed it to 2024 px) | a FUNCTION BODY, so it needs `return`. An EMPTY title counts as pending: the third acceptance build read `Page Title` empty twice right after a navigation, so a document can be `complete` with no title yet. The price is that a page with no `<title>` at all keeps showing the previous one |
 | `Select` on `status OR (result = LV_PENDING)` | keeps the previous title while the browser is not ready |
 | `Merge Errors` | one `error out` for both loops; the script's own errors are expected and left out |
 
@@ -52,3 +52,20 @@ The same `WB Ref` stand-in feeds the navigation methods as well - `NavigateBackw
 build where it fed both loops. Each button's terminal sits inside its own Value Change frame, wired
 to a Case selector whose TRUE case acts; keep the delivered buttons LATCHED (one click, one action)
 and drive a separate test-only graft with `switchActionControls`.
+
+## Reading an empty `Page Title` in a test
+
+The title starts EMPTY and keeps its last good value, so an empty one in a snapshot means no read has
+succeeded YET - not that the page has no title. Every `lvai_run_vi_and_read_values` run starts the
+browser COLD, because the tool closes the panel the run opened (`panelClosedAfterRun`); the first
+scripts then answer `Error 53` for a moment. Give a navigation a few seconds (`signalGapMs`) before
+reading its title. Measured 2026-10-02: one load with a 3 s gap read empty, the same load followed by
+a Stop with a 2.5 s gap read the title.
+
+## Open: a poll that may not see Stop
+
+In one of eight runs of the third acceptance build the program did NOT end on a signalled `Stop`,
+and an identical later run ended cleanly. Unmeasured hypothesis: `Execute JavaScript` with
+`Wait for Return Value?` TRUE blocks for a while during a navigation, and the poll loop only checks
+the stop notification between calls. Not reproduced, so nothing here is changed for it - if you
+see it, measure first.

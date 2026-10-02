@@ -1147,6 +1147,13 @@ twice per action behind that guard - Switch When Pressed semantics, not clicked 
 re-open a scaffold's project-local subVIs before regenerating it after a graft or a run
 (`Error 53`). `docs/keep-supplied-front-panel.md` §6g.
 
+**A THIRD ACCEPTANCE followed that guidance unprompted and found a tool defect, now fixed: a timed
+run whose target ENDS ON ITS OWN made the helper's `Abort VI` answer `Error 1000`, reported as
+`helperFailed` beside the real final values.** It is `targetEndedBeforeAbort: true` now, and only
+such a run's `error out` is a result - an aborted snapshot shows the indicator's default. A start-up
+action on a supplied control reads it through a bound reference (`ref{LV.String}` stand-in, same
+bind call), never a Local Variable the graft would leave bound to the deleted duplicate.
+
 **`lvai_convert_aixml_to_vi` ANSWERS `executable` NOW** (`checkExecutable`, on by default): it still
 writes what the validator refuses - the route for class methods and loaded subVIs - but a broken
 result comes back `ok: false` with a `warning` instead of a clean `errorCode 0`. Internal callers

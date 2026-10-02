@@ -46,7 +46,7 @@
     </ShiftReg>
     <Constant _name="Poll Interval ms" outputs="value:pi.value" type="int32" uid="pi" uid_parent="pl" value="250"/>
     <Node _name="Wait on Notification" inputs="notifier:plN.value,ignore previous (F):,timeout in ms (-1):pi.value,error in (no error):srE.value" outputs="notifier out:,notification:,timed out?:won.timed out?,error out:won.error out" uid="won" uid_parent="pl"/>
-    <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="pl" value="return document.readyState === 'complete' ? document.title \3A 'LV_PENDING';"/>
+    <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="pl" value="var d=document;return d.readyState=='complete'&amp;&amp;d.title?d.title\3A'LV_PENDING';"/>
     <Constant _name="Wait for Return Value?" outputs="value:wfr.value" type="bool" uid="wfr" uid_parent="pl" value="true"/>
     <Node _name="Invoke Node" type="{LV.WebBrowser}" target="ExecuteJavaScript" inputs="reference:plWB.value,error in (no error):,JavaScript:js.value,arg:,Wait for Return Value?:wfr.value,Return Non-primitive Types?:" outputs="reference out:,error out:jse.error out,Return Value:jse.Return Value,Exception:" uid="jse" uid_parent="pl"/>
     <Node _name="Unbundle By Name" fields="status" inputs="input cluster:jse.error out" outputs="status:ub.status" uid="ub" uid_parent="pl"/>

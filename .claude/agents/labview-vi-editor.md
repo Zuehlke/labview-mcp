@@ -443,6 +443,10 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    needs: put its terminal inside its own Value Change frame, wired to a Case selector whose TRUE
    case does the work. A LATCHED button read there answers TRUE for the press and resets itself,
    so one click is one action - keep it latched in the deliverable (see step 4 for tests).
+   An action at START-UP on a supplied control reads it through a bound reference - a stand-in
+   of its class (`ref{LV.String}`) into a `read+Value` Property Node, bound with the same
+   `lvai_bind_control_references` call - never through a Local Variable, which the graft would
+   leave bound to the deleted duplicate. The scaffold carries no `conIdx` and no `error in`.
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
    `execState`, a run. It IS the program; the graft only moves it.
 4. **Graft IN PLACE**, because the supplied VI keeps its path and name. The Phase 4 backup is the
@@ -459,7 +463,8 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
    naming it. Latched buttons a test must signal: graft a SECOND, test-only copy
    (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
-   too and drive that one; the deliverable keeps the user's mechanical actions, because a switched
+   too and drive that one (include `Stop` when the test must end the program and read a real
+   `error out`; re-bind after every re-graft of it); the deliverable keeps the user's mechanical actions, because a switched
    button behind a TRUE guard needs two clicks per action (Switch When Pressed semantics, pointed
    out by the 2026-10-02 acceptance build, not clicked by hand). Never a
    hand-built helper.

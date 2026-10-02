@@ -1569,7 +1569,11 @@ internal sealed class TestTools(LvaiConnection connection)
             // correct diagrams, costing two agents ~135 s each. Report it; do not decide with it.
             step["inRequestedFolder"] = elsewhere.Count == 0;
             step["movedIntoFolder"] = new JsonArray([.. moved.Select(v => (JsonNode)v)]);
+            // `url` names the FIRST entry only - kept for the single-VI callers that read it - and
+            // `urls` names every one: with two VIs the answer used to show one URL for two listings,
+            // reported by the third Web Browser acceptance build 2026-10-02.
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
+            step["urls"] = new JsonArray([.. entries.Select(e => (JsonNode?)e.Url)]);
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
             step["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(v => (JsonNode)v)]);

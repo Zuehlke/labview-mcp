@@ -460,6 +460,24 @@ the agents' guidance, closed the same day:
 | that the navigation methods ride the same stand-in | one stand-in serves every `{LV.WebBrowser}` node; method names from NI's example export |
 | after a graft (project closed) or a run (hierarchy unloaded) a scaffold calling a project-local subVI regenerates as `Error 53` | re-open that subVI with `lvai_open_file` `viPaths` first; the convert's unsupported-subVI list names it |
 
+**A THIRD acceptance, same panel, the new guidance NOT spelled out in the task**: the agent kept
+every delivered button latched (verified from the export: `style="latched"` on all five), drove a
+separate test copy with only Back, Forward and Stop switched, exported a renamed copy, and the four
+title checks passed; the supplied file unchanged by hash. It found one tool defect and three smaller
+gaps, all closed the same day:
+
+| finding | fix |
+|---|---|
+| a timed run whose target ends on its own - a signalled `Stop` - made the helper's `Abort VI` answer `Error 1000`, reported as `helperFailed: true` with a note saying nothing was set, beside the real final values | reproduced, then fixed: `targetEndedBeforeAbort: true`, `helperFailed: false`, and the note says the values are FINAL |
+| an aborted snapshot's `error out` is only the indicator's default, and the answer did not say so | the snapshot note says so and points at signalling Stop |
+| `Page Title` read empty twice right after a navigation | the skeleton's script treats an empty title as pending (empty `document.title` counts as pending); an untitled page keeps the previous title |
+| a start-up action on a supplied control (NI's original loads the URL at start) had no route | read it through a bound reference - a `ref{LV.String}` stand-in into a `read+Value` Property Node, bound in the same call. Measured on a plain VI: `execState 1`, the read returned the control's value |
+| the scaffold's pane, the test copy's `Stop`, re-binding after a re-graft, the boolean case selector spelling, one `url` for two listed VIs | written into both agents; `True`/`False` into `lvai_aixml_reference` §7; `lvai_add_vis_to_project` answers `urls` |
+
+**Still open**: in one of eight runs the program did not end on a signalled `Stop` and an identical
+later run did. An `Execute JavaScript` call blocking during a navigation is the hypothesis; it is
+not reproduced, so nothing was changed for it.
+
 The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
 `checkExecutable` absent from the schemas it displayed - while both reached the server and worked.
 A parameter missing from a displayed schema is therefore not proof that it is missing from the server;

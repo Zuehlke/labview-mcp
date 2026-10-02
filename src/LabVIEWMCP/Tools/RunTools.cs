@@ -339,9 +339,18 @@ internal sealed class RunTools(LvaiConnection connection)
             payload["valueCount"] = JsonValue.Create(values.Count);
             payload["valuesXml"] = keepRaw ? JsonValue.Create(valuesXml) : null;
             payload["helperErrorXml"] = JsonValue.Create(errorXml);
-            var helperCode = HelperErrorCode(errorXml);
-            payload["helperErrorCode"] = helperCode is { } hc ? JsonValue.Create(hc) : null;
+            var rawHelperCode = HelperErrorCode(errorXml);
+            payload["helperErrorCode"] = rawHelperCode is { } hc ? JsonValue.Create(hc) : null;
+            // A TARGET THAT ENDED ON ITS OWN IS NOT A FAILED RUN. The timed helper aborts the target
+            // when the time is up; a program that has already stopped - the expected result of
+            // signalling its Stop - makes that Abort VI answer Error 1000, and this used to read
+            // as helperFailed with a note saying nothing was set, while every signal had been sent
+            // and `values` held the target's real FINAL values. Measured 2026-10-02, twice, on the
+            // third Web Browser acceptance build.
+            var endedOnItsOwn = TargetEndedBeforeAbort(timed, rawHelperCode, errorXml);
+            var helperCode = endedOnItsOwn ? 0 : rawHelperCode;
             payload["helperFailed"] = JsonValue.Create(helperCode is not null and not 0);
+            if (timed) payload["targetEndedBeforeAbort"] = JsonValue.Create(endedOnItsOwn);
             payload["helperViPath"] = JsonValue.Create(helperVi);
             payload["helperAixmlPath"] = JsonValue.Create(Path.GetFullPath(aixml));
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
@@ -407,9 +416,17 @@ internal sealed class RunTools(LvaiConnection connection)
                             "copy the `xml` this tool returns for that control."
                           : "")
                     : "") +
-                (timed
+                (timed && endedOnItsOwn
+                    ? " The target ENDED ON ITS OWN before the time was up (the helper's Abort VI " +
+                      "answered Error 1000, which is not a failure), so these values are its FINAL " +
+                      "values and its `error out` is a real result."
+                    : "") +
+                (timed && !endedOnItsOwn
                     ? $" These values are a SNAPSHOT taken {runForMs} ms after the VI started, and " +
-                      "the VI was then ABORTED - no cleanup on its diagram ran." +
+                      "the VI was then ABORTED - no cleanup on its diagram ran. So an indicator the " +
+                      "program writes only at the END - typically `error out` - still shows its " +
+                      "DEFAULT here and says nothing about errors; signal the program's Stop to get " +
+                      "a real one (targetEndedBeforeAbort then reads true)." +
                       (inputs.Count > 0
                           ? " AND THE TIMED HELPER STILL SETS STRINGS ONLY - it has not been given " +
                             "the typed setter, so a path, numeric or boolean control named here " +
@@ -794,6 +811,13 @@ internal sealed class RunTools(LvaiConnection connection)
     /// number buried in `helperErrorXml`. A caller reading errorCode alone would call that a
     /// success.
     /// </summary>
+    /// <summary>
+    /// Whether a timed run's helper error is only its Abort VI finding the target already stopped:
+    /// Error 1000 ("not in a state compatible with this operation") at Abort. Measured 2026-10-02.
+    /// </summary>
+    internal static bool TargetEndedBeforeAbort(bool timed, int? helperCode, string? errorXml) =>
+        timed && helperCode == 1000 && (errorXml ?? "").Contains("Abort", StringComparison.OrdinalIgnoreCase);
+
     internal static int? HelperErrorCode(string? errorXml)
     {
         if (errorXml is not { Length: > 0 }) return null;
