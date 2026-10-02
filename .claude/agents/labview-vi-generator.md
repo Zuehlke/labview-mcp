@@ -631,8 +631,15 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    existing layout), so say in your report that the user tidies the layout by hand. Never add one
    the task did not ask for. A panel control the program does not need may be left out (it is
    reported under `panelControlsUnused`). The rule
-   that every VI we create carries `error in`/`error out` does NOT apply to this panel: it is the
-   user's, and a terminal they did not supply is exactly what the graft refuses.
+   that every VI we create carries `error in`/`error out` does NOT apply to this panel as written:
+   it is the user's, and its connector pane is the supplied one (a new control gets no slot).
+   **The error rule for a supplied panel, settled 2026-10-02:** add NO `error in` - nobody calls
+   the main GUI. END the error chain in an `error out` INDICATOR when the task allows new controls
+   (`allowNewControls`), merged with `Merge Errors` like any other VI. When new controls are NOT
+   allowed, do not leave the chain dangling - an unwired error output pops LabVIEW's automatic
+   error dialog, a modal that stops the whole gRPC service during a test run - and do not reach for
+   `Simple Error Handler.vi` (it lives in an `.llb`, so it is not callable by bare name): return
+   `NEEDS CLARIFICATION` asking whether an `error out` indicator may be added.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
    run. It IS the program; the graft only moves it. Diagram size and comment rules apply to it.
 4. **Graft IN PLACE** - the supplied VI keeps its path and name. Copy it into your scratch folder
@@ -655,7 +662,11 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a
    failed graft - report the field; the tool has already put the plain supplied copy back. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
    an event-driven VI) and render it: the grafted diagram is the scaffold's, but its terminals are
-   the supplied ones.
+   the supplied ones. **READ THE COMMENT IN THAT RENDER** - this is the one render that is
+   mandatory, not optional: a 43-character comment that rendered whole in the scaffold came out
+   CLIPPED after the graft (measured 2026-10-02, the word "title" lost), because the box is re-sized
+   around the supplied panel's terminals and any new reference node. If it is clipped, shorten it in
+   the scaffold AIXML and regenerate - before the graft, not after.
 5b. **A WEB BROWSER CONTROL ON THE PANEL** (or any control the AIXML export writes as a plain type
    it is not): AIXML cannot create it, so never wire a `{LV.WebBrowser}` node through `link=` or a
    `VI Server Reference` to it - that is `Invalid method` (`lvai_check_aixml` warns
@@ -667,7 +678,18 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    ```
    which replaces the stand-in with a BOUND reference of the real control. `ok` is decided from the
    file. At run time `Execute JavaScript` needs the panel OPEN in the running instance and can
-   answer `Error 53` right after `FP.Open` - open it in the program and POLL before the first script.
+   answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
+   UNWIRED `{LV.VI}` reference) and POLLS. **Do not build the poll as an Event Structure Timeout
+   frame** - AIXML has no timeout terminal on one. Copy the measured shape in
+   `scripts/aixml-skeletons/web-browser-title-poll.xml` (its `.md` explains each element): a
+   SECOND While Loop paced by `Wait on Notification` with a 250 ms timeout, the notifier sent by
+   the `Stop` frame so `timed out?` going FALSE ends the loop, and a `Select` that keeps the last
+   result while the script errors or returns a pending marker. `{LV.WebBrowser}` is NOT in
+   `lvai_vi_server_reference`; take method terminal names from that skeleton or from an export of
+   NI's examples under `examples\Controls and Indicators\Web Browser\`.
+   A run that opened the panel leaves it open; `lvai_run_vi_and_read_values` closes it again
+   afterwards (`panelClosedAfterRun`), which is what keeps the next regeneration onto that path
+   from answering `Error 1357`. Leave that on.
    A reference to a control AIXML CAN create needs none of this: write
    `<Node _name="VI Server Reference" element="<label>" outputs="<label>:<net>"/>` directly.
 6. **Keep the supplied icon.** Phase 7 applies to the scaffold at most; the supplied VI gets a new

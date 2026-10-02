@@ -1139,7 +1139,11 @@ export: inputs `reference`, `error in (no error)`, `JavaScript`, `arg`, `Wait fo
 The script is a FUNCTION BODY and needs `return`. At run time it needs the control's panel OPEN in
 the instance that runs the VI, and the first call right after `FP.Open` can still answer `Error 53`
 while the browser initialises - measured twice on cold starts, a second call clean - so poll or
-retry rather than calling once.
+retry rather than calling once. **Not in an Event Structure Timeout frame**, which has no terminal
+in AIXML: `scripts/aixml-skeletons/web-browser-title-poll.xml` is the measured shape, a second loop
+paced by `Wait on Notification` with a 250 ms timeout and stopped by the notifier. A run leaves the
+panel the program opened OPEN, which keeps the VI in memory (`Error 1357` on the next convert);
+`lvai_run_vi_and_read_values` closes it afterwards (`panelClosedAfterRun`).
 
 ### Terminal names must be looked up, never guessed
 

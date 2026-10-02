@@ -431,7 +431,12 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    tidies the layout by hand. Never add one the change did not ask for. A panel control the
    program does not need may be left out; it stays on the panel, unwired, and is reported under
    `panelControlsUnused`. The error-cluster rule for new VIs adds nothing here: the panel is the
-   user's, and a terminal on it that the user did not supply is exactly what the graft refuses.
+   user's, and its connector pane is the supplied one. **The error rule for a supplied panel,
+   settled 2026-10-02:** no `error in`; end the chain in an `error out` INDICATOR when new controls
+   are allowed (`allowNewControls`), merged with `Merge Errors`. When they are not, do not leave
+   it dangling - an unwired error output raises LabVIEW's automatic error dialog, a modal that
+   stops the whole gRPC service - and `Simple Error Handler.vi` is not callable by bare name (it
+   lives in an `.llb`): return `NEEDS CLARIFICATION` asking whether an `error out` may be added.
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
    `execState`, a run. It IS the program; the graft only moves it.
 4. **Graft IN PLACE**, because the supplied VI keeps its path and name. The Phase 4 backup is the
@@ -449,14 +454,22 @@ route costs minutes, and a subVI's panel carries nothing worth them.
 5. **`ok` is the verdict**, and it is read from the file: `execState 1`, `leftoverDuplicates`
    empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
    else false is a failed graft - report the field, never "grafted with minor issues"; the tool
-   has already put the plain supplied copy back.
+   has already put the plain supplied copy back. Then RENDER the grafted VI and READ ITS COMMENT:
+   a 43-character comment that rendered whole in the scaffold came out clipped after the graft
+   (measured 2026-10-02), because the box is re-sized around the supplied terminals. Shorten it in
+   the scaffold and regenerate before grafting again.
 5b. **A WEB BROWSER CONTROL ON THE PANEL**: AIXML cannot create one (the export writes it as a
    `string`), so a `{LV.WebBrowser}` node bound through `link=` or a `VI Server Reference` is
    `Invalid method`. Wire a refnum STAND-IN control (`type="ref{LV.WebBrowser}"`) on the scaffold,
    graft with `allowNewControls: true`, then `lvai_bind_control_references viPath=<grafted VI>
    bindingsJson={"WB Ref":"Web Browser Control"}` turns it into a bound reference of the real
    control. At run time `Execute JavaScript` needs the panel open in the running instance and may
-   answer `Error 53` right after `FP.Open` - poll. `docs/keep-supplied-front-panel.md` §6g.
+   answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
+   unwired `{LV.VI}` reference) and POLLS - not in an Event Structure Timeout frame, which AIXML
+   cannot author, but in a second loop paced by `Wait on Notification`, as
+   `scripts/aixml-skeletons/web-browser-title-poll.xml` does. `lvai_run_vi_and_read_values` closes
+   a panel the run left open (`panelClosedAfterRun`), which keeps the next regeneration from
+   answering `Error 1357`. `docs/keep-supplied-front-panel.md` §6g.
 6. **Keep the supplied icon** - Phase 8 has nothing to restore, and a new icon is only applied
    when the task asks for one.
 7. **Report the scaffold** as a by-product that can be deleted (and dropped from the project); it

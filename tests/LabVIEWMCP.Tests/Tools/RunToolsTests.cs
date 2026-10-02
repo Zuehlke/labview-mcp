@@ -67,12 +67,47 @@ public sealed class RunToolsTests : IDisposable
 
         await new RunTools(server.Connection).RunViAndReadValuesAsync(
             vi, """{"file name":"C:\\in.csv","mode":"fast"}""",
-            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            closePanelAfterRun: false);
 
         var request = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
         Assert.Equal(vi, request.Inputs["VI Path"]);
         Assert.Equal("file name\nmode", request.Inputs["Input Names"]);
         Assert.Equal("C:\\in.csv\nfast", request.Inputs["Input Values"]);
+    }
+
+    /// <summary>
+    /// By default a SECOND run follows the target's: the close-panel helper, handed the target's
+    /// path - so a program that opened its own panel does not stay in memory (Error 1357).
+    /// </summary>
+    [Fact]
+    public async Task A_run_is_followed_by_the_close_panel_helper_unless_switched_off()
+    {
+        await using var server = await ServerWith();
+        var vi = WriteVi();
+
+        await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            vi, helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+        Assert.Equal(2, server.Service.CountOf("RunVIAsTopLevel"));
+        var close = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
+        // beside the run helper, never in the real cache - a fixed path let this very test plant a
+        // 16-byte stand-in there that broke the next live run
+        Assert.Equal(At("lvai_close_own_panel.vi"), close.ViPath);
+        Assert.Equal(Path.GetFullPath(vi), close.Inputs["vi path"]);
+
+        await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            vi, helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            closePanelAfterRun: false);
+        Assert.Equal(3, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
+    /// <summary>Our own helpers never open their panel, so their runs get no close step.</summary>
+    [Fact]
+    public void Only_a_target_outside_the_servers_temp_tree_is_closed_after_its_run()
+    {
+        Assert.True(RunTools.IsOwnHelper(Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "x.vi")));
+        Assert.False(RunTools.IsOwnHelper(Path.Combine(Path.GetTempPath(), "LabVIEWMCPX", "x.vi")));
+        Assert.False(RunTools.IsOwnHelper(@"C:\Temp\App\Main.vi"));
     }
 
     [Fact]
@@ -81,7 +116,8 @@ public sealed class RunToolsTests : IDisposable
         await using var server = await ServerWith();
 
         await new RunTools(server.Connection).RunViAndReadValuesAsync(
-            WriteVi(), helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+            WriteVi(), helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            closePanelAfterRun: false);
 
         var request = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
         Assert.Equal("", request.Inputs["Input Names"]);
@@ -101,7 +137,8 @@ public sealed class RunToolsTests : IDisposable
 
         var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
             WriteVi(), "{\"message\":\"line one\\nline two\\r\\nthree\",\"other\":\"x\"}",
-            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml());
+            helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            closePanelAfterRun: false);
 
         var request = server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel");
         Assert.Equal("line one\u001Eline two\u001D\u001Ethree\nx", request.Inputs["Input Values"]);
@@ -222,9 +259,9 @@ public sealed class RunToolsTests : IDisposable
         var tools = new RunTools(server.Connection);
 
         var first = await tools.RunViAndReadValuesAsync(
-            vi, helperViPath: helper, helperAixmlPath: ShippedHelperAixml());
+            vi, helperViPath: helper, helperAixmlPath: ShippedHelperAixml(), closePanelAfterRun: false);
         var second = await tools.RunViAndReadValuesAsync(
-            vi, helperViPath: helper, helperAixmlPath: ShippedHelperAixml());
+            vi, helperViPath: helper, helperAixmlPath: ShippedHelperAixml(), closePanelAfterRun: false);
 
         Assert.True(Res.Bool(first, "helperGenerated"));
         Assert.False(Res.Bool(second, "helperGenerated"));

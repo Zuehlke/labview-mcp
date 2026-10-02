@@ -1127,6 +1127,16 @@ The same holds at run time for `Execute JavaScript`: panel open in the running i
 rather than call once. An unwired `reference` on a `{LV.VI}` node is `This VI`; `element="This VI"`
 is refused. `docs/keep-supplied-front-panel.md` §6g.
 
+**ACCEPTED IN A FRESH SESSION THROUGH `labview-vi-generator`, and its four gaps are closed.** The
+poll is NOT an Event Structure Timeout frame (no terminal in AIXML) but a second loop paced by
+`Wait on Notification` - `scripts/aixml-skeletons/web-browser-title-poll.xml`. A program that opens
+its own panel leaves it open after a run and the VI stays in memory (`Error 1357` on the next
+convert), so **`lvai_run_vi_and_read_values` closes such a panel afterwards** (`closePanelAfterRun`,
+default true), measured as an A/B. **Render a GRAFTED VI and read its comment** - one that rendered
+whole in the scaffold came out clipped after the graft. And on a supplied panel: no `error in`, an
+`error out` indicator only when new controls are allowed, otherwise ask - an unwired error output
+raises the automatic error dialog, a modal that stops the gRPC service.
+
 **`lvai_convert_aixml_to_vi` ANSWERS `executable` NOW** (`checkExecutable`, on by default): it still
 writes what the validator refuses - the route for class methods and loaded subVIs - but a broken
 result comes back `ok: false` with a `warning` instead of a clean `errorCode 0`. Internal callers

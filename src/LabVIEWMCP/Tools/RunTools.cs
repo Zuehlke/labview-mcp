@@ -156,6 +156,13 @@ internal sealed class RunTools(LvaiConnection connection)
         string? signalsJson = null,
         [Description("Wait after each signal, so the target handles it before the next")]
         int signalGapMs = 500,
+        [Description("""
+            Close the target's front panel afterwards when the RUN left it open - a program that
+            opens its own panel (FP.Open, as a Web Browser control needs) keeps the VI in memory
+            otherwise, and the next generation onto its path answers Error 1357. Measured
+            2026-10-02. Only a panel open in the instance the run used is touched.
+            """)]
+        bool closePanelAfterRun = true,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -307,6 +314,11 @@ internal sealed class RunTools(LvaiConnection connection)
                     deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
             stopwatch.Stop();
 
+            // NOT for our own helpers: about twenty tools drive their helper VIs through this call, none of
+            // them opens its panel, and closing after each would cost every one of them an RPC.
+            var panelClose = closePanelAfterRun && !IsOwnHelper(viPath)
+                ? await ClosePanelAsync(viPath, helperVi, timeoutSeconds, ct) : null;
+
             response.Outputs.TryGetValue("values xml", out var valuesXml);
             response.Outputs.TryGetValue("error xml", out var errorXml);
 
@@ -375,6 +387,7 @@ internal sealed class RunTools(LvaiConnection connection)
                 };
             }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
+            payload["panelClosedAfterRun"] = panelClose;
             payload["note"] = JsonValue.Create(
                 "errorCode here is RunVIAsTopLevel's, NOT the helper's - read helperErrorCode " +
                 "for that, and helperFailed when you want one flag. A target VI that itself " +
@@ -538,6 +551,75 @@ internal sealed class RunTools(LvaiConnection connection)
     /// payload - Error 1051 in particular is unrecoverable without changing the target name.
     /// Same shape as IconTools; the two composed tools fail in the same two ways.
     /// </summary>
+    internal const string ClosePanelHelperFileName = "lvai_close_own_panel.xml";
+
+    /// <summary>
+    /// Whether a target is one of this server's own helper VIs - everything it generates lives under
+    /// %TEMP%\LabVIEWMCP. Those never open their panel, so closing one is a wasted RPC.
+    /// </summary>
+    internal static bool IsOwnHelper(string viPath) =>
+        Path.GetFullPath(viPath).StartsWith(
+            Path.GetFullPath(Path.Combine(Path.GetTempPath(), "LabVIEWMCP")) + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Closes the target's front panel in the instance the run used, when it is open, and says
+    /// whether it was. A program that opens its OWN panel - FP.Open on an unwired {LV.VI}
+    /// reference, which a Web Browser control needs for Execute JavaScript - leaves it open after
+    /// the run, and the VI then stays in memory: the next ConvertAIXMLToVI onto its path answered
+    /// Error 1357. Measured 2026-10-02 as an A/B on one VI: 1357, then this helper answering
+    /// `panel was open: true`, then the same convert clean; a second call answered false, error 0.
+    /// NEVER FATAL: a failure here is reported and the run's own answer stands.
+    /// </summary>
+    private async Task<JsonObject> ClosePanelAsync(string viPath, string runHelperVi, int timeoutSeconds,
+                                                    CancellationToken ct)
+    {
+        try
+        {
+            if (StatusTools.ScriptsDirectory() is not { } scripts)
+                return new JsonObject { ["closed"] = false, ["error"] = "no scripts folder next to the exe" };
+            var aixml = Path.Combine(scripts, ClosePanelHelperFileName);
+            if (!File.Exists(aixml))
+                return new JsonObject { ["closed"] = false, ["error"] = $"no helper AIXML at '{aixml}'" };
+            // BESIDE THE RUN HELPER, not at a fixed path: a test that hands the run a helper path
+            // of its own must not touch the real cache. Measured the hard way 2026-10-02 - the
+            // unit test's fake converter left a 16-byte file at the fixed path, the next live run
+            // took it for a fresh helper, and every close answered nothing at all.
+            var helperVi = Path.Combine(Path.GetDirectoryName(runHelperVi)!, "lvai_close_own_panel.vi");
+            Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
+            if (HelperCache.NeedsRebuild(aixml, helperVi)
+                && await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
+                return new JsonObject { ["closed"] = false, ["error"] = "the helper could not be generated", ["detail"] = failure };
+            var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
+            request.Inputs["vi path"] = Path.GetFullPath(viPath);
+            var response = await connection.InvokeAsync((c, t) =>
+                c.RunVIAsTopLevelAsync(request,
+                    deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            if (!response.Outputs.TryGetValue("panel was open", out var wasOpen))
+                return new JsonObject
+                {
+                    ["closed"] = false,
+                    ["error"] = "the close helper returned no outputs",
+                    ["rpcErrorCode"] = response.ErrorCode,
+                    ["rpcErrorMessage"] = response.ErrorMessage,
+                    ["helperViPath"] = helperVi,
+                };
+            response.Outputs.TryGetValue("code", out var code);
+            response.Outputs.TryGetValue("source", out var source);
+            return new JsonObject
+            {
+                ["closed"] = wasOpen == "true" && code == "0",
+                ["panelWasOpen"] = wasOpen is null ? null : JsonValue.Create(wasOpen == "true"),
+                ["errorCode"] = int.TryParse(code, out var c) ? c : null,
+                ["errorSource"] = string.IsNullOrEmpty(source) ? null : source,
+            };
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return new JsonObject { ["closed"] = false, ["error"] = e.Message };
+        }
+    }
+
     private async Task<string?> GenerateHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
     {

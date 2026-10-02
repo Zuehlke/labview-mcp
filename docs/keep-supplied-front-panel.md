@@ -414,6 +414,38 @@ probe. It still WRITES what validation refuses, on purpose, because that toleran
 class methods and loaded subVIs. And `lvai_check_aixml` / `scripts/aixml_lint.py` warn
 `webBrowserReferenceNotAuthorable` / `web-browser-reference-not-authorable` for both bound spellings.
 
+**Accepted end to end in a FRESH session, 2026-10-02, through `labview-vi-generator`.** A new
+project, a copy of NI's `Display a URL.vi` as the supplied panel WITH code, and the user-level task
+"show the page's title in a new `Page Title` once it has loaded". The agent grafted with
+`replaceDiagram` and `allowNewControls`, bound `WB Ref`, and driven through `signalsJson` the VI
+showed `Acceptance Page`, `Second Page` and the live NI page title; `execState 1`, the supplied file
+unchanged by MD5. About 9.5 minutes of agent time. Its report named four gaps, all closed the same
+day:
+
+| gap | what happened | fix |
+|---|---|---|
+| the poll had no shape | "poll" was written down, and the obvious Event Structure Timeout frame has no terminal in AIXML | the agent's measured shape - a second loop paced by `Wait on Notification` - is `scripts/aixml-skeletons/web-browser-title-poll.xml`, and both agents point at it |
+| `Error 1357` after a test run | the program's own `FP.Open` leaves its panel open in the instance the run used, so the VI stays in memory; regenerating the scaffold failed until the agent closed the panel with a helper of its own | `lvai_run_vi_and_read_values` closes such a panel afterwards (`closePanelAfterRun`, default true, answered as `panelClosedAfterRun`). A/B on one VI: `1357`, then the helper answering `panel was open: true`, then the same convert clean; a second call `false`, error 0 |
+| a comment clipped after the graft | 43 characters, whole in the scaffold, cut off in the grafted VI around the supplied terminals and the new reference node | the agents' graft step now makes the render and reading the comment mandatory |
+| the error rule was unclear | "the error-cluster rule does not apply" left open whether a new `error out` belongs on a supplied panel | no `error in`; an `error out` indicator when new controls are allowed; otherwise `NEEDS CLARIFICATION`, because an unwired error output raises the automatic error dialog, a modal that stops the gRPC service, and `Simple Error Handler.vi` is not callable by bare name |
+
+**`closePanelAfterRun` was accepted over raw stdio as an A/B on two copies of the accepted app**:
+with it the run answered `panelClosedAfterRun: {closed: true, panelWasOpen: true}` and a convert
+onto that path was clean; with `closePanelAfterRun: false` the same convert answered `1357`. **The
+FIRST acceptance failed, and the cause was the tool's own unit test**: the close helper sat at a
+fixed path in the real helper cache, the test's fake converter wrote a 14-byte stand-in there, and
+the live run took it for a fresh helper and got no outputs back (`panelWasOpen: null`). The helper
+now lives beside the run helper, so a test with its own helper path stays in its own directory -
+and our own helpers (everything under `%TEMP%\LabVIEWMCP`) get no close step at all, since none of
+them opens its panel and about twenty tools run one. A missing answer is now reported with the RPC
+error. Same lesson as everywhere in this repository: the test written beside a fix did not verify
+it - the live run did.
+
+The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
+`checkExecutable` absent from the schemas it displayed - while both reached the server and worked.
+A parameter missing from a displayed schema is therefore not proof that it is missing from the server;
+the DLL is (`grep -a`).
+
 ### 6h. A supplied diagram that already holds code: `replaceDiagram`
 
 The graft refused such a panel (`panelDiagramNotEmpty`), and §"Still open" said deleting the old

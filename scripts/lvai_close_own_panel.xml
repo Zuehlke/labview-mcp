@@ -1,0 +1,18 @@
+<VI _name="lvai_close_own_panel.vi" description="Closes a VI's front panel in THIS application instance - the one lvai_run_vi_and_read_values runs its target in - when the panel is open, and reports whether it was.\0A\0AWHY IT EXISTS. A program that opens its OWN panel (FP.Open on an unwired {LV.VI} reference - the Web Browser control needs it for Execute JavaScript) leaves that panel open after a run, which keeps the VI in memory, and the next ConvertAIXMLToVI onto its path answers Error 1357. Measured 2026-10-02 by an agent build that could not regenerate its scaffold until it closed the panel itself. Opened WITHOUT an application instance on purpose, because that is where the run happened; a panel open in the IDE instance is not seen here and is left alone.">
+  <FreeLabel comment="Closes the panel only when it is open" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI whose panel to close." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4211.path" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4211.path,error in (no error):" outputs="vi reference:4212.vi reference,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel Window\3AOpen" type="{LV.VI}" inputs="reference:4212.vi reference,error in (no error):4212.error out" outputs="Front Panel Window\3AOpen:4213.open,reference out:,error out:4213.error out" uid="4213" uid_parent="root"/>
+  <Constant _name="closed" outputs="value:4214.value" type="bool" uid="4214" uid_parent="root" value="false"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" type="{LV.VI}" inputs="reference:4212.vi reference,error in (no error):4213.error out,Front Panel Window\3AOpen:4214.value" outputs="reference out:,error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4212.vi reference,error in (no error):4215.error out" outputs="error out:4216.error out" uid="4216" uid_parent="root"/>
+  <Constant _name="yes" outputs="value:4220.value" type="string" uid="4220" uid_parent="root" value="true"/>
+  <Constant _name="no" outputs="value:4221.value" type="string" uid="4221" uid_parent="root" value="false"/>
+  <Node _name="Select" inputs="t:4220.value,s:4213.open,f:4221.value" outputs="s? t\3Af:4222.text" uid="4222" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4216.error out" outputs="code:4223.code,source:4223.source" uid="4223" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4223.code" outputs="decimal integer string:4224.text" uid="4224" uid_parent="root"/>
+  <Indicator _name="panel was open" conIdx="4" connection="recommended" description="true when the panel was open in this instance and has been closed." inputs="value:4222.text" type="string" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="code" conIdx="6" connection="recommended" description="Error code of the chain, as text." inputs="value:4224.text" type="string" uid="4231" uid_parent="root" value=""/>
+  <Indicator _name="source" conIdx="8" connection="recommended" description="Error source of the chain." inputs="value:4223.source" type="string" uid="4232" uid_parent="root" value=""/>
+</VI>
