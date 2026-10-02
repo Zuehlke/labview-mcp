@@ -366,6 +366,175 @@ and pane alike, and a main GUI is not called as a subVI. Two consequences worth 
   never deleted - only their duplicates are. That half is NOT measured: every graft so far had an
   empty supplied pane or did not measure it.
 
+### 6g. A BOUND reference to a control AIXML cannot make - the Web Browser case, 2026-10-02
+
+**The report.** A user on server 1.8.8 could not author a VI with a Web Browser control, and so
+not the usual bound reference to it (right-click the terminal > Create > Reference) that
+`ExecuteJavaScript` is called through. `link="Web Browser Control"` on a `{LV.WebBrowser}` Invoke
+Node validated as `Invalid method`; `lvai_convert_aixml_to_vi` wrote the VI anyway, eBad, with the
+node retyped to `{LV.String}`; NI's own export of a Web Browser example did the same; and
+`lvai_graft_diagram` refused a copy of that example because its diagram held code.
+
+**What was measured, in order:**
+
+| probe | result |
+|---|---|
+| `<Node _name="VI Server Reference" element="Msg"/>` into a `{LV.String}` Property Node | validates, converts, reads `Msg` back - **AIXML CAN author a bound reference** |
+| the same into a `{LV.WebBrowser}` Invoke Node, `Msg` replaced by a `string` indicator named like the browser | `Invalid method` - the control is a string, so the class is wrong |
+| `ref{LV.WebBrowser}` stand-in control into the same node | validates, converts, `execState 1` |
+| `{LV.Control}` `Create Control Ref` on the native Web Browser control, panel CLOSED | **`Error 53`** at `Create:Control Reference` |
+| on a `string` control, panel closed | `ControlReferenceConstant`, clean |
+| on the Web Browser control after `FP.Open` in the IDE instance | `ControlReferenceConstant`; stand-in sinks reconnected; `execState 1`; the export shows `VI Server Reference element="Web Browser Control"` |
+| the same on a FRESHLY STARTED LabVIEW | `Error 53` on the first call, clean a minute later - the browser needs a moment after `FP.Open` |
+
+So the defect is not the reference - it is that **the grammar has no Web Browser control**, and a
+reference bound to a string is the wrong class. The control has to come from a supplied panel, and
+the reference has to be made where the control already exists.
+
+**`lvai_bind_control_references`** does that: for each stand-in (`{"WB Ref":"Web Browser
+Control"}`) it opens the panel in the IDE instance, runs `Create Control Ref` - retried every 250 ms
+while it answers `53` - moves the new node onto the stand-in terminal's diagram and position,
+deletes the stand-in, reconnects every sink, runs `BD.Remove Bad Wires`, saves, and puts the panel
+back in the state it found it, also after a failed step. `ok` is decided from an export: no stand-in
+left, a `VI Server Reference` to the control feeding exactly the sinks the stand-in fed, `execState
+1`. Helper: `scripts/lvbd_bind_control_refs.xml`.
+
+**Accepted 2026-10-02** with the built exe over raw stdio on a cold LabVIEW: a copy of NI's
+`Display a URL.vi` grafted with `replaceDiagram` (§6h) and a scaffold that writes `URL String` into
+the browser and runs `return 1+1;` through a `WB Ref` stand-in; the bind answered `ok: true` on its
+first call (2.9 s), a second call was refused by name because no stand-in was left, and the program
+returned `2` with the browser showing the NI page - on its SECOND run. The first run of a fresh
+instance answered `Error 53` from `Execute JavaScript` right after its own `FP.Open`: a program that
+opens its panel must wait or poll before its first script, as `Wait For Page Load.vi` (§6e) does.
+
+**Two side fixes from the same report.** `lvai_convert_aixml_to_vi` reads the written VI's execution
+state now (`checkExecutable`, on by default) and answers `ok: false`, `executable: false` and a
+`warning` for a broken result instead of a clean `errorCode 0` - accepted on the field report's
+probe. It still WRITES what validation refuses, on purpose, because that tolerance is the route for
+class methods and loaded subVIs. And `lvai_check_aixml` / `scripts/aixml_lint.py` warn
+`webBrowserReferenceNotAuthorable` / `web-browser-reference-not-authorable` for both bound spellings.
+
+**Accepted end to end in a FRESH session, 2026-10-02, through `labview-vi-generator`.** A new
+project, a copy of NI's `Display a URL.vi` as the supplied panel WITH code, and the user-level task
+"show the page's title in a new `Page Title` once it has loaded". The agent grafted with
+`replaceDiagram` and `allowNewControls`, bound `WB Ref`, and driven through `signalsJson` the VI
+showed `Acceptance Page`, `Second Page` and the live NI page title; `execState 1`, the supplied file
+unchanged by MD5. About 9.5 minutes of agent time. Its report named four gaps, all closed the same
+day:
+
+| gap | what happened | fix |
+|---|---|---|
+| the poll had no shape | "poll" was written down, and the obvious Event Structure Timeout frame has no terminal in AIXML | the agent's measured shape - a second loop paced by `Wait on Notification` - is `scripts/aixml-skeletons/web-browser-title-poll.xml`, and both agents point at it |
+| `Error 1357` after a test run | the program's own `FP.Open` leaves its panel open in the instance the run used, so the VI stays in memory; regenerating the scaffold failed until the agent closed the panel with a helper of its own | `lvai_run_vi_and_read_values` closes such a panel afterwards (`closePanelAfterRun`, default true, answered as `panelClosedAfterRun`). A/B on one VI: `1357`, then the helper answering `panel was open: true`, then the same convert clean; a second call `false`, error 0 |
+| a comment clipped after the graft | 43 characters, whole in the scaffold, cut off in the grafted VI around the supplied terminals and the new reference node | the agents' graft step now makes the render and reading the comment mandatory |
+| the error rule was unclear | "the error-cluster rule does not apply" left open whether a new `error out` belongs on a supplied panel | no `error in`; an `error out` indicator when new controls are allowed; otherwise `NEEDS CLARIFICATION`, because an unwired error output raises the automatic error dialog, a modal that stops the gRPC service, and `Simple Error Handler.vi` is not callable by bare name |
+
+**`closePanelAfterRun` was accepted over raw stdio as an A/B on two copies of the accepted app**:
+with it the run answered `panelClosedAfterRun: {closed: true, panelWasOpen: true}` and a convert
+onto that path was clean; with `closePanelAfterRun: false` the same convert answered `1357`. **The
+FIRST acceptance failed, and the cause was the tool's own unit test**: the close helper sat at a
+fixed path in the real helper cache, the test's fake converter wrote a 14-byte stand-in there, and
+the live run took it for a fresh helper and got no outputs back (`panelWasOpen: null`). The helper
+now lives beside the run helper, so a test with its own helper path stays in its own directory -
+and our own helpers (everything under `%TEMP%\LabVIEWMCP`) get no close step at all, since none of
+them opens its panel and about twenty tools run one. A missing answer is now reported with the RPC
+error. Same lesson as everywhere in this repository: the test written beside a fix did not verify
+it - the live run did.
+
+**A SECOND acceptance, in a new project and a fresh session, on a harder panel** - NI's
+`Navigation History Methods.vi`, whose code calls four `{LV.WebBrowser}` methods through `link=`.
+The task: a small browser with Back, Forward, Reload and Stop Load, plus a new `Page Title` that
+follows every navigation. `labview-vi-generator`, about 10 minutes: `replaceDiagram` emptied the
+copy (all 7 controls kept, 6 event frames registered again), ONE `WB Ref` stand-in fed all five
+method nodes in two loops and one bind reconnected both (`sinksReconnected: 2`), and driven with
+`signalsJson` the titles came out `Page One`, `Page Two`, Back `Page One`, Forward `Page Two`.
+`panelClosedAfterRun` answered `closed: true` after every run, and the scaffold regenerated
+afterwards without `1357`. The supplied file was unchanged by hash. No tool defect; five gaps in
+the agents' guidance, closed the same day:
+
+| gap | fix in `labview-vi-generator` / `labview-vi-editor` Phase 6g |
+|---|---|
+| the supplied VI, its copy and the output share one file name - exporting the original under it risks `Error 1051` | export a RENAMED copy; an output the task places elsewhere is not "the supplied VI's own path" |
+| every scaffold terminal must be wired, also an event button whose value is never needed, with no pattern given | the button's terminal inside its own Value Change frame, wired to a Case selector whose TRUE case acts - a LATCHED button reads TRUE for the press and resets on that read (LabVIEW's documented latch semantics), so one click is one action |
+| which buttons to switch for a test - switching the DELIVERED Back/Forward means a human clicks twice per action behind that guard (Switch When Pressed semantics, as the agent pointed out; not clicked by hand) | the deliverable keeps its mechanical actions; tests drive a SECOND, test-only graft with `switchActionControls` naming only the driven buttons |
+| that the navigation methods ride the same stand-in | one stand-in serves every `{LV.WebBrowser}` node; method names from NI's example export |
+| after a graft (project closed) or a run (hierarchy unloaded) a scaffold calling a project-local subVI regenerates as `Error 53` | re-open that subVI with `lvai_open_file` `viPaths` first; the convert's unsupported-subVI list names it |
+
+**A THIRD acceptance, same panel, the new guidance NOT spelled out in the task**: the agent kept
+every delivered button latched (verified from the export: `style="latched"` on all five), drove a
+separate test copy with only Back, Forward and Stop switched, exported a renamed copy, and the four
+title checks passed; the supplied file unchanged by hash. It found one tool defect and three smaller
+gaps, all closed the same day:
+
+| finding | fix |
+|---|---|
+| a timed run whose target ends on its own - a signalled `Stop` - made the helper's `Abort VI` answer `Error 1000`, reported as `helperFailed: true` with a note saying nothing was set, beside the real final values | reproduced, then fixed: `targetEndedBeforeAbort: true`, `helperFailed: false`, and the note says the values are FINAL |
+| an aborted snapshot's `error out` is only the indicator's default, and the answer did not say so | the snapshot note says so and points at signalling Stop |
+| `Page Title` read empty twice right after a navigation | the skeleton's script treats an empty title as pending (empty `document.title` counts as pending); an untitled page keeps the previous title |
+| a start-up action on a supplied control (NI's original loads the URL at start) had no route | read it through a bound reference - a `ref{LV.String}` stand-in into a `read+Value` Property Node, bound in the same call. Measured on a plain VI: `execState 1`, the read returned the control's value |
+| the scaffold's pane, the test copy's `Stop`, re-binding after a re-graft, the boolean case selector spelling, one `url` for two listed VIs | written into both agents; `True`/`False` into `lvai_aixml_reference` §7; `lvai_add_vis_to_project` answers `urls` |
+
+**A FOURTH acceptance, on NI's `Display a URL.vi` with its start-up load, again with no guidance in
+the task** (`C:\Temp\WBAcceptance4`): "load the URL at start-up as NI's original does, navigate on
+every change, show the title in a new `Page Title`, `Stop` ends the program". `labview-vi-generator`
+in about 5 minutes: `replaceDiagram` + `allowNewControls`, one bind for `WB Ref` AND `URL Ref`,
+`execState 1`, the supplied file unchanged by MD5. Driven: `Page One` at start-up, `What Is
+LabVIEW? - NI` for NI's default URL, `Page Two` after a change, `(no title)` for a page without one,
+and a signalled `Stop` ended the program with a clean `error out` and `targetEndedBeforeAbort: true` -
+re-run independently afterwards with the same result. No tool failed; six gaps, closed the same day:
+
+| finding | fix |
+|---|---|
+| the start-up read had no route to the BROWSER, whose terminal sits in the URL frame | `write+Value (Signaling)` on the same `URL Ref` fires that frame, so start-up and every change share one path; its error goes straight into `Merge Errors` (chained through the poll loop it made 11 stages). Both agents; the agent's scaffold is now the skeleton |
+| the skeleton kept the previous title for a page with no `<title>` | pending is now "not `complete`, or `about:blank`"; a loaded untitled page shows `(no title)`. Script written on four lines (`&#10;`), which keeps the constant narrow |
+| step 4 of Phase 6g prescribed the supplied VI's own path as output, beside a task saying it must not change | the own path only when the task says to implement that VI in place; otherwise the path the task names |
+| a run of a stand-in scaffold says nothing, and the guidance asked for one | `execState` and a short start-up run only; behaviour is tested on the bound graft |
+| `lvai_add_vis_to_project` has no target-level listing and defaults to `SubVIs` | the parameter and the agent say to name the folder for what it holds - `Application` for a main GUI |
+| `switchActions: {Stop: true}` did not say whether this call switched it | `switchActionsWereLatched` answers it from the supplied panel's export |
+
+**A FIFTH acceptance, NI's `Navigation History Methods.vi` with its start-up load**
+(`C:\Temp\WBAcceptance5`): Back, Forward, Reload, Stop Load and Stop, `Page Title`, the URL loaded at
+start-up. `labview-vi-generator`, about 11 minutes, `execState 1`, the supplied file unchanged by MD5,
+every behaviour driven and passing - after the agent changed the design. Re-checked independently:
+start-up `page2` read `Page Two` on the deliverable; page3, Back, Stop with 10 s gaps read `Page One`
+and ended (`targetEndedBeforeAbort: true`, `error out` 0). No tool failed; five findings, closed the
+same day:
+
+| finding | fix |
+|---|---|
+| the round-4 start-up - `Value (Signaling)` right after `FP.Open` - lost its navigation 2 of 2, the browser stayed `about:blank` | fired from the poll loop once, on the browser's first answer to the script; the title read moved into `Read Page Title.vi`. That scaffold is the skeleton now (two documents), re-measured on `Display a URL.vi`: 1466 x 609 px, start-up title after 6 s in 3 of 5 cold runs, after 12 s in 1 of 1, the URL in the control every time |
+| `Stop` and the title were LATE after Back/Forward - the round-3 "Stop not seen" reproduced, as a delay | 3-4 s gaps late (agent, and my re-check), 6-10 s on time; documented with the numbers, cause not established. Tests leave 6 s after a history navigation |
+| `diagramChain` said 10 stages, within budget, for a scaffold rendered 1977 px | `atBudget: true` at exactly the budget, with a note: ten stages have rendered 1797 and 1977 px, ~200 px a stage where structures nest. Fixture: that scaffold |
+| every graft closed the project and the bind needed it again - one `lvai_open_file` per graft | the graft reopens the project it closed (`events.projectReopened`); accepted over raw stdio as open -> graft -> bind with nothing in between, `projectReopened: true` and the bind `ok` |
+| the test copy's place, the icon of a subVI made on the way, the event loop's error start, the scaffold adopted into the project, Python's `'\3A'` | written into both agents |
+
+The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
+`checkExecutable` absent from the schemas it displayed - while both reached the server and worked.
+A parameter missing from a displayed schema is therefore not proof that it is missing from the server;
+the DLL is (`grep -a`).
+
+### 6h. A supplied diagram that already holds code: `replaceDiagram`
+
+The graft refused such a panel (`panelDiagramNotEmpty`), and §"Still open" said deleting the old
+diagram first "would take the panel terminals with it". **That is true only of a careless delete.**
+`scripts/lvbd_graft_clear.xml`, run on the output COPY when `replaceDiagram` is true:
+
+1. moves every control's terminal onto the TOP-LEVEL diagram - a terminal left inside a structure
+   is deleted with it, and deleting a terminal deletes its control;
+2. deletes every node of the top-level diagram's `Nodes[]` - a structure takes its contents with it.
+   **Terminals are not in `Nodes[]`**: NI's Display a URL listed only its While Loop while two
+   terminals sat beside it;
+3. only then reads and deletes the remaining `Wires[]` and `Decorations[]` (free labels are
+   `Text`, boxes `Decoration`), so no reference points at something a structure already took;
+4. `BD.Remove Bad Wires`, save.
+
+Measured on that example: loop, Event Structure, Local Variable, two comments and a terminal-to-
+terminal wire gone; `URL String`, `Stop` (moved out of its event frame) and the Web Browser control
+kept; `execState 1`. The graft then plans against the emptied copy, and the typedef comparison
+uses the emptied copy as its baseline - a typedef constant in the discarded code is gone on purpose.
+**The old code is discarded in the OUTPUT; the supplied VI itself is never changed.** The answer
+reports `diagramReplaced` with the counts.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or
@@ -373,5 +542,8 @@ and pane alike, and a main GUI is not called as a subVI. Two consequences worth 
 - A driven wash cycle through the typedef cluster `Wash Options` (latched buttons are solved by
   `switchActionControls`).
 - Coercion dots inside Case frames: `lvai_coercion_dots` does not descend into structures.
-- A supplied panel over EXISTING code has no route: the graft refuses it, and deleting the old
-  diagram first would take the panel terminals with it.
+- ADDING a bound reference to a VI whose existing code must be KEPT: `replaceDiagram` discards it,
+  and `lvai_bind_control_references` needs a stand-in the diagram is wired against. A hand-kept VI
+  still reaches the browser through a subVI that takes a `ref{LV.WebBrowser}` terminal.
+- CREATING a Web Browser control on a panel that has none (`{LV.GObject}` `Move` with `duplicate`
+  from a donor VI, or `Replace` - unmeasured).

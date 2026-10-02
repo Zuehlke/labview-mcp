@@ -189,7 +189,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             if (Path.GetDirectoryName(Path.GetFullPath(viPath)) is { Length: > 0 } folder)
                 Directory.CreateDirectory(folder);
             var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                throwaway.Path, viPath, openVI: false, timeoutSeconds, ct: ct);
+                throwaway.Path, viPath, openVI: false, timeoutSeconds, checkExecutable: false, ct: ct);
             steps.Add(Step("convert", convert));
             if (ErrorCode(convert) is not 0)
             {

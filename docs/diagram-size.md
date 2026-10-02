@@ -53,6 +53,12 @@ their renders:
 which leaves room for what widens a diagram without adding a stage - long string constants above
 all (the three-stage message builder rendered 1090 px wide).
 
+**AND EXACTLY 10 IS NOT SAFELY WITHIN IT - measured 2026-10-02.** Web Browser programs with two loops
+and Case structures nested in them render about 200 px a stage: 9 stages 1813 px, 10 stages
+**1977 px** (over), while the ATM main VI rendered 1797 px at 10. So `lvai_check_aixml` answers
+`atBudget: true` for a chain of exactly 10, with that range in its note; `withinBudget` stays true
+because the render decides. Fixture: `Fixtures/diagram-size/Browser History v2.xml`.
+
 ## 3. Where it is measured
 
 | when | tool | field |

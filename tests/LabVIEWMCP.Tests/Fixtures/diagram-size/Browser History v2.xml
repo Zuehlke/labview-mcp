@@ -1,0 +1,218 @@
+<VI _name="Browser History Viewer Scaffold.vi" description="Shows the page named in URL String in the Web Browser Control, lets the user move through the browser's history with Back and Forward, reload the page with Reload, abort a load with Stop Load and end the program with Stop, and displays the title of the page shown in Page Title once that page has finished loading. At start the program opens its own front panel (the browser runs scripts only while its panel is open) and, as soon as the browser first answers a script (it drops a navigation requested while it is still starting), signals a Value Change on URL String once, so the start-up URL is loaded by the same event case as every later change. A parallel poll loop asks the browser every 250 ms through Execute JavaScript whether the document has finished loading; while it has not, or while the browser is not ready yet, the previous title is kept. A loaded page without a title shows (no title). Errors from the notifier, the panel open, the start-up signal, the navigation methods and both loops are merged into error out; script errors while the browser is not ready are expected and not reported.">
+  <FreeLabel comment="URL by event; title by polling" uid="lbl" uid_parent="root"/>
+  <Constant _name="Notifier Type" outputs="value:nt.value" type="bool" uid="nt" uid_parent="root" value="false"/>
+  <Node _name="Obtain Notifier" inputs="name (unnamed):,notification data type:nt.value,create if not found? (T):,error in (no error):" outputs="notifier out:obt.notifier out,created new?:,error out:obt.error out" uid="obt" uid_parent="root"/>
+  <Node _name="Invoke Node" type="{LV.VI}" target="FP.Open" inputs="reference:,error in (no error):obt.error out,Activate:,State:" outputs="reference out:,error out:fpo.error out" uid="fpo" uid_parent="root"/>
+  <Control _name="URL Ref" description="Stand-in for a bound reference to URL String; replaced after the graft." outputs="value:uref.value" type="ref{LV.String}" uid="uref" uid_parent="root" value=""/>
+  <Node _name="Property Node" type="{LV.String}" fields="read+Value" inputs="reference:uref.value,error in (no error):obt.error out" outputs="Value:rd.Value,reference out:rd.reference out,error out:rd.error out" uid="rd" uid_parent="root"/>
+  <Control _name="WB Ref" description="Stand-in for a bound reference to the Web Browser Control; replaced after the graft." outputs="value:wbref.value" type="ref{LV.WebBrowser}" uid="wbref" uid_parent="root" value=""/>
+  <Constant _name="Not Started" outputs="value:f0.value" type="bool" uid="f0" uid_parent="root" value="false"/>
+  <Constant _name="Initial Title" outputs="value:t0.value" type="string" uid="t0" uid_parent="root" value=""/>
+  <Constant _name="No Error" outputs="value:noerr.value" type="cluster{bool.status,int32.code,string.source}" uid="noerr" uid_parent="root" value="[false,0,]"/>
+
+  <Structure _name="While Loop" count="" label="Event loop" uid="evl" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:obt.notifier out" outputs="value:evlN.value" uid="evlN" uid_parent="evl"/>
+    <Tunnel _id="In2" inputs="value:wbref.value" outputs="value:evlWB.value" uid="evlWB" uid_parent="evl"/>
+    <ShiftReg uid="srEv" uid_parent="evl">
+      <Left inputs="value:noerr.value" outputs="value:evE.value" uid="evE" uid_parent="srEv"/>
+      <Right inputs="value:evOut2.value" outputs="value:evlErr.value" uid="evlErr" uid_parent="srEv"/>
+    </ShiftReg>
+    <Structure _name="Event Structure" uid="ev" uid_parent="evl">
+      <Tunnel _id="In1" inputs="value:evlN.value" uid="evIn1" uid_parent="ev"/>
+      <Tunnel _id="In2" inputs="value:evlWB.value" uid="evIn2" uid_parent="ev"/>
+      <Tunnel _id="In3" inputs="value:evE.value" uid="evIn3" uid_parent="ev"/>
+
+      <CaseFrame selector=" &quot;URL String&quot;\3A Value Change " uid="fUrl" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:" uid="fUrlIn1" uid_parent="fUrl"/>
+        <Tunnel _id="In2" outputs="value:" uid="fUrlIn2" uid_parent="fUrl"/>
+        <Tunnel _id="In3" outputs="value:fUrlIn3.value" uid="fUrlIn3" uid_parent="fUrl"/>
+        <Control _name="URL String" description="Address of the page to show. Loaded at start-up and again on every change; Page Title follows once the page has loaded." outputs="value:url.value" type="string" uid="url" uid_parent="fUrl" value="google.com"/>
+        <Indicator _name="Web Browser Control" description="Shows the page at URL String." inputs="value:url.value" type="string" uid="wbc" uid_parent="fUrl" value=""/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edUrl" uid_parent="fUrl"/>
+        <Tunnel _id="Out1" inputs="value:" uid="fUrlOut1" uid_parent="fUrl"/>
+        <Tunnel _id="Out2" inputs="value:fUrlIn3.value" uid="fUrlOut2" uid_parent="fUrl"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Back&quot;\3A Value Change " uid="fBk" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:" uid="fBkIn1" uid_parent="fBk"/>
+        <Tunnel _id="In2" outputs="value:fBkIn2.value" uid="fBkIn2" uid_parent="fBk"/>
+        <Tunnel _id="In3" outputs="value:fBkIn3.value" uid="fBkIn3" uid_parent="fBk"/>
+        <Control _name="Back" description="Moves the browser one page back in its history." outputs="value:bk.value" style="latched" type="bool" uid="bk" uid_parent="fBk" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edBk" uid_parent="fBk"/>
+        <Structure _name="Case Structure" selectin="bk.value" uid="csBk" uid_parent="fBk">
+          <Tunnel _id="In1" inputs="value:fBkIn2.value" uid="csBkI1" uid_parent="csBk"/>
+          <Tunnel _id="In2" inputs="value:fBkIn3.value" uid="csBkI2" uid_parent="csBk"/>
+          <CaseFrame selector="True" selectout="" uid="csBkT" uid_parent="csBk">
+            <Tunnel _id="In1" outputs="value:csBkTI1.value" uid="csBkTI1" uid_parent="csBkT"/>
+            <Tunnel _id="In2" outputs="value:csBkTI2.value" uid="csBkTI2" uid_parent="csBkT"/>
+            <Node _name="Invoke Node" type="{LV.WebBrowser}" target="NavigateBackward" inputs="reference:csBkTI1.value,error in (no error):csBkTI2.value" outputs="reference out:,error out:nb.error out" uid="nb" uid_parent="csBkT"/>
+            <Tunnel _id="Out1" inputs="value:nb.error out" uid="csBkTO1" uid_parent="csBkT"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="csBkF" uid_parent="csBk">
+            <Tunnel _id="In1" outputs="value:" uid="csBkFI1" uid_parent="csBkF"/>
+            <Tunnel _id="In2" outputs="value:csBkFI2.value" uid="csBkFI2" uid_parent="csBkF"/>
+            <Tunnel _id="Out1" inputs="value:csBkFI2.value" uid="csBkFO1" uid_parent="csBkF"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:csBkO1.value" uid="csBkO1" uid_parent="csBk"/>
+        </Structure>
+        <Tunnel _id="Out1" inputs="value:" uid="fBkOut1" uid_parent="fBk"/>
+        <Tunnel _id="Out2" inputs="value:csBkO1.value" uid="fBkOut2" uid_parent="fBk"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Forward&quot;\3A Value Change " uid="fFw" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:" uid="fFwIn1" uid_parent="fFw"/>
+        <Tunnel _id="In2" outputs="value:fFwIn2.value" uid="fFwIn2" uid_parent="fFw"/>
+        <Tunnel _id="In3" outputs="value:fFwIn3.value" uid="fFwIn3" uid_parent="fFw"/>
+        <Control _name="Forward" description="Moves the browser one page forward in its history." outputs="value:fw.value" style="latched" type="bool" uid="fw" uid_parent="fFw" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edFw" uid_parent="fFw"/>
+        <Structure _name="Case Structure" selectin="fw.value" uid="csFw" uid_parent="fFw">
+          <Tunnel _id="In1" inputs="value:fFwIn2.value" uid="csFwI1" uid_parent="csFw"/>
+          <Tunnel _id="In2" inputs="value:fFwIn3.value" uid="csFwI2" uid_parent="csFw"/>
+          <CaseFrame selector="True" selectout="" uid="csFwT" uid_parent="csFw">
+            <Tunnel _id="In1" outputs="value:csFwTI1.value" uid="csFwTI1" uid_parent="csFwT"/>
+            <Tunnel _id="In2" outputs="value:csFwTI2.value" uid="csFwTI2" uid_parent="csFwT"/>
+            <Node _name="Invoke Node" type="{LV.WebBrowser}" target="NavigateForward" inputs="reference:csFwTI1.value,error in (no error):csFwTI2.value" outputs="reference out:,error out:nf.error out" uid="nf" uid_parent="csFwT"/>
+            <Tunnel _id="Out1" inputs="value:nf.error out" uid="csFwTO1" uid_parent="csFwT"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="csFwF" uid_parent="csFw">
+            <Tunnel _id="In1" outputs="value:" uid="csFwFI1" uid_parent="csFwF"/>
+            <Tunnel _id="In2" outputs="value:csFwFI2.value" uid="csFwFI2" uid_parent="csFwF"/>
+            <Tunnel _id="Out1" inputs="value:csFwFI2.value" uid="csFwFO1" uid_parent="csFwF"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:csFwO1.value" uid="csFwO1" uid_parent="csFw"/>
+        </Structure>
+        <Tunnel _id="Out1" inputs="value:" uid="fFwOut1" uid_parent="fFw"/>
+        <Tunnel _id="Out2" inputs="value:csFwO1.value" uid="fFwOut2" uid_parent="fFw"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Reload&quot;\3A Value Change " uid="fRl" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:" uid="fRlIn1" uid_parent="fRl"/>
+        <Tunnel _id="In2" outputs="value:fRlIn2.value" uid="fRlIn2" uid_parent="fRl"/>
+        <Tunnel _id="In3" outputs="value:fRlIn3.value" uid="fRlIn3" uid_parent="fRl"/>
+        <Control _name="Reload" description="Reloads the page currently shown." outputs="value:rl.value" style="latched" type="bool" uid="rl" uid_parent="fRl" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edRl" uid_parent="fRl"/>
+        <Structure _name="Case Structure" selectin="rl.value" uid="csRl" uid_parent="fRl">
+          <Tunnel _id="In1" inputs="value:fRlIn2.value" uid="csRlI1" uid_parent="csRl"/>
+          <Tunnel _id="In2" inputs="value:fRlIn3.value" uid="csRlI2" uid_parent="csRl"/>
+          <CaseFrame selector="True" selectout="" uid="csRlT" uid_parent="csRl">
+            <Tunnel _id="In1" outputs="value:csRlTI1.value" uid="csRlTI1" uid_parent="csRlT"/>
+            <Tunnel _id="In2" outputs="value:csRlTI2.value" uid="csRlTI2" uid_parent="csRlT"/>
+            <Node _name="Invoke Node" type="{LV.WebBrowser}" target="ReloadPage" inputs="reference:csRlTI1.value,error in (no error):csRlTI2.value" outputs="reference out:,error out:nr2.error out" uid="nr2" uid_parent="csRlT"/>
+            <Tunnel _id="Out1" inputs="value:nr2.error out" uid="csRlTO1" uid_parent="csRlT"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="csRlF" uid_parent="csRl">
+            <Tunnel _id="In1" outputs="value:" uid="csRlFI1" uid_parent="csRlF"/>
+            <Tunnel _id="In2" outputs="value:csRlFI2.value" uid="csRlFI2" uid_parent="csRlF"/>
+            <Tunnel _id="Out1" inputs="value:csRlFI2.value" uid="csRlFO1" uid_parent="csRlF"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:csRlO1.value" uid="csRlO1" uid_parent="csRl"/>
+        </Structure>
+        <Tunnel _id="Out1" inputs="value:" uid="fRlOut1" uid_parent="fRl"/>
+        <Tunnel _id="Out2" inputs="value:csRlO1.value" uid="fRlOut2" uid_parent="fRl"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Stop Load&quot;\3A Value Change " uid="fSl" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:" uid="fSlIn1" uid_parent="fSl"/>
+        <Tunnel _id="In2" outputs="value:fSlIn2.value" uid="fSlIn2" uid_parent="fSl"/>
+        <Tunnel _id="In3" outputs="value:fSlIn3.value" uid="fSlIn3" uid_parent="fSl"/>
+        <Control _name="Stop Load" description="Aborts a page load that is still in progress; no effect once the page has loaded." outputs="value:sl.value" style="latched" type="bool" uid="sl" uid_parent="fSl" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edSl" uid_parent="fSl"/>
+        <Structure _name="Case Structure" selectin="sl.value" uid="csSl" uid_parent="fSl">
+          <Tunnel _id="In1" inputs="value:fSlIn2.value" uid="csSlI1" uid_parent="csSl"/>
+          <Tunnel _id="In2" inputs="value:fSlIn3.value" uid="csSlI2" uid_parent="csSl"/>
+          <CaseFrame selector="True" selectout="" uid="csSlT" uid_parent="csSl">
+            <Tunnel _id="In1" outputs="value:csSlTI1.value" uid="csSlTI1" uid_parent="csSlT"/>
+            <Tunnel _id="In2" outputs="value:csSlTI2.value" uid="csSlTI2" uid_parent="csSlT"/>
+            <Node _name="Invoke Node" type="{LV.WebBrowser}" target="StopLoadingPage" inputs="reference:csSlTI1.value,error in (no error):csSlTI2.value" outputs="reference out:,error out:ns.error out" uid="ns" uid_parent="csSlT"/>
+            <Tunnel _id="Out1" inputs="value:ns.error out" uid="csSlTO1" uid_parent="csSlT"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="csSlF" uid_parent="csSl">
+            <Tunnel _id="In1" outputs="value:" uid="csSlFI1" uid_parent="csSlF"/>
+            <Tunnel _id="In2" outputs="value:csSlFI2.value" uid="csSlFI2" uid_parent="csSlF"/>
+            <Tunnel _id="Out1" inputs="value:csSlFI2.value" uid="csSlFO1" uid_parent="csSlF"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:csSlO1.value" uid="csSlO1" uid_parent="csSl"/>
+        </Structure>
+        <Tunnel _id="Out1" inputs="value:" uid="fSlOut1" uid_parent="fSl"/>
+        <Tunnel _id="Out2" inputs="value:csSlO1.value" uid="fSlOut2" uid_parent="fSl"/>
+      </CaseFrame>
+
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="fStop" uid_parent="ev">
+        <Tunnel _id="In1" outputs="value:stIn.value" uid="stIn" uid_parent="fStop"/>
+        <Tunnel _id="In2" outputs="value:" uid="stIn2" uid_parent="fStop"/>
+        <Tunnel _id="In3" outputs="value:stIn3.value" uid="stIn3" uid_parent="fStop"/>
+        <Control _name="Stop" description="Ends the program." outputs="value:stop.value" style="latched" type="bool" uid="stop" uid_parent="fStop" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edStop" uid_parent="fStop"/>
+        <Node _name="Send Notification" inputs="notifier:stIn.value,notification:stop.value,error in (no error):stIn3.value" outputs="notifier out:,error out:snd.error out" uid="snd" uid_parent="fStop"/>
+        <Tunnel _id="Out1" inputs="value:stop.value" uid="fStopOut1" uid_parent="fStop"/>
+        <Tunnel _id="Out2" inputs="value:snd.error out" uid="fStopOut2" uid_parent="fStop"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" cond="true" outputs="value:evOut1.value" uid="evOut1" uid_parent="ev"/>
+      <Tunnel _id="Out2" cond="true" outputs="value:evOut2.value" uid="evOut2" uid_parent="ev"/>
+    </Structure>
+    <Condition inputs="value:evOut1.value" uid="evlCond" uid_parent="evl" value="stop"/>
+  </Structure>
+
+  <Structure _name="While Loop" count="" label="Title poll loop" uid="pl" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:obt.notifier out" outputs="value:plN.value" uid="plN" uid_parent="pl"/>
+    <Tunnel _id="In2" inputs="value:wbref.value" outputs="value:plWB.value" uid="plWB" uid_parent="pl"/>
+    <Tunnel _id="In3" inputs="value:rd.Value" outputs="value:plU.value" uid="plU" uid_parent="pl"/>
+    <Tunnel _id="In4" inputs="value:rd.reference out" outputs="value:plR.value" uid="plR" uid_parent="pl"/>
+    <ShiftReg uid="srStart" uid_parent="pl">
+      <Left inputs="value:f0.value" outputs="value:srS.value" uid="srS" uid_parent="srStart"/>
+      <Right inputs="value:csS.started" outputs="value:" uid="srSR" uid_parent="srStart"/>
+    </ShiftReg>
+    <ShiftReg uid="srErr" uid_parent="pl">
+      <Left inputs="value:fpo.error out" outputs="value:srE.value" uid="srE" uid_parent="srErr"/>
+      <Right inputs="value:csS.error" outputs="value:plErr.value" uid="plErr" uid_parent="srErr"/>
+    </ShiftReg>
+    <ShiftReg uid="srTitle" uid_parent="pl">
+      <Left inputs="value:t0.value" outputs="value:srT.value" uid="srT" uid_parent="srTitle"/>
+      <Right inputs="value:sel.s? t\3Af" outputs="value:" uid="srTR" uid_parent="srTitle"/>
+    </ShiftReg>
+    <Constant _name="Poll Interval ms" outputs="value:pi.value" type="int32" uid="pi" uid_parent="pl" value="250"/>
+    <Node _name="Wait on Notification" inputs="notifier:plN.value,ignore previous (F):,timeout in ms (-1):pi.value,error in (no error):srE.value" outputs="notifier out:,notification:,timed out?:won.timed out?,error out:won.error out" uid="won" uid_parent="pl"/>
+    <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="pl" value="var d=document;&#10;if(d.readyState!='complete'&#10;||d.URL=='about\3Ablank')&#10;return 'LV_PENDING';&#10;return d.title||'(no title)';"/>
+    <Constant _name="Wait for Return Value?" outputs="value:wfr.value" type="bool" uid="wfr" uid_parent="pl" value="true"/>
+    <Node _name="Invoke Node" type="{LV.WebBrowser}" target="ExecuteJavaScript" inputs="reference:plWB.value,error in (no error):,JavaScript:js.value,arg:,Wait for Return Value?:wfr.value,Return Non-primitive Types?:" outputs="reference out:,error out:jse.error out,Return Value:jse.Return Value,Exception:" uid="jse" uid_parent="pl"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:jse.error out" outputs="status:ub.status" uid="ub" uid_parent="pl"/>
+    <Constant _name="Pending Marker" outputs="value:pm.value" type="string" uid="pm" uid_parent="pl" value="LV_PENDING"/>
+    <Node _name="Equal?" inputs="x:jse.Return Value,y:pm.value" outputs="x = y?:eq.x = y?" uid="eq" uid_parent="pl"/>
+    <Node _name="Or" inputs="x:ub.status,y:eq.x = y?" outputs="x .or. y?:nr.x .or. y?" uid="nr" uid_parent="pl"/>
+    <Node _name="Select" inputs="t:srT.value,s:nr.x .or. y?,f:jse.Return Value" outputs="s? t\3Af:sel.s? t\3Af" uid="sel" uid_parent="pl"/>
+    <Indicator _name="Page Title" description="Title of the page shown in the Web Browser Control, updated once the page has finished loading. Empty until the first page has loaded; (no title) for a loaded page that has no title." inputs="value:sel.s? t\3Af" type="string" uid="ptitle" uid_parent="pl" value=""/>
+    <Node _name="Or" inputs="x:ub.status,y:srS.value" outputs="x .or. y?:orS.x .or. y?" uid="orS" uid_parent="pl"/>
+    <Structure _name="Case Structure" selectin="orS.x .or. y?" uid="cs" uid_parent="pl">
+      <Tunnel _id="In1" inputs="value:plR.value" uid="csI1" uid_parent="cs"/>
+      <Tunnel _id="In2" inputs="value:plU.value" uid="csI2" uid_parent="cs"/>
+      <Tunnel _id="In3" inputs="value:won.error out" uid="csI3" uid_parent="cs"/>
+      <Tunnel _id="In4" inputs="value:srS.value" uid="csI4" uid_parent="cs"/>
+      <CaseFrame selector="False" selectout="" uid="csF" uid_parent="cs">
+        <Tunnel _id="In1" outputs="value:csFI1.value" uid="csFI1" uid_parent="csF"/>
+        <Tunnel _id="In2" outputs="value:csFI2.value" uid="csFI2" uid_parent="csF"/>
+        <Tunnel _id="In3" outputs="value:csFI3.value" uid="csFI3" uid_parent="csF"/>
+        <Tunnel _id="In4" outputs="value:" uid="csFI4" uid_parent="csF"/>
+        <Node _name="Property Node" type="{LV.String}" fields="write+Value (Signaling)" inputs="reference:csFI1.value,error in (no error):csFI3.value,Value (Signaling):csFI2.value" outputs="reference out:,error out:wr.error out" uid="wr" uid_parent="csF"/>
+        <Constant _name="Started" outputs="value:st1.value" type="bool" uid="st1" uid_parent="csF" value="true"/>
+        <Tunnel _id="Out1" inputs="value:wr.error out" uid="csFO1" uid_parent="csF"/>
+        <Tunnel _id="Out2" inputs="value:st1.value" uid="csFO2" uid_parent="csF"/>
+      </CaseFrame>
+      <CaseFrame selector="True" selectout="" uid="csT" uid_parent="cs">
+        <Tunnel _id="In1" outputs="value:" uid="csTI1" uid_parent="csT"/>
+        <Tunnel _id="In2" outputs="value:" uid="csTI2" uid_parent="csT"/>
+        <Tunnel _id="In3" outputs="value:csTI3.value" uid="csTI3" uid_parent="csT"/>
+        <Tunnel _id="In4" outputs="value:csTI4.value" uid="csTI4" uid_parent="csT"/>
+        <Tunnel _id="Out1" inputs="value:csTI3.value" uid="csTO1" uid_parent="csT"/>
+        <Tunnel _id="Out2" inputs="value:csTI4.value" uid="csTO2" uid_parent="csT"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:csS.error" uid="csO1" uid_parent="cs"/>
+      <Tunnel _id="Out2" outputs="value:csS.started" uid="csO2" uid_parent="cs"/>
+    </Structure>
+    <Node _name="Not" inputs="x:won.timed out?" outputs=".not. x?:nt2..not. x?" uid="nt2" uid_parent="pl"/>
+    <Condition inputs="value:nt2..not. x?" uid="plCond" uid_parent="pl" value="stop"/>
+  </Structure>
+
+  <Node _name="Merge Errors" inputs="error in:evlErr.value,error in:plErr.value,error in:rd.error out" outputs="error out:me.error out" uid="me" uid_parent="root"/>
+  <Node _name="Release Notifier" inputs="notifier:obt.notifier out,force destroy? (F):,error in (no error):me.error out" outputs="notifier name:,last notification:,error out:rel.error out" uid="rel" uid_parent="root"/>
+  <Indicator _name="error out" description="Errors of the notifier, the panel open, the start-up signal, the navigation methods and both loops, merged. Script errors while the browser is not ready are expected and are not reported." inputs="value:rel.error out" type="cluster{bool.status,int32.code,string.source}" uid="eout" uid_parent="root" value="[false,0,]"/>
+</VI>

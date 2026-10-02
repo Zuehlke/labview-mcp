@@ -1,0 +1,22 @@
+<VI _name="URL Panel.vi" description="Uses a Web Browser Control to display web content.">
+  <FreeLabel comment="Set the URL when run" uid="284" uid_parent="root"/>
+  <Control _name="URL String" outputs="value:166.value" type="string" uid="166" uid_parent="root" value="ni.com/labview"/>
+  <Structure _name="While Loop" count="" uid="180" uid_parent="root">
+    <Structure _name="Event Structure" uid="209" uid_parent="180">
+      <CaseFrame selector=" &quot;URL String&quot;\3A Value Change " uid="282" uid_parent="209">
+        <FreeLabel comment="Each time the user enters a new URL\2C update the web browser value. Note\3A Web sites may treat you like a robot if you update to the same value too frequently." uid="955" uid_parent="282"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time,CtlRef,OldVal,NewVal" outputs="Source:,Type:,Time:,CtlRef:,OldVal:,NewVal:298.NewVal" uid="298" uid_parent="282"/>
+        <Node _name="Local Variable" element="Web Browser Control" inputs="Web Browser Control:298.NewVal" uid="147" uid_parent="282"/>
+        <Tunnel _id="Out1" inputs="value:" uid="257" uid_parent="282"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="132" uid_parent="209">
+        <Control _name="Stop" outputs="value:267.value" style="latched" type="bool" uid="267" uid_parent="132" value="false"/>
+        <Node _name="Event Data Node" fields="Source,Type,Time,CtlRef,OldVal,NewVal" outputs="Source:,Type:,Time:,CtlRef:,OldVal:,NewVal:" uid="149" uid_parent="132"/>
+        <Tunnel _id="Out1" inputs="value:267.value" uid="261" uid_parent="132"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" cond="true" outputs="value:265.value" uid="265" uid_parent="209"/>
+    </Structure>
+    <Condition inputs="value:265.value" uid="199" uid_parent="180" value="stop"/>
+  </Structure>
+  <Indicator _name="Web Browser Control" inputs="value:166.value" type="string" uid="182" uid_parent="root" value="https://www.ni.com/en/shop/labview.html"/>
+</VI>

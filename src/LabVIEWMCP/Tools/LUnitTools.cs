@@ -292,7 +292,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
 
                 // 1. Convert, deliberately WITHOUT validating - see the class comment.
                 var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                    method.Aixml, viPath, openVI: false, timeoutSeconds, ct: ct);
+                    method.Aixml, viPath, openVI: false, timeoutSeconds, checkExecutable: false, ct: ct);
                 perMethod.Add(new JsonObject
                 {
                     ["step"] = "convert",

@@ -1,0 +1,18 @@
+<VI _name="Read Page Title.vi" description="Asks a Web Browser control for the title of the page it shows, through Execute JavaScript. Page Title is that title once the document has finished loading, (no title) for a loaded page without one, and Previous Title while the document is still loading, while the browser shows its initial about:blank page, or while the browser cannot run scripts yet (Error 53 right after its panel opens). Ready? is TRUE when the browser answered the script at all. Script errors are expected while the browser starts and are NOT reported: error out is error in, and an error in skips the script.">
+  <FreeLabel comment="Keeps Previous Title until a page has loaded" uid="lbl" uid_parent="root"/>
+  <Control _name="WB Ref" conIdx="0" connection="required" description="Reference to the Web Browser control to ask." outputs="value:wb.value" type="ref{LV.WebBrowser}" uid="wb" uid_parent="root" value=""/>
+  <Control _name="Previous Title" conIdx="5" connection="recommended" description="Title returned while no loaded page can be read; normally the last Page Title." outputs="value:prev.value" type="string" uid="prev" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="An error here skips the script and is passed to error out." outputs="value:ein.value" type="cluster{bool.status,int32.code,string.source}" uid="ein" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="root" value="var d=document;&#10;if(d.readyState!='complete'&#10;||d.URL=='about\3Ablank')&#10;return 'LV_PENDING';&#10;return d.title||'(no title)';"/>
+  <Constant _name="Wait for Return Value?" outputs="value:wfr.value" type="bool" uid="wfr" uid_parent="root" value="true"/>
+  <Node _name="Invoke Node" type="{LV.WebBrowser}" target="ExecuteJavaScript" inputs="reference:wb.value,error in (no error):ein.value,JavaScript:js.value,arg:,Wait for Return Value?:wfr.value,Return Non-primitive Types?:" outputs="reference out:,error out:jse.error out,Return Value:jse.Return Value,Exception:" uid="jse" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:jse.error out" outputs="status:ub.status" uid="ub" uid_parent="root"/>
+  <Constant _name="Pending Marker" outputs="value:pm.value" type="string" uid="pm" uid_parent="root" value="LV_PENDING"/>
+  <Node _name="Equal?" inputs="x:jse.Return Value,y:pm.value" outputs="x = y?:eq.x = y?" uid="eq" uid_parent="root"/>
+  <Node _name="Or" inputs="x:ub.status,y:eq.x = y?" outputs="x .or. y?:nr.x .or. y?" uid="nr" uid_parent="root"/>
+  <Node _name="Select" inputs="t:prev.value,s:nr.x .or. y?,f:jse.Return Value" outputs="s? t\3Af:sel.s? t\3Af" uid="sel" uid_parent="root"/>
+  <Node _name="Not" inputs="x:ub.status" outputs=".not. x?:rdy..not. x?" uid="rdy" uid_parent="root"/>
+  <Indicator _name="Page Title" conIdx="4" connection="recommended" description="Title of the loaded page, (no title) for a loaded page without one, otherwise Previous Title." inputs="value:sel.s? t\3Af" type="string" uid="title" uid_parent="root" value=""/>
+  <Indicator _name="Ready?" conIdx="6" connection="recommended" description="TRUE when the browser answered the script, i.e. it can run scripts and navigate." inputs="value:rdy..not. x?" type="bool" uid="ready" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in, passed through. Script errors are not reported." inputs="value:ein.value" type="cluster{bool.status,int32.code,string.source}" uid="eout" uid_parent="root" value="[false,0,]"/>
+</VI>

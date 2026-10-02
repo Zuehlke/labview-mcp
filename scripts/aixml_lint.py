@@ -1475,6 +1475,52 @@ def check_control_read_before_wait(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+def check_web_browser_reference(elements: list[_El]) -> list[Finding]:
+    """A {LV.WebBrowser} Property or Invoke Node BOUND to a front-panel control.
+
+    Bound through `link=`, or through a `VI Server Reference` node on its `reference` input.
+    AIXML has no Web Browser control - NI's own export writes one as type="string" - so the
+    document makes a string and binds the node to it. MEASURED 2026-10-02 for both spellings:
+    ValidateAIXML answers `Invalid method`, ConvertAIXMLToVI writes an eBad VI with the node
+    retyped to {LV.String}. A {LV.WebBrowser} node fed by a refnum control is fine.
+
+    Kept equal to AixmlCheck.CheckWebBrowserReference on the C# side.
+    """
+    references = set()
+    for e in elements:
+        if e.tag == "Node" and e.el.get("_name") == "VI Server Reference":
+            for part in (e.el.get("outputs") or "").split(","):
+                net = part[part.rfind(":") + 1:]
+                if net:
+                    references.add(net)
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "Node" or e.el.get("type") != "{LV.WebBrowser}":
+            continue
+        link = e.el.get("link") or ""
+        feed = next((p[len("reference:"):] for p in (e.el.get("inputs") or "").split(",")
+                     if p.startswith("reference:")), "")
+        bound = f'link="{link}"' if link else ("a VI Server Reference" if feed and feed in references else None)
+        if bound is None:
+            continue
+        findings.append(
+            Finding(
+                "warning",
+                "web-browser-reference-not-authorable",
+                e.uid,
+                e.label(),
+                e.path,
+                f"this {{LV.WebBrowser}} node is bound to a front-panel control through {bound}, and "
+                "AIXML cannot create a Web Browser control - it writes one as a string, so the node "
+                "is bound to a string: ValidateAIXML answers `Invalid method` and ConvertAIXMLToVI "
+                "writes an eBad VI. Author a refnum stand-in control of type ref{LV.WebBrowser} "
+                "instead, graft into a panel that holds the real control, then run "
+                "lvai_bind_control_references.",
+            )
+        )
+    return findings
+
+
 def lint_file(path: str) -> list[Finding]:
     try:
         root = ET.parse(path).getroot()
@@ -1516,6 +1562,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_timestamp_values(elements)
     findings += check_comment_length(elements)
     findings += check_control_read_before_wait(elements)
+    findings += check_web_browser_reference(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)
     findings += check_type_grammar(elements)

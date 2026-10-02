@@ -485,7 +485,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     }
 
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                        aixml, viPath, openVI: false, timeoutSeconds, ct: ct);
+                        aixml, viPath, openVI: false, timeoutSeconds, checkExecutable: false, ct: ct);
                     steps.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
                     if (Code(convert) != 0 || !File.Exists(viPath))
                     {

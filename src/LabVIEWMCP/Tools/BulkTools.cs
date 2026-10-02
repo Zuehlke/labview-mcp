@@ -228,7 +228,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             }
 
             var convert = await aixml.ConvertAixmlToViAsync(throwaway?.Path ?? aiXmlFilePath,
-                                                            viPath, openVI, timeoutSeconds, ct: ct);
+                                                            viPath, openVI, timeoutSeconds, checkExecutable: false, ct: ct);
             steps.Add(Step("convert", convert));
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),

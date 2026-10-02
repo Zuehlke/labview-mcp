@@ -1,0 +1,62 @@
+<VI _name="lvbd_graft_clear.vi" description="Helper of lvai_graft_diagram replaceDiagram. Empties a VI's block diagram and keeps every front-panel control. It first moves each control's terminal onto the TOP-LEVEL diagram - a terminal inside a structure would otherwise be deleted with it, and deleting a terminal deletes its control - then deletes every top-level node (a structure takes its contents with it), and only then reads and deletes the wires and decorations that are left, so no reference is to an object a structure already took with it, removes the loose wire ends and saves the VI in place.\0A\0ATERMINALS ARE NOT IN Nodes[]: measured 2026-10-02 on NI's Display a URL example, the top-level diagram listed only its While Loop while two control terminals sat beside it. Free labels and decorations are in Decorations[], wires in Wires[].\0A\0AOpened in the IDE application instance through Application\3AProject\3AActive Project.">
+  <FreeLabel comment="Empties the diagram, keeps every control" uid="4200" uid_parent="root"/>
+  <Control _name="Target Path" conIdx="1" connection="recommended" description="The VI to empty. Saved in place." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:4220.proj,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4220.proj,error in (no error):4220.error out" outputs="Application:4221.app,reference out:,error out:4221.error out" uid="4221" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4221.app,vi path:4213.path,error in (no error):4221.error out" outputs="vi reference:4222.vi reference,error out:4222.error out" uid="4222" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram,read+Front Panel" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4222.error out" outputs="Block Diagram:4223.bd,Front Panel:4223.fp,reference out:,error out:4223.error out" uid="4223" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4223.fp,error in (no error):4223.error out" outputs="Controls[]:4224.ctrls,reference out:,error out:4224.error out" uid="4224" uid_parent="root"/>
+  <Constant _name="duplicate" outputs="value:4225.value" type="bool" uid="4225" uid_parent="root" value="false"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4230" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4224.ctrls" mode="index" outputs="value:4231.c" uid="4231" uid_parent="4230"/>
+    <Tunnel _id="In2" inputs="value:4223.bd" outputs="value:4232.bd" uid="4232" uid_parent="4230"/>
+    <Tunnel _id="In3" inputs="value:4225.value" outputs="value:4233.dup" uid="4233" uid_parent="4230"/>
+    <ShiftReg uid="4234" uid_parent="4230">
+      <Left inputs="value:4224.error out" outputs="value:4235.err" uid="4235" uid_parent="4234"/>
+      <Right inputs="value:4238.error out" outputs="value:4236.value" uid="4236" uid_parent="4234"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:4231.c,error in (no error):4235.err" outputs="Terminal:4237.t,reference out:,error out:4237.error out" uid="4237" uid_parent="4230"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.Terminal}" inputs="reference:4237.t,error in (no error):4237.error out" outputs="Position:4239.pos,reference out:,error out:4239.error out" uid="4239" uid_parent="4230"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.Terminal}" inputs="reference:4237.t,error in (no error):4239.error out,position:4239.pos,owner:4232.bd,duplicate:4233.dup" outputs="reference out:,error out:4238.error out" uid="4238" uid_parent="4230"/>
+  </Structure>
+  <Node _name="Property Node" fields="read+Nodes[]" type="{LV.TopLevelDiagram}" inputs="reference:4223.bd,error in (no error):4236.value" outputs="Nodes[]:4240.nodes,reference out:,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4250" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4240.nodes" mode="index" outputs="value:4251.n" uid="4251" uid_parent="4250"/>
+    <ShiftReg uid="4252" uid_parent="4250">
+      <Left inputs="value:4240.error out" outputs="value:4253.err" uid="4253" uid_parent="4252"/>
+      <Right inputs="value:4256.value" outputs="value:4254.value" uid="4254" uid_parent="4252"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:4251.n,error in (no error):4253.err" outputs="Class Name:4255.c,reference out:,error out:4255.error out" uid="4255" uid_parent="4250"/>
+    <Tunnel _id="Out1" inputs="value:4255.c" mode="index" outputs="value:4257.value" uid="4257" uid_parent="4250"/>
+    <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4251.n,error in (no error):4255.error out" outputs="reference out:,error out:4256.value" uid="4256" uid_parent="4250"/>
+  </Structure>
+  <Node _name="Property Node" fields="read+Wires[],read+Decorations[]" type="{LV.TopLevelDiagram}" inputs="reference:4223.bd,error in (no error):4254.value" outputs="Wires[]:4245.wires,Decorations[]:4245.decos,reference out:,error out:4245.error out" uid="4245" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4290" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4245.wires" mode="index" outputs="value:4291.w" uid="4291" uid_parent="4290"/>
+    <ShiftReg uid="4292" uid_parent="4290">
+      <Left inputs="value:4245.error out" outputs="value:4293.err" uid="4293" uid_parent="4292"/>
+      <Right inputs="value:4294.value" outputs="value:4296.value" uid="4296" uid_parent="4292"/>
+    </ShiftReg>
+    <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4291.w,error in (no error):4293.err" outputs="reference out:,error out:4294.value" uid="4294" uid_parent="4290"/>
+  </Structure>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4260" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4245.decos" mode="index" outputs="value:4261.n" uid="4261" uid_parent="4260"/>
+    <ShiftReg uid="4262" uid_parent="4260">
+      <Left inputs="value:4296.value" outputs="value:4263.err" uid="4263" uid_parent="4262"/>
+      <Right inputs="value:4264.value" outputs="value:4265.value" uid="4265" uid_parent="4262"/>
+    </ShiftReg>
+    <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4261.n,error in (no error):4263.err" outputs="reference out:,error out:4264.value" uid="4264" uid_parent="4260"/>
+  </Structure>
+  <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4265.value" outputs="reference out:,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4270.error out" outputs="reference out:,error out:4271.error out" uid="4271" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4222.vi reference,error in (no error):4271.error out" outputs="error out:4272.error out" uid="4272" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4245.wires" outputs="size(s):4282.size(s)" uid="4282" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4245.decos" outputs="size(s):4283.size(s)" uid="4283" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4224.ctrls" outputs="size(s):4284.size(s)" uid="4284" uid_parent="root"/>
+  <Indicator _name="Deleted Classes" inputs="value:4257.value" type="array{string}" uid="4280" uid_parent="root" value="[]"/>
+  <Indicator _name="Wires Deleted" inputs="value:4282.size(s)" type="int32" uid="4285" uid_parent="root" value="0"/>
+  <Indicator _name="Decorations Deleted" inputs="value:4283.size(s)" type="int32" uid="4286" uid_parent="root" value="0"/>
+  <Indicator _name="Terminals Kept" inputs="value:4284.size(s)" type="int32" uid="4287" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error chain out." inputs="value:4272.error out" type="cluster{bool.status,int32.code,string.source}" uid="4281" uid_parent="root" value="[false,0,]"/>
+</VI>

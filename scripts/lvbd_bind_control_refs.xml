@@ -1,0 +1,114 @@
+<VI _name="lvbd_bind_control_refs.vi" description="Helper of lvai_bind_control_references. Turns each STAND-IN refnum control of a VI into a BOUND control reference of a real front-panel control - the node LabVIEW creates for right-click, Create, Reference - which AIXML cannot author.\0A\0ACREATE CONTROL REF ANSWERS ERROR 53 ON A WEB BROWSER CONTROL WHOSE FRONT PANEL IS CLOSED - measured 2026-10-02, the same cause as Execute JavaScript - so the panel is opened in the IDE instance first and put back to the state it was found in at the end - EVEN WHEN a step failed, which is why that write takes the read's own error and is merged afterwards. AND THE BROWSER NEEDS A MOMENT AFTER FP.Open\3A in a freshly started LabVIEW the first Create Control Ref still answered 53 and a second call a minute later succeeded, measured 2026-10-02, so a 53 is retried every 250 ms up to 40 times.\0A\0AFor each pair named in Bound Labels and Stand-In Labels it invokes {LV.Control} Create Control Ref on the bound control, reads the stand-in terminal's position, diagram and wire ends, moves the new reference node onto that diagram and position, deletes the stand-in control, and connects the new node's output to every sink the stand-in fed. It then removes the loose wire ends the delete leaves and saves the VI in place.\0A\0AWHY THE NODE IS MOVED TWICE\3A Position reads in pane coordinates while Move takes a position relative to the OWNER diagram, so the first Move reveals the offset and the second applies target + target - landed. Same as lvbd_graft_rewire.\0A\0ACONTROLS ARE FOUND BY LABEL, and their references are read once before the loop, so a deletion cannot shift a later lookup. Auto Route? is wired TRUE, because at its FALSE default LabVIEW registers the wire and draws nothing.\0A\0AOpened in the IDE application instance through Application\3AProject\3AActive Project.">
+  <FreeLabel comment="One iteration per bound control and stand-in." uid="4200" uid_parent="root"/>
+  <Control _name="Target Path" conIdx="1" connection="recommended" description="The VI to edit. Saved in place." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+  <Control _name="Bound Labels" conIdx="2" connection="recommended" description="Labels of the controls to reference, one per pair." outputs="value:4211.value" type="array{string}" uid="4211" uid_parent="root" value="[]"/>
+  <Control _name="Stand-In Labels" conIdx="3" connection="recommended" description="Labels of the refnum stand-in controls, in the same order." outputs="value:4214.value" type="array{string}" uid="4214" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error chain in." outputs="value:4212.value" type="cluster{bool.status,int32.code,string.source}" uid="4212" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="Node Class" outputs="value:4217.value" type="ref{LV.Node}" uid="4217" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):4212.value" outputs="Project\3AActive Project:4220.proj,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4220.proj,error in (no error):4220.error out" outputs="Application:4221.app,reference out:,error out:4221.error out" uid="4221" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4221.app,vi path:4213.path,error in (no error):4221.error out" outputs="vi reference:4222.vi reference,error out:4222.error out" uid="4222" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4222.error out" outputs="Front Panel:4223.panel,reference out:,error out:4223.error out" uid="4223" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4223.panel,error in (no error):4223.error out" outputs="Controls[]:4224.ctrls,reference out:,error out:4224.error out" uid="4224" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Front Panel Window\3AOpen" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4224.error out" outputs="Front Panel Window\3AOpen:4225.wasopen,reference out:,error out:4225.error out" uid="4225" uid_parent="root"/>
+  <Node _name="Invoke Node" target="FP.Open" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4225.error out,Activate:,State:" outputs="reference out:,error out:4226.error out" uid="4226" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4230" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4224.ctrls" mode="index" outputs="value:4231.ctrl" uid="4231" uid_parent="4230"/>
+    <Node _name="Property Node" fields="read+Label.Text" type="{LV.Control}" inputs="reference:4231.ctrl,error in (no error):" outputs="Label.Text:4232.text,reference out:,error out:" uid="4232" uid_parent="4230"/>
+    <Tunnel _id="Out1" inputs="value:4232.text" mode="index" outputs="value:4233.value" uid="4233" uid_parent="4230"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4211.value" mode="index" outputs="value:4301.bound" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4214.value" mode="index" outputs="value:4302.stand" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4233.value" outputs="value:4306.labels" uid="4306" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4224.ctrls" outputs="value:4307.ctrls" uid="4307" uid_parent="4300"/>
+    <Tunnel _id="In5" inputs="value:4217.value" outputs="value:4308.cls" uid="4308" uid_parent="4300"/>
+    <ShiftReg uid="4303" uid_parent="4300">
+      <Left inputs="value:4226.error out" outputs="value:4304.err" uid="4304" uid_parent="4303"/>
+      <Right inputs="value:4367.value" outputs="value:4305.value" uid="4305" uid_parent="4303"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:4306.labels,element:4301.bound" outputs="index of element:4309.index of element" uid="4309" uid_parent="4300"/>
+    <Node _name="Search 1D Array" inputs="1D array:4306.labels,element:4302.stand" outputs="index of element:4310.index of element" uid="4310" uid_parent="4300"/>
+    <Node _name="Index Array" inputs="array:4307.ctrls,index:4309.index of element" outputs="element:4311.element" uid="4311" uid_parent="4300"/>
+    <Node _name="Index Array" inputs="array:4307.ctrls,index:4310.index of element" outputs="element:4312.element" uid="4312" uid_parent="4300"/>
+
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:4312.element,error in (no error):4304.err" outputs="Terminal:4313.sterm,reference out:,error out:4313.error out" uid="4313" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Diagram,read+Position,read+Connected Wire" type="{LV.Terminal}" inputs="reference:4313.sterm,error in (no error):4313.error out" outputs="Diagram:4314.sdiag,Position:4314.spos,Connected Wire:4314.wire,reference out:,error out:4314.error out" uid="4314" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:4314.wire,error in (no error):4314.error out" outputs="Terminals[]:4315.ends,reference out:,error out:4315.error out" uid="4315" uid_parent="4300"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4315.ends" mode="index" outputs="value:4321.end" uid="4321" uid_parent="4320"/>
+      <ShiftReg uid="4323" uid_parent="4320">
+        <Left inputs="value:4315.error out" outputs="value:4324.err" uid="4324" uid_parent="4323"/>
+        <Right inputs="value:4325.error out" outputs="value:4326.value" uid="4326" uid_parent="4323"/>
+      </ShiftReg>
+      <Node _name="Property Node" fields="read+Is Source?" type="{LV.Terminal}" inputs="reference:4321.end,error in (no error):4324.err" outputs="Is Source?:4325.esrc,reference out:,error out:4325.error out" uid="4325" uid_parent="4320"/>
+      <Node _name="Not" inputs="x:4325.esrc" outputs=".not. x?:4327.esink" uid="4327" uid_parent="4320"/>
+      <Tunnel _id="Out1" cond="4327.esink" inputs="value:4321.end" mode="index" outputs="value:4331.value" uid="4331" uid_parent="4320"/>
+    </Structure>
+
+    <Structure _name="While Loop" count="4600.value" uid="4600" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4311.element" outputs="value:4601.ctrl" uid="4601" uid_parent="4600"/>
+      <Tunnel _id="In2" inputs="value:4326.value" outputs="value:4602.err" uid="4602" uid_parent="4600"/>
+      <Node _name="Invoke Node" target="Create Control Ref" type="{LV.Control}" inputs="reference:4601.ctrl,error in (no error):4602.err" outputs="reference out:,error out:4603.error out,Create Control Ref:4603.newref" uid="4603" uid_parent="4600"/>
+      <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4603.error out" outputs="code:4604.code" uid="4604" uid_parent="4600"/>
+      <Constant _name="not ready" outputs="value:4605.value" type="int32" uid="4605" uid_parent="4600" value="53"/>
+      <Node _name="Equal?" inputs="x:4604.code,y:4605.value" outputs="x = y?:4606.retry" uid="4606" uid_parent="4600"/>
+      <Constant _name="attempts" outputs="value:4607.value" type="int32" uid="4607" uid_parent="4600" value="40"/>
+      <Node _name="Less?" inputs="x:4600.value,y:4607.value" outputs="x &lt; y?:4608.more" uid="4608" uid_parent="4600"/>
+      <Node _name="And" inputs="x:4606.retry,y:4608.more" outputs="x .and. y?:4609.again" uid="4609" uid_parent="4600"/>
+      <Constant _name="retry wait" outputs="value:4610.value" type="int32" uid="4610" uid_parent="4600" value="250"/>
+      <Constant _name="no wait" outputs="value:4611.value" type="int32" uid="4611" uid_parent="4600" value="0"/>
+      <Node _name="Select" inputs="t:4610.value,s:4609.again,f:4611.value" outputs="s? t\3Af:4612.ms" uid="4612" uid_parent="4600"/>
+      <Node _name="Wait (ms)" inputs="milliseconds to wait:4612.ms" outputs="millisecond timer value:" uid="4613" uid_parent="4600"/>
+      <Node _name="Not" inputs="x:4609.again" outputs=".not. x?:4614.stop" uid="4614" uid_parent="4600"/>
+      <Condition inputs="value:4614.stop" uid="4615" uid_parent="4600" value="stop"/>
+      <Tunnel _id="Out1" inputs="value:4603.newref" outputs="value:4616.value" uid="4616" uid_parent="4600"/>
+      <Tunnel _id="Out2" inputs="value:4603.error out" outputs="value:4617.value" uid="4617" uid_parent="4600"/>
+      <Tunnel _id="Out3" inputs="value:4600.value" outputs="value:4618.value" uid="4618" uid_parent="4600"/>
+    </Structure>
+    <Node _name="To More Specific Class" inputs="reference:4616.value,error in:4617.value,target class:4308.cls" outputs="specific class reference:4341.node,error out:4341.err" uid="4341" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Class Name,read+Terminals[]" type="{LV.Node}" inputs="reference:4341.node,error in (no error):4341.err" outputs="Class Name:4342.cname,Terminals[]:4342.nterms,reference out:,error out:4342.error out" uid="4342" uid_parent="4300"/>
+    <Constant _name="first terminal" outputs="value:4343.value" type="int32" uid="4343" uid_parent="4300" value="0"/>
+    <Node _name="Index Array" inputs="array:4342.nterms,index:4343.value" outputs="element:4344.element" uid="4344" uid_parent="4300"/>
+
+    <Constant _name="duplicate" outputs="value:4345.value" type="bool" uid="4345" uid_parent="4300" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.Node}" inputs="reference:4341.node,error in (no error):4342.error out,position:4314.spos,owner:4314.sdiag,duplicate:4345.value" outputs="reference out:,error out:4346.error out" uid="4346" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.Node}" inputs="reference:4341.node,error in (no error):4346.error out" outputs="Position:4347.landed,reference out:,error out:4347.error out" uid="4347" uid_parent="4300"/>
+    <Node _name="Add" inputs="x:4314.spos,y:4314.spos" outputs="x+y:4348.twice" uid="4348" uid_parent="4300"/>
+    <Node _name="Subtract" inputs="x:4348.twice,y:4347.landed" outputs="x-y:4349.corrected" uid="4349" uid_parent="4300"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.Node}" inputs="reference:4341.node,error in (no error):4347.error out,position:4349.corrected,owner:4314.sdiag,duplicate:4345.value" outputs="reference out:,error out:4350.error out" uid="4350" uid_parent="4300"/>
+
+    <Node _name="Invoke Node" target="Delete" type="{LV.Control}" inputs="reference:4312.element,error in (no error):4350.error out" outputs="reference out:,error out:4351.error out" uid="4351" uid_parent="4300"/>
+    <Constant _name="auto route" outputs="value:4352.value" type="bool" uid="4352" uid_parent="4300" value="true"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4360" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4331.value" mode="index" outputs="value:4361.sink" uid="4361" uid_parent="4360"/>
+      <Tunnel _id="In2" inputs="value:4344.element" outputs="value:4362.src" uid="4362" uid_parent="4360"/>
+      <Tunnel _id="In3" inputs="value:4352.value" outputs="value:4363.route" uid="4363" uid_parent="4360"/>
+      <ShiftReg uid="4364" uid_parent="4360">
+        <Left inputs="value:4351.error out" outputs="value:4365.err" uid="4365" uid_parent="4364"/>
+        <Right inputs="value:4366.error out" outputs="value:4367.value" uid="4367" uid_parent="4364"/>
+      </ShiftReg>
+      <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:4361.sink,error in (no error):4365.err,Wire Source:4362.src,Auto Route? (F):4363.route" outputs="reference out:,error out:4366.error out" uid="4366" uid_parent="4360"/>
+    </Structure>
+    <Node _name="Array Size" inputs="array:4331.value" outputs="size(s):4380.size(s)" uid="4380" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4367.value" outputs="code:4382.code" uid="4382" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4380.size(s)" mode="index" outputs="value:4390.value" uid="4390" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4342.cname" mode="index" outputs="value:4391.value" uid="4391" uid_parent="4300"/>
+    <Tunnel _id="Out3" inputs="value:4382.code" mode="index" outputs="value:4393.value" uid="4393" uid_parent="4300"/>
+    <Tunnel _id="Out4" inputs="value:4618.value" mode="index" outputs="value:4394.value" uid="4394" uid_parent="4300"/>
+  </Structure>
+
+  <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4305.value" outputs="reference out:,error out:4400.error out" uid="4400" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4222.vi reference,error in (no error):4400.error out" outputs="reference out:4401.ref,error out:4401.error out" uid="4401" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" type="{LV.VI}" inputs="reference:4401.ref,error in (no error):4225.error out,Front Panel Window\3AOpen:4225.wasopen" outputs="reference out:,error out:4403.error out" uid="4403" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:4401.error out,error in:4403.error out" outputs="error out:4404.error out" uid="4404" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4222.vi reference,error in (no error):4404.error out" outputs="error out:4402.error out" uid="4402" uid_parent="root"/>
+  <Indicator _name="Sinks Reconnected" inputs="value:4390.value" type="array{int32}" uid="4410" uid_parent="root" value="[]"/>
+  <Indicator _name="Node Classes" inputs="value:4391.value" type="array{string}" uid="4411" uid_parent="root" value="[]"/>
+  <Indicator _name="Retries" inputs="value:4394.value" type="array{int32}" uid="4414" uid_parent="root" value="[]"/>
+  <Indicator _name="Pair Error Codes" inputs="value:4393.value" type="array{int32}" uid="4413" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error chain out." inputs="value:4402.error out" type="cluster{bool.status,int32.code,string.source}" uid="4418" uid_parent="root" value="[false,0,]"/>
+</VI>

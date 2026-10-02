@@ -1063,4 +1063,64 @@ public sealed class ShippedHelperAixmlTests
         Assert.DoesNotContain(fixedUp.Repairs, r => r.Code == "terminalWithoutNetAttribute");
         Assert.Contains(fixedUp.Remaining, f => f.Code == "terminalWithoutNetAttribute");
     }
+
+    // ----------------------------------------------------------------------------------------
+    // A {LV.WebBrowser} NODE BOUND TO A CONTROL AIXML CANNOT CREATE
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The field report's probe, reduced: `link=` binds the Invoke Node to a control the document
+    /// can only make as a STRING. ValidateAIXML answered `Invalid method`, measured 2026-10-02.
+    /// </summary>
+    private const string LinkedWebBrowser = """
+        <VI _name="Probe.vi" description="">
+          <Indicator _name="Web Browser Control" inputs="value:" type="string" uid="4200" uid_parent="root" value=""/>
+          <Node _name="Invoke Node" link="Web Browser Control" type="{LV.WebBrowser}" target="ExecuteJavaScript" inputs="error in (no error):,JavaScript:,arg:,Wait for Return Value?:,Return Non-primitive Types?:" outputs="error out:,Return Value:,Exception:" uid="4210" uid_parent="root"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void ALinkedWebBrowserNodeIsAWarningNamingTheRoute()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(LinkedWebBrowser),
+            f => f.Code == "webBrowserReferenceNotAuthorable");
+        Assert.Equal("4210", finding.Uid);
+        Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
+        Assert.Contains("lvai_bind_control_references", finding.Message);
+    }
+
+    /// <summary>The second spelling, measured the same day: a VI Server Reference into the node.</summary>
+    [Fact]
+    public void AWebBrowserNodeFedByAVIServerReferenceIsAWarning() =>
+        Assert.Contains(AixmlCheck.Check("""
+            <VI _name="Probe.vi" description="">
+              <Indicator _name="Web Browser Control" inputs="value:" type="string" uid="4200" uid_parent="root" value=""/>
+              <Node _name="VI Server Reference" element="Web Browser Control" outputs="Web Browser Control:4201.r" uid="4201" uid_parent="root"/>
+              <Node _name="Invoke Node" inputs="reference:4201.r,error in (no error):" outputs="reference out:,error out:" target="ExecuteJavaScript" type="{LV.WebBrowser}" uid="4210" uid_parent="root"/>
+            </VI>
+            """), f => f.Code == "webBrowserReferenceNotAuthorable" && f.Uid == "4210");
+
+    /// <summary>
+    /// The control arm, and the route that works: a refnum STAND-IN control feeding the node -
+    /// measured validating, converting and running (Wait For Page Load.vi, 2026-10-01).
+    /// </summary>
+    [Fact]
+    public void AWebBrowserNodeFedByARefnumControlIsClean() =>
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="Probe.vi" description="">
+              <Control _name="WB Ref" outputs="value:4200.value" type="ref{LV.WebBrowser}" uid="4200" uid_parent="root" value=""/>
+              <Node _name="Invoke Node" inputs="reference:4200.value,error in (no error):" outputs="reference out:,error out:" target="ExecuteJavaScript" type="{LV.WebBrowser}" uid="4210" uid_parent="root"/>
+            </VI>
+            """), f => f.Code == "webBrowserReferenceNotAuthorable");
+
+    /// <summary>And a bound reference to a control AIXML CAN create is not this finding either.</summary>
+    [Fact]
+    public void AVIServerReferenceToAStringIsClean() =>
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="Probe.vi" description="">
+              <Control _name="Msg" outputs="value:" type="string" uid="4200" uid_parent="root" value="hello"/>
+              <Node _name="VI Server Reference" element="Msg" outputs="Msg:4201.Msg" uid="4201" uid_parent="root"/>
+              <Node _name="Property Node" fields="read+Label.Text" type="{LV.String}" inputs="reference:4201.Msg,error in (no error):" outputs="Label.Text:,reference out:,error out:" uid="4202" uid_parent="root"/>
+            </VI>
+            """), f => f.Code == "webBrowserReferenceNotAuthorable");
 }

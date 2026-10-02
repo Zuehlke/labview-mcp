@@ -1037,7 +1037,9 @@ internal sealed class TestTools(LvaiConnection connection)
     public async Task<string> AddVisToProjectAsync(
         [Description("The .lvproj to list the VIs in")] string projectPath,
         [Description("The VIs to list, one absolute path per line")] string viPaths,
-        [Description("Virtual folder to list them under; created at target level if missing")]
+        [Description("Virtual folder to list them under; created at target level if missing. Every " +
+                     "VI goes into a folder - there is no target-level listing - so NAME IT for what it " +
+                     "holds: the default suits subVIs, a top-level GUI belongs in e.g. \"Application\"")]
         string folderName = "SubVIs",
         [Description("Open the project again afterwards. Leave false when the next step generates")]
         bool reopen = false,
@@ -1569,7 +1571,11 @@ internal sealed class TestTools(LvaiConnection connection)
             // correct diagrams, costing two agents ~135 s each. Report it; do not decide with it.
             step["inRequestedFolder"] = elsewhere.Count == 0;
             step["movedIntoFolder"] = new JsonArray([.. moved.Select(v => (JsonNode)v)]);
+            // `url` names the FIRST entry only - kept for the single-VI callers that read it - and
+            // `urls` names every one: with two VIs the answer used to show one URL for two listings,
+            // reported by the third Web Browser acceptance build 2026-10-02.
             step["url"] = entries.Count > 0 ? entries[0].Url : null;
+            step["urls"] = new JsonArray([.. entries.Select(e => (JsonNode?)e.Url)]);
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
             step["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(v => (JsonNode)v)]);

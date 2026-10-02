@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   MUST BE USED for every change to an EXISTING LabVIEW VI - delegate to this agent instead of editing the VI directly in the main session. Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. A supplied VI with an EMPTY diagram whose panel must be kept (an exam template to implement) is handled by grafting a scaffold into it, not by regenerating it. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -25,10 +25,12 @@ Phase 2 export:
   lines - an exam template, a panel handed over to be implemented): do NOT regenerate it. Build the
   program as a scaffold and graft it in with **`lvai_graft_diagram`** - Phase 6g. The panel,
   typedef bindings, VI properties and icon survive untouched; measured on a CLD template.
-- **Its diagram already holds code**: the graft replaces an EMPTY diagram only and refuses this
-  (`panelDiagramNotEmpty`), so there is still no route that keeps the panel. Return
+- **Its diagram already holds code**: the graft refuses this (`panelDiagramNotEmpty`) unless
+  `replaceDiagram: true`, which empties the output copy first and DISCARDS that code, every control
+  kept. Use it ONLY when the user said the existing code is to be replaced by the new program;
+  when the code must be KEPT there is still no route that keeps the panel - return
   `CANNOT PROCEED` naming that, and let the user decide, rather than regenerating and mentioning
-  the loss afterwards. `docs/keep-supplied-front-panel.md`.
+  the loss afterwards. `docs/keep-supplied-front-panel.md` §6h.
 
 > ⚠️ **This agent overwrites the user's existing code.** Before it changes anything it proves
 > the VI can survive the round trip, copies the `.vi` aside, and saves the icon. If any of
@@ -420,7 +422,9 @@ route costs minutes, and a subVI's panel carries nothing worth them.
 
 1. **The export is the contract.** Its `<Control>`/`<Indicator>` lines fix every label, kind and
    type - copy them verbatim. A typedef comes out as a bare cluster: write it bare in the scaffold
-   too, the graft keeps the SUPPLIED control's binding.
+   too, the graft keeps the SUPPLIED control's binding. **Export a RENAMED copy** of the supplied
+   VI, never the file itself: the original, the backup and the output share one file name, and
+   loading the original under it before a graft to another path is the `Error 1051` shape.
 2. **Author the program as a SCAFFOLD**, `<VI Name> Scaffold.vi` in the same folder: those same
    terminals plus the diagram. **Add no control the panel does not have - UNLESS THE CHANGE ASKS
    FOR A NEW ONE.** Then give it its own label on the scaffold and pass `allowNewControls: true`
@@ -429,11 +433,38 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    tidies the layout by hand. Never add one the change did not ask for. A panel control the
    program does not need may be left out; it stays on the panel, unwired, and is reported under
    `panelControlsUnused`. The error-cluster rule for new VIs adds nothing here: the panel is the
-   user's, and a terminal on it that the user did not supply is exactly what the graft refuses.
+   user's, and its connector pane is the supplied one. **The error rule for a supplied panel,
+   settled 2026-10-02:** no `error in`; end the chain in an `error out` INDICATOR when new controls
+   are allowed (`allowNewControls`), merged with `Merge Errors`. When they are not, do not leave
+   it dangling - an unwired error output raises LabVIEW's automatic error dialog, a modal that
+   stops the whole gRPC service - and `Simple Error Handler.vi` is not callable by bare name (it
+   lives in an `.llb`): return `NEEDS CLARIFICATION` asking whether an `error out` may be added.
+   **Every event button must be WIRED in the scaffold**, even one whose value the program never
+   needs: put its terminal inside its own Value Change frame, wired to a Case selector whose TRUE
+   case does the work. A LATCHED button read there answers TRUE for the press and resets itself,
+   so one click is one action - keep it latched in the deliverable (see step 4 for tests).
+   An action at START-UP on a supplied control reads it through a bound reference - a stand-in
+   of its class (`ref{LV.String}`) into a `read+Value` Property Node, bound with the same
+   `lvai_bind_control_references` call - never through a Local Variable, which the graft would
+   leave bound to the deleted duplicate. To make that value reach what only the control's event
+   frame touches (a URL into the browser), write it back on the same reference with
+   `write+Value (Signaling)`: the frame then handles start-up and every later change alike. For a
+   Web Browser fire it from the poll loop once the browser first answers a script, never right
+   after `FP.Open` (navigation lost 2 of 2) - `scripts/aixml-skeletons/web-browser-title-poll.xml`
+   and its `Read Page Title.vi` carry the shape. The event loop's chain starts from a `No Error`
+   constant in its shift register.
+   The scaffold carries no `conIdx` and no `error in`.
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
-   `execState`, a run. It IS the program; the graft only moves it.
-4. **Graft IN PLACE**, because the supplied VI keeps its path and name. The Phase 4 backup is the
-   copy to graft FROM:
+   `execState`, a run. It IS the program; the graft only moves it. A scaffold built on reference
+   STAND-INS cannot show behaviour by running (its references are null until the bind): check
+   `execState` and a short start-up run, and test on the grafted, bound VI. A start-up test needs
+   `runForMs` 12000 (cold browser per run), and 6 s between signals after Back/Forward.
+   The graft reopens the project it closed for the event registration (`events.projectReopened`),
+   so the bind can follow directly. A subVI generated on the way gets its own icon; the grafted
+   VI keeps the supplied one.
+4. **Graft IN PLACE**, because the supplied VI keeps its path and name - unless the task names
+   another output or says the supplied file must not change; then `outputViPath` is the path the
+   task names. The Phase 4 backup is the copy to graft FROM:
    ```
    lvai_graft_diagram  panelViPath=<the Phase 4 backup>  scaffoldViPath=<the scaffold>
                        outputViPath=<the supplied VI's own path>  overwrite=true
@@ -441,13 +472,40 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    It needs an ACTIVE project (the owning one, opened in Phase 2 - `Error 1055` otherwise), and the
    supplied VI must NOT have been opened: LabVIEW would keep serving the copy it loaded. Every
    scaffold terminal must be WIRED (`scaffoldTerminalUnwired` otherwise). Event frames are
-   re-registered by the graft (`events`), which then leaves the project closed. Latched buttons a
-   test must signal: with the user's consent pass `switchActionControls`, one label per line -
-   never a hand-built helper.
+   re-registered by the graft (`events`), which closes the project for that edit and reopens it
+   (`events.projectReopened`) - and a run
+   unloads the hierarchy, so before REGENERATING a scaffold that calls a project-local subVI,
+   open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
+   naming it. Latched buttons a test must signal: graft a SECOND, test-only copy
+   (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
+   too and drive that one (include `Stop` when the test must end the program and read a real
+   `error out`; re-bind after every re-graft of it); the deliverable keeps the user's mechanical actions, because a switched
+   button behind a TRUE guard needs two clicks per action (Switch When Pressed semantics, pointed
+   out by the 2026-10-02 acceptance build, not clicked by hand). Never a
+   hand-built helper.
 5. **`ok` is the verdict**, and it is read from the file: `execState 1`, `leftoverDuplicates`
-   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
+   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions` (true = not
+   latched in the saved file; `switchActionsWereLatched` says whether this call switched it). Anything
    else false is a failed graft - report the field, never "grafted with minor issues"; the tool
-   has already put the plain supplied copy back.
+   has already put the plain supplied copy back. Then RENDER the grafted VI and READ ITS COMMENT:
+   a 43-character comment that rendered whole in the scaffold came out clipped after the graft
+   (measured 2026-10-02), because the box is re-sized around the supplied terminals. Shorten it in
+   the scaffold and regenerate before grafting again.
+5b. **A WEB BROWSER CONTROL ON THE PANEL**: AIXML cannot create one (the export writes it as a
+   `string`), so a `{LV.WebBrowser}` node bound through `link=` or a `VI Server Reference` is
+   `Invalid method`. Wire a refnum STAND-IN control (`type="ref{LV.WebBrowser}"`) on the scaffold,
+   graft with `allowNewControls: true`, then `lvai_bind_control_references viPath=<grafted VI>
+   bindingsJson={"WB Ref":"Web Browser Control"}` turns it into a bound reference of the real
+   control. One stand-in serves EVERY `{LV.WebBrowser}` node - navigation methods
+   (`NavigateBackward`, `NavigateForward`, `ReloadPage`, `StopLoadingPage`, names from NI's
+   `Navigation History Methods.vi`) as well as `ExecuteJavaScript` - and one bind reconnects all
+   of its sinks. At run time `Execute JavaScript` needs the panel open in the running instance and may
+   answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
+   unwired `{LV.VI}` reference) and POLLS - not in an Event Structure Timeout frame, which AIXML
+   cannot author, but in a second loop paced by `Wait on Notification`, as
+   `scripts/aixml-skeletons/web-browser-title-poll.xml` does. `lvai_run_vi_and_read_values` closes
+   a panel the run left open (`panelClosedAfterRun`), which keeps the next regeneration from
+   answering `Error 1357`. `docs/keep-supplied-front-panel.md` §6g.
 6. **Keep the supplied icon** - Phase 8 has nothing to restore, and a new icon is only applied
    when the task asks for one.
 7. **Report the scaffold** as a by-product that can be deleted (and dropped from the project); it
@@ -623,7 +681,9 @@ re-apply it.
   the original VI did — if it bundles a cluster, that part cannot be regenerated.
 - **A polymorphic VI needs `adapt="true"` and `instance="…"` beside `target`**, with the
   instance's terminal names. A pristine export already carries all three; keep them.
-- **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error.
+- **A shell eats the AIXML escapes** (`\3A`, `\5C`) and the failure looks like an XML parse error. **So does a Python string literal**: `'\3A'` is an OCTAL escape there (`\x03` then `A`), so
+  a `str.replace` aimed at AIXML text silently matches nothing - write the patterns as raw
+  strings (`r'\3A'`), as the fifth Web Browser acceptance found.
 
 ## If `ApplyAIXMLToVI` is ever reopened
 
