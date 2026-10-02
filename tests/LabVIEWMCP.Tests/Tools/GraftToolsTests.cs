@@ -263,6 +263,18 @@ public sealed class GraftToolsTests
     }
 
     [Fact]
+    public void Were_latched_tells_a_switch_made_here_from_one_that_was_a_switch_already()
+    {
+        Assert.All(GraftTools.WereLatched(Fixture("supplied panel.xml"), ["Start", "stop"]).Values,
+                   v => Assert.True(v));
+
+        var switched = Fixture("supplied panel.xml");
+        foreach (var e in switched.Descendants("Control")) e.SetAttributeValue("style", null);
+        Assert.All(GraftTools.WereLatched(switched, ["Start", "stop"]).Values, v => Assert.False(v));
+        Assert.False(GraftTools.WereLatched(switched, ["no such control"])["no such control"]);
+    }
+
+    [Fact]
     public void Switch_labels_are_one_per_line()
     {
         Assert.Equal(["Start", "stop", "Info"], GraftTools.Lines("Start\r\nstop\n\n  Info  \nstop"));

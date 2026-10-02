@@ -1037,7 +1037,9 @@ internal sealed class TestTools(LvaiConnection connection)
     public async Task<string> AddVisToProjectAsync(
         [Description("The .lvproj to list the VIs in")] string projectPath,
         [Description("The VIs to list, one absolute path per line")] string viPaths,
-        [Description("Virtual folder to list them under; created at target level if missing")]
+        [Description("Virtual folder to list them under; created at target level if missing. Every " +
+                     "VI goes into a folder - there is no target-level listing - so NAME IT for what it " +
+                     "holds: the default suits subVIs, a top-level GUI belongs in e.g. \"Application\"")]
         string folderName = "SubVIs",
         [Description("Open the project again afterwards. Leave false when the next step generates")]
         bool reopen = false,

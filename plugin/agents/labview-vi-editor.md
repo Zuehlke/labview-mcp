@@ -446,11 +446,18 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    An action at START-UP on a supplied control reads it through a bound reference - a stand-in
    of its class (`ref{LV.String}`) into a `read+Value` Property Node, bound with the same
    `lvai_bind_control_references` call - never through a Local Variable, which the graft would
-   leave bound to the deleted duplicate. The scaffold carries no `conIdx` and no `error in`.
+   leave bound to the deleted duplicate. To make that value reach what only the control's event
+   frame touches (a URL into the browser), write it back on the same reference with
+   `write+Value (Signaling)`: the frame then handles start-up and every later change alike. Merge
+   its error into the final `Merge Errors`, not into a loop's shift register (chain budget).
+   The scaffold carries no `conIdx` and no `error in`.
 3. **Generate and verify the scaffold** as Phase 6 and 7 describe - `lvai_generate_vi`,
-   `execState`, a run. It IS the program; the graft only moves it.
-4. **Graft IN PLACE**, because the supplied VI keeps its path and name. The Phase 4 backup is the
-   copy to graft FROM:
+   `execState`, a run. It IS the program; the graft only moves it. A scaffold built on reference
+   STAND-INS cannot show behaviour by running (its references are null until the bind): check
+   `execState` and a short start-up run, and test on the grafted, bound VI.
+4. **Graft IN PLACE**, because the supplied VI keeps its path and name - unless the task names
+   another output or says the supplied file must not change; then `outputViPath` is the path the
+   task names. The Phase 4 backup is the copy to graft FROM:
    ```
    lvai_graft_diagram  panelViPath=<the Phase 4 backup>  scaffoldViPath=<the scaffold>
                        outputViPath=<the supplied VI's own path>  overwrite=true
@@ -469,7 +476,8 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    out by the 2026-10-02 acceptance build, not clicked by hand). Never a
    hand-built helper.
 5. **`ok` is the verdict**, and it is read from the file: `execState 1`, `leftoverDuplicates`
-   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
+   empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions` (true = not
+   latched in the saved file; `switchActionsWereLatched` says whether this call switched it). Anything
    else false is a failed graft - report the field, never "grafted with minor issues"; the tool
    has already put the plain supplied copy back. Then RENDER the grafted VI and READ ITS COMMENT:
    a 43-character comment that rendered whole in the scaffold came out clipped after the graft

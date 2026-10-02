@@ -37,10 +37,15 @@ public sealed class TargetEndedBeforeAbortTests
     }
 
     [Fact]
-    public void The_skeleton_treats_an_empty_title_as_not_ready()
+    public void The_skeleton_waits_for_a_loaded_page_and_names_an_untitled_one()
     {
+        // The third acceptance read an empty title right after a navigation - the browser's
+        // initial about:blank is complete with no title - and the fourth needed an untitled page
+        // to say so instead of keeping the previous title. Both rules live in the one script.
         var skeleton = File.ReadAllText(Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root,
             "scripts", "aixml-skeletons", "web-browser-title-poll.xml"));
-        Assert.Contains("d.readyState=='complete'&amp;&amp;d.title?", skeleton);
+        Assert.Contains("if(d.readyState!='complete'||d.URL=='about\\3Ablank')", skeleton);
+        Assert.Contains("return d.title||'(no title)';", skeleton);
+        Assert.Contains("write+Value (Signaling)", skeleton);
     }
 }

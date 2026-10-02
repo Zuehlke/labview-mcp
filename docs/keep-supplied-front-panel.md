@@ -474,9 +474,28 @@ gaps, all closed the same day:
 | a start-up action on a supplied control (NI's original loads the URL at start) had no route | read it through a bound reference - a `ref{LV.String}` stand-in into a `read+Value` Property Node, bound in the same call. Measured on a plain VI: `execState 1`, the read returned the control's value |
 | the scaffold's pane, the test copy's `Stop`, re-binding after a re-graft, the boolean case selector spelling, one `url` for two listed VIs | written into both agents; `True`/`False` into `lvai_aixml_reference` §7; `lvai_add_vis_to_project` answers `urls` |
 
-**Still open**: in one of eight runs the program did not end on a signalled `Stop` and an identical
-later run did. An `Execute JavaScript` call blocking during a navigation is the hypothesis; it is
-not reproduced, so nothing was changed for it.
+**A FOURTH acceptance, on NI's `Display a URL.vi` with its start-up load, again with no guidance in
+the task** (`C:\Temp\WBAcceptance4`): "load the URL at start-up as NI's original does, navigate on
+every change, show the title in a new `Page Title`, `Stop` ends the program". `labview-vi-generator`
+in about 5 minutes: `replaceDiagram` + `allowNewControls`, one bind for `WB Ref` AND `URL Ref`,
+`execState 1`, the supplied file unchanged by MD5. Driven: `Page One` at start-up, `What Is
+LabVIEW? - NI` for NI's default URL, `Page Two` after a change, `(no title)` for a page without one,
+and a signalled `Stop` ended the program with a clean `error out` and `targetEndedBeforeAbort: true` -
+re-run independently afterwards with the same result. No tool failed; six gaps, closed the same day:
+
+| finding | fix |
+|---|---|
+| the start-up read had no route to the BROWSER, whose terminal sits in the URL frame | `write+Value (Signaling)` on the same `URL Ref` fires that frame, so start-up and every change share one path; its error goes straight into `Merge Errors` (chained through the poll loop it made 11 stages). Both agents; the agent's scaffold is now the skeleton |
+| the skeleton kept the previous title for a page with no `<title>` | pending is now "not `complete`, or `about:blank`"; a loaded untitled page shows `(no title)`. Script written on four lines (`&#10;`), which keeps the constant narrow |
+| step 4 of Phase 6g prescribed the supplied VI's own path as output, beside a task saying it must not change | the own path only when the task says to implement that VI in place; otherwise the path the task names |
+| a run of a stand-in scaffold says nothing, and the guidance asked for one | `execState` and a short start-up run only; behaviour is tested on the bound graft |
+| `lvai_add_vis_to_project` has no target-level listing and defaults to `SubVIs` | the parameter and the agent say to name the folder for what it holds - `Application` for a main GUI |
+| `switchActions: {Stop: true}` did not say whether this call switched it | `switchActionsWereLatched` answers it from the supplied panel's export |
+
+**Still open**: in one of eight runs of the third build the program did not end on a signalled
+`Stop` and an identical later run did. An `Execute JavaScript` call blocking during a navigation is
+the hypothesis; it is not reproduced - the fourth build ended on `Stop` in all its runs - so nothing
+was changed for it.
 
 The same session also showed the client serving a STALE tool catalogue - `replaceDiagram` and
 `checkExecutable` absent from the schemas it displayed - while both reached the server and worked.

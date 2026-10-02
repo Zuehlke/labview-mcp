@@ -1,8 +1,11 @@
-<VI _name="Web Browser Title Poll.vi" description="Shows the page named in URL String in the Web Browser Control and displays that page's title (document.title) in Page Title once it has loaded. An event loop writes every new URL String into the browser and ends the program on Stop. A parallel poll loop asks the browser every 250 ms for its title through Execute JavaScript on a bound reference; while the browser is not ready (Error 53 right after the panel opens, or a page still loading) the previous title is kept, so the call is retried instead of failing. The program opens its own front panel at start, because the browser runs scripts only while its panel is open. Errors from the notifier, the panel open and the loops are merged into error out.">
+<VI _name="Web Browser Title Poll.vi" description="Shows the page named in URL String in the Web Browser Control and displays that page's title in Page Title once the page has finished loading. At start the program opens its own front panel (the browser runs scripts only while its panel is open) and signals a Value Change on URL String, so the start-up URL is loaded by the same event case as every later change. An event loop writes each new URL String into the browser and ends the program on Stop. A parallel poll loop asks the browser every 250 ms through Execute JavaScript whether the document has finished loading; while it has not, or while the browser is not ready yet (Error 53 right after the panel opens), the previous title is kept. A loaded page without a title shows (no title). Errors from the notifier, the panel open, the start-up signal and both loops are merged into error out; script errors while the browser is not ready are expected and not reported.">
   <FreeLabel comment="URL by event; title by polling" uid="lbl" uid_parent="root"/>
   <Constant _name="Notifier Type" outputs="value:nt.value" type="bool" uid="nt" uid_parent="root" value="false"/>
   <Node _name="Obtain Notifier" inputs="name (unnamed):,notification data type:nt.value,create if not found? (T):,error in (no error):" outputs="notifier out:obt.notifier out,created new?:,error out:obt.error out" uid="obt" uid_parent="root"/>
   <Node _name="Invoke Node" type="{LV.VI}" target="FP.Open" inputs="reference:,error in (no error):obt.error out,Activate:,State:" outputs="reference out:,error out:fpo.error out" uid="fpo" uid_parent="root"/>
+  <Control _name="URL Ref" description="Stand-in for a bound reference to URL String; replaced after the graft." outputs="value:uref.value" type="ref{LV.String}" uid="uref" uid_parent="root" value=""/>
+  <Node _name="Property Node" type="{LV.String}" fields="read+Value" inputs="reference:uref.value,error in (no error):fpo.error out" outputs="Value:rd.Value,reference out:rd.reference out,error out:rd.error out" uid="rd" uid_parent="root"/>
+  <Node _name="Property Node" type="{LV.String}" fields="write+Value (Signaling)" inputs="reference:rd.reference out,error in (no error):rd.error out,Value (Signaling):rd.Value" outputs="reference out:,error out:wr.error out" uid="wr" uid_parent="root"/>
   <Control _name="WB Ref" description="Stand-in for a bound reference to the Web Browser Control; replaced after the graft." outputs="value:wbref.value" type="ref{LV.WebBrowser}" uid="wbref" uid_parent="root" value=""/>
   <Constant _name="Initial Title" outputs="value:t0.value" type="string" uid="t0" uid_parent="root" value=""/>
 
@@ -12,7 +15,7 @@
       <Tunnel _id="In1" inputs="value:evlN.value" uid="evIn1" uid_parent="ev"/>
       <CaseFrame selector=" &quot;URL String&quot;\3A Value Change " uid="fUrl" uid_parent="ev">
         <Tunnel _id="In1" outputs="value:" uid="fUrlIn1" uid_parent="fUrl"/>
-        <Control _name="URL String" description="Address of the page to show. Every change loads the page and, once loaded, updates Page Title." outputs="value:url.value" type="string" uid="url" uid_parent="fUrl" value="ni.com/labview"/>
+        <Control _name="URL String" description="Address of the page to show. Loaded at start-up and again on every change; Page Title follows once the page has loaded." outputs="value:url.value" type="string" uid="url" uid_parent="fUrl" value="ni.com/labview"/>
         <Indicator _name="Web Browser Control" description="Shows the page at URL String." inputs="value:url.value" type="string" uid="wbc" uid_parent="fUrl" value=""/>
         <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="edUrl" uid_parent="fUrl"/>
         <Tunnel _id="Out1" inputs="value:" uid="fUrlOut1" uid_parent="fUrl"/>
@@ -46,7 +49,7 @@
     </ShiftReg>
     <Constant _name="Poll Interval ms" outputs="value:pi.value" type="int32" uid="pi" uid_parent="pl" value="250"/>
     <Node _name="Wait on Notification" inputs="notifier:plN.value,ignore previous (F):,timeout in ms (-1):pi.value,error in (no error):srE.value" outputs="notifier out:,notification:,timed out?:won.timed out?,error out:won.error out" uid="won" uid_parent="pl"/>
-    <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="pl" value="var d=document;return d.readyState=='complete'&amp;&amp;d.title?d.title\3A'LV_PENDING';"/>
+    <Constant _name="Title Script" outputs="value:js.value" type="string" uid="js" uid_parent="pl" value="var d=document;&#10;if(d.readyState!='complete'||d.URL=='about\3Ablank')&#10;return 'LV_PENDING';&#10;return d.title||'(no title)';"/>
     <Constant _name="Wait for Return Value?" outputs="value:wfr.value" type="bool" uid="wfr" uid_parent="pl" value="true"/>
     <Node _name="Invoke Node" type="{LV.WebBrowser}" target="ExecuteJavaScript" inputs="reference:plWB.value,error in (no error):,JavaScript:js.value,arg:,Wait for Return Value?:wfr.value,Return Non-primitive Types?:" outputs="reference out:,error out:jse.error out,Return Value:jse.Return Value,Exception:" uid="jse" uid_parent="pl"/>
     <Node _name="Unbundle By Name" fields="status" inputs="input cluster:jse.error out" outputs="status:ub.status" uid="ub" uid_parent="pl"/>
@@ -54,12 +57,12 @@
     <Node _name="Equal?" inputs="x:jse.Return Value,y:pm.value" outputs="x = y?:eq.x = y?" uid="eq" uid_parent="pl"/>
     <Node _name="Or" inputs="x:ub.status,y:eq.x = y?" outputs="x .or. y?:nr.x .or. y?" uid="nr" uid_parent="pl"/>
     <Node _name="Select" inputs="t:srT.value,s:nr.x .or. y?,f:jse.Return Value" outputs="s? t\3Af:sel.s? t\3Af" uid="sel" uid_parent="pl"/>
-    <Indicator _name="Page Title" description="Title (document.title) of the page in the Web Browser Control, updated once the page has loaded." inputs="value:sel.s? t\3Af" type="string" uid="ptitle" uid_parent="pl" value=""/>
+    <Indicator _name="Page Title" description="Title of the page in the Web Browser Control, updated once the page has finished loading. Empty until the first page has loaded; (no title) for a loaded page that has no title." inputs="value:sel.s? t\3Af" type="string" uid="ptitle" uid_parent="pl" value=""/>
     <Node _name="Not" inputs="x:won.timed out?" outputs=".not. x?:nt2..not. x?" uid="nt2" uid_parent="pl"/>
     <Condition inputs="value:nt2..not. x?" uid="plCond" uid_parent="pl" value="stop"/>
   </Structure>
 
-  <Node _name="Merge Errors" inputs="error in:evlErr.value,error in:plErr.value" outputs="error out:me.error out" uid="me" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:evlErr.value,error in:plErr.value,error in:wr.error out" outputs="error out:me.error out" uid="me" uid_parent="root"/>
   <Node _name="Release Notifier" inputs="notifier:obt.notifier out,force destroy? (F):,error in (no error):me.error out" outputs="notifier name:,last notification:,error out:rel.error out" uid="rel" uid_parent="root"/>
-  <Indicator _name="error out" description="Errors of the notifier, the panel open and both loops, merged. Script errors while the browser is not ready are expected and are not reported." inputs="value:rel.error out" type="cluster{bool.status,int32.code,string.source}" uid="eout" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="error out" description="Errors of the notifier, the panel open, the start-up signal and both loops, merged. Script errors while the browser is not ready are expected and are not reported." inputs="value:rel.error out" type="cluster{bool.status,int32.code,string.source}" uid="eout" uid_parent="root" value="[false,0,]"/>
 </VI>

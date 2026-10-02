@@ -386,7 +386,9 @@ entry LabVIEW's save left at target level instead of listing it twice, and refus
 file behind it. It was not on this agent's list until 2026-09-25, and the third ATM cold build left
 `Handle ATM Action.vi` at target level for the orchestrator to move. **When the orchestrator says
 other agents are running and you may not open or close a project, do NOT call it** - report the
-paths and let the orchestrator list them. The hand-edit route below remains for a project that does
+paths and let the orchestrator list them. **Name the folder for what it holds**: every VI goes
+into a folder (there is no target-level listing) and the default `SubVIs` is for subVIs - a
+top-level GUI goes into e.g. `folderName: Application`, by-products into their own folder. The hand-edit route below remains for a project that does
 not exist yet.
 
 **If there is no project**, write one first. Use the verified blank skeleton in
@@ -663,16 +665,28 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    `{LV.String}` Property Node `read+Value` before the event loop, then bind it in the same call
    as the browser - `{"WB Ref":"Web Browser Control","URL Ref":"URL String"}`. Measured
    2026-10-02 on a plain VI: bound, `execState 1`, the read returned the control's value.
+   **To make the start-up value REACH something that only its event frame touches** (the URL
+   into the browser), write it straight back with a second Property Node on the same reference,
+   `write+Value (Signaling)` - that fires the control's own Value Change frame, so start-up and
+   every later change take ONE path. Merge that node's error into the final `Merge Errors`
+   directly; chained into the poll loop's shift register it made the chain 11 stages, over the
+   budget. Measured end to end by the fourth Web Browser acceptance; the skeleton carries it.
    **The scaffold carries NO `conIdx` and NO `error in`**: it is a by-product, and nothing of
    its pane travels into the graft - only an `error out` INDICATOR, under the error rule above.
 3. **Generate and verify the scaffold** - Phase 6 as usual: `lvai_generate_vi`, `execState`, a
    run. It IS the program; the graft only moves it. Diagram size and comment rules apply to it.
-4. **Graft IN PLACE** - the supplied VI keeps its path and name. Copy it into your scratch folder
-   first (`Copy-Item`), then:
+   **A scaffold built on reference STAND-INS (step 5b) proves nothing by running**: its
+   references are null until the bind, so nothing loads and the values say nothing. Check
+   `execState` and at most a short start-up run; test behaviour on the grafted, bound VI.
+4. **Graft** - copy the supplied VI into your scratch folder first (`Copy-Item`), then:
    ```
    lvai_graft_diagram  panelViPath=<that copy>  scaffoldViPath=<the scaffold>
-                       outputViPath=<the supplied VI's own path>  overwrite=true
+                       outputViPath=<the output>  overwrite=true
    ```
+   **The output is the supplied VI's own path ONLY when the task says to implement that VI in
+   place** (an exam template). When the task names an output elsewhere, or says the supplied
+   file must not change, `outputViPath` is the path the task names - the supplied file is then
+   never written.
    It needs an ACTIVE project (`lvai_open_file` on the project - `Error 1055` otherwise) and the
    supplied VI must not have been opened itself, or LabVIEW keeps serving the copy it loaded.
    **Every scaffold terminal must be WIRED** - an unwired one is refused (`scaffoldTerminalUnwired`),
@@ -693,7 +707,8 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    **Every graft onto the test copy replaces it with an UNBOUND one**: bind it again after each. Do NOT build a helper for
    switch actions; that cost 2:35 in each of two builds.
 5. **`ok` is the verdict**, read from the file: `execState 1`, `leftoverDuplicates` empty,
-   `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. A false there is a
+   `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions` (true = the saved
+   control is not latched; `switchActionsWereLatched` says whether this call changed it). A false there is a
    failed graft - report the field; the tool has already put the plain supplied copy back. Then run it (`lvai_run_vi_and_read_values runForMs`, plus `signalsJson` for
    an event-driven VI) and render it: the grafted diagram is the scaffold's, but its terminals are
    the supplied ones. **READ THE COMMENT IN THAT RENDER** - this is the one render that is

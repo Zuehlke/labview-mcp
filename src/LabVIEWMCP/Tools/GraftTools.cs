@@ -70,7 +70,9 @@ internal sealed class GraftTools(LvaiConnection connection)
         at a time. The scaffold's file name must differ from the output's.
         SWITCH ACTION: switchActionControls sets the named boolean controls to Switch When Pressed
         in the same IDE session, before the save, and switchActions reports each from the saved
-        file - a latched boolean cannot be signalled by a test (Error 1193).
+        file - a latched boolean cannot be signalled by a test (Error 1193). true there means the
+        saved control is NOT latched; switchActionsWereLatched says whether the supplied one was,
+        so true/false there means it was a switch already and nothing was changed for it.
         A FAILED STEP LEAVES NO HALF-GRAFT: outputViPath is put back to the plain supplied copy.
         An unwired scaffold terminal is refused up front (scaffoldTerminalUnwired).
         ONLY FOR THE MAIN GUI: use it for the one top-level VI whose front panel is supplied or
@@ -328,6 +330,10 @@ internal sealed class GraftTools(LvaiConnection connection)
                 // label -> true when the saved file no longer carries style="latched" for it
                 ["switchActions"] = switchVerdict is null || switches.Count == 0 ? null
                     : new JsonObject(switchVerdict.Select(kv =>
+                        new KeyValuePair<string, JsonNode?>(kv.Key, kv.Value))),
+                // label -> true when the SUPPLIED panel had it latched, i.e. this call switched it
+                ["switchActionsWereLatched"] = switches.Count == 0 ? null
+                    : new JsonObject(WereLatched(panelExport, switches).Select(kv =>
                         new KeyValuePair<string, JsonNode?>(kv.Key, kv.Value))),
                 ["note"] = ok
                     ? (plan.New.Count > 0
@@ -795,6 +801,18 @@ internal sealed class GraftTools(LvaiConnection connection)
         var byLabel = Terminals(grafted).GroupBy(t => t.Label).ToDictionary(g => g.Key, g => g.First());
         return labels.ToDictionary(l => l, l =>
             byLabel.TryGetValue(l, out var t) && (string?)t.Element.Attribute("style") != "latched");
+    }
+
+    /// <summary>
+    /// For each requested label, whether the SUPPLIED panel marks it latched - the other half of
+    /// switchActions, which reads only the saved file and so cannot tell "switched by this call"
+    /// from "was a switch already". Asked for by the fourth Web Browser acceptance, 2026-10-02.
+    /// </summary>
+    internal static Dictionary<string, bool> WereLatched(XElement panel, IReadOnlyList<string> labels)
+    {
+        var byLabel = Terminals(panel).GroupBy(t => t.Label).ToDictionary(g => g.Key, g => g.First());
+        return labels.ToDictionary(l => l, l =>
+            byLabel.TryGetValue(l, out var t) && (string?)t.Element.Attribute("style") == "latched");
     }
 
     // ------------------------------------------------------------------ plumbing
