@@ -112,6 +112,7 @@ internal static class AixmlCheck
         CheckTimestampValues(root, findings);
         CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
+        CheckWebBrowserReference(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
 
@@ -593,6 +594,48 @@ internal static class AixmlCheck
                 + "value in the same document: both vanish, the assertion compares empty with empty "
                 + "and PASSES while pinning nothing.",
                 (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// A <c>{LV.WebBrowser}</c> Property or Invoke Node BOUND to a front-panel control - through
+    /// <c>link=</c>, or through a <c>VI Server Reference</c> node on its <c>reference</c> input.
+    /// AIXML has no Web Browser control: NI's own export writes one as <c>type="string"</c>, so the
+    /// document makes a STRING, and the node is bound to it. Measured 2026-10-02 (and reported from
+    /// the field on 2026-10-01, NI's unmodified example export included): ValidateAIXML answers
+    /// <c>Invalid method</c> for both spellings, and ConvertAIXMLToVI writes the file anyway, eBad,
+    /// with the node retyped to <c>{LV.String}</c>.
+    /// A WARNING, not an error: the validator refuses the document already, and this only says why
+    /// and which route works. A {LV.WebBrowser} node fed by a refnum CONTROL or wire is fine -
+    /// measured, it validates and runs.
+    /// </summary>
+    private static void CheckWebBrowserReference(XElement root, List<Finding> findings)
+    {
+        var references = root.Descendants("Node")
+            .Where(n => (string?)n.Attribute("_name") == "VI Server Reference")
+            .SelectMany(n => (((string?)n.Attribute("outputs")) ?? "").Split(',')
+                .Select(p => p[(p.LastIndexOf(':') + 1)..]).Where(net => net.Length > 0))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var node in root.Descendants("Node"))
+        {
+            if ((string?)node.Attribute("type") != "{LV.WebBrowser}") continue;
+            var link = (string?)node.Attribute("link");
+            var feed = (((string?)node.Attribute("inputs")) ?? "").Split(',')
+                .FirstOrDefault(p => p.StartsWith("reference:", StringComparison.Ordinal))?["reference:".Length..];
+            var bound = link is { Length: > 0 } ? $"link=\"{link}\""
+                      : feed is { Length: > 0 } && references.Contains(feed) ? "a VI Server Reference" : null;
+            if (bound is null) continue;
+            findings.Add(new Finding(Severity.Warning, "webBrowserReferenceNotAuthorable",
+                $"This {{LV.WebBrowser}} {node.Attribute("_name")?.Value ?? "node"} is bound to a "
+                + $"front-panel control through {bound}, and AIXML cannot create a Web Browser control "
+                + "- it writes one as a STRING, so the node is bound to a string. Measured: "
+                + "ValidateAIXML answers `Invalid method`, and ConvertAIXMLToVI writes an eBad VI with "
+                + "the node retyped to {LV.String}; NI's own export of a Web Browser example does the "
+                + "same. The route that works: author a refnum STAND-IN control of type "
+                + "ref{LV.WebBrowser} and wire it into the node, put the program into a panel that "
+                + "holds the real control (lvai_graft_diagram allowNewControls), then turn the "
+                + "stand-in into a bound reference with lvai_bind_control_references.",
+                (string?)node.Attribute("uid")));
         }
     }
 

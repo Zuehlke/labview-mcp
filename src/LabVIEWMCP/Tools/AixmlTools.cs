@@ -638,12 +638,20 @@ internal sealed class AixmlTools(LvaiConnection connection)
         converts past that refusal for you, under a throwaway name, and checks executability. A
         failed convert here burns the caller's name (1051 next time). Measured 2026-09-25 on plain VIs and on class members (open one member and
         the whole class resolves); a .ctl is NOT accepted. docs/aixml-call-loaded-vi.md.
+        IT WRITES WHAT VALIDATION REFUSES, ON PURPOSE - that tolerance is the route for class
+        methods and loaded subVIs - so a written file is not a working one. checkExecutable (on
+        by default) reads the result's execution state afterwards and answers `executable`; a
+        broken VI comes back with ok false and `warning` saying so, instead of a clean errorCode 0.
+        Measured 2026-10-01: a Web Browser document the validator refused was written here, eBad,
+        with nothing in the answer to say so.
         """)]
     public async Task<string> ConvertAixmlToViAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
         [Description(@"Absolute path of the .vi to create - WILL BE OVERWRITTEN")] string viPath,
         [Description("Open the created VI in the LabVIEW editor")] bool openVI = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 240,
+        [Description("Read the written VI's execution state and answer `executable`; a broken VI then answers ok false")]
+        bool checkExecutable = true,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -673,12 +681,32 @@ internal sealed class AixmlTools(LvaiConnection connection)
             stopwatch.Stop();
 
             response.ErrorMessage = SymbolicUids.Annotate(response.ErrorMessage, symbolic.Map);
+
+            // A WRITTEN FILE IS NOT A WORKING ONE. The converter accepts what ValidateAIXML
+            // refuses - deliberately useful for a class method or a loaded subVI - and answers
+            // errorCode 0 for an eBad result. Measured 2026-10-01 on a Web Browser document: the
+            // validator said `Invalid method`, this wrote the VI, and only lvai_exec_state saw it.
+            int? execState = null;
+            if (checkExecutable && response.ErrorCode == 0 && File.Exists(viPath))
+                execState = (int?)JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
+                    Path.GetFullPath(viPath), timeoutSeconds: timeoutSeconds, ct: ct))?["execState"];
+            var broken = execState == 0;
             return Json.Message(response,
                 [.. SymbolicFacts(symbolic),
                  ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
                  ("viExisted", JsonValue.Create(existedBefore)),
                  ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
                  ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+                 ("execState", execState is null ? null : JsonValue.Create(execState.Value)),
+                 ("executable", execState is null or < 0 ? null : JsonValue.Create(execState.Value != 0)),
+                 ("ok", checkExecutable && response.ErrorCode == 0 && execState is >= 0
+                     ? JsonValue.Create(!broken) : null),
+                 ("warning", broken
+                     ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). The converter "
+                         + "writes documents the validator refuses; run lvai_validate_aixml on the same "
+                         + "file for the reason - it names the node. For a class method or a call to a "
+                         + "loaded subVI a broken intermediate can be expected; anywhere else it is not.")
+                     : null),
                  // THIS PATH MATTERS MOST for the check: it is the documented route for a class
                  // method - convert WITHOUT validating, because ValidateAIXML is stricter than the
                  // converter for a class wire - so nothing else looks at the file at all.

@@ -1,0 +1,5 @@
+<VI _name="URL Panel 3.vi" description="Uses a Web Browser Control to display web content.">
+  <Control _name="URL String" outputs="value:" type="string" uid="166" uid_parent="root" value="ni.com/labview"/>
+  <Control _name="Stop" outputs="value:" style="latched" type="bool" uid="267" uid_parent="root" value="false"/>
+  <Indicator _name="Web Browser Control" inputs="value:" type="string" uid="182" uid_parent="root" value="https://www.ni.com/en/shop/labview.html"/>
+</VI>

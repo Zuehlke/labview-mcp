@@ -1007,7 +1007,7 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
             if (!HelperCache.NeedsRebuild(aixml, helper)) continue;
 
             var convert = Read(await new AixmlTools(connection)
-                .ConvertAixmlToViAsync(aixml, helper, false, timeoutSeconds, ct: ct));
+                .ConvertAixmlToViAsync(aixml, helper, false, timeoutSeconds, checkExecutable: false, ct: ct));
             if (convert?["errorCode"]?.GetValue<int>() is not 0)
                 return $"'{name}' could not be generated: " +
                        (convert?.ToJsonString() ?? "no answer");

@@ -1,0 +1,11 @@
+<VI _name="WB Probe2.vi" description="">
+  <FreeLabel comment="Runs one script in the browser" uid="218" uid_parent="root"/>
+  <Control _name="error in" description="Error chain in." outputs="value:91.value" type="cluster{bool.status,int32.code,string.source}" uid="91" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="JavaScript" outputs="value:223.value" type="string" uid="223" uid_parent="root" value="return 1+1;"/>
+  <Constant _name="Wait for Return Value?" outputs="value:235.value" type="bool" uid="235" uid_parent="root" value="true"/>
+  <Node _name="VI Server Reference" element="Web Browser Control" outputs="Web Browser Control:323.Web Browser Control" uid="323" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:323.Web Browser Control,error in (no error):91.value,JavaScript:223.value,arg:,Wait for Return Value?:235.value,Return Non-primitive Types?:" outputs="reference out:,error out:242.error out,Return Value:242.Return Value,Exception:" target="ExecuteJavaScript" type="{LV.WebBrowser}" uid="242" uid_parent="root"/>
+  <Indicator _name="Web Browser Control" inputs="value:" type="string" uid="43" uid_parent="root" value=""/>
+  <Indicator _name="Return Value" description="What the script returned." inputs="value:242.Return Value" type="string" uid="147" uid_parent="root" value=""/>
+  <Indicator _name="error out" description="Error chain out." inputs="value:242.error out" type="cluster{bool.status,int32.code,string.source}" uid="162" uid_parent="root" value="[false,0,]"/>
+</VI>

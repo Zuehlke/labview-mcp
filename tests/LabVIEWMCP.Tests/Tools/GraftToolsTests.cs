@@ -545,6 +545,53 @@ public sealed class GraftToolsTests
         Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(rewire, "target=\"Move\"").Count);
     }
 
+    // ------------------------------------------------------------------ replaceDiagram
+
+    /// <summary>
+    /// NI's Display a URL example before and after lvbd_graft_clear, measured 2026-10-02: a While
+    /// Loop holding an Event Structure, a Local Variable and two comments, with the Stop terminal
+    /// inside an event frame. The refusal names the way out, and the cleared copy plans clean.
+    /// </summary>
+    [Fact]
+    public void A_diagram_with_code_is_refused_and_the_refusal_names_replaceDiagram()
+    {
+        var withCode = Fixture("url panel with code.xml");
+        Assert.True(GraftTools.DiagramElements(withCode) > 0);
+
+        var plan = GraftTools.Plan(withCode, Fixture("url panel cleared.xml"), allowNewControls: true);
+
+        Assert.Equal("panelDiagramNotEmpty", Kind(plan.Refusal));
+        Assert.Contains("replaceDiagram", plan.Refusal!);
+    }
+
+    [Fact]
+    public void The_cleared_copy_keeps_every_control_and_holds_no_code()
+    {
+        var before = GraftTools.Terminals(Fixture("url panel with code.xml"))
+                               .Select(t => $"{t.Kind} {t.Label} {t.Type}").Order();
+        var cleared = Fixture("url panel cleared.xml");
+
+        Assert.Equal(0, GraftTools.DiagramElements(cleared));
+        Assert.Equal(before, GraftTools.Terminals(cleared).Select(t => $"{t.Kind} {t.Label} {t.Type}").Order());
+        // the terminal that sat inside an event frame was moved out, not deleted with it
+        Assert.All(GraftTools.Terminals(cleared), t => Assert.Equal("root", (string?)t.Element.Attribute("uid_parent")));
+    }
+
+    [Fact]
+    public void The_clear_helper_ships_and_moves_terminals_before_it_deletes()
+    {
+        var clear = File.ReadAllText(Path.Combine(RepoTree.Root, "scripts", GraftTools.ClearHelperFileName));
+
+        // a terminal left inside a structure is deleted with it, and its control with the terminal
+        Assert.True(clear.IndexOf("target=\"Move\"", StringComparison.Ordinal)
+                    < clear.IndexOf("target=\"Delete\"", StringComparison.Ordinal));
+        // wires and decorations are read only after the nodes are gone
+        Assert.True(clear.IndexOf("read+Nodes[]", StringComparison.Ordinal)
+                    < clear.IndexOf("read+Wires[]", StringComparison.Ordinal));
+        Assert.Contains("target=\"BD.Remove Bad Wires\"", clear);
+        Assert.Contains("target=\"Save.Instrument\"", clear);
+    }
+
     private static string? Kind(string? refusal) =>
         refusal is null ? null : JsonNode.Parse(refusal)?["errorKind"]?.GetValue<string>();
 }

@@ -348,7 +348,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                         new JsonObject { ["validate"] = Read(validate) });
 
                 var convert = await aixml.ConvertAixmlToViAsync(stubAixmlPath, stubPath, false,
-                                                                 timeoutSeconds, ct: ct);
+                                                                 timeoutSeconds, checkExecutable: false, ct: ct);
                 if (Read(convert)?["errorCode"]?.GetValue<int>() is not 0)
                     return Json.Error("stubNotWritten",
                         $"The placeholder could not be written to '{stubPath}'. The convert " +

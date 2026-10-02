@@ -35,6 +35,7 @@ internal sealed class GraftTools(LvaiConnection connection)
 {
     internal const string PasteHelperFileName = "lvbd_graft_paste.xml";
     internal const string RewireHelperFileName = "lvbd_graft_rewire.xml";
+    internal const string ClearHelperFileName = "lvbd_graft_clear.xml";
 
     [McpServerTool(Name = "lvai_graft_diagram", Destructive = true, OpenWorld = true,
                    Title = "Put a generated block diagram into a VI whose front panel must survive")]
@@ -47,7 +48,7 @@ internal sealed class GraftTools(LvaiConnection connection)
         THE SCAFFOLD is an ordinary generated VI whose controls and indicators carry EXACTLY the
         supplied labels and types (the supplied VI's AIXML export gives both) and whose diagram is
         the finished, verified program. Refused before anything is pasted when a label's kind or
-        type differs, when the supplied diagram already holds code, and - unless allowNewControls -
+        type differs, when the supplied diagram already holds code (unless replaceDiagram), and - unless allowNewControls -
         when a scaffold control is not on the supplied panel.
         NEW CONTROLS (allowNewControls true): a scaffold control whose label the panel lacks is
         pasted as a NEW control, wired as in the scaffold, and listed under newControls. LabVIEW
@@ -74,6 +75,12 @@ internal sealed class GraftTools(LvaiConnection connection)
         An unwired scaffold terminal is refused up front (scaffoldTerminalUnwired).
         ONLY FOR THE MAIN GUI: use it for the one top-level VI whose front panel is supplied or
         user-facing. A subVI's panel carries nothing worth this route - regenerate subVIs.
+        A SUPPLIED DIAGRAM THAT ALREADY HOLDS CODE is refused unless replaceDiagram is true: the
+        copy's diagram is then EMPTIED first - every control's terminal moved onto the top-level
+        diagram so none is deleted with a structure, then every node, wire and decoration deleted
+        - and the scaffold grafted into it. The old code is DISCARDED in the output; the supplied
+        VI itself is untouched. Measured 2026-10-02 on NI's Display a URL example: loop, event
+        structure, local variable and comments gone, all three controls kept, execState 1.
         TO GRAFT IN PLACE - the supplied VI must keep its path and name, as an exam requires - copy
         it aside first and pass that COPY as panelViPath and the original path as outputViPath with
         overwrite true. Do not open the supplied VI itself before: LabVIEW would keep serving the
@@ -93,6 +100,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool comparePanel = true,
         [Description("Allow scaffold controls the supplied panel does not have: they are added as new controls, placed by LabVIEW")]
         bool allowNewControls = false,
+        [Description("Empty the supplied diagram first when it already holds code - the old code is DISCARDED in the output, every control is kept")]
+        bool replaceDiagram = false,
         [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - e.g. latched buttons a test must be able to signal. Set in the same run, verified from the saved file")]
         string? switchActionControls = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
@@ -119,12 +128,51 @@ internal sealed class GraftTools(LvaiConnection connection)
             File.Copy(panel, output, overwrite: true);
             var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "graft",
                                     Guid.NewGuid().ToString("N")[..12]);
-            var panelExport = await ExportAsync(output, Path.Combine(work, "panel.xml"), timeoutSeconds, ct);
-            var scaffoldExport = await ExportAsync(scaffold, Path.Combine(work, "scaffold.xml"), timeoutSeconds, ct);
+            var panelExport = await ExportAsync(connection, output, Path.Combine(work, "panel.xml"), timeoutSeconds, ct);
+            var scaffoldExport = await ExportAsync(connection, scaffold, Path.Combine(work, "scaffold.xml"), timeoutSeconds, ct);
             if (panelExport is null || scaffoldExport is null)
                 return Json.Error("exportFailed",
                     $"'{Path.GetFileName(panelExport is null ? output : scaffold)}' could not be exported.");
             var switches = Lines(switchActionControls);
+
+            // ---- 1b. replaceDiagram: empty the COPY's diagram, then plan against what is left.
+            JsonObject? replaced = null;
+            // The typedef baseline is the file the graft starts from: with replaceDiagram that is
+            // the EMPTIED copy, since a typedef constant in the discarded code is gone on purpose.
+            var typedefBaseline = File.ReadAllBytes(panel);
+            if (replaceDiagram && DiagramElements(panelExport) > 0)
+            {
+                if (StatusTools.ScriptsDirectory() is not { } clearScripts)
+                    return Json.Error("noScriptsDirectory", "The scripts folder next to the exe is missing.");
+                var clearHelper = await HelperAsync(connection, Path.Combine(clearScripts, ClearHelperFileName),
+                                                    timeoutSeconds, ct);
+                if (clearHelper.Failure is not null) return clearHelper.Failure;
+                var cleared = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(
+                    clearHelper.Vi!, new JsonObject { ["Target Path"] = output }.ToJsonString(),
+                    timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
+                var clearError = ReadHelperError(cleared);
+                if (clearError.Code is not null && clearError.Code != 0)
+                {
+                    try { File.Copy(panel, output, overwrite: true); } catch (IOException) { }
+                    return HelperFailed("clear", clearError, output);
+                }
+                var clearValues = cleared?["values"] as JsonObject;
+                replaced = new JsonObject
+                {
+                    ["elementsBefore"] = DiagramElements(panelExport),
+                    ["topLevelNodesDeleted"] = new JsonArray(StringArray(clearValues, "Deleted Classes")
+                                                              .Select(c => (JsonNode)c).ToArray()),
+                    ["wiresDeleted"] = (clearValues?["Wires Deleted"] as JsonObject)?["value"]?.GetValue<string>(),
+                    ["decorationsDeleted"] = (clearValues?["Decorations Deleted"] as JsonObject)?["value"]?.GetValue<string>(),
+                    ["controlsKept"] = (clearValues?["Terminals Kept"] as JsonObject)?["value"]?.GetValue<string>(),
+                };
+                panelExport = await ExportAsync(connection, output, Path.Combine(work, "panel-cleared.xml"), timeoutSeconds, ct);
+                if (panelExport is null)
+                    return Json.Error("exportFailed", $"'{Path.GetFileName(output)}' could not be exported after clearing.");
+                replaced["elementsAfter"] = DiagramElements(panelExport);
+                typedefBaseline = File.ReadAllBytes(output);
+            }
+
             var plan = Plan(panelExport, scaffoldExport, allowNewControls);
             var refusal = plan.Refusal ?? SwitchRefusal(panelExport, scaffoldExport, switches);
             if (refusal is not null)
@@ -149,9 +197,9 @@ internal sealed class GraftTools(LvaiConnection connection)
             // ---- 2. the helpers
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("noScriptsDirectory", "The scripts folder next to the exe is missing.");
-            var pasteHelper = await HelperAsync(Path.Combine(scripts, PasteHelperFileName), timeoutSeconds, ct);
+            var pasteHelper = await HelperAsync(connection, Path.Combine(scripts, PasteHelperFileName), timeoutSeconds, ct);
             if (pasteHelper.Failure is not null) return pasteHelper.Failure;
-            var rewireHelper = await HelperAsync(Path.Combine(scripts, RewireHelperFileName), timeoutSeconds, ct);
+            var rewireHelper = await HelperAsync(connection, Path.Combine(scripts, RewireHelperFileName), timeoutSeconds, ct);
             if (rewireHelper.Failure is not null) return rewireHelper.Failure;
             var run = new RunTools(connection);
 
@@ -236,9 +284,9 @@ internal sealed class GraftTools(LvaiConnection connection)
             var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
                 output, timeoutSeconds: timeoutSeconds, ct: ct));
             var execState = (int?)exec?["execState"];
-            var grafted = await ExportAsync(output, Path.Combine(work, "grafted.xml"), timeoutSeconds, ct);
+            var grafted = await ExportAsync(connection, output, Path.Combine(work, "grafted.xml"), timeoutSeconds, ct);
             var check = grafted is null ? null : Verify(panelExport, scaffoldExport, grafted, plan.New);
-            var typedefs = TypedefReferences(File.ReadAllBytes(panel), File.ReadAllBytes(output));
+            var typedefs = TypedefReferences(typedefBaseline, File.ReadAllBytes(output));
 
             bool? panelIdentical = null, diagramChanged = null;
             if (comparePanel)
@@ -276,6 +324,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["panelIdentical"] = panelIdentical,
                 ["diagramChanged"] = diagramChanged,
                 ["events"] = events,
+                ["diagramReplaced"] = replaced,
                 // label -> true when the saved file no longer carries style="latched" for it
                 ["switchActions"] = switchVerdict is null || switches.Count == 0 ? null
                     : new JsonObject(switchVerdict.Select(kv =>
@@ -350,11 +399,13 @@ internal sealed class GraftTools(LvaiConnection connection)
                 "Controls are paired by label, so every label must be unique on both panels.",
                 new { panel = dupPanel, scaffold = dupScaffold }), [], [], []);
 
-        var code = panel.Descendants().Count(e => e.Name.LocalName is "Node" or "Structure" or "Constant");
+        var code = DiagramElements(panel);
         if (code > 0)
             return new(Json.Error("panelDiagramNotEmpty",
                 $"The supplied VI's diagram already holds {code} node(s), structure(s) or constant(s). " +
-                "The graft replaces an EMPTY diagram; merging two programs is not what it does.",
+                "The graft replaces an EMPTY diagram; merging two programs is not what it does. Pass " +
+                "replaceDiagram true to DISCARD that code in the output and graft into the emptied " +
+                "diagram - every control is kept, and the supplied VI itself is never changed.",
                 new { elements = code }), [], [], []);
 
         var byLabel = p.ToDictionary(t => t.Label);
@@ -392,6 +443,10 @@ internal sealed class GraftTools(LvaiConnection connection)
         return new(null, s.Select(t => t.Label).Where(byLabel.ContainsKey).ToArray(),
                    p.Select(t => t.Label).Where(l => !used.Contains(l)).ToArray(), missing);
     }
+
+    /// <summary>How much code a diagram holds, from its export: nodes, structures and constants.</summary>
+    internal static int DiagramElements(XElement vi) =>
+        vi.Descendants().Count(e => e.Name.LocalName is "Node" or "Structure" or "Constant");
 
     internal sealed record Pairing(IReadOnlyList<(string Original, string Duplicate)> Pairs,
                                    IReadOnlyList<string> Unpaired, IReadOnlyList<string> Leftover);
@@ -818,7 +873,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             : Result(false, "Every spec was written but the rebuild failed.");
     }
 
-    private async Task<XElement?> ExportAsync(string vi, string target, int timeoutSeconds, CancellationToken ct)
+    internal static async Task<XElement?> ExportAsync(LvaiConnection connection, string vi, string target, int timeoutSeconds, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
@@ -849,8 +904,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         catch (Exception e) when (e is not OperationCanceledException) { return (null, null); }
     }
 
-    private async Task<(string? Vi, string? Failure)> HelperAsync(string aixml, int timeoutSeconds,
-                                                                  CancellationToken ct)
+    internal static async Task<(string? Vi, string? Failure)> HelperAsync(LvaiConnection connection,
+        string aixml, int timeoutSeconds, CancellationToken ct)
     {
         if (!File.Exists(aixml))
             return (null, Json.Error("helperMissing", $"No helper AIXML at '{aixml}'."));

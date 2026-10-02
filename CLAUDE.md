@@ -1106,9 +1106,31 @@ the scaffold, typedef bindings kept, the first state running correctly, and a fr
 **byte-identical** to the untouched template, for about 0.6 s of LabVIEW. **`lvai_graft_diagram`
 does it in one call since the same day** - accepted over raw stdio at 6.4 s end to end, `ok: true`,
 with a live refusal as control - and `labview-vi-generator` / `labview-vi-editor` use it (their
-Phase 6g) for a supplied VI whose diagram is EMPTY. A diagram that already holds code is refused,
-so a panel over existing code still has no route. It uses the SYSTEM CLIPBOARD: the orchestrator
-grafts, one at a time, never parallel agents. `docs/keep-supplied-front-panel.md`.
+Phase 6g) for a supplied VI whose diagram is EMPTY. A diagram that already holds code is refused
+unless `replaceDiagram` is true - then the output copy's diagram is emptied first (every terminal
+moved to the top level, then every node, wire and decoration deleted), measured 2026-10-02 on NI's
+Display a URL example with every control kept; the old code is DISCARDED in the output, so a
+panel whose existing code must survive still has no route. It uses the SYSTEM CLIPBOARD: the
+orchestrator grafts, one at a time, never parallel agents. `docs/keep-supplied-front-panel.md`.
+
+**A BOUND CONTROL REFERENCE IS AUTHORABLE - `<Node _name="VI Server Reference" element="<label>"
+outputs="<label>:<net>"/>`, measured 2026-10-02 - BUT NOT TO A WEB BROWSER CONTROL, because AIXML
+has no Web Browser control: it writes one as a `string`.** A field report took the silence of
+`lvai_aixml_reference` on references for "not supported"; it now has a section. A `{LV.WebBrowser}`
+node bound through `link=` or a `VI Server Reference` is `Invalid method` at validate and eBad
+after convert. Author against a `ref{LV.WebBrowser}` STAND-IN control (a valid type literal; an
+unlinked `{LV.WebBrowser}` node on it runs), graft into the panel holding the real control, then
+**`lvai_bind_control_references`** makes the bound reference with `{LV.Control}` `Create Control
+Ref`. That method answers **`Error 53` on a Web Browser control whose panel is CLOSED**, and on a
+freshly started LabVIEW also for a moment after `FP.Open` - the tool opens the panel and retries.
+The same holds at run time for `Execute JavaScript`: panel open in the running instance, and poll
+rather than call once. An unwired `reference` on a `{LV.VI}` node is `This VI`; `element="This VI"`
+is refused. `docs/keep-supplied-front-panel.md` §6g.
+
+**`lvai_convert_aixml_to_vi` ANSWERS `executable` NOW** (`checkExecutable`, on by default): it still
+writes what the validator refuses - the route for class methods and loaded subVIs - but a broken
+result comes back `ok: false` with a `warning` instead of a clean `errorCode 0`. Internal callers
+pass `checkExecutable: false` and keep their own gates.
 
 **GRAFT ONLY THE MAIN GUI - the user's rule of 2026-09-30.** The graft call itself costs seconds,
 but the route around it - a scaffold with the panel's own labels, a project, event re-registration,
@@ -2563,7 +2585,8 @@ literally it argued away 600 usable palette VIs.
 | How do I wire a USER EVENT's refnum onto the DYNAMIC EVENT terminal? | `docs/labview-vit-templates.md` §5a, `docs/vi-server-reference.md` | `lvai_wire_dynamic_events` — author the refnum into the structure as an ordinary TUNNEL first, so AIXML keeps the net |
 | How does the handler READ the user event's PAYLOAD? | `scripts/aixml-skeletons/user-event-two-loops.md`, `experiments/pylabview/event-data-fields/` (source tree only) | `lvai_set_event_data_fields` — third call of the route; author a labelled placeholder constant into a PRIM input first, and field index 4 is the first payload item |
 | How do I give a VI an icon? | `docs/vi-server-reference.md` | `lvai_set_vi_icon` |
-| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram` — generate the program as a SCAFFOLD with the panel's own labels and types, then graft; the supplied diagram must be empty. NEW controls: `allowNewControls`, placed by LabVIEW, layout by hand |
+| How do I keep a SUPPLIED front panel (exam template, customer panel) and still generate the code? | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram` — generate the program as a SCAFFOLD with the panel's own labels and types, then graft; a supplied diagram with code is refused unless `replaceDiagram` (the old code is discarded). NEW controls: `allowNewControls`, placed by LabVIEW, layout by hand |
+| How do I get a BOUND reference to a control AIXML cannot create - a Web Browser control? | `docs/keep-supplied-front-panel.md` §6g, `docs/aixml-reference.md` §8 | `lvai_bind_control_references` — author against a `ref{LV.WebBrowser}` stand-in, graft into the panel with the real control, then bind. For a control AIXML CAN create, write `<Node _name="VI Server Reference" element="<label>"/>` directly |
 | How do I put Nigel into DISCUSS mode on a VI or project? | `docs/aixml-reference.md` §14 | `lvai_discuss_file` |
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |

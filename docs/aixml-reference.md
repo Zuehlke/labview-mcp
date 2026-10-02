@@ -1088,6 +1088,59 @@ that node in a scratch VI in the IDE and export it with `ConvertVIToAIXML`. Budg
 that step rather than guessing — a wrong `target` is exactly the kind of thing that
 fails late.
 
+### References to front-panel objects: bound, implicit, `This VI` — and the Web Browser control
+
+All measured 2026-10-02 (`docs/keep-supplied-front-panel.md` §6g). Until then this document said
+nothing about a control reference at all, and a field report read that silence as "not supported".
+
+**A BOUND control reference IS authorable** — the node LabVIEW makes for right-click a control,
+Create, Reference. It is a `Node` named `VI Server Reference` whose `element` is the control's
+label, and its one output terminal is named after that label too:
+
+```xml
+<Control _name="Msg" outputs="value:" type="string" uid="4200" uid_parent="root" value="hello"/>
+<Node _name="VI Server Reference" element="Msg" outputs="Msg:4201.Msg" uid="4201" uid_parent="root"/>
+<Node _name="Property Node" fields="read+Label.Text" type="{LV.String}"
+      inputs="reference:4201.Msg,error in (no error):" outputs="Label.Text:4202.text,reference out:,error out:" .../>
+```
+
+Validated, converted, and read `Msg` back through the reference. A reference created by VI Server
+scripting (`{LV.Control}` `Create Control Ref`) exports in exactly this shape.
+
+**An IMPLICITLY LINKED node** — a Property or Invoke Node bound to its control, with no reference
+wire — is written `link="<label>"` on the node, as NI's exports do. The validator resolves the
+label: its errors name the control.
+
+**`This VI` is an UNWIRED `reference`** on a `{LV.VI}` Property or Invoke Node: `read+VI Name`
+answered the VI's own name, and `FP.Open` opened the VI's own panel. `element="This VI"` is refused
+(`Could not find control with name "This VI" to apply fixup`).
+
+**THE WEB BROWSER CONTROL CANNOT BE AUTHORED, and neither can a reference bound to one.** The
+grammar has no type for it: NI's own export of a Web Browser example writes the control as
+`<Indicator type="string">`, so a document naming one makes a STRING. Both bound spellings then bind
+a `{LV.WebBrowser}` node to a string - `link="Web Browser Control"` and a `VI Server Reference` into
+the node's `reference` alike - and `ValidateAIXML` answers `Invoke Node: Invalid method`;
+`ConvertAIXMLToVI` writes the file anyway, eBad, with the node retyped to `{LV.String}`. NI's
+unmodified export does the same, so it does not round-trip either. `lvai_check_aixml` warns
+`webBrowserReferenceNotAuthorable`, and `lvai_convert_aixml_to_vi` now answers `executable: false`.
+
+What DOES work, measured: **`ref{LV.WebBrowser}` is a valid type literal**, and an UNLINKED
+`{LV.WebBrowser}` Invoke Node fed by a refnum control or wire validates, converts and runs. So:
+
+- a subVI takes the browser as a `ref{LV.WebBrowser}` terminal - the shape of NI's examples;
+- a main VI is authored against a refnum STAND-IN control (`WB Ref`, type `ref{LV.WebBrowser}`),
+  grafted into a supplied panel that holds the real control (`lvai_graft_diagram`
+  `allowNewControls`), and the stand-in is then turned into a bound reference with
+  `lvai_bind_control_references`.
+
+`{LV.WebBrowser}` is not in `lvai_vi_server_reference`'s catalogue. `ExecuteJavaScript`, from NI's
+export: inputs `reference`, `error in (no error)`, `JavaScript`, `arg`, `Wait for Return Value?`,
+`Return Non-primitive Types?`; outputs `reference out`, `error out`, `Return Value`, `Exception`.
+The script is a FUNCTION BODY and needs `return`. At run time it needs the control's panel OPEN in
+the instance that runs the VI, and the first call right after `FP.Open` can still answer `Error 53`
+while the browser initialises - measured twice on cold starts, a second call clean - so poll or
+retry rather than calling once.
+
 ### Terminal names must be looked up, never guessed
 
 They are the literal LabVIEW terminal labels, spaces, punctuation and all — and several

@@ -366,6 +366,76 @@ and pane alike, and a main GUI is not called as a subVI. Two consequences worth 
   never deleted - only their duplicates are. That half is NOT measured: every graft so far had an
   empty supplied pane or did not measure it.
 
+### 6g. A BOUND reference to a control AIXML cannot make - the Web Browser case, 2026-10-02
+
+**The report.** A user on server 1.8.8 could not author a VI with a Web Browser control, and so
+not the usual bound reference to it (right-click the terminal > Create > Reference) that
+`ExecuteJavaScript` is called through. `link="Web Browser Control"` on a `{LV.WebBrowser}` Invoke
+Node validated as `Invalid method`; `lvai_convert_aixml_to_vi` wrote the VI anyway, eBad, with the
+node retyped to `{LV.String}`; NI's own export of a Web Browser example did the same; and
+`lvai_graft_diagram` refused a copy of that example because its diagram held code.
+
+**What was measured, in order:**
+
+| probe | result |
+|---|---|
+| `<Node _name="VI Server Reference" element="Msg"/>` into a `{LV.String}` Property Node | validates, converts, reads `Msg` back - **AIXML CAN author a bound reference** |
+| the same into a `{LV.WebBrowser}` Invoke Node, `Msg` replaced by a `string` indicator named like the browser | `Invalid method` - the control is a string, so the class is wrong |
+| `ref{LV.WebBrowser}` stand-in control into the same node | validates, converts, `execState 1` |
+| `{LV.Control}` `Create Control Ref` on the native Web Browser control, panel CLOSED | **`Error 53`** at `Create:Control Reference` |
+| on a `string` control, panel closed | `ControlReferenceConstant`, clean |
+| on the Web Browser control after `FP.Open` in the IDE instance | `ControlReferenceConstant`; stand-in sinks reconnected; `execState 1`; the export shows `VI Server Reference element="Web Browser Control"` |
+| the same on a FRESHLY STARTED LabVIEW | `Error 53` on the first call, clean a minute later - the browser needs a moment after `FP.Open` |
+
+So the defect is not the reference - it is that **the grammar has no Web Browser control**, and a
+reference bound to a string is the wrong class. The control has to come from a supplied panel, and
+the reference has to be made where the control already exists.
+
+**`lvai_bind_control_references`** does that: for each stand-in (`{"WB Ref":"Web Browser
+Control"}`) it opens the panel in the IDE instance, runs `Create Control Ref` - retried every 250 ms
+while it answers `53` - moves the new node onto the stand-in terminal's diagram and position,
+deletes the stand-in, reconnects every sink, runs `BD.Remove Bad Wires`, saves, and puts the panel
+back in the state it found it, also after a failed step. `ok` is decided from an export: no stand-in
+left, a `VI Server Reference` to the control feeding exactly the sinks the stand-in fed, `execState
+1`. Helper: `scripts/lvbd_bind_control_refs.xml`.
+
+**Accepted 2026-10-02** with the built exe over raw stdio on a cold LabVIEW: a copy of NI's
+`Display a URL.vi` grafted with `replaceDiagram` (§6h) and a scaffold that writes `URL String` into
+the browser and runs `return 1+1;` through a `WB Ref` stand-in; the bind answered `ok: true` on its
+first call (2.9 s), a second call was refused by name because no stand-in was left, and the program
+returned `2` with the browser showing the NI page - on its SECOND run. The first run of a fresh
+instance answered `Error 53` from `Execute JavaScript` right after its own `FP.Open`: a program that
+opens its panel must wait or poll before its first script, as `Wait For Page Load.vi` (§6e) does.
+
+**Two side fixes from the same report.** `lvai_convert_aixml_to_vi` reads the written VI's execution
+state now (`checkExecutable`, on by default) and answers `ok: false`, `executable: false` and a
+`warning` for a broken result instead of a clean `errorCode 0` - accepted on the field report's
+probe. It still WRITES what validation refuses, on purpose, because that tolerance is the route for
+class methods and loaded subVIs. And `lvai_check_aixml` / `scripts/aixml_lint.py` warn
+`webBrowserReferenceNotAuthorable` / `web-browser-reference-not-authorable` for both bound spellings.
+
+### 6h. A supplied diagram that already holds code: `replaceDiagram`
+
+The graft refused such a panel (`panelDiagramNotEmpty`), and §"Still open" said deleting the old
+diagram first "would take the panel terminals with it". **That is true only of a careless delete.**
+`scripts/lvbd_graft_clear.xml`, run on the output COPY when `replaceDiagram` is true:
+
+1. moves every control's terminal onto the TOP-LEVEL diagram - a terminal left inside a structure
+   is deleted with it, and deleting a terminal deletes its control;
+2. deletes every node of the top-level diagram's `Nodes[]` - a structure takes its contents with it.
+   **Terminals are not in `Nodes[]`**: NI's Display a URL listed only its While Loop while two
+   terminals sat beside it;
+3. only then reads and deletes the remaining `Wires[]` and `Decorations[]` (free labels are
+   `Text`, boxes `Decoration`), so no reference points at something a structure already took;
+4. `BD.Remove Bad Wires`, save.
+
+Measured on that example: loop, Event Structure, Local Variable, two comments and a terminal-to-
+terminal wire gone; `URL String`, `Stop` (moved out of its event frame) and the Web Browser control
+kept; `execState 1`. The graft then plans against the emptied copy, and the typedef comparison
+uses the emptied copy as its baseline - a typedef constant in the discarded code is gone on purpose.
+**The old code is discarded in the OUTPUT; the supplied VI itself is never changed.** The answer
+reports `diagramReplaced` with the counts.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or
@@ -373,5 +443,8 @@ and pane alike, and a main GUI is not called as a subVI. Two consequences worth 
 - A driven wash cycle through the typedef cluster `Wash Options` (latched buttons are solved by
   `switchActionControls`).
 - Coercion dots inside Case frames: `lvai_coercion_dots` does not descend into structures.
-- A supplied panel over EXISTING code has no route: the graft refuses it, and deleting the old
-  diagram first would take the panel terminals with it.
+- ADDING a bound reference to a VI whose existing code must be KEPT: `replaceDiagram` discards it,
+  and `lvai_bind_control_references` needs a stand-in the diagram is wired against. A hand-kept VI
+  still reaches the browser through a subVI that takes a `ref{LV.WebBrowser}` terminal.
+- CREATING a Web Browser control on a panel that has none (`{LV.GObject}` `Move` with `duplicate`
+  from a donor VI, or `Replace` - unmeasured).

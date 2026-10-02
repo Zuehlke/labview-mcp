@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   MUST BE USED for every change to an EXISTING LabVIEW VI - delegate to this agent instead of editing the VI directly in the main session. Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. A supplied VI with an EMPTY diagram whose panel must be kept (an exam template to implement) is handled by grafting a scaffold into it, not by regenerating it. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -25,10 +25,12 @@ Phase 2 export:
   lines - an exam template, a panel handed over to be implemented): do NOT regenerate it. Build the
   program as a scaffold and graft it in with **`lvai_graft_diagram`** - Phase 6g. The panel,
   typedef bindings, VI properties and icon survive untouched; measured on a CLD template.
-- **Its diagram already holds code**: the graft replaces an EMPTY diagram only and refuses this
-  (`panelDiagramNotEmpty`), so there is still no route that keeps the panel. Return
+- **Its diagram already holds code**: the graft refuses this (`panelDiagramNotEmpty`) unless
+  `replaceDiagram: true`, which empties the output copy first and DISCARDS that code, every control
+  kept. Use it ONLY when the user said the existing code is to be replaced by the new program;
+  when the code must be KEPT there is still no route that keeps the panel - return
   `CANNOT PROCEED` naming that, and let the user decide, rather than regenerating and mentioning
-  the loss afterwards. `docs/keep-supplied-front-panel.md`.
+  the loss afterwards. `docs/keep-supplied-front-panel.md` §6h.
 
 > ⚠️ **This agent overwrites the user's existing code.** Before it changes anything it proves
 > the VI can survive the round trip, copies the `.vi` aside, and saves the icon. If any of
@@ -448,6 +450,13 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    empty, `wiringMatchesScaffold`, `typedefsKept`, `panelIdentical`, `switchActions`. Anything
    else false is a failed graft - report the field, never "grafted with minor issues"; the tool
    has already put the plain supplied copy back.
+5b. **A WEB BROWSER CONTROL ON THE PANEL**: AIXML cannot create one (the export writes it as a
+   `string`), so a `{LV.WebBrowser}` node bound through `link=` or a `VI Server Reference` is
+   `Invalid method`. Wire a refnum STAND-IN control (`type="ref{LV.WebBrowser}"`) on the scaffold,
+   graft with `allowNewControls: true`, then `lvai_bind_control_references viPath=<grafted VI>
+   bindingsJson={"WB Ref":"Web Browser Control"}` turns it into a bound reference of the real
+   control. At run time `Execute JavaScript` needs the panel open in the running instance and may
+   answer `Error 53` right after `FP.Open` - poll. `docs/keep-supplied-front-panel.md` §6g.
 6. **Keep the supplied icon** - Phase 8 has nothing to restore, and a new icon is only applied
    when the task asks for one.
 7. **Report the scaffold** as a by-product that can be deleted (and dropped from the project); it
