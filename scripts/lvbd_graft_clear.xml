@@ -1,4 +1,4 @@
-<VI _name="lvbd_graft_clear.vi" description="Helper of lvai_graft_diagram replaceDiagram. Empties a VI's block diagram and keeps every front-panel control. It first moves each control's terminal onto the TOP-LEVEL diagram - a terminal inside a structure would otherwise be deleted with it, and deleting a terminal deletes its control - then deletes every top-level node (a structure takes its contents with it), and only then reads and deletes the wires and decorations that are left, so no reference is to an object a structure already took with it, removes the loose wire ends and saves the VI in place.\0A\0ATERMINALS ARE NOT IN Nodes[]: measured 2026-10-02 on NI's Display a URL example, the top-level diagram listed only its While Loop while two control terminals sat beside it. Free labels and decorations are in Decorations[], wires in Wires[].\0A\0AOpened in the IDE application instance through Application\3AProject\3AActive Project.">
+<VI _name="lvbd_graft_clear.vi" description="Helper of lvai_graft_diagram replaceDiagram. Empties a VI's block diagram and keeps every front-panel control. It first moves each control's terminal onto the TOP-LEVEL diagram - a terminal inside a structure would otherwise be deleted with it, and deleting a terminal deletes its control - then deletes every top-level object except the control terminals (a structure takes its contents with it), and only then reads and deletes the wires and decorations that are left, so no reference is to an object a structure already took with it, removes the loose wire ends and saves the VI in place.\0A\0AIT ITERATES All Objects[], NOT Nodes[]: measured 2026-10-03 on a diagram holding two top-level Flat Sequence frames, two string constants and a free label, Nodes[] answered an EMPTY array while All Objects[] listed FlatSequence x2, StringConstant x2, ControlTerminal x2 and Text - and nothing nested inside a structure. Nodes[] had looked complete on NI's Display a URL, whose top level is one While Loop. Control and indicator terminals both report the class ControlTerminal and are skipped; wires are not in All Objects[] and are read from Wires[] afterwards.\0A\0AOpened in the IDE application instance through Application\3AProject\3AActive Project.">
   <FreeLabel comment="Empties the diagram, keeps every control" uid="4200" uid_parent="root"/>
   <Control _name="Target Path" conIdx="1" connection="recommended" description="The VI to empty. Saved in place." outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
   <Node _name="String To Path" inputs="string:4210.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
@@ -20,16 +20,38 @@
     <Node _name="Property Node" fields="read+Position" type="{LV.Terminal}" inputs="reference:4237.t,error in (no error):4237.error out" outputs="Position:4239.pos,reference out:,error out:4239.error out" uid="4239" uid_parent="4230"/>
     <Node _name="Invoke Node" target="Move" type="{LV.Terminal}" inputs="reference:4237.t,error in (no error):4239.error out,position:4239.pos,owner:4232.bd,duplicate:4233.dup" outputs="reference out:,error out:4238.error out" uid="4238" uid_parent="4230"/>
   </Structure>
-  <Node _name="Property Node" fields="read+Nodes[]" type="{LV.TopLevelDiagram}" inputs="reference:4223.bd,error in (no error):4236.value" outputs="Nodes[]:4240.nodes,reference out:,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.TopLevelDiagram}" inputs="reference:4223.bd,error in (no error):4236.value" outputs="All Objects[]:4240.objs,reference out:,error out:4240.error out" uid="4240" uid_parent="root"/>
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="4250" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4240.nodes" mode="index" outputs="value:4251.n" uid="4251" uid_parent="4250"/>
+    <Tunnel _id="In1" inputs="value:4240.objs" mode="index" outputs="value:4251.n" uid="4251" uid_parent="4250"/>
     <ShiftReg uid="4252" uid_parent="4250">
       <Left inputs="value:4240.error out" outputs="value:4253.err" uid="4253" uid_parent="4252"/>
-      <Right inputs="value:4256.value" outputs="value:4254.value" uid="4254" uid_parent="4252"/>
+      <Right inputs="value:4418.value" outputs="value:4254.value" uid="4254" uid_parent="4252"/>
     </ShiftReg>
     <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:4251.n,error in (no error):4253.err" outputs="Class Name:4255.c,reference out:,error out:4255.error out" uid="4255" uid_parent="4250"/>
-    <Tunnel _id="Out1" inputs="value:4255.c" mode="index" outputs="value:4257.value" uid="4257" uid_parent="4250"/>
-    <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4251.n,error in (no error):4255.error out" outputs="reference out:,error out:4256.value" uid="4256" uid_parent="4250"/>
+    <Structure _name="Case Structure" selectin="4255.c" uid="4400" uid_parent="4250">
+      <Tunnel _id="In1" inputs="value:4251.n" uid="4401" uid_parent="4400"/>
+      <Tunnel _id="In2" inputs="value:4255.error out" uid="4402" uid_parent="4400"/>
+      <Tunnel _id="In3" inputs="value:4255.c" uid="4403" uid_parent="4400"/>
+      <CaseFrame selector="&quot;ControlTerminal&quot;" selectout="" uid="4404" uid_parent="4400">
+        <Tunnel _id="In1" outputs="value:" uid="4405" uid_parent="4404"/>
+        <Tunnel _id="In2" outputs="value:4406.value" uid="4406" uid_parent="4404"/>
+        <Tunnel _id="In3" outputs="value:" uid="4407" uid_parent="4404"/>
+        <Constant _name="kept" outputs="value:4408.value" type="string" uid="4408" uid_parent="4404" value=""/>
+        <Tunnel _id="Out1" inputs="value:4406.value" uid="4409" uid_parent="4404"/>
+        <Tunnel _id="Out2" inputs="value:4408.value" uid="4410" uid_parent="4404"/>
+      </CaseFrame>
+      <CaseFrame selector="Default" selectout="" uid="4411" uid_parent="4400">
+        <Tunnel _id="In1" outputs="value:4412.value" uid="4412" uid_parent="4411"/>
+        <Tunnel _id="In2" outputs="value:4413.value" uid="4413" uid_parent="4411"/>
+        <Tunnel _id="In3" outputs="value:4414.value" uid="4414" uid_parent="4411"/>
+        <Node _name="Invoke Node" target="Delete" type="{LV.GObject}" inputs="reference:4412.value,error in (no error):4413.value" outputs="reference out:,error out:4415.error out" uid="4415" uid_parent="4411"/>
+        <Tunnel _id="Out1" inputs="value:4415.error out" uid="4416" uid_parent="4411"/>
+        <Tunnel _id="Out2" inputs="value:4414.value" uid="4417" uid_parent="4411"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4418.value" uid="4418" uid_parent="4400"/>
+      <Tunnel _id="Out2" outputs="value:4419.value" uid="4419" uid_parent="4400"/>
+    </Structure>
+    <Tunnel _id="Out1" inputs="value:4419.value" mode="index" outputs="value:4257.value" uid="4257" uid_parent="4250"/>
   </Structure>
   <Node _name="Property Node" fields="read+Wires[],read+Decorations[]" type="{LV.TopLevelDiagram}" inputs="reference:4223.bd,error in (no error):4254.value" outputs="Wires[]:4245.wires,Decorations[]:4245.decos,reference out:,error out:4245.error out" uid="4245" uid_parent="root"/>
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="4290" uid_parent="root">

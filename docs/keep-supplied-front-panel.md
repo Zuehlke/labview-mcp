@@ -521,12 +521,24 @@ diagram first "would take the panel terminals with it". **That is true only of a
 
 1. moves every control's terminal onto the TOP-LEVEL diagram - a terminal left inside a structure
    is deleted with it, and deleting a terminal deletes its control;
-2. deletes every node of the top-level diagram's `Nodes[]` - a structure takes its contents with it.
-   **Terminals are not in `Nodes[]`**: NI's Display a URL listed only its While Loop while two
-   terminals sat beside it;
+2. deletes every object of the top-level diagram's `All Objects[]` except those of class
+   `ControlTerminal` (controls and indicators alike) - a structure takes its contents with it, and
+   nothing nested is in that list;
 3. only then reads and deletes the remaining `Wires[]` and `Decorations[]` (free labels are
    `Text`, boxes `Decoration`), so no reference points at something a structure already took;
 4. `BD.Remove Bad Wires`, save.
+
+**Step 2 read `Nodes[]` until 2026-10-03, and `Nodes[]` IS NOT THE TOP-LEVEL CODE.** On NI's
+Display a URL it listed the one While Loop, which is why it looked complete. A field report then
+had a top-level Flat Sequence and two String Constants survive, and the graft refused with
+`panelDiagramNotEmpty` even with `replaceDiagram: true` - advising the caller to pass the
+`replaceDiagram` they had just passed. Reproduced on a fixture of two Flat Sequence frames, two
+string constants and a free label: `Nodes[]` answered an EMPTY array, `All Objects[]` answered
+`FlatSequence` x2, `StringConstant` x2, `ControlTerminal` x2 and `Text`, and nothing from inside
+the frames. With the helper on `All Objects[]` both that fixture and Display a URL export with
+their controls and no code. A clear that still leaves something now answers `diagramNotEmptied`,
+naming each element left and carrying the `diagramReplaced` counts, instead of the advice to do
+what was just done. `{LV.TopLevelDiagram}` lists neither property in `lvai_vi_server_reference`.
 
 Measured on that example: loop, Event Structure, Local Variable, two comments and a terminal-to-
 terminal wire gone; `URL String`, `Stop` (moved out of its event frame) and the Web Browser control

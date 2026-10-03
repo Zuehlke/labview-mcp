@@ -1,0 +1,4 @@
+<VI _name="Repro ClearProbe2.vi" description="Repro fixture for the graft replaceDiagram report\3A a top-level Flat Sequence and two top-level string constants.">
+  <Control _name="URL String" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Indicator _name="Result" inputs="value:" type="string" uid="4211" uid_parent="root" value=""/>
+</VI>
