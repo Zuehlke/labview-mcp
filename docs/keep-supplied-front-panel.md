@@ -538,7 +538,8 @@ string constants and a free label: `Nodes[]` answered an EMPTY array, `All Objec
 the frames. With the helper on `All Objects[]` both that fixture and Display a URL export with
 their controls and no code. A clear that still leaves something now answers `diagramNotEmptied`,
 naming each element left and carrying the `diagramReplaced` counts, instead of the advice to do
-what was just done. `{LV.TopLevelDiagram}` lists neither property in `lvai_vi_server_reference`.
+what was just done. `lvai_vi_server_reference` lists `All Objects[]` for `{LV.TopLevelDiagram}`
+and does not list `Nodes[]` at all, though LabVIEW accepts and answers it.
 
 Measured on that example: loop, Event Structure, Local Variable, two comments and a terminal-to-
 terminal wire gone; `URL String`, `Stop` (moved out of its event frame) and the Web Browser control
