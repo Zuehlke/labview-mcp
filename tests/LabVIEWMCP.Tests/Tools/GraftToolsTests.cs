@@ -597,11 +597,67 @@ public sealed class GraftToolsTests
         // a terminal left inside a structure is deleted with it, and its control with the terminal
         Assert.True(clear.IndexOf("target=\"Move\"", StringComparison.Ordinal)
                     < clear.IndexOf("target=\"Delete\"", StringComparison.Ordinal));
-        // wires and decorations are read only after the nodes are gone
-        Assert.True(clear.IndexOf("read+Nodes[]", StringComparison.Ordinal)
+        // wires and decorations are read only after the top-level objects are gone
+        Assert.True(clear.IndexOf("read+All Objects[]", StringComparison.Ordinal)
                     < clear.IndexOf("read+Wires[]", StringComparison.Ordinal));
         Assert.Contains("target=\"BD.Remove Bad Wires\"", clear);
         Assert.Contains("target=\"Save.Instrument\"", clear);
+    }
+
+    /// <summary>
+    /// Nodes[] answered an EMPTY array for a top-level Flat Sequence and two string constants,
+    /// measured 2026-10-03, so a clear driven by it deleted nothing and the graft refused with
+    /// replaceDiagram true. All Objects[] lists them; control terminals are in it too and must
+    /// survive, because deleting a terminal deletes its control.
+    /// </summary>
+    [Fact]
+    public void The_clear_helper_deletes_all_objects_but_control_terminals()
+    {
+        var clear = File.ReadAllText(Path.Combine(RepoTree.Root, "scripts", GraftTools.ClearHelperFileName));
+
+        Assert.DoesNotContain("read+Nodes[]", clear);
+        Assert.Contains("fields=\"read+All Objects[]\" type=\"{LV.TopLevelDiagram}\"", clear);
+        Assert.Contains("selector=\"&quot;ControlTerminal&quot;\"", clear);
+        // the Delete sits in the Default frame, never in the terminal frame
+        var terminalFrame = clear.IndexOf("selector=\"&quot;ControlTerminal&quot;\"", StringComparison.Ordinal);
+        var defaultFrame = clear.IndexOf("selector=\"Default\"", terminalFrame, StringComparison.Ordinal);
+        var delete = clear.IndexOf("target=\"Delete\"", terminalFrame, StringComparison.Ordinal);
+        Assert.True(defaultFrame > terminalFrame && delete > defaultFrame);
+    }
+
+    [Fact]
+    public void LeftAfterClear_names_the_top_level_code_and_nothing_nested()
+    {
+        var left = GraftTools.LeftAfterClear(Fixture("flat sequence panel with code.xml"));
+
+        Assert.Equal(new[] { "Constant lonely A", "Constant lonely B", "Structure Flat Sequence Frame",
+                             "Structure Flat Sequence Frame" }, left.Order());
+        Assert.Empty(GraftTools.LeftAfterClear(Fixture("flat sequence panel cleared.xml")));
+    }
+
+    [Fact]
+    public void The_flat_sequence_panel_clears_to_its_controls()
+    {
+        var before = GraftTools.Terminals(Fixture("flat sequence panel with code.xml"))
+                               .Select(t => $"{t.Kind} {t.Label} {t.Type}").Order();
+        var cleared = Fixture("flat sequence panel cleared.xml");
+
+        Assert.Equal(6, GraftTools.DiagramElements(Fixture("flat sequence panel with code.xml")));
+        Assert.Equal(0, GraftTools.DiagramElements(cleared));
+        Assert.Equal(before, GraftTools.Terminals(cleared).Select(t => $"{t.Kind} {t.Label} {t.Type}").Order());
+    }
+
+    [Fact]
+    public void A_diagram_of_only_subVI_calls_is_not_empty()
+    {
+        var vi = XElement.Parse("""
+            <VI _name="x.vi" description="">
+              <Call inputs="error in (no error):" outputs="error out:" target="Clear Errors.vi" uid="4200" uid_parent="root"/>
+            </VI>
+            """);
+
+        Assert.Equal(1, GraftTools.DiagramElements(vi));
+        Assert.Equal(new[] { "Call Clear Errors.vi" }, GraftTools.LeftAfterClear(vi));
     }
 
     private static string? Kind(string? refusal) =>

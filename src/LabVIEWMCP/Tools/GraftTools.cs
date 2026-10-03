@@ -162,7 +162,9 @@ internal sealed class GraftTools(LvaiConnection connection)
                 replaced = new JsonObject
                 {
                     ["elementsBefore"] = DiagramElements(panelExport),
+                    // the helper writes "" for each control terminal it skipped
                     ["topLevelNodesDeleted"] = new JsonArray(StringArray(clearValues, "Deleted Classes")
+                                                              .Where(c => c.Length > 0)
                                                               .Select(c => (JsonNode)c).ToArray()),
                     ["wiresDeleted"] = (clearValues?["Wires Deleted"] as JsonObject)?["value"]?.GetValue<string>(),
                     ["decorationsDeleted"] = (clearValues?["Decorations Deleted"] as JsonObject)?["value"]?.GetValue<string>(),
@@ -172,6 +174,18 @@ internal sealed class GraftTools(LvaiConnection connection)
                 if (panelExport is null)
                     return Json.Error("exportFailed", $"'{Path.GetFileName(output)}' could not be exported after clearing.");
                 replaced["elementsAfter"] = DiagramElements(panelExport);
+                // A clear that leaves code behind used to fall through to Plan, whose refusal told
+                // the caller to pass the replaceDiagram they had just passed and dropped these counts.
+                if (LeftAfterClear(panelExport) is { Length: > 0 } left)
+                {
+                    if (!outputExisted) File.Delete(output);
+                    else try { File.Copy(panel, output, overwrite: true); } catch (IOException) { }
+                    return Json.Error("diagramNotEmptied",
+                        $"replaceDiagram ran, but {left.Length} element(s) are still on the diagram, so " +
+                        "nothing was grafted. The clear helper deletes what the top-level diagram's " +
+                        "All Objects[] lists; these were not in it. The supplied VI is untouched.",
+                        new { left, diagramReplaced = replaced });
+                }
                 typedefBaseline = File.ReadAllBytes(output);
             }
 
@@ -450,9 +464,23 @@ internal sealed class GraftTools(LvaiConnection connection)
                    p.Select(t => t.Label).Where(l => !used.Contains(l)).ToArray(), missing);
     }
 
-    /// <summary>How much code a diagram holds, from its export: nodes, structures and constants.</summary>
+    /// <summary>
+    /// How much code a diagram holds, from its export: nodes, subVI calls, structures and
+    /// constants. A subVI is a `Call` element, not a `Node` - a diagram of nothing but subVI
+    /// calls used to count as empty.
+    /// </summary>
     internal static int DiagramElements(XElement vi) =>
-        vi.Descendants().Count(e => e.Name.LocalName is "Node" or "Structure" or "Constant");
+        vi.Descendants().Count(e => e.Name.LocalName is "Node" or "Structure" or "Constant" or "Call");
+
+    /// <summary>
+    /// What a clear left on the TOP-LEVEL diagram, by export element and name - a structure's
+    /// contents go with it, so only root-level elements are named.
+    /// </summary>
+    internal static string[] LeftAfterClear(XElement vi) =>
+        vi.Elements()
+          .Where(e => e.Name.LocalName is "Node" or "Structure" or "Constant" or "Call")
+          .Select(e => $"{e.Name.LocalName} {(string?)e.Attribute("_name") ?? (string?)e.Attribute("target")}".TrimEnd())
+          .ToArray();
 
     internal sealed record Pairing(IReadOnlyList<(string Original, string Duplicate)> Pairs,
                                    IReadOnlyList<string> Unpaired, IReadOnlyList<string> Leftover);

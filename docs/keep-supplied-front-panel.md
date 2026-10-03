@@ -255,7 +255,24 @@ the pasted duplicates - so a producer loop came back with every frame's selector
 eBad (measured 2026-09-30). The graft now writes the scaffold's front-panel specs again after the
 swap, by control LABEL, onto the supplied controls, and answers `events`; `pylv-set-event-spec.py`
 learned to open the emptied `<EventNodeEvents elements="0" />`. It CLOSES the project for that
-pylabview edit and leaves it closed. User-event frames are not touched. `docs/cold-build-carwash-pc.md`.
+pylabview edit and opens it again afterwards (`projectReopened`, since 2026-10-02). User-event
+frames are not touched. `docs/cold-build-carwash-pc.md`.
+
+**TWO EVENT KINDS DO NOT SURVIVE A REBUILD: `Timeout` and anything but `Value Change`.** Both
+were found by a field user rebuilding a VI with a Web Browser control, and both cost a redesign
+there; written down so the next build plans for them instead of discovering them.
+
+- **A Timeout frame has no terminal in AIXML**, so a frame that reads its own timeout or polls on
+  it cannot be authored. The measured replacement is a second loop paced by `Wait on
+  Notification` with a timeout and stopped by the notifier -
+  `scripts/aixml-skeletons/web-browser-title-poll.xml`.
+- **The event chain registers `Value Change` and nothing else.** Measured 2026-10-03: a frame
+  ` "Web Browser Control"\3A Load Finished ` sent to `lvai_generate_vi_with_events` is refused
+  by name, `errorKind: unknownTrigger`, and no VI is written; the graft's re-registration runs
+  the same chain. So a Web Browser's `Load Finished`, a `Mouse Down` or any other trigger has no
+  route today - poll the state it would have announced instead (for a page, its title through
+  `{LV.WebBrowser}`, as the skeleton above does). Adding a trigger means measuring its EventSpec
+  from a VI that uses it and extending `EventFrames.Registerable`; that is not a guess to make.
 
 ### 6d. Hardening after the second build (2026-09-30)
 
@@ -521,12 +538,25 @@ diagram first "would take the panel terminals with it". **That is true only of a
 
 1. moves every control's terminal onto the TOP-LEVEL diagram - a terminal left inside a structure
    is deleted with it, and deleting a terminal deletes its control;
-2. deletes every node of the top-level diagram's `Nodes[]` - a structure takes its contents with it.
-   **Terminals are not in `Nodes[]`**: NI's Display a URL listed only its While Loop while two
-   terminals sat beside it;
+2. deletes every object of the top-level diagram's `All Objects[]` except those of class
+   `ControlTerminal` (controls and indicators alike) - a structure takes its contents with it, and
+   nothing nested is in that list;
 3. only then reads and deletes the remaining `Wires[]` and `Decorations[]` (free labels are
    `Text`, boxes `Decoration`), so no reference points at something a structure already took;
 4. `BD.Remove Bad Wires`, save.
+
+**Step 2 read `Nodes[]` until 2026-10-03, and `Nodes[]` IS NOT THE TOP-LEVEL CODE.** On NI's
+Display a URL it listed the one While Loop, which is why it looked complete. A field report then
+had a top-level Flat Sequence and two String Constants survive, and the graft refused with
+`panelDiagramNotEmpty` even with `replaceDiagram: true` - advising the caller to pass the
+`replaceDiagram` they had just passed. Reproduced on a fixture of two Flat Sequence frames, two
+string constants and a free label: `Nodes[]` answered an EMPTY array, `All Objects[]` answered
+`FlatSequence` x2, `StringConstant` x2, `ControlTerminal` x2 and `Text`, and nothing from inside
+the frames. With the helper on `All Objects[]` both that fixture and Display a URL export with
+their controls and no code. A clear that still leaves something now answers `diagramNotEmptied`,
+naming each element left and carrying the `diagramReplaced` counts, instead of the advice to do
+what was just done. `lvai_vi_server_reference` lists `All Objects[]` for `{LV.TopLevelDiagram}`
+and does not list `Nodes[]` at all, though LabVIEW accepts and answers it.
 
 Measured on that example: loop, Event Structure, Local Variable, two comments and a terminal-to-
 terminal wire gone; `URL String`, `Stop` (moved out of its event frame) and the Web Browser control

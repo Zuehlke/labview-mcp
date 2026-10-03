@@ -365,7 +365,7 @@ docs/
                                 over 318 files
   vi-server-reference.md        how to reach VI Server from a generated VI
   vi-server-methods.tsv         3078 Invoke Node targets with their terminals, 153 classes
-  vi-server-properties.tsv      6410 Property Node fields
+  vi-server-properties.tsv      6412 Property Node fields
 
 scripts/                        copied next to the exe at build time; path in lvai_status
   generate_labview_doc.py       documentation JSON -> .docx + structure and UML diagrams

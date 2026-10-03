@@ -1785,6 +1785,7 @@ class	property	access
 {LV.Diagram}	Locked	read
 {LV.Diagram}	Master Bounds Rect	read
 {LV.Diagram}	Modified	read
+{LV.Diagram}	Nodes[]	read
 {LV.Diagram}	Owner (Deprecated)	read
 {LV.Diagram}	Owning VI	read
 {LV.Diagram}	Position	read
@@ -5626,6 +5627,7 @@ class	property	access
 {LV.TopLevelDiagram}	Master Bounds Rect	read
 {LV.TopLevelDiagram}	Menubar Visible	read
 {LV.TopLevelDiagram}	Modified	read
+{LV.TopLevelDiagram}	Nodes[]	read
 {LV.TopLevelDiagram}	Owner (Deprecated)	read
 {LV.TopLevelDiagram}	Owning VI	read
 {LV.TopLevelDiagram}	Position	read

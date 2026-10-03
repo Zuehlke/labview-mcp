@@ -1,0 +1,13 @@
+<VI _name="Repro Supplied.vi" description="Repro fixture for the graft replaceDiagram report\3A a top-level Flat Sequence and two top-level string constants.">
+  <FreeLabel comment="Fixture with old code to discard" uid="4200" uid_parent="root"/>
+  <Control _name="URL String" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Constant _name="lonely A" outputs="value:" type="string" uid="4231" uid_parent="root" value="unwired constant"/>
+  <Constant _name="lonely B" outputs="value:4232.value" type="string" uid="4232" uid_parent="root" value="wired constant"/>
+  <Structure _name="Flat Sequence Frame" uid="4240" uid_parent="root">
+    <Constant _name="in frame 1" outputs="value:" type="string" uid="4241" uid_parent="4240" value="frame one"/>
+  </Structure>
+  <Structure _name="Flat Sequence Frame" uid="4250" uid_parent="root">
+    <Constant _name="in frame 2" outputs="value:" type="string" uid="4251" uid_parent="4250" value="frame two"/>
+  </Structure>
+  <Indicator _name="Result" inputs="value:4232.value" type="string" uid="4211" uid_parent="root" value=""/>
+</VI>

@@ -60,6 +60,34 @@ public sealed class AgentToolRosterTests
     }
 
     /// <summary>
+    /// The event tools are ONE toolchain: generating registers the front-panel frames, the wire
+    /// tool restores the dynamic event terminal, the data-field tool restores a user event's
+    /// payload. Measured in field use 2026-10-02: labview-vi-editor held the last two and not the
+    /// first, so an edited VI came back with two empty event selectors and its user event frame
+    /// turned into a Timeout. An agent granted any one of them gets all three.
+    /// </summary>
+    [Theory]
+    [InlineData("labview-caraya-unit-test")]
+    [InlineData("labview-class-generator")]
+    [InlineData("labview-doc-generator")]
+    [InlineData("labview-dqmh-module")]
+    [InlineData("labview-lunit-unit-test")]
+    [InlineData("labview-vi-editor")]
+    [InlineData("labview-vi-generator")]
+    [InlineData("labview-vitester-unit-test")]
+    public void TheEventToolchainIsGrantedWhole(string agent)
+    {
+        string[] chain = ["lvai_generate_vi_with_events", "lvai_wire_dynamic_events", "lvai_set_event_data_fields"];
+        var granted = Granted(agent);
+        var held = chain.Where(granted.Contains).ToList();
+
+        Assert.True(held.Count == 0 || held.Count == chain.Length,
+            $"'{agent}' grants {string.Join(", ", held)} but not " +
+            $"{string.Join(", ", chain.Except(held))}. The three only work together - add the " +
+            $"missing ones to line 5 of .claude/agents/{agent}.md and re-run scripts/Sync-PluginAgents.ps1.");
+    }
+
+    /// <summary>
     /// And the converse, which catches a rename or a typo: every tool an agent claims must exist.
     /// A frontmatter naming a tool the server does not serve grants nothing and says nothing.
     /// </summary>
