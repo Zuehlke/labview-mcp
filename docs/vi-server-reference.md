@@ -1170,6 +1170,19 @@ work - via the export, not in place" above.** What fails is creating a binding w
 what works is exporting the cluster to an ordinary `.ctl`, calling `Replace` there, and importing it
 back. `Move` stays useful for exactly that - carrying the cluster out and back in.
 
+## `Nodes[]` is NOT the top-level code - walk `All Objects[]` and skip the terminals
+
+Measured 2026-10-03 on a diagram holding two top-level Flat Sequence frames, two string constants,
+a free label and two control terminals: `{LV.TopLevelDiagram}` `Nodes[]` answered an **empty
+array**, while `All Objects[]` answered `FlatSequence` x2, `StringConstant` x2, `ControlTerminal`
+x2 and `Text` - and nothing nested inside a frame. On NI's Display a URL, `Nodes[]` did list the
+one While Loop, which is how a helper built on it looked complete. So to touch every top-level
+object, iterate `All Objects[]` and branch on `Class Name`: a control and an indicator terminal
+both report `ControlTerminal`, wires are not in the list (read `Wires[]`), and deleting a
+structure takes its contents with it. `Nodes[]` is valid on `{LV.Diagram}` and
+`{LV.TopLevelDiagram}` alike (an invented name beside it is refused, `Invalid property`); what it
+selects is not established. `scripts/lvbd_graft_clear.xml` is the worked example.
+
 ## A reference out of `All Objects[]` is GENERIC - downcast before reading anything class-specific
 
 Measured 2026-09-10 with one-property probes that differ in nothing else, which is

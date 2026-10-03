@@ -300,7 +300,7 @@ internal sealed class KnowledgeTools
                    Title = "VI Server methods and properties catalogue")]
     [Description("""
         Look up the exact Invoke Node / Property Node vocabulary for generating a VI that calls
-        VI Server: 3078 methods and 6410 properties over 153 classes, with their terminal names.
+        VI Server: 3078 methods and 6412 properties over 153 classes, with their terminal names.
         Use this whenever you author AIXML containing an Invoke Node or Property Node.
         A method's `target` string CANNOT be derived any other way - method names are binary IDs
         inside a .vi, LabVIEW.exe does not carry them as text, and SearchInfoCache covers palette

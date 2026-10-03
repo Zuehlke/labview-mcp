@@ -1191,6 +1191,7 @@ are surprising. Verified from exports:
 | `Close File` | `refnum`, `error in` | `path`, `error out` |
 | `Open VI Reference` | `application reference (local)`, `vi path`, `options`, `error in (no error)`, `type specifier VI Refnum (for type only)`, `password ("")` | `vi reference`, `error out` |
 | `Close Reference` | `reference`, `error in (no error)` | `error out` |
+| `Get Notifier Status` | `notifier`, `error in (no error)` | `notifier name`, `notifier out`, **`current notification`** - not `notification` as on `Wait on Notification` - `# waiting`, `error out`. Measured 2026-10-03 from the export of a converted probe; no shipping example uses the node, so the generated table below cannot carry it |
 
 `Build Array` takes `concat="true"` for concatenating mode, and then names each input by what is
 wired to it — `array` for an array, `element` for a scalar — which is why the same node can carry

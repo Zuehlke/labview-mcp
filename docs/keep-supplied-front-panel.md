@@ -255,7 +255,24 @@ the pasted duplicates - so a producer loop came back with every frame's selector
 eBad (measured 2026-09-30). The graft now writes the scaffold's front-panel specs again after the
 swap, by control LABEL, onto the supplied controls, and answers `events`; `pylv-set-event-spec.py`
 learned to open the emptied `<EventNodeEvents elements="0" />`. It CLOSES the project for that
-pylabview edit and leaves it closed. User-event frames are not touched. `docs/cold-build-carwash-pc.md`.
+pylabview edit and opens it again afterwards (`projectReopened`, since 2026-10-02). User-event
+frames are not touched. `docs/cold-build-carwash-pc.md`.
+
+**TWO EVENT KINDS DO NOT SURVIVE A REBUILD: `Timeout` and anything but `Value Change`.** Both
+were found by a field user rebuilding a VI with a Web Browser control, and both cost a redesign
+there; written down so the next build plans for them instead of discovering them.
+
+- **A Timeout frame has no terminal in AIXML**, so a frame that reads its own timeout or polls on
+  it cannot be authored. The measured replacement is a second loop paced by `Wait on
+  Notification` with a timeout and stopped by the notifier -
+  `scripts/aixml-skeletons/web-browser-title-poll.xml`.
+- **The event chain registers `Value Change` and nothing else.** Measured 2026-10-03: a frame
+  ` "Web Browser Control"\3A Load Finished ` sent to `lvai_generate_vi_with_events` is refused
+  by name, `errorKind: unknownTrigger`, and no VI is written; the graft's re-registration runs
+  the same chain. So a Web Browser's `Load Finished`, a `Mouse Down` or any other trigger has no
+  route today - poll the state it would have announced instead (for a page, its title through
+  `{LV.WebBrowser}`, as the skeleton above does). Adding a trigger means measuring its EventSpec
+  from a VI that uses it and extending `EventFrames.Registerable`; that is not a guess to make.
 
 ### 6d. Hardening after the second build (2026-09-30)
 
