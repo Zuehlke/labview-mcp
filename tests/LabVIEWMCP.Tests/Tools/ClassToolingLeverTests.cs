@@ -855,6 +855,136 @@ public sealed class ClassToolingLeverTests
     public void ACaseThatAssertsNothingIsRefused(string json) =>
         Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(json));
 
+    /// <summary>
+    /// `expectFieldValue` with no `writeField` reaches the refusal that NAMES the missing key -
+    /// it used to stop at "asserts nothing", which a test agent read as the key being ignored.
+    /// </summary>
+    [Fact]
+    public void AFieldExpectationWithoutASeedFieldIsToldWhatIsMissing()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Add Value","readField":"Sum","expectFieldValue":"4"}]""")).Message;
+
+        Assert.DoesNotContain("asserts nothing", message);
+        Assert.Contains("\"writeField\"", message);
+    }
+
+    /// <summary>
+    /// The cold build's case: seed both fields, add, expect both changed - one request, two cases.
+    /// It took two refused calls and a hand split before `expectFields` existed.
+    /// </summary>
+    [Fact]
+    public void ExpectFieldsBecomesOneCasePerFieldWithTheStartPromoted()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll("""
+            [{"method":"Add Value","label":"Add 2.5","inputs":{"Value":"2.5"},
+              "seed":{"Sum":"1.5","Count":"1"},"expectFields":{"Sum":"4","Count":"2"}}]
+            """);
+
+        Assert.Equal(2, parsed.Count);
+        Assert.Equal(("Sum", "1.5", "4"), (parsed[0].WriteField, parsed[0].Value, parsed[0].ExpectFieldValue));
+        Assert.Equal("1", parsed[0].Seeds!["Count"]);           // the other field is still seeded
+        Assert.False(parsed[0].Seeds!.ContainsKey("Sum"));       // not written twice
+        Assert.Equal(("Count", "1", "2"), (parsed[1].WriteField, parsed[1].Value, parsed[1].ExpectFieldValue));
+        Assert.Equal("Add 2.5 (Sum)", parsed[0].Label);
+        Assert.Equal("2.5", parsed[1].Inputs!["Value"]);
+    }
+
+    [Fact]
+    public void ASeededFieldReadBackIsPromotedRatherThanRefused()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll("""
+            [{"method":"Add Value","seed":{"Count":"1"},"readField":"Count","expectFieldValue":"2"}]
+            """);
+
+        Assert.Equal("Count", parsed[0].WriteField);
+        Assert.Equal("1", parsed[0].Value);
+        Assert.Null(parsed[0].Seeds);
+    }
+
+    [Fact]
+    public void AnExpectedFieldWithNoStartingValueIsRefusedByName()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Add Value","expectFields":{"Sum":"4"}}]""")).Message;
+
+        Assert.Contains("'Sum'", message);
+        Assert.Contains("\"seed\"", message);
+    }
+
+    [Fact]
+    public void TheAssertsNothingRefusalNamesTheChangedFieldShapeToo()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll("""[{"method":"Start"}]""")).Message;
+
+        Assert.Contains("\"expectFieldValue\"", message);
+    }
+
+    private static MethodTestTools.MethodCase Case(int slot, string? writeField = null,
+                                                   string? expectFieldValue = null,
+                                                   int? expectErrorCode = null) =>
+        new(slot, $"case {slot}", "Add Value", @"C:\x\Add Value.vi",
+            writeField, writeField is null ? null : @"C:\x\Write Sum.vi",
+            writeField, writeField is null ? null : @"C:\x\Read Sum.vi",
+            writeField is null ? null : "double", writeField is null ? null : "1.5",
+            expectErrorCode, @"C:\x\Accumulator.lvclass", [],
+            ExpectFieldValue: expectFieldValue);
+
+    /// <summary>
+    /// A changed-field case is not a survival case - the summary called `Add Value`'s two
+    /// changed-field assertions "wire-survival", the opposite claim.
+    /// </summary>
+    [Fact]
+    public void ChangedFieldCasesAreCountedApartFromSurvivalCases()
+    {
+        var counts = MethodTestTools.Counts([Case(1, "Sum", "4"), Case(2, "Sum"), Case(3, expectErrorCode: 0)]);
+
+        Assert.Contains("1 error-code assertion(s)", counts);
+        Assert.Contains("1 wire-survival assertion(s)", counts);
+        Assert.Contains("1 changed-field assertion(s)", counts);
+    }
+
+    /// <summary>The labels a negative control needs, as the generator really spells them.</summary>
+    [Fact]
+    public void EveryBreakableConstantIsListedByItsRealLabel()
+    {
+        var list = MethodTestTools.ExpectedConstants(
+            [Case(1, "Sum", "4"), Case(2, "Sum"), Case(3, expectErrorCode: 0)]);
+        var labels = list.Select(e => e!["label"]!.GetValue<string>()).ToList();
+
+        Assert.Equal(["expected Sum 1", "written 2", "expected code 3"], labels);
+        // the number in a label is the SLOT, so each entry carries the value it expects
+        Assert.Equal("4", list[0]!["value"]!.GetValue<string>());
+        Assert.Equal(0, list[2]!["value"]!.GetValue<int>());
+        // a survival case's constant feeds both sides, and the entry says breaking it proves nothing
+        Assert.Contains("not a negative control", list[1]!["note"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// The accessor suite names its constants too - it named none, so a round-trip-only suite left
+    /// the reader to infer from the note that there was nothing worth breaking.
+    /// </summary>
+    [Fact]
+    public void TheAccessorSuiteListsItsConstantsAndSaysWhichOneProvesNothing()
+    {
+        var list = TestTools.ClassExpectedConstants(
+        [
+            new TestTools.ClassCase(1, "Sum", "double", "3.25", "Sum round trip",
+                                    @"C:\x\Write Sum.vi", @"C:\x\Read Sum.vi", @"C:\x\A.lvclass"),
+            new TestTools.ClassCase(2, "Count", "int32", "0", "Count default",
+                                    @"C:\x\Write Count.vi", @"C:\x\Read Count.vi", @"C:\x\A.lvclass",
+                                    DefaultOnly: true),
+        ]);
+
+        Assert.Equal("written 1", list[0]!["label"]!.GetValue<string>());
+        Assert.Contains("not a negative control", list[0]!["note"]!.GetValue<string>());
+        Assert.Equal("expected 2", list[1]!["label"]!.GetValue<string>());
+        Assert.Equal("default value", list[1]!["asserts"]!.GetValue<string>());
+    }
+
     [Fact]
     public void ReadFieldDefaultsToTheFieldThatWasWritten()
     {
@@ -1213,8 +1343,10 @@ public sealed class ClassToolingLeverTests
     }
 
     /// <summary>
-    /// A list is refused with the reason rather than only the kind - a case IS one assertion, and
-    /// an author who wanted two fields needs to know no spelling gets them, not to try another.
+    /// A list is refused with the reason rather than only the kind, and names the keys that DO
+    /// take several fields. This test used to pin "not expressible here at all ... through
+    /// lvai_swap_subvis" - true before `seed` existed, and wrong for weeks after it; `expectFields`
+    /// (2026-10-05) covers the asserting half too.
     /// </summary>
     [Fact]
     public void TheRefusalForAListSaysACaseDescribesOneAssertion()
@@ -1223,8 +1355,9 @@ public sealed class ClassToolingLeverTests
             () => MethodTestTools.MethodCaseRequest.ParseAll(
                 """[{"method":"Read Speed","writeField":["A","B"],"value":"1"}]"""));
 
-        Assert.Contains("ONE assertion", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("lvai_swap_subvis", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("ONE field", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\"seed\"", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\"expectFields\"", refusal.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

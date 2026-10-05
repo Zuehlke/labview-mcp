@@ -135,6 +135,27 @@ public sealed class SwapAnswerTests
         Assert.Contains("QUALIFIED NAME", note, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// `diagramSubVis` after a verified swap is read off the EXPORT, with repetition and with the
+    /// class qualifier unescaped - it used to be the helper's pre-Replace listing, so a clean swap
+    /// still named the sockets beside `callTargets` naming the real accessors.
+    /// </summary>
+    [Fact]
+    public void TheExportListsEveryCallWithRepetitionAndUnescaped()
+    {
+        const string xml = """
+            <VI _name="T.vi">
+              <Call inputs="x:1.x" target="Accumulator.lvclass\3ARead Sum.vi" uid="4201" uid_parent="root"/>
+              <Call target="Accumulator.lvclass\3ARead Sum.vi" uid="4202" uid_parent="root"/>
+              <Node _name="Add" inputs="x:1.x" uid="4203" uid_parent="root"/>
+              <Call target="Plain.vi" uid="4204" uid_parent="root"/>
+            </VI>
+            """;
+
+        Assert.Equal(["Accumulator.lvclass:Read Sum.vi", "Accumulator.lvclass:Read Sum.vi", "Plain.vi"],
+                     SwapTools.SubVisInExport(xml));
+    }
+
     /// <summary>A clean swap says nothing about names, because there is nothing to correct.</summary>
     [Fact]
     public void AGoodSwapDoesNotListTheDiagram()

@@ -104,6 +104,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         express. The answer's `assertions` step lists every assertion each case generated, and
         warns where `writeField` beside `expectOutput`/`expectErrorCode` implies "the field is
         UNCHANGED after the call" - move the field to `seed` if it only has to be set.
+        `expectFields` ASSERTS SEVERAL CHANGED FIELDS from one request, each starting from `seed`:
+          {"method":"Add Value","inputs":{"Value":"2.5"},"seed":{"Sum":"1.5","Count":"1"},
+           "expectFields":{"Sum":"4","Count":"2"}}
+        It becomes one case per field, labelled `<label> (<field>)`.
         `setup` CALLS OTHER VIs BEFORE THE METHOD, exactly as in lvai_generate_test - a fixture
         written before a Deposit, a file reset before a Withdraw:
           "setup":[{"vi":"C:\\...\\Write Accounts File.vi","inputs":{"accounts path":"...","accounts":"[[1,A,B,10]]"}}]
@@ -522,10 +526,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             steps.Add(AssertionsStep(cases));
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {Counts(cases)}, every method called as an ordinary static subVI. " +
-                "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs; open " +
-                "it when you are ready to RUN the suite. Read the JUnit report, and break one " +
-                "expectation on purpose once, because an all-green first run proves very little.",
-                swapAnswer["callTargets"]?.DeepClone(), route);
+                "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs, " +
+                "and lvai_run_caraya_tests runs the suite with it closed - measured four runs green " +
+                "that way 2026-10-05. Read the JUnit report, and break one " +
+                "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
+                "because an all-green first run proves very little.",
+                swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases));
         });
 
     /// <summary>
@@ -598,11 +604,59 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// first suite built from `expectOutput` reported "0 error-code assertion(s) and 0
     /// wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a suite
     /// whose assertion had just been proven to fire.
+    ///
+    /// AND AN `expectFieldValue` CASE IS NOT A SURVIVAL CASE. It shares `writeField` with one, and
+    /// this count read `DataType is not null` for both - so a suite asserting that `Add Value`
+    /// CHANGED a field was summarised as "2 wire-survival assertion(s)", the opposite claim,
+    /// measured on a cold build 2026-10-05.
     /// </summary>
-    private static string Counts(IReadOnlyCollection<MethodCase> cases) =>
+    internal static string Counts(IReadOnlyCollection<MethodCase> cases) =>
         $"{cases.Count(c => c.ExpectOutput is not null)} returned-value assertion(s), " +
-        $"{cases.Count(c => c.ExpectErrorCode is not null)} error-code assertion(s) and " +
-        $"{cases.Count(c => c.DataType is not null)} wire-survival assertion(s)";
+        $"{cases.Count(c => c.ExpectErrorCode is not null)} error-code assertion(s), " +
+        $"{cases.Count(c => c.DataType is not null && c.ExpectFieldValue is null)} " +
+        "wire-survival assertion(s) and " +
+        $"{cases.Count(c => c.DataType is not null && c.ExpectFieldValue is not null)} " +
+        "changed-field assertion(s)";
+
+    /// <summary>
+    /// EVERY CONSTANT A NEGATIVE CONTROL CAN BREAK, by the label the generator gave it - the same
+    /// `expectedConstants` field `lvai_generate_test` answers with. This tool's labels name what
+    /// they hold (`expected Sum 1`, `expected code 3`) rather than `expected 1`, and with nothing
+    /// listing them a test agent tried the documented `expected <n>`, was refused by
+    /// `lvai_set_constant` and spent a call reading the real labels off the refusal, 2026-10-05.
+    /// A survival case has NO separate expectation: one `written <n>` constant feeds both the
+    /// Write and the comparison, so breaking it breaks nothing, and the entry says so.
+    ///
+    /// AND EACH ENTRY CARRIES ITS `value`, because the number in the label is the CASE'S SLOT:
+    /// `expected Sum 1` expects 4 and `expected Count 2` happens to expect 2, which a reader took
+    /// for the value on the next cold build. The value beside the label settles it.
+    /// </summary>
+    internal static JsonArray ExpectedConstants(IEnumerable<MethodCase> cases)
+    {
+        var list = new JsonArray();
+        foreach (var c in cases)
+        {
+            if (c.ExpectOutput is not null && c.ExpectValue is not null)
+                list.Add(new JsonObject { ["label"] = $"expected {c.ExpectOutput} {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "returned value",
+                                          ["value"] = c.ExpectValue });
+            if (c.ExpectErrorCode is not null)
+                list.Add(new JsonObject { ["label"] = $"expected code {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "error code",
+                                          ["value"] = c.ExpectErrorCode });
+            if (c.DataType is not null && c.ExpectFieldValue is not null)
+                list.Add(new JsonObject { ["label"] = $"expected {c.ReadField} {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "changed field",
+                                          ["value"] = c.ExpectFieldValue });
+            else if (c.DataType is not null)
+                list.Add(new JsonObject { ["label"] = $"written {c.Slot}", ["case"] = c.Label,
+                                          ["asserts"] = "field survives", ["value"] = c.Value,
+                                          ["note"] = "one constant feeds the Write AND the " +
+                                                     "comparison, so changing it is not a negative " +
+                                                     "control - break another case instead" });
+        }
+        return list;
+    }
 
     /// <summary>
     /// The method suite against the REAL members: one method opened through the class's project,
@@ -862,10 +916,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         steps.Add(AssertionsStep(cases));
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
             $"Generated. {Counts(cases)}, every method and accessor called DIRECTLY - no sockets, " +
-            "no node swaps; only the seed constants were replaced. THE PROJECT IS LEFT CLOSED; " +
-            "open it when you are ready to RUN the suite. Read the JUnit report, and break one " +
-            "expectation on purpose once, because an all-green first run proves very little.",
-            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+            "no node swaps; only the seed constants were replaced. THE PROJECT IS LEFT CLOSED, " +
+            "and lvai_run_caraya_tests runs the suite with it closed. Read the JUnit report, and " +
+            "break one " +
+            "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
+            "because an all-green first run proves very little.",
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route), ExpectedConstants(cases)), null);
     }
 
     private static JsonObject Direct(JsonObject route)
@@ -1067,9 +1123,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
               ? ""
               : "\\2C named directly while the class was open in LabVIEW\\3B each object comes " +
                 "from a class constant")
-          .Append(". An error-code case asserts the `code` the ")
-          .Append("method returns\\3B a wire-survival case writes a field\\2C calls the method\\2C ")
-          .Append("and reads the field back off the object the METHOD returned.\\0A\\0AThe ")
+          .Append(". A returned-value case asserts an output of the method\\3B an error-code ")
+          .Append("case asserts the `code` it returns\\3B a field case seeds a field\\2C calls the ")
+          .Append("method and reads the field back off the object the METHOD returned - ")
+          .Append("unchanged for a wire-survival case\\2C at its new value for a changed-field ")
+          .Append("case.\\0A\\0AThe ")
           .Append("method's own error cluster is fed `no error` and never chained into the ")
           .Append("assertions\\2C because a method under test is expected to fail without ")
           .AppendLine("hardware.\">");
@@ -1476,7 +1534,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null, JsonObject? route = null)
+                                  JsonNode? callTargets = null, JsonObject? route = null,
+                                  JsonArray? expectedConstants = null)
     {
         var size = TestTools.GeneratedDiagramSize(steps);
         return Json.Document(new JsonObject
@@ -1488,6 +1547,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
+            // Which constant to break for a negative control, by lvai_set_constant.
+            ["expectedConstants"] = expectedConstants,
             ["diagramSize"] = size,
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
@@ -1653,7 +1714,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         {
             "method", "writeField", "readField", "value", "expectFieldValue", "type",
             "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
-            "seed", "setup",
+            "seed", "setup", "expectFields",
         };
 
         /// <summary>
@@ -1676,7 +1737,14 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["outputType"] = JsonValueKind.String,
             ["seed"] = JsonValueKind.Object,
             ["setup"] = JsonValueKind.Array,
+            ["expectFields"] = JsonValueKind.Object,
         };
+
+        private const string UnknownKeyHint =
+            "If you meant \"seed a field, call the method, and assert the field now holds " +
+            "something ELSE\", that is \"expectFieldValue\" beside \"writeField\" and " +
+            "\"value\" - note that \"writeField\"+\"value\" alone asserts the field " +
+            "SURVIVES the call unchanged. Several changed fields at once: \"expectFields\".";
 
         /// <summary>Why a particular wrong kind is worth a sentence of its own.</summary>
         private static readonly Dictionary<string, string> KindNotes = new(StringComparer.Ordinal)
@@ -1685,10 +1753,75 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "Every other value in a case is a string, so this one is easy to quote by habit, " +
                 "and a quoted one used to be discarded without a word.",
             ["writeField"] =
-                "A case seeds ONE field. Seeding two - which is what a Read that divides one " +
-                "field by another needs - is not expressible here at all, and the test for it " +
-                "has to be authored through lvai_placeholder_subvi plus lvai_swap_subvis.",
+                "\"writeField\" names ONE field. Seed further fields with \"seed\":{\"Gain\":\"2\"}, " +
+                "and assert several changed fields with \"expectFields\":{\"Sum\":\"4\",\"Count\":\"2\"}.",
+            ["expectFields"] =
+                "An object of field name to expected value, each value a string: " +
+                "{\"Sum\":\"4\",\"Count\":\"2\"}.",
         };
+
+        /// <summary>
+        /// One request in, the cases it stands for out - the shapes a case could not express, in
+        /// the shape it can. Measured on a cold build 2026-10-05: "seed Sum 1.5 and Count 1, add
+        /// 2.5, expect Sum 4 and Count 2" took two refused calls before it was split by hand.
+        ///
+        /// - `expectFields` becomes ONE CASE PER FIELD, each with the same method, inputs, seeds
+        ///   and setup. A case still asserts one field - the generator reads one back per case -
+        ///   so this is the split a caller would have written, done here instead.
+        /// - A field asserted with `expectFieldValue` and given its starting value only in `seed`
+        ///   is PROMOTED to `writeField`/`value`. Both are written before the call, so the case
+        ///   means the same thing, and it reaches the one shape the generator reads back.
+        /// </summary>
+        internal static List<JsonObject> Expand(JsonObject o)
+        {
+            if (o["expectFields"] is not JsonObject fields)
+                return [PromoteSeeded((JsonObject)o.DeepClone())];
+
+            if (o["writeField"] is not null || o["expectFieldValue"] is not null)
+                throw new ArgumentException(
+                    "A case gives \"expectFields\" beside \"writeField\" or \"expectFieldValue\". " +
+                    "\"expectFields\" replaces both: name each field with its expected value, and " +
+                    "its starting value in \"seed\".");
+            if (fields.Count == 0)
+                throw new ArgumentException("\"expectFields\" is empty - name at least one field.");
+
+            var label = o["label"]?.GetValue<string>();
+            var cases = new List<JsonObject>();
+            foreach (var (field, expected) in fields)
+            {
+                if (expected is not JsonValue v || v.GetValueKind() != JsonValueKind.String)
+                    throw new ArgumentException(
+                        $"\"expectFields\" value for '{field}' must be a string, like every other " +
+                        "value in a case - write \"4\", not 4.");
+                var one = (JsonObject)o.DeepClone();
+                one.Remove("expectFields");
+                one["readField"] = field;
+                one["expectFieldValue"] = v.GetValue<string>();
+                if (label is not null) one["label"] = $"{label} ({field})";
+                if (!(one["seed"] is JsonObject seed && seed.ContainsKey(field)))
+                    throw new ArgumentException(
+                        $"\"expectFields\" names '{field}' with no starting value. Give it one in " +
+                        $"\"seed\" - {{\"{field}\":\"0\"}} for the type's default - because the case " +
+                        "writes the field before the call and reads it back after.");
+                cases.Add(PromoteSeeded(one));
+            }
+            return cases;
+        }
+
+        private static JsonObject PromoteSeeded(JsonObject o)
+        {
+            if (o["writeField"] is not null || o["expectFieldValue"] is null ||
+                o["readField"]?.GetValue<string>() is not { } field ||
+                o["seed"] is not JsonObject seed || seed[field] is not JsonValue start)
+                return o;
+
+            o["writeField"] = field;
+            o["value"] = start.GetValue<string>();
+            o.Remove("readField");
+            seed.Remove(field);
+            if (seed.Count == 0) o.Remove("seed");
+            return o;
+        }
 
         public static List<MethodCaseRequest> ParseAll(string json)
         {
@@ -1701,8 +1834,21 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     "[{\"method\":\"Initialize\",\"expectErrorCode\":-200099}].");
             }
 
-            if (parsed is not JsonArray array || array.Count == 0)
+            if (parsed is not JsonArray requests || requests.Count == 0)
                 throw new ArgumentException("casesJson must be a non-empty JSON array of objects.");
+
+            // THE SHORTHANDS FIRST (`expectFields`, a seeded field asserted by `expectFieldValue`),
+            // each request checked for unknown keys and value kinds BEFORE it is expanded, so a
+            // refusal names what the caller wrote rather than what Expand made of it.
+            var array = new JsonArray();
+            for (var i = 0; i < requests.Count; i++)
+            {
+                if (requests[i] is not JsonObject request)
+                    throw new ArgumentException("Every entry in casesJson must be an object.");
+                TestTools.RejectUnknownCaseKeys(request, i, Accepted, UnknownKeyHint);
+                TestTools.RejectWrongCaseValueKinds(request, i, Kinds, KindNotes);
+                foreach (var one in Expand(request)) array.Add(one);
+            }
 
             var all = new List<MethodCaseRequest>();
             foreach (var element in array)
@@ -1731,11 +1877,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 // The check itself is TestTools.RejectUnknownCaseKeys, shared with the other two
                 // casesJson tools rather than copied into each - three copies of one rule drift,
                 // and this repository has paid for that already.
-                TestTools.RejectUnknownCaseKeys(o, all.Count, Accepted,
-                    "If you meant \"seed a field, call the method, and assert the field now holds " +
-                    "something ELSE\", that is \"expectFieldValue\" beside \"writeField\" and " +
-                    "\"value\" - note that \"writeField\"+\"value\" alone asserts the field " +
-                    "SURVIVES the call unchanged.");
+                TestTools.RejectUnknownCaseKeys(o, all.Count, Accepted, UnknownKeyHint);
 
                 // A RECOGNISED KEY WITH THE WRONG VALUE KIND IS THE SAME SILENCE ONE STEP IN,
                 // and it used to be checked for `expectErrorCode` alone - correctly, and far too
@@ -1758,13 +1900,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 var expectOutput = o["expectOutput"]?.GetValue<string>();
                 var expectValue = o["expectValue"]?.GetValue<string>();
 
+                // `expectFieldValue` counts as an assertion HERE, so a case carrying it without a
+                // `writeField` reaches the refusal below that names the missing key. Without it,
+                // `{"readField":"Sum","expectFieldValue":"4"}` answered "asserts nothing" - read by
+                // a test agent as the key being ignored, 2026-10-05 - and that message did not
+                // mention `expectFieldValue` at all.
                 if (string.IsNullOrWhiteSpace(writeField) && expect is null
-                    && string.IsNullOrWhiteSpace(expectOutput))
+                    && string.IsNullOrWhiteSpace(expectOutput) && o["expectFieldValue"] is null)
                     throw new ArgumentException(
                         $"Case for '{method}' asserts nothing. Give it \"expectOutput\" plus " +
                         "\"expectValue\" (a value the method RETURNS on a named terminal), " +
-                        "\"expectErrorCode\" (the code it returns), or \"writeField\" plus " +
-                        "\"value\" (a field that must survive the call) - or any combination.");
+                        "\"expectErrorCode\" (the code it returns), \"writeField\" plus " +
+                        "\"value\" (a field that must survive the call), or \"writeField\" plus " +
+                        "\"value\" plus \"expectFieldValue\" (a field the method must CHANGE, " +
+                        "with \"readField\" when the one read back differs) - or any combination.");
 
                 if (!string.IsNullOrWhiteSpace(writeField) && string.IsNullOrWhiteSpace(value))
                     throw new ArgumentException(
@@ -1793,8 +1942,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                         $"Case for '{method}' gives \"expectFieldValue\" with no \"writeField\". " +
                         "This shape seeds a field, calls the method and reads that field back off " +
                         "the returned object, so it needs the field to seed - name it in " +
-                        "\"writeField\" with the seed in \"value\". Use \"readField\" as well " +
-                        "when the field read back is a different one.");
+                        "\"writeField\" with the seed in \"value\" - or name it in \"readField\" and " +
+                        "give its starting value in \"seed\". Several fields at once: " +
+                        "\"expectFields\":{\"Sum\":\"4\",\"Count\":\"2\"} with each start in \"seed\".");
 
                 Dictionary<string, string>? inputs = null;
                 if (o["inputs"] is JsonObject given)

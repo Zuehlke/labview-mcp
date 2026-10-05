@@ -126,6 +126,19 @@ public sealed class ViTerminalsTests
         Assert.Contains(@"outputs=""waveform:,loaded?:""", call);
     }
 
+    /// <summary>
+    /// A class member's skeleton spells the qualifier as `\3A`, as every generator does - it
+    /// printed the raw colon, a spelling never measured to resolve.
+    /// </summary>
+    [Fact]
+    public void AQualifiedTargetIsSpelledTheWayAixmlWritesIt()
+    {
+        var call = ViTerminals.CallSkeleton(ViTerminals.Parse(
+            PlainVi.Replace("SignalLoader.vi", "Accumulator.lvclass:Add Value.vi"))!);
+
+        Assert.Contains(@"target=""Accumulator.lvclass\3AAdd Value.vi""", call);
+    }
+
     [Fact]
     public void RenderedOutputNamesTheOrderRule() =>
         Assert.Contains("ORDER inside a Call does not matter",

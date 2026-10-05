@@ -142,9 +142,47 @@ internal sealed class PaneTools(LvaiConnection connection)
             // 2. which terminal owns which slot, out of the VI's own export
             var terminals = await TerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
+            // 3. THE TWO READINGS MUST DESCRIBE THE SAME VI. A saved VI cannot carry a conIdx its
+            // own pane has no slot for, so an export naming one the probe's pattern lacks means
+            // one of the readings is not of this VI as saved. Measured 2026-10-05, inside
+            // lvai_generate_class_test on a LabVIEW four minutes old: the probe answered 4815 and
+            // `error out (conIdx 15): not a slot on pattern 4815`, while lvai_connector_pane on the
+            // same saved file minutes later read 4833 and "Nothing to change". The cause is not
+            // established, so the probe is asked ONCE more, and a contradiction that survives is
+            // reported as not measured rather than as two violations nobody committed.
+            if (ContradictsExport(measurement.Pattern, measurement.Bounds, terminals))
+            {
+                var again = await new RunTools(connection).RunViAndReadValuesAsync(
+                    helperVi, inputs, includeRawXml: false, helperViPath: null,
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                if (Measurement(again) is { } second
+                    && !ContradictsExport(second.Pattern, second.Bounds, terminals))
+                    measurement = second;
+                else
+                    return new PaneVerdict(Json.Error("paneMeasurementContradictsExport",
+                        $"The probe read pattern {measurement.Pattern}, which has no slot for a " +
+                        "conIdx the VI's own export carries - so the two readings are not of the " +
+                        "same VI, and asking again did not settle it. Nothing here says the pane " +
+                        "is wrong. Call lvai_connector_pane with viPath once the VI is closed and " +
+                        "saved, and believe that.",
+                        new { viPath = Path.GetFullPath(viPath), measurement.Pattern,
+                              exportConIdx = terminals.Select(t => t.ConIdx).ToArray() }),
+                        measurement.Pattern, -1, 0);
+            }
+
             return RenderVerdict(Path.GetFullPath(viPath), measurement.Pattern,
                 measurement.Bounds, terminals);
         }
+
+    /// <summary>
+    /// Does the probe's pane lack a slot the export assigns? Only then are the two readings of
+    /// different VIs; an unparsable bounds payload is left to <see cref="RenderVerdict"/>, which
+    /// names that failure itself.
+    /// </summary>
+    internal static bool ContradictsExport(int pattern, string boundsXml,
+                                           IReadOnlyList<ConnectorPane.Terminal> terminals) =>
+        ConnectorPane.ParseBounds(pattern, boundsXml) is { } geometry
+        && terminals.Any(t => geometry.Find(t.ConIdx) is null);
 
     /// <summary>
     /// `pattern` and `bounds` out of the runner's payload. Null when the answer is not a runner
@@ -398,6 +436,20 @@ internal sealed class PaneTools(LvaiConnection connection)
                 sb.AppendLine($"  write these: first input {geometry.FirstInput}, " +
                               $"error in {geometry.ErrorIn}, first output {geometry.FirstOutput}, " +
                               $"error out {geometry.ErrorOut}");
+                // The two "more" rows are the ones a reader drops, and then puts a second input on
+                // first input + 1 - a middle slot on 4833. This listing printed only the four until
+                // 2026-10-05, while docs/aixml-reference.md said the call prints six; an acceptance
+                // build needed a second call (pattern=4833) for its extra outputs.
+                var more = new List<string>();
+                if (geometry.LeftEdge.Count > 2)
+                    more.Add("more inputs " + string.Join(", ",
+                        geometry.LeftEdge.Skip(1).SkipLast(1).Select(s => s.ConIdx)) + " (down the left edge)");
+                if (geometry.RightEdge.Count > 2)
+                    more.Add("more outputs " + string.Join(", ",
+                        geometry.RightEdge.Skip(1).SkipLast(1).Select(s => s.ConIdx)) + " (down the right edge)");
+                if (more.Count > 0)
+                    sb.AppendLine("  and for more terminals: " + string.Join("; ", more) +
+                                  " - never first input + 1");
                 sb.AppendLine("  Still measure the VI afterwards - the setting can differ on another " +
                               "machine, and an EXISTING VI carries whatever pane it was given.");
             }

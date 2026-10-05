@@ -130,6 +130,8 @@ public class BulkGenerateViTests
         Assert.Equal("execState", Res.Str(result, "failedAtStep"));
         Assert.True(Res.Bool(result, "viExistsNow"));
         Assert.False(Res.Obj(result)["loadedSubVIs"]!["executable"]!.GetValue<bool>());
+        // The routine cause comes first: a class input still fed by a path seed.
+        Assert.Contains("path` SEED CONSTANT", Res.Str(result, "note"));
     }
 
     [Fact]
@@ -480,6 +482,21 @@ public class PaneVerdictTests
         Assert.True(verdict.Clean);
         Assert.Equal(0, verdict.Violations);
         Assert.Contains("Nothing to change", verdict.Text);
+    }
+
+    /// <summary>
+    /// A probe pane with no slot for a conIdx the export carries is a reading of another VI - a
+    /// saved VI cannot hold such a terminal. Misplaced terminals on slots that DO exist are a real
+    /// finding and must not be mistaken for that.
+    /// </summary>
+    [Fact]
+    public void A_conIdx_the_measured_pane_lacks_marks_the_readings_as_contradictory()
+    {
+        ConnectorPane.Terminal[] onASixteenSlotPane = [.. Corrected, new("extra", true, 20)];
+
+        Assert.True(PaneTools.ContradictsExport(4833, Bounds4833, onASixteenSlotPane));
+        Assert.False(PaneTools.ContradictsExport(4833, Bounds4833, Corrected));
+        Assert.False(PaneTools.ContradictsExport(4833, Bounds4833, AsShipped));
     }
 
     [Fact]

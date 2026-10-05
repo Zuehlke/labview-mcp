@@ -589,6 +589,351 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Contains("To Time Stamp", result);        // the coercion Build Waveform's t0 needs
     }
 
+    // ---------- context around a hit (issue #74) ----------
+
+    private const string ContextDoc = """
+        # Title
+
+        ## 7. Structures
+
+        ### For Loop
+
+        **`maxin` wires `N`. `count` does not - it names the loop's `i` net.**
+
+        NI's own export settles it:
+
+        ```xml
+        <Structure _name="For Loop" count="427.value" maxin="1426.value"/>
+        ```
+
+        `maxin` takes the net of an int32 constant, while `count` holds the structure's own uid.
+
+        What `count` is not:
+
+        | what was written | answer |
+        |---|---|
+        | `count="5"` | `For Loop: N is not wired` |
+        | `count="137.value"` | same, plus `undirected tunnel` twice |
+        | `mode="index"` tunnel | `errorCode 0` |
+
+        A long paragraph about tunnels, line one.
+        line two of it.
+        line three of it.
+        line four of it.
+        line five mentions Shift Register here.
+        line six of it.
+        line seven of it.
+        line eight of it.
+        line nine of it.
+        line ten of it.
+        line eleven of it.
+        line twelve of it.
+
+        ## 8. Next
+        """;
+
+    /// <summary>
+    /// THE ISSUE ITSELF. `node='For Loop'` returned NI's export with no sentence around it, and
+    /// `count="427.value"` read as "wire the count here". The sentence after the block is the one
+    /// that says `count` is the loop's own uid.
+    /// </summary>
+    [Fact]
+    public void ACodeBlockComesWithItsIntroductionAndItsExplanation()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "_name=\"For Loop\"", 40);
+
+        Assert.Contains("NI's own export settles it:", result);
+        Assert.Contains("count=\"427.value\"", result);
+        Assert.Contains("`count` holds the structure's own uid", result);
+    }
+
+    /// <summary>A table brings the sentence that says what the table is a list OF.</summary>
+    [Fact]
+    public void ATableRowComesWithTheSentenceIntroducingTheTable()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "N is not wired", 40);
+
+        Assert.Contains("What `count` is not:", result);
+        Assert.Contains("| what was written | answer |", result);
+    }
+
+    /// <summary>
+    /// `| count="137.value" | same, plus ... |` never names the For Loop error it repeats, so a
+    /// lookup that matched lines literally left it out - and the reporter concluded the table
+    /// did not cover a `count` net at all.
+    /// </summary>
+    [Fact]
+    public void ASameRowArrivesWithTheRowItRefersTo()
+    {
+        var byAntecedent = KnowledgeTools.Lookup(ContextDoc, "N is not wired", 40);
+        Assert.Contains("`count=\"137.value\"`", byAntecedent);
+
+        // and the other way round: a hit on the "same" row shows what "same" means
+        var bySameRow = KnowledgeTools.Lookup(ContextDoc, "undirected tunnel", 40);
+        Assert.Contains("`For Loop: N is not wired`", bySameRow);
+
+        // an unrelated row of the same table stays out
+        Assert.DoesNotContain("`errorCode 0`", byAntecedent);
+    }
+
+    /// <summary>
+    /// A heading that IS the term opens the section about it, and its lead paragraph is where the
+    /// rule lives. It must come back, and come back FIRST.
+    /// </summary>
+    [Fact]
+    public void AHeadingThatIsTheTermBringsItsLeadAndRanksFirst()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "For Loop", 40);
+
+        var lead = result.IndexOf("`maxin` wires `N`", StringComparison.Ordinal);
+        Assert.True(lead >= 0, "the section's lead paragraph is missing");
+        Assert.True(lead < result.IndexOf("<Structure", StringComparison.Ordinal),
+            "the code example still comes before the rule that explains it");
+    }
+
+    /// <summary>
+    /// A table under the term's own heading is about the term in every row, including the rows
+    /// that never name it - `mode="index"` tunnel → `errorCode 0` is the working answer.
+    /// </summary>
+    [Fact]
+    public void ATableInTheTermsOwnSectionComesBackWhole()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "For Loop", 40);
+
+        Assert.Contains("`count=\"5\"`", result);
+        Assert.Contains("`count=\"137.value\"`", result);
+        Assert.Contains("`errorCode 0`", result);
+    }
+
+    /// <summary>
+    /// A paragraph of the term's own section that names it without backticks must not lose to a
+    /// backticked mention elsewhere - measured: a 5-term batch dropped the For Loop section's
+    /// last-value tunnel rule behind `For Loop` mentions in other sections.
+    /// </summary>
+    [Fact]
+    public void ThePassagesOfTheTermsOwnSectionOutrankMentionsElsewhere()
+    {
+        const string doc = """
+            ## 1. Elsewhere
+
+            A list naming `Probe` in passing.
+
+            ## 2. Structures
+
+            ### Probe
+
+            A lead.
+
+            ```xml
+            <Structure/>
+            ```
+
+            What the block means.
+
+            An Out tunnel of a Probe without mode carries the last value.
+
+            ## 3. More
+
+            Another `Probe` mention.
+            """;
+
+        var result = KnowledgeTools.Lookup(doc, "Probe", 40);
+
+        var rule = result.IndexOf("carries the last value", StringComparison.Ordinal);
+        Assert.True(rule >= 0, "the own-section paragraph is missing");
+        Assert.True(rule < result.IndexOf("in passing", StringComparison.Ordinal),
+            "a mention elsewhere still outranks the section about the term");
+        Assert.True(rule < result.IndexOf("Another `Probe`", StringComparison.Ordinal));
+    }
+
+    /// <summary>The acceptance build's batch, against the real document.</summary>
+    [Fact]
+    public void TheRealForLoopRulesSurviveABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Increment,To Double Precision Float,Merge Errors,Unbundle By Name");
+
+        Assert.Contains("**`maxin` wires `N`. `count` does not", result);
+        Assert.Contains("WITHOUT `mode` the tunnel carries the LAST value", result);
+        Assert.Contains("zero times", result);
+        Assert.Contains("`count=\"\"` plus one `mode=\"index\"` input tunnel", result);
+        // the Out tunnel's spelling, not only its rule
+        Assert.Contains("mode=\"index\" outputs=\"value:<net outside>\"", result);
+    }
+
+    /// <summary>
+    /// A section whose title BEGINS with the term is that term's section, and its code blocks come
+    /// back even though they never write the term - `<ShiftReg>` is not "Shift registers".
+    /// </summary>
+    [Fact]
+    public void ASectionTitledWithTheTermAndMoreReturnsItsBlocks()
+    {
+        const string doc = """
+            ## 1. Structures
+
+            ### Probe pairs - `<Pair>`, and why they matter
+
+            A probe pair is a child of the loop.
+
+            ```xml
+            <Pair uid="1"/>
+            ```
+
+            | | |
+            |---|---|
+            | `<Left>` | the read side |
+
+            ### Probes and more
+
+            Unrelated to the term "Probe pairs".
+
+            ```xml
+            <Other/>
+            ```
+            """;
+
+        var result = KnowledgeTools.Lookup(doc, "Probe pairs", 40);
+
+        Assert.Contains("<Pair uid=\"1\"/>", result);
+        Assert.Contains("| `<Left>` | the read side |", result);
+        Assert.DoesNotContain("<Other/>", result);
+    }
+
+    /// <summary>The second acceptance build's batch: the shift register spelling without section=.</summary>
+    [Fact]
+    public void TheRealShiftRegisterSpellingSurvivesABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift registers,Tunnel,To Double Precision Float,Merge Errors");
+
+        Assert.Contains("<ShiftReg uid=", result);
+        Assert.Contains("| `<Right>` |", result);
+    }
+
+    /// <summary>The SINGULAR a reader types reaches the plural section - `Shift register`.</summary>
+    [Fact]
+    public void TheSingularTermReachesThePluralSection()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift register,class constant,To Double Precision Float,Merge Errors,Tunnel,last value,indexing");
+
+        // the element spelling, which is what the cold build had to fetch with section=
+        Assert.Contains("<ShiftReg uid=", result);
+        Assert.Contains("<Right inputs=", result);
+    }
+
+    /// <summary>The class-constant seed's spelling comes back from a batch, not only its rule.</summary>
+    [Fact]
+    public void TheRealClassConstantSeedSpellingSurvivesABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift registers,class constant,To Double Precision Float,Tunnel");
+
+        Assert.Contains("<Constant _name=\"Accumulator seed\"", result);
+        Assert.Contains("constantsJson", result);
+    }
+
+    /// <summary>The longer For Loop lead must still carry the maxin rule whole, not cut mid-way.</summary>
+    [Fact]
+    public void TheForLoopLeadCarriesTheSummaryAndTheMaxinRuleWhole()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "For Loop");
+
+        Assert.Contains("**In short, each rule measured below:**", result);
+        Assert.Contains("listed and never tried.", result);
+    }
+
+    /// <summary>
+    /// The document is hard-wrapped, so a prose hit used to be one wrapped line - half a
+    /// sentence. A long paragraph comes back as a window around the hit, marked as cut.
+    /// </summary>
+    [Fact]
+    public void AProseHitReturnsItsParagraphWindowedWhenLong()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "Shift Register", 40);
+
+        Assert.Contains("line four of it.", result);
+        Assert.Contains("line six of it.", result);
+        Assert.Contains("…", result);
+        Assert.DoesNotContain("line one", result);
+        Assert.DoesNotContain("line twelve of it.", result);
+    }
+
+    /// <summary>Measured on `node='For Loop'`: two hits four lines apart printed three lines twice.</summary>
+    [Fact]
+    public void TwoWindowsInOneParagraphDoNotOverlap()
+    {
+        const string doc = """
+            ## 1. Prose
+
+            line one names Probe.
+            line two.
+            line three.
+            line four.
+            line five.
+            line six names Probe.
+            line seven.
+            line eight.
+            """;
+
+        var result = KnowledgeTools.Lookup(doc, "Probe", 40);
+
+        // first window: lines one to five; the second used to clamp back to four to eight
+        Assert.Equal(1, Occurrences(result, "line four."));
+        Assert.Contains("line six names Probe.", result);
+        Assert.Contains("line eight.", result);
+    }
+
+    [Fact]
+    public void ContextIsNotPrintedTwiceAsItsOwnPassage()
+    {
+        // The explanation paragraph mentions `count`; it arrives with the code block, and must not
+        // then be printed a second time as a prose hit of its own. Same for the table's lead-in.
+        var result = KnowledgeTools.Lookup(ContextDoc, "count", 40);
+
+        Assert.Equal(1, Occurrences(result, "`count` holds the structure's own uid"));
+        Assert.Equal(1, Occurrences(result, "What `count` is not:"));
+    }
+
+    /// <summary>Issue #74 against the real document: everything the reporter needed is there.</summary>
+    [Fact]
+    public void TheRealForLoopLookupCarriesTheMaxinRule()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "For Loop");
+
+        Assert.Contains("**`maxin` wires `N`. `count` does not", result);
+        Assert.Contains("which is the `i` terminal's net", result);
+        Assert.Contains("`count=\"137.value\"`", result);
+        Assert.Contains("What `count` is not", result);
+        Assert.True(result.Length < 20_000, $"For Loop lookup returned {result.Length} chars");
+    }
+
+    /// <summary>
+    /// Context costs characters, and an answer past the client's limit is spilled to a file
+    /// nobody can grep. The 18-term workload of the batching measurement must stay inline, as a
+    /// batch and term by term.
+    /// </summary>
+    [Fact]
+    public void LookupsWithContextStayInsideTheInlineLimit()
+    {
+        string[] terms = [
+            "Build Waveform", "Index Array", "Array Size", "disabled index", "Unbundle By Name",
+            "Select", "String To Path", "waveform", "Empty String", "Greater?", "Subtract",
+            ".and.", ".not. x", "Match Pattern", "Array Subset", "Read Delimited Spreadsheet",
+            "Time Stamp", "Not An Error", "For Loop", "While Loop", "error in (no error)"];
+
+        foreach (var t in terms)
+        {
+            var single = KnowledgeTools.AixmlReference(node: t);
+            output.WriteLine($"{single.Length,7}  {t}");
+            Assert.True(single.Length < 20_000, $"'{t}' returned {single.Length} chars");
+        }
+
+        var batched = KnowledgeTools.AixmlReference(node: string.Join(',', terms));
+        output.WriteLine($"{batched.Length,7}  (batch of {terms.Length})");
+        Assert.True(batched.Length < 20_000, $"the batch returned {batched.Length} chars");
+    }
+
     // ---------- caching ----------
 
     /// <summary>

@@ -267,6 +267,9 @@ public class PaneToolsCatalogueTests
         Assert.Contains("pattern 4833", rendered);
         Assert.Contains("DefaultConPane=4833", rendered);
         Assert.Contains("first input 0, error in 11, first output 4, error out 15", rendered);
+        // The "more" slots too: an acceptance build needed a second call for its extra outputs.
+        Assert.Contains("more inputs 5, 7, 9", rendered);
+        Assert.Contains("more outputs 6, 8, 10", rendered);
         // And it must not let that be read as permission to stop measuring.
         Assert.Contains("Still measure the VI afterwards", rendered);
     }

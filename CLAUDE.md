@@ -394,6 +394,22 @@ Both were measured as friction in one class build, and both are about the lookup
   title fetchable with `section='<title>'`, and `page=1..N` still reaches the raw chunks. Only
   sections 8, 9 and 10 of the AIXML reference are over the limit; no other served document is close.
 
+**AND A HIT MUST CARRY WHAT EXPLAINS IT - issue #74, 2026-10-05.** `node='For Loop'` returned NI's
+export `count="427.value" maxin="1426.value"` with neither the sentence before nor the one after,
+which say that `maxin` is `N` and `count` is the loop's own `i`; the table came back without its
+`same, ...` row. A reader wired `N` into `count` and filed the DOCUMENT as wrong - while it had the
+rule all along, in prose that never repeats the term. A code block now brings its introducing
+sentence and the paragraph after it, a table its lead-in, a heading its section's opening prose,
+a prose hit its paragraph instead of one wrapped line, and a "same" cell inherits the cell above.
+The acceptance build the same day found the rest: a paragraph or table row in the term's OWN
+section that never writes the term lost to mentions elsewhere and was cut from a batch, so that
+section now outranks them and returns its tables whole. A cold rebuild then found the section
+named only by its title's START (`Shift registers - <ShiftReg>, …`) and its code blocks, which never
+repeat the term; both count as the term's own now.
+Batches got SMALLER (an answer budget, divided over the terms) and single lookups about 1.7x
+larger. **A lookup that drops context is the same defect as an unserved document**: the fact is
+there and the route to it is not.
+
 **The two fixes save different things, and it is worth not confusing them.** A cache was added as
 well — the embedded documents and each document's line index are now built once per process instead
 of once per call — and that is where the *server-side* time went: the 18-term workload dropped from

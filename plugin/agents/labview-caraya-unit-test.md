@@ -426,7 +426,9 @@ constant (`expected 2`, `written 1`), so one call sets an expectation wrong and 
 back, each verified from the saved file - where the regeneration route cost two full generations of
 about 56 s each, measured 2026-09-25. Break an EXPECTED constant (`expected <n>`, a default case's
 or an output assertion's); a round trip's `written <n>` feeds both the write and the assertion, so
-changing it proves nothing. Run with `lvai_run_caraya_tests` and confirm `failing` names exactly the
+changing it proves nothing. **`lvai_generate_method_test` labels by what it holds** -
+`expected Sum 1`, `expected code 3`, `expected <output> <n>` - and lists every label in its
+answer's `expectedConstants`, so take the name from there rather than guessing `expected <n>`. Run with `lvai_run_caraya_tests` and confirm `failing` names exactly the
 case you broke. Record it in your report.
 
 **What this costs you, and say so in the report rather than hiding it:** an all-green first run is

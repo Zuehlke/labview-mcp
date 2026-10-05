@@ -306,14 +306,42 @@ internal sealed class BulkTools(LvaiConnection connection)
                         ? await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct)
                         : null;
                     if (brokenSize is not null) steps.Add(brokenSize);
-                    return Outcome(false, "execState", steps, total, viPath, null,
-                        "THE VI WAS WRITTEN, and LabVIEW cannot run it. Validation was skipped " +
+
+                    // AND THE PANE, for the same reason: the pane is final too, and returning here
+                    // left a caller whose class seed is a path to call lvai_connector_pane itself
+                    // after the swap - measured on an acceptance build 2026-10-05. A pane read on a
+                    // broken VI is reported, never a verdict: this answer is already not ok.
+                    PaneTools.PaneVerdict? brokenPane = null;
+                    if (measurePane)
+                    {
+                        brokenPane = await new PaneTools(connection).MeasureViAsync(
+                            viPath, helperViPath: null, helperAixmlPath: null,
+                            regenerateHelper: false, timeoutSeconds, ct: ct);
+                        steps.Add(new JsonObject
+                        {
+                            ["step"] = "connectorPane",
+                            ["pattern"] = brokenPane.Pattern,
+                            ["violations"] = brokenPane.Measured ? brokenPane.Violations : null,
+                            ["warnings"] = brokenPane.Measured ? brokenPane.Warnings : null,
+                            ["answer"] = brokenPane.Text,
+                        });
+                    }
+
+                    return Outcome(false, "execState", steps, total, viPath, brokenPane,
+                        "THE VI WAS WRITTEN, and LabVIEW cannot run it. IF A CLASS INPUT IS FED BY "
+                        + "A `path` SEED CONSTANT, THIS IS EXPECTED: turn the seed into the class "
+                        + "with lvai_swap_subvis constantsJson and read lvai_exec_state again. "
+                        + "Otherwise: validation was skipped " +
                         "because it could not resolve these Call targets: " +
                         string.Join(", ", unresolved) + " - so it never checked their wiring, " +
                         "and the converter wrote something it would have refused. Compare each " +
                         "Call's wire TYPES against lvai_vi_terminals on its target (a misspelt " +
                         "terminal NAME does not get this far - the converter refuses it with " +
                         "Error 1), and read linkerErrors in the execState step." +
+                        (brokenPane is { Measured: true, Clean: false }
+                            ? " The connector pane breaches the style guide as well - see the " +
+                              "connectorPane step."
+                            : "") +
                         (brokenSize?["note"]?.GetValue<string>() ?? ""), route, brokenSize);
                 }
             }

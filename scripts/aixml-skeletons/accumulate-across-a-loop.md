@@ -9,7 +9,10 @@ SKELETON - accumulate one block per iteration instead of keeping only the last.
 Shows three shapes that were each got wrong at least once and re-derived three times:
 
   * a For Loop given its N by `maxin` (here `maxin="n.value"` from an int32 constant),
-    not by indexing a literal array and not by a While Loop with a counter;
+    not by indexing a literal array and not by a While Loop with a counter. Its `count=""`
+    is NOT the N: `count` names the loop's own `i` net, `<loop uid>.value`, and is empty here
+    only because nothing in this skeleton reads `i`. A reader comparing it with the reference's
+    `count="<loop uid>.value"` took the two for a contradiction on 2026-10-05;
   * an accumulator on a shift register, seeded from an EMPTY array constant;
   * the seed / append / keep case pair that makes that accumulator work at all.
 
