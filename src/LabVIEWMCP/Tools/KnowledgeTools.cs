@@ -136,12 +136,60 @@ internal sealed class KnowledgeTools
     private static string? _classOverview;
 
     /// <summary>
-    /// Fence extents, owning heading and table-header row for every line of a document.
-    /// Building this is the expensive half of a lookup, and it is identical for every term -
-    /// which is the whole reason a batched lookup beats N single ones on more than round trips.
+    /// Fence extents, owning heading, table-header row, paragraph extents and table ends for
+    /// every line of a document. Building this is the expensive half of a lookup, and it is
+    /// identical for every term - which is the whole reason a batched lookup beats N single ones
+    /// on more than round trips. -1 means "not that kind of line".
     /// </summary>
     private sealed record DocumentIndex(
-        string[] Lines, int[] FenceStart, int[] FenceEnd, string[] Heading, int[] Header);
+        string[] Lines, int[] FenceStart, int[] FenceEnd, string[] Heading, int[] Header,
+        int[] ParaStart, int[] ParaEnd, int[] TableEnd);
+
+    /// <summary>
+    /// One passage of a lookup answer, with the document lines it shows. The LINES are the
+    /// identity: two passages are the same when they show the same text, and a passage whose
+    /// lines were all printed already - by a bigger passage of the same term, or by an earlier
+    /// term of a batch - is redundant even though its text differs by a context paragraph.
+    /// </summary>
+    private sealed record Passage(string Text, HashSet<int> Lines, string Heading);
+
+    /// <summary>
+    /// The most lines of one prose paragraph a passage carries. The document is hard-wrapped at
+    /// about 100 columns, so a hit used to return ONE wrapped line - half a sentence, measured on
+    /// `node='For Loop'`: "the chain across iterations. **A plain output tunnel on a `For Loop`
+    /// INDEXES by default**, so an". A longer paragraph is windowed around the hit and marked
+    /// with an ellipsis rather than returned whole, because some paragraphs here run to twenty
+    /// lines and a broad term hits dozens of them - measured 2026-10-05, eight lines made
+    /// `node='waveform'` 14 226 characters against 2 143 before, for 25 mentions.
+    /// </summary>
+    private const int MaxProseLines = 5;
+
+    /// <summary>
+    /// How much of the paragraph after a code block comes with it. Longer than a prose window,
+    /// because that paragraph is where this document says what the example MEANS - the sentence
+    /// issue #74 needed sat in the first two lines after NI's For Loop export.
+    /// </summary>
+    private const int MaxFollowOnLines = 6;
+
+    /// <summary>How much of a section's opening prose a hit on its heading brings along.</summary>
+    private const int MaxLeadLines = 10;
+
+    /// <summary>How much of the sentence introducing a code block or a table comes with it.</summary>
+    private const int MaxLeadInLines = 4;
+
+    /// <summary>A run of matching table rows past this is split, so one passage stays readable.</summary>
+    private const int MaxRowsPerPassage = 8;
+
+    /// <summary>
+    /// The most one lookup answer prints before it says "... N more". Kept under
+    /// <see cref="MaxServeChars"/> with room for the header and the trailer, because a passage
+    /// now carries its context and an answer that overruns the client's limit is spilled to a
+    /// file nobody can grep - the failure section 8 had before it was indexed.
+    /// </summary>
+    private const int MaxAnswerChars = 16_000;
+
+    /// <summary>The smallest share of <see cref="MaxAnswerChars"/> one term of a batch gets.</summary>
+    private const int MinTermChars = 600;
 
     [McpServerTool(Name = "lvai_aixml_reference", ReadOnly = true,
                    Title = "AIXML format reference")]
@@ -735,6 +783,17 @@ internal sealed class KnowledgeTools
         // where the prose merely uses it. This is not specific to the terminal tables - it holds
         // for every keyed table in every document these tools serve.
         if (IsLeadingCell(passage, needle)) return 5;
+        // A HEADING THAT IS THE TERM opens the section about it, and its lead paragraph is where
+        // this document puts the rule - `### For Loop` is followed by "`maxin` wires `N`. `count`
+        // does not". Issue #74 read the code example under it as the rule because that passage
+        // ranked first and the rule did not come back at all. Below a leading cell, which names
+        // the exact terminal row, and above any mere mention.
+        if (IsHeadingFor(passage, needle)) return 4;
+        // A ROW KEYED ON A NAME THAT BEGINS WITH THE TERM is that node's row too: `Empty String`
+        // is the `| \`Empty String/Path?\` |` row, and once passages carried their context a
+        // batch's per-term budget cut that row off behind a prose mention, measured 2026-10-05.
+        // Below an exact key, so `Select (Array)` never outranks `Select`.
+        if (IsLeadingCell(passage, needle, prefix: true)) return 4;
         if (passage.Contains($"`{needle}`", StringComparison.OrdinalIgnoreCase)) return 3;
         if (passage.Contains($"`{needle} ", StringComparison.OrdinalIgnoreCase) ||
             passage.Contains($"\"{needle}\"", StringComparison.OrdinalIgnoreCase)) return 2;
@@ -759,7 +818,7 @@ internal sealed class KnowledgeTools
     /// because this document writes every node name in them, and the match is exact: `Select`
     /// must not be answered by the `Select (Array)` row of some other table.
     /// </summary>
-    private static bool IsLeadingCell(string passage, string needle)
+    private static bool IsLeadingCell(string passage, string needle, bool prefix = false)
     {
         foreach (var line in passage.Split('\n'))
         {
@@ -769,8 +828,27 @@ internal sealed class KnowledgeTools
             var cut = trimmed.IndexOf('|', 1);
             if (cut < 0) continue;
 
-            if (trimmed[1..cut].Trim().Trim('`', '*', ' ')
-                    .Equals(needle, StringComparison.OrdinalIgnoreCase))
+            var key = trimmed[1..cut].Trim().Trim('`', '*', ' ');
+            if (key.Equals(needle, StringComparison.OrdinalIgnoreCase))
+                return true;
+            // With prefix: the key starts with the term and the next character ends a word.
+            if (prefix && key.Length > needle.Length &&
+                key.StartsWith(needle, StringComparison.OrdinalIgnoreCase) &&
+                !char.IsLetterOrDigit(key[needle.Length]))
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>Does this passage carry a `##`/`###` heading whose title IS the term?</summary>
+    private static bool IsHeadingFor(string passage, string needle)
+    {
+        foreach (var line in passage.Split('\n'))
+        {
+            var title = line.StartsWith("### ", StringComparison.Ordinal) ? line[4..]
+                      : line.StartsWith("## ", StringComparison.Ordinal) ? line[3..]
+                      : null;
+            if (title is not null && Plain(title).Equals(needle, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
         return false;
@@ -809,7 +887,19 @@ internal sealed class KnowledgeTools
     ///   `t0` | ... |` says nothing about which column is which;
     /// - a line inside a FENCED BLOCK returns the whole block, since half an XML snippet cannot
     ///   be copied;
-    /// - everything else returns the line.
+    /// - a PROSE line returns its paragraph, windowed when long;
+    /// - a HEADING returns the section's opening prose, and says how to fetch the rest.
+    ///
+    /// AND A BLOCK OR A TABLE COMES WITH WHAT EXPLAINS IT, since issue #74 (2026-10-05). The
+    /// reference states its rules in the prose AROUND an example, and that prose rarely repeats
+    /// the term - so `node='For Loop'` returned NI's export `count="427.value"
+    /// maxin="1426.value"` with neither the sentence before it nor the one after, which say that
+    /// `maxin` is `N` and `count` is the loop's own `i`. A reader took `count` for the iteration
+    /// count, wrote a net into it, and filed the document as wrong. So a fenced block brings the
+    /// sentence introducing it (when that ends with `:`) and the paragraph after it; a table
+    /// brings its introducing sentence; and a row whose cell begins with "same" inherits the
+    /// cell above it, because `| count="137.value" | same, plus two misleading follow-ons |` is
+    /// about the For Loop error and never names it.
     ///
     /// Each passage is labelled with the heading it sits under, so the caller can follow up with
     /// section= if they want the surroundings.
@@ -850,7 +940,7 @@ internal sealed class KnowledgeTools
                    Toc(Split(document));
 
         if (terms.Count == 1)
-            return LookupOne(document, terms[0], limit, documentLabel,
+            return LookupOne(document, terms[0], limit, MaxAnswerChars, documentLabel,
                              alreadyShown: null, out _);
 
         // A batch is asked for a DIFFERENT question than a single lookup: "the terminal names of
@@ -861,16 +951,24 @@ internal sealed class KnowledgeTools
         // its code block and one sentence. A caller who wants the depth raises limit.
         var perTerm = Math.Max(3, limit / terms.Count);
 
-        var shownPassages = new HashSet<string>(StringComparer.Ordinal);
+        // The character budget is divided too, since passages carry their context: the whole
+        // batch has to stay inside what a client shows inline. Each term gets its share of what
+        // is LEFT, so a term that needs little hands the rest on. Its first - highest-ranked -
+        // passage is printed regardless, so a small share never answers with nothing.
+
+        var shownLines = new HashSet<int>();
         var sb = new StringBuilder();
         sb.AppendLine($"{terms.Count} terms looked up in {documentLabel}. Each passage is shown " +
                       "once across the whole batch; a term whose passages all appeared earlier " +
                       "says so instead of repeating them. Up to " + perTerm + " passages per term " +
                       "- raise limit for more, or ask for one term on its own.");
 
-        foreach (var term in terms)
+        for (var t = 0; t < terms.Count; t++)
         {
-            var block = LookupOne(document, term, perTerm, documentLabel, shownPassages, out var suppressed);
+            var term = terms[t];
+            var share = Math.Max(MinTermChars, (MaxAnswerChars - sb.Length) / (terms.Count - t));
+            var block = LookupOne(document, term, perTerm, share, documentLabel, shownLines,
+                                  out var suppressed);
             sb.AppendLine();
             sb.AppendLine($"── {term} ──");
             if (suppressed > 0)
@@ -882,58 +980,51 @@ internal sealed class KnowledgeTools
     }
 
     /// <summary>
-    /// One term's passages. <paramref name="alreadyShown"/> is the batch's dedup set: passages
-    /// found in it are counted into <paramref name="suppressed"/> and left out, and passages
-    /// emitted here are added to it. Pass null for a single-term lookup, whose output format is
-    /// unchanged from before batching existed.
+    /// One term's passages. <paramref name="alreadyShown"/> is the batch's dedup set, of
+    /// document LINES: a passage whose lines were all printed under an earlier term is counted
+    /// into <paramref name="suppressed"/> and left out, and the lines emitted here are added to
+    /// it. Pass null for a single-term lookup, whose output format is unchanged by batching.
     /// </summary>
-    private static string LookupOne(string document, string needle, int limit, string documentLabel,
-                                    HashSet<string>? alreadyShown, out int suppressed)
+    private static string LookupOne(string document, string needle, int limit, int maxChars,
+                                    string documentLabel, HashSet<int>? alreadyShown,
+                                    out int suppressed)
     {
         suppressed = 0;
-        var index = IndexOf(document);
-        var lines = index.Lines;
-        var fenceStart = index.FenceStart;
-        var fenceEnd = index.FenceEnd;
-        var heading = index.Heading;
-        var header = index.Header;
+        var ix = IndexOf(document);
+        var found = Collect(ix, needle);
 
-        var passages = new List<string>();
-        var headings = new List<string>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var total = 0;
-
-        for (var i = 0; i < lines.Length; i++)
+        // A paragraph that a heading's lead, or a block's follow-on, already carries is not a
+        // second passage - it is the same text again. Drop every candidate whose lines another
+        // candidate shows too; on a tie the earlier one stays.
+        var candidates = new List<Passage>();
+        for (var a = 0; a < found.Count; a++)
         {
-            if (!lines[i].Contains(needle, StringComparison.OrdinalIgnoreCase)) continue;
+            var covered = false;
+            for (var b = 0; b < found.Count && !covered; b++)
+                covered = b != a && found[a].Lines.IsSubsetOf(found[b].Lines) &&
+                          (found[a].Lines.Count < found[b].Lines.Count || b < a);
+            if (!covered) candidates.Add(found[a]);
+        }
 
-            string body;
-            if (fenceStart[i] >= 0)
-                body = string.Join(Environment.NewLine,
-                    lines[fenceStart[i]..(fenceEnd[i] + 1)]);
-            else if (lines[i].StartsWith('|') && header[i] >= 0 && header[i] != i)
-                body = string.Join(Environment.NewLine,
-                    [lines[header[i]], lines[header[i] + 1], lines[i]]);
-            else
-                body = lines[i];
-
-            var passage = (heading[i].Length > 0 ? $"[{heading[i]}]" + Environment.NewLine : "") + body;
-            if (!seen.Add(passage)) continue;          // a fence hit on several lines is one block
-
+        var passages = new List<Passage>();
+        var headings = new List<string>();
+        var total = 0;
+        foreach (var p in candidates)
+        {
             // Counted into total either way: "3 passages mention X, 2 already shown" is the
             // honest statement. Dropping them from the count would understate what the document
             // says about the term.
             total++;
-            if (alreadyShown is not null && alreadyShown.Contains(passage)) { suppressed++; continue; }
-            passages.Add(passage);
-            if (heading[i].Length > 0 && !headings.Contains(heading[i])) headings.Add(heading[i]);
+            if (alreadyShown is not null && p.Lines.IsSubsetOf(alreadyShown)) { suppressed++; continue; }
+            passages.Add(p);
+            if (p.Heading.Length > 0 && !headings.Contains(p.Heading)) headings.Add(p.Heading);
         }
 
         // Rank before capping, or a common word buries the node it names. Measured:
         // node='Select' returned 29 passages about `selector`, `selectin` and "selects" while the
         // Select node's own terminal `s? t\3Af` did not appear at all. This document writes every
         // node name in backticks, so `Select` is a precise signal that a plain substring is not.
-        passages = [.. passages.OrderByDescending(p => Rank(p, needle))];
+        passages = [.. passages.OrderByDescending(p => Rank(p.Text, needle))];
 
         if (total == 0)
             return $"Nothing in {documentLabel} mentions \"{needle}\"." + Environment.NewLine +
@@ -969,16 +1060,236 @@ internal sealed class KnowledgeTools
             if (headings.Count > 12) sb.AppendLine($"  ... and {headings.Count - 12} more");
         }
 
+        var emitted = 0;
         foreach (var passage in passages.Take(shown))
         {
-            alreadyShown?.Add(passage);
+            // Stop before the answer overruns what a client will show inline. The first passage
+            // always goes out, or a single oversized block would answer with nothing at all.
+            if (emitted > 0 && sb.Length + passage.Text.Length > maxChars) break;
+            alreadyShown?.UnionWith(passage.Lines);
             sb.AppendLine();
-            sb.AppendLine(passage);
+            sb.AppendLine(passage.Text);
+            emitted++;
         }
-        if (total > shown + suppressed)
-            sb.AppendLine($"{Environment.NewLine}  ... {total - shown - suppressed} more; " +
+        if (total > emitted + suppressed)
+            sb.AppendLine($"{Environment.NewLine}  ... {total - emitted - suppressed} more; " +
                           "narrow the term, name a section, or raise limit");
         return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Every passage in the document that mentions <paramref name="needle"/>, in document order,
+    /// each built with the context its kind of line needs (see <see cref="Lookup"/>).
+    /// </summary>
+    private static List<Passage> Collect(DocumentIndex ix, string needle)
+    {
+        var lines = ix.Lines;
+        var result = new List<Passage>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        void Add(IReadOnlyList<(int Start, int End, bool CutBefore, bool CutAfter)> parts, int at)
+        {
+            var shown = new HashSet<int>();
+            var body = new StringBuilder();
+            var previous = -1;
+            foreach (var (start, end, cutBefore, cutAfter) in parts)
+            {
+                // Separate paragraphs as the document does; a table's header and its rows stay
+                // together, or the rows would no longer be a table.
+                if (previous >= 0 && !(lines[previous].StartsWith('|') && lines[start].StartsWith('|')))
+                    body.Append(Environment.NewLine);
+                previous = end;
+                for (var k = start; k <= end; k++)
+                {
+                    shown.Add(k);
+                    if (body.Length > 0) body.Append(Environment.NewLine);
+                    if (k == start && cutBefore) body.Append("… ");
+                    body.Append(lines[k]);
+                    if (k == end && cutAfter) body.Append(" …");
+                }
+            }
+            var text = (ix.Heading[at].Length > 0 ? $"[{ix.Heading[at]}]" + Environment.NewLine : "") + body;
+            if (seen.Add(text)) result.Add(new Passage(text, shown, ix.Heading[at]));
+        }
+
+        bool Mentions(int k) => lines[k].Contains(needle, StringComparison.OrdinalIgnoreCase);
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            // A FENCED BLOCK: the sentence that introduces it, the block whole, the paragraph
+            // that explains it. A hit on several of its lines is still one passage.
+            if (ix.FenceStart[i] >= 0)
+            {
+                var start = ix.FenceStart[i];
+                var end = ix.FenceEnd[i];
+                if (!Enumerable.Range(start, end - start + 1).Any(Mentions)) { i = end; continue; }
+
+                var parts = new List<(int, int, bool, bool)>();
+                if (LeadIn(ix, start) is { } lead) parts.Add(lead);
+                parts.Add((start, end, false, false));
+                if (FollowOn(ix, end) is { } follow) parts.Add(follow);
+                Add(parts, start);
+                i = end;
+                continue;
+            }
+
+            // A TABLE ROW, together with every adjacent row that also matches - so a "same, ..."
+            // row arrives beside the row it refers to - under its header and its lead-in.
+            var header = ix.Header[i];
+            if (lines[i].StartsWith('|') && header >= 0 && i > header + 1)
+            {
+                var firstRow = header + 2;
+                if (!RowMentions(lines, i, firstRow, needle)) continue;
+
+                var from = i;
+                while (from > firstRow && HasSameCell(lines[from])) from--;
+                var to = i;
+                while (to < ix.TableEnd[i] && to - from + 1 < MaxRowsPerPassage &&
+                       RowMentions(lines, to + 1, firstRow, needle)) to++;
+
+                var parts = new List<(int, int, bool, bool)>();
+                if (LeadIn(ix, header) is { } lead) parts.Add(lead);
+                parts.Add((header, header + 1, false, false));
+                parts.Add((from, to, false, false));
+                Add(parts, i);
+                i = to;
+                continue;
+            }
+
+            // A HEADING: the section's opening prose, up to the first block or table.
+            if (lines[i].StartsWith("## ", StringComparison.Ordinal) ||
+                lines[i].StartsWith("### ", StringComparison.Ordinal))
+            {
+                if (!Mentions(i)) continue;
+                var parts = new List<(int, int, bool, bool)> { (i, i, false, false) };
+                var budget = MaxLeadLines;
+                var k = NextNonBlank(ix, i + 1);
+                while (budget > 0 && k >= 0 && ix.ParaStart[k] == k)
+                {
+                    var end = Math.Min(ix.ParaEnd[k], k + budget - 1);
+                    parts.Add((k, end, false, end < ix.ParaEnd[k]));
+                    budget -= end - k + 1;
+                    k = NextNonBlank(ix, ix.ParaEnd[k] + 1);
+                }
+                Add(parts, i);
+                continue;
+            }
+
+            // A PROSE PARAGRAPH: whole when short, otherwise one window per cluster of hits.
+            if (ix.ParaStart[i] == i)
+            {
+                var pEnd = ix.ParaEnd[i];
+                if (pEnd - i + 1 <= MaxProseLines)
+                {
+                    if (Enumerable.Range(i, pEnd - i + 1).Any(Mentions))
+                        Add([(i, pEnd, false, false)], i);
+                }
+                else
+                {
+                    var windowEnd = i - 1;
+                    for (var k = i; k <= pEnd; k++)
+                    {
+                        if (k <= windowEnd || !Mentions(k)) continue;
+                        // A later window starts where the previous one stopped, so two hits in
+                        // one paragraph never print the same lines twice.
+                        var ws = Math.Max(Math.Clamp(k - 2, i, pEnd - MaxProseLines + 1), windowEnd + 1);
+                        windowEnd = Math.Min(ws + MaxProseLines - 1, pEnd);
+                        Add([(ws, windowEnd, ws > i, windowEnd < pEnd)], k);
+                    }
+                }
+                i = pEnd;
+                continue;
+            }
+
+            // Anything else - a header row, a table with no header, a stray line - as before.
+            if (Mentions(i)) Add([(i, i, false, false)], i);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The sentence that introduces the block or table starting at <paramref name="blockStart"/>:
+    /// the paragraph just before it, but only when it ends with a colon. A paragraph that does not
+    /// is the previous thought, not an introduction, and carrying it would be noise.
+    /// </summary>
+    private static (int, int, bool, bool)? LeadIn(DocumentIndex ix, int blockStart)
+    {
+        var p = blockStart - 1;
+        while (p >= 0 && ix.FenceStart[p] < 0 && ix.Lines[p].Trim().Length == 0) p--;
+        if (p < 0 || ix.ParaStart[p] < 0) return null;
+        if (!ix.Lines[p].TrimEnd().EndsWith(':')) return null;
+
+        var start = Math.Max(ix.ParaStart[p], p - MaxLeadInLines + 1);
+        return (start, p, start > ix.ParaStart[p], false);
+    }
+
+    /// <summary>The paragraph straight after a fenced block - in this document, what it means.</summary>
+    private static (int, int, bool, bool)? FollowOn(DocumentIndex ix, int blockEnd)
+    {
+        var q = NextNonBlank(ix, blockEnd + 1);
+        if (q < 0 || ix.ParaStart[q] != q) return null;
+        var end = Math.Min(ix.ParaEnd[q], q + MaxFollowOnLines - 1);
+        return (q, end, false, end < ix.ParaEnd[q]);
+    }
+
+    private static int NextNonBlank(DocumentIndex ix, int from)
+    {
+        for (var k = from; k < ix.Lines.Length; k++)
+            if (ix.FenceStart[k] >= 0 || ix.Lines[k].Trim().Length > 0) return k;
+        return -1;
+    }
+
+    /// <summary>
+    /// Does this table row mention the term - either itself, or through a cell that begins with
+    /// "same" and so stands for the cell above it? The For Loop table writes the second of two
+    /// failures as `same, plus two misleading follow-ons`, and that row is about the For Loop
+    /// error without ever naming it.
+    /// </summary>
+    private static bool RowMentions(string[] lines, int row, int firstRow, string needle)
+    {
+        if (lines[row].Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
+        var cells = Cells(lines[row]);
+        for (var c = 0; c < cells.Count; c++)
+        {
+            if (!StartsWithSame(cells[c])) continue;
+            for (var r = row - 1; r >= firstRow; r--)
+            {
+                var above = Cells(lines[r]);
+                if (c >= above.Count) break;
+                if (above[c].Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
+                if (!StartsWithSame(above[c])) break;
+            }
+        }
+        return false;
+    }
+
+    private static bool HasSameCell(string row) => Cells(row).Any(StartsWithSame);
+
+    private static bool StartsWithSame(string cell)
+    {
+        var t = cell.TrimStart('*', '_', ' ');
+        return t.StartsWith("same", StringComparison.OrdinalIgnoreCase) &&
+               (t.Length == 4 || !char.IsLetter(t[4]));
+    }
+
+    /// <summary>A table row's cells, honouring `\|` as a literal bar inside a cell.</summary>
+    private static List<string> Cells(string row)
+    {
+        var cells = new List<string>();
+        var cell = new StringBuilder();
+        var t = row.Trim();
+        for (var k = 0; k < t.Length; k++)
+        {
+            if (t[k] == '\\' && k + 1 < t.Length && t[k + 1] == '|') { cell.Append('|'); k++; continue; }
+            if (t[k] != '|') { cell.Append(t[k]); continue; }
+            cells.Add(cell.ToString().Trim());
+            cell.Clear();
+        }
+        cells.Add(cell.ToString().Trim());
+        // The row's own leading and trailing bars produce an empty cell at each end.
+        if (cells.Count > 0 && cells[0].Length == 0) cells.RemoveAt(0);
+        if (cells.Count > 0 && cells[^1].Length == 0) cells.RemoveAt(cells.Count - 1);
+        return cells;
     }
 
     /// <summary>The line index for a document, built once and shared by every later lookup.</summary>
@@ -1024,7 +1335,46 @@ internal sealed class KnowledgeTools
             header[i] = current;
         }
 
-        return new DocumentIndex(lines, fenceStart, fenceEnd, heading, header);
+        // Pass 3: paragraph extents for prose lines, and where each table ends. A paragraph is a
+        // run of non-blank lines that are neither fenced, a table row nor a heading; a list item
+        // starts a paragraph of its own, so a hit in one bullet does not bring the whole list.
+        var paraStart = new int[lines.Length];
+        var paraEnd = new int[lines.Length];
+        var tableEnd = new int[lines.Length];
+        Array.Fill(paraStart, -1);
+        Array.Fill(paraEnd, -1);
+        Array.Fill(tableEnd, -1);
+        bool IsProse(int k) => fenceStart[k] < 0 && lines[k].Trim().Length > 0 &&
+                               !lines[k].StartsWith('|') && !lines[k].StartsWith('#');
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (IsProse(i))
+            {
+                var end = i;
+                while (end + 1 < lines.Length && IsProse(end + 1) && !StartsListItem(lines[end + 1])) end++;
+                for (var k = i; k <= end; k++) { paraStart[k] = i; paraEnd[k] = end; }
+                i = end;
+            }
+            else if (fenceStart[i] < 0 && lines[i].StartsWith('|'))
+            {
+                var end = i;
+                while (end + 1 < lines.Length && fenceStart[end + 1] < 0 && lines[end + 1].StartsWith('|')) end++;
+                for (var k = i; k <= end; k++) tableEnd[k] = end;
+                i = end;
+            }
+        }
+
+        return new DocumentIndex(lines, fenceStart, fenceEnd, heading, header, paraStart, paraEnd, tableEnd);
+    }
+
+    private static bool StartsListItem(string line)
+    {
+        var t = line.TrimStart();
+        if (t.StartsWith("- ", StringComparison.Ordinal) || t.StartsWith("* ", StringComparison.Ordinal))
+            return true;
+        var digits = 0;
+        while (digits < t.Length && char.IsDigit(t[digits])) digits++;
+        return digits > 0 && digits + 1 < t.Length && t[digits] == '.' && t[digits + 1] == ' ';
     }
 
     /// <summary>Sections of a document reached by text rather than by resource name.</summary>

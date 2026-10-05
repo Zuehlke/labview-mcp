@@ -769,6 +769,14 @@ NI's own export of `Flush Written TDMS Data.vi` settles it:
 direction by generating `maxin="210.value"` from an int32 constant `5`: it validated, generated, and
 the round-trip export preserved it, with no indexing tunnel anywhere on the loop.
 
+**Re-measured 2026-10-05 for issue #74, which read the export above as "`count` carries `N`".**
+`count="<net of an int32 control>"` with `maxin=""` answered the second row of the table below word
+for word; `count="<the loop's own uid>.value"` with `maxin="<the control's net>"` and an indexing
+`Out` tunnel validated, converted `execState 1`, and ran `n = 3` to `[0, 1, 2]`. The document had
+the rule all along - the reader never saw it, because `node='For Loop'` returned this code block
+without the sentence before or after it, and the table without its `same, …` row. A lookup brings
+that context with it since the same day.
+
 What `count` is not, measured before `maxin` was tried:
 
 | what was written | answer |
@@ -791,6 +799,14 @@ five extra elements on the diagram.
 **Auto-indexing is `mode="index"` on the tunnel** — the attribute the rest of this section was
 missing. A tunnel *without* `mode` passes its whole value through unchanged; with it, the loop
 indexes one element per iteration and supplies `N`.
+
+**That holds for an `Out` tunnel as well, and it is the OPPOSITE of what the IDE does.** Wire a
+value out of a For Loop by hand and LabVIEW makes the tunnel indexing; write
+`<Tunnel _id="Out1" …>` with no `mode` and the converter makes it carry the LAST value. Measured
+2026-10-05 as an A/B on one document: without `mode`, an `array{int32}` indicator fed from `i`
+was refused with `source long … sink 1D array of long`; with `mode="index"` and nothing else
+changed it validated. So write `mode="index"` on every `Out` tunnel that is meant to build an
+array - an export always carries it, which is why copying one never shows the difference.
 
 **It works on an `Out` tunnel too, which this section only ever showed on `In` tunnels** — that is
 how a loop *builds* an array, one element per iteration, without `Build Array` and a shift register.
@@ -900,9 +916,13 @@ Both children take `uid_parent` = the `<ShiftReg>`'s uid, not the loop's.
 
 **Why this is worth knowing before you need it: the error-cluster rule makes it mandatory.**
 `CLAUDE.md` requires every error path to reach one `error out`, and inside a loop that means carrying
-the chain across iterations. **A plain output tunnel on a `For Loop` INDEXES by default**, so an
-`error out` taken out that way arrives at `Merge Errors` as an ARRAY of clusters rather than a
-cluster - a type error, not a subtlety. The shift register is the construct that avoids it.
+the chain across iterations. **In the IDE a plain output tunnel on a `For Loop` INDEXES by
+default**, so an `error out` wired out by hand arrives at `Merge Errors` as an ARRAY of clusters
+rather than a cluster - a type error, not a subtlety. **In AIXML the default is the other way
+round**: an `Out` tunnel written without `mode` carries the LAST iteration's value (measured
+2026-10-05, section 7 "For Loop"), so the type is right and the damage is quieter - only the
+last iteration's error leaves the loop. The shift register is the construct that avoids both.
+This paragraph said "INDEXES by default" without the qualifier from 2026-09-13 until then.
 
 **A `While Loop`'s output tunnel does NOT index** - it carries the last value, so it is a legitimate
 way out for a chain that only has to leave the loop. What the shift register adds is carrying a
