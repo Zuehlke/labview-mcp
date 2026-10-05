@@ -790,7 +790,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
                 "break one case on purpose once, because an all-green first run proves very " +
                 "little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
-                "needs; open it when you are ready to RUN the suite.",
+                "needs, and lvai_run_caraya_tests runs the suite with it closed.",
                 swapAnswer["callTargets"]?.DeepClone(), route, ClassExpectedConstants(cases));
         });
 

@@ -870,6 +870,50 @@ public sealed class ClassToolingLeverTests
         Assert.Contains("\"writeField\"", message);
     }
 
+    /// <summary>
+    /// The cold build's case: seed both fields, add, expect both changed - one request, two cases.
+    /// It took two refused calls and a hand split before `expectFields` existed.
+    /// </summary>
+    [Fact]
+    public void ExpectFieldsBecomesOneCasePerFieldWithTheStartPromoted()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll("""
+            [{"method":"Add Value","label":"Add 2.5","inputs":{"Value":"2.5"},
+              "seed":{"Sum":"1.5","Count":"1"},"expectFields":{"Sum":"4","Count":"2"}}]
+            """);
+
+        Assert.Equal(2, parsed.Count);
+        Assert.Equal(("Sum", "1.5", "4"), (parsed[0].WriteField, parsed[0].Value, parsed[0].ExpectFieldValue));
+        Assert.Equal("1", parsed[0].Seeds!["Count"]);           // the other field is still seeded
+        Assert.False(parsed[0].Seeds!.ContainsKey("Sum"));       // not written twice
+        Assert.Equal(("Count", "1", "2"), (parsed[1].WriteField, parsed[1].Value, parsed[1].ExpectFieldValue));
+        Assert.Equal("Add 2.5 (Sum)", parsed[0].Label);
+        Assert.Equal("2.5", parsed[1].Inputs!["Value"]);
+    }
+
+    [Fact]
+    public void ASeededFieldReadBackIsPromotedRatherThanRefused()
+    {
+        var parsed = MethodTestTools.MethodCaseRequest.ParseAll("""
+            [{"method":"Add Value","seed":{"Count":"1"},"readField":"Count","expectFieldValue":"2"}]
+            """);
+
+        Assert.Equal("Count", parsed[0].WriteField);
+        Assert.Equal("1", parsed[0].Value);
+        Assert.Null(parsed[0].Seeds);
+    }
+
+    [Fact]
+    public void AnExpectedFieldWithNoStartingValueIsRefusedByName()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Add Value","expectFields":{"Sum":"4"}}]""")).Message;
+
+        Assert.Contains("'Sum'", message);
+        Assert.Contains("\"seed\"", message);
+    }
+
     [Fact]
     public void TheAssertsNothingRefusalNamesTheChangedFieldShapeToo()
     {
@@ -1299,8 +1343,10 @@ public sealed class ClassToolingLeverTests
     }
 
     /// <summary>
-    /// A list is refused with the reason rather than only the kind - a case IS one assertion, and
-    /// an author who wanted two fields needs to know no spelling gets them, not to try another.
+    /// A list is refused with the reason rather than only the kind, and names the keys that DO
+    /// take several fields. This test used to pin "not expressible here at all ... through
+    /// lvai_swap_subvis" - true before `seed` existed, and wrong for weeks after it; `expectFields`
+    /// (2026-10-05) covers the asserting half too.
     /// </summary>
     [Fact]
     public void TheRefusalForAListSaysACaseDescribesOneAssertion()
@@ -1309,8 +1355,9 @@ public sealed class ClassToolingLeverTests
             () => MethodTestTools.MethodCaseRequest.ParseAll(
                 """[{"method":"Read Speed","writeField":["A","B"],"value":"1"}]"""));
 
-        Assert.Contains("ONE assertion", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("lvai_swap_subvis", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("ONE field", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\"seed\"", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("\"expectFields\"", refusal.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

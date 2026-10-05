@@ -754,7 +754,7 @@ same document from `errorCode 1` to `errorCode 0`, and the generated VI then ran
 Same shape, with `maxin` / `maxout` alongside `count`.
 
 **In short, each rule measured below:** `maxin` = `N`; `count` = `<loop uid>.value`, the loop's
-`i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>"/>`
+`i` - or `count=""` when nothing reads `i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>"/>`
 builds an array; WITHOUT `mode` the tunnel carries the LAST value (the IDE does the opposite), and
 the type's default when the loop runs zero times. A shift register's `Right` output net is read
 outside the loop directly - no `Out` tunnel; its spelling is under "Shift registers" below.

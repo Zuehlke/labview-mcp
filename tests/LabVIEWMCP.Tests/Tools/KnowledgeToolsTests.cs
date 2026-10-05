@@ -810,6 +810,18 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Contains("| `<Right>` |", result);
     }
 
+    /// <summary>The SINGULAR a reader types reaches the plural section - `Shift register`.</summary>
+    [Fact]
+    public void TheSingularTermReachesThePluralSection()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift register,class constant,To Double Precision Float,Merge Errors,Tunnel,last value,indexing");
+
+        // the element spelling, which is what the cold build had to fetch with section=
+        Assert.Contains("<ShiftReg uid=", result);
+        Assert.Contains("<Right inputs=", result);
+    }
+
     /// <summary>The class-constant seed's spelling comes back from a batch, not only its rule.</summary>
     [Fact]
     public void TheRealClassConstantSeedSpellingSurvivesABatch()

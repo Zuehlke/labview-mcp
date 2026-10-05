@@ -841,9 +841,18 @@ internal sealed class KnowledgeTools
         if (heading.Length == 0) return false;
         var title = Plain(heading);
         if (title.Equals(needle, StringComparison.OrdinalIgnoreCase)) return true;
-        return title.Length > needle.Length &&
-               title.StartsWith(needle, StringComparison.OrdinalIgnoreCase) &&
-               !char.IsLetterOrDigit(title[needle.Length]);
+        if (!title.StartsWith(needle, StringComparison.OrdinalIgnoreCase)) return false;
+        // AND A PLURAL TITLE: `Shift register` is the singular a reader types, and the section is
+        // `Shift registers - ...`, so the `s` after the term failed the word-boundary test and a
+        // cold build needed a section= call for the spelling again, 2026-10-05. One `s` or `es`
+        // is allowed before the boundary - nothing wider, or `Case` would claim `Cases...`-like
+        // titles about something else entirely.
+        var rest = title[needle.Length..];
+        foreach (var suffix in new[] { "", "s", "es" })
+            if (rest.StartsWith(suffix, StringComparison.OrdinalIgnoreCase) &&
+                (rest.Length == suffix.Length || !char.IsLetterOrDigit(rest[suffix.Length])))
+                return true;
+        return false;
     }
 
     /// <summary>
