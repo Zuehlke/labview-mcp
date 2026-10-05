@@ -692,6 +692,74 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     /// <summary>
+    /// A table under the term's own heading is about the term in every row, including the rows
+    /// that never name it - `mode="index"` tunnel → `errorCode 0` is the working answer.
+    /// </summary>
+    [Fact]
+    public void ATableInTheTermsOwnSectionComesBackWhole()
+    {
+        var result = KnowledgeTools.Lookup(ContextDoc, "For Loop", 40);
+
+        Assert.Contains("`count=\"5\"`", result);
+        Assert.Contains("`count=\"137.value\"`", result);
+        Assert.Contains("`errorCode 0`", result);
+    }
+
+    /// <summary>
+    /// A paragraph of the term's own section that names it without backticks must not lose to a
+    /// backticked mention elsewhere - measured: a 5-term batch dropped the For Loop section's
+    /// last-value tunnel rule behind `For Loop` mentions in other sections.
+    /// </summary>
+    [Fact]
+    public void ThePassagesOfTheTermsOwnSectionOutrankMentionsElsewhere()
+    {
+        const string doc = """
+            ## 1. Elsewhere
+
+            A list naming `Probe` in passing.
+
+            ## 2. Structures
+
+            ### Probe
+
+            A lead.
+
+            ```xml
+            <Structure/>
+            ```
+
+            What the block means.
+
+            An Out tunnel of a Probe without mode carries the last value.
+
+            ## 3. More
+
+            Another `Probe` mention.
+            """;
+
+        var result = KnowledgeTools.Lookup(doc, "Probe", 40);
+
+        var rule = result.IndexOf("carries the last value", StringComparison.Ordinal);
+        Assert.True(rule >= 0, "the own-section paragraph is missing");
+        Assert.True(rule < result.IndexOf("in passing", StringComparison.Ordinal),
+            "a mention elsewhere still outranks the section about the term");
+        Assert.True(rule < result.IndexOf("Another `Probe`", StringComparison.Ordinal));
+    }
+
+    /// <summary>The acceptance build's batch, against the real document.</summary>
+    [Fact]
+    public void TheRealForLoopRulesSurviveABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Increment,To Double Precision Float,Merge Errors,Unbundle By Name");
+
+        Assert.Contains("**`maxin` wires `N`. `count` does not", result);
+        Assert.Contains("WITHOUT `mode` it carries the LAST value", result);
+        Assert.Contains("zero times", result);
+        Assert.Contains("`count=\"\"` plus one `mode=\"index\"` input tunnel", result);
+    }
+
+    /// <summary>
     /// The document is hard-wrapped, so a prose hit used to be one wrapped line - half a
     /// sentence. A long paragraph comes back as a window around the hit, marked as cut.
     /// </summary>

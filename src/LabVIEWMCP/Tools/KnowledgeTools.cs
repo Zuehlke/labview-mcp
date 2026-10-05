@@ -811,6 +811,25 @@ internal sealed class KnowledgeTools
     }
 
     /// <summary>
+    /// <see cref="Rank"/>, with one more tier: a passage in the section whose heading IS the term
+    /// ranks above a mention anywhere else. That section is about the term even where a paragraph
+    /// names it in plain prose - `### For Loop` says "an `Out` tunnel with no `mode` carries the LAST
+    /// value" in a paragraph that writes `For Loop` without backticks, so it scored 1 and a 5-term
+    /// batch cut it behind backticked mentions in other sections, measured 2026-10-05 on the
+    /// acceptance build for issue #74. Below a leading cell and the heading itself.
+    /// </summary>
+    private static int Score(Passage p, string needle)
+    {
+        var score = Rank(p.Text, needle) * 2;
+        if (score < 8 && IsOwnSection(p.Heading, needle)) score = Math.Max(score, 6) + 1;
+        return score;
+    }
+
+    /// <summary>Is <paramref name="heading"/> the section about <paramref name="needle"/>?</summary>
+    private static bool IsOwnSection(string heading, string needle)
+        => heading.Length > 0 && Plain(heading).Equals(needle, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Does any line of this passage put <paramref name="needle"/> in its FIRST table cell?
     ///
     /// A passage built for a table hit carries three lines - the header, the `|---|` rule and the
@@ -1024,7 +1043,7 @@ internal sealed class KnowledgeTools
         // node='Select' returned 29 passages about `selector`, `selectin` and "selects" while the
         // Select node's own terminal `s? t\3Af` did not appear at all. This document writes every
         // node name in backticks, so `Select` is a precise signal that a plain substring is not.
-        passages = [.. passages.OrderByDescending(p => Rank(p.Text, needle))];
+        passages = [.. passages.OrderByDescending(p => Score(p, needle))];
 
         if (total == 0)
             return $"Nothing in {documentLabel} mentions \"{needle}\"." + Environment.NewLine +
@@ -1135,17 +1154,23 @@ internal sealed class KnowledgeTools
 
             // A TABLE ROW, together with every adjacent row that also matches - so a "same, ..."
             // row arrives beside the row it refers to - under its header and its lead-in.
+            //
+            // A table in the term's OWN section comes back whole: every row of it is about the
+            // term. `### For Loop`'s "what `count` is not" table has four rows and two of them -
+            // `count=""` with an indexing tunnel, and `<Tunnel _id="N">` - never write the words
+            // `For Loop`, so a lookup printed half the table, measured on issue #74's acceptance.
             var header = ix.Header[i];
             if (lines[i].StartsWith('|') && header >= 0 && i > header + 1)
             {
                 var firstRow = header + 2;
-                if (!RowMentions(lines, i, firstRow, needle)) continue;
+                var ownSection = IsOwnSection(ix.Heading[i], needle);
+                if (!ownSection && !RowMentions(lines, i, firstRow, needle)) continue;
 
-                var from = i;
+                var from = ownSection ? firstRow : i;
                 while (from > firstRow && HasSameCell(lines[from])) from--;
                 var to = i;
                 while (to < ix.TableEnd[i] && to - from + 1 < MaxRowsPerPassage &&
-                       RowMentions(lines, to + 1, firstRow, needle)) to++;
+                       (ownSection || RowMentions(lines, to + 1, firstRow, needle))) to++;
 
                 var parts = new List<(int, int, bool, bool)>();
                 if (LeadIn(ix, header) is { } lead) parts.Add(lead);

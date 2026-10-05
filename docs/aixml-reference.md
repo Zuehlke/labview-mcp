@@ -751,6 +751,11 @@ same document from `errorCode 1` to `errorCode 0`, and the generated VI then ran
 
 Same shape, with `maxin` / `maxout` alongside `count`.
 
+**In short, each rule measured below:** `maxin` = `N`; `count` = `<loop uid>.value`, the loop's
+`i`. An `Out` tunnel with `mode="index"` builds an array; WITHOUT `mode` it carries the LAST value
+(the IDE does the opposite), and the type's default when the loop runs zero times. A shift
+register's `Right` output net is read outside the loop directly - no `Out` tunnel.
+
 **`maxin` wires `N`. `count` does not — it names the loop's own `i` output net.** This section said
 for two revisions that *nothing* wires `N` and that auto-indexing was the only way; that was wrong,
 and it pushed at least two generations into building a literal array or a While-Loop counter to get
@@ -807,6 +812,12 @@ value out of a For Loop by hand and LabVIEW makes the tunnel indexing; write
 was refused with `source long … sink 1D array of long`; with `mode="index"` and nothing else
 changed it validated. So write `mode="index"` on every `Out` tunnel that is meant to build an
 array - an export always carries it, which is why copying one never shows the difference.
+
+**On a loop that runs ZERO times, such a last-value tunnel gives the type's DEFAULT.** Measured
+2026-10-05 on `C:\temp\ForLoopTest\ForLoopTest.vi`, `last i` taken out of `i` without `mode`:
+`n = 4` read `3`, `n = 1` read `0` - and `n = 0` read `0` as well, so from outside an empty loop
+and a single iteration are indistinguishable. Where that matters, read the indexed array's size
+or `N` beside it; the export of the saved VI carried no `mode` on that tunnel either.
 
 **It works on an `Out` tunnel too, which this section only ever showed on `In` tunnels** — that is
 how a loop *builds* an array, one element per iteration, without `Build Array` and a shift register.
@@ -910,9 +921,15 @@ clean, 10.03 s) - so it is not merely how an export happens to spell it.
 |---|---|
 | `<ShiftReg>` | `uid_parent` is the LOOP's uid. It carries no `inputs`/`outputs` of its own, and **no net ever names its uid** - the wires attach to the two children |
 | `<Left>` | the READ side, inside the loop. `inputs` is the SEED from outside; `outputs` is the net feeding the first consumer in the body |
-| `<Right>` | the WRITE side. `inputs` is the net from the last producer in the body; `outputs` is **empty** - nothing reads it |
+| `<Right>` | the WRITE side. `inputs` is the net from the last producer in the body; `outputs` is the net carrying the FINAL value out of the loop, read directly by a consumer outside with no `Out` tunnel - empty only when nothing after the loop reads it, as in this example |
 
 Both children take `uid_parent` = the `<ShiftReg>`'s uid, not the loop's.
+
+The `<Right>` row said "`outputs` is **empty** - nothing reads it" until 2026-10-05, which is true
+of the example above and read as a rule, while section "For Loop" says the same net leaves the loop
+on its own. Both hold: measured on `ForLoopTest.vi`, an Accumulator object and an error chain each
+on a For Loop shift register, `Read Sum.vi` reading the `Right` output net from root level -
+validated, `execState 1`, `n = 4` gave `Sum = 6`.
 
 **Why this is worth knowing before you need it: the error-cluster rule makes it mandatory.**
 `CLAUDE.md` requires every error path to reach one `error out`, and inside a loop that means carrying
