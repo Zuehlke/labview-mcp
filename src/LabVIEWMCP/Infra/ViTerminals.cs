@@ -119,10 +119,19 @@ internal static class ViTerminals
 
         var inputs = string.Join(",", result.Inputs.Select(t => t.Name + ":"));
         var outputs = string.Join(",", result.Outputs.Select(t => t.Name + ":"));
-        return $"<Call target=\"{result.ViName}\"" + Environment.NewLine +
+        return $"<Call target=\"{TargetSpelling(result.ViName)}\"" + Environment.NewLine +
                $"      inputs=\"{inputs}\"" + Environment.NewLine +
                $"      outputs=\"{outputs}\" uid=\"NN\" uid_parent=\"root\"/>";
     }
+
+    /// <summary>
+    /// A library-qualified name as a `Call` target is spelled in AIXML: the qualifier's colon as
+    /// `\3A`, the form every generator here writes and the one measured to resolve. This
+    /// skeleton printed the raw `Accumulator.lvclass:Add Value.vi` until 2026-10-05, so a reader
+    /// pasting it got a spelling nothing in this repository had ever measured - found on an
+    /// acceptance build whose author used `\3A` from the documentation instead.
+    /// </summary>
+    internal static string TargetSpelling(string viName) => viName.Replace(":", @"\3A");
 
     /// <summary>The whole answer as text, which is what an MCP caller actually reads.</summary>
     public static string Render(Result result)

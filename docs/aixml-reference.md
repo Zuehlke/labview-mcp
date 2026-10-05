@@ -1795,7 +1795,7 @@ all, and needs a `Build Array` of scalar constants instead.
 and reading the written file as bytes (31 bytes for five elements plus five LFs, no CR anywhere).
 That is the portable way to get a line-ending constant onto a generated diagram.
 
-### A class constant - the seed of a class wire
+### Class constant - the seed of a class wire
 
 **AIXML cannot author one, so it is written as a `path` constant and swapped afterwards.** A
 dynamic-dispatch input is required in practice (unwired, the caller is `Error 1003`), so a chain of

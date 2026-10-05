@@ -791,7 +791,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 "break one case on purpose once, because an all-green first run proves very " +
                 "little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
                 "needs; open it when you are ready to RUN the suite.",
-                swapAnswer["callTargets"]?.DeepClone(), route);
+                swapAnswer["callTargets"]?.DeepClone(), route, ClassExpectedConstants(cases));
         });
 
     /// <summary>
@@ -994,7 +994,30 @@ internal sealed class TestTools(LvaiConnection connection)
             "replaced. Run it through Caraya's runner with a Report Path ending in .xml and read " +
             "the JUnit report - and break one case on purpose once, because an all-green first " +
             "run proves very little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED.",
-            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route),
+            ClassExpectedConstants(cases)), null);
+    }
+
+    /// <summary>
+    /// The constants a negative control can break, the same `expectedConstants` field the other
+    /// two generators answer with. This one had none, so an accessor suite of round trips named
+    /// no breakable label anywhere in its answer and the reader had to infer from the note that
+    /// there was nothing to break - measured on a cold build 2026-10-05. A round trip is listed
+    /// too, under its `written <n>`, and says outright that breaking it proves nothing.
+    /// </summary>
+    internal static JsonArray ClassExpectedConstants(IEnumerable<ClassCase> cases)
+    {
+        var list = new JsonArray();
+        foreach (var c in cases)
+            list.Add(c.DefaultOnly
+                ? new JsonObject { ["label"] = $"expected {c.Slot}", ["case"] = c.Label,
+                                   ["asserts"] = "default value", ["value"] = c.Value }
+                : new JsonObject { ["label"] = $"written {c.Slot}", ["case"] = c.Label,
+                                   ["asserts"] = "round trip", ["value"] = c.Value,
+                                   ["note"] = "one constant feeds the Write AND the comparison, " +
+                                              "so changing it is not a negative control - add a " +
+                                              "default case, or break a method test instead" });
+        return list;
     }
 
     /// <summary>One VI's terminals off its own export, or null when it could not be exported.</summary>

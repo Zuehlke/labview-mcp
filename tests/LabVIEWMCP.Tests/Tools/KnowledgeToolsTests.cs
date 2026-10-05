@@ -810,6 +810,17 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Contains("| `<Right>` |", result);
     }
 
+    /// <summary>The class-constant seed's spelling comes back from a batch, not only its rule.</summary>
+    [Fact]
+    public void TheRealClassConstantSeedSpellingSurvivesABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift registers,class constant,To Double Precision Float,Tunnel");
+
+        Assert.Contains("<Constant _name=\"Accumulator seed\"", result);
+        Assert.Contains("constantsJson", result);
+    }
+
     /// <summary>The longer For Loop lead must still carry the maxin rule whole, not cut mid-way.</summary>
     [Fact]
     public void TheForLoopLeadCarriesTheSummaryAndTheMaxinRuleWhole()

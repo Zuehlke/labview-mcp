@@ -621,6 +621,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// `lvai_set_constant` and spent a call reading the real labels off the refusal, 2026-10-05.
     /// A survival case has NO separate expectation: one `written <n>` constant feeds both the
     /// Write and the comparison, so breaking it breaks nothing, and the entry says so.
+    ///
+    /// AND EACH ENTRY CARRIES ITS `value`, because the number in the label is the CASE'S SLOT:
+    /// `expected Sum 1` expects 4 and `expected Count 2` happens to expect 2, which a reader took
+    /// for the value on the next cold build. The value beside the label settles it.
     /// </summary>
     internal static JsonArray ExpectedConstants(IEnumerable<MethodCase> cases)
     {
@@ -629,16 +633,19 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         {
             if (c.ExpectOutput is not null && c.ExpectValue is not null)
                 list.Add(new JsonObject { ["label"] = $"expected {c.ExpectOutput} {c.Slot}",
-                                          ["case"] = c.Label, ["asserts"] = "returned value" });
+                                          ["case"] = c.Label, ["asserts"] = "returned value",
+                                          ["value"] = c.ExpectValue });
             if (c.ExpectErrorCode is not null)
                 list.Add(new JsonObject { ["label"] = $"expected code {c.Slot}",
-                                          ["case"] = c.Label, ["asserts"] = "error code" });
+                                          ["case"] = c.Label, ["asserts"] = "error code",
+                                          ["value"] = c.ExpectErrorCode });
             if (c.DataType is not null && c.ExpectFieldValue is not null)
                 list.Add(new JsonObject { ["label"] = $"expected {c.ReadField} {c.Slot}",
-                                          ["case"] = c.Label, ["asserts"] = "changed field" });
+                                          ["case"] = c.Label, ["asserts"] = "changed field",
+                                          ["value"] = c.ExpectFieldValue });
             else if (c.DataType is not null)
                 list.Add(new JsonObject { ["label"] = $"written {c.Slot}", ["case"] = c.Label,
-                                          ["asserts"] = "field survives",
+                                          ["asserts"] = "field survives", ["value"] = c.Value,
                                           ["note"] = "one constant feeds the Write AND the " +
                                                      "comparison, so changing it is not a negative " +
                                                      "control - break another case instead" });

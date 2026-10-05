@@ -912,8 +912,33 @@ public sealed class ClassToolingLeverTests
         var labels = list.Select(e => e!["label"]!.GetValue<string>()).ToList();
 
         Assert.Equal(["expected Sum 1", "written 2", "expected code 3"], labels);
+        // the number in a label is the SLOT, so each entry carries the value it expects
+        Assert.Equal("4", list[0]!["value"]!.GetValue<string>());
+        Assert.Equal(0, list[2]!["value"]!.GetValue<int>());
         // a survival case's constant feeds both sides, and the entry says breaking it proves nothing
         Assert.Contains("not a negative control", list[1]!["note"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// The accessor suite names its constants too - it named none, so a round-trip-only suite left
+    /// the reader to infer from the note that there was nothing worth breaking.
+    /// </summary>
+    [Fact]
+    public void TheAccessorSuiteListsItsConstantsAndSaysWhichOneProvesNothing()
+    {
+        var list = TestTools.ClassExpectedConstants(
+        [
+            new TestTools.ClassCase(1, "Sum", "double", "3.25", "Sum round trip",
+                                    @"C:\x\Write Sum.vi", @"C:\x\Read Sum.vi", @"C:\x\A.lvclass"),
+            new TestTools.ClassCase(2, "Count", "int32", "0", "Count default",
+                                    @"C:\x\Write Count.vi", @"C:\x\Read Count.vi", @"C:\x\A.lvclass",
+                                    DefaultOnly: true),
+        ]);
+
+        Assert.Equal("written 1", list[0]!["label"]!.GetValue<string>());
+        Assert.Contains("not a negative control", list[0]!["note"]!.GetValue<string>());
+        Assert.Equal("expected 2", list[1]!["label"]!.GetValue<string>());
+        Assert.Equal("default value", list[1]!["asserts"]!.GetValue<string>());
     }
 
     [Fact]
