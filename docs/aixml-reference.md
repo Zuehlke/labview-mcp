@@ -1795,6 +1795,27 @@ all, and needs a `Build Array` of scalar constants instead.
 and reading the written file as bytes (31 bytes for five elements plus five LFs, no CR anywhere).
 That is the portable way to get a line-ending constant onto a generated diagram.
 
+### A class constant - the seed of a class wire
+
+**AIXML cannot author one, so it is written as a `path` constant and swapped afterwards.** A
+dynamic-dispatch input is required in practice (unwired, the caller is `Error 1003`), so a chain of
+class calls - a method inside a loop, an accessor chain in a test - needs an object to start from.
+Author it as a labelled `path` constant on the class input:
+
+```xml
+<Constant _name="Accumulator seed" outputs="value:4290.value" type="path" uid="4290" uid_parent="root" value=""/>
+```
+
+then, after generating, `lvai_swap_subvis` with
+`constantsJson=[{"label":"Accumulator seed","class":"C:\\...\\Accumulator.lvclass"}]` turns it into
+the class constant (`{LV.Constant}` `Replace`). Until that swap `lvai_generate_vi` answers
+`failedAtStep: execState` - expected, the path still feeds a class input - and the export reads
+`type="ref{UDClassInst}"` afterwards. Put the seed on the LOOP's shift register (`Left inputs=`)
+when the object travels across iterations, not inside the loop. Measured 2026-10-05 on three
+cold builds of an acceptance VI calling a class method in a For Loop; a reader of this document
+alone found nothing under "class constant" before then - the route lived only in `CLAUDE.md` and
+the tool descriptions.
+
 ### Calling a plain palette VI: the terminals are its front-panel labels
 
 For a primitive `Node` you look the terminal names up in the table above. For a `Call` there is no

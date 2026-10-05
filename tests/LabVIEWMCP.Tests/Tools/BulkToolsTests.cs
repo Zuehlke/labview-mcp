@@ -130,6 +130,8 @@ public class BulkGenerateViTests
         Assert.Equal("execState", Res.Str(result, "failedAtStep"));
         Assert.True(Res.Bool(result, "viExistsNow"));
         Assert.False(Res.Obj(result)["loadedSubVIs"]!["executable"]!.GetValue<bool>());
+        // The routine cause comes first: a class input still fed by a path seed.
+        Assert.Contains("path` SEED CONSTANT", Res.Str(result, "note"));
     }
 
     [Fact]

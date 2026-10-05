@@ -413,6 +413,12 @@ internal sealed class SwapTools(LvaiConnection connection)
             var nodesSwapped = NodesThatLanded(swapped, present, swaps.Select(s => s.Socket));
 
             JsonNode? targets = null;
+            // What the diagram calls AFTER the swap, with repetition, read off the verify export.
+            // `present` is the helper's listing from BEFORE its Replace, and it used to be the
+            // only one served as `diagramSubVis` - so a clean swap answered `callTargets` naming
+            // the real accessors beside a `diagramSubVis` still naming the four sockets, measured
+            // on two cold builds 2026-10-05.
+            List<string>? after = null;
             var socketsLeft = -1;
             JsonArray? wiringLost = null;
             var wiringChecked = false;
@@ -441,6 +447,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 {
                     socketsLeft = swaps.Count(s => xml.Contains(s.Socket, StringComparison.Ordinal));
                     targets = new JsonArray([.. Targets(xml).Select(t => (JsonNode)t!)]);
+                    after = SubVisInExport(xml);
 
                     if (wiringBefore is not null)
                     {
@@ -499,8 +506,13 @@ internal sealed class SwapTools(LvaiConnection connection)
                 // advice arrived inside the thing it was warning about, the same shape
                 // lvai_aixml_reference section 8 was caught by. Measured 2026-09-15: one extra
                 // turn, on a node whose name had become class-qualified after an earlier swap.
-                ["diagramSubVis"] = present.Count == 0
-                    ? null : new JsonArray([.. present.Select(n => (JsonNode)n!)]),
+                ["diagramSubVis"] = (after ?? present) is { Count: > 0 } now
+                    ? new JsonArray([.. now.Select(n => (JsonNode)n!)]) : null,
+                ["diagramSubVisFrom"] = after is not null
+                    ? "LabVIEW's export AFTER the swap"
+                    : present.Count > 0 ? "the helper, BEFORE its Replace - no verify export" : null,
+                ["diagramSubVisBefore"] = after is not null && present.Count > 0
+                    ? new JsonArray([.. present.Select(n => (JsonNode)n!)]) : null,
                 ["callTargets"] = targets,
                 ["helperGenerated"] = helperGenerated,
                 ["errorCode"] = code,
@@ -513,7 +525,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 ["errorKind"] = code == "1055" ? "noActiveProject" : null,
                 ["steps"] = steps,
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
-                ["note"] = Note(ok, swapped, missing, socketsLeft, verify, code, present),
+                ["note"] = Note(ok, swapped, missing, socketsLeft, verify, code, after ?? present),
             });
         });
 
@@ -675,6 +687,15 @@ internal sealed class SwapTools(LvaiConnection connection)
         }
         return lost;
     }
+
+    /// <summary>
+    /// Every subVI call in an export, WITH repetition and in document order, unescaped the way
+    /// the helper spells names (`\3A` is `:`), so a second swap can copy a name straight from it.
+    /// </summary>
+    internal static List<string> SubVisInExport(string xml) =>
+        [.. System.Text.RegularExpressions.Regex
+            .Matches(xml, @"<Call\b[^>]*?\btarget=""([^""]+)""")
+            .Select(m => m.Groups[1].Value.Replace(@"\3A", ":").Replace(@"\5C", @"\"))];
 
     internal static List<string> Targets(string xml) =>
         [.. System.Text.RegularExpressions.Regex

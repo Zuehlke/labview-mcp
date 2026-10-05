@@ -524,8 +524,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 $"Generated. {Counts(cases)}, every method called as an ordinary static subVI. " +
                 "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs; open " +
                 "it when you are ready to RUN the suite. Read the JUnit report, and break one " +
-                "expectation on purpose once, because an all-green first run proves very little.",
-                swapAnswer["callTargets"]?.DeepClone(), route);
+                "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
+                "because an all-green first run proves very little.",
+                swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases));
         });
 
     /// <summary>
@@ -598,11 +599,52 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     /// first suite built from `expectOutput` reported "0 error-code assertion(s) and 0
     /// wire-survival assertion(s)" - which reads as a suite that asserts NOTHING, over a suite
     /// whose assertion had just been proven to fire.
+    ///
+    /// AND AN `expectFieldValue` CASE IS NOT A SURVIVAL CASE. It shares `writeField` with one, and
+    /// this count read `DataType is not null` for both - so a suite asserting that `Add Value`
+    /// CHANGED a field was summarised as "2 wire-survival assertion(s)", the opposite claim,
+    /// measured on a cold build 2026-10-05.
     /// </summary>
-    private static string Counts(IReadOnlyCollection<MethodCase> cases) =>
+    internal static string Counts(IReadOnlyCollection<MethodCase> cases) =>
         $"{cases.Count(c => c.ExpectOutput is not null)} returned-value assertion(s), " +
-        $"{cases.Count(c => c.ExpectErrorCode is not null)} error-code assertion(s) and " +
-        $"{cases.Count(c => c.DataType is not null)} wire-survival assertion(s)";
+        $"{cases.Count(c => c.ExpectErrorCode is not null)} error-code assertion(s), " +
+        $"{cases.Count(c => c.DataType is not null && c.ExpectFieldValue is null)} " +
+        "wire-survival assertion(s) and " +
+        $"{cases.Count(c => c.DataType is not null && c.ExpectFieldValue is not null)} " +
+        "changed-field assertion(s)";
+
+    /// <summary>
+    /// EVERY CONSTANT A NEGATIVE CONTROL CAN BREAK, by the label the generator gave it - the same
+    /// `expectedConstants` field `lvai_generate_test` answers with. This tool's labels name what
+    /// they hold (`expected Sum 1`, `expected code 3`) rather than `expected 1`, and with nothing
+    /// listing them a test agent tried the documented `expected <n>`, was refused by
+    /// `lvai_set_constant` and spent a call reading the real labels off the refusal, 2026-10-05.
+    /// A survival case has NO separate expectation: one `written <n>` constant feeds both the
+    /// Write and the comparison, so breaking it breaks nothing, and the entry says so.
+    /// </summary>
+    internal static JsonArray ExpectedConstants(IEnumerable<MethodCase> cases)
+    {
+        var list = new JsonArray();
+        foreach (var c in cases)
+        {
+            if (c.ExpectOutput is not null && c.ExpectValue is not null)
+                list.Add(new JsonObject { ["label"] = $"expected {c.ExpectOutput} {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "returned value" });
+            if (c.ExpectErrorCode is not null)
+                list.Add(new JsonObject { ["label"] = $"expected code {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "error code" });
+            if (c.DataType is not null && c.ExpectFieldValue is not null)
+                list.Add(new JsonObject { ["label"] = $"expected {c.ReadField} {c.Slot}",
+                                          ["case"] = c.Label, ["asserts"] = "changed field" });
+            else if (c.DataType is not null)
+                list.Add(new JsonObject { ["label"] = $"written {c.Slot}", ["case"] = c.Label,
+                                          ["asserts"] = "field survives",
+                                          ["note"] = "one constant feeds the Write AND the " +
+                                                     "comparison, so changing it is not a negative " +
+                                                     "control - break another case instead" });
+        }
+        return list;
+    }
 
     /// <summary>
     /// The method suite against the REAL members: one method opened through the class's project,
@@ -864,8 +906,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             $"Generated. {Counts(cases)}, every method and accessor called DIRECTLY - no sockets, " +
             "no node swaps; only the seed constants were replaced. THE PROJECT IS LEFT CLOSED; " +
             "open it when you are ready to RUN the suite. Read the JUnit report, and break one " +
-            "expectation on purpose once, because an all-green first run proves very little.",
-            swapAnswer["callTargets"]?.DeepClone(), Direct(route)), null);
+            "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
+            "because an all-green first run proves very little.",
+            swapAnswer["callTargets"]?.DeepClone(), Direct(route), ExpectedConstants(cases)), null);
     }
 
     private static JsonObject Direct(JsonObject route)
@@ -1067,9 +1110,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
               ? ""
               : "\\2C named directly while the class was open in LabVIEW\\3B each object comes " +
                 "from a class constant")
-          .Append(". An error-code case asserts the `code` the ")
-          .Append("method returns\\3B a wire-survival case writes a field\\2C calls the method\\2C ")
-          .Append("and reads the field back off the object the METHOD returned.\\0A\\0AThe ")
+          .Append(". A returned-value case asserts an output of the method\\3B an error-code ")
+          .Append("case asserts the `code` it returns\\3B a field case seeds a field\\2C calls the ")
+          .Append("method and reads the field back off the object the METHOD returned - ")
+          .Append("unchanged for a wire-survival case\\2C at its new value for a changed-field ")
+          .Append("case.\\0A\\0AThe ")
           .Append("method's own error cluster is fed `no error` and never chained into the ")
           .Append("assertions\\2C because a method under test is expected to fail without ")
           .AppendLine("hardware.\">");
@@ -1476,7 +1521,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
-                                  JsonNode? callTargets = null, JsonObject? route = null)
+                                  JsonNode? callTargets = null, JsonObject? route = null,
+                                  JsonArray? expectedConstants = null)
     {
         var size = TestTools.GeneratedDiagramSize(steps);
         return Json.Document(new JsonObject
@@ -1488,6 +1534,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["testViExistsNow"] = File.Exists(testViPath),
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
+            // Which constant to break for a negative control, by lvai_set_constant.
+            ["expectedConstants"] = expectedConstants,
             ["diagramSize"] = size,
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
@@ -1758,13 +1806,20 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 var expectOutput = o["expectOutput"]?.GetValue<string>();
                 var expectValue = o["expectValue"]?.GetValue<string>();
 
+                // `expectFieldValue` counts as an assertion HERE, so a case carrying it without a
+                // `writeField` reaches the refusal below that names the missing key. Without it,
+                // `{"readField":"Sum","expectFieldValue":"4"}` answered "asserts nothing" - read by
+                // a test agent as the key being ignored, 2026-10-05 - and that message did not
+                // mention `expectFieldValue` at all.
                 if (string.IsNullOrWhiteSpace(writeField) && expect is null
-                    && string.IsNullOrWhiteSpace(expectOutput))
+                    && string.IsNullOrWhiteSpace(expectOutput) && o["expectFieldValue"] is null)
                     throw new ArgumentException(
                         $"Case for '{method}' asserts nothing. Give it \"expectOutput\" plus " +
                         "\"expectValue\" (a value the method RETURNS on a named terminal), " +
-                        "\"expectErrorCode\" (the code it returns), or \"writeField\" plus " +
-                        "\"value\" (a field that must survive the call) - or any combination.");
+                        "\"expectErrorCode\" (the code it returns), \"writeField\" plus " +
+                        "\"value\" (a field that must survive the call), or \"writeField\" plus " +
+                        "\"value\" plus \"expectFieldValue\" (a field the method must CHANGE, " +
+                        "with \"readField\" when the one read back differs) - or any combination.");
 
                 if (!string.IsNullOrWhiteSpace(writeField) && string.IsNullOrWhiteSpace(value))
                     throw new ArgumentException(

@@ -855,6 +855,67 @@ public sealed class ClassToolingLeverTests
     public void ACaseThatAssertsNothingIsRefused(string json) =>
         Assert.Throws<ArgumentException>(() => MethodTestTools.MethodCaseRequest.ParseAll(json));
 
+    /// <summary>
+    /// `expectFieldValue` with no `writeField` reaches the refusal that NAMES the missing key -
+    /// it used to stop at "asserts nothing", which a test agent read as the key being ignored.
+    /// </summary>
+    [Fact]
+    public void AFieldExpectationWithoutASeedFieldIsToldWhatIsMissing()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll(
+                """[{"method":"Add Value","readField":"Sum","expectFieldValue":"4"}]""")).Message;
+
+        Assert.DoesNotContain("asserts nothing", message);
+        Assert.Contains("\"writeField\"", message);
+    }
+
+    [Fact]
+    public void TheAssertsNothingRefusalNamesTheChangedFieldShapeToo()
+    {
+        var message = Assert.Throws<ArgumentException>(() =>
+            MethodTestTools.MethodCaseRequest.ParseAll("""[{"method":"Start"}]""")).Message;
+
+        Assert.Contains("\"expectFieldValue\"", message);
+    }
+
+    private static MethodTestTools.MethodCase Case(int slot, string? writeField = null,
+                                                   string? expectFieldValue = null,
+                                                   int? expectErrorCode = null) =>
+        new(slot, $"case {slot}", "Add Value", @"C:\x\Add Value.vi",
+            writeField, writeField is null ? null : @"C:\x\Write Sum.vi",
+            writeField, writeField is null ? null : @"C:\x\Read Sum.vi",
+            writeField is null ? null : "double", writeField is null ? null : "1.5",
+            expectErrorCode, @"C:\x\Accumulator.lvclass", [],
+            ExpectFieldValue: expectFieldValue);
+
+    /// <summary>
+    /// A changed-field case is not a survival case - the summary called `Add Value`'s two
+    /// changed-field assertions "wire-survival", the opposite claim.
+    /// </summary>
+    [Fact]
+    public void ChangedFieldCasesAreCountedApartFromSurvivalCases()
+    {
+        var counts = MethodTestTools.Counts([Case(1, "Sum", "4"), Case(2, "Sum"), Case(3, expectErrorCode: 0)]);
+
+        Assert.Contains("1 error-code assertion(s)", counts);
+        Assert.Contains("1 wire-survival assertion(s)", counts);
+        Assert.Contains("1 changed-field assertion(s)", counts);
+    }
+
+    /// <summary>The labels a negative control needs, as the generator really spells them.</summary>
+    [Fact]
+    public void EveryBreakableConstantIsListedByItsRealLabel()
+    {
+        var list = MethodTestTools.ExpectedConstants(
+            [Case(1, "Sum", "4"), Case(2, "Sum"), Case(3, expectErrorCode: 0)]);
+        var labels = list.Select(e => e!["label"]!.GetValue<string>()).ToList();
+
+        Assert.Equal(["expected Sum 1", "written 2", "expected code 3"], labels);
+        // a survival case's constant feeds both sides, and the entry says breaking it proves nothing
+        Assert.Contains("not a negative control", list[1]!["note"]!.GetValue<string>());
+    }
+
     [Fact]
     public void ReadFieldDefaultsToTheFieldThatWasWritten()
     {
