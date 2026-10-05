@@ -398,6 +398,20 @@ internal sealed class PaneTools(LvaiConnection connection)
                 sb.AppendLine($"  write these: first input {geometry.FirstInput}, " +
                               $"error in {geometry.ErrorIn}, first output {geometry.FirstOutput}, " +
                               $"error out {geometry.ErrorOut}");
+                // The two "more" rows are the ones a reader drops, and then puts a second input on
+                // first input + 1 - a middle slot on 4833. This listing printed only the four until
+                // 2026-10-05, while docs/aixml-reference.md said the call prints six; an acceptance
+                // build needed a second call (pattern=4833) for its extra outputs.
+                var more = new List<string>();
+                if (geometry.LeftEdge.Count > 2)
+                    more.Add("more inputs " + string.Join(", ",
+                        geometry.LeftEdge.Skip(1).SkipLast(1).Select(s => s.ConIdx)) + " (down the left edge)");
+                if (geometry.RightEdge.Count > 2)
+                    more.Add("more outputs " + string.Join(", ",
+                        geometry.RightEdge.Skip(1).SkipLast(1).Select(s => s.ConIdx)) + " (down the right edge)");
+                if (more.Count > 0)
+                    sb.AppendLine("  and for more terminals: " + string.Join("; ", more) +
+                                  " - never first input + 1");
                 sb.AppendLine("  Still measure the VI afterwards - the setting can differ on another " +
                               "machine, and an EXISTING VI carries whatever pane it was given.");
             }

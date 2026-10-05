@@ -403,7 +403,9 @@ sentence and the paragraph after it, a table its lead-in, a heading its section'
 a prose hit its paragraph instead of one wrapped line, and a "same" cell inherits the cell above.
 The acceptance build the same day found the rest: a paragraph or table row in the term's OWN
 section that never writes the term lost to mentions elsewhere and was cut from a batch, so that
-section now outranks them and returns its tables whole.
+section now outranks them and returns its tables whole. A cold rebuild then found the section
+named only by its title's START (`Shift registers - <ShiftReg>, …`) and its code blocks, which never
+repeat the term; both count as the term's own now.
 Batches got SMALLER (an answer budget, divided over the terms) and single lookups about 1.7x
 larger. **A lookup that drops context is the same defect as an unserved document**: the fact is
 there and the route to it is not.

@@ -171,8 +171,12 @@ internal sealed class KnowledgeTools
     /// </summary>
     private const int MaxFollowOnLines = 6;
 
-    /// <summary>How much of a section's opening prose a hit on its heading brings along.</summary>
-    private const int MaxLeadLines = 10;
+    /// <summary>
+    /// How much of a section's opening prose a hit on its heading brings along. 12 rather than 10
+    /// since `### For Loop` opens with a five-line summary of its rules ahead of the `maxin` rule
+    /// itself, and 10 cut that rule mid-paragraph.
+    /// </summary>
+    private const int MaxLeadLines = 12;
 
     /// <summary>How much of the sentence introducing a code block or a table comes with it.</summary>
     private const int MaxLeadInLines = 4;
@@ -825,9 +829,22 @@ internal sealed class KnowledgeTools
         return score;
     }
 
-    /// <summary>Is <paramref name="heading"/> the section about <paramref name="needle"/>?</summary>
+    /// <summary>
+    /// Is <paramref name="heading"/> the section about <paramref name="needle"/>? The title IS the
+    /// term, or BEGINS with it at a word boundary: `### Shift registers - <ShiftReg>, and the error
+    /// chain that needs one` is the section a lookup for `Shift registers` wants, and an exact match
+    /// missed it - the second acceptance build for issue #74 then needed a `section=` call to reach
+    /// the element spelling, 2026-10-05.
+    /// </summary>
     private static bool IsOwnSection(string heading, string needle)
-        => heading.Length > 0 && Plain(heading).Equals(needle, StringComparison.OrdinalIgnoreCase);
+    {
+        if (heading.Length == 0) return false;
+        var title = Plain(heading);
+        if (title.Equals(needle, StringComparison.OrdinalIgnoreCase)) return true;
+        return title.Length > needle.Length &&
+               title.StartsWith(needle, StringComparison.OrdinalIgnoreCase) &&
+               !char.IsLetterOrDigit(title[needle.Length]);
+    }
 
     /// <summary>
     /// Does any line of this passage put <paramref name="needle"/> in its FIRST table cell?
@@ -1137,11 +1154,16 @@ internal sealed class KnowledgeTools
         {
             // A FENCED BLOCK: the sentence that introduces it, the block whole, the paragraph
             // that explains it. A hit on several of its lines is still one passage.
+            //
+            // In the term's OWN section every block counts, like every table row: it is the element
+            // spelling the section exists to give, and it rarely repeats the section's name -
+            // `<ShiftReg>` never writes "Shift registers".
             if (ix.FenceStart[i] >= 0)
             {
                 var start = ix.FenceStart[i];
                 var end = ix.FenceEnd[i];
-                if (!Enumerable.Range(start, end - start + 1).Any(Mentions)) { i = end; continue; }
+                if (!IsOwnSection(ix.Heading[start], needle) &&
+                    !Enumerable.Range(start, end - start + 1).Any(Mentions)) { i = end; continue; }
 
                 var parts = new List<(int, int, bool, bool)>();
                 if (LeadIn(ix, start) is { } lead) parts.Add(lead);

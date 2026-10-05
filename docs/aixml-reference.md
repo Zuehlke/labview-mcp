@@ -224,7 +224,9 @@ result with `viPath`. What the generator picks for other overshoots is not measu
 **Take the whole style-guide block that call prints — not four numbers.** This paragraph said "prints
 the four `conIdx` values to write", and that phrasing is itself the cause of a bug that shipped three
 times: the tool prints **six** entries — `first input`, **`more inputs`**, `error in`, `first output`,
-**`more outputs`**, `error out` — and the two `more` rows are the ones a reader drops. A VI with two
+**`more outputs`**, `error out` — and the two `more` rows are the ones a reader drops. (The call
+with NO argument printed only the four until 2026-10-05, while this sentence said six; it adds an
+`and for more terminals:` line now, after an acceptance build needed a second call for them.) A VI with two
 data inputs then gets its first on `conIdx 0`, correctly, and its second on **`conIdx 1`, because 1
 follows 0**. On 4833 the left edge is `0, 5, 7, 9`; `1` is the top of the second column, a middle
 slot. `lvai_connector_pane` with `viPath` catches it and forces a regeneration, so the cost is about
@@ -752,9 +754,10 @@ same document from `errorCode 1` to `errorCode 0`, and the generated VI then ran
 Same shape, with `maxin` / `maxout` alongside `count`.
 
 **In short, each rule measured below:** `maxin` = `N`; `count` = `<loop uid>.value`, the loop's
-`i`. An `Out` tunnel with `mode="index"` builds an array; WITHOUT `mode` it carries the LAST value
-(the IDE does the opposite), and the type's default when the loop runs zero times. A shift
-register's `Right` output net is read outside the loop directly - no `Out` tunnel.
+`i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>"/>`
+builds an array; WITHOUT `mode` the tunnel carries the LAST value (the IDE does the opposite), and
+the type's default when the loop runs zero times. A shift register's `Right` output net is read
+outside the loop directly - no `Out` tunnel; its spelling is under "Shift registers" below.
 
 **`maxin` wires `N`. `count` does not — it names the loop's own `i` output net.** This section said
 for two revisions that *nothing* wires `N` and that auto-indexing was the only way; that was wrong,
@@ -814,7 +817,7 @@ changed it validated. So write `mode="index"` on every `Out` tunnel that is mean
 array - an export always carries it, which is why copying one never shows the difference.
 
 **On a loop that runs ZERO times, such a last-value tunnel gives the type's DEFAULT.** Measured
-2026-10-05 on `C:\temp\ForLoopTest\ForLoopTest.vi`, `last i` taken out of `i` without `mode`:
+2026-10-05 on an acceptance VI whose `last i` is taken out of `i` without `mode`:
 `n = 4` read `3`, `n = 1` read `0` - and `n = 0` read `0` as well, so from outside an empty loop
 and a single iteration are indistinguishable. Where that matters, read the indexed array's size
 or `N` beside it; the export of the saved VI carried no `mode` on that tunnel either.
@@ -927,7 +930,7 @@ Both children take `uid_parent` = the `<ShiftReg>`'s uid, not the loop's.
 
 The `<Right>` row said "`outputs` is **empty** - nothing reads it" until 2026-10-05, which is true
 of the example above and read as a rule, while section "For Loop" says the same net leaves the loop
-on its own. Both hold: measured on `ForLoopTest.vi`, an Accumulator object and an error chain each
+on its own. Both hold: measured on an acceptance VI, a class object and an error chain each
 on a For Loop shift register, `Read Sum.vi` reading the `Right` output net from root level -
 validated, `execState 1`, `n = 4` gave `Sum = 6`.
 

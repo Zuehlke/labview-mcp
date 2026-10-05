@@ -754,9 +754,70 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
             node: "For Loop,Increment,To Double Precision Float,Merge Errors,Unbundle By Name");
 
         Assert.Contains("**`maxin` wires `N`. `count` does not", result);
-        Assert.Contains("WITHOUT `mode` it carries the LAST value", result);
+        Assert.Contains("WITHOUT `mode` the tunnel carries the LAST value", result);
         Assert.Contains("zero times", result);
         Assert.Contains("`count=\"\"` plus one `mode=\"index\"` input tunnel", result);
+        // the Out tunnel's spelling, not only its rule
+        Assert.Contains("mode=\"index\" outputs=\"value:<net outside>\"", result);
+    }
+
+    /// <summary>
+    /// A section whose title BEGINS with the term is that term's section, and its code blocks come
+    /// back even though they never write the term - `<ShiftReg>` is not "Shift registers".
+    /// </summary>
+    [Fact]
+    public void ASectionTitledWithTheTermAndMoreReturnsItsBlocks()
+    {
+        const string doc = """
+            ## 1. Structures
+
+            ### Probe pairs - `<Pair>`, and why they matter
+
+            A probe pair is a child of the loop.
+
+            ```xml
+            <Pair uid="1"/>
+            ```
+
+            | | |
+            |---|---|
+            | `<Left>` | the read side |
+
+            ### Probes and more
+
+            Unrelated to the term "Probe pairs".
+
+            ```xml
+            <Other/>
+            ```
+            """;
+
+        var result = KnowledgeTools.Lookup(doc, "Probe pairs", 40);
+
+        Assert.Contains("<Pair uid=\"1\"/>", result);
+        Assert.Contains("| `<Left>` | the read side |", result);
+        Assert.DoesNotContain("<Other/>", result);
+    }
+
+    /// <summary>The second acceptance build's batch: the shift register spelling without section=.</summary>
+    [Fact]
+    public void TheRealShiftRegisterSpellingSurvivesABatch()
+    {
+        var result = KnowledgeTools.AixmlReference(
+            node: "For Loop,Shift registers,Tunnel,To Double Precision Float,Merge Errors");
+
+        Assert.Contains("<ShiftReg uid=", result);
+        Assert.Contains("| `<Right>` |", result);
+    }
+
+    /// <summary>The longer For Loop lead must still carry the maxin rule whole, not cut mid-way.</summary>
+    [Fact]
+    public void TheForLoopLeadCarriesTheSummaryAndTheMaxinRuleWhole()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "For Loop");
+
+        Assert.Contains("**In short, each rule measured below:**", result);
+        Assert.Contains("listed and never tried.", result);
     }
 
     /// <summary>
