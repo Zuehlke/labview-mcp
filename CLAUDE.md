@@ -137,7 +137,9 @@ project or opened loose with no project, a subject outside every installation tr
 by `ConvertAIXMLToVI` (`errorCode 0`), the caller ran with the right answer, and it was still
 `execState 1` from disk in a FRESH LabVIEW — so the link is written into the file. Not loaded, or
 merely a member of an active project, it is `Error 53` as before, three times over. **The reason
-nobody saw it: `ValidateAIXML` refuses the same document in every arm.** Two traps come with it:
+nobody saw it: `ValidateAIXML` refuses the same document in every arm** - for loose VIs and class
+members; four loaded `.lvlib` members under `project\Delacor\` VALIDATED clean on 2026-10-06,
+`docs/aixml-call-loaded-vi.md` §9. Two traps come with it:
 a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as a failed
 validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
 VI there that makes the project unclosable (`1019`) until it is saved to a path.
@@ -1220,6 +1222,15 @@ VIs with ordinary connector panes, and they build a forty-file module correctly.
 library-qualifier trap; a correct qualifier is not the missing piece. Generation resolves a target
 by name against what the installation can **find** — `vi.lib`, `user.lib`, `instr.lib`, `LVAddons`
 — and `project\Delacor\` is none of those, so no spelling exists that works.
+
+**CORRECTED 2026-10-06: "in every spelling" holds only while the target is NOT LOADED.** Opened
+loose first with `lvai_open_file viPaths`, `DQMH New Unit Test.lvlib\3AScript Unit Test.vi` and
+three siblings validated, converted, ran, and kept their links on disk - the loaded-VI rule above,
+now measured on project-LIBRARY members. **With a project active, open them THROUGH that project** -
+loose they answered 53 again, as an A/B (`docs/aixml-call-loaded-vi.md` §9). That makes a generated WRAPPER possible, which calls the
+parse and the scripter as subVIs of ONE caller and so keeps `Module Info`'s refnums alive: no
+dialog, no latched button, no keystroke. `lvai_dqmh_new_unit_test` is the first such tool;
+`docs/dqmh-scripting.md` §9 maps every other DQMH menu function onto the same shape.
 
 **`instr.lib` was missing from that list until 2026-09-07, and its absence read as a much bigger
 limit than it is.** Measured on `Agilent 34401.lvlib`, the one real instrument driver on this
@@ -2616,6 +2627,7 @@ literally it argued away 600 usable palette VIs.
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
+| How do I create a DQMH UNIT TEST, and which DQMH functions run without their dialog? | `docs/dqmh-scripting.md` §9, §9a | `lvai_dqmh_new_unit_test` - a generated wrapper calls Delacor's LOADED scripters; the test VI is `execState 0` by Delacor's design (`#CodeNeeded` frames) |
 | What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` |
 | How do I put a class or VI INTO a `.lvlib`? | `docs/labview-actor-framework.md` §8 | `lvai_add_to_library` — NEVER write `NI.Lib.ContainingLib` by hand: it changes the class's QUALIFIED NAME without relinking the members that call each other by it, and every file-level check stays green while every VI goes `eBad`. NI's `{LV.Library}` `AddItem` + `Save All This Library.vi` writes both halves and relinks |
 | How do I create an Actor Framework MESSAGE? | `docs/labview-actor-framework.md` | `lvai_create_message_class` — NEVER author `Do.vi`: a GENERATED override of `Message.lvclass:Do.vi` is `eBad` whatever its diagram, measured down to a pass-through with zero nodes. The tool drives NI's own Message Maker instead |

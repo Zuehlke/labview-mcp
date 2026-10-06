@@ -714,7 +714,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// array indicators readable - RunVIAsTopLevel returns those empty with Error 91.
     /// Returns null when the helper's AIXML is missing.
     /// </summary>
-    private async Task<IReadOnlyList<LvValuesXml.Value>?> RunAsync(
+    internal async Task<IReadOnlyList<LvValuesXml.Value>?> RunAsync(
         string scripts, string helperName, Dictionary<string, string> inputs,
         int timeoutSeconds, CancellationToken ct)
     {
@@ -743,7 +743,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
         return LvValuesXml.Parse(valuesXml);
     }
 
-    private async Task<bool> EnsureAsync(
+    internal async Task<bool> EnsureAsync(
         string aixml, string vi, int timeoutSeconds, CancellationToken ct)
     {
         if (!File.Exists(aixml)) return false;
@@ -760,12 +760,12 @@ internal sealed class DqmhTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ reading helper output
 
-    private static string? Scalar(IReadOnlyList<LvValuesXml.Value> values, string name) =>
+    internal static string? Scalar(IReadOnlyList<LvValuesXml.Value> values, string name) =>
         values.FirstOrDefault(v =>
             string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase)).Scalar;
 
     /// <summary>Every &lt;Val&gt; of an array indicator, in order.</summary>
-    private static List<string> Strings(IReadOnlyList<LvValuesXml.Value> values, string name)
+    internal static List<string> Strings(IReadOnlyList<LvValuesXml.Value> values, string name)
     {
         var xml = values.FirstOrDefault(v =>
             string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase)).Xml;
@@ -784,7 +784,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     }
 
     /// <summary>The error cluster of a helper run, or null when it reported none.</summary>
-    private static string? Failed(IReadOnlyList<LvValuesXml.Value> values)
+    internal static string? Failed(IReadOnlyList<LvValuesXml.Value> values)
     {
         var error = values.FirstOrDefault(v =>
             string.Equals(v.Name, "error out", StringComparison.OrdinalIgnoreCase)).Xml;
@@ -918,7 +918,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
         .Replace("&", "&amp;").Replace("\"", "&quot;")
         .Replace("<", "&lt;").Replace(">", "&gt;");
 
-    private static string HelperDirectory() =>
+    internal static string HelperDirectory() =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers");
 
     private static string? DialogPath() =>

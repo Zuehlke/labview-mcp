@@ -2,7 +2,7 @@
 name: labview-dqmh-module
 description: >-
   MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS — requests and broadcasts with typed arguments — by driving Delacor's own Create New DQMH Event dialog over VI Server, which is the only route that works: `Script New Event.vi` cannot be driven from a helper because the thirteen refnums it needs die when the parse VI stops. That chain ends in ONE synthesised keystroke, because the dialog's OK button is a latched boolean VI Server may not write and whose Mechanical Action cannot be changed while the VI runs, so it needs the dialog frontmost and is not suitable for an unattended run — say so when reporting. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -31,15 +31,24 @@ driving Delacor's dialog (Phase 6). The reason is refnum lifetime, not preferenc
 > below. `docs/dqmh-patterns.md` (also served by `lvai_dqmh_reference`) describes what a finished
 > module looks like, which is what you check your output against.
 
-## The one thing that decides everything: you cannot `Call` these VIs
+## The one thing that decides everything: a `Call` reaches these VIs only once they are LOADED
 
-An AIXML `Call` naming a DQMH scripting VI is refused with **`Error 53, Unsupported SubVI`**, in
-every spelling. Generation resolves a target by name against `vi.lib`, `user.lib` and `LVAddons`;
-the DQMH scripting VIs live under `project\Delacor\`, which is none of those.
+An AIXML `Call` naming a DQMH scripting VI is refused with **`Error 53, Unsupported SubVI`** while
+that VI is not in memory: generation resolves a target by name against `vi.lib`, `user.lib` and
+`LVAddons`, and the DQMH scripting VIs live under `project\Delacor\`.
 
-**The route is VI Server by path**, and `scripts/lvdqmh_new_module.xml` already implements it. Do
-not re-derive it and do not hand-write a replacement — read that file, and if you need a variant,
-copy it. Its own description block explains every wiring decision.
+**CORRECTED 2026-10-06: open the target VIs first and the same `Call` resolves.** Measured with a
+control arm - nothing opened: 53; the four targets opened with `lvai_open_file viPaths` (loose with no project; THROUGH the project
+when one is active, or it is 53 again):
+validate and convert clean, `execState 1`, links written into the file. That is what makes a
+WRAPPER possible, and a wrapper is the way past the refnum problem below, because parse and
+scripter then run as subVIs of ONE caller. `scripts/lvdqmh_new_unit_test.xml` is the first one, and
+`lvai_dqmh_new_unit_test` drives it (Phase 7). `docs/dqmh-scripting.md` §9 and §9a.
+
+**For a MODULE the route is still VI Server by path**, and `scripts/lvdqmh_new_module.xml`
+implements it - `Script New Module.vi` takes plain values, so it never needed a wrapper. Do not
+re-derive it and do not hand-write a replacement — read that file, and if you need a variant, copy
+it. Its own description block explains every wiring decision.
 
 ## Phase 0 — establish the ground
 
@@ -218,6 +227,11 @@ you did not make.
 Never edit a `.lvproj` while LabVIEW holds it open.
 
 ## Phase 6 — EVENTS: drive Delacor's dialog
+
+> **Superseded in principle 2026-10-06** - a generated wrapper calling the scripters as loaded
+> subVIs works for unit tests (Phase 7) and is the planned route for events too. Until an event
+> wrapper ships, `lvai_dqmh_new_event` and this phase are the route; the "structurally impossible"
+> below holds for a helper that runs the parse as its OWN top-level VI, not for a wrapper.
 
 Events work, but **not** through `Script New Event.vi`. Driving that directly is structurally
 impossible: `Module Info` holds thirteen refnums, LabVIEW releases the ones a VI opened when that VI
@@ -416,6 +430,21 @@ accepted. Retrying is normal — the measured runs needed a second attempt as of
 The final press is a **synthesised keystroke**: it needs the dialog frontmost, so it is not suitable
 for an unattended run and it steals focus for a moment. Everything before it is ordinary VI Server
 and verifies itself. Do not present the whole chain as robust automation.
+
+## Phase 7 — UNIT TESTS: `lvai_dqmh_new_unit_test`, no dialog
+
+One call: `moduleName` and `eventName`, bare or as Delacor spells them (`Heater.lvlib`,
+`Do Something.vi`). It needs the project OPEN AND ACTIVE and no unsaved module. It opens four of
+Delacor's scripting VIs, generates the wrapper once, runs it, and answers with the files created
+and each VI's exec state. No keystroke, no foreground - this one IS unattended-safe.
+
+- **Only REQUEST events** get a unit test - Delacor's own filter. `eventNotFound` lists the ones
+  the module has.
+- **The test VI reads `execState 0` when it is created, by Delacor's design**: its event frames
+  carry `#CodeNeeded` notes for the module's broadcasts, and Delacor's own template is broken the
+  same way. Setup and teardown read 1. Report this as the state Delacor leaves, never as a failure,
+  and do not run the test VI.
+- Delacor saves the `.lvproj` itself and lists the three VIs under a `Unit Tests` folder.
 
 ## Reporting
 

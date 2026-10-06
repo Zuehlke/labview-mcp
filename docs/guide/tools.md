@@ -6,12 +6,12 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**88 tools over 23 RPCs.** Forty-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**89 tools over 23 RPCs.** Fifty map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
 tools. 36 carry `readOnlyHint`,
-51 carry `destructiveHint`, so a client can gate the writes.
+52 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -102,6 +102,7 @@ resources rather than call tools.
 | `lvai_generate_method_test` | — (composes `lvai_generate_vis` + `lvai_generate_vi` + `lvai_swap_subvis`) | **generates a Caraya suite over a class's METHODS**, the companion to `lvai_generate_class_test`'s accessors. Two case shapes: assert the error code a method returns, or write a field, call the method and read it back OFF THE RETURNED OBJECT — which is what proves the class wire threads the method. The method's own error is fed a constant and never chained into Caraya's chain, because a method under test is expected to fail without hardware |
 | `lvai_generate_mock_class` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`, and drives Astemes LMock's own `LMock Generate Mock Class.vi`) | **generates an LMock mock class for an INTERFACE** — the `.lvclass`, a constructor, one override per dynamic dispatch member and one `When <Method>.vi` each — without LMock's right-click gesture, which is unreachable from here. Measured against the mock NI ships with the LMock example, the two differ only in uid numbering. **The pre-flight is the point, not the call**: every LMock failure measured arrives as a MODAL DIALOG that stops this whole gRPC service until a human clicks Continue, so a non-interface source is refused HERE from `NI.LVClass.IsInterface` in the file, and `Add to lvproj?` is wired FALSE because LMock's own terminal defaults to TRUE when unwired and then needs an active project. `ok` is judged from the FILES, never from `Created Files` — a refused run was measured naming two paths and writing neither |
 | `lvai_dqmh_new_event` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`, and drives Delacor's own `Create New DQMH Event.vi`) | **creates a DQMH request or broadcast** with typed arguments, in one call instead of about fifteen. It drives the DIALOG because `Script New Event.vi` cannot be called from a helper — its `Module Info` holds thirteen refnums and LabVIEW releases them when the parse VI stops, while the dialog runs parse and script as subVIs of one live VI. The module is matched by NAME and confirmed against the dialog's own step-6 text before anything is pressed. **Not unattended-safe**: the OK button is a latched boolean VI Server may not write, so the last step foregrounds the dialog and sends a SPACE |
+| `lvai_dqmh_new_unit_test` | — (composes `OpenFile` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **creates Delacor's unit test** for one request event of a DQMH module in the active project, with **no dialog and no keystroke** - unattended-safe. A generated wrapper calls Delacor's own `Parse Project for DQMH Modules.vi` and `Script Unit Test.vi` as loaded subVIs of ONE caller, which keeps `Module Info`'s refnums alive. Names may be bare or as Delacor spells them; the answer lists the files written and each VI's exec state - the test VI reads 0 by Delacor's design until its broadcast frames are configured |
 | `lvai_ensure_labview` | — (process start + service discovery) | **starts LabVIEW** if it is not running, and clears the auto-save store first |
 
 ### Without LabVIEW — the pylabview route
