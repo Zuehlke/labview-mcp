@@ -159,8 +159,12 @@ validation name now, not one per call.** The user's exit dialog of 2026-09-26 li
 IDE main over TCP, active project), with positive controls, and the converter's `1051` does not see
 them either - so they cannot be closed afterwards. `ValidationScratch` hands every validation
 `LVMCP Validate.vi`; a validation under a reused name answers exactly as a fresh one, measured, and
-conversion keeps a unique name because a failed convert burns its own. Whether the exit dialog
-shrinks to one entry needs one LabVIEW exit to confirm; "Don't Save - All" there is always safe.
+conversion keeps a unique name because a failed convert burns its own. **It does NOT shrink to one
+entry - measured 2026-10-06**: LabVIEW NUMBERS a name already in memory, and after one long day the
+IDE's Error list showed 17 errors from `LVMCP Validate.vi` and `LVMCP Validate2` … `12`, none of
+them the user's code. Their windows, the Error list and an `Externally Changed Files List` dialog
+all reported `IsWindowVisible` FALSE while on screen, so the user could not reach them; a `WM_CLOSE`
+to the dialogs' handles closed them. "Don't Save - All" at exit is always safe.
 `docs/scratch-vis-in-memory.md`.
 
 **`lvai_generate_vi` TAKES THIS ROUTE BY ITSELF since 2026-09-25**, and so does everything built on
@@ -2740,7 +2744,7 @@ literally it argued away 600 usable palette VIs.
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
 | How do I check that an event-driven VI REACTS, not just that it starts? | `docs/cold-build-atm-agents-7.md` | `lvai_run_vi_and_read_values` `runForMs` + `signalsJson` |
 | Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
-| Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, and can they be closed? | `docs/scratch-vis-in-memory.md` | — safe to discard; one fixed validation name since 2026-09-26 |
+| Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, or the Error list show them, and can they be closed? | `docs/scratch-vis-in-memory.md` §2a | — safe to discard; the fixed name still piles up as `LVMCP Validate2` … `12`, and their windows and dialogs can report themselves invisible |
 | Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
