@@ -261,6 +261,13 @@ Adoption also leaves the helper in memory: regenerating it to the same path then
 
 ## 6. Events: the dialog is the only supported route
 
+> **History since 2026-10-06.** The dialog route described in this section - and every
+> `scripts\lvdqmh_dlg_*.xml`, `lvdqmh_ring2.xml` and `lvdqmh_args_paste2.xml` helper it names -
+> was REMOVED, together with `lvai_dqmh_new_event`'s `useDialog` option, once the headless wrapper
+> of §9c covered all four event types: two routes to one result, one of them ending in a keystroke,
+> is the duplication the user asked to be rid of. The measurements stay here because they explain
+> why the dialog could not be driven reliably.
+
 > **SUPERSEDED 2026-10-06 — §9c.** A generated wrapper scripts all four event types with no
 > dialog and no keystroke, and `lvai_dqmh_new_event` uses it by default. This section is the
 > dialog route, kept as `useDialog: true` and as the record of how the refnum problem was found.
@@ -1377,3 +1384,10 @@ and tester `1 -> 0` (the documentation had named only Broadcast and Round Trip r
 `lvai_dqmh_create_rt_tester` answered `rtTesterPath: ""` for a file it created; after a module
 rename `moduleNames` still listed the old name while the read-back found the new one; and the
 template title is always the module name - Delacor's metadata has no separate one.
+
+**THE DIALOG ROUTE IS GONE (same day).** With every DQMH menu function reachable headless, the
+event tool's `useDialog` option, its ~650 lines of dialog driving and the nine helpers it ran
+(`lvdqmh_dlg_start`, `_fill3`, `_keyfocus`, `_probe`, `_getstring`, `_setstring`, `_signal`,
+`lvdqmh_ring2`, `lvdqmh_args_paste2`) were deleted - the user's instruction, no duplicate routes.
+What stays of the window layer is what `DqmhDialogWatch` needs to answer LabVIEW's own
+`Save changes before closing?` modal, which is not Delacor's dialog and has no other route.

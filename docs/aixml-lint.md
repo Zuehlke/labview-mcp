@@ -115,7 +115,7 @@ entries, so those characters are escaped inside names — `\3A` colon, `\2C` com
 newline, `\5C` backslash. Real examples: the `Select` primitive's output is `s? t\3Af` (15
 occurrences in `ATM State Machine.xml`); a `Property Node` carries
 `fields="write+Front Panel Window\3AState"`; terminal names read `error in (no error)` and
-`max queue size (-1\2C unlimited)` (8 occurrences in `scripts/lvdqmh_dlg_keyfocus.xml`).
+`max queue size (-1\2C unlimited)` (8 occurrences in the former `scripts/lvdqmh_dlg_keyfocus.xml`, removed with the DQMH dialog route on 2026-10-06).
 
 **The trap is the ORDER, not the split.** The escape *replaces* the character, so the raw
 attribute value holds no literal colon for those names and a plain split is already correct.
@@ -163,8 +163,8 @@ Two shapes are refused and both are checked, measured 2026-09-09:
 
 **So a nested property IS authorable, and the separator is a DOT.** The report this work came from
 concluded "two nodes, no nested property" — the two-node chain (`{LV.Control}`→`Label`→
-`{LV.Text}`→`Text`) does validate, but it is not required, and `scripts/lvdqmh_args_paste2.xml`
-has been shipping `Label.Text` all along.
+`{LV.Text}`→`Text`) does validate, but it is not required, and the DQMH dialog helper
+`lvdqmh_args_paste2.xml` shipped `Label.Text` until it was removed on 2026-10-06.
 
 Telling the two colon forms apart needs no catalogue completeness, only a **positive** lookup: the
 head of a legitimate colon name is a category prefix that is not itself a property (`Project`,

@@ -128,224 +128,46 @@ modal:
 - Then `lvai_describe_project`: `missingItems` and `missingFiles` both empty. Reading the file back
   cannot see a link that broke; only LabVIEW resolving it can.
 
-## Phase 6 — EVENTS: `lvai_dqmh_new_event`, no dialog (the dialog route is the fallback)
+## Phase 6 — EVENTS: `lvai_dqmh_new_event`, no dialog
 
-> **THE DEFAULT ROUTE IS HEADLESS SINCE 2026-10-06 - one `lvai_dqmh_new_event` call, no dialog,
-> no keystroke** (`docs/dqmh-scripting.md` §9c). It refuses by name what Delacor's dialog would
-> answer with a modal, wires a control onto every unwired input of the new call in the tester,
-> saves what the scripting left dirty, and reports. Read these fields of its answer and report them:
->
-> - `ok` (the measured file count: 2 / 2 / 3 / 4 for Request / Broadcast / Request and Wait /
->   Round Trip), `createdFiles` with each VI's exec state;
-> - `moduleExecutable` and `completionNeeded` - a **Broadcast with arguments leaves Main.vi BROKEN**
->   until its loose `#CodeNeeded` call is placed where the module fires it and wired. That is the
->   module author's decision: say so, never wire constants into it (it would fire at module start);
-> - `testerWiring`, `savedMembers`, `unsavedMembers` / `savingNote`;
-> - `projectHygiene` - finish with `lvai_close_active_project` WITH `projectPath`, whose sweep
->   removes the helpers and the deleted carriers LabVIEW lists at the next save.
->
-> Everything below is the DIALOG route, `useDialog: true`. Use it only for a case the headless
-> route refuses and the dialog is known to handle, and say why. Its "structurally impossible"
-> holds for a helper that runs the parse as its OWN top-level VI, not for a wrapper.
-
-Events work, but **not** through `Script New Event.vi`. Driving that directly is structurally
-impossible: `Module Info` holds thirteen refnums, LabVIEW releases the ones a VI opened when that VI
-stops, so running `Parse Project for DQMH Modules.vi` as its own top-level `Run VI` leaves every one
-dead by the time the scripter uses them. Only the application reference can be substituted;
-`LVLibrary.Open` does not exist (though `{LV.Application}` `Library.Open` does - corrected 2026-10-06),
-and the eleven `ProjectItem`s cannot be rebuilt.
-
-`Create New DQMH Event.vi` calls both **as subVIs of one running VI**, which is exactly what keeps
-them alive — plus `Preflight Main VI.vi` and `Verify Event Names.vi` beforehand. So the dialog is
-the API. Measured end to end 2026-08-31; `docs/dqmh-scripting.md` §6 has every number.
-
-Helpers ship for each step. Do not re-derive them.
-
-| # | Helper | Does |
-|---|---|---|
-| 1 | `scripts/lvdqmh_dlg_start.xml` | `FP.Open` + `Run VI` async, the way NI's provider launches it |
-| 2 | `scripts/lvdqmh_ring2.xml` | reads the `Module` ring's entries |
-| 3 | `scripts/lvdqmh_dlg_fill3.xml` | sets module (signaling), type, name, description, tester; reads `Step 6` back |
-| 4 | *(you author)* | arguments carrier VI — one control per argument, correctly named and typed |
-| 5 | `scripts/lvdqmh_args_paste2.xml` | copies those controls into the Arguments Window |
-| 6 | `scripts/lvdqmh_dlg_keyfocus.xml` | puts the key focus on OK |
-| 7 | *(PowerShell)* | foreground the window and send ONE SPACE |
-| — | `scripts/lvdqmh_dlg_probe.xml` | lists a panel's controls with labels, classes and indices |
-
-### The six things that will otherwise cost you a session each
-
-**THE ARGUMENTS WINDOW ON SCREEN IS A TEMPORARY COPY.** Its title reads
-`DQMH Arguments Window [lvtemporary_95526.vi]`; the number changes per invocation and it has **no
-file on disk**. Pasting into `DQMH Arguments Window.vi` succeeds, reports the controls back, and
-changes nothing the dialog reads. Address the copy **by name** — `Open VI Reference`'s `vi path`
-takes a string name for anything in memory. Never put a name through `String To Path`: that makes it
-relative and answers `Error 1445`. Get the name from the window title.
-
-**THE OK BUTTON IS A LATCHED BOOLEAN, AND IT IS PRESSED WITH A KEYSTROKE — NOT A CLICK.**
-`Mechanical Action` = 4, Latch When Released. LabVIEW refuses `Value (Signaling)` on those with
-**`Error 1193`** — measured on `{LV.Boolean}` after `To More Specific Class`. Do not test this on
-`{LV.Control}`: a variant written there returns `error 0` and is silently dropped, which reads as
-success and proves nothing. The latch cannot be switched off either: writing `Mechanical Action` on
-a **running** VI answers `Error 1073`. So the press has to be synthesised input — but it does
-**not** have to be a mouse click.
-
-The route is helper 6 plus one SPACE:
-
-1. `lvdqmh_dlg_keyfocus.xml` writes `Key Focus` = true on control index 10 and **reads it back**.
-2. PowerShell brings the dialog forward and sends `keybd_event` VK_SPACE down/up.
-
-**Two things make or break it, both measured 2026-09-01:**
-
-- **`Key Focus` fails silently AND intermittently.** The write returns `error 0` while doing
-  nothing, and the read-back returns **false**. Foregrounding the window fixes it — but not always
-  on the first try: measured 2026-09-01, it took three foreground-then-focus attempts in a row
-  before the read-back said true, with nothing differing between them. **Loop:** set `Key Focus`,
-  read it back, and if false, foreground again and repeat. Only send SPACE once it reads true.
-- **SPACE, not ENTER.** `VK_RETURN` does nothing — OK is not the panel's default button.
-- **Foreground and keystroke must be ONE PowerShell invocation.** Focusing in one call and pressing
-  SPACE in the next did nothing at all: starting the second process moved the foreground away.
-
-An earlier revision computed the button's screen position from `PanelBounds`, `Origin` and the
-control's own bounds and clicked it. That works and is strictly worse: three more properties, an
-arithmetic that breaks silently when the panel is scrolled, and a moved mouse cursor to restore.
-Do not reintroduce it.
-
-**THE MODULE RING PUTS THE PLACEHOLDER LAST.** Measured: `0` DQMHdemo, `1` FirstClone, `2` Korrekt,
-`3` `<Select a Module>`. Index 0 is a real module, and the order follows neither the project nor
-`Parse Project…`'s output. **Read the ring (helper 2), then verify through `Step 6`** — that
-indicator names the target module in words ("The new event will be created in DQMHdemo.lvlib"), so a
-wrong index is visible before anything is written. Setting index 1 on the placeholder assumption
-aimed a run at the wrong module and got within one click of scripting into it.
-
-**SET THE RING THROUGH `Value (Signaling)`, NOT `Ctrl Val.Set`.** The dialog rebuilds `Step 6` on a
-Value Change event; a plain write leaves it stale and aimed elsewhere. Everything else — type, name,
-description, tester flag — is `Ctrl Val.Set` by control label and needs no reference.
-
-**THE DIALOG NEEDS A ROUND TRIP TO REACT.** Reading `Step 6` in the same helper run that wrote the
-ring returns the OLD text. Read it in a **separate** tool call; the latency is the wait.
-
-**A GENERIC `Controls[]` REFERENCE CANNOT CARRY A SUBCLASS PROPERTY.** `Strings []` on `{LV.Ring}`
-and `Mechanical Action` on `{LV.Boolean}` are both refused. `To More Specific Class` is an ordinary
-AIXML node and does the downcast; its `target class` input takes a refnum constant
-(`type="ref{LV.Ring}"`).
-
-### Order of work
-
-1. Back up the module folder and the `.lvproj` first. This route has several steps and the module is
-   the user's.
-2. Start the dialog (1). Read the ring (2) and pick the index **by name**.
-3. Fill the fields (3), then read `Step 6` again in a separate call and **confirm the module by
-   name**. Do not continue if it names a different module.
-4. Author the carrier VI (4) and paste its controls into the `lvtemporary_*` window (5). Verify the
-   window's `Controls[]` came back with your labels.
-5. Focus OK (6) and **confirm `focus after write` is true**, then foreground-and-SPACE in one
-   PowerShell call (7).
-6. Verify from the files (below). Then clean up — this route adopts **many** helper VIs; on the
-   measured runs there were ten and then six.
-
-   **CLOSE THE PROJECT FIRST, then read the `.lvproj`.** Before the close the file is not evidence:
-   measured 2026-08-31, `lvai_describe_project` reported ten adopted helpers while the `.lvproj` on
-   disk still listed none — LabVIEW had adopted them in memory and not yet written them.
-   `lvai_close_active_project` saves, and six then appeared in the file. Reading the file first and
-   concluding "clean" leaves them in the user's project.
+**One call per event, no dialog, no keystroke** (`docs/dqmh-scripting.md` §9c). It refuses by name
+what Delacor's dialog would answer with a modal, wires a control onto every unwired input of the new
+call in the tester, saves what the scripting left unsaved, and reports. **There is no dialog route
+any more** - the `useDialog` option and the `lvdqmh_dlg_*` helpers were removed on 2026-10-06, so
+never drive Delacor's `Create New DQMH Event` dialog, send keystrokes, or build a helper for it.
 
 ### The four event types are not one chain with a different index
 
-`Script New Event.vi`'s pane has three type-dependent inputs, all `required` (measured 2026-09-01):
-`Arguments VI`, `Reply Payload VI` and `Round Trip (Broadcast)`. So:
-
-| type | what it needs beyond the request arguments |
-|---|---|
-| Request, Broadcast | nothing |
-| Request and Wait for Reply | `replyArgumentsJson` — the fields the module sends BACK |
-| Round Trip | `replyArgumentsJson` **and** `roundTripBroadcastName`, the name of the broadcast half |
-
-**Pass them through `lvai_dqmh_new_event`; it refuses the wrong combinations rather than warning.**
-Omitting them does not fail — Delacor scripts an event with an empty reply cluster, or a Round Trip
-whose broadcast half is unnamed, with no error anywhere. That is why they are refusals.
-
-Both reply-carrying types are **measured end to end** (2026-09-01). What each produces:
-
-| type | files | `.lvlib` | where the reply shows up |
+| type | what it needs beyond `argumentsJson` | files | `.lvlib` |
 |---|---|---|---|
-| Request, Broadcast | 2 | +2 | — |
-| Request and Wait for Reply | 3 | +3 | in the reply cluster `.ctl`; the request VI shows **no** `Reply Payload` output, which is an open question rather than a known defect |
-| Round Trip | **4** | **+4** | as a `Reply Payload` **INPUT** on the broadcast half, which is named by `roundTripBroadcastName` |
+| Request, Broadcast | nothing | 2 | +2 |
+| Request and Wait for Reply | `replyArgumentsJson` — the fields the module sends BACK | 3 | +3 |
+| Round Trip | `replyArgumentsJson` **and** `roundTripBroadcastName`, the broadcast half | **4** | **+4** |
 
-A Round Trip answers *through* its broadcast, so looking for the payload on the request VI finds
-nothing and means nothing. Check the broadcast half.
+The tool refuses the wrong combinations rather than warning: Delacor would script an empty reply
+cluster or an unnamed broadcast half with no error anywhere. A Round Trip answers *through* its
+broadcast, so its `Reply Payload` is an INPUT on the broadcast half, not an output of the request VI.
 
-Three things about the reply half worth knowing before driving the dialog by hand:
+### Read these fields of the answer and report them
 
-- `Show Arguments Window.vi` is called ONCE and returns **two** windows. The reply one is titled
-  `DQMH Reply Payload Window [lvtemporary_*.vi]` and starts **HIDDEN**, so find it with an
-  enumeration that does not filter on visibility.
-- **`Value (Signaling)` on `Event Type` — `Controls[]` index 1 — reveals it**, and `Ctrl Val.Set`
-  does not. Do it BEFORE any paste, and check the control's own `Label.Text`: `Controls[]` order is
-  read, never assumed.
-- **Never signal a TEXT field.** That reruns the dialog's event case and rebuilds both argument
-  windows, discarding whatever was pasted.
+- `ok`, `createdFiles` with each VI's exec state;
+- `moduleExecutable` and `completionNeeded` - a **Broadcast with arguments leaves Main.vi BROKEN**
+  until its loose `#CodeNeeded` call is placed where the module fires it and wired. That is the
+  module author's decision: say so, never wire constants into it (it would fire at module start);
+- `testerWiring`, `savedMembers`, `unsavedMembers` / `savingNote`;
+- `projectHygiene` - finish with `lvai_close_active_project` WITH `projectPath`, whose sweep
+  removes the helpers and the deleted carriers LabVIEW lists at the next save.
 
-### If the desktop is locked, stop before starting
+### Verifying an event, from the module
 
-`GetForegroundWindow()` returning **0** means no window can hold the foreground — a locked
-workstation, a screensaver, a disconnected session. The keystroke cannot reach it and retries do not
-help. `lvai_dqmh_new_event` checks this before it starts the dialog and answers
-`errorKind: desktopNotInteractive`. If you meet it, say plainly that the workstation must be
-unlocked; do not drive the dialog and leave it filled.
-
-### If `lvai_open_file` answers Error 7
-
-Measured 2026-09-01: `OpenFile.vi` answered `Error 7, File not found` for **every** path, including a
-freshly written minimal `.lvproj`, while `lvai_describe_project` read the same project with
-`errorCode 0` in the same second. The cause is not established. What works is the gesture a person
-would use — open the `.lvproj` through its file association (`Start-Process <path>.lvproj`), which
-hands it to the running LabVIEW and makes it active. Do not conclude the project is damaged.
-
-### Verifying an event
-
-Not from the click — from the module:
-
-- `<Event>.vi` and `<Event> Argument--cluster.ctl` exist in the module folder.
-- The `.lvlib` gained **two** members and lists both.
-- **`Main.vi` changed** — but WHAT it gained depends on the event type, and the check is not the
-  same for both (measured 2026-09-01, counting the elements that name the event in `Main.vi`'s
-  AIXML export):
-  - a **Request** gets **6** elements: an EHL `CaseFrame` labelled
-    `Another Module called the "<Event>" API Method.`, an MHL `CaseFrame` labelled with the event
-    **description**, a `FreeLabel` and three argument-cluster constants. If those case frames are
-    absent, the event is not wired in.
-  - a **Broadcast** gets **1**: a single unwired `Call` to the broadcast VI on the ROOT diagram,
-    carrying a `#CodeNeeded` comment telling a person to drop it where the module should fire it.
-    There is no case frame in either loop and there cannot be — a broadcast is fired *by* the
-    module. **Say in your report that the module does not fire it yet**, or a reader takes
-    "`Main.vi` changed" for "the event works".
-- Two files and **two** `.lvlib` members per event whatever the argument list: an event with NO
-  arguments still gets its `Argument--cluster.ctl`, empty. A missing `.ctl` is a failure even then.
-- `Test <Module> API.vi` changed (tester button) and `Request Events--cluster.ctl` changed.
+- An event with NO arguments still gets its `Argument--cluster.ctl`, empty. A missing `.ctl` is a
+  failure even then.
+- **What `Main.vi` gained depends on the type**: a **Request** gets an EHL and an MHL case frame,
+  the MHL one labelled with the description - their absence means the event is not wired in; a
+  **Broadcast** gets only one unwired `Call` on the root diagram with a `#CodeNeeded` comment,
+  because a broadcast is fired BY the module. **Say that the module does not fire it yet.**
 - `lvai_vi_terminals` on the new VI shows one terminal per argument, with the right types.
-- The AIXML export's `description=` carries the event description.
 - `lvai_describe_project` reports `missingItems: []` and `missingFiles: []`.
-
-### Never create a second event while a dialog is still open
-
-If a run comes back `okNotPressed`, **deal with that dialog before starting anything else**. It is
-still filled in, and its arguments window still holds the controls of the event that failed — a new
-run adopts both. Measured 2026-09-01: a Request whose OK press silently did nothing left its
-`Sollwert` behind, and the Broadcast created next came out carrying `Sollwert` AND `Status`.
-`lvai_dqmh_new_event` now refuses a window with surplus controls, and it verifies the press by
-waiting for the dialog to CLOSE rather than by trusting that the keystroke was delivered — but if you
-drive the dialog by hand, both checks are yours to make.
-
-**A press that reports every step as fine can still not fire.** `focusSettled` and
-`windowWasFrontmost` describe what you did; only the dialog disappearing describes what LabVIEW
-accepted. Retrying is normal — the measured runs needed a second attempt as often as not.
-
-### Say this in your report (dialog route only)
-
-The final press is a **synthesised keystroke**: it needs the dialog frontmost, so it is not suitable
-for an unattended run and it steals focus for a moment. Everything before it is ordinary VI Server
-and verifies itself. Do not present the whole chain as robust automation.
 
 ## Phase 7 — UNIT TESTS: `lvai_dqmh_new_unit_test`, no dialog
 
@@ -400,14 +222,10 @@ Say plainly:
 
 For an **event**, additionally:
 
-- the event name, type, and the arguments with their types — and the module **by name**, quoting the
-  `Step 6` text that proved it, since an index alone proves nothing;
+- the event name, type, and the arguments with their types, and the module **by name**;
 - what changed in the module: the two new files, the `.lvlib` member count, and that **`Main.vi`
   changed** (the MHL frame) — that last one is what distinguishes a wired-in event from an orphaned
   `.ctl`;
-- ON THE DIALOG ROUTE ONLY: **that one step was a synthesised keystroke**, and therefore that the run needed the dialog
-  frontmost and briefly took the focus. Do not let this pass silently: a reader who assumes the
-  whole chain is VI Server will try it headless and it will not work.
 
 Text you write **into** LabVIEW code is English by default, whatever language the request was in.
 
