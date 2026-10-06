@@ -1391,3 +1391,37 @@ event tool's `useDialog` option, its ~650 lines of dialog driving and the nine h
 `lvdqmh_ring2`, `lvdqmh_args_paste2`) were deleted - the user's instruction, no duplicate routes.
 What stays of the window layer is what `DqmhDialogWatch` needs to answer LabVIEW's own
 `Save changes before closing?` modal, which is not Delacor's dialog and has no other route.
+
+### 9h. Filling a message frame - `lvai_dqmh_place_handler`, measured 2026-10-06
+
+Every scripted event leaves its MHL frame with a `#CodeNeeded` label, and no tool put code there,
+so the ATM build on a DQMH back end could not be finished. The frame's shape is Delacor's and the
+same for every event (read off two modules): `Variant To Data` unpacks the message data, an
+`Unbundle By Name` exposes each argument BY FIELD NAME, and for a Request and Wait for Reply a
+`Bundle By Name` takes each reply field by name plus `<Event>_error`, then `Send Notification`
+answers the caller. So the code goes in as ONE handler subVI whose terminals are named after
+those fields, and every wire is a name match.
+
+`scripts/lvdqmh_place_frame_handler.xml` finds the frame among every Case Structure on the
+diagram (`{LV.CaseStructure}` `Frame Names` + `Frames[]`; LabVIEW lists a string selector WITH
+spaces around its quotes, ` "Verify Account" `), picks the first node of each class in the frame -
+`NamedUnbundler`, `Function` (Variant To Data), `NamedBundler` - creates the handler with NI's
+own `New VI Object` (`vi object class` = `ref{LV.SubVI}`, `style` an empty variant, `path` the
+handler, as NI's Message Maker does) and wires through the generic
+`scripts/lvbd_connect_by_names.xml` (terminals by `Name`, `Connect Wire` on the sink). It deletes
+the free text matching `^#CodeNeeded` - a frame has TWO `Text` decorations, the other is the
+frame's description - and saves Main.vi. A dry run reads the frame without changing it.
+
+Accepted on the ATM's Bank module over raw stdio, all four frames: Verify Account (7 wires),
+Deposit (5), Withdraw (6), Get Balance (4), 2.4-2.7 s each, `missing: []`; a Deposit handler
+aimed at Get Balance was refused `namesDoNotMatch` naming `Amount` and `Balance`; a second
+placement into a filled frame was refused `frameAlreadyHasCode`.
+
+**AND MAIN.VI STAYED NOT EXECUTABLE - the cause is not in the frame.** Reproduced on a fresh
+module: `execState 1` after creation, `0` after ONE Request and Wait for Reply event, also read
+fresh from disk with the project closed. The AIXML diff before/after is exactly the two new frames,
+every terminal in them wired like a plain Request's; a traversal of all 272 wires found none
+`Is Broken?`; every other VI of the module is executable; and NI's own
+`vi.lib\AppBuilder\AB_Get_Detailed_BrokenVI_Message.vi` (helper `scripts/lvbd_broken_reason.xml`)
+answers 1003 with an EMPTY list. So VI Server does not name the reason; the IDE's Error List does.
+`scripts/lvbd_broken_wires.xml` stays as the cheap first check for the cases it can see.

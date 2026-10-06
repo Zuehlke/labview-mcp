@@ -1,0 +1,44 @@
+<VI _name="lvbd_broken_wires.vi" description="Lists every BROKEN wire on a VI's block diagram, nested diagrams included - the one cause of a broken VI that VI Server can name, where VI Linker Errors only says the VI is not executable. For each broken wire it reports the names of the terminals at its ends and the class names of the objects that own them, as one line per wire. Read-only\3A the VI is opened in the active project's application instance, looked at and closed, never saved.">
+  <Control _name="VI Path" conIdx="0" connection="recommended" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Read-only: nothing is saved" uid="0" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4201.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.error out" outputs="Application:4211.app,reference out:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4200.value,error in (no error):4211.error out" outputs="vi reference:4212.vi,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Constant outputs="value:4213.value" type="string" uid="4213" uid_parent="root" value="Wire"/>
+  <Constant outputs="value:4214.value" type="uint16{FP,BD,Other}" uid="4214" uid_parent="root" value="1"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4212.vi,Class Name:4213.value,error in (no error):4212.error out,Traverse Target:4214.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4215.refs,# of Refs:4215.n,error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Constant outputs="value:4216.value" type="ref{LV.Wire}" uid="4216" uid_parent="root" value=""/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4215.refs" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4216.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <ShiftReg uid="4303" uid_parent="4300">
+      <Left inputs="value:4215.error out" outputs="value:4304.value" uid="4304" uid_parent="4303"/>
+      <Right inputs="value:4311.error out" outputs="value:4305.value" uid="4305" uid_parent="4303"/>
+    </ShiftReg>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:4304.value,target class:4302.value" outputs="specific class reference:4310.wire,error out:4310.error out" uid="4310" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Is Broken?,read+Terminals[]" type="{LV.Wire}" inputs="reference:4310.wire,error in (no error):4310.error out" outputs="Is Broken?:4311.broken,Terminals[]:4311.terms,reference out:,error out:4311.error out" uid="4311" uid_parent="4300"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4311.terms" mode="index" outputs="value:4321.value" uid="4321" uid_parent="4320"/>
+      <Node _name="Property Node" fields="read+Name,read+Owner" type="{LV.Terminal}" inputs="reference:4321.value,error in (no error):" outputs="Name:4322.name,Owner:4322.owner,reference out:,error out:4322.error out" uid="4322" uid_parent="4320"/>
+      <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:4322.owner,error in (no error):4322.error out" outputs="Class Name:4323.cls,reference out:,error out:" uid="4323" uid_parent="4320"/>
+      <Constant _name="sep" outputs="value:4324.value" type="string" uid="4324" uid_parent="4320" value=" @ "/>
+      <Constant _name="gap" outputs="value:4325.value" type="string" uid="4325" uid_parent="4320" value=" | "/>
+      <Node _name="Concatenate Strings" inputs="string:4322.name,string:4324.value,string:4323.cls,string:4325.value" outputs="concatenated string:4326.end" uid="4326" uid_parent="4320"/>
+      <Tunnel _id="Out1" inputs="value:4326.end" mode="index" outputs="value:4327.value" uid="4327" uid_parent="4320"/>
+    </Structure>
+    <Node _name="Concatenate Strings" inputs="string:4327.value" outputs="concatenated string:4330.line" uid="4330" uid_parent="4300"/>
+    <Tunnel _id="Out1" cond="4311.broken" inputs="value:4330.line" mode="index" outputs="value:4331.value" uid="4331" uid_parent="4300"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:4212.vi,error in (no error):4305.value" outputs="error out:4340.error out" uid="4340" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4211.app,error in (no error):4340.error out" outputs="error out:4341.error out" uid="4341" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4341.error out" outputs="error out:4342.error out" uid="4342" uid_parent="root"/>
+
+  <Indicator _name="Broken Wires" conIdx="4" connection="recommended" inputs="value:4331.value" type="array{string}" uid="4400" uid_parent="root" value="[]"/>
+  <Indicator _name="Wires Seen" conIdx="5" connection="recommended" inputs="value:4215.n" type="int32" uid="4401" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4342.error out" type="cluster{bool.status,int32.code,string.source}" uid="4402" uid_parent="root" value="[false,0,]"/>
+</VI>
