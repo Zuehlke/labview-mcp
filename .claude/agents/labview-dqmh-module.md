@@ -83,7 +83,12 @@ refusal included (there under `detail`, beside `descriptions`):
 1. **Open the project** with `lvai_open_file` (`projectPath` **and** `projectName`). Every DQMH
    tool answers `noActiveProject` otherwise.
 2. `lvai_dqmh_new_module` with `moduleName`, `moduleType` (the NAME), `includeDoSomething`, and
-   `saveFolder` only if the user named one. Allow real time: measured runs took 17-31 s.
+   `saveFolder` only if the user named one. Measured runs took 17-31 s, and on a freshly started
+   LabVIEW up to two minutes - past the client's fixed 60 s ceiling. **`errorKind: stillRunning`
+   is not a failure**: the module is still being scripted in the server, so make THE SAME CALL
+   again (same arguments) until it answers; it waits on that run and returns its answer
+   (`answeredFromEarlierCall`). Start no other LabVIEW work meanwhile. If a client `Request timed
+   out` happens anyway, the same call again collects the answer too.
 
 The tool refuses BEFORE writing anything, each by name, what Delacor's dialog would answer with a
 modal:
@@ -94,6 +99,8 @@ modal:
 | `moduleTypeNotFound` | the type is not in this station's catalogue | `NEEDS CLARIFICATION` with `catalogue` |
 | `unsavedChangesInProject` | VIs in the project folder have unsaved changes (named) | report them; the user saves or reverts - never work around it |
 | `badArguments` | an empty or reserved module name | fix the call |
+| `templateLibraryInProject` | the type is a TEMPLATE whose library name this project already holds - Delacor then fails with 56003 | say so; a template is used in a project other than the one it was made from |
+| `anotherCallStillRunning` | an earlier module call is still running | repeat THAT call first |
 
 ## Phase 3 — read the answer
 

@@ -1273,7 +1273,9 @@ it and copy the shape" does not work. And **an enum-looking input may be a bare 
 that differs per station because module types are pluggable — so read the catalogue and match by
 name, never carry an index. `docs/dqmh-scripting.md` has the measurements;
 `lvai_dqmh_new_module` creates a module in one call since 2026-10-06 - a static wrapper over the
-LOADED scripters like the other DQMH tools, matching the type by name (§9f).
+LOADED scripters like the other DQMH tools, matching the type by name (§9f). **It can outlive the
+client's 60 s ceiling, so it answers `stillRunning` past 45 s and the SAME call again collects the
+answer** (`Infra/ResumableCall.cs`, §9g) - the pattern for any tool whose LabVIEW work can run long.
 
 **AN INTERFACE IS A `.lvclass`, and the same provider pattern creates one.** NI's manual defines it
 as "a class without a private data control", there is no `.lvinterface`, and

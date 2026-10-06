@@ -57,8 +57,30 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         string saveFolder = "",
         [Description("Local budget in seconds; Delacor takes 20-45 s to script a module")]
         int timeoutSeconds = 600,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description("Answer within this many seconds; past it the module is still scripted in the " +
+                     "server and the SAME call again collects the answer (the client gives up at 60 s)")]
+        int answerWithinSeconds = 45,
+        CancellationToken ct = default)
+    {
+        var key = string.Join("|", (moduleName ?? "").Trim(), (moduleType ?? "").Trim(),
+            includeDoSomething, (saveFolder ?? "").Trim());
+        return await ResumableCall.RunAsync(Helper, key, TimeSpan.FromSeconds(answerWithinSeconds),
+            () => CreateAsync(moduleName, moduleType, includeDoSomething, saveFolder, timeoutSeconds),
+            "Call lvai_dqmh_new_module again with the SAME arguments: it waits for this run and " +
+            "returns its answer. Do not start other LabVIEW work meanwhile, and do not take a " +
+            "moduleExists refusal on a new call as a failure - the module may be the one this run wrote.",
+            ct);
+    }
+
+    /// <summary>
+    /// The whole creation, run detached from the request (CancellationToken.None): a client that
+    /// gives up at 60 s must not cancel a scripting run half-way.
+    /// </summary>
+    private async Task<string> CreateAsync(string? moduleName, string? moduleType,
+        bool includeDoSomething, string? saveFolder, int timeoutSeconds)
+    {
+        var ct = CancellationToken.None;
+        return await Rpc.GuardAsync(async () =>
         {
             var name = (moduleName ?? "").Trim();
             if (name.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase)) name = name[..^6];
@@ -88,7 +110,15 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 : Path.GetFullPath(Path.Combine(projectDirectory, saveFolder.Trim()));
 
             if (FolderProblem(folder, name, projectPath) is { } folderProblem)
-                return Json.Error("moduleExists", folderProblem, new { folder });
+                return Json.Error("moduleExists", folderProblem, new
+                {
+                    folder,
+                    hint = File.Exists(Path.Combine(folder, name + ".lvlib"))
+                        ? $"{name}.lvlib is already in that folder - if an earlier call timed out on " +
+                          "the client, that call created it. Check it with lvai_exec_state on its " +
+                          "Main.vi and API tester rather than creating it again."
+                        : null,
+                });
 
             var headless = new DqmhHeadless(connection);
             var dqmh = new DqmhTools(connection);
@@ -128,6 +158,21 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 return Json.Error("moduleTypeNotFound",
                     $"'{moduleType}' is not a module type on this station - `catalogue` lists them.",
                     detail);
+
+            // A TEMPLATE type: Script New Module opens the template's library by path, and a
+            // library of the same NAME already in the project makes that `Library.Open` answer
+            // 56003 - measured 2026-10-06, failing beside the module the template was made from
+            // and succeeding in an empty project. Refused here with the name, before anything runs.
+            string? templateLibrary = null;
+            if (typeIndex >= BuiltInTypes)
+            {
+                templateLibrary = await TemplateLibraryAsync(dqmh, scripts, catalogue[typeIndex],
+                    timeoutSeconds, ct);
+                if (templateLibrary is not null
+                    && TemplateLibraryInProject(projectPath, templateLibrary) is { } clash)
+                    return Json.Error("templateLibraryInProject", clash,
+                        DqmhHeadless.Merge(detail, new JsonObject { ["templateLibrary"] = templateLibrary }));
+            }
 
             // ---- 2. preconditions of the dialog watch ------------------------------------------
             var (dirtyBefore, dirtyError) = await DqmhHeadless.ProjectDirtyAsync(dqmh, scripts,
@@ -179,7 +224,12 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 return Json.Error("helperMissing", $"{Helper} could not be run.", new { steps });
             if (DqmhTools.Failed(run) is { } error)
                 return Json.Error("scriptingFailed",
-                    "Delacor's Script New Module answered an error - `error` is its cluster.",
+                    error.Contains("56003") && typeIndex >= BuiltInTypes
+                        ? "Delacor's Script New Module answered 56003 opening the library of the " +
+                          $"template '{catalogue[typeIndex]}' - a library of the same name is in " +
+                          "memory. Create the module in a project that does not hold " +
+                          $"{templateLibrary ?? "that library"}, or close what holds it."
+                        : "Delacor's Script New Module answered an error - `error` is its cluster.",
                     DqmhHeadless.Merge(detail, new JsonObject { ["error"] = error }));
 
             // ---- 4. save what it left unsaved, verify from the files ----------------------------
@@ -235,6 +285,50 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 answer[key] = value?.DeepClone();
             return Json.Document(answer);
         });
+    }
+
+    /// <summary>Get Module Type Info lists Singleton and Cloneable first, templates after them.</summary>
+    internal const int BuiltInTypes = 2;
+
+    /// <summary>
+    /// The library FILE NAME a template type opens, read the way Delacor reads it - by regex out of
+    /// the metadata files in the folder Delacor's own `Template Folders--constant.vi` names. Null
+    /// when the type is not a template made there (an add-on's own types are not), which leaves
+    /// the check to Delacor.
+    /// </summary>
+    private static async Task<string?> TemplateLibraryAsync(DqmhTools dqmh, string scripts,
+        string title, int timeoutSeconds, CancellationToken ct)
+    {
+        if (DqmhHeadless.TargetPaths([DqmhTemplateTools.FoldersVi]) is not { } paths) return null;
+        var (folders, _) = await dqmh.RunViDetailedAsync(scripts, paths[0], new(), timeoutSeconds, ct);
+        var metadataFolder = folders is null ? null : DqmhTools.Scalar(folders, "MetaData Folder");
+        if (string.IsNullOrEmpty(metadataFolder) || !Directory.Exists(metadataFolder)) return null;
+        foreach (var file in Directory.EnumerateFiles(metadataFolder, "*.xml"))
+            if (TemplateLibraryOf(File.ReadAllText(file, System.Text.Encoding.Latin1), title) is { } lib)
+                return lib;
+        return null;
+    }
+
+    /// <summary>The `LibraryPath` file name of a metadata text whose `Title` is the given one.</summary>
+    internal static string? TemplateLibraryOf(string metadata, string title)
+    {
+        var t = System.Text.RegularExpressions.Regex.Match(metadata, "<Title>(.*?)</Title>");
+        var l = System.Text.RegularExpressions.Regex.Match(metadata, "<LibraryPath>(.*?)</LibraryPath>");
+        if (!t.Success || !l.Success || !string.Equals(t.Groups[1].Value.Trim(), title.Trim(),
+                StringComparison.OrdinalIgnoreCase)) return null;
+        var name = Path.GetFileName(l.Groups[1].Value.Trim().Replace('/', '\\'));
+        return name.Length > 0 ? name : null;
+    }
+
+    /// <summary>Why a template whose library is the given one cannot be used in this project, or null.</summary>
+    internal static string? TemplateLibraryInProject(string projectPath, string library) =>
+        File.Exists(projectPath)
+        && File.ReadAllText(projectPath).Contains($"\"{library}\"", StringComparison.OrdinalIgnoreCase)
+            ? $"The template's library is {library}, and this project already holds a library of " +
+              "that name - Delacor's Script New Module then fails with 56003 opening the template " +
+              "(measured). Create the module in a project without it - a template is normally made " +
+              "in one project and used in another."
+            : null;
 
     /// <summary>
     /// The catalogue entry the caller named, ignoring case - `Singleton` is NOT `Singleton Panel`,

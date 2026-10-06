@@ -153,6 +153,18 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
             var catalogue = types is null ? [] : DqmhHeadless.Listed(types, "type strings");
             var index = catalogue.FindIndex(t => string.Equals(t, title, StringComparison.Ordinal));
 
+            // A template copies the module AS IT IS: one made from a broken module gives broken
+            // modules - measured 2026-10-06, a template of a Heater whose Main.vi carried a loose
+            // #CodeNeeded broadcast call produced a Chiller with Main.vi and tester both execState 0.
+            var headless = new DqmhHeadless(connection);
+            var mainVi = Path.Combine(moduleFolder, "Main.vi");
+            var sourceMainExec = File.Exists(mainVi) ? await headless.ExecStateAsync(mainVi, timeoutSeconds, ct) : null;
+            var sourceTesterExec = await headless.ExecStateAsync(tester, timeoutSeconds, ct);
+            var sourceWarning = sourceMainExec is 1 && sourceTesterExec is 1 ? null
+                : $"The source module is not executable (Main.vi {sourceMainExec?.ToString() ?? "missing"}, " +
+                  $"tester {sourceTesterExec?.ToString() ?? "missing"}), and every module made from this " +
+                  "template starts out the same. Fix the module and create the template again with overwrite.";
+
             return Json.Document(new JsonObject
             {
                 ["ok"] = index >= 0,
@@ -163,6 +175,12 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
                 ["moduleTypeIndex"] = index,
                 ["catalogue"] = DqmhHeadless.Array(catalogue),
                 ["catalogueError"] = typesError,
+                ["sourceMainViExecState"] = sourceMainExec,
+                ["sourceTesterExecState"] = sourceTesterExec,
+                ["warning"] = sourceWarning,
+                ["usageNote"] = $"A module made from this template opens {Path.GetFileName(library)} by " +
+                    "path; in a project that already holds a library of that name - the source " +
+                    "module's own project - Delacor answers 56003. Use the template in another project.",
                 ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
                 ["note"] = index >= 0
                     ? $"Add New DQMH Module now offers '{title}' as module type {index}. The index " +

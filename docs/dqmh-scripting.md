@@ -1336,3 +1336,44 @@ own, so the tool does not create it - a refusal later would otherwise leave an e
 The type match is exact and ignores case only: `Singleton` is not `Singleton Panel` (the MGI
 add-on's type), and an index is never accepted in place of a name. The answer carries `catalogue`
 on every path, refusals included, so a wrong type costs one call and names the right spellings.
+
+### 9g. The all-features build, and what it changed - 2026-10-06
+
+One agent built `DQMH_AllFeatures` with every headless tool and nothing else (its transcript was
+audited: no `useDialog`, no `lvdqmh_dlg_*` helper, no keystroke) in **596 s** end to end. Two of
+its findings changed the module tool.
+
+**`lvai_dqmh_new_module` OUTLIVED THE CLIENT.** Both module calls answered `Request timed out` on
+the client - its ceiling is exactly 60 s and not raisable from here (`docs/lvclass-creation.md`) -
+while the server finished both: on a LabVIEW started seconds earlier, opening Delacor's VIs,
+generating the wrapper and scripting took about two minutes and one. The modules were on disk; the
+answers, with the verification in them, were lost. The tool now runs the creation DETACHED from the
+request (`Infra/ResumableCall.cs`) and answers within `answerWithinSeconds` (default 45): past it
+the answer is `errorKind: stillRunning`, nothing has failed, and **the same call again waits on the
+SAME run** and returns its answer with `answeredFromEarlierCall: true`. A call for a DIFFERENT module
+while one runs is `anotherCallStillRunning`, because both would script one LabVIEW. Accepted over
+raw stdio: `answerWithinSeconds: 5` answered `stillRunning` at 5.0 s, a second module was refused,
+and the repeat collected `ok: true` (`Freezer`, 19.6 s of work, both VIs executable). A server
+restart loses a running job's answer, not its module - `moduleExists` then carries a hint saying so.
+
+**A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
+`Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
+and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:
+in the source module's own project (`Heater.lvlib` loaded) `Chiller` from the `Heater` template
+failed twice; in a fresh empty project the same call created it in 22.5 s. So the tool reads the
+template's `LibraryPath` from Delacor's metadata file and refuses a project that already holds that
+library (`templateLibraryInProject`, 0.7 s, nothing written), and names the clash if 56003 comes
+back anyway. **A template is made in one project and used in another** - that is Delacor's design,
+not a limit of ours.
+
+**And a template copies the module AS IT IS.** The `Chiller` made in the empty project read
+`execState 0` on Main.vi and tester, because the `Heater` it came from was broken (a loose
+`#CodeNeeded` broadcast call, a duplicate frame from a convert). `lvai_dqmh_create_module_template`
+now reads the source's Main.vi and tester first and answers `warning` when either is not
+executable, plus a `usageNote` on the 56003 rule.
+
+**Measured and not yet fixed, from the same build:** removing a plain REQUEST took Logger's Main.vi
+and tester `1 -> 0` (the documentation had named only Broadcast and Round Trip removals);
+`lvai_dqmh_create_rt_tester` answered `rtTesterPath: ""` for a file it created; after a module
+rename `moduleNames` still listed the old name while the read-back found the new one; and the
+template title is always the module name - Delacor's metadata has no separate one.

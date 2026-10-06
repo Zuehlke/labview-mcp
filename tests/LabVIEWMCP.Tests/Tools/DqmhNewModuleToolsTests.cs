@@ -57,6 +57,35 @@ public class DqmhNewModuleToolsTests
         }
     }
 
+    /// <summary>Delacor's metadata file names the template's library; only the matching Title counts.</summary>
+    [Fact]
+    public void A_template_library_is_read_from_its_metadata()
+    {
+        const string metadata = "<MetaData><DQMHTemplate><Title>Heater</Title>" +
+                                "<LibraryPath>Heater.lvlib</LibraryPath></DQMHTemplate></MetaData>";
+        Assert.Equal("Heater.lvlib", DqmhNewModuleTools.TemplateLibraryOf(metadata, "heater"));
+        Assert.Null(DqmhNewModuleTools.TemplateLibraryOf(metadata, "Chiller"));
+        Assert.Equal("Pump.lvlib", DqmhNewModuleTools.TemplateLibraryOf(
+            "<Title>P</Title><LibraryPath>C:/x/Pump/Pump.lvlib</LibraryPath>", "P"));
+    }
+
+    /// <summary>The 56003 clash: the template's library name already in the project.</summary>
+    [Fact]
+    public void A_template_whose_library_the_project_holds_is_refused()
+    {
+        var project = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(project, "<Item Name=\"Heater.lvlib\" Type=\"Library\" URL=\"../L/Heater/Heater.lvlib\"/>");
+            Assert.NotNull(DqmhNewModuleTools.TemplateLibraryInProject(project, "Heater.lvlib"));
+            Assert.Null(DqmhNewModuleTools.TemplateLibraryInProject(project, "Chiller.lvlib"));
+        }
+        finally
+        {
+            File.Delete(project);
+        }
+    }
+
     /// <summary>The tool opens exactly the Delacor VIs its wrapper calls.</summary>
     [Fact]
     public void The_tool_opens_exactly_the_VIs_its_wrapper_calls()
