@@ -302,3 +302,9 @@ ACTIVE, the four opened LOOSE gave `Error 53` at convert three times; opened thr
 (`lvai_open_file` with the project pair), the same document converted clean. The table above was
 measured with NO project open, where loose is the right context. So: open the targets in the
 context the caller will be generated in.
+
+**And the validate column did not hold - measured later the same day.** With a project ACTIVE and
+every target opened through it, `ValidateAIXML` refused all three edit wrappers of
+`docs/dqmh-scripting.md` §9d with `Unsupported SubVI`, while the event wrapper of §9c had
+validated in the same state an hour earlier. So validation of a loaded project-library member is
+NOT reliable either way; the conversion is, and it is what the DQMH tools use.

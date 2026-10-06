@@ -755,7 +755,18 @@ internal sealed class DqmhTools(LvaiConnection connection)
         var helperVi = Path.Combine(HelperDirectory(), helperName + ".vi");
         if (!File.Exists(helperVi) && await EnsureAsync(aixml, helperVi, timeoutSeconds, ct: ct) is false)
             return (null, null);
+        return await RunViDetailedAsync(scripts, helperVi, inputs, timeoutSeconds, ct);
+    }
 
+    /// <summary>
+    /// Run ANY VI on disk through the typed run helper - Delacor's own headless VIs need no
+    /// wrapper of ours, only this.
+    /// </summary>
+    internal async Task<(IReadOnlyList<LvValuesXml.Value>? Values, string? HelperError)> RunViDetailedAsync(
+        string scripts, string targetVi, Dictionary<string, string> inputs,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        var helperVi = targetVi;
         var wrapperAixml = Path.Combine(scripts, RunTools.HelperAixmlFileName);
         var wrapperVi = Path.Combine(HelperDirectory(),
             Path.ChangeExtension(RunTools.HelperAixmlFileName, ".vi"));

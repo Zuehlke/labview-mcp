@@ -95,6 +95,26 @@ public class DqmhHeadlessEventTests
         Assert.Equal(["Arguments.vi"], DqmhHeadless.AdoptedHelpers(
             """<Item Name="Arguments.vi" Type="VI" URL="../../Temp/LabVIEWMCP/dqmh-carriers/ab12/Arguments.vi"/>"""));
 
+    private static readonly HashSet<string> ProjectFiles = new(StringComparer.OrdinalIgnoreCase)
+        { "UTPump.lvlib", "Main.vi", "Test UTPump API.vi", "Test - UTPump - Do Something 1.vi" };
+
+    /// <summary>
+    /// What the post-scripting save may touch: the project's library members and loose files -
+    /// the API tester was NOT a library member, was left unsaved, and Delacor's next project save
+    /// raised a modal over it - and never our helpers, vi.lib or Delacor's own VIs.
+    /// </summary>
+    [Theory]
+    [InlineData("UTPump.lvlib:Main.vi", true)]
+    [InlineData("UTPump.lvlib:Clone Registration.lvlib:Clone Registration AE.vi", true)]
+    [InlineData("Test UTPump API.vi", true)]
+    [InlineData("Test - UTPump - Do Something 1.vi", true)]
+    [InlineData("Clear Errors.vi", false)]
+    [InlineData("DQMH New Event.lvlib:Script New Event.vi", false)]
+    [InlineData("lvdqmh_pick_event.vi", false)]
+    [InlineData("LVMCP Validate.vi", false)]
+    public void Only_the_projects_own_files_are_saved(string name, bool expected) =>
+        Assert.Equal(expected, DqmhHeadless.InProject(name, ProjectFiles));
+
     /// <summary>
     /// The member pattern is `^<module>:` in LabVIEW's Match Pattern syntax, so the library's dot
     /// must not match any character - `UTPumpXlvlib:` is not a member of `UTPump.lvlib`.

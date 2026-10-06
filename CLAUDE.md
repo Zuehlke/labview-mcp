@@ -128,7 +128,8 @@ the installation can find**, and the palette has nothing to do with it. A librar
 by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI in a plain folder
 under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
 does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
-seeing, since most palette VIs live in `.llb`s — a path in any spelling, and project-local code,
+seeing, since most palette VIs live in `.llb`s (not absolute: `Clear Errors.vi` from
+`error.llb` resolved by bare name on 2026-10-06) — a path in any spelling, and project-local code,
 loose or in a project library — **unless that code is LOADED, and then only for conversion.**
 
 **PROJECT-LOCAL CODE RESOLVES BY BARE NAME ONCE IT IS OPEN IN LabVIEW — measured 2026-09-25 on
@@ -138,7 +139,8 @@ by `ConvertAIXMLToVI` (`errorCode 0`), the caller ran with the right answer, and
 `execState 1` from disk in a FRESH LabVIEW — so the link is written into the file. Not loaded, or
 merely a member of an active project, it is `Error 53` as before, three times over. **The reason
 nobody saw it: `ValidateAIXML` refuses the same document in every arm** - for loose VIs and class
-members; four loaded `.lvlib` members under `project\Delacor\` VALIDATED clean on 2026-10-06,
+members; loaded `.lvlib` members under `project\Delacor\` validated clean in two runs on
+2026-10-06 and were REFUSED in three more the same day, so validation is no verdict there either -
 `docs/aixml-call-loaded-vi.md` §9. Two traps come with it:
 a FAILED convert burns the caller's `_name` (`1051` on the next convert, the same as a failed
 validate), and a convert that fails at `Save:Instrument` with a project active leaves a path-less
@@ -1230,7 +1232,12 @@ now measured on project-LIBRARY members. **With a project active, open them THRO
 loose they answered 53 again, as an A/B (`docs/aixml-call-loaded-vi.md` §9). That makes a generated WRAPPER possible, which calls the
 parse and the scripter as subVIs of ONE caller and so keeps `Module Info`'s refnums alive: no
 dialog, no latched button, no keystroke. `lvai_dqmh_new_unit_test` is the first such tool, and
-`lvai_dqmh_new_event` scripts all four event types that way since the same day (§9c);
+`lvai_dqmh_new_event` scripts all four event types that way since the same day (§9c), and eight
+more tools cover the rest of Delacor's menu (§9d, §9e). **Delacor's scripters SAVE THE PROJECT as
+they go, and LabVIEW answers an unsaved VI there with `Save changes before closing?` - a modal that
+stopped two runs for 290 s.** Every scripted DQMH tool therefore refuses to start while anything in
+the project folder is unsaved, saves everything it left unsaved afterwards, and runs a dialog watch
+that answers that one dialog with `Save - All` (the user's instruction of 2026-10-06).
 `docs/dqmh-scripting.md` §9 maps every other DQMH menu function onto the same shape.
 
 **`instr.lib` was missing from that list until 2026-09-07, and its absence read as a much bigger
@@ -2629,6 +2636,7 @@ literally it argued away 600 usable palette VIs.
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
 | How do I create a DQMH EVENT with no dialog, and what does it leave unfinished? | `docs/dqmh-scripting.md` §9c | `lvai_dqmh_new_event` - wires the tester's new inputs and saves what the scripting touched; a Broadcast with arguments leaves Main.vi broken until its `#CodeNeeded` call is placed |
+| How do I REMOVE / RENAME / CONVERT a DQMH event, rename a module, add an RT tester, drop Do Something, make a module TEMPLATE, or VALIDATE - with no dialog? | `docs/dqmh-scripting.md` §9d, §9e | `lvai_dqmh_remove_event`, `_rename_event`, `_convert_event`, `_rename_module`, `_create_rt_tester`, `_remove_do_something`, `_create_module_template`, `_validate_module` - each reports in `completionNeeded` what Delacor leaves for a person |
 | How do I create a DQMH UNIT TEST, and which DQMH functions run without their dialog? | `docs/dqmh-scripting.md` §9, §9a | `lvai_dqmh_new_unit_test` - a generated wrapper calls Delacor's LOADED scripters; the test VI is `execState 0` by Delacor's design (`#CodeNeeded` frames) |
 | What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` |
 | How do I put a class or VI INTO a `.lvlib`? | `docs/labview-actor-framework.md` §8 | `lvai_add_to_library` — NEVER write `NI.Lib.ContainingLib` by hand: it changes the class's QUALIFIED NAME without relinking the members that call each other by it, and every file-level check stays green while every VI goes `eBad`. NI's `{LV.Library}` `AddItem` + `Save All This Library.vi` writes both halves and relinks |

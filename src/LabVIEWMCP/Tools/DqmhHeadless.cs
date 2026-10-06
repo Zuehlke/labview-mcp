@@ -49,24 +49,44 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
     /// </summary>
     internal async Task<string?> EnsureWrapperAsync(
         string scripts, string helperName, string[] targets, string? projectPath,
-        JsonArray steps, int timeoutSeconds, CancellationToken ct)
+        JsonArray steps, int timeoutSeconds, CancellationToken ct, string[]? subHelpers = null)
     {
-        var helperVi = Path.Combine(DqmhTools.HelperDirectory(), helperName + ".vi");
-        var aixml = Path.Combine(scripts, helperName + ".xml");
-        if (!HelperCache.NeedsRebuild(aixml, helperVi)) return null;
+        // THE WRAPPER MAY CALL HELPERS OF OUR OWN - the edit wrappers share `lvdqmh_pick_event`
+        // and `lvdqmh_close_modules`, folded out to keep each diagram inside the size budget. A
+        // Call to one of them resolves only once IT is loaded too, so the order is: Delacor's VIs
+        // through the project, then each sub-helper generated and opened, then the wrapper.
+        var chain = (subHelpers ?? []).Append(helperName)
+            .Select(h => (Name: h, Aixml: Path.Combine(scripts, h + ".xml"),
+                          Vi: Path.Combine(DqmhTools.HelperDirectory(), h + ".vi")))
+            .ToList();
+        if (chain.FirstOrDefault(h => !File.Exists(h.Aixml)) is { Name: { } missing })
+            return Json.Error("scriptsMissing", $"{missing}.xml was not found in the scripts folder.");
+        if (!chain.Any(h => HelperCache.NeedsRebuild(h.Aixml, h.Vi))) return null;
 
         var opened = await OpenTargetsAsync(targets, projectPath, timeoutSeconds, ct);
         steps.Add(new JsonObject { ["step"] = "openDelacorVIs", ["opened"] = opened });
 
-        var generated = await GenerateAsync(helperName, aixml, helperVi, timeoutSeconds, ct);
-        steps.Add(generated);
-        return generated["errorCode"]?.GetValue<int>() is 0 && File.Exists(helperVi)
-            ? null
-            : Json.Error("wrapperGenerationFailed",
-                "The wrapper could not be generated. Error 53 naming a Delacor VI means it was not " +
-                "loaded in the context the wrapper is generated in - see `opened` for each open's " +
-                "own error code.",
-                new { steps, helperVi });
+        foreach (var (name, aixml, vi) in chain)
+        {
+            if (HelperCache.NeedsRebuild(aixml, vi))
+            {
+                var generated = await GenerateAsync(name, aixml, vi, timeoutSeconds, ct);
+                steps.Add(generated);
+                if (generated["errorCode"]?.GetValue<int>() is not 0 || !File.Exists(vi))
+                    return Json.Error("wrapperGenerationFailed",
+                        $"{name} could not be generated. Error 53 naming a VI means it was not " +
+                        "loaded in the context the wrapper is generated in - see `opened` for each " +
+                        "open's own error code.",
+                        new { steps, helperVi = vi });
+            }
+            if (name != helperName)
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "openHelper",
+                    ["opened"] = await OpenTargetsAsync([vi], projectPath, timeoutSeconds, ct),
+                });
+        }
+        return null;
     }
 
     /// <summary>
@@ -252,6 +272,11 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 .Select(f => f.Key).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
             return (created, modified);
         }
+
+        /// <summary>Files that were there before and are gone now - a remove or a rename.</summary>
+        internal List<string> Deleted(Snapshot after) =>
+            [.. _files.Keys.Where(f => !after._files.ContainsKey(f))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)];
     }
 
     /// <summary>Each created file with its size, and its exec state when it is a VI.</summary>
@@ -482,13 +507,18 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 "A DQMH module in this project is locked or read-only. Delacor cannot script it; " +
                 "nothing was written.", detail);
 
-        var memberPattern = "^" + MatchPatternEscape(module) + ":";
-        var (dirtyBefore, dirtyError) = await DirtyMembersAsync(
-            dqmh, scripts, memberPattern, save: false, timeoutSeconds, ct);
+        // NOTHING IN THE PROJECT MAY BE UNSAVED - Delacor's create-event dialog does not ask, but
+        // the dialog watch below answers LabVIEW's save prompt with Save - All, and that is only
+        // right when the prompt can list nothing but this call's own changes.
+        var (dirtyBefore, dirtyError) = await ProjectDirtyAsync(
+            dqmh, scripts, projectPath, timeoutSeconds, ct);
         if (dirtyError is not null)
             return Json.Error("dirtyCheckFailed",
-                "Could not read which module members have unsaved changes.",
+                "Could not read which VIs of the project have unsaved changes.",
                 Merge(detail, new JsonObject { ["error"] = dirtyError }));
+        if (dirtyBefore is { Count: > 0 })
+            return Json.Error("unsavedChangesInProject", UnsavedBeforeMessage(dirtyBefore),
+                Merge(detail, new JsonObject { ["unsaved"] = Array(dirtyBefore) }));
 
         // ---- 2. the checks Delacor's dialog would answer with a modal ----------------------
         var folder = DqmhTools.Scalar(dry, "Library Owning Folder") ?? "";
@@ -510,20 +540,11 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         var mainVi = Path.Combine(folder, "Main.vi");
         if (File.Exists(mainVi))
         {
-            var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-main.{Guid.NewGuid():N}.xml");
-            var exported = await connection.InvokeAsync((c, t) =>
-                c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-                {
-                    ViPath = mainVi,
-                    AiXMLFilePath = export,
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            var frames = exported.ErrorCode == 0 && File.Exists(export)
-                ? CaseNames(File.ReadAllText(export)) : [];
-            if (File.Exists(export)) File.Delete(export);
+            var (frames, exportCode) = await MainViCaseNamesAsync(mainVi, timeoutSeconds, ct);
             steps.Add(new JsonObject
             {
                 ["step"] = "readMainViFrames",
-                ["errorCode"] = exported.ErrorCode,
+                ["errorCode"] = exportCode,
                 ["frames"] = frames.Count,
             });
             if (names.Select(n => frames.FirstOrDefault(f =>
@@ -553,6 +574,8 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         inputs["Script?"] = "true";
 
         IReadOnlyList<LvValuesXml.Value>? run;
+        JsonArray dialogs;
+        var watch = DqmhDialogWatch.Start();
         try
         {
             string? runHelperError;
@@ -573,7 +596,13 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 Merge(detail, new JsonObject
                 {
                     ["visibleWindows"] = Array(DqmhTools.Win32.VisibleTitles()),
+                    ["dialogs"] = watch.Events(),
                 }));
+        }
+        finally
+        {
+            dialogs = watch.Events();
+            await watch.DisposeAsync();
         }
         if (run is null)
             return Json.Error("helperMissing", $"{EventHelper} could not be run.", new { steps });
@@ -624,25 +653,12 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 };
         }
 
-        var (dirtyAfter, _) = await DirtyMembersAsync(
-            dqmh, scripts, memberPattern, save: false, timeoutSeconds, ct);
-        List<string> saved = [], unsaved = dirtyAfter ?? [];
-        string? savingNote = null;
-        if (dirtyBefore is { Count: 0 } && unsaved.Count > 0)
-        {
-            // Everything was saved before this call, so whatever is dirty now is the scripting's
-            // own work - save it, as a person would after the dialog. Without this the next
-            // lvai_dqmh_new_unit_test refuses (Delacor's unit-test dialog DOES gate on dirty) and
-            // a project close meets unsaved members.
-            saved = (await DirtyMembersAsync(dqmh, scripts, memberPattern, save: true,
-                timeoutSeconds, ct)).Members ?? [];
-            unsaved = (await DirtyMembersAsync(dqmh, scripts, memberPattern, save: false,
-                timeoutSeconds, ct)).Members ?? [];
-        }
-        else if (dirtyBefore is { Count: > 0 })
-            savingNote = "Module members had unsaved changes BEFORE this call, so nothing was " +
-                         "saved - that would have saved someone's work in progress. Save the " +
-                         "module yourself; `unsavedMembers` lists what is open.";
+        // Nothing in the project was unsaved before this call - it refuses otherwise - so
+        // whatever is unsaved now is the scripting's own work: module members, the tester, its
+        // unit tests. Save it, as a person would after Delacor's dialog.
+        var (dirtyAfter, _) = await ProjectDirtyAsync(dqmh, scripts, projectPath, timeoutSeconds, ct);
+        var saved = await SaveNamedAsync(dqmh, scripts, dirtyAfter ?? [], timeoutSeconds, ct);
+        var unsaved = (await ProjectDirtyAsync(dqmh, scripts, projectPath, timeoutSeconds, ct)).Dirty ?? [];
 
         List<string> created = [], modified = [];
         if (before is not null)
@@ -694,7 +710,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             ["testerWiring"] = testerWiring,
             ["savedMembers"] = Array(saved),
             ["unsavedMembers"] = Array(unsaved),
-            ["savingNote"] = savingNote,
+            ["dialogsAnswered"] = dialogs,
             ["adoptedHelpers"] = Array(adopted),
             ["adoptedHelpersNote"] = adopted.Count == 0 ? null : AdoptedHelpersNote,
             ["projectHygiene"] =
@@ -713,6 +729,28 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             answer[key] = value?.DeepClone();
         return Json.Document(answer);
     }
+
+    /// <summary>Every case name in Main.vi's AIXML export - the input of the frame-name check.</summary>
+    internal async Task<(List<string> Frames, int ExportErrorCode)> MainViCaseNamesAsync(
+        string mainVi, int timeoutSeconds, CancellationToken ct)
+    {
+        var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-main.{Guid.NewGuid():N}.xml");
+        var exported = await connection.InvokeAsync((c, t) =>
+            c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
+            {
+                ViPath = mainVi,
+                AiXMLFilePath = export,
+            }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+        var frames = exported.ErrorCode == 0 && File.Exists(export)
+            ? CaseNames(File.ReadAllText(export)) : [];
+        if (File.Exists(export)) File.Delete(export);
+        return (frames, exported.ErrorCode);
+    }
+
+    internal const string ProjectHygieneNote =
+        "This call's helpers stay in memory in the project's application instance, and LabVIEW " +
+        "lists every such VI in the .lvproj at the project's NEXT save. Close the project with " +
+        "lvai_close_active_project AND projectPath, whose sweep removes them.";
 
     private const string TesterHelper = "lvdqmh_wire_tester_event";
     private const string FillHelper = "lvbd_fill_unwired_inputs";
@@ -751,7 +789,57 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
     /// <paramref name="save"/> each of them saved in place. Read in the ACTIVE project's
     /// application instance, where the scripting left them.
     /// </summary>
-    private static async Task<(List<string>? Members, string? Error)> DirtyMembersAsync(
+    /// <summary>
+    /// The VIs and controls IN THE PROJECT FOLDER that carry unsaved changes - library members
+    /// (`UTPump.lvlib:Main.vi`) and loose files alike (`Test UTPump API.vi`, unit tests). The
+    /// module-member pattern alone was not enough: the API tester is not a library member, it was
+    /// left unsaved after a rename, and Delacor's next project save raised a MODAL over it. Our own
+    /// helpers and everything outside the project folder - vi.lib, Delacor's scripting VIs - are
+    /// never in this set, so nothing outside the user's project is ever saved by these tools.
+    /// </summary>
+    internal static async Task<(List<string>? Dirty, string? Error)> ProjectDirtyAsync(
+        DqmhTools dqmh, string scripts, string? projectPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var directory = Path.GetDirectoryName(projectPath ?? "");
+        if (string.IsNullOrEmpty(directory) || !System.IO.Directory.Exists(directory)) return ([], null);
+        var (all, error) = await DirtyMembersAsync(dqmh, scripts, ".", save: false, timeoutSeconds, ct);
+        if (all is null) return (null, error);
+        var files = System.IO.Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Select(Path.GetFileName).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return ([.. all.Where(name => InProject(name, files))], null);
+    }
+
+    /// <summary>A qualified name counts by its outermost library's file, a loose VI by its own.</summary>
+    internal static bool InProject(string name, IReadOnlySet<string> files) =>
+        !IsHelperName(name) && files.Contains(name.Contains(':') ? name.Split(':')[0] : name);
+
+    internal static bool IsHelperName(string name) =>
+        name.StartsWith("LVMCP", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("lvdqmh_", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("lvai_", StringComparison.OrdinalIgnoreCase)
+        || name.StartsWith("lvbd_", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Save exactly these, one exact-name pattern each; returns what was saved.</summary>
+    internal static async Task<List<string>> SaveNamedAsync(
+        DqmhTools dqmh, string scripts, IEnumerable<string> names, int timeoutSeconds, CancellationToken ct)
+    {
+        var saved = new List<string>();
+        foreach (var name in names)
+        {
+            var (members, _) = await DirtyMembersAsync(dqmh, scripts,
+                "^" + MatchPatternEscape(name) + "$", save: true, timeoutSeconds, ct);
+            if (members is not null && members.Contains(name, StringComparer.Ordinal)) saved.Add(name);
+        }
+        return saved;
+    }
+
+    internal static string UnsavedBeforeMessage(IEnumerable<string> dirty) =>
+        "These VIs in the project have unsaved changes: " + string.Join(", ", dirty) + ". Save or " +
+        "revert them first. Delacor's scripters save the project as they go, and LabVIEW answers an " +
+        "unsaved VI there with a MODAL dialog; the tools answer that dialog themselves only when " +
+        "what it lists can be nothing but their own scripted changes.";
+
+    internal static async Task<(List<string>? Members, string? Error)> DirtyMembersAsync(
         DqmhTools dqmh, string scripts, string pattern, bool save, int timeoutSeconds,
         CancellationToken ct)
     {

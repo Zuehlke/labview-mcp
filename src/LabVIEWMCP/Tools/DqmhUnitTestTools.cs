@@ -116,8 +116,25 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             var evt = DqmhHeadless.DelacorEventName(eventName);
             var before = DqmhHeadless.Snapshot.TakeOf(projectPath);
 
+            // This wrapper scripts on its first matching run, so the project-wide precondition of
+            // the dialog watch is checked before ANY run: nothing in the project may be unsaved.
+            var (dirtyBefore, dirtyError) = await DqmhHeadless.ProjectDirtyAsync(
+                dqmh, scripts, projectPath, timeoutSeconds, ct);
+            if (dirtyError is not null)
+                return Json.Error("dirtyCheckFailed",
+                    "Could not read which VIs of the project have unsaved changes.",
+                    new { error = dirtyError, steps });
+            if (dirtyBefore is { Count: > 0 })
+                return Json.Error("unsavedChangesInProject",
+                    DqmhHeadless.UnsavedBeforeMessage(dirtyBefore),
+                    new { unsaved = dirtyBefore, steps });
+
             IReadOnlyList<LvValuesXml.Value>? run = null;
             var runs = 0;
+            var watch = DqmhDialogWatch.Start();
+            JsonArray dialogs;
+            try
+            {
             while (true)
             {
                 run = await dqmh.RunAsync(scripts, HelperName,
@@ -141,6 +158,12 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 var retry = Respell(module, evt, run);
                 if (retry is null) break;
                 (module, evt) = retry.Value;
+            }
+            }
+            finally
+            {
+                dialogs = watch.Events();
+                await watch.DisposeAsync();
             }
 
             var moduleNames = DqmhHeadless.Listed(run, "Module Names");
@@ -182,6 +205,11 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 (created, modified) = before.Diff(DqmhHeadless.Snapshot.TakeOf(projectPath)!);
             var createdJson = await headless.DescribeAsync(created, timeoutSeconds, ct);
             var adopted = DqmhHeadless.AdoptedHelpersOf(projectPath);
+            // Whatever the scripting left unsaved in the project is its own work - save it.
+            var (dirtyAfter, _) = await DqmhHeadless.ProjectDirtyAsync(dqmh, scripts, projectPath,
+                timeoutSeconds, ct);
+            var saved = await DqmhHeadless.SaveNamedAsync(dqmh, scripts, dirtyAfter ?? [],
+                timeoutSeconds, ct);
 
             var answer = new JsonObject
             {
@@ -190,6 +218,8 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 ["event"] = evt,
                 ["createdFiles"] = createdJson,
                 ["modifiedFiles"] = DqmhHeadless.Array(modified),
+                ["savedMembers"] = DqmhHeadless.Array(saved),
+                ["dialogsAnswered"] = dialogs,
                 ["adoptedHelpers"] = DqmhHeadless.Array(adopted),
                 ["adoptedHelpersNote"] = adopted.Count == 0 ? null : DqmhHeadless.AdoptedHelpersNote,
                 ["elapsedMs"] = stopwatch.ElapsedMilliseconds,

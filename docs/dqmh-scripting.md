@@ -323,7 +323,9 @@ TOP-LEVEL VI and LabVIEW releases the refnums a VI opened when it stops.** All t
 Only **one** of the thirteen can be replaced — the application reference, because the helper holds
 its own. The other twelve cannot:
 
-- **`LVLibrary.Open` does not exist.** Probed 2026-08-31 on `{LV.Application}`, the way
+- **`LVLibrary.Open` does not exist** - but `{LV.Application}` **`Library.Open` DOES** (corrected
+  2026-10-06: `scripts/lvai_add_one_to_library.xml` and `scripts/lvdqmh_save_library.xml` use it),
+  so a `Library` reference CAN be rebuilt; the eleven `ProjectItem`s still cannot. Probed 2026-08-31 on `{LV.Application}`, the way
   `LVClass.Open` was found: `Invoke Node: Invalid method`. (Safe to probe — a wrong *method* is
   rejected cleanly; it is a wrong *class* that provokes the `OMAutoClasses` crash.)
 - The VI Server catalogue carries no library or project-item opener either.
@@ -1176,3 +1178,119 @@ five. Every answer carries a `projectHygiene` note saying so.
 **Not measured:** a Cloneable module, a module with an `Existing Argument` broadcast (the tool
 always scripts new arguments), a custom enqueue VI, and the route in a LabVIEW where the four
 Delacor targets were never opened before the first call.
+
+### 9d. Remove, rename, convert and validate with no dialog - measured 2026-10-06
+
+Same fixture, backed up first. The three edits are wrappers again - `scripts/lvdqmh_remove_event.xml`,
+`lvdqmh_rename_event.xml`, `lvdqmh_convert_event.xml` - and each calls two shared helpers folded out
+for the size budget: `lvdqmh_pick_event.xml` (parse, pick the module and the event by name, close
+the other modules) and `lvdqmh_close_modules.xml`. A flat remove wrapper measured 20 dependency
+stages. **The generation order is a chain**: Delacor's VIs opened through the active project, then
+each helper generated AND opened through the project, then the wrapper. Validation refused every
+wrapper with `Unsupported SubVI` even with everything opened - see `docs/aixml-call-loaded-vi.md`
+section 9 - so they are converted without it. After a scripted convert and rename the targets
+stopped resolving once and had to be opened again; the tools open them before every generation.
+
+Delacor's remove, rename and convert dialogs all REFUSE a project with unsaved modules (its
+create-event dialog does not), so these wrappers gate on `Any Dirty Modules?` as well as
+`Any Locked Modules?`. A live test held: with three dirty members and `Script?` TRUE the wrapper
+answered `Scripted?` FALSE and changed nothing.
+
+| step | wall | `.lvlib` | what changed |
+|---|---|---|---|
+| dry runs (all three) | 1.3-1.5 s | = | nothing, byte-identical |
+| convert `SetPressure` | 44.5 s | 76 -> 77 | `+ SetPressure (Reply Payload)--cluster.ctl`; the event gained `wait for reply (T)`, `Reply Payload`, `timed out?` |
+| rename `GetSpeed` -> `ReadSpeed` | 3.6 s | 77, **stale on disk** | 3 files renamed; EHL re-registered |
+| remove `PressureAlarm` (Broadcast) | 1.4 s | 77 -> 75 | 2 files gone |
+| remove `SpeedChanged` (Broadcast) | 2.1 s | 75 -> 73 | 2 files gone |
+| remove `Calibrate` (Round Trip) | 2.2 s | 73 -> 69 | 4 files gone - `Dependent Broadcast?` TRUE, `CalibrationDone` |
+
+**What Delacor leaves for a person - none of it is ours:**
+
+- **Rename does not save the `.lvlib`.** On disk it still listed the three deleted GetSpeed files,
+  and NEITHER Parse's `Any Dirty Modules?` NOR the members' modification bits report it.
+  `scripts/lvdqmh_save_library.xml` (`{LV.Application}` `Library.Open` -> `{LV.Library}` `Save`,
+  115 ms) saves it, and `lvai_dqmh_rename_event` runs it. The message frame's selector, its
+  label, the message string and the tester's button keep the OLD name.
+- **Convert keeps the old message frame**, labelled `#Code_Review_Todo ... converted ... delete
+  this frame`, beside a new one with the SAME selector `"SetPressure"`. Whether that duplicate
+  alone breaks Main.vi was not separated - Main.vi was already broken.
+- **Removing a Broadcast does NOT repair Main.vi** - the opposite of what the first draft of the
+  tool's description claimed. The loose `#CodeNeeded` call stays, pointing at the deleted VI, and
+  the tester's broadcast frame becomes `<#11>: Unknown Event (0x0)`; the tester went `1 -> 0` at the
+  first removal. Removing a Round Trip leaves its message frame with a `#Code_Review_Todo ... has
+  been removed` label calling the missing `CalibrationDone.vi`, and the tester answers
+  `Missing subVI UTPump.lvlib:Calibrate.vi`. Delacor's dialog opens the Error List for exactly
+  this; the tools answer `completionNeeded`.
+- `Check for Dependent Broadcast.vi` returned `CalibrationDone` as the NAME even for `PressureAlarm`,
+  with the flag FALSE, so the wrapper gates the name on the flag.
+
+**Validate** is Delacor's `Validate DQMH Module (Headless).vi`, no wrapper: `Project` (path) in,
+`Validation Results` (string) out, no `error out`, every Simple Error Handler wired to "no dialog".
+14.2 s with the project closed, 6.1 s with it open and active; afterwards the project was left
+active in the second arm and none in the first. The text is `PASS: <n> Modules Validated`, or
+`FAIL: <n> Modules Analyzed` plus one `Test Failure;<library>;<category>;<issue>` or
+`Test Error;<library>;<message>` line per finding, or `ERROR: <message>`.
+**It answered `PASS` after every step above, while Main.vi and the tester were not executable** -
+it checks DQMH structure, not whether the code runs. `lvai_dqmh_validate_module` says so.
+
+Not measured: whether a person's clean-up of those frames is scriptable; a Cloneable module.
+
+### 9e. Module functions, the template, and the save dialog - measured 2026-10-06
+
+**Rename module, RT tester, Remove Do Something** are wrappers like §9d -
+`scripts/lvdqmh_rename_module.xml`, `lvdqmh_create_rt_tester.xml`, `lvdqmh_remove_do_something.xml`
+- and the two tester-based ones call a third shared helper, `lvdqmh_find_testers.xml` (Delacor's
+`Find Tester on Disk.vi` and `Find RT Tester on Disk.vi`, each path emptied unless its flag is TRUE:
+ungated, `RT Tester Found?` FALSE came back with an unrelated VI's path). `lvdqmh_pick_event.xml`
+gained `Library Names`, Parse's `All Libraries in Project` (`array{string.Name}`, every library the
+project holds, vi.lib ones included).
+
+| function | measured | what to know |
+|---|---|---|
+| rename `UTRen` -> `UTRenamed` | 22.5 s | Delacor ends in `Save All This Project`: 52 files in OTHER modules re-saved. Folder and tester renamed; the `.lvproj` virtual folder keeps `UTRen Module` |
+| RT tester on `UTClone` | 3.2 s | `Test UTClone API-RT.vi` beside the tester, listed at target level; **execState 0 by design** (`#CodeNeeded ... including wiring required inputs`). Delacor's menu VI asks Parse for **Both** module types - not Cloneable only, as expected |
+| Remove Do Something on `UTDos` | 4.6 s | 4 events and 4 typedefs gone, Main.vi and tester stay executable. A second run answers **Error 1055** (`To More Specific Class` in `Script Tester.vi`) - refused from the dry run now |
+
+**The module template is NOT a wrapper.** `Create Template Core.vi` ends in a One Button Dialog on
+SUCCESS and Simple Error Handler's OK dialog on error - an unconditional modal. What it does was
+read off its export: with `LabVIEW Data` TRUE it deletes and re-copies the module's folder into
+`<Template Folders Source>\<Relative Location>\<Name>`, and either way it writes
+`<MetaData Folder>\<Name>.xml` from its `Meta Data XML Template` constant (six `%s`: Title,
+Description, LocationPath, LibraryPath, TesterPath, AbsolutePaths; CustomVIPath is a literal empty).
+`Get External Module Info.vi` reads those files by REGEX, not as XML, and `Get Module Type Info.vi`
+appends each one after `[Singleton, Cloneable]`. `lvai_dqmh_create_module_template` repeats those two
+steps in C#: the folders from running Delacor's `Template Folders--constant.vi`, the text from the
+constant in the user's own installed `Create Template Core.vi` - nothing of Delacor's is stored in
+this repository - and a template that is not the six-slot one measured here is refused. Accepted:
+`UTDos` appeared as module type **4** in Delacor's catalogue in 0.9 s; a second call was refused as
+`templateExists` (Delacor's tool would have wiped it). The acceptance template was removed again.
+
+**CONVERT BREAKS Main.vi, now separated.** On a module whose Main.vi was executable (`UTFinal`),
+converting `Pong` took it `1 -> 0`: the old message frame Delacor keeps, `#Code_Review_Todo`, has
+the same selector as the new one. Until that frame is deleted the module does not run.
+
+**LabVIEW'S "Save changes before closing?" DIALOG STOPPED TWO RUNS.** Measured with a window observer
+while it was on screen: title `Save changes before closing?`, class `LVDChild`, **no UI Automation
+elements at all**, buttons `Save - All` (focused) and `Don't Save - All`, `Cancel` disabled
+("Programmatic close cannot be cancelled"). It listed `Request Events--cluster.ctl` and
+`Obtain Request Events.vi` during a CONVERT that followed a rename; the convert waited 289 s and
+299 s for a person. The cause was ours: the API tester is NOT a library member, the post-scripting
+save only looked at `<Module>.lvlib:*`, and Delacor's scripters SAVE THE PROJECT as they go. Three
+changes, all in every scripted DQMH tool:
+
+- **Precondition**: nothing in the project folder may be unsaved before scripting - library members
+  and loose files (tester, RT tester, unit tests) alike - or the call answers
+  `unsavedChangesInProject` naming them.
+- **After scripting**: everything newly unsaved in the project folder is saved, one exact name at a
+  time; our helpers, vi.lib and Delacor's own VIs are never in that set.
+- **A dialog watch** (`DqmhDialogWatch`) runs beside every scripted run and answers that dialog with
+  `Save - All` - the user's instruction of 2026-10-06 was to watch for it and decide. Thanks to the
+  precondition the dialog can list nothing but the call's own changes, and not saving them leaves
+  the module half-edited on disk (the renamed event's typedef kept its old name). Because there is
+  no automation interface it fronts the dialog and presses SPACE on the focused button, once; one
+  that stays open is reported, not pressed again.
+
+With the first two in place the sequence that produced the dialog - create, rename, convert, unit
+test - ran in 1.5-7.5 s per step with NO dialog, observed. So the watch has not had to fire since;
+its keystroke route is the one the dialog-driven event tool measured on 2026-09-01.

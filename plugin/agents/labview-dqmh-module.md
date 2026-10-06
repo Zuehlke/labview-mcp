@@ -2,7 +2,7 @@
 name: labview-dqmh-module
 description: >-
   MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_convert_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_validate_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_rt_tester, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_do_something, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_module_template
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -250,7 +250,8 @@ Events work, but **not** through `Script New Event.vi`. Driving that directly is
 impossible: `Module Info` holds thirteen refnums, LabVIEW releases the ones a VI opened when that VI
 stops, so running `Parse Project for DQMH Modules.vi` as its own top-level `Run VI` leaves every one
 dead by the time the scripter uses them. Only the application reference can be substituted;
-`LVLibrary.Open` does not exist, so `Library` and the eleven `ProjectItem`s cannot be rebuilt.
+`LVLibrary.Open` does not exist (though `{LV.Application}` `Library.Open` does - corrected 2026-10-06),
+and the eleven `ProjectItem`s cannot be rebuilt.
 
 `Create New DQMH Event.vi` calls both **as subVIs of one running VI**, which is exactly what keeps
 them alive — plus `Preflight Main VI.vi` and `Verify Event Names.vi` beforehand. So the dialog is
@@ -458,6 +459,29 @@ and each VI's exec state. No keystroke, no foreground - this one IS unattended-s
   same way. Setup and teardown read 1. Report this as the state Delacor leaves, never as a failure,
   and do not run the test VI.
 - Delacor saves the `.lvproj` itself and lists the three VIs under a `Unit Tests` folder.
+
+## Phase 8 — every other DQMH function, no dialog
+
+Each is ONE call on the ACTIVE project, matched by NAME, with a dry run first and Delacor's own
+modal checks made beforehand; all refuse a project with unsaved or locked modules, as Delacor's
+dialogs do. `docs/dqmh-scripting.md` §9d and §9e have the measurements.
+
+| tool | what Delacor leaves behind - REPORT IT |
+|---|---|
+| `lvai_dqmh_remove_event` | Main.vi and the tester typically NOT executable: a removed Broadcast's loose call stays, a Round Trip's frame stays with `#Code_Review_Todo`, the tester keeps an `Unknown Event` frame. A Round Trip request takes its broadcast half (`dependentBroadcast`) |
+| `lvai_dqmh_rename_event` | the message frame's selector, label and the tester button keep the old name; the tool saves the `.lvlib` Delacor leaves unsaved |
+| `lvai_dqmh_convert_event` | Request -> Request and Wait for Reply only; the OLD message frame stays beside the new one with `#Code_Review_Todo`, and that duplicate selector leaves Main.vi NOT executable until it is deleted (measured) |
+| `lvai_dqmh_rename_module` | Delacor saves the WHOLE project; the virtual folder keeps `<old> Module` |
+| `lvai_dqmh_create_rt_tester` | the RT tester is NOT executable by design (`#CodeNeeded` in every request frame) |
+| `lvai_dqmh_remove_do_something` | nothing - Main.vi and tester stay executable |
+| `lvai_dqmh_validate_module` | READ-ONLY; checks DQMH STRUCTURE and said PASS for a module whose Main.vi was broken - pair it with `lvai_exec_state` |
+| `lvai_dqmh_create_module_template` | writes into the user's `LabVIEW Data`; the answer gives the new module type's index in THIS station's catalogue - match by name afterwards |
+
+Every scripted DQMH tool refuses to start while ANY VI in the project folder is unsaved
+(`unsavedChangesInProject`, naming them) - save or revert them, never work around it: the tools
+answer LabVIEW's `Save changes before closing?` modal with `Save - All` themselves (`dialogsAnswered`),
+and that is only right because nothing else can be in it. Read `completionNeeded` in every answer and pass it on; finish with `lvai_close_active_project`
+WITH `projectPath`, whose sweep removes the helpers Delacor's saves adopt.
 
 ## Reporting
 
