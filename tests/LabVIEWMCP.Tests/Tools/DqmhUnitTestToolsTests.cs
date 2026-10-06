@@ -23,14 +23,14 @@ public class DqmhUnitTestToolsTests
     [InlineData(" UTPump ", "UTPump.lvlib")]
     [InlineData("UTPump.LVLIB", "UTPump.LVLIB")]
     public void A_module_name_gets_the_library_suffix(string given, string expected) =>
-        Assert.Equal(expected, DqmhUnitTestTools.DelacorModuleName(given));
+        Assert.Equal(expected, DqmhHeadless.DelacorModuleName(given));
 
     [Theory]
     [InlineData("Do Something", "Do Something.vi")]
     [InlineData("Do Something.vi", "Do Something.vi")]
     [InlineData("Do Something Else and Wait for Reply", "Do Something Else and Wait for Reply.vi")]
     public void An_event_name_gets_the_vi_suffix(string given, string expected) =>
-        Assert.Equal(expected, DqmhUnitTestTools.DelacorEventName(given));
+        Assert.Equal(expected, DqmhHeadless.DelacorEventName(given));
 
     private static readonly string[] Events =
         ["Do Something.vi", "Do Something Else.vi", "Do Something Else and Wait for Reply.vi"];
@@ -40,7 +40,7 @@ public class DqmhUnitTestToolsTests
     [InlineData("DO SOMETHING ELSE", "Do Something Else.vi")]
     [InlineData("Do Something", "Do Something.vi")]
     public void A_listed_name_is_found_ignoring_case_and_extension(string wanted, string expected) =>
-        Assert.Equal(expected, DqmhUnitTestTools.FindListed(Events, wanted));
+        Assert.Equal(expected, DqmhHeadless.FindListed(Events, wanted));
 
     /// <summary>
     /// A prefix is not a match. `Do Something` must not land on `Do Something Else.vi`, which is
@@ -52,7 +52,7 @@ public class DqmhUnitTestToolsTests
     [InlineData("Do Something Els")]
     [InlineData("")]
     public void A_partial_name_is_not_a_match(string wanted) =>
-        Assert.Null(DqmhUnitTestTools.FindListed(Events, wanted));
+        Assert.Null(DqmhHeadless.FindListed(Events, wanted));
 
     [Fact]
     public void The_snapshot_names_created_and_modified_files_and_nothing_else()
@@ -62,13 +62,13 @@ public class DqmhUnitTestToolsTests
         {
             File.WriteAllText(Path.Combine(root, "Project.lvproj"), "before");
             File.WriteAllText(Path.Combine(root, "Untouched.vi"), "same");
-            var before = DqmhUnitTestTools.Snapshot.Take(root);
+            var before = DqmhHeadless.Snapshot.Take(root);
 
             var tests = Directory.CreateDirectory(Path.Combine(root, "Unit Tests", "UTPump")).FullName;
             File.WriteAllText(Path.Combine(tests, "UTPump setup.vi"), "new");
             File.WriteAllText(Path.Combine(root, "Project.lvproj"), "after - longer");
 
-            var (created, modified) = before.Diff(DqmhUnitTestTools.Snapshot.Take(root));
+            var (created, modified) = before.Diff(DqmhHeadless.Snapshot.Take(root));
 
             Assert.Equal([Path.Combine(tests, "UTPump setup.vi")], created);
             Assert.Equal([Path.Combine(root, "Project.lvproj")], modified);
@@ -94,7 +94,7 @@ public class DqmhUnitTestToolsTests
             """;
 
         Assert.Equal(["lvai_run_and_read.vi", "lvdqmh_new_unit_test.vi"],
-            DqmhUnitTestTools.AdoptedHelpers(lvproj));
+            DqmhHeadless.AdoptedHelpers(lvproj));
     }
 
     /// <summary>

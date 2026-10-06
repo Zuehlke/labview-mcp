@@ -67,22 +67,23 @@ internal sealed class DqmhTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_new_event", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH event")]
     [Description("""
-        MUTATING, and it TAKES OVER THE SCREEN for a moment: creates a DQMH request or broadcast
-        on a module in the active project, with typed arguments, by driving Delacor's own
-        Create New DQMH Event dialog.
+        MUTATING: creates a DQMH event - Request, Broadcast, Request and Wait for Reply or Round
+        Trip - with typed arguments on a module in the ACTIVE project.
 
-        A project must be OPEN AND ACTIVE or every step answers Error 1055.
+        BY DEFAULT WITH NO DIALOG AND NO KEYSTROKE, so it is safe unattended: a generated wrapper
+        calls Delacor's own Parse Project for DQMH Modules.vi and Script New Event.vi as loaded
+        subVIs of ONE caller, which keeps Module Info's refnums alive (docs/dqmh-scripting.md
+        section 9). A dry run first finds the module and its folder, and the checks Delacor's
+        dialog would answer with a MODAL - blank or invalid names, reserved or duplicate argument
+        labels, an event name already used as a file or as a Main.vi case - are made here and
+        refused by name. The answer lists the files written with each VI's exec state and
+        confirms Main.vi is still executable. Names may be bare or as Delacor spells them.
 
-        NOT UNATTENDED-SAFE. The dialog's OK button is a latched boolean that VI Server may not
-        write (Error 1193) and whose Mechanical Action cannot be changed while it runs (Error
-        1073), so the last step brings the dialog to the front and sends a SPACE keystroke. It
-        will steal the foreground for a second. Everything before that is ordinary VI Server.
+        useDialog = true drives Delacor's Create New DQMH Event dialog instead - the pre-
+        2026-10-06 route, which ends in a synthesised SPACE on its latched OK button and so needs
+        the dialog frontmost. Keep it for a case the headless route refuses.
 
-        THE MODULE IS MATCHED BY NAME, never by index: the dialog's ring is ordered differently
-        depending on how it was launched and puts its placeholder LAST, so an index carried from
-        anywhere else aims at the wrong module. The choice is confirmed a second way before the
-        button is pressed, by reading the dialog's own step 6 text, which names the target module
-        in words.
+        A project must be OPEN AND ACTIVE on either route.
         """)]
     public async Task<string> NewEvent(
         [Description("Module to add the event to, e.g. 'Heater' or 'Heater.lvlib'. Matched " +
@@ -120,7 +121,13 @@ internal sealed class DqmhTools(LvaiConnection connection)
         bool addTesterButton = true,
         [Description("Local budget in seconds; the scripting itself takes tens of seconds")]
         int timeoutSeconds = 600,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description("""
+            Drive Delacor's dialog instead of the headless wrapper. Needs an interactive desktop
+            and takes the foreground for a moment; use it only when the headless route refuses a
+            case and the dialog is known to handle it.
+            """)]
+        bool useDialog = false) =>
         await Rpc.GuardAsync(async () =>
         {
             if (string.IsNullOrWhiteSpace(moduleName))
@@ -171,6 +178,12 @@ internal sealed class DqmhTools(LvaiConnection connection)
                 return Json.Error("scriptsMissing",
                     "No scripts folder next to the exe - lvai_status reports it as " +
                     "scriptsDirectory. The DQMH helpers live there.");
+
+            if (!useDialog)
+                return await new DqmhHeadless(connection).NewEventAsync(
+                    this, scripts, moduleName, eventName, typeIndex, EventTypes[typeIndex],
+                    arguments, replyArguments, roundTripBroadcastName, description,
+                    addTesterButton, timeoutSeconds, ct);
 
             // FAIL BEFORE DRIVING ANYTHING. The last step is a keystroke and a keystroke needs a
             // desktop that can hold a foreground window; without one the whole chain runs, fills
@@ -656,7 +669,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// event's cluster fields. This is the carrier-VI pattern lvai_create_class uses for private
     /// data, and the one part of event creation AIXML is genuinely good at.
     /// </summary>
-    private async Task<string?> BuildCarrierAsync(
+    internal async Task<string?> BuildCarrierAsync(
         List<Argument> arguments, string carrierVi, int timeoutSeconds, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(carrierVi)!);
@@ -668,7 +681,9 @@ internal sealed class DqmhTools(LvaiConnection connection)
           .Append("front panel holds one control per event argument and nothing else\\3B the ")
           .Append("controls are copied into Delacor's arguments window\\2C where the names and ")
           .Append("types become the event's Argument--cluster.ctl fields.\">\n");
-        var uid = 10;
+        // 4200 and up: a uid inside LabVIEW's reserved range costs a DWarn per element
+        // (CLAUDE.md, "THE UID BASE IS 4200").
+        var uid = 4200;
         foreach (var a in arguments)
         {
             sb.Append("  <Control _name=\"").Append(Escape(a.Name))
@@ -716,31 +731,51 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// </summary>
     internal async Task<IReadOnlyList<LvValuesXml.Value>?> RunAsync(
         string scripts, string helperName, Dictionary<string, string> inputs,
+        int timeoutSeconds, CancellationToken ct) =>
+        (await RunDetailedAsync(scripts, helperName, inputs, timeoutSeconds, ct)).Values;
+
+    /// <summary>
+    /// <see cref="RunAsync"/> plus the RUN HELPER's own error, which is the only sign that an
+    /// input could not be set - the target then never ran and every indicator reads its default.
+    ///
+    /// THE TYPED HELPER since 2026-10-06. This used the string-only `lvai_run_and_read.vi`, whose
+    /// `Ctrl Val.Set` accepts a string variant on a STRING control only. Every dialog-route helper
+    /// takes strings, so nothing showed it - until the headless event wrapper, with an enum, two
+    /// booleans and two paths, answered with every value missing, which read as "the project holds
+    /// no DQMH module". `lvai_run_and_read_typed.vi` converts each value to the control's type,
+    /// and is what lvai_run_vi_and_read_values has used since 2026-09-16.
+    /// </summary>
+    internal async Task<(IReadOnlyList<LvValuesXml.Value>? Values, string? HelperError)> RunDetailedAsync(
+        string scripts, string helperName, Dictionary<string, string> inputs,
         int timeoutSeconds, CancellationToken ct)
     {
         var aixml = Path.Combine(scripts, helperName + ".xml");
-        if (!File.Exists(aixml)) return null;
+        if (!File.Exists(aixml)) return (null, null);
 
         var helperVi = Path.Combine(HelperDirectory(), helperName + ".vi");
         if (!File.Exists(helperVi) && await EnsureAsync(aixml, helperVi, timeoutSeconds, ct: ct) is false)
-            return null;
+            return (null, null);
 
-        var wrapperAixml = Path.Combine(scripts, "lvai_run_and_read.xml");
-        var wrapperVi = Path.Combine(HelperDirectory(), "lvai_run_and_read.vi");
-        if (!File.Exists(wrapperVi)
+        var wrapperAixml = Path.Combine(scripts, RunTools.HelperAixmlFileName);
+        var wrapperVi = Path.Combine(HelperDirectory(),
+            Path.ChangeExtension(RunTools.HelperAixmlFileName, ".vi"));
+        if (HelperCache.NeedsRebuild(wrapperAixml, wrapperVi)
             && await EnsureAsync(wrapperAixml, wrapperVi, timeoutSeconds, ct: ct) is false)
-            return null;
+            return (null, null);
 
         var request = new RunVIAsTopLevelRequest { ViPath = wrapperVi };
         request.Inputs["VI Path"] = helperVi;
         request.Inputs["Input Names"] = string.Join("\n", inputs.Keys);
-        request.Inputs["Input Values"] = string.Join("\n", inputs.Values);
+        request.Inputs["Input Values"] = string.Join("\n", inputs.Values.Select(RunTools.Encode));
 
         var response = await connection.InvokeAsync((c, t) =>
             c.RunVIAsTopLevelAsync(request,
                 deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
         response.Outputs.TryGetValue("values xml", out var valuesXml);
-        return LvValuesXml.Parse(valuesXml);
+        response.Outputs.TryGetValue("error xml", out var errorXml);
+        var helperFailed = !string.IsNullOrEmpty(errorXml)
+                           && ValueAfter(errorXml, "status") is "1";
+        return (LvValuesXml.Parse(valuesXml), helperFailed ? errorXml : null);
     }
 
     internal async Task<bool> EnsureAsync(
@@ -1048,7 +1083,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
     /// The only part of this tool that is not VI Server. Kept in one place, and deliberately
     /// small: find a window by exact title, raise it, and send one SPACE.
     /// </summary>
-    private static class Win32
+    internal static class Win32
     {
         private delegate bool EnumProc(IntPtr window, IntPtr param);
 

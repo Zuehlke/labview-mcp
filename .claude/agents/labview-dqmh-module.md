@@ -1,7 +1,7 @@
 ---
 name: labview-dqmh-module
 description: >-
-  MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS — requests and broadcasts with typed arguments — by driving Delacor's own Create New DQMH Event dialog over VI Server, which is the only route that works: `Script New Event.vi` cannot be driven from a helper because the thirteen refnums it needs die when the parse VI stops. That chain ends in ONE synthesised keystroke, because the dialog's OK button is a latched boolean VI Server may not write and whose Mechanical Action cannot be changed while the VI runs, so it needs the dialog frontmost and is not suitable for an unattended run — say so when reporting. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+  MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_list_labview_installations, mcp__labview__lvai_dqmh_new_event, mcp__labview__lvai_dqmh_new_unit_test
 ---
 
@@ -228,10 +228,23 @@ Never edit a `.lvproj` while LabVIEW holds it open.
 
 ## Phase 6 — EVENTS: drive Delacor's dialog
 
-> **Superseded in principle 2026-10-06** - a generated wrapper calling the scripters as loaded
-> subVIs works for unit tests (Phase 7) and is the planned route for events too. Until an event
-> wrapper ships, `lvai_dqmh_new_event` and this phase are the route; the "structurally impossible"
-> below holds for a helper that runs the parse as its OWN top-level VI, not for a wrapper.
+> **THE DEFAULT ROUTE IS HEADLESS SINCE 2026-10-06 - one `lvai_dqmh_new_event` call, no dialog,
+> no keystroke** (`docs/dqmh-scripting.md` §9c). It refuses by name what Delacor's dialog would
+> answer with a modal, wires a control onto every unwired input of the new call in the tester,
+> saves what the scripting left dirty, and reports. Read these fields of its answer and report them:
+>
+> - `ok` (the measured file count: 2 / 2 / 3 / 4 for Request / Broadcast / Request and Wait /
+>   Round Trip), `createdFiles` with each VI's exec state;
+> - `moduleExecutable` and `completionNeeded` - a **Broadcast with arguments leaves Main.vi BROKEN**
+>   until its loose `#CodeNeeded` call is placed where the module fires it and wired. That is the
+>   module author's decision: say so, never wire constants into it (it would fire at module start);
+> - `testerWiring`, `savedMembers`, `unsavedMembers` / `savingNote`;
+> - `projectHygiene` - finish with `lvai_close_active_project` WITH `projectPath`, whose sweep
+>   removes the helpers and the deleted carriers LabVIEW lists at the next save.
+>
+> Everything below is the DIALOG route, `useDialog: true`. Use it only for a case the headless
+> route refuses and the dialog is known to handle, and say why. Its "structurally impossible"
+> holds for a helper that runs the parse as its OWN top-level VI, not for a wrapper.
 
 Events work, but **not** through `Script New Event.vi`. Driving that directly is structurally
 impossible: `Module Info` holds thirteen refnums, LabVIEW releases the ones a VI opened when that VI
@@ -425,7 +438,7 @@ drive the dialog by hand, both checks are yours to make.
 `windowWasFrontmost` describe what you did; only the dialog disappearing describes what LabVIEW
 accepted. Retrying is normal — the measured runs needed a second attempt as often as not.
 
-### Say this in your report
+### Say this in your report (dialog route only)
 
 The final press is a **synthesised keystroke**: it needs the dialog frontmost, so it is not suitable
 for an unattended run and it steals focus for a moment. Everything before it is ordinary VI Server
@@ -454,7 +467,9 @@ Say plainly:
 - the file count and that the framework VIs and tester were verified present;
 - that DQMH is a **third-party dependency** — the module will not open where DQMH is not installed.
   Name it as information, not as a question;
-- that you drove Delacor's scripting VIs over **VI Server by path**, because the official AIXML
+- for a MODULE: that you drove Delacor's scripting VIs over **VI Server by path**; for an event or a
+  unit test: that the tool drove them through a generated wrapper calling the LOADED scripters.
+  The older wording follows - that you drove Delacor's scripting VIs over **VI Server by path**, because the official AIXML
   `Call` route measurably cannot reach them (`Error 53`) — per `CLAUDE.md`, say which route you
   took and why the official one was not enough;
 - anything you cleaned out of the `.lvproj`.
@@ -466,7 +481,7 @@ For an **event**, additionally:
 - what changed in the module: the two new files, the `.lvlib` member count, and that **`Main.vi`
   changed** (the MHL frame) — that last one is what distinguishes a wired-in event from an orphaned
   `.ctl`;
-- **that one step was a synthesised keystroke**, and therefore that the run needed the dialog
+- ON THE DIALOG ROUTE ONLY: **that one step was a synthesised keystroke**, and therefore that the run needed the dialog
   frontmost and briefly took the focus. Do not let this pass silently: a reader who assumes the
   whole chain is VI Server will try it headless and it will not work.
 

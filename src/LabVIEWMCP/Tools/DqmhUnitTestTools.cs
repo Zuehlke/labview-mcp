@@ -87,7 +87,7 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                     $"{HelperName}.xml was not found in the scripts folder next to the exe - " +
                     "lvai_status reports that folder as scriptsDirectory.");
 
-            if (TargetPaths() is not { } targets)
+            if (DqmhHeadless.TargetPaths(Targets) is not { } targets)
                 return Json.Error("dqmhMissing",
                     "Delacor DQMH is not installed: Script Unit Test.vi was not found under any " +
                     "LabVIEW installation's project\\Delacor\\DQMH folder.",
@@ -106,29 +106,15 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
 
             // ---- 1. the wrapper, generated against LOADED Delacor VIs --------------------------
             var dqmh = new DqmhTools(connection);
-            var helperVi = Path.Combine(DqmhTools.HelperDirectory(), HelperName + ".vi");
-            var aixml = Path.Combine(scripts, HelperName + ".xml");
-            if (HelperCache.NeedsRebuild(aixml, helperVi))
-            {
-                var opened = await OpenTargetsAsync(targets, projectPath, timeoutSeconds, ct);
-                steps.Add(new JsonObject { ["step"] = "openDelacorVIs", ["opened"] = opened });
-
-                var generated = await GenerateAsync(aixml, helperVi, timeoutSeconds, ct);
-                steps.Add(generated);
-                if (generated["errorCode"]?.GetValue<int>() is not 0 || !File.Exists(helperVi))
-                    return Json.Error("wrapperGenerationFailed",
-                        "The wrapper could not be generated. Error 53 naming a Delacor VI means it " +
-                        "was not loaded - see `opened` for each open's own error code.",
-                        new { steps, helperVi });
-            }
+            var headless = new DqmhHeadless(connection);
+            if (await headless.EnsureWrapperAsync(scripts, HelperName, targets, projectPath, steps,
+                    timeoutSeconds, ct) is { } wrapperError)
+                return wrapperError;
 
             // ---- 2. run, then retry ONCE with Delacor's own spelling ---------------------------
-            var module = DelacorModuleName(moduleName);
-            var evt = DelacorEventName(eventName);
-            Snapshot? before = null;
-            var projectDirectory = Path.GetDirectoryName(projectPath ?? "");
-            if (!string.IsNullOrEmpty(projectDirectory) && Directory.Exists(projectDirectory))
-                before = Snapshot.Take(projectDirectory);
+            var module = DqmhHeadless.DelacorModuleName(moduleName);
+            var evt = DqmhHeadless.DelacorEventName(eventName);
+            var before = DqmhHeadless.Snapshot.TakeOf(projectPath);
 
             IReadOnlyList<LvValuesXml.Value>? run = null;
             var runs = 0;
@@ -157,12 +143,12 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 (module, evt) = retry.Value;
             }
 
-            var moduleNames = Listed(run, "Module Names");
-            var eventNames = Listed(run, "Event Names");
+            var moduleNames = DqmhHeadless.Listed(run, "Module Names");
+            var eventNames = DqmhHeadless.Listed(run, "Event Names");
             var detail = new JsonObject
             {
-                ["moduleNames"] = new JsonArray([.. moduleNames.Select(n => JsonValue.Create(n))]),
-                ["requestEvents"] = new JsonArray([.. eventNames.Select(n => JsonValue.Create(n))]),
+                ["moduleNames"] = DqmhHeadless.Array(moduleNames),
+                ["requestEvents"] = DqmhHeadless.Array(eventNames),
                 ["runs"] = runs,
                 ["steps"] = steps,
             };
@@ -170,8 +156,8 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             if (DqmhTools.Failed(run) is { } error)
                 return Json.Error("scriptingFailed",
                     "Delacor's scripting answered an error - `error` is its cluster.",
-                    Merge(detail, new JsonObject { ["error"] = error }));
-            if (IsTrue(DqmhTools.Scalar(run, "Any Dirty Modules?")))
+                    DqmhHeadless.Merge(detail, new JsonObject { ["error"] = error }));
+            if (DqmhHeadless.IsTrue(DqmhTools.Scalar(run, "Any Dirty Modules?")))
                 return Json.Error("modulesHaveUnsavedChanges",
                     "A DQMH module in this project has unsaved changes. Delacor refuses to script " +
                     "until everything is saved, typedef changes included; nothing was written.",
@@ -179,12 +165,12 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             if (moduleNames.Count == 0)
                 return Json.Error("noDqmhModules",
                     "The active project holds no DQMH module that Delacor recognises.",
-                    Merge(detail, new JsonObject { ["activeProject"] = projectPath }));
-            if (Index(run, "Module Index") < 0)
+                    DqmhHeadless.Merge(detail, new JsonObject { ["activeProject"] = projectPath }));
+            if (DqmhHeadless.Index(run, "Module Index") < 0)
                 return Json.Error("moduleNotFound",
                     $"No DQMH module '{moduleName}' in the active project - `moduleNames` lists them.",
                     detail);
-            if (Index(run, "Event Index") < 0)
+            if (DqmhHeadless.Index(run, "Event Index") < 0)
                 return Json.Error("eventNotFound",
                     $"Module {module} has no REQUEST event '{eventName}' - `requestEvents` lists " +
                     "them. Delacor creates unit tests for request events only.",
@@ -193,25 +179,9 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             // ---- 3. verify from the files -------------------------------------------------------
             List<string> created = [], modified = [];
             if (before is not null)
-                (created, modified) = before.Diff(Snapshot.Take(projectDirectory!));
-            var createdJson = new JsonArray();
-            foreach (var file in created)
-            {
-                var entry = new JsonObject
-                {
-                    ["path"] = file,
-                    ["bytes"] = new FileInfo(file).Length,
-                };
-                if (file.EndsWith(".vi", StringComparison.OrdinalIgnoreCase))
-                    entry["execState"] = (JsonNode.Parse(await new ExecStateTools(connection)
-                        .ExecStateAsync(file, timeoutSeconds: timeoutSeconds, ct: ct))
-                        as JsonObject)?["execState"]?.DeepClone();
-                createdJson.Add(entry);
-            }
-
-            var adopted = projectPath is { Length: > 0 } && File.Exists(projectPath)
-                ? AdoptedHelpers(File.ReadAllText(projectPath))
-                : [];
+                (created, modified) = before.Diff(DqmhHeadless.Snapshot.TakeOf(projectPath)!);
+            var createdJson = await headless.DescribeAsync(created, timeoutSeconds, ct);
+            var adopted = DqmhHeadless.AdoptedHelpersOf(projectPath);
 
             var answer = new JsonObject
             {
@@ -219,13 +189,9 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 ["module"] = module,
                 ["event"] = evt,
                 ["createdFiles"] = createdJson,
-                ["modifiedFiles"] = new JsonArray([.. modified.Select(f => JsonValue.Create(f))]),
-                ["adoptedHelpers"] = new JsonArray([.. adopted.Select(f => JsonValue.Create(f))]),
-                ["adoptedHelpersNote"] = adopted.Count == 0 ? null
-                    : "Delacor SAVED the project while this tool's helper VIs were open in it, so " +
-                      "LabVIEW listed them in the .lvproj. Close the project with " +
-                      "lvai_close_active_project AND projectPath - its sweep removes entries under " +
-                      "%TEMP% - and never edit the .lvproj while LabVIEW holds it open.",
+                ["modifiedFiles"] = DqmhHeadless.Array(modified),
+                ["adoptedHelpers"] = DqmhHeadless.Array(adopted),
+                ["adoptedHelpersNote"] = adopted.Count == 0 ? null : DqmhHeadless.AdoptedHelpersNote,
                 ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
                 ["note"] = created.Count > 0
                     ? "A test VI reading execState 0 is expected: Delacor leaves its event frames " +
@@ -239,36 +205,6 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             return Json.Document(answer);
         });
 
-    // ------------------------------------------------------------------ pure helpers, tested
-
-    /// <summary>Delacor lists a module as `Heater.lvlib` - its library file name.</summary>
-    internal static string DelacorModuleName(string name)
-    {
-        var trimmed = name.Trim();
-        return trimmed.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase)
-            ? trimmed : trimmed + ".lvlib";
-    }
-
-    /// <summary>Delacor lists an event as `Do Something.vi` - its request VI's file name.</summary>
-    internal static string DelacorEventName(string name)
-    {
-        var trimmed = name.Trim();
-        return trimmed.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)
-            ? trimmed : trimmed + ".vi";
-    }
-
-    /// <summary>
-    /// The exact entry of <paramref name="listed"/> the caller meant, ignoring case and the file
-    /// extension, or null when there is none. Exact matches are the wrapper's job; this is for the
-    /// spellings it cannot see past.
-    /// </summary>
-    internal static string? FindListed(IEnumerable<string> listed, string wanted)
-    {
-        static string Bare(string s) => Path.GetFileNameWithoutExtension(s.Trim());
-        return listed.FirstOrDefault(l =>
-            string.Equals(Bare(l), Bare(wanted), StringComparison.OrdinalIgnoreCase));
-    }
-
     /// <summary>
     /// The names to retry with when the first run matched nothing only because of spelling, or
     /// null when a retry would change nothing.
@@ -276,162 +212,16 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
     private static (string Module, string Event)? Respell(
         string module, string evt, IReadOnlyList<LvValuesXml.Value> run)
     {
-        if (Index(run, "Module Index") < 0)
+        if (DqmhHeadless.Index(run, "Module Index") < 0)
         {
-            var listed = FindListed(Listed(run, "Module Names"), module);
+            var listed = DqmhHeadless.FindListed(DqmhHeadless.Listed(run, "Module Names"), module);
             return listed is null || listed == module ? null : (listed, evt);
         }
-        if (Index(run, "Event Index") < 0)
+        if (DqmhHeadless.Index(run, "Event Index") < 0)
         {
-            var listed = FindListed(Listed(run, "Event Names"), evt);
+            var listed = DqmhHeadless.FindListed(DqmhHeadless.Listed(run, "Event Names"), evt);
             return listed is null || listed == evt ? null : (module, listed);
         }
         return null;
-    }
-
-    /// <summary>
-    /// A string array indicator's entries. An EMPTY array still flattens one blank element - the
-    /// first acceptance run answered `requestEvents: [""]` for a module that was never selected -
-    /// and no DQMH module or event has an empty name, so blanks are dropped.
-    /// </summary>
-    private static List<string> Listed(IReadOnlyList<LvValuesXml.Value> run, string name) =>
-        [.. DqmhTools.Strings(run, name).Where(s => !string.IsNullOrWhiteSpace(s))];
-
-    /// <summary>
-    /// The project items that point into this server's helper directory. LabVIEW adopts every VI
-    /// it has open in the project's application instance when the project is saved, and Delacor's
-    /// scripting saves it - measured 2026-10-06: `lvai_run_and_read.vi` and the wrapper itself
-    /// appeared in the fixture's .lvproj after one run. Read-only: the file may not be edited while
-    /// LabVIEW holds the project.
-    /// </summary>
-    internal static List<string> AdoptedHelpers(string lvproj) =>
-        [.. System.Text.RegularExpressions.Regex.Matches(lvproj,
-                "<Item Name=\"([^\"]+)\"[^>]*URL=\"[^\"]*LabVIEWMCP/helpers/[^\"]*\"")
-            .Select(m => m.Groups[1].Value)];
-
-    private static int Index(IReadOnlyList<LvValuesXml.Value> run, string name) =>
-        int.TryParse(DqmhTools.Scalar(run, name), out var index) ? index : -1;
-
-    private static bool IsTrue(string? value) =>
-        value is "1" || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
-
-    private static JsonObject Merge(JsonObject a, JsonObject b)
-    {
-        var merged = (JsonObject)a.DeepClone();
-        foreach (var (key, value) in b) merged[key] = value?.DeepClone();
-        return merged;
-    }
-
-    private static string[]? TargetPaths()
-    {
-        foreach (var install in LabViewLocator.Discover())
-        {
-            var root = Path.GetDirectoryName(install.ExePath) ?? "";
-            var paths = Targets.Select(t => Path.Combine(root, t)).ToArray();
-            if (paths.All(File.Exists)) return paths;
-        }
-        return null;
-    }
-
-    // ------------------------------------------------------------------ LabVIEW steps
-
-    /// <summary>
-    /// Open the wrapper's targets THROUGH THE ACTIVE PROJECT. Measured 2026-10-06 as an A/B on one
-    /// project: opened loose while the project was active, the conversion answered Error 53 three
-    /// times; opened with the project pair, the same document converted clean. A VI generated with
-    /// a project active lives in the PROJECT's application instance (docs/aixml-call-loaded-vi.md
-    /// section 3), so its subVIs have to be resolvable there.
-    /// </summary>
-    private async Task<JsonArray> OpenTargetsAsync(
-        string[] targets, string? projectPath, int timeoutSeconds, CancellationToken ct)
-    {
-        var project = projectPath is { Length: > 0 } && File.Exists(projectPath) ? projectPath : "";
-        var opened = new JsonArray();
-        foreach (var target in targets)
-        {
-            var response = await connection.InvokeAsync((c, t) =>
-                c.OpenFileAsync(new OpenFileRequest
-                {
-                    ViPath = target,
-                    ViName = Path.GetFileName(target),
-                    ProjectPath = project,
-                    ProjectName = project.Length > 0 ? Path.GetFileName(project) : "",
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            opened.Add(new JsonObject
-            {
-                ["viPath"] = target,
-                ["errorCode"] = response.ErrorCode,
-                ["errorMessage"] = response.ErrorMessage,
-            });
-        }
-        return opened;
-    }
-
-    /// <summary>
-    /// Convert the wrapper under a THROWAWAY VI name. A failed convert burns the name it was
-    /// given for the rest of the session (Error 1051 on the next try, docs/aixml-call-loaded-vi.md
-    /// section 3), and the saved VI is named after its file anyway.
-    /// </summary>
-    private async Task<JsonObject> GenerateAsync(
-        string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-        var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
-            $"{HelperName}.{Guid.NewGuid():N}.xml");
-        var throwaway = $"LVMCP DQMH UT {Guid.NewGuid().ToString("N")[..8]}.vi";
-        var text = File.ReadAllText(aixml);
-        File.WriteAllText(scratch, text.Replace(
-            $"_name=\"{HelperName}.vi\"", $"_name=\"{throwaway}\""));
-        try
-        {
-            var response = await connection.InvokeAsync((c, t) =>
-                c.ConvertAIXMLToVIAsync(new ConvertAIXMLToVIRequest
-                {
-                    AiXMLFilePath = scratch,
-                    ViPath = helperVi,
-                    OpenVI = false,
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            return new JsonObject
-            {
-                ["step"] = "generateWrapper",
-                ["errorCode"] = response.ErrorCode,
-                ["errorMessage"] = response.ErrorMessage,
-                ["helperVi"] = helperVi,
-            };
-        }
-        finally
-        {
-            File.Delete(scratch);
-        }
-    }
-
-    /// <summary>
-    /// What is on disk under the project folder, so the answer can name what the scripting wrote
-    /// instead of trusting a clean error cluster. Delacor's output folder is its own business; a
-    /// before/after comparison does not need to know it.
-    /// </summary>
-    internal sealed class Snapshot
-    {
-        private readonly Dictionary<string, (DateTime Written, long Bytes)> _files;
-
-        private Snapshot(Dictionary<string, (DateTime, long)> files) => _files = files;
-
-        internal static Snapshot Take(string directory) =>
-            new(Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
-                .ToDictionary(f => f, f =>
-                {
-                    var info = new FileInfo(f);
-                    return (info.LastWriteTimeUtc, info.Length);
-                }, StringComparer.OrdinalIgnoreCase));
-
-        internal (List<string> Created, List<string> Modified) Diff(Snapshot after)
-        {
-            var created = after._files.Keys.Where(f => !_files.ContainsKey(f))
-                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
-            var modified = after._files
-                .Where(f => _files.TryGetValue(f.Key, out var old) && old != f.Value)
-                .Select(f => f.Key).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
-            return (created, modified);
-        }
     }
 }
