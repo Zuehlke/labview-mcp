@@ -1424,7 +1424,8 @@ creation, `0` after one such event, also read fresh from disk). Nothing on the V
 it: the AIXML diff showed both frames wired like a plain Request's, a traversal of all 272 wires
 found none `Is Broken?`, every other VI of the module was executable, and NI's own
 `vi.lib\AppBuilder\AB_Get_Detailed_BrokenVI_Message.vi` (helper `scripts/lvbd_broken_reason.xml`)
-answered 1003 with an EMPTY list. VI Server calls that node class `Bundler`.
+answered 1003 with an EMPTY list. VI Server calls that node class `Bundler`. `scripts/lvbd_broken_wires.xml` stays as the cheap first check for the faults it CAN see - a
+broken wire.
 
 The tool therefore wires the handler's `error out` into that free input as well, and the connect
 helper never picks a sink that already carries a wire - both inputs are named `error in`, and a
