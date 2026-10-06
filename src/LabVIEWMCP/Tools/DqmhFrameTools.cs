@@ -28,6 +28,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     private const string Helper = "lvdqmh_place_frame_handler";
     private const string ConnectHelper = "lvbd_connect_by_names";
 
+    /// <summary>VI Server's class name for Merge Errors in a DQMH frame, measured: `Bundler`.</summary>
+    internal const string MergeErrorsClass = "Bundler";
+
     /// <summary>Terminals of Delacor's Unbundle that are plumbing, not arguments.</summary>
     internal static readonly string[] PlumbingTerminals =
         ["input cluster", "output cluster", "Wait Notifier", "wait for reply"];
@@ -40,7 +43,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         each request argument (the frame's Unbundle By Name) into the handler input of the same
         name, Variant To Data's error out into the handler's `error in`, and for a Request and
         Wait for Reply each handler output into the reply field of the same name plus its
-        `error out` into `<Event>_error`. The #CodeNeeded text is deleted and Main.vi saved.
+        `error out` into `<Event>_error` AND into the frame's Merge Errors, whose second input
+        Delacor leaves unwired - that unwired input is what keeps Main.vi from running after a
+        Request and Wait for Reply event. The #CodeNeeded text is deleted and Main.vi saved.
         So name the handler's terminals after the event's argument and reply fields - that is
         the whole contract. A dry run first reads the frame; a handler input or reply field that
         finds no partner is reported, never guessed, and a frame that already holds a subVI is
@@ -117,8 +122,8 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                     new { helperError = dryError, error = dry is null ? null : DqmhTools.Failed(dry), steps });
 
             var nodeClasses = DqmhHeadless.Listed(dry, "Node Classes");
-            var argTerminals = DqmhHeadless.Listed(dry, "Arg Source Terminals");
-            var replyTerminals = DqmhHeadless.Listed(dry, "Reply Sink Terminals");
+            var argTerminals = DqmhHeadless.Listed(dry, "Arg Source Terminals").Select(Unmarked).ToList();
+            var replyTerminals = DqmhHeadless.Listed(dry, "Reply Sink Terminals").Select(Unmarked).ToList();
             var texts = DqmhHeadless.Listed(dry, "Decoration Texts");
             var plan = Plan(eventBare, inputs, outputs, argTerminals, replyTerminals);
             var detail = new JsonObject
@@ -164,6 +169,13 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             AddArray(run, "Error Sinks", plan.ErrorIn ? ["error in"] : []);
             AddArray(run, "Reply Sources", plan.Replies.Select(r => r.From));
             AddArray(run, "Reply Sinks", plan.Replies.Select(r => r.To));
+            // THE USER'S FINDING OF 2026-10-06: Delacor's reply frame carries a Merge Errors whose
+            // second input is UNWIRED, and that alone leaves Main.vi not executable - VI Server named
+            // no cause, NI's AppBuilder report was empty, the user read it off the IDE. The
+            // handler's error out goes there too; the connect helper picks the FREE `error in`.
+            var mergeErrors = nodeClasses.Contains(MergeErrorsClass) && outputs.Contains("error out");
+            AddArray(run, "Merge Sources", mergeErrors ? ["error out"] : []);
+            AddArray(run, "Merge Sinks", mergeErrors ? ["error in"] : []);
             var (placed, placeError) = await dqmh.RunDetailedAsync(scripts, Helper, run, timeoutSeconds, ct);
             if (placed is null || placeError is not null)
                 return Json.Error("helperFailed", "The handler could not be placed.",
@@ -172,7 +184,8 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             var missing = DqmhHeadless.Listed(placed, "Missing");
             var error = DqmhTools.Failed(placed);
             var mainAfter = await headless.ExecStateAsync(mainVi, timeoutSeconds, ct);
-            var expected = plan.Arguments.Count + (plan.ErrorIn ? 1 : 0) + plan.Replies.Count;
+            var expected = plan.Arguments.Count + (plan.ErrorIn ? 1 : 0) + plan.Replies.Count
+                           + (mergeErrors ? 1 : 0);
 
             var answer = new JsonObject
             {
@@ -255,6 +268,14 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         return new WiringPlan([.. wired.Where(args.Contains)], handlerInputs.Contains("error in"),
             replyWires, problems, warnings);
     }
+
+    /// <summary>
+    /// A sink terminal's name without the connect helper's ` <wired>` mark - the helper marks a
+    /// terminal that already carries a wire so it is never chosen, which a plan must not mistake
+    /// for a different field name.
+    /// </summary>
+    internal static string Unmarked(string name) =>
+        name.EndsWith(" <wired>", StringComparison.Ordinal) ? name[..^" <wired>".Length] : name;
 
     /// <summary>The frame name exactly as LabVIEW lists it - with the spaces around the quotes.</summary>
     internal static string? FrameNameFor(IEnumerable<string> framesSeen, string eventName) =>

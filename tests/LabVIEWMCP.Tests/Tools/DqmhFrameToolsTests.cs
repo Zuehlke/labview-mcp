@@ -49,6 +49,14 @@ public class DqmhFrameToolsTests
         Assert.Contains(plan.Warnings, w => w.Contains("error out"));
     }
 
+    /// <summary>Measured on the acceptance run: the connect helper's mark arrived in the plan as part of the name.</summary>
+    [Fact]
+    public void The_wired_mark_is_not_part_of_a_field_name()
+    {
+        Assert.Equal("output cluster", DqmhFrameTools.Unmarked("output cluster <wired>"));
+        Assert.Equal("Found", DqmhFrameTools.Unmarked("Found"));
+    }
+
     [Fact]
     public void The_frame_name_is_matched_with_LabVIEWs_spaces_around_the_quotes()
     {
@@ -92,6 +100,6 @@ public class DqmhFrameToolsTests
     public void The_main_helper_calls_the_connect_helper()
     {
         var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_place_frame_handler.xml"));
-        Assert.Equal(4, Regex.Matches(aixml, "target=\"lvbd_connect_by_names.vi\"").Count);
+        Assert.Equal(5, Regex.Matches(aixml, "target=\"lvbd_connect_by_names.vi\"").Count);
     }
 }

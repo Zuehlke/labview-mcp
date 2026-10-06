@@ -1417,11 +1417,22 @@ Deposit (5), Withdraw (6), Get Balance (4), 2.4-2.7 s each, `missing: []`; a Dep
 aimed at Get Balance was refused `namesDoNotMatch` naming `Amount` and `Balance`; a second
 placement into a filled frame was refused `frameAlreadyHasCode`.
 
-**AND MAIN.VI STAYED NOT EXECUTABLE - the cause is not in the frame.** Reproduced on a fresh
-module: `execState 1` after creation, `0` after ONE Request and Wait for Reply event, also read
-fresh from disk with the project closed. The AIXML diff before/after is exactly the two new frames,
-every terminal in them wired like a plain Request's; a traversal of all 272 wires found none
-`Is Broken?`; every other VI of the module is executable; and NI's own
+**THE CAUSE WAS IN THE FRAME, and the USER found it in the IDE: Delacor's reply frame carries a
+`Merge Errors` whose SECOND `error in` is unwired** - in LabVIEW 2026 that input is required, so
+one Request and Wait for Reply event breaks Main.vi (reproduced on a fresh module: `1` after
+creation, `0` after one such event, also read fresh from disk). Nothing on the VI Server side named
+it: the AIXML diff showed both frames wired like a plain Request's, a traversal of all 272 wires
+found none `Is Broken?`, every other VI of the module was executable, and NI's own
 `vi.lib\AppBuilder\AB_Get_Detailed_BrokenVI_Message.vi` (helper `scripts/lvbd_broken_reason.xml`)
-answers 1003 with an EMPTY list. So VI Server does not name the reason; the IDE's Error List does.
-`scripts/lvbd_broken_wires.xml` stays as the cheap first check for the cases it can see.
+answered 1003 with an EMPTY list. VI Server calls that node class `Bundler`.
+
+The tool therefore wires the handler's `error out` into that free input as well, and the connect
+helper never picks a sink that already carries a wire - both inputs are named `error in`, and a
+name search alone found the wired one first. A sink so skipped is listed with a ` <wired>` mark,
+which the C# plan strips before it compares field names (the first acceptance after the change
+refused all four frames as `namesDoNotMatch` on `output cluster <wired>`). Re-run from a backup of
+the module: four frames filled, 2.4-2.7 s each, `missing: []`, and **Main.vi went `0 -> 1` with
+the fourth** - the first three each still left another frame's input open. The ATM then started:
+`Start Module` answered no error where it had answered 1003, and a signalled card insertion
+enabled `User Input` and `Enter`. `lvai_dqmh_new_event` names this cause in `completionNeeded`
+now instead of blaming a Broadcast that a reply-only module does not have.

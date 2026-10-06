@@ -675,14 +675,21 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         var completion = new JsonArray();
         if (mainExec is 0 && mainExecBefore is 0)
             completion.Add("Main.vi was already NOT executable before this call, so this event " +
-                           "did not cause it - an earlier Broadcast's loose #CodeNeeded call is the " +
-                           "measured cause (docs/dqmh-scripting.md section 9c).");
+                           "did not cause it. The two measured causes are an earlier Broadcast's loose " +
+                           "#CodeNeeded call and an earlier Request and Wait for Reply frame's unwired " +
+                           "Merge Errors input (docs/dqmh-scripting.md sections 9c, 9h).");
         else if (mainExec is 0 && typeIndex == 1)
             completion.Add(
                 $"Main.vi: Delacor dropped a call to {eventName.Trim()}.vi loose on its diagram " +
                 "with a #CodeNeeded comment and its arguments unwired, which leaves Main.vi " +
                 "broken until that call is placed where the module FIRES the broadcast and wired. " +
                 "Only the module's author knows where that is (docs/dqmh-scripting.md section 6.10).");
+        else if (mainExec is 0 && typeIndex is 2 or 3)
+            completion.Add(
+                $"Main.vi: Delacor's \"{eventName.Trim()}\" message frame carries a Merge Errors whose " +
+                "second input is unwired, which leaves Main.vi broken until the frame gets its code. " +
+                "lvai_dqmh_place_handler puts a handler subVI there and wires that input " +
+                "(docs/dqmh-scripting.md section 9h).");
         else if (mainExec is 0)
             completion.Add("Main.vi is not executable after scripting, and this event type has " +
                            "never been measured to cause that - read its errors before going on.");

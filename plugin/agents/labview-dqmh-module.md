@@ -185,7 +185,7 @@ Request and Wait for Reply frame leaves Main.vi NOT executable until it is fille
    `frameAlreadyHasCode` - never wires a guess. Report `connected`, `warnings` and
    `mainViExecState` before and after.
 
-A plain Request frame has no reply, so the handler's `error out` stays unwired there - it is
+A Request and Wait for Reply frame leaves Main.vi broken through its unwired `Merge Errors` input until the handler is placed - the tool wires the handler's `error out` there too. A plain Request frame has no reply, so the handler's `error out` stays unwired there - it is
 listed under `warnings`; say so in the report.
 
 ## Phase 7 — UNIT TESTS: `lvai_dqmh_new_unit_test`, no dialog

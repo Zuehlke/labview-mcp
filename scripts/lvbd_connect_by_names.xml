@@ -1,4 +1,4 @@
-<VI _name="lvbd_connect_by_names.vi" description="Wires terminals of one block-diagram node to terminals of another, pair by pair (nothing at all when either node is not a valid reference), finding every terminal by its NAME - never by index, because Terminals[] order is not portable. Source Names[i] on the Source Node is wired to Sink Names[i] on the Sink Node with Connect Wire on the sink terminal. A pair whose source or sink name matches no terminal is skipped and reported, never guessed. Generic\3A it knows nothing about the VI it edits. The caller must have opened the owning VI in the application instance that edits it and must save that VI afterwards. Connected lists each pair wired as source->sink, Missing each pair that was not, and the two name lists are every terminal each node reported.">
+<VI _name="lvbd_connect_by_names.vi" description="Wires terminals of one block-diagram node to terminals of another, pair by pair (nothing at all when either node is not a valid reference), finding every terminal by its NAME - never by index, because Terminals[] order is not portable. Source Names[i] on the Source Node is wired to Sink Names[i] on the Sink Node with Connect Wire on the sink terminal. A sink terminal that already carries a wire is never chosen - so of two inputs sharing one name, as Merge Errors has, the free one is - and it is listed with a wired mark after its name. A pair whose source or sink name matches no free terminal is skipped and reported, never guessed. Generic\3A it knows nothing about the VI it edits. The caller must have opened the owning VI in the application instance that edits it and must save that VI afterwards. Connected lists each pair wired as source->sink, Missing each pair that was not, and the two name lists are every terminal each node reported.">
   <Control _name="Source Node" conIdx="0" connection="recommended" outputs="value:4200.value" type="ref{LV.Node}" uid="4200" uid_parent="root" value=""/>
   <Control _name="Sink Node" conIdx="1" connection="recommended" outputs="value:4201.value" type="ref{LV.Node}" uid="4201" uid_parent="root" value=""/>
   <Control _name="Source Names" conIdx="2" connection="recommended" outputs="value:4202.value" type="array{string}" uid="4202" uid_parent="root" value="[]"/>
@@ -41,8 +41,13 @@
             <Left inputs="value:4225.value" outputs="value:4233.value" uid="4233" uid_parent="4232"/>
             <Right inputs="value:4234.error out" outputs="value:4235.value" uid="4235" uid_parent="4232"/>
           </ShiftReg>
-          <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:4231.value,error in (no error):4233.value" outputs="Name:4234.name,reference out:,error out:4234.error out" uid="4234" uid_parent="4230"/>
-          <Tunnel _id="Out1" inputs="value:4234.name" mode="index" outputs="value:4236.value" uid="4236" uid_parent="4230"/>
+          <Node _name="Property Node" fields="read+Name,read+Connected Wire" type="{LV.Terminal}" inputs="reference:4231.value,error in (no error):4233.value" outputs="Name:4234.name,Connected Wire:4234.wire,reference out:,error out:4234.error out" uid="4234" uid_parent="4230"/>
+          <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4234.wire" outputs="NaN/Path/Refnum?:4237.free" uid="4237" uid_parent="4230"/>
+          <Constant _name="wired mark" outputs="value:4238.value" type="string" uid="4238" uid_parent="4230" value=" &lt;wired&gt;"/>
+          <Constant _name="no mark" outputs="value:4239.value" type="string" uid="4239" uid_parent="4230" value=""/>
+          <Node _name="Select" inputs="t:4239.value,s:4237.free,f:4238.value" outputs="s? t\3Af:4240.mark" uid="4240" uid_parent="4230"/>
+          <Node _name="Concatenate Strings" inputs="string:4234.name,string:4240.mark" outputs="concatenated string:4241.name" uid="4241" uid_parent="4230"/>
+          <Tunnel _id="Out1" inputs="value:4241.name" mode="index" outputs="value:4236.value" uid="4236" uid_parent="4230"/>
         </Structure>
 
         <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="4500">
