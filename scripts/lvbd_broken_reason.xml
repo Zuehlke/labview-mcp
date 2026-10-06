@@ -1,0 +1,14 @@
+<VI _name="lvbd_broken_reason.vi" description="Asks LabVIEW WHY a VI is not executable - VI Linker Errors only says that it is. Calls NI's own AppBuilder VI AB_Get_Detailed_BrokenVI_Message.vi, which the Application Builder uses for its broken-VI report and which answers in its error out. The VI is opened in the active project's application instance, read and closed, never saved.">
+  <Control _name="VI Path" conIdx="0" connection="recommended" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Read-only: nothing is saved" uid="0" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4201.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.error out" outputs="Application:4211.app,reference out:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4200.value,error in (no error):4211.error out" outputs="vi reference:4212.vi,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Call target="AB_Get_Detailed_BrokenVI_Message.vi" inputs="VI refnum:4212.vi" outputs="error out:4213.reason" uid="4213" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4212.vi,error in (no error):4212.error out" outputs="error out:4214.error out" uid="4214" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4211.app,error in (no error):4214.error out" outputs="error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4215.error out" outputs="error out:4216.error out" uid="4216" uid_parent="root"/>
+  <Indicator _name="Broken Reason" conIdx="4" connection="recommended" inputs="value:4213.reason" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4216.error out" type="cluster{bool.status,int32.code,string.source}" uid="4301" uid_parent="root" value="[false,0,]"/>
+</VI>

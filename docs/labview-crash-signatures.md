@@ -502,7 +502,8 @@ What to take from it, pending a controlled test:
   `type=`, treat that file as risky input and do not run it in a session holding work you cannot
   lose. Prefer a route that never has to name the type — carrying a value as a **variant** from one
   `Ctrl Val.Get` straight into one `Ctrl Val.Set` does exactly that, and is why the module helper
-  (`scripts/lvdqmh_new_module.xml`) never needed such a constant.
+  (`scripts/lvdqmh_new_module.xml`, the VI Server version replaced by a static wrapper on
+  2026-10-06) never needed such a constant.
 - **Validation passing says nothing here.** The file validated in 2.5 s and generated with
   `errorCode 0`; the death came later.
 - The restarted LabVIEW comes back **without the gRPC service** — it starts with Nigel, not the

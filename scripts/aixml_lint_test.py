@@ -107,7 +107,7 @@ def test_splitter() -> None:
     pairs = lint.parse_terminal_list(r"s? t\3Af:970.value")
     check(pairs == [("s? t:f", "970.value")], "Select output 's? t\\3Af' stays one terminal", str(pairs))
 
-    # 8 occurrences in scripts/lvdqmh_dlg_keyfocus.xml.
+    # Delacor and NI VIs spell their error input this way.
     pairs = lint.parse_terminal_list(r"error in (no error):20.error out")
     check(pairs == [("error in (no error)", "20.error out")], "'error in (no error)' keeps its parentheses", str(pairs))
 

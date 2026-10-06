@@ -54,6 +54,13 @@ The genuinely locked VIs are a different set — `Script New Module.vi` and its 
 
 ## 2. The source is locked, so connector panes are the whole contract
 
+> **CORRECTED 2026-10-06 — the source is NOT locked.** Re-exported with LabVIEW freshly started,
+> `Script New Module.vi` came back at **79 940 bytes with 130 diagram elements** (calls to
+> `Script Tester VI.vi`, `Remove Do Something.vi`, `DQMH_Save All This Library.vi`, …), and every
+> other `_DQMH *\` scripter exported its diagram too (§9). The 2 452-byte reading below is the same
+> artefact as §1: an export taken before the DQMH libraries were in memory. Kept because it is the
+> second time one export misled this file.
+
 Every DQMH VI exports its **controls and indicators but no `<Diagram>`**. Measured on
 `Script New Module.vi`: 2 452 bytes of AIXML, nine `<Control>`/`<Indicator>` elements, no diagram
 node of any kind. All carry `Created using Delacor QMH Event Scripter 5.0.0.112`.
@@ -64,6 +71,9 @@ derived from terminal names, types and `required` flags — which turned out to 
 means a wrong guess is not correctable by reading their code.
 
 ## 3. An AIXML `Call` cannot reach them — Error 53
+
+> **TRUE ONLY WHILE THEY ARE NOT LOADED — corrected 2026-10-06, §9a.** With the target VIs opened
+> loose first, the same `Call` validated, converted and ran. The text below is the not-loaded arm.
 
 This was the first thing tried and it fails:
 
@@ -112,6 +122,12 @@ Two helpers ship for this, and the split is not cosmetic: **`scripts/lvdqmh_modu
 reads the catalogue (read-only) and **`scripts/lvdqmh_new_module.xml`** builds the module. The
 index must be chosen *before* the build, so it cannot come from the builder's own output — the
 builder returns `type strings` as well, but only as a record of the catalogue it used.
+
+> **Superseded 2026-10-06 (§9f).** `lvdqmh_new_module.xml` is no longer this VI Server helper: it
+> is a static wrapper calling the LOADED scripters, with a `Script?` input whose FALSE answer is the
+> catalogue - so one helper does both halves - and `lvai_dqmh_new_module` drives it. Everything in
+> this section and §5 about the three error outputs and `Error 1055` on cleanup describes the old
+> helper.
 
 ## 5. Creating a module
 
@@ -245,6 +261,17 @@ Adoption also leaves the helper in memory: regenerating it to the same path then
 
 ## 6. Events: the dialog is the only supported route
 
+> **History since 2026-10-06.** The dialog route described in this section - and every
+> `scripts\lvdqmh_dlg_*.xml`, `lvdqmh_ring2.xml` and `lvdqmh_args_paste2.xml` helper it names -
+> was REMOVED, together with `lvai_dqmh_new_event`'s `useDialog` option, once the headless wrapper
+> of §9c covered all four event types: two routes to one result, one of them ending in a keystroke,
+> is the duplication the user asked to be rid of. The measurements stay here because they explain
+> why the dialog could not be driven reliably.
+
+> **SUPERSEDED 2026-10-06 — §9c.** A generated wrapper scripts all four event types with no
+> dialog and no keystroke, and `lvai_dqmh_new_event` uses it by default. This section is the
+> dialog route, kept as `useDialog: true` and as the record of how the refnum problem was found.
+
 **Creating an event headless does not work, and the reason is not a missing piece of wiring — it is
 that Delacor never built one.** Measured 2026-08-31, in this order.
 
@@ -286,6 +313,11 @@ LabVIEW kept working — so the `error out` was never read.
 
 ### 6.2a The real obstacle, settled: EVERY refnum in `Module Info` dies with the parse
 
+> **The "structural dead end" below is REFUTED for a wrapper — 2026-10-06, §9a.** A plain static
+> `Call` to the loaded parse VI and the loaded scripter keeps every refnum alive; no
+> `Call By Reference` is needed. The measurement here stands for what it tested: a helper that runs
+> the parse as its OWN top-level VI.
+
 Instrumenting the helper to write its `error out` to a **file** removed the blindness — the run
 outlives the MCP request timeout, but the file does not. Two runs then bracket the problem exactly:
 
@@ -304,7 +336,9 @@ TOP-LEVEL VI and LabVIEW releases the refnums a VI opened when it stops.** All t
 Only **one** of the thirteen can be replaced — the application reference, because the helper holds
 its own. The other twelve cannot:
 
-- **`LVLibrary.Open` does not exist.** Probed 2026-08-31 on `{LV.Application}`, the way
+- **`LVLibrary.Open` does not exist** - but `{LV.Application}` **`Library.Open` DOES** (corrected
+  2026-10-06: `scripts/lvai_add_one_to_library.xml` and `scripts/lvdqmh_save_library.xml` use it),
+  so a `Library` reference CAN be rebuilt; the eleven `ProjectItem`s still cannot. Probed 2026-08-31 on `{LV.Application}`, the way
   `LVClass.Open` was found: `Invoke Node: Invalid method`. (Safe to probe — a wrong *method* is
   rejected cleanly; it is a wrong *class* that provokes the `OMAutoClasses` crash.)
 - The VI Server catalogue carries no library or project-item opener either.
@@ -807,6 +841,9 @@ raw byte search does: `Kanal` and `Sollwert` do not appear as ASCII in an argume
 event plainly has both terminals. Read a `.ctl` with `pylv_extract` and look at `VCTP`, or read the
 VI that uses it with `lvai_vi_terminals`. Nothing cheaper is sound.
 
+> **Contradicted 2026-10-06 on the headless route (§9c)**: `GetSpeed.vi` carries a `Reply Payload`
+> output. The dialog-route events below were not re-checked.
+
 **What is still open for Request and Wait for Reply**: its request VI carries no `Reply Payload`
 output, while DQMH's own `Do Something Else and Wait for Reply.vi` has one
 (`cluster{double.Value, error}`, conIdx 2). The cluster file is right, so this is about the connector
@@ -926,6 +963,9 @@ version hides the one line that was meant to change.
 
 ## 7. What is not reachable this way
 
+> **SUPERSEDED 2026-10-06 by §9.** Every menu function has a scriptable VI underneath, and its
+> connector pane is now read. The paragraph below is what was believed before.
+
 `Validate DQMH Module.vi`, `Rename DQMH Module.vi`, `Rename`/`Remove`/`Convert DQMH Event.vi` are
 all **menu VIs with no connector pane** (§1), so there is nothing to drive. Whether an underlying
 scriptable VI exists for each has not been checked — `_DQMH Rename Module\`, `_DQMH Remove Event\`
@@ -939,7 +979,461 @@ and `_DQMH Validate Module\` exist as directories and are the place to look. Do 
 | List module types | `Get Module Type Info.vi` over VI Server | **measured**, 121 ms |
 | Create a module | `+ Script New Module.vi` | **measured end to end**, 30–43 s |
 | Find modules in a project | `Parse Project for DQMH Modules.vi` | **measured**, 506 ms |
-| Create a **Request** or **Broadcast** event | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs a desktop with a foreground |
-| Create a **Request and Wait for Reply** event | same, plus the Reply Payload Window — §6.11 | **measured end to end**: three files, +3 members, `wait for reply (T)` in, and the reply cluster carries the pasted fields. Its request VI exposes no `Reply Payload` output — open, see §6.11 |
+| Create **any of the four event types** with NO dialog | generated wrapper around the loaded `Script New Event.vi` — §9c | **measured end to end 2026-10-06**, 13–24 s with every check, the tester wired and the scripted members saved; `lvai_dqmh_new_event`'s default |
+| Create a **Request** or **Broadcast** event through the dialog | `Create New DQMH Event.vi` over VI Server + one SPACE keystroke — §6.9 | **measured end to end**, 2.6–3.0 s via `lvai_dqmh_new_event`; needs a desktop with a foreground |
+| Create a **Request and Wait for Reply** event | same, plus the Reply Payload Window — §6.11 | **measured end to end**: three files, +3 members, `wait for reply (T)` in, and the reply cluster carries the pasted fields. Its request VI exposed no `Reply Payload` output on this route; the headless route's does (§9c) |
 | Create a **Round Trip** event | same, plus `roundTripBroadcastName` — §6.11 | **measured end to end**: four files, +4 members, the broadcast half named as passed, its `Reply Payload` input carrying the reply field |
-| Validate / rename / remove | menu VIs have no pane; look in `_DQMH *\` | **not investigated** |
+| Create a **unit test** for a request event | generated wrapper calling the loaded scripters — §9a | **measured end to end 2026-10-06**, 1.3 s, no dialog; `lvai_dqmh_new_unit_test` |
+| Validate / rename / remove / convert / RT tester / template | the `_DQMH *\` scripter under each menu VI — §9 | **panes read 2026-10-06, not run** |
+
+## 9. Every menu function is "parse, pick, script, close" — and Delacor already ships one headless
+
+Measured 2026-10-06: the ten menu VIs and the scripter under each exported with their diagrams
+(DQMH 7.x, LabVIEW 2026 32-bit, no project open). **All ten follow one shape:**
+
+```
+Parse Project for DQMH Modules.vi   -> DQMH Modules (array of Module Info), My Computer
+  user picks a Module from a ring   -> index into DQMH Modules
+Get All Events in Module.vi         -> Event Info (array), Ring Strings
+  user picks an Event from a ring   -> index into Event Info
+<scripter>(Module Info, Event Info, index, …)
+Close Scripting References.vi       (Module Info)
+```
+
+The dialog contributes only the two ring choices, a few text fields and a latched `OK`. Everything
+else is subVI calls with plain inputs — **so each menu function is reachable without its dialog,
+PROVIDED the parse and the scripter run as subVIs of ONE caller.** That is the §6.2a refnum rule:
+`Module Info` carries thirteen refnums that die when a top-level parse ends.
+
+**Delacor built exactly that caller once:** `_DQMH Validate Module\Validate DQMH Module (Headless).vi`
+takes a project PATH and returns a `Validation Results` string. Its diagram is `Project.Open` →
+`Parse Project for DQMH Modules.vi` → `Validation Engine.vi` → `Close Scripting References.vi`. It
+is the template for every other headless wrapper.
+
+| Menu function | Scripter (`<lib>:<VI>`) | Inputs beyond `Module Info` / `error in` | Needs `Module Info`? |
+|---|---|---|---|
+| Add New Module | `DQMH New Module.lvlib:Script New Module.vi` | Project, Module Name, Save Path, Module Type, Include Do Something, External Modules | no — **headless today** (§5) |
+| Create New Event | `DQMH New Event.lvlib:Script New Event.vi` | Event Type, Event Name, Description, Arguments VI, Reply Payload VI, Round Trip (Broadcast), Existing Argument Path, Add Tester Button, Custom Enqueue VI | yes |
+| Remove Event | `DQMH Remove Event.lvlib:Remove Event.vi` | Event Info, Removed Event Index, Removed Event Name (`""` = use index), Main VI | yes |
+| Rename Event | `DQMH Rename Event.lvlib:Rename Event.vi` | Event Info, Renamed Event Index, New Event Name, Project | yes |
+| Convert Event | `DQMH Convert Event.lvlib:Convert Event.vi` | Event Info, Converted Event Index, Project | yes |
+| New Unit Test | `DQMH New Unit Test.lvlib:Script Unit Test.vi` | Event Info, Event to Unit Test, project owning folder | yes |
+| Rename Module | `DQMH Rename Module.lvlib:Scripter - Rename Module.vi` | New Module Name, My Computer | yes |
+| Create RT Tester | `DQMH Create RT Tester.lvlib:Scripter - Create RT Tester.vi` | — | yes |
+| Remove Do Something | `DQMH Remove Do Something.lvlib:Remove Do Something.vi` | Project, Module Library, Removal Target, Exact Tester to Match | no |
+| Create Module Template | `DQMH Create Module Template.lvlib:Create Template Core.vi` | Source Library Path, Description, Relative Location, LabVIEW Data | no — plain values |
+| Validate Module | `Validate DQMH Module (Headless).vi` | Project (path) → Validation Results (string) | no — **headless by Delacor** |
+
+`Create New DQMH Event.vi` additionally runs `Preflight Main VI.vi`, `Verify Event Names.vi`,
+`Check if OK to Proceed.vi` and `Determine Existing Argument Typedef Path.vi` before scripting; a
+wrapper should call them too rather than skip the checks.
+
+**Settled for the unit-test row, §9a:** an AIXML `Call` resolves these project-library members once
+they are opened, so a generated wrapper can call them.
+
+**Licence:** the DQMH licence (`vi.lib\Delacor\Delacor QMH Toolkit\DQMHLicenseAgreementApril2020.txt`,
+§1.2) permits distributing derivative works only in executable form and excludes a "software library
+or thin wrapper" exposing the product's source. A wrapper that CALLS the user's installed scripters
+ships no Delacor code; copying their diagrams into this repository would. Not legal advice.
+
+### 9a. Measured: New DQMH Unit Test with no dialog
+
+2026-10-06, fixture `C:\temp\DQMH_UT_Spike` with one Singleton module `UTPump` (Do Something
+kept). The wrapper `scripts/lvdqmh_new_unit_test.xml` calls `Parse Project for DQMH Modules.vi` ->
+`Get All Events in Module.vi` (Request events, as Delacor's dialog sets it) -> `Script Unit Test.vi`
+-> `Close Scripting References.vi` on every parsed module, picking module and event by NAME.
+
+| arm | result |
+|---|---|
+| A - wrapper generated with nothing opened | `Error 53` at convert, naming all four targets; nothing written |
+| B - the four targets opened loose first (`lvai_open_file viPaths`) | **validate `errorCode 0`**, convert clean, 17 864 bytes, `execState 1`, links relative into `project\Delacor\DQMH\_DQMH New Event\` and `\_DQMH New Unit Test\` |
+| run, `NoSuchModule` | 233 ms, `Module Index -1`, no file touched |
+| run, `UTPump.lvlib` / `Do Something` | 394 ms, `Event Index -1` - the names carry their extension |
+| run, `UTPump.lvlib` / `Do Something.vi` | 1 267 ms, `error out` 0, unit test written |
+
+The wrapper ran in the AI addon's application instance through `lvai_run_vi_and_read_values`; the
+IDE-instance launcher kept in reserve was not needed. **Delacor's spellings are file names**:
+`Module Names = [UTPump.lvlib]`, `Event Names = [Do Something.vi, Do Something Else.vi, Do Something
+Else and Wait for Reply.vi]` - so the Request filter includes Request-and-Wait events.
+
+What `Script Unit Test.vi` wrote: `Unit Tests\UTPump\Test - UTPump - Do Something 1.vi`,
+`UTPump setup.vi`, `UTPump teardown.vi`, and it saved the `.lvproj` itself with a `Unit Tests` >
+`UTPump` folder listing them. The `.lvlib` was byte-identical, `Main.vi` and the tester untouched,
+`missingItems`/`missingFiles` empty.
+
+**The test VI is `execState 0` by Delacor's design**: four Event Structure frames with no event
+configured, each carrying `#CodeNeeded` ("Configure this frame for the Module Did Stop broadcast
+event..."). Delacor's own `templates\Unit Test Request.vit` is `execState 0` as well - the control
+that settles it. Setup and teardown read 1.
+
+**This contradicts `docs/aixml-call-loaded-vi.md` §3**: there `ValidateAIXML` refused a loaded
+project-local target in every arm; here it ACCEPTED loaded project-library members. Recorded there
+as section 9.
+
+Not measured yet: the wrapper from disk in a fresh LabVIEW with the targets not loaded, a second
+module, a Cloneable module.
+
+### 9b. Productised as `lvai_dqmh_new_unit_test` - and what acceptance added
+
+Accepted 2026-10-06 over raw MCP stdio against the built exe, on the same fixture:
+
+| call | answer |
+|---|---|
+| `NoSuchModule` / `Do Something` | `moduleNotFound`, `moduleNames: [UTPump.lvlib]` |
+| `UTPump` / `Did Something` (a broadcast) | `eventNotFound`, `requestEvents` lists the three requests, 1.3 s |
+| `utpump` / `do something else` | `ok`, three runs (module respelt, then event), 1.4 s, `Test - UTPump - Do Something Else 1.vi` created, `execState 0` |
+| `UTPump` / `Do Something Else and Wait for Reply`, wrapper regenerated | `ok`, 2.4 s including generation |
+
+Afterwards every URL in the `.lvproj` resolved and `project\Delacor\` held no file of that date.
+A second test for the same module writes only the test VI; setup and teardown already exist.
+
+**WITH A PROJECT ACTIVE, THE TARGETS MUST BE OPENED THROUGH THAT PROJECT.** The spike generated the
+wrapper with the project CLOSED. The first tool run had the project active, opened the four targets
+loose, and the conversion answered `Error 53` three times. Opening the same four with the project
+pair (`lvai_open_file projectPath + projectName + viPaths`) and changing nothing else, the same
+document converted clean. That is the application-instance rule of `docs/aixml-call-loaded-vi.md`
+§3: a VI generated with a project active lives in the project's instance, so its subVIs must be
+loaded there. The tool now opens them through the active project.
+
+**DELACOR'S OWN SAVE ADOPTS OUR HELPERS.** `Script Unit Test.vi` saves the project, and LabVIEW
+listed `lvai_run_and_read.vi` and `lvdqmh_new_unit_test.vi` from `%TEMP%\LabVIEWMCP\helpers` in the
+`.lvproj` on the first run, and the wrapper alone on the regeneration run. The tool reports them as
+`adoptedHelpers`; `lvai_close_active_project` with `projectPath` swept them both times. The `.lvproj`
+cannot be cleaned by the tool itself, because LabVIEW holds it open.
+
+### 9c. Events with no dialog - all four types, measured and productised
+
+2026-10-06, same fixture. `lvai_dqmh_new_event` now takes this route by default; the dialog route
+of §6 stays reachable as `useDialog: true`.
+
+**The wrapper** is `scripts/lvdqmh_script_new_event.xml`: `Parse Project for DQMH Modules.vi` ->
+the module picked by NAME -> `DQMH Remove Event.lvlib:Get All Events in Module.vi` (the variant the
+dialog uses) -> `Script New Event.vi` -> `Close Scripting References.vi` on the other modules. A
+`Script?` input makes a DRY run that parses and reports the module's folder and events and scripts
+nothing. The arguments come from CARRIER VIs passed as `Arguments VI` / `Reply Payload VI` - one
+control per argument and nothing else, an empty one for no reply - and Delacor DELETES both
+carrier files after every scripted run, the empty ones included.
+
+**What the wrapper leaves out on purpose, and the tool does instead.** Four of the dialog's helpers
+answer a failed check with a MODAL dialog, and a modal stops the gRPC service:
+
+| Delacor VI | modal on | replaced by |
+|---|---|---|
+| `Check if OK to Proceed.vi` | blank or invalid names, reserved argument labels (`module id`, `error in (no error)`, `error out`, `timed out?`), duplicate labels, tabs, groups, unsaved typedefs | the same checks in C#, before LabVIEW is touched |
+| `Verify Event Names.vi` | `<event>.vi` already in the module folder; a Round Trip's two names equal | file check on the folder the dry run reports |
+| `Preflight Main VI.vi` | event name equal (ignoring case) to a frame of Main.vi's message-handling case structure | Main.vi exported, EVERY case name compared - stricter, never looser |
+| `Show Arguments Window.vi` | - (opens the two argument windows) | the carriers |
+
+`Script New Event.vi` itself still calls `Simple Error Handler.vi` with the OK-dialog type, so a
+REAL scripting error raises a modal. The wrapper never hands it an incoming error, and the tool
+answers a run that does not return with `scriptingTimedOut` and the visible window titles.
+
+**Measured - first by the wrapper alone, then through the tool:**
+
+| type | new files | `.lvlib` | tool, end to end |
+|---|---|---|---|
+| Request `SetPressure` (`Pressure`, `Unit`) | 2 | +2 | 14.8 s |
+| Broadcast `PressureAlarm` (`Pressure`) | 2 | +2 | 12.9 s |
+| Request and Wait for Reply `GetPressure` (`Channel` -> `Pressure`) | 3 | +3 | 19.1 s |
+| Round Trip `Calibrate` + `CalibrationDone` (`Points` -> `Offset`) | 4 | +4 | 24.3 s |
+
+Every new event VI read `execState 1`. The reply fields reached the reply cluster for both
+reply-carrying types, and **the Request and Wait VI DOES carry a `Reply Payload` output**
+(`cluster{double.Speed, GetSpeed_error}`) - §6.11's "its request VI exposes no `Reply Payload`
+output" is contradicted on this route; whether the dialog-route events differ was not re-checked.
+The refusals ran too: a reserved argument name in 0 s, an existing event and `Initialize` (one of
+Main.vi's 50 case names) in 2.5 s each, nothing written.
+
+**DIRTY IS NOT A GATE FOR EVENTS.** Delacor's event dialog leaves `Any Dirty Modules?` UNWIRED (its
+unit-test dialog does gate on it). Scripting an event leaves 1-5 module members modified in memory
+- `Init Module.vi`, `Start Module.vi`, `Obtain Request Events.vi`, `Request Events--cluster.ctl`,
+`Obtain Broadcast Events for Registration.vi` - so a dirty gate refused every second event of a
+session, measured. The tool gates on `Any Locked Modules?` only, and afterwards SAVES exactly what
+the scripting left dirty when nothing was dirty before the call (`scripts/lvdqmh_dirty_members.xml`,
+Delacor's own `Is Project Item Dirty.vi` test: the front-panel and block-diagram modification
+bitsets). If something was dirty before, it saves nothing and lists it. A unit test straight after
+four events then worked.
+
+**THE TESTER BREAKS, AND THE TOOL REPAIRS IT** - the user's rule of 2026-10-06. Delacor drops the
+new request VI into the tester's frame with its REQUIRED inputs unwired: `Test UTPump API.vi` went
+`execState 1 -> 0` at the first Request with arguments. `scripts/lvdqmh_wire_tester_event.xml`
+finds every call of the event VI in the tester (nested frames included) and puts a CONTROL on each
+unwired input - the DQMH tester convention, read in the button's frame - through the generic
+`scripts/lvbd_fill_unwired_inputs.xml`. After each event the tester read 1, and a second run over
+the same event changed nothing (same md5). Three things that cost a run each:
+
+- `{LV.SubVI}` `VI Name` reads a library member QUALIFIED (`UTPump.lvlib:SetSpeed.vi`), a loose VI
+  bare, a polymorphic VI its instance name;
+- a SubVI node's `Terminals[]` returns EVERY slot of the callee's pattern - 12 on 4815 - and the
+  unassigned ones have an EMPTY name; `Create Control` on one answers `Error 1074`, and that error
+  then stops the save;
+- `wait for reply (T)` is an unwired input too, and gets its own control with the callee's default.
+
+**MAIN.VI BREAKS ON A BROADCAST WITH ARGUMENTS, AND THE TOOL DOES NOT REPAIR IT.** The loose
+`#CodeNeeded` call of §6.10 has its REQUIRED inputs unwired, so `Main.vi` went `1 -> 0` at the
+first Broadcast with an argument. A Round Trip's broadcast half does not do it - it is wired inside
+the request's message frame. Wiring constants would compile and FIRE the broadcast once at module
+start, because the call sits free on the diagram; where it belongs is the module author's call.
+The tool reports `completionNeeded`, and says when Main.vi was already broken before the call.
+
+**THE RUN HELPER WAS STRING-ONLY FOR DQMH.** `DqmhTools.RunAsync` drove helpers through
+`lvai_run_and_read.vi`, whose `Ctrl Val.Set` takes a string variant on a STRING control only. The
+dialog helpers take strings, so nothing showed it; the event wrapper's enum, booleans and paths
+came back with EVERY value missing, which read as `noDqmhModules`. It uses
+`lvai_run_and_read_typed.vi` now, and surfaces that helper's own error.
+
+**THE CARRIERS ARE ADOPTED AS MISSING FILES.** Generated with the project active, the carriers live
+in the project's application instance; Delacor deletes their files but not the VIs in memory, and
+the next project save - here the unit test's - listed `Arguments.vi` and `Reply Payload.vi` with
+`file not there`, beside our helpers. `lvai_close_active_project` with `projectPath` removed all
+five. Every answer carries a `projectHygiene` note saying so.
+
+**Not measured:** a Cloneable module, a module with an `Existing Argument` broadcast (the tool
+always scripts new arguments), a custom enqueue VI, and the route in a LabVIEW where the four
+Delacor targets were never opened before the first call.
+
+### 9d. Remove, rename, convert and validate with no dialog - measured 2026-10-06
+
+Same fixture, backed up first. The three edits are wrappers again - `scripts/lvdqmh_remove_event.xml`,
+`lvdqmh_rename_event.xml`, `lvdqmh_convert_event.xml` - and each calls two shared helpers folded out
+for the size budget: `lvdqmh_pick_event.xml` (parse, pick the module and the event by name, close
+the other modules) and `lvdqmh_close_modules.xml`. A flat remove wrapper measured 20 dependency
+stages. **The generation order is a chain**: Delacor's VIs opened through the active project, then
+each helper generated AND opened through the project, then the wrapper. Validation refused every
+wrapper with `Unsupported SubVI` even with everything opened - see `docs/aixml-call-loaded-vi.md`
+section 9 - so they are converted without it. After a scripted convert and rename the targets
+stopped resolving once and had to be opened again; the tools open them before every generation.
+
+Delacor's remove, rename and convert dialogs all REFUSE a project with unsaved modules (its
+create-event dialog does not), so these wrappers gate on `Any Dirty Modules?` as well as
+`Any Locked Modules?`. A live test held: with three dirty members and `Script?` TRUE the wrapper
+answered `Scripted?` FALSE and changed nothing.
+
+| step | wall | `.lvlib` | what changed |
+|---|---|---|---|
+| dry runs (all three) | 1.3-1.5 s | = | nothing, byte-identical |
+| convert `SetPressure` | 44.5 s | 76 -> 77 | `+ SetPressure (Reply Payload)--cluster.ctl`; the event gained `wait for reply (T)`, `Reply Payload`, `timed out?` |
+| rename `GetSpeed` -> `ReadSpeed` | 3.6 s | 77, **stale on disk** | 3 files renamed; EHL re-registered |
+| remove `PressureAlarm` (Broadcast) | 1.4 s | 77 -> 75 | 2 files gone |
+| remove `SpeedChanged` (Broadcast) | 2.1 s | 75 -> 73 | 2 files gone |
+| remove `Calibrate` (Round Trip) | 2.2 s | 73 -> 69 | 4 files gone - `Dependent Broadcast?` TRUE, `CalibrationDone` |
+
+**What Delacor leaves for a person - none of it is ours:**
+
+- **Rename does not save the `.lvlib`.** On disk it still listed the three deleted GetSpeed files,
+  and NEITHER Parse's `Any Dirty Modules?` NOR the members' modification bits report it.
+  `scripts/lvdqmh_save_library.xml` (`{LV.Application}` `Library.Open` -> `{LV.Library}` `Save`,
+  115 ms) saves it, and `lvai_dqmh_rename_event` runs it. The message frame's selector, its
+  label, the message string and the tester's button keep the OLD name.
+- **Convert keeps the old message frame**, labelled `#Code_Review_Todo ... converted ... delete
+  this frame`, beside a new one with the SAME selector `"SetPressure"`. Whether that duplicate
+  alone breaks Main.vi was not separated - Main.vi was already broken.
+- **Removing a Broadcast does NOT repair Main.vi** - the opposite of what the first draft of the
+  tool's description claimed. The loose `#CodeNeeded` call stays, pointing at the deleted VI, and
+  the tester's broadcast frame becomes `<#11>: Unknown Event (0x0)`; the tester went `1 -> 0` at the
+  first removal. Removing a Round Trip leaves its message frame with a `#Code_Review_Todo ... has
+  been removed` label calling the missing `CalibrationDone.vi`, and the tester answers
+  `Missing subVI UTPump.lvlib:Calibrate.vi`. Delacor's dialog opens the Error List for exactly
+  this; the tools answer `completionNeeded`.
+- `Check for Dependent Broadcast.vi` returned `CalibrationDone` as the NAME even for `PressureAlarm`,
+  with the flag FALSE, so the wrapper gates the name on the flag.
+
+**Validate** is Delacor's `Validate DQMH Module (Headless).vi`, no wrapper: `Project` (path) in,
+`Validation Results` (string) out, no `error out`, every Simple Error Handler wired to "no dialog".
+14.2 s with the project closed, 6.1 s with it open and active; afterwards the project was left
+active in the second arm and none in the first. The text is `PASS: <n> Modules Validated`, or
+`FAIL: <n> Modules Analyzed` plus one `Test Failure;<library>;<category>;<issue>` or
+`Test Error;<library>;<message>` line per finding, or `ERROR: <message>`.
+**It answered `PASS` after every step above, while Main.vi and the tester were not executable** -
+it checks DQMH structure, not whether the code runs. `lvai_dqmh_validate_module` says so.
+
+Not measured: whether a person's clean-up of those frames is scriptable; a Cloneable module.
+
+### 9e. Module functions, the template, and the save dialog - measured 2026-10-06
+
+**Rename module, RT tester, Remove Do Something** are wrappers like §9d -
+`scripts/lvdqmh_rename_module.xml`, `lvdqmh_create_rt_tester.xml`, `lvdqmh_remove_do_something.xml`
+- and the two tester-based ones call a third shared helper, `lvdqmh_find_testers.xml` (Delacor's
+`Find Tester on Disk.vi` and `Find RT Tester on Disk.vi`, each path emptied unless its flag is TRUE:
+ungated, `RT Tester Found?` FALSE came back with an unrelated VI's path). `lvdqmh_pick_event.xml`
+gained `Library Names`, Parse's `All Libraries in Project` (`array{string.Name}`, every library the
+project holds, vi.lib ones included).
+
+| function | measured | what to know |
+|---|---|---|
+| rename `UTRen` -> `UTRenamed` | 22.5 s | Delacor ends in `Save All This Project`: 52 files in OTHER modules re-saved. Folder and tester renamed; the `.lvproj` virtual folder keeps `UTRen Module` |
+| RT tester on `UTClone` | 3.2 s | `Test UTClone API-RT.vi` beside the tester, listed at target level; **execState 0 by design** (`#CodeNeeded ... including wiring required inputs`). Delacor's menu VI asks Parse for **Both** module types - not Cloneable only, as expected |
+| Remove Do Something on `UTDos` | 4.6 s | 4 events and 4 typedefs gone, Main.vi and tester stay executable. A second run answers **Error 1055** (`To More Specific Class` in `Script Tester.vi`) - refused from the dry run now |
+
+**The module template is NOT a wrapper.** `Create Template Core.vi` ends in a One Button Dialog on
+SUCCESS and Simple Error Handler's OK dialog on error - an unconditional modal. What it does was
+read off its export: with `LabVIEW Data` TRUE it deletes and re-copies the module's folder into
+`<Template Folders Source>\<Relative Location>\<Name>`, and either way it writes
+`<MetaData Folder>\<Name>.xml` from its `Meta Data XML Template` constant (six `%s`: Title,
+Description, LocationPath, LibraryPath, TesterPath, AbsolutePaths; CustomVIPath is a literal empty).
+`Get External Module Info.vi` reads those files by REGEX, not as XML, and `Get Module Type Info.vi`
+appends each one after `[Singleton, Cloneable]`. `lvai_dqmh_create_module_template` repeats those two
+steps in C#: the folders from running Delacor's `Template Folders--constant.vi`, the text from the
+constant in the user's own installed `Create Template Core.vi` - nothing of Delacor's is stored in
+this repository - and a template that is not the six-slot one measured here is refused. Accepted:
+`UTDos` appeared as module type **4** in Delacor's catalogue in 0.9 s; a second call was refused as
+`templateExists` (Delacor's tool would have wiped it). The acceptance template was removed again.
+
+**CONVERT BREAKS Main.vi, now separated.** On a module whose Main.vi was executable (`UTFinal`),
+converting `Pong` took it `1 -> 0`: the old message frame Delacor keeps, `#Code_Review_Todo`, has
+the same selector as the new one. Until that frame is deleted the module does not run.
+
+**LabVIEW'S "Save changes before closing?" DIALOG STOPPED TWO RUNS.** Measured with a window observer
+while it was on screen: title `Save changes before closing?`, class `LVDChild`, **no UI Automation
+elements at all**, buttons `Save - All` (focused) and `Don't Save - All`, `Cancel` disabled
+("Programmatic close cannot be cancelled"). It listed `Request Events--cluster.ctl` and
+`Obtain Request Events.vi` during a CONVERT that followed a rename; the convert waited 289 s and
+299 s for a person. The cause was ours: the API tester is NOT a library member, the post-scripting
+save only looked at `<Module>.lvlib:*`, and Delacor's scripters SAVE THE PROJECT as they go. Three
+changes, all in every scripted DQMH tool:
+
+- **Precondition**: nothing in the project folder may be unsaved before scripting - library members
+  and loose files (tester, RT tester, unit tests) alike - or the call answers
+  `unsavedChangesInProject` naming them.
+- **After scripting**: everything newly unsaved in the project folder is saved, one exact name at a
+  time; our helpers, vi.lib and Delacor's own VIs are never in that set.
+- **A dialog watch** (`DqmhDialogWatch`) runs beside every scripted run and answers that dialog with
+  `Save - All` - the user's instruction of 2026-10-06 was to watch for it and decide. Thanks to the
+  precondition the dialog can list nothing but the call's own changes, and not saving them leaves
+  the module half-edited on disk (the renamed event's typedef kept its old name). Because there is
+  no automation interface it fronts the dialog and presses SPACE on the focused button, once; one
+  that stays open is reported, not pressed again.
+
+With the first two in place the sequence that produced the dialog - create, rename, convert, unit
+test - ran in 1.5-7.5 s per step with NO dialog, observed. So the watch has not had to fire since;
+its keystroke route is the one the dialog-driven event tool measured on 2026-09-01.
+
+### 9f. Module creation as a tool - `lvai_dqmh_new_module`, measured 2026-10-06
+
+The VI Server helper of §4-§5 was rewritten as a static wrapper like every other DQMH function -
+`scripts/lvdqmh_new_module.xml` calls `Get Module Type Info.vi`, `Default Module Icon.vi` and
+`Script New Module.vi`, all opened through the active project first. Its pane: `Module Name`,
+`Module Save Path`, `Module Type Index` (uint16), `Include Do Something` (TRUE by default),
+`Script?`, `error in`; out `Type Strings`, `Descriptions`, `Scripted?`, `error out`. With `Script?`
+FALSE it only reads the catalogue, which is the tool's dry run - so the type is chosen by NAME
+before anything is written, and the old two-helper split is gone. 8 stages, 1220 x 445 px, where
+the VI Server helper had 19 stages and 2239 px. `lvdqmh_module_types.xml` stays for the template
+tool and was renumbered onto uids from 4200.
+
+| run | type | Do Something | time | result |
+|---|---|---|---|---|
+| `UTNew` | Singleton | kept | 16.9 s | Main.vi and tester executable, nothing unsaved, no dialog |
+| `UTNew2` | Cloneable | declined | 31.3 s | the same, and no `Do Something*.vi` written |
+| `UTNew3`, through the tool over raw stdio | `cloneable` | kept | 28.2 s | `ok: true`, 91 files, both VIs executable, nothing to save, no dialog; the close's sweep removed the adopted `lvdqmh_new_module.vi` |
+
+The two refusals of that acceptance run cost 0.6 s (`moduleExists` for `UTNew`, naming
+`Broadcast Events--cluster.ctl` in its folder) and 6.4 s (`moduleTypeNotFound` for `Single`, with
+the four catalogue names and Delacor's descriptions under `detail`) - the second pays for the
+wrapper and the dry run, which is the price of naming the right spellings.
+
+**Delacor's own pre-checks, read off its dialog's export, are made by the tool** because the dialog
+answers each with a modal: the name is non-empty after trimming, the save path is absolute, the
+save folder holds **no LabVIEW file at its top level** (`.vi .vit .ctl .ctt .lvclass .lvlib .lvproj
+.rtm .llb .lvlibp .xctl .xnode .vim` - other files and sub-folders are allowed, Delacor's DQMH-502),
+and no library of that name is in the project, compared without case. A first version refused any
+non-empty folder, which is stricter than Delacor and would refuse a folder holding only a
+`.gitkeep`. **`Script New Module.vi` creates the folder itself** and has no existence check of its
+own, so the tool does not create it - a refusal later would otherwise leave an empty folder behind.
+
+The type match is exact and ignores case only: `Singleton` is not `Singleton Panel` (the MGI
+add-on's type), and an index is never accepted in place of a name. The answer carries `catalogue`
+on every path, refusals included, so a wrong type costs one call and names the right spellings.
+
+### 9g. The all-features build, and what it changed - 2026-10-06
+
+One agent built `DQMH_AllFeatures` with every headless tool and nothing else (its transcript was
+audited: no `useDialog`, no `lvdqmh_dlg_*` helper, no keystroke) in **596 s** end to end. Two of
+its findings changed the module tool.
+
+**`lvai_dqmh_new_module` OUTLIVED THE CLIENT.** Both module calls answered `Request timed out` on
+the client - its ceiling is exactly 60 s and not raisable from here (`docs/lvclass-creation.md`) -
+while the server finished both: on a LabVIEW started seconds earlier, opening Delacor's VIs,
+generating the wrapper and scripting took about two minutes and one. The modules were on disk; the
+answers, with the verification in them, were lost. The tool now runs the creation DETACHED from the
+request (`Infra/ResumableCall.cs`) and answers within `answerWithinSeconds` (default 45): past it
+the answer is `errorKind: stillRunning`, nothing has failed, and **the same call again waits on the
+SAME run** and returns its answer with `answeredFromEarlierCall: true`. A call for a DIFFERENT module
+while one runs is `anotherCallStillRunning`, because both would script one LabVIEW. Accepted over
+raw stdio: `answerWithinSeconds: 5` answered `stillRunning` at 5.0 s, a second module was refused,
+and the repeat collected `ok: true` (`Freezer`, 19.6 s of work, both VIs executable). A server
+restart loses a running job's answer, not its module - `moduleExists` then carries a hint saying so.
+
+**A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
+`Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
+and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:
+in the source module's own project (`Heater.lvlib` loaded) `Chiller` from the `Heater` template
+failed twice; in a fresh empty project the same call created it in 22.5 s. So the tool reads the
+template's `LibraryPath` from Delacor's metadata file and refuses a project that already holds that
+library (`templateLibraryInProject`, 0.7 s, nothing written), and names the clash if 56003 comes
+back anyway. **A template is made in one project and used in another** - that is Delacor's design,
+not a limit of ours.
+
+**And a template copies the module AS IT IS.** The `Chiller` made in the empty project read
+`execState 0` on Main.vi and tester, because the `Heater` it came from was broken (a loose
+`#CodeNeeded` broadcast call, a duplicate frame from a convert). `lvai_dqmh_create_module_template`
+now reads the source's Main.vi and tester first and answers `warning` when either is not
+executable, plus a `usageNote` on the 56003 rule.
+
+**Measured and not yet fixed, from the same build:** removing a plain REQUEST took Logger's Main.vi
+and tester `1 -> 0` (the documentation had named only Broadcast and Round Trip removals);
+`lvai_dqmh_create_rt_tester` answered `rtTesterPath: ""` for a file it created; after a module
+rename `moduleNames` still listed the old name while the read-back found the new one; and the
+template title is always the module name - Delacor's metadata has no separate one.
+
+**THE DIALOG ROUTE IS GONE (same day).** With every DQMH menu function reachable headless, the
+event tool's `useDialog` option, its ~650 lines of dialog driving and the nine helpers it ran
+(`lvdqmh_dlg_start`, `_fill3`, `_keyfocus`, `_probe`, `_getstring`, `_setstring`, `_signal`,
+`lvdqmh_ring2`, `lvdqmh_args_paste2`) were deleted - the user's instruction, no duplicate routes.
+What stays of the window layer is what `DqmhDialogWatch` needs to answer LabVIEW's own
+`Save changes before closing?` modal, which is not Delacor's dialog and has no other route.
+
+### 9h. Filling a message frame - `lvai_dqmh_place_handler`, measured 2026-10-06
+
+Every scripted event leaves its MHL frame with a `#CodeNeeded` label, and no tool put code there,
+so the ATM build on a DQMH back end could not be finished. The frame's shape is Delacor's and the
+same for every event (read off two modules): `Variant To Data` unpacks the message data, an
+`Unbundle By Name` exposes each argument BY FIELD NAME, and for a Request and Wait for Reply a
+`Bundle By Name` takes each reply field by name plus `<Event>_error`, then `Send Notification`
+answers the caller. So the code goes in as ONE handler subVI whose terminals are named after
+those fields, and every wire is a name match.
+
+`scripts/lvdqmh_place_frame_handler.xml` finds the frame among every Case Structure on the
+diagram (`{LV.CaseStructure}` `Frame Names` + `Frames[]`; LabVIEW lists a string selector WITH
+spaces around its quotes, ` "Verify Account" `), picks the first node of each class in the frame -
+`NamedUnbundler`, `Function` (Variant To Data), `NamedBundler` - creates the handler with NI's
+own `New VI Object` (`vi object class` = `ref{LV.SubVI}`, `style` an empty variant, `path` the
+handler, as NI's Message Maker does) and wires through the generic
+`scripts/lvbd_connect_by_names.xml` (terminals by `Name`, `Connect Wire` on the sink). It deletes
+the free text matching `^#CodeNeeded` - a frame has TWO `Text` decorations, the other is the
+frame's description - and saves Main.vi. A dry run reads the frame without changing it.
+
+Accepted on the ATM's Bank module over raw stdio, all four frames: Verify Account (7 wires),
+Deposit (5), Withdraw (6), Get Balance (4), 2.4-2.7 s each, `missing: []`; a Deposit handler
+aimed at Get Balance was refused `namesDoNotMatch` naming `Amount` and `Balance`; a second
+placement into a filled frame was refused `frameAlreadyHasCode`.
+
+**THE CAUSE WAS IN THE FRAME, and the USER found it in the IDE: Delacor's reply frame carries a
+`Merge Errors` whose SECOND `error in` is unwired** - in LabVIEW 2026 that input is required, so
+one Request and Wait for Reply event breaks Main.vi (reproduced on a fresh module: `1` after
+creation, `0` after one such event, also read fresh from disk). Nothing on the VI Server side named
+it: the AIXML diff showed both frames wired like a plain Request's, a traversal of all 272 wires
+found none `Is Broken?`, every other VI of the module was executable, and NI's own
+`vi.lib\AppBuilder\AB_Get_Detailed_BrokenVI_Message.vi` (helper `scripts/lvbd_broken_reason.xml`)
+answered 1003 with an EMPTY list. VI Server calls that node class `Bundler`. `scripts/lvbd_broken_wires.xml` stays as the cheap first check for the faults it CAN see - a
+broken wire.
+
+The tool therefore wires the handler's `error out` into that free input as well, and the connect
+helper never picks a sink that already carries a wire - both inputs are named `error in`, and a
+name search alone found the wired one first. A sink so skipped is listed with a ` <wired>` mark,
+which the C# plan strips before it compares field names (the first acceptance after the change
+refused all four frames as `namesDoNotMatch` on `output cluster <wired>`). Re-run from a backup of
+the module: four frames filled, 2.4-2.7 s each, `missing: []`, and **Main.vi went `0 -> 1` with
+the fourth** - the first three each still left another frame's input open. The ATM then started:
+`Start Module` answered no error where it had answered 1003, and a signalled card insertion
+enabled `User Input` and `Enter`. `lvai_dqmh_new_event` names this cause in `completionNeeded`
+now instead of blaming a Broadcast that a reply-only module does not have.

@@ -4,71 +4,12 @@ using Xunit;
 namespace LabVIEWMcp.Tests.Tools;
 
 /// <summary>
-/// The parts of <c>lvai_dqmh_new_event</c> that need no LabVIEW: how a module is matched, how an
-/// argument list is read, and what a generated control carries as its default.
-///
-/// These are exactly the three places the tool got wrong on its first runs, and every one of them
-/// had worked in the hand-driven sequence it replaced - so they are the places a regression would
-/// be invisible until someone drove a real dialog again.
+/// The parts of <c>lvai_dqmh_new_event</c> that need no LabVIEW: how an argument list is read,
+/// what a generated control carries as its default, and which type combinations are refused.
+/// The dialog route's ring matching and window checks went with that route on 2026-10-06.
 /// </summary>
 public class DqmhToolsTests
 {
-    // ---------------------------------------------------------------- the module ring
-
-    /// <summary>
-    /// The ring's placeholder sits LAST and its order follows neither the project nor
-    /// <c>Parse Project for DQMH Modules.vi</c>. Measured 2026-08-31 on a three-module project:
-    /// index 0 was DQMHdemo when the dialog was launched from the project, and FirstClone when it
-    /// came from the Tools menu. Matching by position would therefore aim at the wrong module -
-    /// which nearly happened, one keystroke short of scripting an event into FirstClone.
-    /// </summary>
-    private static readonly List<string> Ring =
-        ["DQMHdemo.lvlib", "FirstClone.lvlib", "Korrekt.lvlib", "<Select a Module>"];
-
-    [Theory]
-    [InlineData("DQMHdemo", 0)]
-    [InlineData("DQMHdemo.lvlib", 0)]
-    [InlineData("dqmhdemo", 0)]
-    [InlineData("DQMHDEMO.LVLIB", 0)]
-    [InlineData("FirstClone", 1)]
-    [InlineData("Korrekt.lvlib", 2)]
-    public void A_module_is_found_by_name_with_or_without_the_lvlib_suffix(
-        string wanted, int expected) =>
-        Assert.Equal(expected, DqmhTools.MatchModule(Ring, wanted));
-
-    [Theory]
-    [InlineData("Heater")]
-    [InlineData("DQMHdemo2")]
-    [InlineData("")]
-    public void A_module_that_is_not_in_the_ring_is_refused(string wanted) =>
-        Assert.Equal(-1, DqmhTools.MatchModule(Ring, wanted));
-
-    /// <summary>
-    /// The placeholder must never match. It is a real ring entry, so a caller who passed its text
-    /// through - or a module genuinely called that - would otherwise be handed an index that
-    /// selects nothing and lets the run continue to the OK press.
-    /// </summary>
-    [Fact]
-    public void The_placeholder_is_not_a_module()
-    {
-        Assert.Equal(-1, DqmhTools.MatchModule(Ring, "<Select a Module>"));
-        Assert.Equal(-1, DqmhTools.MatchModule(Ring, "Select a Module"));
-    }
-
-    /// <summary>
-    /// And a module is still found when the placeholder is not last. Its position is not fixed -
-    /// launched from the Tools menu it sits at 0, from the project's context menu at the end - so
-    /// skipping it has to be by shape rather than by index.
-    /// </summary>
-    [Fact]
-    public void A_module_is_found_whatever_position_the_placeholder_takes()
-    {
-        List<string> placeholderFirst =
-            ["<Select a Module>", "DQMHdemo.lvlib", "FirstClone.lvlib"];
-        Assert.Equal(1, DqmhTools.MatchModule(placeholderFirst, "DQMHdemo"));
-        Assert.Equal(2, DqmhTools.MatchModule(placeholderFirst, "FirstClone.lvlib"));
-    }
-
     [Fact]
     public void Bare_name_strips_only_a_trailing_lvlib()
     {
@@ -197,57 +138,6 @@ public class DqmhToolsTests
     public void A_round_trip_broadcast_name_may_not_contain_a_line_break() =>
         Assert.Contains("line break",
             DqmhTools.TypeRuleViolation(RoundTrip, 0, "First\nSecond") ?? "");
-
-    // ---------------------------------------------------------------- the argument window
-
-    [Fact]
-    public void An_exactly_matching_window_has_nothing_missing_and_nothing_surplus()
-    {
-        var (missing, surplus) = DqmhTools.CompareLabels(
-            ["Kanal", "Sollwert"], ["Sollwert", "Kanal"]);
-        Assert.Empty(missing);
-        Assert.Empty(surplus);
-    }
-
-    [Fact]
-    public void A_control_that_did_not_arrive_is_reported_missing()
-    {
-        var (missing, surplus) = DqmhTools.CompareLabels(["Kanal", "Sollwert"], ["Kanal"]);
-        Assert.Equal(["Sollwert"], missing);
-        Assert.Empty(surplus);
-    }
-
-    /// <summary>
-    /// THE ONE THAT SHIPPED A WRONG EVENT. Measured 2026-09-01: a Broadcast created seconds after
-    /// a Request adopted the Request's still-open dialog, whose arguments window still held
-    /// `Sollwert`. Every label the Broadcast asked for was present, so a missing-only check passed
-    /// and the tool answered ok: true - and `KontrollBroadcast.vi` came out with `Sollwert` AND
-    /// `Status` on its connector pane. Surplus has to fail as hard as missing.
-    /// </summary>
-    [Fact]
-    public void A_control_left_over_from_a_previous_event_is_reported_surplus()
-    {
-        var (missing, surplus) = DqmhTools.CompareLabels(["Status"], ["Sollwert", "Status"]);
-        Assert.Empty(missing);
-        Assert.Equal(["Sollwert"], surplus);
-    }
-
-    /// <summary>An event with no arguments must find the window EMPTY, not merely sufficient.</summary>
-    [Fact]
-    public void An_event_with_no_arguments_still_refuses_a_dirty_window()
-    {
-        var (missing, surplus) = DqmhTools.CompareLabels([], ["Sollwert"]);
-        Assert.Empty(missing);
-        Assert.Equal(["Sollwert"], surplus);
-    }
-
-    [Fact]
-    public void Label_comparison_is_case_sensitive_because_LabVIEW_labels_are()
-    {
-        var (missing, surplus) = DqmhTools.CompareLabels(["Kanal"], ["kanal"]);
-        Assert.Equal(["Kanal"], missing);
-        Assert.Equal(["kanal"], surplus);
-    }
 
     // ---------------------------------------------------------------- AIXML escaping
 

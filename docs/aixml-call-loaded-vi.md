@@ -267,8 +267,8 @@ project opened first.
 
 ## 8. Not measured yet
 
-- a **project-library member** (`X.lvlib:VI.vi`) as a target;
-- `ValidateAIXML` in arm D;
+- ~~a **project-library member** (`X.lvlib:VI.vi`) as a target~~ — measured 2026-10-06, section 9;
+- ~~`ValidateAIXML` in arm D~~ — measured 2026-10-06 for library members, section 9;
 - a method of the SAME class calling its accessors through this route. Two things stand in the way
   of doing it through `lvai_add_class_method` as it is: the tool converts with the project CLOSED,
   which is the state in which the call does not resolve, and its validate classifier
@@ -276,3 +276,35 @@ project opened first.
   `Unsupported SubVI: X.lvclass:…` refusal through as class-wire strictness - read from the code,
   not run;
 - what NI's "a `.ctl` is accepted" refers to.
+
+## 9. Project-library members resolve too - and here VALIDATION ACCEPTED them
+
+Measured 2026-10-06 on four of Delacor's DQMH scripting VIs under
+`<LabVIEW>\project\Delacor\DQMH\`, members of `DQMH New Event.lvlib` and `DQMH New Unit Test.lvlib`,
+called as `DQMH New Unit Test.lvlib\3AScript Unit Test.vi` and so on (`docs/dqmh-scripting.md` §9a):
+
+| state of the targets | `ValidateAIXML` | `ConvertAIXMLToVI` |
+|---|---|---|
+| nothing opened | `Error 53`, only `Unsupported SubVI` lines | `Error 53`, nothing written |
+| the four opened LOOSE, no project | **`errorCode 0`** | `errorCode 0`, 17 864 bytes, `execState 1` |
+
+**The validate column contradicts section 3**, where validation refused a loaded loose VI and a
+loaded class member in every arm. What differs - a library member, a target under `project\` rather
+than outside every installation tree, or something else - is not isolated. The practical effect:
+`lvai_generate_vi` takes its ordinary path for such a document, so its answer carries no
+`loadedSubVIs` and runs no exec-state gate; check `lvai_exec_state` yourself.
+
+Only the four VIs the caller names were opened; whether opening ONE member of a `.lvlib` makes the
+others resolvable, as it does for a class, was not tested.
+
+**And the instance rule of section 3 held for them, as an A/B the same day.** With a project
+ACTIVE, the four opened LOOSE gave `Error 53` at convert three times; opened through that project
+(`lvai_open_file` with the project pair), the same document converted clean. The table above was
+measured with NO project open, where loose is the right context. So: open the targets in the
+context the caller will be generated in.
+
+**And the validate column did not hold - measured later the same day.** With a project ACTIVE and
+every target opened through it, `ValidateAIXML` refused all three edit wrappers of
+`docs/dqmh-scripting.md` §9d with `Unsupported SubVI`, while the event wrapper of §9c had
+validated in the same state an hour earlier. So validation of a loaded project-library member is
+NOT reliable either way; the conversion is, and it is what the DQMH tools use.

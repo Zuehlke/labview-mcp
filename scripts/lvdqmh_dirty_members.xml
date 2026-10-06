@@ -1,0 +1,73 @@
+<VI _name="lvdqmh_dirty_members.vi" description="Lists the VIs in the ACTIVE project's application instance whose qualified name matches a regular expression and whose front panel or block diagram carries unsaved modifications - the test Delacor's Is Project Item Dirty.vi makes. With save? TRUE each of them is saved in place with Save.Instrument.">
+  <Control _name="name pattern" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Control _name="save?" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <FreeLabel comment="Dirty means a nonzero mods bitset" uid="0" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" inputs="reference:4210.proj,error in (no error):4210.error out" outputs="Application:4211.app,reference out:,error out:4211.error out" type="{LV.Project}" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3AAll VIs In Memory" inputs="reference:4211.app,error in (no error):4211.error out" outputs="Application\3AAll VIs In Memory:4212.names,reference out:,error out:4212.error out" type="{LV.Application}" uid="4212" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4212.names" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4200.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4211.app" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4201.value" outputs="value:4304.value" uid="4304" uid_parent="4300"/>
+    <ShiftReg uid="4305" uid_parent="4300">
+      <Left inputs="value:4212.error out" outputs="value:4306.value" uid="4306" uid_parent="4305"/>
+      <Right inputs="value:4342.value" outputs="value:4307.value" uid="4307" uid_parent="4305"/>
+    </ShiftReg>
+    <Node _name="Match Pattern" inputs="string:4301.value,regular expression:4302.value,offset (0):" outputs="before substring:,match substring:,after substring:,offset past match:4310.off" uid="4310" uid_parent="4300"/>
+    <Node _name="Greater Or Equal To 0?" inputs="x:4310.off" outputs="x &gt;= 0?:4311.match" uid="4311" uid_parent="4300"/>
+    <Structure _name="Case Structure" selectin="4311.match" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4301.value" uid="4321" uid_parent="4320"/>
+      <Tunnel _id="In2" inputs="value:4303.value" uid="4322" uid_parent="4320"/>
+      <Tunnel _id="In3" inputs="value:4304.value" uid="4323" uid_parent="4320"/>
+      <Tunnel _id="In4" inputs="value:4306.value" uid="4324" uid_parent="4320"/>
+      <CaseFrame selector="True" selectout="" uid="4325" uid_parent="4320">
+        <Tunnel _id="In1" outputs="value:4326.value" uid="4326" uid_parent="4325"/>
+        <Tunnel _id="In2" outputs="value:4327.value" uid="4327" uid_parent="4325"/>
+        <Tunnel _id="In3" outputs="value:4328.value" uid="4328" uid_parent="4325"/>
+        <Tunnel _id="In4" outputs="value:4329.value" uid="4329" uid_parent="4325"/>
+        <Node _name="Open VI Reference" inputs="application reference (local):4327.value,vi path:4326.value,error in (no error):4329.value" outputs="vi reference:4330.ref,error out:4330.error out" uid="4330" uid_parent="4325"/>
+        <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset" inputs="reference:4330.ref,error in (no error):4330.error out" outputs="Modifications\3AFront Panel Mods Bitset:4331.fp,Modifications\3ABlock Diagram Mods Bitset:4331.bd,reference out:,error out:4331.error out" type="{LV.VI}" uid="4331" uid_parent="4325"/>
+        <Call inputs="specific error code to clear (0\3A all):,error in (no error):4331.error out" outputs="specific error cleared?:,error out:4353.error out" target="Clear Errors.vi" uid="4353" uid_parent="4325"/>
+        <Node _name="Or" inputs="x:4331.bd,y:4331.fp" outputs="x .or. y?:4332.bits" uid="4332" uid_parent="4325"/>
+        <Node _name="Not Equal To 0?" inputs="x:4332.bits" outputs="x != 0?:4333.dirty" uid="4333" uid_parent="4325"/>
+        <Node _name="And" inputs="x:4333.dirty,y:4328.value" outputs="x .and. y?:4334.dosave" uid="4334" uid_parent="4325"/>
+        <Structure _name="Case Structure" selectin="4334.dosave" uid="4335" uid_parent="4325">
+          <Tunnel _id="In1" inputs="value:4330.ref" uid="4336" uid_parent="4335"/>
+          <Tunnel _id="In2" inputs="value:4353.error out" uid="4337" uid_parent="4335"/>
+          <CaseFrame selector="True" selectout="" uid="4338" uid_parent="4335">
+            <Tunnel _id="In1" outputs="value:4339.value" uid="4339" uid_parent="4338"/>
+            <Tunnel _id="In2" outputs="value:4340.value" uid="4340" uid_parent="4338"/>
+            <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4339.value,error in (no error):4340.value" outputs="reference out:,error out:4341.error out" uid="4341" uid_parent="4338"/>
+            <Tunnel _id="Out1" inputs="value:4341.error out" uid="4344" uid_parent="4338"/>
+          </CaseFrame>
+          <CaseFrame selector="False" selectout="" uid="4345" uid_parent="4335">
+            <Tunnel _id="In1" outputs="value:" uid="4346" uid_parent="4345"/>
+            <Tunnel _id="In2" outputs="value:4347.value" uid="4347" uid_parent="4345"/>
+            <Tunnel _id="Out1" inputs="value:4347.value" uid="4348" uid_parent="4345"/>
+          </CaseFrame>
+          <Tunnel _id="Out1" outputs="value:4349.value" uid="4349" uid_parent="4335"/>
+        </Structure>
+        <Node _name="Close Reference" inputs="reference:4330.ref,error in (no error):4349.value" outputs="error out:4350.error out" uid="4350" uid_parent="4325"/>
+        <Tunnel _id="Out1" inputs="value:4333.dirty" uid="4351" uid_parent="4325"/>
+        <Tunnel _id="Out2" inputs="value:4350.error out" uid="4352" uid_parent="4325"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4360" uid_parent="4320">
+        <Tunnel _id="In1" outputs="value:" uid="4361" uid_parent="4360"/>
+        <Tunnel _id="In2" outputs="value:" uid="4362" uid_parent="4360"/>
+        <Tunnel _id="In3" outputs="value:" uid="4363" uid_parent="4360"/>
+        <Tunnel _id="In4" outputs="value:4364.value" uid="4364" uid_parent="4360"/>
+        <Constant outputs="value:4365.value" type="bool" uid="4365" uid_parent="4360" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4365.value" uid="4366" uid_parent="4360"/>
+        <Tunnel _id="Out2" inputs="value:4364.value" uid="4367" uid_parent="4360"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4370.value" uid="4370" uid_parent="4320"/>
+      <Tunnel _id="Out2" outputs="value:4342.value" uid="4342" uid_parent="4320"/>
+    </Structure>
+    <Tunnel _id="Out1" cond="4370.value" inputs="value:4301.value" mode="index" outputs="value:4380.value" uid="4380" uid_parent="4300"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4211.app,error in (no error):4307.value" outputs="error out:4390.error out" uid="4390" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4390.error out" outputs="error out:4391.error out" uid="4391" uid_parent="root"/>
+  <Indicator _name="dirty VIs" inputs="value:4380.value" type="array{string}" uid="4400" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" inputs="value:4391.error out" type="cluster{bool.status,int32.code,string.source}" uid="4401" uid_parent="root" value="[false,0,]"/>
+</VI>

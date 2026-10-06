@@ -1,0 +1,92 @@
+<VI _name="lvdqmh_wire_tester_event.vi" description="Makes a DQMH API tester executable again after a new event was scripted into it. Delacor's Script New Event.vi drops the new event VI into the tester's button frame on the error wire only, and DQMH argument terminals are REQUIRED, so the tester is broken until every argument is wired. This helper finds every call of one event VI anywhere in the tester's block diagram, nested frames included, and hands each one to lvbd_fill_unwired_inputs.vi, which gives every unwired INPUT except error in (no error) a new control (Create Constants? FALSE) or constant (TRUE). It saves the tester in place only when something was wired, so a second run over the same event changes nothing.\0A\0AThe tester is reached in the ACTIVE PROJECT's application instance\3A a scripting edit made in any other instance reports success and changes nothing. A project must therefore be open and active.\0A\0AEvent VI Name is matched against the SubVI node's VI Name property. SubVI Names lists every name the traversal saw\2C so a caller can tell a spelling miss from a missing call.\0A\0ARequires lvbd_fill_unwired_inputs.vi, generated from the AIXML beside this one, to be open when this VI is generated.">
+  <Control _name="Tester VI Path" conIdx="0" connection="recommended" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Event VI Name" conIdx="5" connection="recommended" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="Create Constants?" conIdx="7" connection="recommended" outputs="value:4202.value" type="bool" uid="4202" uid_parent="root" value="false"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4203.value" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Saves the tester only if it wired something" uid="0" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4203.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.error out" outputs="Application:4211.app,reference out:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4200.value,error in (no error):4211.error out" outputs="vi reference:4212.vi,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Constant outputs="value:4213.value" type="string" uid="4213" uid_parent="root" value="SubVI"/>
+  <Constant outputs="value:4214.value" type="uint16{FP,BD,Other}" uid="4214" uid_parent="root" value="1"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4212.vi,Class Name:4213.value,error in (no error):4212.error out,Traverse Target:4214.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4215.refs,# of Refs:,error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Constant outputs="value:4216.value" type="ref{LV.SubVI}" uid="4216" uid_parent="root" value=""/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4215.refs" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4201.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4202.value" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4216.value" outputs="value:4304.value" uid="4304" uid_parent="4300"/>
+    <ShiftReg uid="4305" uid_parent="4300">
+      <Left inputs="value:4215.error out" outputs="value:4306.value" uid="4306" uid_parent="4305"/>
+      <Right inputs="value:4324.value" outputs="value:4307.value" uid="4307" uid_parent="4305"/>
+    </ShiftReg>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:4306.value,target class:4304.value" outputs="specific class reference:4310.node,error out:4310.error out" uid="4310" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:4310.node,error in (no error):4310.error out" outputs="VI Name:4311.name,reference out:4311.node,error out:4311.error out" uid="4311" uid_parent="4300"/>
+    <Node _name="Equal?" inputs="x:4311.name,y:4302.value" outputs="x = y?:4312.match" uid="4312" uid_parent="4300"/>
+    <Structure _name="Case Structure" selectin="4312.match" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4311.node" uid="4321" uid_parent="4320"/>
+      <Tunnel _id="In2" inputs="value:4311.error out" uid="4322" uid_parent="4320"/>
+      <Tunnel _id="In3" inputs="value:4303.value" uid="4323" uid_parent="4320"/>
+      <CaseFrame selector="True" selectout="" uid="4330" uid_parent="4320">
+        <Tunnel _id="In1" outputs="value:4331.value" uid="4331" uid_parent="4330"/>
+        <Tunnel _id="In2" outputs="value:4332.value" uid="4332" uid_parent="4330"/>
+        <Tunnel _id="In3" outputs="value:4333.value" uid="4333" uid_parent="4330"/>
+        <Call target="lvbd_fill_unwired_inputs.vi" inputs="Node:4331.value,Create Constants?:4333.value,Skip Terminal Name:,error in:4332.value" outputs="Terminals Wired:4334.wired,Terminal Names:4334.seen,error out:4334.error out" uid="4334" uid_parent="4330"/>
+        <Node _name="Close Reference" inputs="reference:4331.value,error in (no error):4334.error out" outputs="error out:4335.error out" uid="4335" uid_parent="4330"/>
+        <Tunnel _id="Out1" inputs="value:4335.error out" uid="4336" uid_parent="4330"/>
+        <Tunnel _id="Out2" inputs="value:4334.wired" uid="4337" uid_parent="4330"/>
+        <Tunnel _id="Out3" inputs="value:4334.seen" uid="4338" uid_parent="4330"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4340" uid_parent="4320">
+        <Tunnel _id="In1" outputs="value:4341.value" uid="4341" uid_parent="4340"/>
+        <Tunnel _id="In2" outputs="value:4342.value" uid="4342" uid_parent="4340"/>
+        <Tunnel _id="In3" outputs="value:" uid="4343" uid_parent="4340"/>
+        <Node _name="Close Reference" inputs="reference:4341.value,error in (no error):4342.value" outputs="error out:4344.error out" uid="4344" uid_parent="4340"/>
+        <Constant outputs="value:4345.value" type="array{string}" uid="4345" uid_parent="4340" value="[]"/>
+        <Tunnel _id="Out1" inputs="value:4344.error out" uid="4346" uid_parent="4340"/>
+        <Tunnel _id="Out2" inputs="value:4345.value" uid="4347" uid_parent="4340"/>
+        <Tunnel _id="Out3" inputs="value:4345.value" uid="4348" uid_parent="4340"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4324.value" uid="4324" uid_parent="4320"/>
+      <Tunnel _id="Out2" outputs="value:4325.value" uid="4325" uid_parent="4320"/>
+      <Tunnel _id="Out3" outputs="value:4326.value" uid="4326" uid_parent="4320"/>
+    </Structure>
+    <Tunnel _id="Out1" inputs="value:4311.name" mode="index" outputs="value:4313.value" uid="4313" uid_parent="4300"/>
+    <Tunnel _id="Out2" cond="4312.match" inputs="value:4311.name" mode="index" outputs="value:4314.value" uid="4314" uid_parent="4300"/>
+    <Tunnel _id="Out3" inputs="value:4325.value" mode="concat" outputs="value:4315.value" uid="4315" uid_parent="4300"/>
+    <Tunnel _id="Out4" inputs="value:4326.value" mode="concat" outputs="value:4316.value" uid="4316" uid_parent="4300"/>
+  </Structure>
+
+  <Node _name="Array Size" inputs="array:4314.value" outputs="size(s):4600.n" uid="4600" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4315.value" outputs="size(s):4601.n" uid="4601" uid_parent="root"/>
+  <Node _name="Greater Than 0?" inputs="x:4601.n" outputs="x &gt; 0?:4602.changed" uid="4602" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4602.changed" uid="4610" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4212.vi" uid="4611" uid_parent="4610"/>
+    <Tunnel _id="In2" inputs="value:4307.value" uid="4612" uid_parent="4610"/>
+    <CaseFrame selector="True" selectout="" uid="4613" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:4614.value" uid="4614" uid_parent="4613"/>
+      <Tunnel _id="In2" outputs="value:4615.value" uid="4615" uid_parent="4613"/>
+      <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4614.value,error in (no error):4615.value,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4616.error out" uid="4616" uid_parent="4613"/>
+      <Tunnel _id="Out1" inputs="value:4616.error out" uid="4617" uid_parent="4613"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4618" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:" uid="4619" uid_parent="4618"/>
+      <Tunnel _id="In2" outputs="value:4620.value" uid="4620" uid_parent="4618"/>
+      <Tunnel _id="Out1" inputs="value:4620.value" uid="4621" uid_parent="4618"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4622.value" uid="4622" uid_parent="4610"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4212.vi,error in (no error):4622.value" outputs="error out:4630.error out" uid="4630" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4211.app,error in (no error):4622.value" outputs="error out:4631.error out" uid="4631" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4622.value" outputs="error out:4632.error out" uid="4632" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:4630.error out,error in:4631.error out,error in:4632.error out" outputs="error out:4633.error out" uid="4633" uid_parent="root"/>
+
+  <Indicator _name="Event Nodes Found" conIdx="4" connection="recommended" inputs="value:4600.n" type="int32" uid="4700" uid_parent="root" value="0"/>
+  <Indicator _name="Terminals Wired" conIdx="6" connection="recommended" inputs="value:4315.value" type="array{string}" uid="4701" uid_parent="root" value="[]"/>
+  <Indicator _name="SubVI Names" inputs="value:4313.value" type="array{string}" uid="4702" uid_parent="root" value="[]"/>
+  <Indicator _name="Terminals Seen" inputs="value:4316.value" type="array{string}" uid="4704" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4633.error out" type="cluster{bool.status,int32.code,string.source}" uid="4703" uid_parent="root" value="[false,0,]"/>
+</VI>
