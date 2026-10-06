@@ -1272,7 +1272,8 @@ it and copy the shape" does not work. And **an enum-looking input may be a bare 
 `Module Type` is a `uint16` with no enum strings, whose meaning comes from a *runtime* catalogue
 that differs per station because module types are pluggable — so read the catalogue and match by
 name, never carry an index. `docs/dqmh-scripting.md` has the measurements;
-`scripts/lvdqmh_new_module.xml` is the working helper.
+`lvai_dqmh_new_module` creates a module in one call since 2026-10-06 - a static wrapper over the
+LOADED scripters like the other DQMH tools, matching the type by name (§9f).
 
 **AN INTERFACE IS A `.lvclass`, and the same provider pattern creates one.** NI's manual defines it
 as "a class without a private data control", there is no `.lvinterface`, and
@@ -2634,7 +2635,7 @@ literally it argued away 600 usable palette VIs.
 | What does `ValidateAIXML` NOT catch? | `docs/aixml-reference.md` | `lvai_check_aixml` |
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
-| How do I CREATE a DQMH module or event? | `docs/dqmh-scripting.md` | `scripts/lvdqmh_new_module.xml` |
+| How do I CREATE a DQMH module? | `docs/dqmh-scripting.md` §9f | `lvai_dqmh_new_module` - the type by NAME from the station's catalogue (every answer lists it), files into `<project>\Libraries\<Name>`, verified from the files |
 | How do I create a DQMH EVENT with no dialog, and what does it leave unfinished? | `docs/dqmh-scripting.md` §9c | `lvai_dqmh_new_event` - wires the tester's new inputs and saves what the scripting touched; a Broadcast with arguments leaves Main.vi broken until its `#CodeNeeded` call is placed |
 | How do I REMOVE / RENAME / CONVERT a DQMH event, rename a module, add an RT tester, drop Do Something, make a module TEMPLATE, or VALIDATE - with no dialog? | `docs/dqmh-scripting.md` §9d, §9e | `lvai_dqmh_remove_event`, `_rename_event`, `_convert_event`, `_rename_module`, `_create_rt_tester`, `_remove_do_something`, `_create_module_template`, `_validate_module` - each reports in `completionNeeded` what Delacor leaves for a person |
 | How do I create a DQMH UNIT TEST, and which DQMH functions run without their dialog? | `docs/dqmh-scripting.md` §9, §9a | `lvai_dqmh_new_unit_test` - a generated wrapper calls Delacor's LOADED scripters; the test VI is `execState 0` by Delacor's design (`#CodeNeeded` frames) |

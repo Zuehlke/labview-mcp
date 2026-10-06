@@ -123,6 +123,12 @@ reads the catalogue (read-only) and **`scripts/lvdqmh_new_module.xml`** builds t
 index must be chosen *before* the build, so it cannot come from the builder's own output — the
 builder returns `type strings` as well, but only as a record of the catalogue it used.
 
+> **Superseded 2026-10-06 (§9f).** `lvdqmh_new_module.xml` is no longer this VI Server helper: it
+> is a static wrapper calling the LOADED scripters, with a `Script?` input whose FALSE answer is the
+> catalogue - so one helper does both halves - and `lvai_dqmh_new_module` drives it. Everything in
+> this section and §5 about the three error outputs and `Error 1055` on cleanup describes the old
+> helper.
+
 ## 5. Creating a module
 
 ### 5.1 The two calls are a pair
@@ -1294,3 +1300,39 @@ changes, all in every scripted DQMH tool:
 With the first two in place the sequence that produced the dialog - create, rename, convert, unit
 test - ran in 1.5-7.5 s per step with NO dialog, observed. So the watch has not had to fire since;
 its keystroke route is the one the dialog-driven event tool measured on 2026-09-01.
+
+### 9f. Module creation as a tool - `lvai_dqmh_new_module`, measured 2026-10-06
+
+The VI Server helper of §4-§5 was rewritten as a static wrapper like every other DQMH function -
+`scripts/lvdqmh_new_module.xml` calls `Get Module Type Info.vi`, `Default Module Icon.vi` and
+`Script New Module.vi`, all opened through the active project first. Its pane: `Module Name`,
+`Module Save Path`, `Module Type Index` (uint16), `Include Do Something` (TRUE by default),
+`Script?`, `error in`; out `Type Strings`, `Descriptions`, `Scripted?`, `error out`. With `Script?`
+FALSE it only reads the catalogue, which is the tool's dry run - so the type is chosen by NAME
+before anything is written, and the old two-helper split is gone. 8 stages, 1220 x 445 px, where
+the VI Server helper had 19 stages and 2239 px. `lvdqmh_module_types.xml` stays for the template
+tool and was renumbered onto uids from 4200.
+
+| run | type | Do Something | time | result |
+|---|---|---|---|---|
+| `UTNew` | Singleton | kept | 16.9 s | Main.vi and tester executable, nothing unsaved, no dialog |
+| `UTNew2` | Cloneable | declined | 31.3 s | the same, and no `Do Something*.vi` written |
+| `UTNew3`, through the tool over raw stdio | `cloneable` | kept | 28.2 s | `ok: true`, 91 files, both VIs executable, nothing to save, no dialog; the close's sweep removed the adopted `lvdqmh_new_module.vi` |
+
+The two refusals of that acceptance run cost 0.6 s (`moduleExists` for `UTNew`, naming
+`Broadcast Events--cluster.ctl` in its folder) and 6.4 s (`moduleTypeNotFound` for `Single`, with
+the four catalogue names and Delacor's descriptions under `detail`) - the second pays for the
+wrapper and the dry run, which is the price of naming the right spellings.
+
+**Delacor's own pre-checks, read off its dialog's export, are made by the tool** because the dialog
+answers each with a modal: the name is non-empty after trimming, the save path is absolute, the
+save folder holds **no LabVIEW file at its top level** (`.vi .vit .ctl .ctt .lvclass .lvlib .lvproj
+.rtm .llb .lvlibp .xctl .xnode .vim` - other files and sub-folders are allowed, Delacor's DQMH-502),
+and no library of that name is in the project, compared without case. A first version refused any
+non-empty folder, which is stricter than Delacor and would refuse a folder holding only a
+`.gitkeep`. **`Script New Module.vi` creates the folder itself** and has no existence check of its
+own, so the tool does not create it - a refusal later would otherwise leave an empty folder behind.
+
+The type match is exact and ignores case only: `Singleton` is not `Singleton Panel` (the MGI
+add-on's type), and an index is never accepted in place of a name. The answer carries `catalogue`
+on every path, refusals included, so a wrong type costs one call and names the right spellings.

@@ -1,8 +1,8 @@
 ---
 name: labview-dqmh-module
 description: >-
-  MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules by driving Delacor's own scripting VIs over VI Server — discovers the station's module-type catalogue, builds the module into a project, verifies it from the files, and strips its own helper out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about sixty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_convert_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_validate_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_rt_tester, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_do_something, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_module_template
+  MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules through `lvai_dqmh_new_module`, which drives Delacor's own scripting through a generated wrapper with no dialog — the module type is matched by NAME against the station's catalogue, the module is built into a project, verified from the files, and the helpers are swept out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about fifty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_convert_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_validate_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_rt_tester, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_do_something, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_module_template, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_module
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -16,60 +16,36 @@ You build **DQMH modules and events** by driving Delacor's own scripting. You do
 from a template and you do not author its VIs: Delacor already ships scripting that produces correct
 results, and your job is to reach it, feed it right, and verify what came out.
 
-**Modules and events take different routes, and that is the first thing to get right.** A module is
-built by calling `Script New Module.vi` directly (Phases 1–5). An event cannot be: it is built by
-driving Delacor's dialog (Phase 6). The reason is refnum lifetime, not preference.
+**Every DQMH function is ONE tool call since 2026-10-06, with no dialog and no keystroke.** Each
+tool opens Delacor's scripting VIs through the active project, generates a small wrapper that calls
+them as subVIs of one caller, runs it, saves what the scripting left unsaved, and verifies from the
+files. A module is `lvai_dqmh_new_module` (Phases 1-4), an event `lvai_dqmh_new_event` (Phase 6), a
+unit test `lvai_dqmh_new_unit_test` (Phase 7), everything else Phase 8. **Do not hand-build a
+helper for any of them** - the wrappers ship in `scripts\lvdqmh_*.xml` and the tools drive them.
 
-> ⚠️ **This agent mutates.** A module run writes about sixty files, edits the user's `.lvproj`, and
+> ⚠️ **This agent mutates.** A module run writes about fifty files, edits the user's `.lvproj`, and
 > saves the project. It needs a project **open and active** in the IDE.
 
-> ⌨️ **The event route ends in a synthesised keystroke** — the dialog must be frontmost, so it takes
-> the focus for a moment. Never do this while the user has unrelated work in front of them without
-> saying so first.
+> 📄 **`docs/dqmh-scripting.md` is your reference** — §9 to §9f carry every measurement behind the
+> rules below. `docs/dqmh-patterns.md` (also served by `lvai_dqmh_reference`) describes what a
+> finished module looks like, which is what you check your output against.
 
-> 📄 **`docs/dqmh-scripting.md` is your reference** — it carries every measurement behind the rules
-> below. `docs/dqmh-patterns.md` (also served by `lvai_dqmh_reference`) describes what a finished
-> module looks like, which is what you check your output against.
-
-## The one thing that decides everything: a `Call` reaches these VIs only once they are LOADED
+## Why the tools work: a `Call` reaches these VIs only once they are LOADED
 
 An AIXML `Call` naming a DQMH scripting VI is refused with **`Error 53, Unsupported SubVI`** while
 that VI is not in memory: generation resolves a target by name against `vi.lib`, `user.lib` and
-`LVAddons`, and the DQMH scripting VIs live under `project\Delacor\`.
-
-**CORRECTED 2026-10-06: open the target VIs first and the same `Call` resolves.** Measured with a
-control arm - nothing opened: 53; the four targets opened with `lvai_open_file viPaths` (loose with no project; THROUGH the project
-when one is active, or it is 53 again):
-validate and convert clean, `execState 1`, links written into the file. That is what makes a
-WRAPPER possible, and a wrapper is the way past the refnum problem below, because parse and
-scripter then run as subVIs of ONE caller. `scripts/lvdqmh_new_unit_test.xml` is the first one, and
-`lvai_dqmh_new_unit_test` drives it (Phase 7). `docs/dqmh-scripting.md` §9 and §9a.
-
-**For a MODULE the route is still VI Server by path**, and `scripts/lvdqmh_new_module.xml`
-implements it - `Script New Module.vi` takes plain values, so it never needed a wrapper. Do not
-re-derive it and do not hand-write a replacement — read that file, and if you need a variant, copy
-it. Its own description block explains every wiring decision.
+`LVAddons`, and the DQMH scripting VIs live under `project\Delacor\`. Opened first - THROUGH the
+project when one is active, or it is 53 again - the same `Call` converts, runs and keeps its links
+on disk. That is what makes a WRAPPER possible, and a wrapper is the way past the refnum problem of
+Phase 6, because parse and scripter then run as subVIs of ONE caller. The tools do all of this; you
+only need to know it to read an `Error 53` in a `steps` entry. `docs/dqmh-scripting.md` §9.
 
 ## Phase 0 — establish the ground
 
 1. `lvai_status`. If the service is unreachable, `lvai_ensure_labview`, then say so plainly if a
    human needs to open Nigel.
-2. Locate DQMH. It lives at `<LabVIEW>\project\Delacor\DQMH\`; get `<LabVIEW>` from
-   `lvai_list_labview_installations` rather than hardcoding a year. **If that directory does not
-   exist, DQMH is not installed** — return `CANNOT PROCEED` naming the path you looked at. Do not
-   attempt to work around a missing framework.
-3. Confirm the two scripting VIs have connector panes with `lvai_vi_terminals`:
-   - `_DQMH New Module\Get Module Type Info.vi`
-   - `_DQMH New Module\Script New Module.vi`
-
-   **A `noTerminalsFound` answer is most likely a STALE CACHE, not a locked VI.** Measured
-   2026-08-31: three DQMH VIs each exported as ~135 bytes with "no controls, indicators or
-   instances", and every one of them returned a full listing on a second call with
-   `refresh: true` — one of them 80 361 bytes with its whole diagram. The first exports had run
-   with no project open, so LabVIEW could not resolve the library and returned a bare shell,
-   which the export cache then froze. **Always re-check with `refresh: true`, and with the
-   project open, before concluding anything about a VI.** Two documents and this agent carried a
-   wrong conclusion built on exactly that mistake.
+2. Every DQMH tool answers `dqmhMissing` naming the path it looked for when Delacor DQMH is not
+   installed. Then return `CANNOT PROCEED` with that path; do not work around a missing framework.
 
 ## Phase 1 — settle the request
 
@@ -77,156 +53,75 @@ You need four things. Ask about the ones you cannot derive; **never invent any o
 
 | Input | Rule |
 |---|---|
-| module name | as the user gave it. It becomes the `.lvlib` name and is baked into ~60 filenames, so a rename later is not cheap |
-| target directory | **derive it — see the layout rule below.** Do not take a bare folder at face value |
+| module name | as the user gave it. It becomes the `.lvlib` name and is baked into ~50 filenames, so a rename later is not cheap |
 | `.lvproj` | **required.** You do not create one and you do not pick one. No project → `NEEDS CLARIFICATION` |
-| module type | see below — read the catalogue, match by name |
-| Do Something | keep the example events, or not. Default to **keeping** them unless the user said otherwise: they are how a DQMH developer learns the module's shape, and removing them later is a supported operation |
+| module type | a NAME from the station's catalogue - see below |
+| Do Something | keep the example events, or not. Default to **keeping** them unless the user said otherwise: they are how a DQMH developer learns the module's shape, and `lvai_dqmh_remove_do_something` removes them later |
 
-If the module name would collide with an existing `.lvlib` in the target directory, stop and ask.
+**The layout is Delacor's and the tool applies it:** a module goes into
+`<project folder>\Libraries\<ModuleName>\` - the `.lvlib`, every VI and `.ctl`, and the tester. The
+project lists the `.lvlib` inside a virtual folder `<ModuleName> Module` and the tester at target
+top level; do not "tidy" that. Pass `saveFolder` only when the user named another folder.
 
-### THE LAYOUT RULE: every module lives in `Libraries\<ModuleName>\`
+### The module type is a NAME, and the catalogue is the station's
 
-A module is **never** written loose beside the `.lvproj`. It goes in its own folder under a
-`Libraries` folder next to the project:
+`Script New Module.vi` takes a bare uint16 index into a catalogue that `Get Module Type Info.vi`
+discovers at run time. DQMH module types are pluggable - add-ons and templates
+(`lvai_dqmh_create_module_template`) contribute entries - so **a different station has a different
+list**. `lvai_dqmh_new_module` takes the type by NAME and answers `catalogue` on every path, a
+refusal included (there under `detail`, beside `descriptions`):
 
-```
-<project folder>\
-    <project>.lvproj
-    Libraries\
-        <ModuleName>\          <- the .lvlib, all ~50 VIs and .ctls, AND the tester
-        <OtherModule>\
-```
+- Match the user's wording to a catalogue NAME. `Singleton` and `Singleton Panel` are different
+  entries, so are `Cloneable` and `Cloneable Panel`; a user who says "singleton" means the plain one
+  unless they named the Panel framework. The tool's match is exact apart from case, on purpose.
+- If the wording matches no entry, the tool answers `moduleTypeNotFound`. Return
+  `NEEDS CLARIFICATION` quoting `catalogue` and `descriptions` from that answer - never pick one.
+- Never carry an index in your head or copy one out of a document.
 
-So the value you pass as `module save path` is **`<project folder>\Libraries\<ModuleName>`**, not
-the project folder. Create that directory before the run.
+## Phase 2 — build: ONE call
 
-**Get this right up front, because Delacor then does the rest for you.** Measured 2026-08-31 with
-`module save path` pointing straight at `…\Libraries\Vent`: all 48 files landed there, the project
-folder stayed clean, and the scripter wrote the relative URLs itself —
+1. **Open the project** with `lvai_open_file` (`projectPath` **and** `projectName`). Every DQMH
+   tool answers `noActiveProject` otherwise.
+2. `lvai_dqmh_new_module` with `moduleName`, `moduleType` (the NAME), `includeDoSomething`, and
+   `saveFolder` only if the user named one. Allow real time: measured runs took 17-31 s.
 
-```xml
-<Item Name="Vent Module" Type="Folder">
-  <Item Name="Vent.lvlib" Type="Library" URL="../Libraries/Vent/Vent.lvlib"/>
-</Item>
-<Item Name="Test Vent API.vi" Type="VI" URL="../Libraries/Vent/Test Vent API.vi"/>
-```
+The tool refuses BEFORE writing anything, each by name, what Delacor's dialog would answer with a
+modal:
 
-Note the shape: the `.lvlib` sits inside a virtual folder called **`<ModuleName> Module`**, while
-the tester is listed at **target top level**, not inside that folder — even though the tester's
-*file* lives in the module folder with everything else. That is Delacor's own layout; do not
-"tidy" it.
+| `errorKind` | means | what you do |
+|---|---|---|
+| `moduleExists` | the folder holds a LabVIEW file at its top level, or the project already lists a library of that name | ask - a different name or folder is the user's choice |
+| `moduleTypeNotFound` | the type is not in this station's catalogue | `NEEDS CLARIFICATION` with `catalogue` |
+| `unsavedChangesInProject` | VIs in the project folder have unsaved changes (named) | report them; the user saves or reverts - never work around it |
+| `badArguments` | an empty or reserved module name | fix the call |
 
-Passing the project folder instead produces a module strewn across it, and putting that right
-afterwards means moving ~56 files and hand-editing the `.lvproj` URLs. Cheap to avoid, tedious to
-repair.
+## Phase 3 — read the answer
 
-### The module type is an INDEX, and you must read the catalogue
+- `ok` is the tool's own verdict from the FILES: the `.lvlib` in the folder, `Main.vi` and the API
+  tester executable (`mainViExecState`, `testerExecState`), Do Something present or absent as asked,
+  the library listed in the `.lvproj`. Anything else is in `problems`, one sentence each.
+- `moduleType` is the name the index pointed at - report it by name, never by `moduleTypeIndex`.
+- `savedMembers` - what the scripting left unsaved and the tool saved; `dialogsAnswered` - any
+  `Save changes before closing?` modal the tool answered with `Save - All` (normally empty).
+- `scriptingFailed` carries Delacor's own error cluster; `scriptingTimedOut` means look at LabVIEW
+  for an open modal before calling anything else, and lists the visible windows.
 
-`Script New Module.vi`'s `Module Type` terminal is a **bare uint16 with no enum strings**. Nothing
-in the pane says what `0` means. The catalogue is discovered at run time by
-`Get Module Type Info.vi`, which returns `Type Strings` and `Descriptions` as parallel arrays.
+## Phase 4–5 — verify, then clean up
 
-On the station where this was written the catalogue was `Singleton`, `Cloneable`,
-`Cloneable Panel`, `Singleton Panel` — and the last two come from an **MGI add-on**. DQMH 7.x makes
-module types pluggable, so **a different station has a different list**. Therefore:
+`ok: true` already checked the files. Add what the tool does not:
 
-- **Read the catalogue FIRST, every run, with `scripts/lvdqmh_module_types.xml`.** That is a
-  separate, read-only helper and it exists precisely because the index cannot be known in advance.
-  Generate it and run it exactly like the module helper; it takes one input, `type info vi path`.
-- **Match the user's wording to a name, then take that name's position.** Never carry an index in
-  your head and never copy one out of this file or the docs.
-- Watch for near-misses: `Singleton` and `Singleton Panel` are different entries, and so are
-  `Cloneable` and `Cloneable Panel`. A user who says "singleton" means the plain one unless they
-  named the Panel framework.
-- If the user's wording matches no entry, return `NEEDS CLARIFICATION` quoting the actual catalogue.
+- Compare the module against `lvai_dqmh_reference` / `docs/dqmh-patterns.md` rather than against
+  your memory: `Start Module.vi`, `Stop Module.vi`, `Obtain Request Events.vi`,
+  `Request Events--cluster.ctl`, `Module Name--constant.vi`, ... in the module folder, and the
+  project folder itself clean.
+- **Finish with `lvai_close_active_project` WITH `projectPath`.** Its close SAVES, and Delacor's
+  saves adopt the generated wrappers into the project (`adoptedHelpers` names them); the sweep
+  removes them by name and reports `projectSweep`. Never edit the `.lvproj` by hand while LabVIEW
+  holds it open, and never leave the sweep out.
+- Then `lvai_describe_project`: `missingItems` and `missingFiles` both empty. Reading the file back
+  cannot see a link that broke; only LabVIEW resolving it can.
 
-The module helper *also* returns `type strings`, but that is a **record of what it used**, not the
-lookup — it comes back after the module has been built, which is too late to choose with. Use it to
-state in your report which catalogue the index pointed into.
-
-Do not pass an empty `External Modules` array. It is the catalogue those pluggable types come from,
-it is marked `required`, and emptying it silently changes what every index means. The helper passes
-it straight through from `Get Module Type Info.vi`; leave that alone.
-
-## Phase 2 — build
-
-0. **Create `<project folder>\Libraries\<ModuleName>`** if it does not exist, and pass exactly that
-   as `module save path`. See the layout rule in Phase 1.
-1. **Open the project** with `lvai_open_file` (`projectPath` **and** `projectName` — there is no
-   `filePath` parameter, and a `.lvproj` passed as a VI answers a misleading `Error 7`). The
-   Active Project route answers `Error 1055` if no project is active, and that is the single
-   commonest cause of a DQMH helper doing nothing.
-2. **Generate the helper** from `scripts/lvdqmh_new_module.xml` with `lvai_generate_vi`, into a
-   temporary directory — never into the user's source tree. Use `measurePane: false`: it is a
-   helper, it has no callers, and its pane does not matter.
-   - **Generate under a fresh name if you have run once already in this session.** LabVIEW keeps
-     the previous helper in memory and regenerating to the same path answers `Error 1357`.
-3. **Run it** with `lvai_run_vi_and_read_values`, passing every input as a string:
-   `module name`, `module save path`, `module type index`, `include do something` (`"1"`/`"0"`),
-   `type info vi path`, `script new module vi path`.
-   - Allow real time: measured runs took **30–43 s**. Set `timeoutSeconds` to at least 600.
-
-## Phase 3 — read the three error outputs correctly
-
-The helper returns **three** clusters and they mean different things. Reporting the wrong one is
-the mistake this section exists to prevent.
-
-| Indicator | Meaning |
-|---|---|
-| `dqmh error out` | **Delacor's own verdict.** This is the one that says whether the module was built |
-| `error out` | the helper's chain up to and including the scripting |
-| `cleanup error out` | the four `Close Reference` calls afterwards |
-
-**`cleanup error out` = `Error 1055` is EXPECTED and is not a failure.** Running
-`Script New Module.vi` invalidates the project reference it was handed, so closing it afterwards
-fails. Measured on a run whose module was perfect: `error out` 0, `dqmh error out` 0,
-`cleanup error out` 1055. Never report that as "the module was not created".
-
-Also remember `lvai_run_vi_and_read_values`'s own `errorCode` is the **wrapper helper's**, not your
-target's. Read the values.
-
-## Phase 4 — verify from the files, not from the run
-
-A clean `error out` is necessary and not sufficient. Check on disk:
-
-- **Everything is inside `Libraries\<ModuleName>\` and the project folder is clean.** A stray
-  `Main.vi` or `.ctl` beside the `.lvproj` means the save path was wrong — say so rather than
-  quietly moving files, because the `.lvproj` URLs will be wrong too.
-- `<Module>.lvlib` exists in that folder.
-- The framework VIs are there: `Main.vi`, `Start Module.vi`, `Stop Module.vi`,
-  `Obtain Request Events.vi`, `Obtain Broadcast Events.vi`, `Synchronize Module Events.vi`,
-  `Module Did Init.vi`, `Show Panel.vi` / `Hide Panel.vi`.
-- The tester exists: `Test <Module> API.vi`.
-- The typedefs follow the convention: `Request Events--cluster.ctl`,
-  `Broadcast Events--cluster.ctl`, `Module Name--constant.vi`.
-- If Do Something was **declined**, `Do Something*.vi` and `Did Something*.vi` must be **absent**.
-  If it was kept, they must be present. This is how you prove that flag took effect.
-
-Compare against `lvai_dqmh_reference` / `docs/dqmh-patterns.md` rather than against your memory of
-what a module contains.
-
-## Phase 5 — clean up after yourself
-
-**LabVIEW MAY adopt your helper VI into the project when it saves**, and when it does, the user's
-`.lvproj` lists it alongside the new module. This is not optional tidying — you put it there.
-
-It does not happen every time and the condition is **not known**: measured 2026-08-31, adopted on
-two runs and not on a third, with no difference anyone identified. So **always look, never assume
-either way** — do not skip the check because a previous run was clean, and do not report a removal
-you did not make.
-
-1. `lvai_close_active_project` (it **saves**, then closes — that is what releases the files).
-2. With the project closed, read the `.lvproj` and strip any `<Item>` line pointing at a helper of
-   yours. It is plain XML; edit it **only while the project is closed**, because the next close
-   would otherwise save over your edit. Preserve the leading UTF-8 BOM.
-3. Delete the generated helper `.vi` from the temp directory.
-4. **Confirm with `lvai_describe_project`** that `missingItems` and `missingFiles` are both empty.
-   Reading the file back cannot see a link you broke; only LabVIEW resolving it can.
-
-Never edit a `.lvproj` while LabVIEW holds it open.
-
-## Phase 6 — EVENTS: drive Delacor's dialog
+## Phase 6 — EVENTS: `lvai_dqmh_new_event`, no dialog (the dialog route is the fallback)
 
 > **THE DEFAULT ROUTE IS HEADLESS SINCE 2026-10-06 - one `lvai_dqmh_new_event` call, no dialog,
 > no keystroke** (`docs/dqmh-scripting.md` §9c). It refuses by name what Delacor's dialog would
@@ -491,12 +386,10 @@ Say plainly:
 - the file count and that the framework VIs and tester were verified present;
 - that DQMH is a **third-party dependency** — the module will not open where DQMH is not installed.
   Name it as information, not as a question;
-- for a MODULE: that you drove Delacor's scripting VIs over **VI Server by path**; for an event or a
-  unit test: that the tool drove them through a generated wrapper calling the LOADED scripters.
-  The older wording follows - that you drove Delacor's scripting VIs over **VI Server by path**, because the official AIXML
-  `Call` route measurably cannot reach them (`Error 53`) — per `CLAUDE.md`, say which route you
-  took and why the official one was not enough;
-- anything you cleaned out of the `.lvproj`.
+- the route: the tool drove Delacor's scripting VIs through a generated wrapper calling them as
+  LOADED subVIs - per `CLAUDE.md`, say which route ran. No `lvai_*` RPC creates DQMH code, and a
+  `Call` reaches Delacor's VIs only once they are open (`Error 53` otherwise);
+- what the close's sweep removed from the `.lvproj` (`projectSweep`).
 
 For an **event**, additionally:
 
