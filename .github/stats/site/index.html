@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>labview-mcp downloads</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fbfbfa; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --border: #e4e4e2;
+    --plugin: #2f6fdb; --manual: #e0892b; --ci: #9a9aa0; --views: #2f9e72; --clones: #8a5cd6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --surface: #1c1c1f; --text: #ececee; --muted: #9a9aa2; --border: #2e2e33;
+      --plugin: #6d9cf0; --manual: #f0a75a; --ci: #77777e; --views: #52c493; --clones: #ab86ec;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 40px 0 8px; }
+  p.lead, .note { color: var(--muted); margin: 0 0 16px; }
+  .note { font-size: 13px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .v { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi .l { color: var(--muted); font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .chart { position: relative; height: 300px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+  th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  code { font-size: 13px; }
+  a { color: var(--plugin); }
+  .err { color: #d33; }
+</style>
+</head>
+<body>
+<main>
+  <h1>labview-mcp downloads</h1>
+  <p class="lead">Release asset downloads and repository traffic for
+    <a href="https://github.com/Zuehlke/labview-mcp">Zuehlke/labview-mcp</a>.
+    <span id="stamp"></span></p>
+
+  <div class="kpis" id="kpis"></div>
+
+  <h2>New downloads per day</h2>
+  <p class="note">Deltas between daily snapshots, with our own CI downloads subtracted. Starts the
+    day collection began; earlier downloads appear only in the per-release totals below.</p>
+  <div class="card"><div class="chart"><canvas id="daily"></canvas></div></div>
+
+  <h2>Per release</h2>
+  <p class="note"><code>labview-mcp.zip</code> is what every plugin install and update fetches
+    (and some manual downloads). The versioned zip is manual only. <em>CI</em> estimates downloads
+    made by <code>release.yml</code> and <code>verify-release.yml</code>, one per run.</p>
+  <div class="card scroll"><table id="releases"></table></div>
+
+  <h2>Repository traffic</h2>
+  <p class="note">Views and clones as reported by GitHub (kept only 14 days there, accumulated
+    here). Clones are mostly CI checkouts and say little about installs.</p>
+  <div class="card"><div class="chart"><canvas id="traffic"></canvas></div></div>
+
+  <p class="note" style="margin-top:32px">Counts are requests, not people: updates, reinstalls and
+    retries all count. Raw data: <a href="data/releases.csv">releases.csv</a>,
+    <a href="data/ci_downloads.csv">ci_downloads.csv</a>,
+    <a href="data/traffic.csv">traffic.csv</a>.</p>
+</main>
+<script>
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function parseCsv(text) {
+  const [head, ...lines] = text.trim().split(/\r?\n/);
+  const keys = head.split(',');
+  return lines.filter(Boolean).map(l => {
+    const v = l.split(',');   // no field in these files contains a comma
+    return Object.fromEntries(keys.map((k, i) => [k, v[i] ?? '']));
+  });
+}
+async function load(name) {
+  const r = await fetch('data/' + name, { cache: 'no-cache' });
+  return r.ok ? parseCsv(await r.text()) : [];
+}
+const fmt = n => n.toLocaleString('en-US');
+const kind = a => a === 'labview-mcp.zip' ? 'plugin'
+               : /^labview-mcp.*\.zip$/.test(a) ? 'manual' : 'other';
+
+(async () => {
+  const [rel, ci, traffic] = await Promise.all(
+    ['releases.csv', 'ci_downloads.csv', 'traffic.csv'].map(load));
+  if (!rel.length) { document.getElementById('kpis').innerHTML =
+    '<p class="err">No data yet - the first snapshot has not run.</p>'; return; }
+
+  // --- snapshots: date -> (tag|asset -> count), keeping the last snapshot of each day
+  const snaps = new Map();
+  for (const r of rel) {
+    const day = r.snapshot_utc.slice(0, 10);
+    if (!snaps.has(day) || snaps.get(day).at < r.snapshot_utc) snaps.set(day, { at: r.snapshot_utc, rows: [] });
+    if (snaps.get(day).at === r.snapshot_utc) snaps.get(day).rows.push(r);
+  }
+  const days = [...snaps.keys()].sort();
+  const latest = snaps.get(days.at(-1));
+  document.getElementById('stamp').textContent = 'Last snapshot ' + latest.at.replace('T', ' ').replace('Z', ' UTC') + '.';
+
+  // --- CI downloads that reached a download step
+  const ciRuns = ci.filter(r => r.conclusion === 'success' || r.conclusion === 'failure');
+  const ciByTag = {};
+  for (const r of ciRuns) ciByTag[r.tag] = (ciByTag[r.tag] || 0) + 1;
+  // runs between two snapshots, by timestamp - a scheduled run can drift by an hour or more
+  const ciBetween = (from, to) => ciRuns.filter(r => r.created_at > from && r.created_at <= to).length;
+
+  // --- per-release table from the latest snapshot
+  const byTag = new Map();
+  for (const r of latest.rows) {
+    const t = byTag.get(r.tag) || { tag: r.tag, published: r.published_at.slice(0, 10), plugin: 0, manual: 0, other: 0 };
+    t[kind(r.asset)] += +r.download_count;
+    byTag.set(r.tag, t);
+  }
+  const tags = [...byTag.values()].sort((a, b) => b.published.localeCompare(a.published));
+  let tPlugin = 0, tManual = 0, tCi = 0;
+  const rowsHtml = tags.map(t => {
+    const c = Math.min(ciByTag[t.tag] || 0, t.plugin);
+    tPlugin += t.plugin; tManual += t.manual; tCi += c;
+    return `<tr><td>${t.tag}</td><td>${t.published}</td><td>${fmt(t.plugin)}</td><td>${fmt(t.manual)}</td>` +
+           `<td>${fmt(c)}</td><td><strong>${fmt(t.plugin + t.manual - c)}</strong></td><td>${fmt(t.other)}</td></tr>`;
+  }).join('');
+  document.getElementById('releases').innerHTML =
+    '<thead><tr><th>Release</th><th>Published</th><th>labview-mcp.zip</th><th>versioned zip</th>' +
+    '<th>CI (est.)</th><th>Net</th><th>checksums</th></tr></thead><tbody>' + rowsHtml + '</tbody>';
+
+  const kpi = (v, l) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  document.getElementById('kpis').innerHTML =
+    kpi(fmt(tPlugin + tManual - tCi), 'net zip downloads, all releases') +
+    kpi(fmt(tPlugin - tCi), 'labview-mcp.zip (plugin + manual), net') +
+    kpi(fmt(tManual), 'versioned zip (manual only)') +
+    kpi(tags[0].tag, 'latest release, ' + fmt(tags[0].plugin + tags[0].manual - Math.min(ciByTag[tags[0].tag] || 0, tags[0].plugin)) + ' net');
+
+  // --- daily deltas
+  const total = (rows, k) => rows.filter(r => kind(r.asset) === k).reduce((s, r) => s + +r.download_count, 0);
+  const labels = [], dPlugin = [], dManual = [], dCi = [];
+  for (let i = 1; i < days.length; i++) {
+    const prev = snaps.get(days[i - 1]), cur = snaps.get(days[i]);
+    const a = prev.rows, b = cur.rows;
+    const c = ciBetween(prev.at, cur.at);
+    const p = total(b, 'plugin') - total(a, 'plugin');
+    labels.push(days[i]);
+    dPlugin.push(Math.max(p - c, 0));
+    dManual.push(total(b, 'manual') - total(a, 'manual'));
+    dCi.push(Math.min(c, p));
+  }
+  Chart.defaults.color = css('--muted');
+  Chart.defaults.borderColor = css('--border');
+  Chart.defaults.font.family = 'system-ui, sans-serif';
+  const grid = { stacked: true, grid: { display: false } };
+  new Chart(document.getElementById('daily'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'labview-mcp.zip (plugin + manual)', data: dPlugin, backgroundColor: css('--plugin') },
+      { label: 'versioned zip (manual)', data: dManual, backgroundColor: css('--manual') },
+      { label: 'CI (excluded)', data: dCi, backgroundColor: css('--ci'), hidden: true },
+    ]},
+    options: { maintainAspectRatio: false, scales: { x: grid, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+               plugins: { legend: { position: 'bottom' } } }
+  });
+  if (!labels.length) document.getElementById('daily').parentElement.insertAdjacentHTML('beforeend',
+    '<p class="note" style="position:absolute;top:40%;width:100%;text-align:center">Needs two daily snapshots.</p>');
+
+  // --- traffic
+  const tl = traffic.map(r => r.date);
+  const line = (label, key, color, dash) => ({ label, data: traffic.map(r => r[key] === '' ? null : +r[key]),
+    borderColor: color, backgroundColor: color, borderDash: dash, pointRadius: 2, tension: 0.25 });
+  new Chart(document.getElementById('traffic'), {
+    type: 'line',
+    data: { labels: tl, datasets: [
+      line('views', 'views', css('--views')), line('unique visitors', 'views_unique', css('--views'), [5, 4]),
+      line('clones', 'clones', css('--clones')), line('unique cloners', 'clones_unique', css('--clones'), [5, 4]),
+    ]},
+    options: { maintainAspectRatio: false, spanGaps: true, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+               plugins: { legend: { position: 'bottom' } } }
+  });
+  if (!traffic.length) document.getElementById('traffic').parentElement.insertAdjacentHTML('beforeend',
+    '<p class="note" style="position:absolute;top:40%;width:100%;text-align:center">No traffic data - STATS_TRAFFIC_TOKEN is not configured.</p>');
+})();
+</script>
+</body>
+</html>

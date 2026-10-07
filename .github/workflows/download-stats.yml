@@ -1,0 +1,88 @@
+name: download-stats
+
+# Daily snapshot of release-asset download counts (and, with a token, repository traffic) into
+# CSV files on the `stats` branch, published as a GitHub Pages dashboard.
+#
+# Why release assets and not only the traffic API: every plugin install or update fetches
+# /releases/latest/download/labview-mcp.zip (.claude-plugin/marketplace.json is an `archive`
+# source), so `download_count` on that asset IS the install signal, and GitHub keeps it for
+# ever. Views and clones are kept for 14 days only and say nothing about installs - clones are
+# mostly our own CI checkouts. .github/stats/collect.py has the reasoning per file.
+#
+# Our own workflows download the zip too (release.yml's last step, verify-release.yml daily);
+# the collector records those runs and the page subtracts them.
+#
+# One-time setup, both by a repository admin:
+#   1. Settings -> Pages -> Source: "GitHub Actions".
+#   2. Optional, for the traffic chart: a fine-grained PAT scoped to this repository with
+#      "Administration: read", stored as the secret STATS_TRAFFIC_TOKEN. GITHUB_TOKEN cannot be
+#      granted that permission. Without it the traffic part is skipped and the page says so.
+
+on:
+  schedule:
+    # After verify-release (06:17) has normally finished; the page attributes CI runs by
+    # timestamp between snapshots, so a late cron on either side is harmless.
+    - cron: '41 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write     # push the snapshot to the stats branch
+  actions: read       # list release.yml / verify-release.yml runs
+  pages: write
+  id-token: write
+
+concurrency:
+  group: download-stats
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (collector and page)
+        uses: actions/checkout@v4
+
+      - name: Check out the stats branch, or start it
+        run: |
+          if git ls-remote --exit-code --heads origin stats >/dev/null; then
+            git fetch --depth=1 origin stats:refs/remotes/origin/stats
+            git worktree add -b stats stats-data refs/remotes/origin/stats
+          else
+            git worktree add --orphan -b stats stats-data
+          fi
+
+      - name: Snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATS_TRAFFIC_TOKEN: ${{ secrets.STATS_TRAFFIC_TOKEN }}
+        run: python3 .github/stats/collect.py stats-data/data
+
+      - name: Commit to the stats branch
+        working-directory: stats-data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data
+          if git diff --cached --quiet; then echo 'no change'; exit 0; fi
+          git commit -q -m "stats: snapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin stats
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp .github/stats/site/index.html _site/
+          cp -r stats-data/data _site/data
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
