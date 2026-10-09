@@ -1,0 +1,14 @@
+<VI _name="T74 Arrays Of.vi" description="Arrays of strings, booleans and clusters, as constants and controls, plus a concatenating Build Array.">
+  <Control _name="names" type="array{string}" uid="4200" uid_parent="root" value="[]" outputs="value:4200.value"/>
+  <Constant _name="words" type="array{string}" uid="4210" uid_parent="root" value="[alpha,beta]" outputs="value:4210.value"/>
+  <Node _name="Build Array" concat="true" inputs="array:4210.value,array:4200.value" outputs="appended array:4220.appended array" uid="4220" uid_parent="root"/>
+  <Indicator _name="joined" type="array{string}" uid="4225" uid_parent="root" value="[]" inputs="value:4220.appended array"/>
+  <Constant _name="bits" type="array{bool}" uid="4230" uid_parent="root" value="[true,false,true]" outputs="value:4230.value"/>
+  <Indicator _name="bits out" type="array{bool}" uid="4235" uid_parent="root" value="[]" inputs="value:4230.value"/>
+  <Constant _name="pts" type="array{cluster{double.x,int32.n}}" uid="4240" uid_parent="root" value="[[1.5,2],[3.5,4]]" outputs="value:4240.value"/>
+  <Constant _name="which" type="int32" uid="4245" uid_parent="root" value="1" outputs="value:4245.value"/>
+  <Node _name="Index Array" inputs="array:4240.value,index:4245.value" outputs="element:4250.element" uid="4250" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="x,n" inputs="input cluster:4250.element" outputs="x:4255.x,n:4255.n" uid="4255" uid_parent="root"/>
+  <Indicator _name="x" type="double" uid="4260" uid_parent="root" value="0" inputs="value:4255.x"/>
+  <Indicator _name="n" type="int32" uid="4265" uid_parent="root" value="0" inputs="value:4255.n"/>
+</VI>

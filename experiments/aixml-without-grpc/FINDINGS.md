@@ -77,7 +77,8 @@ recognises it.
 | `inplace` on a primitive is the donor's compiler hint and is dropped | kept on a node whose inputs changed type: suspected, removed before measuring |
 | `StdNumMin/Max/Inc` are typed by the control's own representation (`-inf (0x…)` for double, plain integers for int32) | a double part reused for int32 unchanged: does not parse |
 | a terminal's objFlags bit `0x8000` marks a **sink** — the reader's direction test | — |
-| `lastSignalKind` is `0x100 | type code` (266 double, 259 int32, 289 boolean); written from the source type | not observed to break anything when wrong, written correctly anyway |
+| `lastSignalKind` is, in its low 16 bits, `0x100 | type code` for a scalar (266 double, 259 int32, 289 boolean), `0x200 | element code` for a 1D array, `0x230` for a string, `0x350` for a cluster; LabVIEW sets higher bits (`0x4000`, `0x8000`) on its own | not observed to break anything when wrong, written as LabVIEW does anyway |
+| an `annex` part's `nRC`/`oRC` is a coordinate pair tied to where the DONOR sat — stripped from every part | the same array constant clean at the donor's (417, 231) and `Insane Array Constant {graphics} (0x80)` at (102, 40); without the pair clean at both |
 | LabVIEW loads a VI with a **random `Instrument Signature`** and with **uids far above LabVIEW's own** (20 000+) | — (both measured harmless) |
 | a heap list's `elements` must match a list the composer REBUILT — a call node rebuilt for a 16-slot pane kept its 4815 donor's `elements="12"` | caller broken; the 4815 callee only worked because 12 = 12 |
 | z-order lists (`zPlaneList`) run **newest first**; `ddoList` and `termList` oldest first | — (LabVIEW's convention, adopted) |
@@ -199,6 +200,82 @@ Measured, each from a composed caller run in LabVIEW over COM, no sanity warning
 Coercion at a call terminal needed nothing special — unlike a primitive's terminal (§3), whose
 coerced input had to carry the wired type and the coercion flag.
 
+### 4c. Clusters, arrays, enums, indexing tunnels and case selectors
+
+Measured on three reference VIs generated ONCE from AIXML (`probes/pclu2.xml`, `parr.xml`,
+`pcase.xml`) and harvested with `--clean`; the composer then needs neither them nor LabVIEW.
+
+**Types.** `type_tree()` reads AIXML's grammar: `cluster{T.name,…}` is a `Cluster` whose
+children carry the FIELD labels (part of the type; the outer label is only the object's name),
+`array{T}` / `array.N{T}` an `Array` with one `Dimension Flags="0x00FF" FixedSize="0xFFFFFF"`
+per dimension and the element after them, `uintN{a,b,c}` an enum: `UnitUIntN` with one
+`EnumLabel` per item. A wire carries the type with the outer label stripped.
+
+**Objects** (`build_ddo`, recursive). A cluster is a `stdClust` whose `paneHierarchy/zPlaneList`
+holds one object per field (newest first) and whose `ddoList` names them (oldest first); an
+array is an `indArr` with an index display in its `partsList` and the element as its inner
+`<ddo>`; an enum is a `stdRing` whose multiLabel `buf` lists the items, `(3)"Off""On""Auto"`.
+Two traps, each a broken VI first:
+
+* **Inside a diagram CONSTANT the fields are constant-style objects**, not front-panel ones —
+  no label, no frame (objFlags `0x60000`; an array constant's element `0x20000`). Front-panel
+  parts there gave *Going from good to bad after compiling* (cluster constant) and
+  `Insane Array Constant {graphics}` (array constant). A constant's fields now come from
+  constant parts, and an array element of the donor's own kind is the donor's element, re-typed.
+* The `nRC`/`oRC` pair above.
+
+**Data** is flattened big-endian: a cluster is its fields in order, an array one int32 per
+dimension then the elements (`[1,2,3]` as int32 = `00000003 00000001 00000002 00000003`). AIXML
+writes the literal unquoted, `[7,true]`, `[false,0,]`.
+
+**Nodes** are classes of their own, not prims, and their terminal lists are rebuilt from the
+wired types (`add_agg_node`):
+
+| AIXML | class | terminals |
+|---|---|---|
+| `Unbundle By Name` | `nMux`, objFlags `0x50000` | cluster in = `dcoAgg`, one out per field, `<i>` = field number (absent for 0) |
+| `Bundle By Name` | `nMux`, objFlags `0x40000` | out = `dcoAgg` whose termList is [out, cluster in]; cluster in a bare `<dco uid=agg/>` (objFlags `0x28040`); one in per field with `<i>` |
+| `Bundle` | `mux` | the same, with one in per FIELD OF THE CLUSTER — `0x8040` when wired, `0x40` when not — named after the fields |
+| `Unbundle` | `demux` | cluster in = `dcoAgg`, one out per field |
+| `Index Array` | `aIndx` | array in = `srcDCO`, element out = `dcoAgg`, index in (1D, one index) |
+| `Build Array` | `aBuild` | array out = `dcoAgg`, one in per element (non-concatenating) |
+
+A repeated terminal name (`element` twice) is keyed `element`, `element#1`, … in order. NI's
+exports never leave `Bundle`'s cluster input unwired, and the generator refused one that did.
+
+**Indexing tunnels**: the `lpTun` DCO is typed with the ARRAY and carries an `innerLpTunDCO`
+typed with the ELEMENT, `TunnelType 01` — going in the outside wire is the array, going out the
+inside wire is the element.
+
+**Case selectors** (`add_case_n`, `finish_cases`): any number of frames, each a diagram whose
+`sRN` holds the selector's inner terminal. `SelectRangeArray32` maps values to frames as
+`{start, end, startRangeType, endRangeType, diagramIdx}` — one value `(v, v, 0, 0)`, a range
+`a..b` `(a, b, 1, 1)`, an open end type 3 at `INT_MIN`/`INT_MAX`; an enum uses item indices; a
+string case lists its strings as hex in `SelectStringArray` and ranges over their indices;
+`SelectDefaultCase` is the Default frame's index as one hex byte (`FF` none); `SelectNRightType`
+is the number of ranges. The error case's two ranges are copied from the reference by frame name.
+The selector's type and the ranges are written last, once the wire into the selector is typed.
+
+| test | what | result |
+|---|---|---|
+| `t60` | cluster constant and an error cluster passed through | `[1.5,2.5]`, `[False,0,]` |
+| `t61` | array constant `[1,2,3]`, array control passed through | both exact |
+| `t62` | enum constant and control | `2`, `0` |
+| `t63` | `Unbundle By Name` + `Add` | `{1.5,2.25}` → 3.75 |
+| `t64` | `Bundle By Name` into a cluster constant | `[1.5,-4]` |
+| `t65` | `Bundle` then `Unbundle` | `42`, `True` |
+| `t66` | `Array Size`, `Index Array`, `Build Array` | 3, 2.5, `[7,2.5]` |
+| `t67` | For Loop, indexing in and out | `[1.5,-2,4]` → `[3,-4,8]` |
+| `t68` | `i` collected through an indexing output | `[0,1,2,3]` |
+| `t70` | integer case: `0`, `1..3`, `..-1`, `Default` | 10, 20, −1, 99 |
+| `t71` | enum case, a tunnel in, `Multiply` in one frame | 0, 8, 4 |
+| `t72` | string case, `"idle", Default` shared | 1, 2, 0, 0 |
+| `t73` | error case, cluster passed through | `True`/`[False,0,]`, `False`/`[True,42,boom]` |
+
+All thirteen load with **no** `Insane` line in LabVIEW's log (checked on a fresh log, see §5).
+Over COM a cluster input must be a VARIANT array (`lv-com.ps1 -Inputs "pt={1.5,2.25}"`): a
+`double[]` is accepted without an error and silently ignored.
+
 **How many of NI's own calls the resolver reaches** — `call_coverage.py` takes every `<Call>` in
 the 792 cached exports, resolves it, reads the callee's pane through pylabview and checks every
 terminal name the call uses against it (everything `add_call` needs, short of composing):
@@ -258,6 +335,33 @@ which hung or broke a run:
 LabVIEW's own log (`%TEMP%\LabVIEW_32_*_cur.txt`) was the diagnostic that cracked most of
 section 3: `Insane <class>(<uid>)` and `Con pane not pre-sized correctly` name the object.
 `VI Server` has no method that returns a VI's error list.
+
+**AND THAT LOG STOPS BEING WRITTEN after about 100 DWarn events** — measured 2026-10-09: it froze
+at 1.75 MB while VIs kept loading, so every insanity check after that point read nothing and
+passed. The earlier claim in this branch that all composed tests were free of `Insane` lines
+rested partly on a frozen log. `selftest.py` now marks a test run on a full log `(log full)`
+and fails the run. What fills it is the composer's own wires: **LabVIEW-generated VIs load with
+0 DWarn events, a composed VI with about two per wire** — `Wiring insanity found and fixed …
+Wiretable nxt field disagreed with the joint coordinates` (`dwarn_delta.py` measures it per
+VI). So the gate holds for about seven VIs per LabVIEW start; the 13 tests of §4c were checked
+in two such batches.
+
+**The wire table format, as far as decoded** (`wire_calibrate.py`: constant → indicator pairs
+at chosen offsets, loaded and saved again by LabVIEW over COM with `lv-save.ps1`):
+
+```
+[n joints] 08 [n-2 direction bytes] [n-2 segment lengths]
+```
+
+`0208` is a straight horizontal wire of any length. With a vertical offset LabVIEW writes four
+joints: first segment 20 px right, then the vertical — `04 08 00 00 14 0A` is 10 down,
+`04 08 01 00 14 0A` 10 up. The direction bytes belong to segments 2…n−1 (`01` = left/up), the
+lengths to segments 1…n−2 (the last is implied by the end terminal), and a length of 255 or more
+is `FF` plus a big-endian 16-bit value (`FF 01 2C` = 300). A wire into a terminal 1–3 px off
+gets three joints (`03 08 00 82`); a backwards wire six. **What is NOT decoded is where a
+primitive's terminal attaches**: on `Add` it is not the centre of the DCO's `termBounds`, so
+computing exact tables needs a per-primitive calibration of hot points. Until then each wire is
+`0208` and LabVIEW repairs it, at the cost of the log.
 
 ## 6. How far it reaches on real code
 

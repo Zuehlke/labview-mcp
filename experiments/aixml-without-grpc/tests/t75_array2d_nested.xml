@@ -1,0 +1,12 @@
+<VI _name="T75 Array2D Nested.vi" description="A 2D array constant and control, and a cluster holding a cluster and an array.">
+  <Constant _name="g" type="array.2{int32}" uid="4200" uid_parent="root" value="[[1,2],[3,4]]" outputs="value:4200.value"/>
+  <Indicator _name="g out" type="array.2{int32}" uid="4205" uid_parent="root" value="[]" inputs="value:4200.value"/>
+  <Control _name="grid" type="array.2{double}" uid="4210" uid_parent="root" value="[]" outputs="value:4210.value"/>
+  <Node _name="Array Size" inputs="array:4210.value" outputs="size(s):4215.size(s)" uid="4215" uid_parent="root"/>
+  <Indicator _name="sizes" type="array{int32}" uid="4220" uid_parent="root" value="[]" inputs="value:4215.size(s)"/>
+  <Constant _name="nested" type="cluster{string.name,cluster{double.x,double.y}.pos,array{int32}.ids}" uid="4230" uid_parent="root" value="[probe,[1,2],[7,8]]" outputs="value:4230.value"/>
+  <Node _name="Unbundle By Name" fields="name,pos,ids" inputs="input cluster:4230.value" outputs="name:4235.name,pos:4235.pos,ids:4235.ids" uid="4235" uid_parent="root"/>
+  <Indicator _name="name" type="string" uid="4240" uid_parent="root" value="" inputs="value:4235.name"/>
+  <Indicator _name="pos" type="cluster{double.x,double.y}" uid="4245" uid_parent="root" value="[0,0]" inputs="value:4235.pos"/>
+  <Indicator _name="ids" type="array{int32}" uid="4250" uid_parent="root" value="[]" inputs="value:4235.ids"/>
+</VI>

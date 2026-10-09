@@ -159,6 +159,23 @@ class Harvester:
             path, encoding="utf-8", xml_declaration=True)
         self.found.append(key)
 
+    def array_elements(self, b, holder, where, source):
+        """The element of an array object as a part of its own, arrelem/<where>/<class>, and the
+        fields of a cluster element likewise: inside an array CONSTANT these are frameless
+        objects with no label (objFlags 0x20000) that no standalone part can stand in for -
+        measured as `Insane Array Constant {graphics}`."""
+        for arr in holder.iter("ddo"):
+            if arr.get("class") != "indArr":
+                continue
+            el = arr.find("ddo")
+            if el is None:
+                continue
+            self.save("arrelem", "arrelem/%s/%s" % (where, el.get("class")), source, el, resolve_types(b, el))
+            if el.get("class") == "stdClust":
+                for f in el.find("paneHierarchy/zPlaneList"):
+                    self.save("arrelem", "arrelem/%s/%s" % (where, f.get("class")), source, f,
+                              resolve_types(b, f))
+
     def harvest(self, main_xml, source):
         b = lvheap.Bundle(main_xml)
         fpdco_ind = {}
@@ -176,6 +193,7 @@ class Harvester:
                 tk = lvheap.type_key(types[0])
                 self.save("fpdco", "fpdco/%s/%s/%s" % (ddo.get("class"), ind, tk),
                           source, fpdco, types)
+                self.array_elements(b, fpdco, "fpdco", source)
         if b.bd is None:
             return
         for e in b.bd.iter("SL__arrayElement"):
@@ -191,6 +209,7 @@ class Harvester:
                     types = resolve_types(b, e)
                     tk = lvheap.type_key(types[0])
                     self.save("const", "const/%s/%s" % (ddo.get("class"), tk), source, e, types)
+                    self.array_elements(b, e, "const", source)
             elif cls == "signal":
                 n = str(len(e.find("termList")))
                 wt = e.findtext("compressedWireTable")

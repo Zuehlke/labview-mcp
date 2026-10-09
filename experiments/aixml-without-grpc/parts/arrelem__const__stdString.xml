@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdString" source="AIXML-generated probe: parr2.vi" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdString" uid="4373">
+                  <objFlags>4</objFlags>
+                  <howGrow>240</howGrow>
+                  <bounds>(3, 70, 20, 84)</bounds>
+                  <partsList elements="4">
+                    <SL__arrayElement class="label" uid="4375">
+                      <objFlags>1050930</objFlags>
+                      <partID>11</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>240</howGrow>
+                      <bounds>(1, 3, 16, 13)</bounds>
+                      <image class="Image">
+                        <ImageResID>-11</ImageResID>
+                        </image>
+                      <fgColor>01000000</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      <textRec class="textHair">
+                        <mode>8995844</mode>
+                        <bgColor>00FFFFFF</bgColor>
+                        </textRec>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="multiCosm" uid="4376">
+                      <objFlags>2362</objFlags>
+                      <partID>15</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>4104</howGrow>
+                      <bounds>(2, -4, 14, 2)</bounds>
+                      <fgColor>00FF00FF</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      <table elements="4">
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2104</ImageResID>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2105</ImageResID>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2106</ImageResID>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2107</ImageResID>
+                          </SL__arrayElement>
+                        </table>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="4377">
+                      <objFlags>2323</objFlags>
+                      <partID>9</partID>
+                      <howGrow>240</howGrow>
+                      <bounds>(0, 0, 17, 14)</bounds>
+                      <image class="Image">
+                        <ImageResID>-14</ImageResID>
+                        </image>
+                      <fgColor>00FF00FF</fgColor>
+                      <bgColor>00FF00FF</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="annex" uid="4378">
+                      <partID>66</partID>
+                      <rsrcID>2007</rsrcID>
+                      <annexDDOFlag>2</annexDDOFlag>
+                      </SL__arrayElement>
+                    </partsList>
+                  <typeDesc>TypeID(80)</typeDesc>
+                  <MouseWheelSupport>3</MouseWheelSupport>
+                  </ddo>
+                </heap></part>

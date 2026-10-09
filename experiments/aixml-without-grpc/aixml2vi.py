@@ -241,6 +241,43 @@ def adapt_numeric(ddo, t):
             part.find("format").text = fmt
 
 
+def _shift_bounds(e, dy, dx):
+    if e is not None and e.text:
+        t, l, b, r = lvheap.parse_bounds(e.text)
+        e.text = lvheap.fmt_bounds((t + dy, l + dx, b + dy, r + dx))
+
+
+def internal_shift(o, dy, dx):
+    """Shift what a cluster or array holds in ITS OWN frame by (dy, dx). A cluster's pane frame
+    is tied to where the cluster sits: docBounds is the negated top-left of the cluster
+    (measured on every top-level cluster of three AIXML-generated VIs, front panel and diagram
+    alike), and the fields' bounds live in that frame - so is an array's cluster element."""
+    cls = o.get("class")
+    if cls == "stdClust":
+        pane = o.find("paneHierarchy")
+        _shift_bounds(pane.find("docBounds"), dy, dx)
+        for f in pane.find("zPlaneList"):
+            move_obj(f, dy, dx)
+    elif cls == "indArr" and o.find("ddo") is not None:
+        internal_shift(o.find("ddo"), dy, dx)   # the element itself sits relative to the array
+
+
+def move_obj(o, dy, dx):
+    """Move an object by (dy, dx) and keep a cluster's or array's insides consistent with it:
+    moving a cluster constant without them was `Insane Array Constant {graphics}` on an array
+    field (and a field outside the pane)."""
+    _shift_bounds(o.find("bounds"), dy, dx)
+    internal_shift(o, -dy, -dx)
+
+
+def place_obj(o, top, left):
+    b = o.find("bounds")
+    if b is None:
+        return
+    t, l, _, _ = lvheap.parse_bounds(b.text)
+    move_obj(o, top - t, left - l)
+
+
 def vi_label(ddo):
     for part in ddo.find("partsList") if ddo.find("partsList") is not None else []:
         if part.get("class") == "label" and part.findtext("partID") == "16":
@@ -592,11 +629,23 @@ class Composer:
         for e in holder.iter("typeDesc"):
             e.attrib.pop("_t", None)
 
-    def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo"):
+    @staticmethod
+    def _ddo_of(holder):
+        """The data object inside a part: an fPDCO's <ddo>, a constant term's dco/ddo, or - for
+        an array-element part - the part itself."""
+        if holder.find("ddo") is not None:
+            return holder.find("ddo")
+        if holder.find("dco/ddo") is not None:
+            return holder.find("dco/ddo")
+        return holder
+
+    def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo", in_array=False):
         """One data object for `tree` (labelled: the label is the object's name), composed from
         parts. A cluster is a stdClust whose paneHierarchy holds one object per field (ddoList
         oldest first, zPlaneList newest first); an array is an indArr whose inner <ddo> is the
-        element - measured on AIXML-generated VIs. Returns (ddo, source, height, width)."""
+        element - measured on AIXML-generated VIs. Inside an array (in_array) objects come from
+        arrelem/ parts: an array constant's element and its fields are frameless objects of
+        their own kind. Returns (ddo, source, height, width)."""
         t = tree.get("Type")
         name = tree.get("Label") or ""
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
@@ -605,20 +654,28 @@ class Composer:
         if t in self.DDO_CLASS:
             cls = self.DDO_CLASS[t]
             key = None
-            for k in self._keys("%s/%s/" % (prefix, cls)):
-                d = k.split("/")[2] if prefix == "fpdco" else None
-                if k.endswith("/" + t) and (want is None or d == want):
-                    key = k
+            if in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None:
+                key = "arrelem/%s/%s" % (prefix, cls)
             if key is None:
+                # best part: same element kind and direction, then same element kind, then any
+                # array/cluster part of the direction (its element is then built from parts)
+                exact = lvheap.type_key(unlabel(tree)).replace(".", "_")
+                best = None
                 for k in self._keys("%s/%s/" % (prefix, cls)):
-                    if k.endswith("/" + t):
-                        key = k
+                    last = k.split("/")[-1]
+                    d = k.split("/")[2] if prefix == "fpdco" else None
+                    if not (last == exact or last == t or last.startswith(t)):
+                        continue
+                    rank = (0 if last == exact else 2) + (0 if want is None or d == want else 1)
+                    if best is None or rank < best[0]:
+                        best = (rank, k)
+                key = best[1] if best else None
             if key is None:
                 raise Unsupported("no %s part for a %s" % (prefix, t))
             holder, donor_types, src = self.instantiate(key)
             for i, e in enumerate(lvheap.typeid_elements(holder)):
                 e.set("_t", str(i))
-            ddo = holder.find("ddo") if holder.find("ddo") is not None else holder.find("dco/ddo")
+            ddo = self._ddo_of(holder)
             if t == "Cluster":
                 dl = ddo.find("ddoList")
                 z = ddo.find("paneHierarchy/zPlaneList")
@@ -626,33 +683,44 @@ class Composer:
                 # cluster's pane and a diagram constant's use different origins (measured
                 # (-31,-16) under origin (-4,-4) against (-222,-227) under (-241,-243))
                 tops = [lvheap.parse_bounds(c.find("bounds").text) for c in z if c.find("bounds") is not None]
-                y0 = min(t[0] for t in tops) if tops else -31
-                x0 = min(t[1] for t in tops) if tops else -16
+                y0 = min(b[0] for b in tops) if tops else -31
+                x0 = min(b[1] for b in tops) if tops else -16
                 for lst in (dl, z):
                     for c in list(lst):
                         lst.remove(c)
                 y, w = y0, 0
                 kids = []
                 for f in fields(tree):
-                    child, _, h, cw = self.build_ddo(f, is_ind, prefix, "SL__arrayElement")
-                    lvheap.move_to(child, y, x0)
-                    y += max(h, 14) + 4
+                    child, _, h, cw = self.build_ddo(f, is_ind, prefix, "SL__arrayElement", in_array)
+                    place_obj(child, y, x0)
+                    y += max(h, 14) + (0 if in_array else 4)
                     w = max(w, cw)
                     z.insert(0, child)
                     ET.SubElement(dl, "SL__arrayElement", {"uid": child.get("uid")})
                     kids.append(child)
                 dl.set("elements", str(len(dl)))
                 z.set("elements", str(len(z)))
-                ph = y - y0
                 pane = ddo.find("paneHierarchy")
+                # the pane shows the fields from its ORIGIN on: a diagram constant's origin sits
+                # 19 px above its first field, so sizing the pane to the fields alone cut the
+                # last one off - "Insane Array Constant {graphics}" for an array field
+                oy, ox = (lvheap.parse_bounds("(%s, 0, 0)" % pane.findtext("origin").strip("() "))[:2]
+                          if pane.find("origin") is not None else (y0, x0))
+                ph = max(y - y0, y - oy + 3)
+                pw = max(w, x0 + w - ox + 3)
                 pb = lvheap.parse_bounds(pane.find("bounds").text)
-                pane.find("bounds").text = lvheap.fmt_bounds((pb[0], pb[1], pb[0] + ph, pb[1] + w))
+                pane.find("bounds").text = lvheap.fmt_bounds((pb[0], pb[1], pb[0] + ph, pb[1] + pw))
                 b = lvheap.parse_bounds(ddo.find("bounds").text)
-                ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + 4, b[1] + pb[1] + w + 4))
+                ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + 4, b[1] + pb[1] + pw + 4))
             else:
                 old = ddo.find("ddo")
                 kids = []
                 elem = elem_of(tree)
+                dims = len(tree.findall("Dimension"))
+                ai = ddo.find("arrayIndices")
+                donor_dims = len(ai) if ai is not None else 1
+                if dims != donor_dims:
+                    raise Unsupported("no %d-dimensional array part (the donor has %d)" % (dims, donor_dims))
                 want_cls = "stdRing" if is_enum(elem) else self.DDO_CLASS.get(elem.get("Type")) or \
                     SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == elem.get("Type")), ""), (None, None))[1]
                 if old is not None and old.get("class") == want_cls and want_cls in ("stdNum", "stdBool", "stdString", "stdPath"):
@@ -660,9 +728,6 @@ class Composer:
                     # array CONSTANT it is a frameless object with no label (objFlags 0x20000,
                     # parts placed from x=1), and a standalone constant part in its place was
                     # "Insane Array Constant {graphics} (0x80)" whatever its box.
-                    if len(tree.findall("Dimension")) != 1:
-                        raise Unsupported("a %d-dimensional array object is not composable yet"
-                                          % len(tree.findall("Dimension")))
                     adapt_numeric(old, elem.get("Type"))
                     if prefix == "fpdco":
                         self._direction(old, is_ind)
@@ -672,12 +737,9 @@ class Composer:
                             e.attrib.pop("_t", None)
                     kids.append(old)
                 elif old is not None:
-                    if len(tree.findall("Dimension")) != 1:
-                        raise Unsupported("a %d-dimensional array object is not composable yet"
-                                          % len(tree.findall("Dimension")))
-                    child, _, h, cw = self.build_ddo(elem, is_ind, prefix, "ddo")
-                    lvheap.move_to(child, *lvheap.parse_bounds(old.find("bounds").text)[:2])
-                    if child.get("class") == old.get("class"):
+                    child, _, h, cw = self.build_ddo(elem, is_ind, prefix, "ddo", True)
+                    place_obj(child, *lvheap.parse_bounds(old.find("bounds").text)[:2])
+                    if child.get("class") == old.get("class") and child.get("class") != "stdClust":
                         # an element of the same kind takes the donor element's exact box: a
                         # numeric part's own 50 px in an array constant whose cell is 13 px was
                         # "Insane Array Constant {graphics} (0x80)" even inside a wider array
@@ -704,19 +766,23 @@ class Composer:
             ddo = self._retag(ddo, tag)
             h, w = lvheap.size_of(ddo)
             return (holder if tag is None else ddo), src, h, w
-        # scalars and enums: a front-panel part's ddo
+        # scalars and enums: a front-panel or constant part's ddo, or an array element's
         ddo_class = SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == t), ""), (None, None))[1]
         if is_enum(tree):
             ddo_class = "stdRing"
         if ddo_class is None:
             raise Unsupported("no data object for type %s" % t)
-        key, flipped = self.pick("%s/%s/" % (prefix, ddo_class), want, other, t)
+        key = None
+        if in_array and self.parts.get("arrelem/%s/%s" % (prefix, ddo_class)) is not None:
+            key = "arrelem/%s/%s" % (prefix, ddo_class)
+        if key is None:
+            key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, t)
         if key is None and is_enum(tree):
-            key, flipped = self.pick("%s/%s/" % (prefix, ddo_class), want, other, "UnitUInt16")
+            key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, "UnitUInt16")
         if key is None:
             raise Unsupported("no %s part for %s (%s)" % (prefix, ddo_class, t))
         holder, _, src = self.instantiate(key)
-        ddo = holder.find("ddo") if holder.find("ddo") is not None else holder.find("dco/ddo")
+        ddo = self._ddo_of(holder)
         adapt_numeric(ddo, t)
         if is_enum(tree):
             self._set_enum(ddo, tree)
@@ -798,7 +864,7 @@ class Composer:
         col = 1 if is_ind else 0
         # stacked per column by real height: a cluster or array is taller than a numeric
         self.fp_y = getattr(self, "fp_y", {0: 16, 1: 16})
-        lvheap.move_to(ddo, self.fp_y[col], 16 + 300 * col)
+        place_obj(ddo, self.fp_y[col], 16 + 300 * col)
         self.fp_y[col] += max(lvheap.size_of(ddo)[0], 24) + 32
         # z-order lists run NEWEST FIRST in LabVIEW's own files (ddoList and termList run
         # oldest first); appending made the first control LabVIEW's insane one ({flags} 0x1000)
@@ -1098,21 +1164,33 @@ class Composer:
                     self.net_type[net] = et
         else:   # Build Array
             agg, tpl = terms[0], terms[1]
-            if el.get("concat") == "true" or any(t == "array" for t, _ in ins):
-                raise Unsupported("Build Array %s: concatenating inputs are not composable yet" % el.get("uid"))
-            types = [wired_type(n, "an element") for _, n in ins]
-            et = numeric_join(types) if types else type_tree("double")
+            types = [wired_type(n, "an input") for _, n in ins]
+            concat = el.get("concat") == "true" or any(t == "array" for t, _ in ins)
+            if concat:
+                # CONCATENATING: every `array` input is an array of the output's own type, its
+                # DCO flagged 0x10000, the first one 0x810000 (measured on an AIXML-generated
+                # Build Array of two string arrays); an `element` input stays unflagged
+                arrays = [wt for (tn, _), wt in zip(ins, types) if tn == "array"]
+                if any(a.get("Type") != "Array" or len(a.findall("Dimension")) != 1 for a in arrays):
+                    raise Unsupported("Build Array %s: only 1D arrays are concatenated yet" % el.get("uid"))
+                et = numeric_join([unlabel(elem_of(a)) for a in arrays] +
+                                  [wt for (tn, _), wt in zip(ins, types) if tn != "array"])
+            else:
+                et = numeric_join(types) if types else type_tree("double")
             atype = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
             ET.SubElement(atype, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
             atype.append(copy.deepcopy(unlabel(et)))
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(atype)
             for c in terms[1:]:
                 tl.remove(c)
-            for k, ((tname, net), wt) in enumerate(zip(ins, types)):
-                t = self._term_from(tpl, wt)
+            for k, (((key, net), (tname, _)), wt) in enumerate(zip(zip(keyed(ins), ins), types)):
+                flags = None
+                if concat and tname == "array":
+                    flags = 0x810000 if k == 0 else 0x10000
+                t = self._term_from(tpl, wt, dco_flags=flags)
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
-                self.ends[(el.get("uid"), rep_key("element", k))] = (t.get("uid"), diag)
+                self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
             self.ends[(el.get("uid"), "appended array")] = (agg.get("uid"), diag)
             for _, net in outs:
                 if net:
@@ -1942,7 +2020,7 @@ class Composer:
                 h, w = sizes.get(obj.get("uid"), (120, 200))
                 obj.find("bounds").text = lvheap.fmt_bounds((y, x, y + h, x + w))
             else:
-                lvheap.move_to(obj, y, x)
+                place_obj(obj, y, x)
                 h, w = lvheap.size_of(obj)
             rows[L] = rows.get(L, 0) + max(h, 32) + 30
             right, bottom = max(right, x + w), max(bottom, y + h)

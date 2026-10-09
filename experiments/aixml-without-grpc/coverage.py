@@ -46,6 +46,14 @@ def main(argv):
     ok, why, first = [], collections.Counter(), collections.Counter()
     for f in files:
         c = aixml2vi.Composer(os.path.join(HERE, "parts"))
+        # a call is resolved as from the ORIGINAL VI's place: siblings and relative links
+        meta = f[:-4] + ".json"
+        if os.path.exists(meta):
+            import json
+            vp = json.load(open(meta, encoding="utf-8")).get("ViPath") or ""
+            if vp:
+                c.search_dirs = [os.path.dirname(vp)]
+                c.caller_file = vp
         try:
             c.compose(f)
             ok.append((f, c))

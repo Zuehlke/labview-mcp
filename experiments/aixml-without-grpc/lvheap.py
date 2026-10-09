@@ -156,6 +156,13 @@ def type_key(tree):
     t = tree.get("Type")
     if t == "MeasureData":
         return "MeasureData." + (tree.get("Flavor") or "")
+    if t == "Array":
+        # an array part is only reusable as-is for its own element kind (an array constant's
+        # element is a frameless object of that kind), so the key carries it: Array.String,
+        # Array2.NumFloat64
+        dims = len(tree.findall("Dimension"))
+        elem = [c for c in tree if c.tag == "TypeDesc"]
+        return "Array%s.%s" % (dims if dims > 1 else "", type_key(elem[0]) if elem else "?")
     return t
 
 
