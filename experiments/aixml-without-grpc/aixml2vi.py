@@ -660,12 +660,15 @@ class Composer:
                 # best part: same element kind and direction, then same element kind, then any
                 # array/cluster part of the direction (its element is then built from parts)
                 exact = lvheap.type_key(unlabel(tree)).replace(".", "_")
+                dims_key = exact.split("_")[0]          # Array, Array2, Cluster
                 best = None
                 for k in self._keys("%s/%s/" % (prefix, cls)):
                     last = k.split("/")[-1]
                     d = k.split("/")[2] if prefix == "fpdco" else None
                     if not (last == exact or last == t or last.startswith(t)):
                         continue
+                    if t == "Array" and last.split("_")[0] != dims_key:
+                        continue    # the number of dimensions is the container's own shape
                     rank = (0 if last == exact else 2) + (0 if want is None or d == want else 1)
                     if best is None or rank < best[0]:
                         best = (rank, k)
@@ -1736,14 +1739,26 @@ class Composer:
             # with the ELEMENT (measured on an AIXML-generated For Loop): going in, the wire
             # outside is the array; going out, the wire inside is the element.
             if d == "in":
-                if tree.get("Type") != "Array" or len(tree.findall("Dimension")) != 1:
-                    raise Unsupported("Tunnel %s: an indexing input needs a 1D array" % el.get("uid"))
+                if tree.get("Type") != "Array":
+                    raise Unsupported("Tunnel %s: an indexing input needs an array" % el.get("uid"))
                 arr, elem = tree, unlabel(elem_of(tree))
+                n = len(tree.findall("Dimension"))
+                if n > 1:
+                    # indexing an N-D array yields its (N-1)-D rows
+                    elem = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+                    for _ in range(n - 1):
+                        ET.SubElement(elem, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+                    elem.append(copy.deepcopy(unlabel(elem_of(tree))))
             else:
                 elem = tree
+                # collecting arrays builds ONE array of one more dimension, never an array of
+                # arrays (LabVIEW has none)
+                base = elem_of(elem) if elem.get("Type") == "Array" else elem
+                n = len(elem.findall("Dimension")) + 1 if elem.get("Type") == "Array" else 1
                 arr = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
-                ET.SubElement(arr, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
-                arr.append(copy.deepcopy(elem))
+                for _ in range(n):
+                    ET.SubElement(arr, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+                arr.append(copy.deepcopy(unlabel(base)))
             dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(arr)
             dco.find("innerLpTunDCO/typeDesc").text = "TypeID(%d)" % self.heap_tid(elem)
             out_tree = elem if d == "in" else arr
