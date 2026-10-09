@@ -2,7 +2,10 @@
 """Compose every tests/*.xml with aixml2vi.py, load and run each result in LabVIEW over COM
 (lv-com.ps1 - no Nigel, no gRPC), and compare the outputs with tests/expect.json.
 
-    selftest.py [name-filter] [--out DIR]
+    selftest.py [name-filter] [--out DIR] [--no-restart]
+
+LabVIEW is restarted (lv-restart.ps1) whenever its log nears the 100 DWarn events after which
+it stops writing, unless --no-restart is given.
 
 Every build gets a fresh file name: a LabVIEW instance keeps a VI in memory once loaded, and a
 second VI under the same name would be the first one again.
@@ -67,6 +70,28 @@ def log_saturated():
     return None
 
 
+# LabVIEW writes 100 DWarn events to its log and then nothing; a composed VI costs about two per
+# wire, so a test is started on a fresh LabVIEW once the log is past this many
+RESTART_AT = 40
+
+
+def dwarn_events():
+    """DWarn EVENTS in the current log - each is written twice, bare and with its source line."""
+    import glob
+    n = 0
+    for log in glob.glob(os.path.join(os.environ.get("TEMP", ""), "LabVIEW_*_cur.txt")):
+        with open(log, encoding="utf-8", errors="replace") as f:
+            n = max(n, sum(1 for l in f if l.startswith("DWarn")))
+    return n
+
+
+def restart_labview():
+    r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        os.path.join(HERE, "lv-restart.ps1")], capture_output=True, text=True,
+                       timeout=300, stdin=subprocess.DEVNULL)
+    print("[%s]" % (r.stdout + r.stderr).strip(), file=sys.stderr, flush=True)
+
+
 def same(want, got):
     if got is None:
         return False
@@ -98,56 +123,77 @@ def main(argv):
     os.makedirs(out_dir, exist_ok=True)
     expect = json.load(open(os.path.join(HERE, "tests", "expect.json"), encoding="utf-8"))
     stamp = time.strftime("%H%M%S")
+    auto = "--no-restart" not in argv
     results = []
     for name in sorted(expect):
         if flt and not any(f in name for f in flt):
             continue
-        src = os.path.join(HERE, "tests", name + ".xml")
-        # a test may CALL other composed VIs: compose those first, under a per-run file name,
-        # because LabVIEW keeps a loaded VI in memory by name and would serve the old one
-        for fname, callee in expect[name].get("callees", {}).items():
-            cvi = os.path.join(out_dir, fname.replace("{stamp}", stamp))
-            os.makedirs(os.path.dirname(cvi), exist_ok=True)   # a callee may live in a subfolder
-            ccode, clog = compose(os.path.join(HERE, "tests", callee + ".xml"), cvi)
-            if ccode != 0:
-                results.append((name, "CALLEE FAILED", clog.splitlines()[-1] if clog else ""))
-        text = open(src, encoding="utf-8").read()
-        if "{stamp}" in text:
-            src = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
-            open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
-        vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
-        code, log = compose(src, vi)
-        if code != 0:
-            results.append((name, "COMPOSE FAILED", log.splitlines()[-1] if log else ""))
-            continue
-        cases = expect[name].get("cases", [])
-        state, got, raw = lvcom(vi, "", [], run=False)
-        if state != "1":
-            results.append((name, "BROKEN (ExecState %s)" % state, vi))
-            continue
-        verdicts = []
-        for case in cases:
-            state, got, raw = lvcom(vi, case.get("inputs", ""), list(case["outputs"]))
-            ok = all(same(v, got.get(k)) for k, v in case["outputs"].items())
-            verdicts.append("%s %s -> %s" % ("ok" if ok else "FAIL", case.get("inputs", ""),
-                                             ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))
-            if "<TIMEOUT>" in raw:
-                verdicts[-1] += " (TIMEOUT)"
-        status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
-        bad = insanities(vi)
-        if bad:
-            status += " insane:%d" % bad
-        elif log_saturated():
-            status += " (log full)"   # LabVIEW stopped logging: nothing could be checked
-        results.append((name, status if cases else "LOADS", "; ".join(verdicts)))
+        # a fresh LabVIEW before a test that might not fit in what is left of the log, and the
+        # test once more on a fresh one if it filled the log: a "(log full)" verdict is then the
+        # test's OWN size, not the tests before it
+        if auto and dwarn_events() >= RESTART_AT:
+            restart_labview()
+        got = run_test(name, expect, out_dir, stamp)
+        if auto and any(s.endswith("(log full)") for _, s, _ in got) and dwarn_events() > 0:
+            restart_labview()
+            got = run_test(name, expect, out_dir, stamp)
+        results.extend(got)
     for name, status, detail in results:
         print("%-28s %-22s %s" % (name, status, detail))
     sat = log_saturated()
-    if sat:
+    if sat and not auto:
         print("WARNING: %s is SATURATED (>= 100 DWarn events) - LabVIEW no longer writes it, so the "
               "insanity check above saw nothing. Restart LabVIEW and run again." % sat)
         return 1
+    full = [n for n, s, _ in results if s.endswith("(log full)")]
+    if full:
+        print("NOT CHECKED for insanity - each fills a fresh LabVIEW log on its own: %s" % ", ".join(full))
     return 0 if all(s in ("PASS", "LOADS", "PASS (log full)", "LOADS (log full)") for _, s, _ in results) else 1  # insane counts as a failure
+
+
+def run_test(name, expect, out_dir, stamp):
+    results = []
+    src = os.path.join(HERE, "tests", name + ".xml")
+    # a test may CALL other composed VIs: compose those first, under a per-run file name,
+    # because LabVIEW keeps a loaded VI in memory by name and would serve the old one
+    for fname, callee in expect[name].get("callees", {}).items():
+        cvi = os.path.join(out_dir, fname.replace("{stamp}", stamp))
+        os.makedirs(os.path.dirname(cvi), exist_ok=True)   # a callee may live in a subfolder
+        ccode, clog = compose(os.path.join(HERE, "tests", callee + ".xml"), cvi)
+        if ccode != 0:
+            results.append((name, "CALLEE FAILED", clog.splitlines()[-1] if clog else ""))
+    text = open(src, encoding="utf-8").read()
+    if "{stamp}" in text:
+        src = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
+        open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
+    vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
+    code, log = compose(src, vi)
+    if code != 0:
+        results.append((name, "COMPOSE FAILED", log.splitlines()[-1] if log else ""))
+        return results
+    cases = expect[name].get("cases", [])
+    state, got, raw = lvcom(vi, "", [], run=False)
+    if state != "1":
+        results.append((name, "BROKEN (ExecState %s)" % state, vi))
+        return results
+    verdicts = []
+    for case in cases:
+        state, got, raw = lvcom(vi, case.get("inputs", ""), list(case["outputs"]))
+        ok = all(same(v, got.get(k)) for k, v in case["outputs"].items())
+        verdicts.append("%s %s -> %s" % ("ok" if ok else "FAIL", case.get("inputs", ""),
+                                         ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))
+        if "<TIMEOUT>" in raw:
+            verdicts[-1] += " (TIMEOUT)"
+    status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
+    bad = insanities(vi)
+    if bad:
+        status += " insane:%d" % bad
+    elif log_saturated():
+        status += " (log full)"   # LabVIEW stopped logging: nothing could be checked
+    # a test with no run cases (an event loop waits for ever) only loads - its insanity
+    # verdict is kept, which a plain "LOADS" used to throw away
+    results.append((name, status if cases else status.replace("PASS", "LOADS"), "; ".join(verdicts)))
+    return results
 
 
 if __name__ == "__main__":

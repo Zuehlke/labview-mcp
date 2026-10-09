@@ -2185,7 +2185,7 @@ class Composer:
         d = "in" if outer_el.get("_id", "").startswith("In") else "out"
         case, frame_diags, parent = next(x for x in self.cases if x[0].get("uid") == case_el.get("uid"))
         part = getattr(self, "case_tunnel_part", {}).get(case.get("uid"))
-        got = self.instantiate("%s/%s" % (part, d)) if part else             (self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d))
+        got = (self.instantiate("%s/%s" % (part, d)) if part else None) or             self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d)
         if got is None:
             raise Unsupported("no %s case-tunnel part harvested" % d)
         wrap = got[0]
@@ -2214,6 +2214,15 @@ class Composer:
         if tree is None:
             raise Unsupported("case tunnel %s: no typed wire reaches it" % outer_el.get("_id"))
         lvheap.set_typeids(wrap, [self.heap_tid(tree) for _ in lvheap.typeid_elements(wrap)])
+        # cond="true" on an OUTPUT tunnel is the selTun's 0x300000 bits: LabVIEW exports NI's case
+        # tunnel (objFlags 0x300801) with it and an AIXML-generated one without cond (0x801)
+        # without (measured 2026-10-10); written only when the AIXML asks for it
+        cond = outer_el.get("cond") or next((h.get("cond") for h in halves.values() if h.get("cond")), None)
+        if cond not in (None, "true") or (cond and d == "in"):
+            raise Unsupported("case tunnel %s: cond=%r is not composable yet" % (outer_el.get("_id"), cond))
+        if d == "out":
+            f = outer.find("dco/objFlags")
+            f.text = str((int(f.text) & ~0x300000) | (0x300000 if cond == "true" else 0))
         case.find("termList").append(outer)
         ET.SubElement(case.find("tunnelList"), "SL__arrayElement", {"uid": outer.find("dco").get("uid")})
         self.ends[(outer_el.get("uid"), "in" if d == "in" else "out")] = (outer.get("uid"), parent)
@@ -2229,6 +2238,218 @@ class Composer:
             if n:
                 self.net_type[n] = tree
         self.report.append("Case tunnel %s (%s)" % (outer_el.get("_id"), d))
+
+    # EventSpec rows by event kind, read off NI's own VIs (event_specs.py over 40 of them):
+    # (source, regFlags, eSource, type, eFlags, bound to a control?)
+    EVENT_SPECS = {"Value Change": ("3", "1", "0", "1073741826", "4", True),
+                   "Mouse Enter": ("3", "1", "0", "1073741839", "4", True),
+                   "Mouse Leave": ("3", "1", "0", "1073741838", "4", True),
+                   "Timeout": ("4", "0", "0", "1073741825", "1", False)}
+
+    def add_event(self, el):
+        """An Event Structure (eventStruct), built like a case structure: one diagram per frame,
+        selTun tunnels with an inner terminal per frame, and the dynamic-event and timeout
+        terminals (eventDynDCO left/right, eventTimeOut) whose termLists name one inner terminal
+        per frame then the outer one. Which event a frame handles is an EventSpec in
+        EventNodeEvents; the frame's Event Data Node is named in dataNodeList. Both are written
+        in finish_events(), once the panel exists. Template: NI's Radio Buttons.vi."""
+        frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
+        parent = self.diag_of(el)
+        node, donor_types, src = self.instantiate("struct/event", own_uid=el.get("uid"))
+        # the dynamic-event and timeout terminals keep the DONOR's TypeIDs until mapped into this
+        # VI's table - left as they were they named whatever this VI had at 12-14 (two booleans,
+        # measured), and LabVIEW died loading the VI
+        for i, e in enumerate(lvheap.typeid_elements(node)):
+            e.set("_t", str(i))
+        dl = node.find("diagramList")
+        keep_cls = ("eventDynDCO", "eventTimeOut")
+        fixed = [t for t in node.find("termList") if t.find("dco").get("class") in keep_cls]
+        for t in list(node.find("termList")):
+            if t not in fixed:
+                node.find("termList").remove(t)
+        for c in list(node.find("tunnelList")):
+            node.find("tunnelList").remove(c)
+        fixed_dcos = {t.find("dco").get("uid"): t for t in fixed}
+        proto = copy.deepcopy(dl[0])
+        pd = Diagram(proto)
+        for c in list(pd.srn_terms):
+            d = c.find("dco")
+            if c.get("class") != "term" or d is None or d.get("uid") not in fixed_dcos:
+                pd.srn_terms.remove(c)
+        for c in list(pd.nodes):
+            if c.get("class") != "sRN":
+                pd.nodes.remove(c)
+        for lst in (pd.z, pd.signals):
+            for c in list(lst):
+                lst.remove(c)
+        for c in list(dl):
+            dl.remove(c)
+        inner_of = {u: [] for u in fixed_dcos}
+        frame_diags = []
+        for f in frames_el:
+            d = copy.deepcopy(proto)
+            lvheap.renumber(d, self.alloc)
+            dl.append(d)
+            fd = Diagram(d, owner=f)
+            self.diagrams[f.get("uid")] = fd
+            frame_diags.append(fd)
+            for t in fd.srn_terms:
+                inner_of[t.find("dco").get("uid")].append(t.get("uid"))
+                if f is not frames_el[0]:
+                    # a frame not on display carries its inner event terminals as 0x420000
+                    # (NI's Radio Buttons.vi), the displayed one as the template has them
+                    t.find("objFlags").text = "4325376"
+        for du, t in fixed_dcos.items():
+            tl = t.find("dco/termList")
+            for c in list(tl):
+                tl.remove(c)
+            for u in inner_of[du] + [t.get("uid")]:
+                ET.SubElement(tl, "SL__arrayElement", {"uid": u})
+            tl.set("elements", str(len(tl)))
+        dl.set("elements", str(len(dl)))
+        if node.find("dIdx") is not None:
+            node.find("dIdx").text = "0"
+        for e in node.iter("typeDesc"):
+            if e.get("_t") is not None:
+                tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
+                e.text = "TypeID(%d)" % self.heap_tid(tree)
+                del e.attrib["_t"]
+        parent.nodes.append(node)
+        parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        parent.placed.append((node, el))
+        self.cases = getattr(self, "cases", [])
+        self.cases.append((node, frame_diags, parent))
+        self.case_tunnel_part = getattr(self, "case_tunnel_part", {})
+        self.case_tunnel_part[node.get("uid")] = "seltun/event"
+        self.events = getattr(self, "events", [])
+        self.events.append((node, el, frames_el))
+        # EVERY event frame has its Event Data Node - LabVIEW does not let one be deleted, and
+        # dataNodeList names one per frame; a frame without one in the AIXML gets an empty one
+        have = {c.get("uid_parent") for c in el.iter("Node") if c.get("_name") == "Event Data Node"}
+        self._synth_event_data = getattr(self, "_synth_event_data", [])
+        for f in frames_el:
+            if f.get("uid") not in have:
+                # with one (unwired) field, as LabVIEW draws a fresh frame's node
+                _, kind = self._event_of(self._selector_items(unescape(f.get("selector") or ""))[0])
+                fld = "Time" if kind == "Timeout" else "NewVal"
+                self._synth_event_data.append(ET.Element("Node", {"_name": "Event Data Node", "fields": fld,
+                                                                  "outputs": fld + ":", "uid": "0", "uid_parent": f.get("uid")}))
+        self.report.append("Structure 'Event Structure' (%d frames) <- %s" % (len(frames_el), src))
+
+    @staticmethod
+    def _event_of(selector):
+        """' "Stop": Value Change ' -> ('Stop', 'Value Change'); ' Timeout ' -> (None, 'Timeout')."""
+        s = unescape(selector or "").strip()
+        m = re.fullmatch(r'"(.*)"\s*:\s*(.+)', s)
+        return (m.group(1), m.group(2).strip()) if m else (None, s)
+
+    def finish_events(self):
+        for node, el, frames_el in getattr(self, "events", []):
+            specs = node.find("EventNodeEvents")
+            for c in list(specs):
+                specs.remove(c)
+            for i, f in enumerate(frames_el):
+                for part in self._selector_items(unescape(f.get("selector") or "")):
+                    ctl, kind = self._event_of(part)
+                    row = self.EVENT_SPECS.get(kind)
+                    if row is None:
+                        raise Unsupported("Event Structure %s: event %r is not composable yet" % (el.get("uid"), kind))
+                    ddo = "0"
+                    if row[5]:
+                        info = getattr(self, "fp_info", {}).get(ctl)
+                        if info is None:
+                            raise Unsupported("Event Structure %s: no control %r" % (el.get("uid"), ctl))
+                        ddo = info[2].find("ddo").get("uid")
+                    sp = ET.SubElement(specs, "SL__arrayElement", {"class": "EventSpec"})
+                    for tag, v in (("diagramIdx", str(i)), ("source", row[0]), ("regFlags", row[1]),
+                                   ("eSource", row[2]), ("type", row[3]), ("eFlags", row[4]),
+                                   ("ddoUID", ddo)):
+                        ET.SubElement(sp, tag).text = v
+                    ET.SubElement(sp, "menuTag")
+                    ET.SubElement(sp, "dynIndex").text = "0"
+            specs.set("elements", str(len(specs)))
+            dn = getattr(self, "event_data_nodes", {})
+            for lst_tag in ("dataNodeList", "filterNodeList"):
+                lst = node.find(lst_tag)
+                for c in list(lst):
+                    lst.remove(c)
+                for f in frames_el:
+                    u = dn.get(f.get("uid"), "0") if lst_tag == "dataNodeList" else "0"
+                    ET.SubElement(lst, "SL__arrayElement", {"uid": u})
+                lst.set("elements", str(len(lst)))
+            # the selector label caches the displayed frame's text (CLAUDE.md: written by hand,
+            # LabVIEW does not regenerate it) - frame 0
+            sel = node.find("selString/textRec/text")
+            if sel is not None and frames_el:
+                sel.text = '" [0] %s "' % unescape(frames_el[0].get("selector") or "").strip()
+
+    def add_event_data(self, el):
+        """An Event Data Node: Unbundle By Name over the frame's "Event Data" cluster - for a
+        Value Change Source, Type, Time, CtlRef, OldVal, NewVal (NewVal is field 5, measured),
+        OldVal/NewVal typed like the control; for a Timeout Source, Type, Time."""
+        self.check_attrs(el, ("fields",))
+        frame = self._by_uid.get(el.get("uid_parent"))
+        if frame is None or frame.tag != "CaseFrame":
+            raise Unsupported("Event Data Node %s: not in an event frame" % el.get("uid"))
+        ctl, kind = self._event_of(self._selector_items(unescape(frame.get("selector") or ""))[0])
+        diag = self.diag_of(el)
+        node, donor_types, src = self.instantiate("node/eventData")
+        terms = list(node.find("termList"))
+        agg, tpl = terms[0], terms[1]
+        donor = plain(lvheap.strip_label(donor_types[0]))
+        fs = [copy.deepcopy(f) for f in fields(donor)]
+        if kind == "Value Change":
+            ctl_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
+                           and unescape(e.get("_name") or "") == ctl), None)
+            if ctl_el is None:
+                raise Unsupported("Event Data Node %s: no control %r" % (el.get("uid"), ctl))
+            ct = type_tree(ctl_el.get("type"))
+            if ct.get("Type") != "Boolean" and "CtlRef" in (el.get("fields") or "") + (el.get("outputs") or ""):
+                # the donor's CtlRef is a BOOLEAN control's refnum (CtlFlags 0x0008; a ring's is
+                # 0x0048 with the ring's type inside) - another class's is not harvested
+                raise Unsupported("Event Data Node %s: CtlRef of a %s control is not composable yet"
+                                  % (el.get("uid"), ct.get("Type")))
+            for i in (4, 5):
+                lab = fs[i].get("Label")
+                fs[i] = copy.deepcopy(ct)
+                fs[i].set("Label", lab)
+        elif kind == "Timeout":
+            fs = fs[:3]
+        else:
+            raise Unsupported("Event Data Node %s: %r events are not composable yet" % (el.get("uid"), kind))
+        cl = ET.Element("TypeDesc", dict(donor.attrib))
+        for f in fs:
+            cl.append(f)
+        cl.set("Label", "Event Data")
+        labels = [f.get("Label") for f in fs]
+        for c in terms[1:]:
+            node.find("termList").remove(c)
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(cl)
+        want = [unescape(x) for x in split_top(el.get("fields") or "") if x] or [k for k, _ in pairs(el.get("outputs"))]
+        outs = dict(keyed(pairs(el.get("outputs"))))
+        for k in want:
+            if k not in labels:
+                raise Unsupported("Event Data Node %s: no field %r for %s" % (el.get("uid"), k, kind))
+            idx = labels.index(k)
+            t = self._term_from(tpl, fs[idx], index=idx)
+            node.find("termList").append(t)
+            ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+            self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+            if outs.get(k):
+                self.net_type[outs[k]] = unlabel(fs[idx])
+        node.find("termList").set("elements", str(len(node.find("termList"))))
+        dl.set("elements", str(len(dl)))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.event_data_nodes = getattr(self, "event_data_nodes", {})
+        self.event_data_nodes[frame.get("uid")] = node.get("uid")
+        self.report.append("Event Data Node <- %s" % src)
 
     DISABLES = {"Diagram Disable Structure": "diagram", "Conditional Disable Structure": "conditional"}
 
@@ -2404,6 +2625,9 @@ class Composer:
         mode = el.get("mode")
         if mode not in (None, "", "index"):
             raise Unsupported("Tunnel %s: mode=%r is not composable yet" % (el.get("uid"), mode))
+        if el.get("cond"):
+            # a conditional (filtering) loop tunnel - not composed, and never silently dropped
+            raise Unsupported("Tunnel %s: cond=%r is not composable yet" % (el.get("uid"), el.get("cond")))
         if mode == "index" and d == "in":
             src = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
             st = self.net_type.get(src)
@@ -2723,15 +2947,28 @@ class Composer:
                 sb = fd.srn.find("bounds")
                 if sb is not None:
                     sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            event = case.get("class") == "eventStruct"
             slot = {0: 0, 1: 0}
+            w_ = r - l
             for c in case.find("termList"):
                 dco = c.find("dco")
                 tb = dco.find("termBounds")
+                if tb is not None and dco.get("class") in ("eventDynDCO", "eventTimeOut"):
+                    # the timeout terminal at the top-left corner, the dynamic-event terminals
+                    # at the top of the left and right borders (NI's Radio Buttons.vi)
+                    tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
+                    if dco.get("class") == "eventTimeOut":
+                        tb.text = lvheap.fmt_bounds((0, 0, tbb - tt, tr - tl))
+                    else:
+                        out = int(dco.findtext("objFlags") or 0) & 1
+                        x = w_ - (tr - tl) if out else 0
+                        tb.text = lvheap.fmt_bounds((20, x, 20 + tbb - tt, x + tr - tl))
+                    continue
                 if tb is None or dco.get("class") == "caseSel":
                     continue
                 out = int(dco.findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
-                y = 30 + 24 * slot[out]
+                y = (45 if event else 30) + 24 * slot[out]
                 slot[out] += 1
                 x = (r - l) - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
@@ -2846,10 +3083,13 @@ class Composer:
             else:
                 raise Unsupported("element <%s> is not composable yet" % el.tag)
         by_uid = {e.get("uid"): e for e in elements}
+        self._by_uid = by_uid
         # structures first, outermost first, so every diagram exists before anything lands in it
         for el in [e for e in elements if e.tag == "Structure"]:
             if el.get("_name") == "Case Structure":
                 self.add_case(el)
+            elif el.get("_name") == "Event Structure":
+                self.add_event(el)
             elif el.get("_name") == "Flat Sequence Frame":
                 self.add_flatseq(el)
             else:
@@ -2883,7 +3123,7 @@ class Composer:
         def is_case(uid):
             """A case structure, or a disable structure - tunnels with one inner half per frame."""
             p = by_uid.get(uid)
-            return p is not None and ((p.tag == "Structure" and p.get("_name") == "Case Structure")
+            return p is not None and ((p.tag == "Structure" and p.get("_name") in ("Case Structure", "Event Structure"))
                                       or (p.tag == "Node" and unescape(p.get("_name") or "") in self.DISABLES))
         pending = [e for e in elements if (e.tag in ("Node", "ShiftReg", "Call")
                                            and unescape(e.get("_name") or "") not in self.DISABLES)
@@ -2920,6 +3160,8 @@ class Composer:
                     self.add_agg_node(e)
                 elif e.tag == "Node" and nm in ("Build Waveform", "Get Waveform Components"):
                     self.add_waveform_node(e)
+                elif e.tag == "Node" and nm == "Event Data Node":
+                    self.add_event_data(e)
                 elif e.tag == "Node" and nm == "Local Variable":
                     self.add_local(e)
                 elif e.tag == "Node" and nm == "Feedback Node":
@@ -2940,7 +3182,10 @@ class Composer:
                 else:
                     self.add_shiftreg(e, by_uid[e.get("uid_parent")])
                 pending.remove(e)
+        for e in getattr(self, "_synth_event_data", []):
+            self.add_event_data(e)
         self.finish_cases()
+        self.finish_events()
         nets = self.wire(elements)
         self.layout(nets)
         for hidden, slave in getattr(self, "fb_pairs", []):

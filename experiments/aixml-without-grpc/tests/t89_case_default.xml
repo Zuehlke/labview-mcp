@@ -1,0 +1,16 @@
+<VI _name="T89 Case Default.vi" description="An integer case whose output tunnel is wired in one frame only: cond=true makes the other frames give the default value.">
+  <Control _name="sel" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="x" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.value" uid="4301" uid_parent="4300"/>
+    <CaseFrame selector="1" uid="4310" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4313.value" uid="4313" uid_parent="4310"/>
+      <Tunnel _id="Out1" inputs="value:4313.value" uid="4312" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" uid="4330" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:" uid="4333" uid_parent="4330"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" cond="true" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="out" type="double" uid="4345" uid_parent="root" value="0" inputs="value:4340.value"/>
+</VI>

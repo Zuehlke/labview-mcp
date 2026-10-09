@@ -25,9 +25,18 @@ TYPEID_RE = re.compile(r"TypeID\((\d+)\)")
 
 
 def run_pylabview(args, timeout=120):
-    r = subprocess.run(["cmd", "/c", PYLABVIEW_CMD] + args, stdin=subprocess.DEVNULL,
-                       capture_output=True, text=True, timeout=timeout)
-    return r.returncode, r.stdout + r.stderr
+    # subprocess.run's own timeout kills only cmd.exe: the python grandchild keeps the pipes open
+    # and the second communicate() then waits for ever - a coverage run hung 7 minutes on one
+    # vi.lib VI that way (2026-10-10). Kill the whole tree instead.
+    p = subprocess.Popen(["cmd", "/c", PYLABVIEW_CMD] + args, stdin=subprocess.DEVNULL,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        out, err = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], capture_output=True)
+        out, err = p.communicate()
+        raise RuntimeError("pylabview timed out after %d s: %s" % (timeout, " ".join(args)))
+    return p.returncode, out + err
 
 
 def extract(vi_path, out_dir):

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="seltun" key="seltun/event/out" source="C:/temp/aixml-no-grpc/ref/rb/rb.xml"><types><TypeDesc Type="Boolean" Format="inline" Label="Stop" /></types><heap><wrap><SL__arrayElement class="term" uid="1160">
+                    <objFlags>64</objFlags>
+                    <dco class="selTun" uid="1155">
+                      <objFlags>3147777</objFlags>
+                      <termList elements="3">
+                        <SL__arrayElement uid="1157" />
+                        <SL__arrayElement uid="1218" />
+                        <SL__arrayElement uid="1160" />
+                        </termList>
+                      <typeDesc>TypeID(15)</typeDesc>
+                      <termBounds>(203, 534, 212, 543)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1157">
+                            <objFlags>163840</objFlags>
+                            <dco uid="1155" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1218">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="1155" />
+                            </SL__arrayElement>
+                          </wrap></heap></part>

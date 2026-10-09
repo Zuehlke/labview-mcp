@@ -790,5 +790,24 @@
     }
    }
   ]
+ },
+ "t88_event": {
+  "cases": []
+ },
+ "t89_case_default": {
+  "cases": [
+   {
+    "inputs": "sel=1;x=3.5",
+    "outputs": {
+     "out": 3.5
+    }
+   },
+   {
+    "inputs": "sel=7;x=3.5",
+    "outputs": {
+     "out": 0
+    }
+   }
+  ]
  }
 }

@@ -295,6 +295,15 @@ class Harvester:
                 # Bundle, Unbundle, Index Array, Build Array: nodes of their own class, not prims;
                 # the composer rebuilds their terminal lists from the wired types
                 self.save("node", "node/%s" % cls, source, e, resolve_types(b, e))
+            elif cls == "eventStruct":
+                # an Event Structure: dynamic-event and timeout terminals, selTun tunnels,
+                # EventNodeEvents (one EventSpec per registration), dataNodeList per frame
+                self.save("struct", "struct/event", source, e, resolve_types(b, e))
+                for direction, tun in case_tunnels(e):
+                    self.save("seltun", "seltun/event/%s" % direction, source, tun, resolve_types(b, tun))
+            elif cls == "eventDataNode":
+                # the left-hand node of an event frame: an Unbundle By Name over "Event Data"
+                self.save("node", "node/eventData", source, e, resolve_types(b, e))
             elif cls == "flatSequence":
                 # a Flat Sequence: sequenceFrame structures side by side, each with seqTun
                 # tunnels whose DCO termList is [inner, outer] - as a loop's
