@@ -201,6 +201,12 @@ def load_names():
             if not row or row[0] == "primResID":
                 continue
             terms[(row[0], row[2])] = unescape(html.unescape(row[3]))
+    learned = os.path.join(HERE, "terminal-names-learned.tsv")
+    if os.path.exists(learned):
+        with open(learned, encoding="utf-8") as f:
+            for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
+                if row and row[0] != "primResID":
+                    terms.setdefault((row[0], row[2]), unescape(row[3]))
     return {n: r for n, (r, _) in prim_by_name.items()}, terms
 
 

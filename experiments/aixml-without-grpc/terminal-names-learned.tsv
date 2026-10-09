@@ -1,0 +1,113 @@
+# (primResID, parmIndex) -> terminal name, learned by compare_with_nigel.py --learn:
+# a wire end vi2aixml could only call ?parmN, named by LabVIEW's own export of the
+# same VI. Ambiguous ones (two names for one slot) are left out.
+primResID	node	parmIndex	terminal
+1084	DataSocket Open	10	mode
+1086	DataSocket Read	10	type (Variant)
+1103		1	y
+1103		out	x >= y?
+1110		1	y
+1114		1	x
+1114		out	x >= 0?
+1165	Unflatten From String	10	data includes array or string size? (T)
+1165	Unflatten From String	7	type
+1165	Unflatten From String	9	byte order (0:big-endian, network order)
+1166	Type Cast	1	type
+1503	String Subset	2	offset (0)
+1539	Spreadsheet String To Array	1	delimiter (Tab)
+1539	Spreadsheet String To Array	4	format string
+1600	Get Date/Time String	2	want seconds? (F)
+1712	TCP Wait On Listener	10	resolve remote address (T)
+1713	TCP Close Connection	11	connection ID
+1713	TCP Close Connection	out	error out
+1714	TCP Write	3	connection ID out
+1716	TCP Read	3	connection ID out
+1716	TCP Read	out	error out
+1731	Start TLS	10	immutable TLS configuration
+1731	Start TLS	9	server hostname
+1741	Close TLS Configuration	11	TLS configuration
+1741	Close TLS Configuration	8	error in (no error)
+1741	Close TLS Configuration	out	error out
+1815	Boolean Array To Number	out	number
+1950	GPIB Write	1	data
+1950	GPIB Write	4	timeout ms (488.2 global)
+1950	GPIB Write	6	error out
+1951	GPIB Read	1	byte count
+1951	GPIB Read	3	error in
+1951	GPIB Read	4	timeout ms (488.2 global)
+2010	TDMS Write	4	tdms file out
+2010	TDMS Write	7	channel name(s) in (Untitled)
+2011	TDMS Read	12	data type
+2011	TDMS Read	13	return channels in file order? (F)
+2011	TDMS Read	4	tdms file out
+2011	TDMS Read	7	channel name(s) in
+2012	TDMS Open	10	operation (0:open)
+2012	TDMS Open	6	disable buffering (T)
+2012	TDMS Open	7	file format version (2.0)
+2013	TDMS Close	8	error in (no error)
+2014	TDMS Set Properties	10	group name
+2014	TDMS Set Properties	7	property names
+2014	TDMS Set Properties	9	channel name
+2015	TDMS Get Properties	3	tdms file out
+2015	TDMS Get Properties	5	data type
+2015	TDMS Get Properties	7	property name
+2021	TDMS Advanced Open	10	operation (0:open)
+2021	TDMS Advanced Open	4	enable asynchronous? (T)
+2021	TDMS Advanced Open	6	disable buffering? (T)
+2022	TDMS Set Channel Information	7	data layout (0:non-interleaved)
+2023	TDMS Reserve File Size	7	append? (T)
+2024	TDMS Configure Asynchronous Writes	10	max asynchronous writes (4)
+2024	TDMS Configure Asynchronous Writes	7	pre-allocate? (F)
+2025	TDMS Set Next Write Position	10	offset (0)
+2025	TDMS Set Next Write Position	3	tdms file out
+2025	TDMS Set Next Write Position	5	channel name in
+2025	TDMS Set Next Write Position	7	group name in
+2027	TDMS Configure Asynchronous Reads	10	number of buffers (4)
+2028	TDMS Start Asynchronous Reads	10	total count (-1)
+2029	TDMS Advanced Synchronous Read	11	tdms file
+2029	TDMS Advanced Synchronous Read	6	data type
+2032	TDMS Advanced Close	3	file path out
+2033	TDMS Set Next Read Position	10	offset (0)
+2033	TDMS Set Next Read Position	5	channel name in
+2033	TDMS Set Next Read Position	7	group name in
+2157	TDMS In Memory Close	5	overwrite (F)
+2158	TDMS In Memory Read Bytes	5	byte count (-1: all)
+2308	VISA Open	10	duplicate session (F)
+2308	VISA Open	3	error out
+2308	VISA Open	7	timeout (0)
+2308	VISA Open	out	error out
+24201	Flatten To JSON	11	error out
+24202	Unflatten From JSON	1	type and defaults
+24202	Unflatten From JSON	3	error in (no error)
+24202	Unflatten From JSON	4	path
+24206	Open Python Session	3	error in (no error)
+2458	Look In Map	1	value
+8000	Automation Open	11	Automation Refnum
+8010	Open VI Reference	7	type specifier VI Refnum (for type only)
+8012	Open Application Reference	10	port number or service name (3363)
+8013	Open VI Object Reference	7	vi object class
+8013	Open VI Object Reference	8	error in (no error)
+8015	New VI Object	10	style
+8015	New VI Object	4	bounds
+8015	New VI Object	6	path
+8015	New VI Object	7	vi object class
+8016	To More Specific Class	2	target class
+8017		1	target class
+8017		2	generic class reference
+8050	Open/Create/Replace File	10	operation (0:open)
+8050	Open/Create/Replace File	3	refnum out
+8050	Open/Create/Replace File	8	error in
+8051	Read from Binary File	3	refnum out
+8051	Read from Binary File	5	data type
+8051	Read from Binary File	9	byte order (0:big-endian, network order)
+8052	Close File	4	error in
+8056	Delete	10	entire hierarchy (F)
+8058	File Dialog	3	selected path
+8063	Get File Size	4	error in
+8207	Set Waveform Attribute	4	error in
+8207	Set Waveform Attribute	6	name
+9003	Insert Menu Items	6	error in (no error)
+9003	Insert Menu Items	7	item tags
+9104	Send Notification	8	notifier out
+9108	Obtain Queue	4	max queue size (-1, unlimited)
+9111	Enqueue Element	out	queue
