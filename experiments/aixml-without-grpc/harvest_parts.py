@@ -295,6 +295,21 @@ class Harvester:
                 # Bundle, Unbundle, Index Array, Build Array: nodes of their own class, not prims;
                 # the composer rebuilds their terminal lists from the wired types
                 self.save("node", "node/%s" % cls, source, e, resolve_types(b, e))
+            elif cls == "gRef":
+                # a Local Variable: one terminal, an input when it writes (term objFlags 0x8000)
+                t = e.find("termList/SL__arrayElement")
+                rw = "write" if int(t.findtext("objFlags") or 0) & 0x8000 else "read"
+                self.save("node", "node/gRef/%s" % rw, source, e, resolve_types(b, e))
+            elif cls == "hiddenFBNode":
+                # a Feedback Node is TWO heap nodes naming each other, saved as one <wrap>
+                su = e.find("SlaveFBInputNode").get("uid") if e.find("SlaveFBInputNode") is not None else None
+                slave = next((x for x in b.bd.iter("SL__arrayElement") if x.get("uid") == su
+                              and x.get("class") == "slaveFBInputNode"), None)
+                if slave is not None:
+                    wrap = ET.Element("wrap")
+                    wrap.append(copy.deepcopy(e))
+                    wrap.append(copy.deepcopy(slave))
+                    self.save("node", "node/feedback", source, wrap, resolve_types(b, wrap))
             elif cls == "nMux":
                 # Bundle By Name and Unbundle By Name share a class; objFlags 0x10000 marks the
                 # unbundling one (measured: 0x50000 against 0x40000 on an AIXML-generated pair)

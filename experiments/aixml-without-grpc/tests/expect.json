@@ -748,5 +748,26 @@
     }
    }
   ]
+ },
+ "t84_locals": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "copy": 5,
+     "n again": 5
+    }
+   }
+  ]
+ },
+ "t85_feedback_root": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "count": 1
+    }
+   }
+  ]
  }
 }

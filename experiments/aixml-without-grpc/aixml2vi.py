@@ -960,6 +960,9 @@ class Composer:
         # oldest first); appending made the first control LabVIEW's insane one ({flags} 0x1000)
         self.pane_z.insert(0, fpdco)
         ET.SubElement(self.ddo_list, "SL__arrayElement", {"uid": fpdco.get("uid")})
+        # a Local Variable names its control by this position in ddoList
+        self.fp_info = getattr(self, "fp_info", {})
+        self.fp_info.setdefault(name, (len(self.ddo_list) - 1, tree, fpdco))
         if con is not None:
             c = ET.SubElement(self.cons, "SL__arrayElement", {"class": "ConpaneConnection"})
             if con != "0":
@@ -1396,6 +1399,100 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Node %r <- %s" % (name, src))
+
+    # ---- local variables and feedback nodes ---------------------------------------------------
+    def add_local(self, el):
+        """A Local Variable is a gRef node with one terminal typed like its control, pointing at
+        the control by its position in the front panel's ddoList (paramIdx, absent for 0) -
+        measured on an AIXML-generated VI: `copy`, third on the panel, carries paramIdx 2."""
+        self.check_attrs(el, ("element",))
+        name = unescape(el.get("element") or "")
+        info = getattr(self, "fp_info", {}).get(name)
+        if info is None:
+            raise Unsupported("Local Variable %s: no control or indicator named %r" % (el.get("uid"), name))
+        idx, tree, fpdco = info
+        # the control's fPDCO counts every diagram object that refers to it - its terminal AND
+        # each local (termListLength 2 with one local, measured); left at 1, the local's DCO was
+        # "insane {sub}" and LabVIEW crashed on the next load
+        tll = fpdco.find("termListLength")
+        if tll is not None:
+            tll.text = str(int(tll.text or 1) + 1)
+        ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
+        write = bool(ins)
+        diag = self.diag_of(el)
+        node, _, src = self.instantiate("node/gRef/%s" % ("write" if write else "read"))
+        term = node.find("termList")[0]
+        dco = term.find("dco")
+        pi = dco.find("paramIdx")
+        if idx == 0 and pi is not None:
+            dco.remove(pi)
+        elif idx:
+            if pi is None:
+                pi = ET.SubElement(dco, "paramIdx")
+            pi.text = str(idx)
+        dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)
+        # the gRef's label names the VI that OWNS the control, not the control: LabVIEW's own
+        # local read "pseq.vi"; the control's name there was an insane GRefDCO {sub} and a crash
+        lab = node.find("label/textRec/text")
+        if lab is not None:
+            lab.text = '"%s"' % self.vi_name.replace("\\", "\\\\").replace('"', '\\"')
+        self.ends[(el.get("uid"), name)] = (term.get("uid"), diag)
+        for _, net in outs:
+            if net:
+                self.net_type[net] = unlabel(tree)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Local Variable %r <- %s" % (name, src))
+
+    def add_feedback(self, el):
+        """A Feedback Node is two heap nodes naming each other - hiddenFBNode (previous value =
+        leftFeedback, initializer = initFeedback) and slaveFBInputNode (next value =
+        rightFeedback) - built like a shift register. Both sit in the diagram's node and z
+        lists and share their bounds."""
+        self.check_attrs(el)
+        if (el.get("uid_parent") or "root") != "root":
+            # measured: at the top level it computes; inside a For Loop the same pair - LabVIEW's
+            # node order, the diagram's 0x200 flag, a clean loop part - stays "good to bad after
+            # compiling", cause not found yet
+            raise Unsupported("Feedback Node %s inside a structure is not composable yet" % el.get("uid"))
+        ins, outs = dict(pairs(el.get("inputs"))), dict(pairs(el.get("outputs")))
+        # (an Element with no children is falsy, so no `a or b` here)
+        tree = self.net_type.get(ins.get("initializer"))
+        if tree is None:
+            tree = self.net_type.get(ins.get("next value"))
+        if tree is None:
+            raise Unsupported("Feedback Node %s: its type is not known (wire its initializer)" % el.get("uid"))
+        diag = self.diag_of(el)
+        wrap, _, src = self.instantiate("node/feedback")
+        hidden, slave = list(wrap)
+        lvheap.set_typeids(wrap, [self.heap_tid(tree) for _ in lvheap.typeid_elements(wrap)])
+        terms = {t.find("dco").get("class"): t for n in (hidden, slave) for t in n.find("termList")}
+        keys = {"initializer": "initFeedback", "previous value": "leftFeedback", "next value": "rightFeedback"}
+        for k, cls in keys.items():
+            self.ends[(el.get("uid"), k)] = (terms[cls].get("uid"), diag)
+        if not ins.get("initializer"):
+            t = terms["initFeedback"]
+            t.find("objFlags").text = str(int(t.findtext("objFlags") or 0) & ~0x8000)
+        for net in outs.values():
+            if net:
+                self.net_type[net] = tree
+        # LabVIEW's own order: hidden then slave in nodeList, so slave above hidden in the z list
+        for n in (hidden, slave):
+            diag.nodes.append(n)
+            diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": n.get("uid")}))
+        # a diagram holding a feedback node carries objFlags bit 0x200 (a loop's inner diagram:
+        # 0x800 -> 0xA00, measured); without it the VI was "good to bad after compiling"
+        f = diag.el.find("objFlags")
+        if f is None:
+            f = ET.Element("objFlags")
+            diag.el.insert(0, f)
+        f.text = str(int(f.text or 0) | 0x200)
+        self.fb_origin = getattr(self, "fb_origin", {})
+        self.fb_origin[id(hidden)] = lvheap.parse_bounds(hidden.find("bounds").text)[:2]
+        diag.placed.append((hidden, el))
+        self.fb_pairs = getattr(self, "fb_pairs", []) + [(hidden, slave)]
+        self.report.append("Feedback Node <- %s" % src)
 
     # ---- waveforms --------------------------------------------------------------------------
     def waveform_fields(self):
@@ -2559,6 +2656,9 @@ class Composer:
                        and by_uid[e.get("uid_parent")].tag == "Structure")]
 
         def inputs_of(e):
+            if e.tag == "Node" and unescape(e.get("_name") or "") == "Feedback Node":
+                # its next value comes from downstream - only the initializer orders it
+                return [(k, n) for k, n in pairs(e.get("inputs")) if k == "initializer"]
             if e.tag == "ShiftReg":   # a register's type comes from its initializer
                 left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
                 return pairs(left.get("inputs"))
@@ -2584,6 +2684,10 @@ class Composer:
                     self.add_agg_node(e)
                 elif e.tag == "Node" and nm in ("Build Waveform", "Get Waveform Components"):
                     self.add_waveform_node(e)
+                elif e.tag == "Node" and nm == "Local Variable":
+                    self.add_local(e)
+                elif e.tag == "Node" and nm == "Feedback Node":
+                    self.add_feedback(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):
                     self.add_template_node(e)
                 elif e.tag == "Node":
@@ -2601,6 +2705,14 @@ class Composer:
         self.finish_cases()
         nets = self.wire(elements)
         self.layout(nets)
+        for hidden, slave in getattr(self, "fb_pairs", []):
+            slave.find("bounds").text = hidden.find("bounds").text   # one node on the diagram
+            # the hidden node's terminals sit in DIAGRAM coordinates (LabVIEW's: termBounds equal
+            # to the node's own top-left), so they move with it
+            t0, l0 = self.fb_origin[id(hidden)]
+            t1, l1 = lvheap.parse_bounds(hidden.find("bounds").text)[:2]
+            for t in hidden.find("termList"):
+                _shift_bounds(t.find("dco/termBounds"), t1 - t0, l1 - l0)
         self.connector_pane()
         self.description = vi.get("description") or ""
 

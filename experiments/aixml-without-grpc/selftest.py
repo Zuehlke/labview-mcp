@@ -34,7 +34,8 @@ def lvcom(vi, inputs, outputs, run=True, timeout=60):
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
         out = r.stdout + r.stderr
     except subprocess.TimeoutExpired as ex:
-        out = (ex.stdout or b"").decode(errors="replace") + "\n<TIMEOUT>"
+        so = ex.stdout or ""
+        out = (so.decode(errors="replace") if isinstance(so, bytes) else so) + "\n<TIMEOUT>"
     state = re.search(r"ExecState = (\S+)", out)
     got = dict(re.findall(r"  get (.+?) = (.*)", out))
     return (state.group(1) if state else None), got, out

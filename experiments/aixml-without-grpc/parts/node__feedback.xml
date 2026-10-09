@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/feedback" source="C:/temp/aixml-no-grpc/probes/b_pseq/pseq.xml" clean="1"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="zero" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="zero" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="zero" /></types><heap><wrap><SL__arrayElement class="hiddenFBNode" uid="4320">
+                <objFlags>2097664</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4806">
+                    <objFlags>131328</objFlags>
+                    <dco class="leftFeedback" uid="4796">
+                      <typeDesc>TypeID(42)</typeDesc>
+                      <termBounds>(71, 144, 83, 160)</termBounds>
+                      <termHotPoint>(-4, 0)</termHotPoint>
+                      <termBMPs>209</termBMPs>
+                      <rsrDCO uid="4793" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4807">
+                    <objFlags>33024</objFlags>
+                    <dco class="initFeedback" uid="4798">
+                      <typeDesc>TypeID(43)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(83, 144, 95, 176)</termBounds>
+                      <termHotPoint>(0, 2)</termHotPoint>
+                      <termBMPs>213</termBMPs>
+                      <rsrDCO uid="4793" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(71, 144, 95, 176)</bounds>
+                <shortCount>2</shortCount>
+                <feedbackNodeDelay>01</feedbackNodeDelay>
+                <SlaveFBInputNode uid="4803" />
+                </SL__arrayElement>
+              <SL__arrayElement class="slaveFBInputNode" uid="4803">
+                <termList elements="1">
+                  <SL__arrayElement class="term" uid="4805">
+                    <objFlags>163840</objFlags>
+                    <dco class="rightFeedback" uid="4793">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(41)</typeDesc>
+                      <termBounds>(0, 16, 12, 32)</termBounds>
+                      <termHotPoint>(4, 0)</termHotPoint>
+                      <termBMPs>210</termBMPs>
+                      <lsrDCOList elements="2">
+                        <SL__arrayElement uid="4796" />
+                        <SL__arrayElement uid="4798" />
+                        </lsrDCOList>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(71, 144, 95, 176)</bounds>
+                <shortCount>6</shortCount>
+                <HiddenFBNode uid="4320" />
+                </SL__arrayElement>
+              </wrap></heap></part>
