@@ -139,8 +139,46 @@ callee file, no LabVIEW needed. Verified three ways: a composed caller of NI's c
 of an AIXML-generated source-only 4833 VI (`in = −4 → out = −8`), and of a **composed** callee
 (`t50`, `1.5 + 2 = 3.5`) — the last one written entirely without LabVIEW or gRPC.
 
-Not yet: callees in vi.lib or inside a library (`<vilib>` paths, qualified names), which is what
-most of NI's own calls are; coercion at a call terminal.
+### 4b. Calls into vi.lib, libraries and add-ons
+
+`resolve.py` maps a `target` to the callee file and to the link LabVIEW writes for it, with no
+LabVIEW involved. Every rule below was read off a link record LabVIEW wrote itself:
+
+| target | link written |
+|---|---|
+| `X.vi` beside the caller | `TpVal 1`, `["", "X.vi"]` |
+| `X.vi` in the installation | `TpVal 0`, `["<vilib>", "Utility", "error.llb", "X.vi"]` — qualified name `[X.vi]`, `VILSPathRef` zero-filled |
+| `Lib.lvlib:X.vi` | qualified name `[Lib.lvlib, X.vi]`, path to the VI, and the diagram record's `VILSPathRef` to the `.lvlib` |
+
+* **A path is written against a symbolic anchor** — `<vilib>`, `<userlib>`, `<instrlib>`,
+  `<resource>` — and an **LVAddons tree maps onto the same anchor**: NI's `Is discuss
+  enabled.vi` links `<resource>\plugins\lv_are_nigel_features_enabled.vi`, which lives under
+  `C:\Program Files\NI\LVAddons\lvai\26.3\resource`. The resolver reproduces that record exactly.
+* **In LabVIEW 2026 an `.llb` is almost always a DIRECTORY** — 323 of the 344 under vi.lib — so
+  its VIs are plain files and the `.llb` is one more path component. pylabview refuses the
+  directory itself (`Permission denied`), which is the tell.
+* **An installed `.lvlib` lists its members by symbolic URL** (`/<vilib>/Utility/AngleManip/
+  Degrees to Radians (Scalar DBL).vi`), not relative to itself; a user's library writes them
+  relative. Both are resolved.
+* **A polymorphic call** (`target` the parent, `instance` the member it adapted to) is written as
+  a call to the instance — the same diagram with the choice fixed.
+* **A typedef's wrapped type stays INLINE in the type table** (`Nested="True"`); turning it into
+  a reference made pylabview's writer fail (`int() can't convert non-string`) on the first callee
+  with a typedef on its pane.
+
+Measured, each from a composed caller run in LabVIEW over COM, no sanity warning on any:
+
+| test | callee | result |
+|---|---|---|
+| `t51` | `NI_AngleManipulation.lvlib:Degrees to Radians (Scalar DBL).vi` | 180 → 3.14159265358979 |
+| `t52` | `NI_Gmath.lvlib:Error Function.vi` — a library member inside an `.llb` folder | erf(0.5) = 0.520499877813047 |
+| `t53` | `Trim Whitespace (string).vi` by bare name, its typedef input left unwired | `"  hi there  "` → `"hi there"` |
+| `t54` | int32 into the double input of `t51`'s callee — coercion at a call terminal | 90 → 1.5707963267949 |
+| `t55` | the same call inside a For Loop, summed through a shift register | n = 4 → 0.10471975511966 |
+| `t56` | `Clear Errors.vi` twice, chained through the error cluster | runs; the cluster wire is typed from the callee's pane alone |
+
+Coercion at a call terminal needed nothing special — unlike a primitive's terminal (§3), whose
+coerced input had to carry the wired type and the coercion flag.
 
 ## 4. VI → AIXML, against NI's own exports
 

@@ -362,5 +362,35 @@
     }
    }
   ]
+ },
+ "t54_call_coerce": {
+  "cases": [
+   {
+    "inputs": "deg=90",
+    "outputs": {
+     "rad": 1.5707963267948966
+    }
+   }
+  ]
+ },
+ "t55_call_in_loop": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "sum": 0.10471975511965977
+    }
+   }
+  ]
+ },
+ "t56_call_error_chain": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "cleared": "False"
+    }
+   }
+  ]
  }
 }
