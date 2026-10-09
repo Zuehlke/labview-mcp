@@ -2229,6 +2229,80 @@ class Composer:
                 self.net_type[n] = tree
         self.report.append("Case tunnel %s (%s)" % (outer_el.get("_id"), d))
 
+    def add_flatseq(self, el):
+        """A Flat Sequence: a flatSequence object (defined in the parent's z list) holding one
+        sequenceFrame structure per frame, side by side; the PARENT's nodeList names each
+        frame. A frame is a one-diagram structure with seqTun tunnels ([inner, outer], 2048 in,
+        2049 out); data between frames runs through a wire in the parent diagram. Measured on an
+        AIXML-generated VI."""
+        frames_el = [c for c in el if isinstance(c.tag, str) and c.tag == "Diagram"] or [el]
+        parent = self.diag_of(el)
+        got = self.instantiate("struct/flatSequence", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no flat sequence part harvested")
+        seq, donor_types, src = got
+        sl = seq.find("sequenceList")
+        proto = copy.deepcopy(sl[0])
+        for c in list(sl):
+            sl.remove(c)
+        for c in list(proto.find("termList")):
+            proto.find("termList").remove(c)
+        for c in list(proto.find("tunnelList")):
+            proto.find("tunnelList").remove(c)
+        pd = Diagram(proto.find("diagramList")[0])
+        for c in list(pd.srn_terms):
+            pd.srn_terms.remove(c)
+        for c in list(pd.nodes):
+            if c.get("class") != "sRN":
+                pd.nodes.remove(c)
+        for lst in (pd.z, pd.signals):
+            for c in list(lst):
+                lst.remove(c)
+        self.seqs = getattr(self, "seqs", [])
+        frames = []
+        for f in frames_el:
+            fr = copy.deepcopy(proto)
+            lvheap.renumber(fr, self.alloc)
+            sl.append(fr)
+            fd = Diagram(fr.find("diagramList")[0], owner=f)
+            self.diagrams[f.get("uid")] = fd
+            ET.SubElement(parent.nodes, "SL__arrayElement", {"uid": fr.get("uid")})
+            frames.append((fr, fd, f))
+        sl.set("elements", str(len(sl)))
+        parent.z.insert(0, seq)
+        parent.placed.append((seq, el))
+        self.seqs.append((seq, frames, parent))
+        self.report.append("Structure 'Flat Sequence' (%d frames) <- %s" % (len(frames), src))
+
+    def add_seq_tunnel(self, el, frame_el):
+        """A Flat Sequence frame's tunnel: one AIXML <Tunnel> with both sides, outer half on the
+        frame (in the parent diagram), inner half in the frame's diagram."""
+        d = "in" if el.get("_id", "").startswith("In") else "out"
+        seq, frames, parent = next((s for s in self.seqs if any(f is frame_el for _, _, f in s[1])), (None, None, None))
+        if seq is None:
+            raise Unsupported("Tunnel %s: no flat sequence frame %s" % (el.get("uid"), frame_el.get("uid")))
+        fr, fd, _ = next(x for x in frames if x[2] is frame_el)
+        got = self.instantiate("seqtun/%s" % d)
+        if got is None:
+            raise Unsupported("no %s sequence tunnel part harvested" % d)
+        wrap = got[0]
+        outer, inner = list(wrap)
+        src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
+        tree = self.net_type.get(src_net)
+        if tree is None:
+            raise Unsupported("Tunnel %s: the type of %r is not known" % (el.get("uid"), src_net))
+        lvheap.set_typeids(wrap, [self.heap_tid(tree) for _ in lvheap.typeid_elements(wrap)])
+        fr.find("termList").append(outer)
+        ET.SubElement(fr.find("tunnelList"), "SL__arrayElement", {"uid": outer.find("dco").get("uid")})
+        fd.srn_terms.append(inner)
+        for _, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = tree
+        outer_end, inner_end = (outer.get("uid"), parent), (inner.get("uid"), fd)
+        self.ends[(el.get("uid"), "in")] = outer_end if d == "in" else inner_end
+        self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
+        self.report.append("Sequence tunnel %s (%s)" % (el.get("_id"), d))
+
     def add_tunnel(self, el, loop_el):
         d = "in" if el.get("_id", "").startswith("In") else "out"
         mode = el.get("mode")
@@ -2494,7 +2568,56 @@ class Composer:
             n = max(1, len(case.find("tunnelList")))
             # room for every tunnel slot plus the selector terminal below them
             sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
+        frame_dims = {}       # (an Element takes no Python attributes)
+        for seq, frames, parent in reversed(getattr(self, "seqs", [])):
+            dims = []
+            for fr, fd, _ in frames:
+                w, h = self._place(fd, lv, sizes, 30, 30)
+                n_in = sum(1 for t in fr.find("termList") if not int(t.find("dco").findtext("objFlags") or 0) & 1)
+                n_out = len(fr.find("termList")) - n_in
+                dims.append((max(h + 40, 30 + 24 * max(n_in, n_out, 1) + 20, 90), max(w + 40, 112)))
+            H = max(d[0] for d in dims)
+            W = sum(d[1] for d in dims) - 5 * (len(dims) - 1)   # neighbours share 5 px of border
+            sizes[seq.get("uid")] = (H, W)
+            frame_dims[id(seq)] = dims
         self._place(self.root, lv, sizes, 40, 40)
+        for seq, frames, parent in getattr(self, "seqs", []):
+            st, sl_, _, _ = lvheap.parse_bounds(seq.find("bounds").text)
+            x = 0
+            for (fr, fd, _), (h, w) in zip(frames, frame_dims[id(seq)]):
+                H = lvheap.size_of(seq)[0]
+                fr.find("bounds").text = lvheap.fmt_bounds((0, x, H, x + w))
+                cr = fr.find("contRect")
+                if cr is not None:
+                    cr.text = lvheap.fmt_bounds((10, x + 6, H - 10, x + w - 6))
+                sb = fd.srn.find("bounds")
+                if sb is not None:
+                    sb.text = lvheap.fmt_bounds((-st, -(sl_ + x), -st, -(sl_ + x)))
+                # A frame's tunnels are placed in the FRAME's coordinates; on a border it shares
+                # with a neighbour LabVIEW puts them on the bottom edge instead (an AIXML-generated
+                # VI: first frame's output at (81, 87) of 90 x 112; on the shared side it was
+                # "Insane Sequence Tunnel {graphics}")
+                first, last = fr is frames[0][0], fr is frames[-1][0]
+                slot = {0: 0, 1: 0, "b0": 0, "b1": 0}
+                for t in fr.find("termList"):
+                    tb = t.find("dco/termBounds")
+                    if tb is None:
+                        continue
+                    out = int(t.find("dco").findtext("objFlags") or 0) & 1
+                    tt, tl_, tbb, tr = lvheap.parse_bounds(tb.text)
+                    th, tw = tbb - tt, tr - tl_
+                    shared = (out and not last) or (not out and not first)
+                    if shared:
+                        k = slot["b%d" % out]
+                        slot["b%d" % out] += 1
+                        y = H - th
+                        xx = w - 25 - 12 * k if out else 10 + 12 * k
+                    else:
+                        y = 20 + 24 * slot[out]
+                        slot[out] += 1
+                        xx = w - tw if out else 0
+                    tb.text = lvheap.fmt_bounds((y, xx, y + th, xx + tw))
+                x += w - 5
         for case, frame_diags, parent in getattr(self, "cases", []):
             t, l, b, r = lvheap.parse_bounds(case.find("bounds").text)
             cr = case.find("contRect")
@@ -2597,7 +2720,7 @@ class Composer:
         for el in parent_el:
             if not isinstance(el.tag, str):
                 continue
-            if el.tag in ("Structure", "CaseFrame"):
+            if el.tag in ("Structure", "CaseFrame", "Diagram"):
                 out.append(el)
                 for c in self.flatten(el):
                     if c.tag == "Condition":
@@ -2620,7 +2743,7 @@ class Composer:
         elements = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
-                          "ShiftReg", "Left", "Right", "CaseFrame", "Call", "FixedConst"):
+                          "ShiftReg", "Left", "Right", "CaseFrame", "Call", "FixedConst", "Diagram"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
@@ -2631,8 +2754,18 @@ class Composer:
         for el in [e for e in elements if e.tag == "Structure"]:
             if el.get("_name") == "Case Structure":
                 self.add_case(el)
+            elif el.get("_name") == "Flat Sequence Frame":
+                self.add_flatseq(el)
             else:
                 self.add_loop(el)
+
+        def seq_frame(uid):
+            """The flat-sequence frame a tunnel sits on: a <Diagram> of one, or the structure."""
+            p = by_uid.get(uid)
+            if p is not None and p.tag == "Diagram":
+                gp = by_uid.get(p.get("uid_parent"))
+                return p if gp is not None and gp.get("_name") == "Flat Sequence Frame" else None
+            return p if p is not None and p.get("_name") == "Flat Sequence Frame" else None
         # a case tunnel is written as one outside half on the structure and one inside half
         # per frame, sharing an _id; it is scheduled as one item, by its outside half
         case_halves = {}
@@ -2653,7 +2786,7 @@ class Composer:
             return p is not None and p.tag == "Structure" and p.get("_name") == "Case Structure"
         pending = [e for e in elements if e.tag in ("Node", "ShiftReg", "Call")
                    or (e.tag == "Tunnel" and by_uid.get(e.get("uid_parent")) is not None
-                       and by_uid[e.get("uid_parent")].tag == "Structure")]
+                       and (by_uid[e.get("uid_parent")].tag == "Structure" or seq_frame(e.get("uid_parent")) is not None))]
 
         def inputs_of(e):
             if e.tag == "Node" and unescape(e.get("_name") or "") == "Feedback Node":
@@ -2694,6 +2827,8 @@ class Composer:
                     self.add_node(e)
                 elif e.tag == "Call":
                     self.add_call(e)
+                elif e.tag == "Tunnel" and seq_frame(e.get("uid_parent")) is not None:
+                    self.add_seq_tunnel(e, seq_frame(e.get("uid_parent")))
                 elif e.tag == "Tunnel" and is_case(e.get("uid_parent")):
                     self.add_case_tunnel(e, by_uid[e.get("uid_parent")],
                                          case_halves.get((e.get("uid_parent"), e.get("_id")), {}))
@@ -2732,6 +2867,10 @@ class Composer:
             grown += [loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList")]
         for case, _, _ in getattr(self, "cases", []):
             grown += [case.find("termList"), case.find("tunnelList")]
+        for seq, frames, _ in getattr(self, "seqs", []):
+            grown.append(seq.find("sequenceList"))
+            for fr, _, _ in frames:
+                grown += [fr.find("termList"), fr.find("tunnelList")]
         for lst in grown:
             lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))

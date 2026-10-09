@@ -769,5 +769,15 @@
     }
    }
   ]
+ },
+ "t86_flat_sequence": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "seq": 11
+    }
+   }
+  ]
  }
 }

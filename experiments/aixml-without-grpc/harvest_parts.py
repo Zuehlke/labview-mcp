@@ -106,7 +106,7 @@ def shift_register_pair(loop):
     return wrap
 
 
-def case_tunnels(case):
+def case_tunnels(case, dco_class="selTun"):
     """Each tunnel of a Case Structure as a <wrap> of [outer, inner per frame...]. A selTun
     DCO's termList names the inner terminal of every frame, in frame order, then the outer
     one (measured on Multiply Force.vi). An input tunnel's DCO has objFlags 2048, an output's
@@ -121,7 +121,7 @@ def case_tunnels(case):
     out = []
     for t in case.find("termList"):
         dco = t.find("dco")
-        if dco is None or dco.get("class") != "selTun":
+        if dco is None or dco.get("class") != dco_class:
             continue
         uids = [x.get("uid") for x in dco.find("termList")]
         if len(uids) != len(frames) + 1 or uids[-1] != t.get("uid") or not all(u in inner for u in uids[:-1]):
@@ -295,6 +295,32 @@ class Harvester:
                 # Bundle, Unbundle, Index Array, Build Array: nodes of their own class, not prims;
                 # the composer rebuilds their terminal lists from the wired types
                 self.save("node", "node/%s" % cls, source, e, resolve_types(b, e))
+            elif cls == "flatSequence":
+                # a Flat Sequence: sequenceFrame structures side by side, each with seqTun
+                # tunnels whose DCO termList is [inner, outer] - as a loop's
+                self.save("struct", "struct/flatSequence", source, e, resolve_types(b, e))
+                for fr in e.find("sequenceList"):
+                    srn = fr.find("diagramList/SL__arrayElement/nodeList/SL__arrayElement[@class='sRN']/termList")
+                    by_uid = {t.get("uid"): t for t in srn} if srn is not None else {}
+                    for t in fr.find("termList"):
+                        dco = t.find("dco")
+                        if dco is None or dco.get("class") != "seqTun":
+                            continue
+                        uids = [x.get("uid") for x in dco.find("termList")]
+                        inner = by_uid.get(uids[0])
+                        if inner is None:
+                            continue
+                        wrap = ET.Element("wrap")
+                        wrap.append(copy.deepcopy(t))
+                        wrap.append(copy.deepcopy(inner))
+                        d = "out" if int(dco.findtext("objFlags") or 0) & 1 else "in"
+                        self.save("seqtun", "seqtun/%s" % d, source, wrap, resolve_types(b, wrap))
+            elif cls == "commentNode":
+                # Diagram Disable (commentMode) and Conditional Disable structures
+                kind = "diagram" if e.find("commentMode") is not None else "conditional"
+                self.save("struct", "struct/disable/%s" % kind, source, e, resolve_types(b, e))
+                for direction, tun in case_tunnels(e, "commentTun"):
+                    self.save("commenttun", "commenttun/%s" % direction, source, tun, resolve_types(b, tun))
             elif cls == "gRef":
                 # a Local Variable: one terminal, an input when it writes (term objFlags 0x8000)
                 t = e.find("termList/SL__arrayElement")
