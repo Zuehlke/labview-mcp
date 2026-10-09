@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/aBuild" source="AIXML-generated probe: parr.vi" clean="1"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="e2" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="e1" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="e2" /></types><heap><SL__arrayElement class="aBuild" uid="4250">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4567">
+            <objFlags>64</objFlags>
+            <dco class="aBuildDCO" uid="4565">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 17, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4564">
+            <objFlags>32832</objFlags>
+            <dco class="aBuildDCO" uid="4562">
+              <typeDesc>TypeID(33)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4570">
+            <objFlags>32832</objFlags>
+            <dco class="aBuildDCO" uid="4569">
+              <typeDesc>TypeID(34)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(480, 269, 497, 301)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4562" />
+          <SL__arrayElement uid="4569" />
+          </dcoList>
+        <dcoAgg uid="4565" />
+        </SL__arrayElement>
+      </heap></part>

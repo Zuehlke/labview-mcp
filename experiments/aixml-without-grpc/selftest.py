@@ -54,20 +54,44 @@ def insanities(vi):
     return n
 
 
+def log_saturated():
+    """LabVIEW STOPS WRITING its log after about 100 DWarn events (200 lines) - measured
+    2026-10-09: the log froze at 1.75 MB while VIs kept loading, so every later insanity check
+    read nothing and passed. A saturated log makes this gate blind; restart LabVIEW."""
+    import glob
+    for log in glob.glob(os.path.join(os.environ.get("TEMP", ""), "LabVIEW_*_cur.txt")):
+        with open(log, encoding="utf-8", errors="replace") as f:
+            if sum(1 for l in f if "DWarn" in l) >= 200:
+                return log
+    return None
+
+
 def same(want, got):
     if got is None:
         return False
+    w, g = str(want).strip(), str(got).strip()
+    if w.startswith("[") and g.startswith("["):
+        # an array or cluster, printed by lv-com.ps1 as [a,b,[c,d]]: element by element
+        import aixml2vi
+        a, b = aixml2vi.parse_literal(w), aixml2vi.parse_literal(g)
+
+        def eq(x, y):
+            if isinstance(x, list) or isinstance(y, list):
+                return isinstance(x, list) and isinstance(y, list) and len(x) == len(y) \
+                    and all(eq(p, q) for p, q in zip(x, y))
+            return same(x, y)
+        return eq(a, b)
     try:
         return abs(float(want) - float(got)) < 1e-9 * max(1.0, abs(float(want)))
     except ValueError:
-        return str(want).lower() == str(got).lower()
+        return w.lower() == g.lower()
 
 
 def main(argv):
-    flt = [a for a in argv if not a.startswith("--")]
     out_dir = r"C:\temp\aixml-no-grpc\out"
     if "--out" in argv:
         out_dir = argv[argv.index("--out") + 1]
+    flt = [a for a in argv if not a.startswith("--") and a != out_dir]
     os.makedirs(out_dir, exist_ok=True)
     expect = json.load(open(os.path.join(HERE, "tests", "expect.json"), encoding="utf-8"))
     stamp = time.strftime("%H%M%S")
@@ -110,10 +134,17 @@ def main(argv):
         bad = insanities(vi)
         if bad:
             status += " insane:%d" % bad
+        elif log_saturated():
+            status += " (log full)"   # LabVIEW stopped logging: nothing could be checked
         results.append((name, status if cases else "LOADS", "; ".join(verdicts)))
     for name, status, detail in results:
         print("%-28s %-22s %s" % (name, status, detail))
-    return 0 if all(s in ("PASS", "LOADS") for _, s, _ in results) else 1  # insane counts as a failure
+    sat = log_saturated()
+    if sat:
+        print("WARNING: %s is SATURATED (>= 100 DWarn events) - LabVIEW no longer writes it, so the "
+              "insanity check above saw nothing. Restart LabVIEW and run again." % sat)
+        return 1
+    return 0 if all(s in ("PASS", "LOADS", "PASS (log full)", "LOADS (log full)") for _, s, _ in results) else 1  # insane counts as a failure
 
 
 if __name__ == "__main__":

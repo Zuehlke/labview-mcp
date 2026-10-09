@@ -405,5 +405,81 @@
     }
    }
   ]
+ },
+ "t60_cluster_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "pt out": "[1.5,2.5]",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t61_array_pass": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,2,3]",
+    "outputs": {
+     "consts": "[1,2,3]",
+     "values out": "[1.5,2,3]"
+    }
+   }
+  ]
+ },
+ "t62_enum_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "mode out": 2,
+     "mode echo": 0
+    }
+   }
+  ]
+ },
+ "t63_unbundle_by_name": {
+  "cases": [
+   {
+    "inputs": "pt={1.5,2.25}",
+    "outputs": {
+     "sum": 3.75
+    }
+   }
+  ]
+ },
+ "t64_bundle_by_name": {
+  "cases": [
+   {
+    "inputs": "new y=-4",
+    "outputs": {
+     "pt": "[1.5,-4]"
+    }
+   }
+  ]
+ },
+ "t65_bundle_unbundle": {
+  "cases": [
+   {
+    "inputs": "n=42",
+    "outputs": {
+     "p": 42,
+     "q": "True"
+    }
+   }
+  ]
+ },
+ "t66_array_nodes": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,2.5,3.5]",
+    "outputs": {
+     "n": 3,
+     "second": 2.5,
+     "built": "[7,2.5]"
+    }
+   }
+  ]
  }
 }

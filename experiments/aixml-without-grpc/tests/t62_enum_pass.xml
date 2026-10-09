@@ -1,0 +1,6 @@
+<VI _name="T62 Enum Pass.vi" description="An enum constant and an enum control wired to enum indicators.">
+  <Constant _name="mode const" type="uint16{Off,On,Auto}" uid="4200" uid_parent="root" value="2" outputs="value:4200.value"/>
+  <Indicator _name="mode out" type="uint16{Off,On,Auto}" uid="4210" uid_parent="root" value="0" inputs="value:4200.value"/>
+  <Control _name="mode" type="uint16{Off,On,Auto}" uid="4220" uid_parent="root" value="0" outputs="value:4220.value"/>
+  <Indicator _name="mode echo" type="uint16{Off,On,Auto}" uid="4230" uid_parent="root" value="0" inputs="value:4220.value"/>
+</VI>

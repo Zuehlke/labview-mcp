@@ -29,6 +29,13 @@ function Get-P($o, $n) {
 function Call-M($o, $n, [object[]]$a) {
     return [Microsoft.VisualBasic.Interaction]::CallByName($o, $n, [Microsoft.VisualBasic.CallType]::Method, $a)
 }
+# An array or a cluster comes back over COM as a SAFEARRAY of variants; print it as AIXML writes
+# a literal, [a,b,[c,d]], so a test can compare it as text.
+function Format-V($v) {
+    if ($v -is [Array]) { return '[' + (($v | ForEach-Object { Format-V $_ }) -join ',') + ']' }
+    if ($v -is [double]) { return $v.ToString('R', [Globalization.CultureInfo]::InvariantCulture) }
+    return [string]$v
+}
 $ViPath = @($ViPath | ForEach-Object { $_.Split('|') } | Where-Object { $_ })
 $lv = [Activator]::CreateInstance([Type]::GetTypeFromProgID('LabVIEW.Application'))
 Write-Output ('LabVIEW ' + (Get-P $lv 'Version'))
@@ -47,6 +54,21 @@ foreach ($p in $ViPath) {
             $val = $v
             $d = 0.0
             if ($v -eq 'true') { $val = $true } elseif ($v -eq 'false') { $val = $false }
+            elseif ($v.StartsWith('{') -and $v.EndsWith('}')) {
+                # a CLUSTER, {1.5,2,true,text}: COM wants it as a variant array - a double[] is
+                # accepted without an error and silently ignored (measured: the control stayed 0)
+                $items = @($v.Substring(1, $v.Length - 2).Split(','))
+                $val = [object[]]@($items | ForEach-Object {
+                    $x = 0.0
+                    if ($_ -eq 'true') { $true } elseif ($_ -eq 'false') { $false }
+                    elseif ([double]::TryParse($_, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$x)) { $x }
+                    else { [string]$_ } })
+            }
+            elseif ($v.StartsWith('[') -and $v.EndsWith(']')) {
+                # a 1D numeric array, [1.5,2,3]; [] is the empty one
+                $items = @($v.Substring(1, $v.Length - 2).Split(',') | Where-Object { $_ -ne '' })
+                $val = [double[]]@($items | ForEach-Object { [double]::Parse($_, [Globalization.CultureInfo]::InvariantCulture) })
+            }
             elseif ([double]::TryParse($v, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$d)) { $val = $d }
             try { [void](Call-M $vi 'SetControlValue' ([object[]]@([string]$k, $val))); Write-Output ('  set ' + $k + ' = ' + $v) }
             catch { Write-Output ('  set ' + $k + ' FAILED: ' + (Inner $_.Exception)) }
@@ -63,7 +85,7 @@ foreach ($p in $ViPath) {
             else { Write-Output ('  run: done in ' + $sw.ElapsedMilliseconds + ' ms') }
         } catch { Write-Output ('  run FAILED: ' + (Inner $_.Exception)) }
         foreach ($k in ($Outputs -split ';' | Where-Object { $_ })) {
-            try { $r = Call-M $vi 'GetControlValue' ([object[]]@([string]$k)); Write-Output ('  get ' + $k + ' = ' + $r) }
+            try { $r = Call-M $vi 'GetControlValue' ([object[]]@([string]$k)); Write-Output ('  get ' + $k + ' = ' + (Format-V $r)) }
             catch { Write-Output ('  get ' + $k + ' FAILED: ' + (Inner $_.Exception)) }
         }
     }

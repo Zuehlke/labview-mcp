@@ -101,21 +101,29 @@ def case_tunnels(case):
     return out
 
 
-def plain_tunnels(loop):
+def plain_tunnels(loop, indexing=False):
     """Each PLAIN (non-indexing) tunnel of a loop as a <wrap> of [outer, inner] terminal.
     A plain input tunnel's lpTun DCO has objFlags 2048, a plain output's 2049 (bit 0 = output);
-    an indexing one carries TunnelType and an innerLpTunDCO and is left out."""
+    an indexing one carries an innerLpTunDCO (its inner terminal's own DCO, typed with the
+    ELEMENT) and is returned instead when indexing=True."""
     inner = loop.find("diagramList/SL__arrayElement[@class='diag']/nodeList/SL__arrayElement[@class='sRN']/termList")
-    ins = {t.find("dco").get("uid"): t for t in inner if t.find("dco") is not None and len(t.find("dco")) == 0}
+    by_uid = {t.get("uid"): t for t in inner}
     out = []
     for t in loop.find("termList"):
         dco = t.find("dco")
-        if dco is None or dco.get("class") != "lpTun" or dco.find("innerLpTunDCO") is not None \
-                or dco.find("TunnelType") is not None or dco.get("uid") not in ins:
+        if dco is None or dco.get("class") != "lpTun":
+            continue
+        ilt = dco.find("innerLpTunDCO")
+        if (ilt is not None) != indexing:
+            continue
+        # the inner terminal is the first entry of the tunnel DCO's termList
+        uids = [x.get("uid") for x in dco.find("termList")] if dco.find("termList") is not None else []
+        it = by_uid.get(uids[0]) if uids else None
+        if it is None:
             continue
         wrap = ET.Element("wrap")
         wrap.append(copy.deepcopy(t))
-        wrap.append(copy.deepcopy(ins[dco.get("uid")]))
+        wrap.append(copy.deepcopy(it))
         out.append(("out" if int(dco.findtext("objFlags") or 0) & 1 else "in", wrap))
     return out
 
@@ -194,18 +202,23 @@ class Harvester:
                 # (input, output, unused) and rebuilds the termList from the callee's own pane
                 self.save("iuse", "iuse/node", source, e, resolve_types(b, e))
             elif cls == "select":
-                # a Case Structure; only a TWO-frame BOOLEAN one is cut for now, so frame order
-                # and selector type are known: SelectorRange start 0 is False, 1 is True
+                # a Case Structure. A TWO-frame BOOLEAN one keeps its own key, so frame order and
+                # selector type are known: SelectorRange start 0 is False, 1 is True. Any other
+                # selector is cut as select/<kind>; the composer rebuilds its frames and ranges.
                 frames = e.find("diagramList")
                 sel = next((t for t in e.find("termList") if t.find("dco") is not None
                             and t.find("dco").get("class") == "caseSel"), None)
-                if frames is not None and len(frames) == 2 and sel is not None:
+                if frames is not None and sel is not None:
                     st = resolve_types(b, sel)
-                    if st and st[0].get("Type") == "Boolean":
-                        self.save("struct", "struct/select/bool", source, e, resolve_types(b, e))
+                    kind = {"Boolean": "bool", "String": "string", "Cluster": "error"}.get(
+                        st[0].get("Type") if st else None, "int")
+                    if kind == "bool" and len(frames) != 2:
+                        kind = None
+                    if kind:
+                        self.save("struct", "struct/select/%s" % kind, source, e, resolve_types(b, e))
                         for direction, tun in case_tunnels(e):
-                            self.save("seltun", "seltun/bool/%s" % direction, source, tun,
-                                      resolve_types(b, tun))
+                            self.save("seltun", "seltun/%s/%s" % ("bool" if kind == "bool" else "n", direction),
+                                      source, tun, resolve_types(b, tun))
             elif cls in ("whileLoop", "forLoop"):
                 # a whole loop with its tunnels, shift registers and inner diagram; the
                 # composer keeps the shell and one template of each terminal kind
@@ -216,6 +229,18 @@ class Harvester:
                 for direction, tun in plain_tunnels(e):
                     self.save("tunnel", "tunnel/%s/%s" % (cls, direction), source, tun,
                               resolve_types(b, tun))
+                for direction, tun in plain_tunnels(e, indexing=True):
+                    self.save("tunnel", "tunnel/%s/%s-index" % (cls, direction), source, tun,
+                              resolve_types(b, tun))
+            elif cls in ("mux", "demux", "aIndx", "aBuild"):
+                # Bundle, Unbundle, Index Array, Build Array: nodes of their own class, not prims;
+                # the composer rebuilds their terminal lists from the wired types
+                self.save("node", "node/%s" % cls, source, e, resolve_types(b, e))
+            elif cls == "nMux":
+                # Bundle By Name and Unbundle By Name share a class; objFlags 0x10000 marks the
+                # unbundling one (measured: 0x50000 against 0x40000 on an AIXML-generated pair)
+                kind = "unbundle" if int(e.findtext("objFlags") or 0) & 0x10000 else "bundle"
+                self.save("node", "node/nMux/%s" % kind, source, e, resolve_types(b, e))
             elif cls == "prim":
                 rid = e.findtext("primResID")
                 if rid is None:

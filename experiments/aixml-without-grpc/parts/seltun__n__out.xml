@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="seltun" key="seltun/n/out" source="AIXML-generated probe: pcase.vi" clean="1"><types><TypeDesc Type="Boolean" Format="inline" /></types><heap><wrap><SL__arrayElement class="term" uid="4940">
+            <objFlags>4194368</objFlags>
+            <dco class="selTun" uid="5294">
+              <objFlags>2049</objFlags>
+              <termList elements="3">
+                <SL__arrayElement uid="4912" />
+                <SL__arrayElement uid="4922" />
+                <SL__arrayElement uid="4940" />
+                </termList>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(72, 73, 81, 82)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4912">
+                    <objFlags>4358144</objFlags>
+                    <dco uid="5294" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4922">
+                    <objFlags>4358144</objFlags>
+                    <dco uid="5294" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pclu2.vi" description="Probe: cluster controls, indicators, constants and the bundle nodes.">
+  <Control _name="pt" conIdx="0" connection="recommended" outputs="value:4200.value" type="cluster{double.x,double.y}" uid="4200" uid_parent="root" value="[1.5,2.5]"/>
+  <Node _name="Unbundle By Name" fields="x,y" inputs="input cluster:4200.value" outputs="x:4210.x,y:4210.y" uid="4210" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4210.x,y:4210.y" outputs="x+y:4220.x+y" uid="4220" uid_parent="root"/>
+  <Indicator _name="sum" conIdx="1" connection="recommended" inputs="value:4220.x+y" type="double" uid="4225" uid_parent="root" value="0"/>
+  <Constant _name="new x" outputs="value:4230.value" type="double" uid="4230" uid_parent="root" value="5"/>
+  <Node _name="Bundle By Name" fields="x" inputs="x:4230.value,input cluster:4200.value" outputs="output cluster:4240.output cluster" uid="4240" uid_parent="root"/>
+  <Indicator _name="pt out" conIdx="2" connection="recommended" inputs="value:4240.output cluster" type="cluster{double.x,double.y}" uid="4245" uid_parent="root" value="[0,0]"/>
+  <Constant _name="b" outputs="value:4260.value" type="int32" uid="4260" uid_parent="root" value="4"/>
+  <Node _name="Bundle" inputs="p:4260.value,cluster:4280.value" outputs="output cluster:4270.output cluster" uid="4270" uid_parent="root"/>
+  <Indicator _name="bundled" conIdx="3" connection="recommended" inputs="value:4270.output cluster" type="cluster{int32.p,bool.q}" uid="4275" uid_parent="root" value="[0,false]"/>
+  <Constant _name="pq" outputs="value:4280.value" type="cluster{int32.p,bool.q}" uid="4280" uid_parent="root" value="[7,true]"/>
+  <Node _name="Unbundle" inputs="cluster:4280.value" outputs="p:4290.p,q:4290.q" uid="4290" uid_parent="root"/>
+  <Indicator _name="p" conIdx="4" connection="recommended" inputs="value:4290.p" type="int32" uid="4295" uid_parent="root" value="0"/>
+  <Indicator _name="q" conIdx="5" connection="recommended" inputs="value:4290.q" type="bool" uid="4296" uid_parent="root" value="false"/>
+  <Control _name="error in" conIdx="8" connection="recommended" outputs="value:4300.value" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="error out" conIdx="11" connection="recommended" inputs="value:4300.value" type="cluster{bool.status,int32.code,string.source}" uid="4305" uid_parent="root" value="[false,0,]"/>
+</VI>

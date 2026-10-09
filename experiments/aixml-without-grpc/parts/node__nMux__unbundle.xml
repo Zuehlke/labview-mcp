@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/nMux/unbundle" source="AIXML-generated probe: pclu2.vi" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="pt"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="y" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="y" /></types><heap><SL__arrayElement class="nMux" uid="4210">
+        <objFlags>327680</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4352">
+            <objFlags>32832</objFlags>
+            <dco class="nmxDCO" uid="4350">
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(0, 0, 33, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4349">
+            <objFlags>64</objFlags>
+            <dco class="nmxDCO" uid="4347">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(41)</typeDesc>
+              <termBounds>(0, 16, 16, 29)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4355">
+            <objFlags>64</objFlags>
+            <dco class="nmxDCO" uid="4354">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(42)</typeDesc>
+              <termBounds>(16, 16, 32, 29)</termBounds>
+              <i>1</i>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(326, 282, 359, 311)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4347" />
+          <SL__arrayElement uid="4354" />
+          </dcoList>
+        <dcoAgg uid="4350" />
+        </SL__arrayElement>
+      </heap></part>

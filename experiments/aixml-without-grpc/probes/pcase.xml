@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pcase.vi" description="Probe: case structures on an int32, a string, an enum and an error cluster.">
+  <Control _name="sel" conIdx="0" connection="recommended" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <CaseFrame selector="0" uid="4310" uid_parent="4300">
+      <Constant outputs="value:4311.value" type="string" uid="4311" uid_parent="4310" value="zero"/>
+      <Tunnel _id="Out1" inputs="value:4311.value" outputs="" uid="4312" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="1..3" uid="4320" uid_parent="4300">
+      <Constant outputs="value:4321.value" type="string" uid="4321" uid_parent="4320" value="few"/>
+      <Tunnel _id="Out1" inputs="value:4321.value" outputs="" uid="4322" uid_parent="4320"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" uid="4330" uid_parent="4300">
+      <Constant outputs="value:4331.value" type="string" uid="4331" uid_parent="4330" value="many"/>
+      <Tunnel _id="Out1" inputs="value:4331.value" outputs="" uid="4332" uid_parent="4330"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" inputs="" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="int word" conIdx="1" connection="recommended" inputs="value:4340.value" type="string" uid="4345" uid_parent="root" value=""/>
+  <Control _name="name" conIdx="2" connection="recommended" outputs="value:4400.value" type="string" uid="4400" uid_parent="root" value=""/>
+  <Structure _name="Case Structure" selectin="4400.value" uid="4500" uid_parent="root">
+    <CaseFrame selector="&quot;a&quot;" uid="4510" uid_parent="4500">
+      <Constant outputs="value:4511.value" type="int32" uid="4511" uid_parent="4510" value="1"/>
+      <Tunnel _id="Out1" inputs="value:4511.value" outputs="" uid="4512" uid_parent="4510"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;b&quot;\2C Default" uid="4520" uid_parent="4500">
+      <Constant outputs="value:4521.value" type="int32" uid="4521" uid_parent="4520" value="2"/>
+      <Tunnel _id="Out1" inputs="value:4521.value" outputs="" uid="4522" uid_parent="4520"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" inputs="" outputs="value:4540.value" uid="4540" uid_parent="4500"/>
+  </Structure>
+  <Indicator _name="str code" conIdx="3" connection="recommended" inputs="value:4540.value" type="int32" uid="4545" uid_parent="root" value="0"/>
+  <Control _name="mode" conIdx="4" connection="recommended" outputs="value:4600.value" type="uint16{Off,On,Auto}" uid="4600" uid_parent="root" value="0"/>
+  <Structure _name="Case Structure" selectin="4600.value" uid="4700" uid_parent="root">
+    <CaseFrame selector="Off" uid="4710" uid_parent="4700">
+      <Constant outputs="value:4711.value" type="double" uid="4711" uid_parent="4710" value="0"/>
+      <Tunnel _id="Out1" inputs="value:4711.value" outputs="" uid="4712" uid_parent="4710"/>
+    </CaseFrame>
+    <CaseFrame selector="On" uid="4720" uid_parent="4700">
+      <Constant outputs="value:4721.value" type="double" uid="4721" uid_parent="4720" value="1"/>
+      <Tunnel _id="Out1" inputs="value:4721.value" outputs="" uid="4722" uid_parent="4720"/>
+    </CaseFrame>
+    <CaseFrame selector="Auto" uid="4730" uid_parent="4700">
+      <Constant outputs="value:4731.value" type="double" uid="4731" uid_parent="4730" value="0.5"/>
+      <Tunnel _id="Out1" inputs="value:4731.value" outputs="" uid="4732" uid_parent="4730"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" inputs="" outputs="value:4740.value" uid="4740" uid_parent="4700"/>
+  </Structure>
+  <Indicator _name="level" conIdx="5" connection="recommended" inputs="value:4740.value" type="double" uid="4745" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="8" connection="recommended" outputs="value:4800.value" type="cluster{bool.status,int32.code,string.source}" uid="4800" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="Case Structure" selectin="4800.value" uid="4900" uid_parent="root">
+    <CaseFrame selector="No Error" uid="4910" uid_parent="4900">
+      <Constant outputs="value:4911.value" type="bool" uid="4911" uid_parent="4910" value="true"/>
+      <Tunnel _id="Out1" inputs="value:4911.value" outputs="" uid="4912" uid_parent="4910"/>
+      <Tunnel _id="In1" inputs="" outputs="value:4913.value" uid="4913" uid_parent="4910"/>
+      <Tunnel _id="Out2" inputs="value:4913.value" outputs="" uid="4914" uid_parent="4910"/>
+    </CaseFrame>
+    <CaseFrame selector="Error" uid="4920" uid_parent="4900">
+      <Constant outputs="value:4921.value" type="bool" uid="4921" uid_parent="4920" value="false"/>
+      <Tunnel _id="Out1" inputs="value:4921.value" outputs="" uid="4922" uid_parent="4920"/>
+      <Tunnel _id="In1" inputs="" outputs="value:4923.value" uid="4923" uid_parent="4920"/>
+      <Tunnel _id="Out2" inputs="value:4923.value" outputs="" uid="4924" uid_parent="4920"/>
+    </CaseFrame>
+    <Tunnel _id="In1" inputs="value:4800.value" outputs="" uid="4930" uid_parent="4900"/>
+    <Tunnel _id="Out1" inputs="" outputs="value:4940.value" uid="4940" uid_parent="4900"/>
+    <Tunnel _id="Out2" inputs="" outputs="value:4950.value" uid="4950" uid_parent="4900"/>
+  </Structure>
+  <Indicator _name="ok" conIdx="6" connection="recommended" inputs="value:4940.value" type="bool" uid="4945" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="11" connection="recommended" inputs="value:4950.value" type="cluster{bool.status,int32.code,string.source}" uid="4955" uid_parent="root" value="[false,0,]"/>
+</VI>

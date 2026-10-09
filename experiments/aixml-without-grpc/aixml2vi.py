@@ -65,17 +65,124 @@ class Unsupported(Exception):
     pass
 
 
+def split_top(s, sep=","):
+    """Split at `sep` outside braces and brackets."""
+    out, depth, cur = [], 0, []
+    for ch in s:
+        if ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+        if ch == sep and depth == 0:
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    out.append("".join(cur))
+    return out
+
+
+def split_field(s):
+    """'array.2{double}.Readings' -> ('array.2{double}', 'Readings'); 'double' -> ('double', None).
+    The type is read greedily - a word, an optional .N after `array`, an optional {...} - and
+    whatever follows a '.' is the label, which may itself contain anything."""
+    m = re.match(r"[A-Za-z0-9_]+", s)
+    if not m:
+        raise Unsupported("unreadable type %r" % s)
+    i = m.end()
+    if m.group(0) == "array":
+        m2 = re.match(r"\.(\d+)(?=\{)", s[i:])
+        if m2:
+            i += m2.end()
+    if i < len(s) and s[i] == "{":
+        depth = 0
+        for j in range(i, len(s)):
+            depth += {"{": 1, "}": -1}.get(s[j], 0)
+            if depth == 0:
+                i = j + 1
+                break
+    rest = s[i:]
+    if rest and not rest.startswith("."):
+        raise Unsupported("unreadable type %r" % s)
+    return s[:i], (unescape(rest[1:]) if rest else None)
+
+
+ENUM_BASE = {"uint8": "UnitUInt8", "uint16": "UnitUInt16", "uint32": "UnitUInt32"}
+
+
 def type_tree(aixml_type, label=None):
-    if aixml_type not in SCALARS:
+    """AIXML's type grammar -> an inlined TypeDesc tree as VCTP writes it:
+    scalars, cluster{T.name,...}, array{T} / array.N{T}, enums uintN{a,b,c}."""
+    aixml_type = aixml_type.strip()
+    m = re.match(r"([A-Za-z0-9_]+)(?:\.(\d+))?\{(.*)\}$", aixml_type, re.S)
+    if m and m.group(1) == "cluster":
+        el = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
+        for item in split_top(m.group(3)):
+            t, lab = split_field(item)
+            el.append(type_tree(t, lab))
+    elif m and m.group(1) == "array":
+        el = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+        for _ in range(int(m.group(2) or 1)):
+            ET.SubElement(el, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+        t, lab = split_field(m.group(3))
+        el.append(type_tree(t, lab))
+    elif m and m.group(1) in ENUM_BASE and m.group(2) is None:
+        # an enum is the unit-typed integer with one EnumLabel per item (measured: UnitUInt16
+        # with Off/On/Auto for uint16{Off,On,Auto})
+        el = ET.Element("TypeDesc", {"Type": ENUM_BASE[m.group(1)], "Prop1": "0", "Format": "inline"})
+        for item in split_top(m.group(3)):
+            ET.SubElement(el, "EnumLabel").text = unescape(item)
+    elif aixml_type in SCALARS:
+        t, _ = SCALARS[aixml_type]
+        el = ET.Element("TypeDesc", {"Type": t})
+        if t not in ("Boolean",):
+            el.set("Prop1", "0xFFFFFFFF" if t in ("String", "Path") else "0")
+        el.set("Format", "inline")
+    else:
         raise Unsupported("type %r is not composable yet" % aixml_type)
-    t, _ = SCALARS[aixml_type]
-    el = ET.Element("TypeDesc", {"Type": t})
-    if t not in ("Boolean",):
-        el.set("Prop1", "0xFFFFFFFF" if t in ("String", "Path") else "0")
-    el.set("Format", "inline")
     if label:
         el.set("Label", label)
     return el
+
+
+def is_compound(tree):
+    return tree.get("Type") in ("Cluster", "Array")
+
+
+def is_enum(tree):
+    return tree.get("Type", "").startswith("Unit") and tree.find("EnumLabel") is not None
+
+
+def fields(tree):
+    return [c for c in tree if c.tag == "TypeDesc"]
+
+
+def elem_of(tree):
+    return fields(tree)[0]
+
+
+def unlabel(tree):
+    """The type a WIRE carries: the outer label goes, field labels stay (they are the type)."""
+    return lvheap.strip_label(tree)
+
+
+def signal_kind(tree):
+    """lastSignalKind as LabVIEW writes it for the wire's type, low 16 bits - measured on
+    AIXML-generated VIs: 0x100|code for a scalar, 0x200|element code for a 1D array, 0x230 for a
+    string, 0x350 for a cluster. LabVIEW recomputes it; the value is advisory."""
+    if tree is None:
+        return 266
+    t = tree.get("Type")
+    if t == "Array":
+        return 0x200 | TYPE_CODE.get(elem_of(tree).get("Type"), 0)
+    if t == "Cluster":
+        return 0x350
+    if t == "String":
+        return 0x230
+    if t in ENUM_BASE.values():
+        t = "Num" + t[4:]
+    code = TYPE_CODE.get(t)
+    return 0x100 | code if code else 266
 
 
 NUM_RANK = ["NumUInt8", "NumInt8", "NumUInt16", "NumInt16", "NumUInt32", "NumInt32",
@@ -173,6 +280,20 @@ def pairs(attr):
     return out
 
 
+def rep_key(name, n):
+    """The n-th terminal of one name: Build Array's and Unbundle's `element` repeats."""
+    return name if n == 0 else "%s#%d" % (name, n)
+
+
+def keyed(ps):
+    """pairs() with repeated terminal names numbered in order: element, element#1, ..."""
+    seen, out = {}, []
+    for t, n in ps:
+        out.append((rep_key(t, seen.get(t, 0)), n))
+        seen[t] = seen.get(t, 0) + 1
+    return out
+
+
 def const_value(tree, value):
     """A constant's ConstValue as LabVIEW writes it in the heap: big-endian flattened data,
     and ONE EXTRA ZERO BYTE when the data is all zero. Measured over 120 NI VIs, every
@@ -183,8 +304,59 @@ def const_value(tree, value):
     return h + "00" if set(h) <= {"0"} else h
 
 
+def parse_literal(s):
+    """An AIXML compound value - '[7,true]', '[1,2,3]', '[[1,2],[3,4]]', '[false,0,]' - into
+    nested lists of still-escaped scalar strings. Commas inside a string arrive as \\2C."""
+    s = (s or "").strip()
+    if not s.startswith("["):
+        return s
+    inner = s[1:-1] if s.endswith("]") else s[1:]
+    if inner == "":
+        return []
+    return [parse_literal(x) for x in split_top(inner)]
+
+
+def _flat(tree, value):
+    """Flattened data, big-endian, as LabVIEW's DefaultData/ConstValue carry it: a cluster is
+    its fields in order, an array is one int32 per dimension then the elements (measured:
+    array{int32} [1,2,3] = 00000003 00000001 00000002 00000003; cluster{int32,bool} [7,true] =
+    00000007 01)."""
+    t = tree.get("Type")
+    if t == "Cluster":
+        vals = parse_literal(value) if isinstance(value, str) else value
+        if not isinstance(vals, list):
+            vals = []
+        fs = fields(tree)
+        return "".join(_flat(f, vals[i] if i < len(vals) else "") for i, f in enumerate(fs))
+    if t == "Array":
+        vals = parse_literal(value) if isinstance(value, str) else value
+        if not isinstance(vals, list):
+            vals = []
+        ndims = len(tree.findall("Dimension"))
+        dims, cur = [], vals
+        for _ in range(ndims):
+            dims.append(len(cur) if isinstance(cur, list) else 0)
+            cur = cur[0] if isinstance(cur, list) and cur else []
+
+        def leaves(v, depth):
+            if depth == 0:
+                return [v]
+            return [x for item in (v if isinstance(v, list) else []) for x in leaves(item, depth - 1)]
+        elem = elem_of(tree)
+        return "".join(struct.pack(">i", d).hex().upper() for d in dims) + \
+            "".join(_flat(elem, x) for x in leaves(vals, ndims))
+    if t in ENUM_BASE.values():
+        labels = [e.text for e in tree.findall("EnumLabel")]
+        v = unescape(value or "0")
+        idx = labels.index(v) if v in labels else int(float(v or 0))
+        return struct.pack(INT_FMT["Num" + t[4:]], idx).hex().upper()
+    return _const_value(tree, value)
+
+
 def _const_value(tree, value):
     t = tree.get("Type")
+    if t in ("Cluster", "Array") or t in ENUM_BASE.values():
+        return _flat(tree, value)
     if t == "NumFloat64":
         return struct.pack(">d", float(value or 0)).hex().upper()
     if t == "NumFloat32":
@@ -372,6 +544,13 @@ class Composer:
             return None
         heap, types, source = got
         lvheap.renumber(heap, self.alloc)
+        # An annex's nRC/oRC is a coordinate pair tied to where the DONOR sat: the same array
+        # constant was clean at the donor's (417, 231) and "Insane Array Constant {graphics}
+        # (0x80)" at (102, 40); without the pair it was clean at both (measured 2026-10-09).
+        for p in heap.iter():
+            for c in list(p):
+                if c.tag in ("nRC", "oRC"):
+                    p.remove(c)
         if own_uid is not None:
             target = heap if own_path is None else heap.find(own_path)
             old = target.get("uid")
@@ -387,38 +566,216 @@ class Composer:
                               % (el.tag, el.get("uid"), el.get("uid_parent")))
         return d
 
+    # ---- data objects: scalars, enums, clusters, arrays -------------------------------------
+    DDO_CLASS = {"Cluster": "stdClust", "Array": "indArr"}
+
+    @staticmethod
+    def _direction(e, is_ind):
+        f = e.find("objFlags")
+        v = int(f.text) if f is not None else 0
+        v = v | 1 if is_ind else v & ~1
+        if f is None:
+            f = ET.Element("objFlags")
+            e.insert(0, f)
+        f.text = str(v)
+
+    def _typed_donor(self, holder, donor_types, keep):
+        """Type every TypeID in `holder` that is NOT under one of the `keep` subtrees with the
+        donor's own type, in order - the index display of an array, say."""
+        skip = set()
+        for k in keep:
+            skip.update(id(x) for x in k.iter("typeDesc"))
+        for i, e in enumerate(lvheap.typeid_elements(holder)):
+            if id(e) not in skip and e.get("_t") is not None:
+                tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
+                e.text = "TypeID(%d)" % self.heap_tid(tree)
+        for e in holder.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+
+    def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo"):
+        """One data object for `tree` (labelled: the label is the object's name), composed from
+        parts. A cluster is a stdClust whose paneHierarchy holds one object per field (ddoList
+        oldest first, zPlaneList newest first); an array is an indArr whose inner <ddo> is the
+        element - measured on AIXML-generated VIs. Returns (ddo, source, height, width)."""
+        t = tree.get("Type")
+        name = tree.get("Label") or ""
+        want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
+        if prefix == "const":
+            want = other = None
+        if t in self.DDO_CLASS:
+            cls = self.DDO_CLASS[t]
+            key = None
+            for k in self._keys("%s/%s/" % (prefix, cls)):
+                d = k.split("/")[2] if prefix == "fpdco" else None
+                if k.endswith("/" + t) and (want is None or d == want):
+                    key = k
+            if key is None:
+                for k in self._keys("%s/%s/" % (prefix, cls)):
+                    if k.endswith("/" + t):
+                        key = k
+            if key is None:
+                raise Unsupported("no %s part for a %s" % (prefix, t))
+            holder, donor_types, src = self.instantiate(key)
+            for i, e in enumerate(lvheap.typeid_elements(holder)):
+                e.set("_t", str(i))
+            ddo = holder.find("ddo") if holder.find("ddo") is not None else holder.find("dco/ddo")
+            if t == "Cluster":
+                dl = ddo.find("ddoList")
+                z = ddo.find("paneHierarchy/zPlaneList")
+                # fields are stacked from where the donor's first field sat: a front-panel
+                # cluster's pane and a diagram constant's use different origins (measured
+                # (-31,-16) under origin (-4,-4) against (-222,-227) under (-241,-243))
+                tops = [lvheap.parse_bounds(c.find("bounds").text) for c in z if c.find("bounds") is not None]
+                y0 = min(t[0] for t in tops) if tops else -31
+                x0 = min(t[1] for t in tops) if tops else -16
+                for lst in (dl, z):
+                    for c in list(lst):
+                        lst.remove(c)
+                y, w = y0, 0
+                kids = []
+                for f in fields(tree):
+                    child, _, h, cw = self.build_ddo(f, is_ind, prefix, "SL__arrayElement")
+                    lvheap.move_to(child, y, x0)
+                    y += max(h, 14) + 4
+                    w = max(w, cw)
+                    z.insert(0, child)
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": child.get("uid")})
+                    kids.append(child)
+                dl.set("elements", str(len(dl)))
+                z.set("elements", str(len(z)))
+                ph = y - y0
+                pane = ddo.find("paneHierarchy")
+                pb = lvheap.parse_bounds(pane.find("bounds").text)
+                pane.find("bounds").text = lvheap.fmt_bounds((pb[0], pb[1], pb[0] + ph, pb[1] + w))
+                b = lvheap.parse_bounds(ddo.find("bounds").text)
+                ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + 4, b[1] + pb[1] + w + 4))
+            else:
+                old = ddo.find("ddo")
+                kids = []
+                elem = elem_of(tree)
+                want_cls = "stdRing" if is_enum(elem) else self.DDO_CLASS.get(elem.get("Type")) or \
+                    SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == elem.get("Type")), ""), (None, None))[1]
+                if old is not None and old.get("class") == want_cls and want_cls in ("stdNum", "stdBool", "stdString", "stdPath"):
+                    # An element OF THE DONOR'S KIND is the donor's own element, re-typed: in an
+                    # array CONSTANT it is a frameless object with no label (objFlags 0x20000,
+                    # parts placed from x=1), and a standalone constant part in its place was
+                    # "Insane Array Constant {graphics} (0x80)" whatever its box.
+                    if len(tree.findall("Dimension")) != 1:
+                        raise Unsupported("a %d-dimensional array object is not composable yet"
+                                          % len(tree.findall("Dimension")))
+                    adapt_numeric(old, elem.get("Type"))
+                    if prefix == "fpdco":
+                        self._direction(old, is_ind)
+                    for e in old.iter("typeDesc"):
+                        if lvheap.TYPEID_RE.fullmatch((e.text or "").strip()):
+                            e.text = "TypeID(%d)" % self.heap_tid(elem)
+                            e.attrib.pop("_t", None)
+                    kids.append(old)
+                elif old is not None:
+                    if len(tree.findall("Dimension")) != 1:
+                        raise Unsupported("a %d-dimensional array object is not composable yet"
+                                          % len(tree.findall("Dimension")))
+                    child, _, h, cw = self.build_ddo(elem, is_ind, prefix, "ddo")
+                    lvheap.move_to(child, *lvheap.parse_bounds(old.find("bounds").text)[:2])
+                    if child.get("class") == old.get("class"):
+                        # an element of the same kind takes the donor element's exact box: a
+                        # numeric part's own 50 px in an array constant whose cell is 13 px was
+                        # "Insane Array Constant {graphics} (0x80)" even inside a wider array
+                        child.find("bounds").text = old.find("bounds").text
+                    pos = list(ddo).index(old)
+                    ddo.remove(old)
+                    ddo.insert(pos, child)
+                    kids.append(child)
+                    # the element is placed in the array's own coordinates and must lie inside
+                    # it: an int32 element 50 px wide in a 73 px array constant was measured
+                    # "Insane Array Constant {graphics} (0x80)"
+                    ct, cl, cb, cr = lvheap.parse_bounds(child.find("bounds").text)
+                    b = lvheap.parse_bounds(ddo.find("bounds").text)
+                    ddo.find("bounds").text = lvheap.fmt_bounds(
+                        (b[0], b[1], max(b[2], b[0] + cb + 3), max(b[3], b[1] + cr + 3)))
+            if is_ind is not None and prefix == "fpdco":
+                self._direction(ddo, is_ind)
+            self._typed_donor(holder, donor_types, kids)
+            own = [e for e in (holder.find("typeDesc"), ddo.find("typeDesc"),
+                               holder.find("dco/typeDesc")) if e is not None]
+            for e in own:
+                e.text = "TypeID(%d)" % self.heap_tid(tree)
+            self._set_label(ddo, name)
+            ddo = self._retag(ddo, tag)
+            h, w = lvheap.size_of(ddo)
+            return (holder if tag is None else ddo), src, h, w
+        # scalars and enums: a front-panel part's ddo
+        ddo_class = SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == t), ""), (None, None))[1]
+        if is_enum(tree):
+            ddo_class = "stdRing"
+        if ddo_class is None:
+            raise Unsupported("no data object for type %s" % t)
+        key, flipped = self.pick("%s/%s/" % (prefix, ddo_class), want, other, t)
+        if key is None and is_enum(tree):
+            key, flipped = self.pick("%s/%s/" % (prefix, ddo_class), want, other, "UnitUInt16")
+        if key is None:
+            raise Unsupported("no %s part for %s (%s)" % (prefix, ddo_class, t))
+        holder, _, src = self.instantiate(key)
+        ddo = holder.find("ddo") if holder.find("ddo") is not None else holder.find("dco/ddo")
+        adapt_numeric(ddo, t)
+        if is_enum(tree):
+            self._set_enum(ddo, tree)
+        if prefix == "fpdco":
+            # an LED indicator flipped to a control was measured working; a field of a cluster
+            # follows the cluster's direction
+            self._direction(ddo, is_ind)
+        self._set_label(ddo, name)
+        lvheap.set_typeids(holder, [self.heap_tid(tree) for _ in lvheap.typeid_elements(holder)])
+        if tag is None:
+            return holder, src, 0, 0
+        h, w = lvheap.size_of(ddo)
+        return self._retag(ddo, tag), src, h, w
+
+    @staticmethod
+    def _retag(ddo, tag):
+        """A field of a cluster is <SL__arrayElement class=...>, a top-level or array element
+        <ddo class=...> - same content."""
+        if tag is None or ddo.tag == tag:
+            return ddo
+        new = ET.Element(tag, dict(ddo.attrib))
+        new.text, new.tail = ddo.text, ddo.tail
+        for c in ddo:
+            new.append(c)
+        return new
+
+    @staticmethod
+    def _set_enum(ddo, tree):
+        """An enum control is a stdRing whose multiLabel `buf` lists the items -
+        (3)"Off""On""Auto" - with StdNumMax the base type's maximum."""
+        labels = [e.text or "" for e in tree.findall("EnumLabel")]
+        if any('"' in x for x in labels):
+            raise Unsupported("enum item with a quote is not composable yet")
+        for part in ddo.iter("SL__arrayElement"):
+            if part.get("class") == "multiLabel" and part.find("buf") is not None:
+                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
+        mx = {"UnitUInt8": "255", "UnitUInt16": "65535", "UnitUInt32": "4294967295"}.get(tree.get("Type"))
+        if mx and ddo.find("StdNumMax") is not None:
+            ddo.find("StdNumMax").text = mx
+        if ddo.find("StdNumMin") is not None:
+            ddo.find("StdNumMin").text = "0"
+        if ddo.find("StdNumInc") is not None:
+            ddo.find("StdNumInc").text = "0"
+
     # ---- elements ------------------------------------------------------------------------
     def add_fp(self, el, row):
         name = unescape(el.get("_name"))
         is_ind = el.tag == "Indicator"
         aixml_type = el.get("type")
-        t, ddo_class = SCALARS.get(aixml_type, (None, None))
-        if t is None:
-            raise Unsupported("%s %r has type %r" % (el.tag, name, aixml_type))
         diag = self.diag_of(el)
-        want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
-        key, flipped = self.pick("fpdco/%s/" % ddo_class, want, other, t)
-        if key is None:
-            raise Unsupported("no front-panel part for %s (%s)" % (ddo_class, t))
-        fpdco, _, src = self.instantiate(key)
+        tree = type_tree(aixml_type, label=name)
+        want = "ind" if is_ind else "ctl"
+        fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None)
         ddo = fpdco.find("ddo")
-        adapt_numeric(ddo, t)
         old = int(ddo.get("uid"))
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
-        if flipped:
-            for e in (fpdco, ddo):
-                f = e.find("objFlags")
-                v = int(f.text) if f is not None else 0
-                v = v | 1 if is_ind else v & ~1
-                if f is None:
-                    f = ET.Element("objFlags")
-                    e.insert(0, f)
-                f.text = str(v)
-        self._set_label(ddo, name)
-        tree = type_tree(aixml_type, label=name)
-        tids = [self.heap_tid(tree) for _ in lvheap.typeid_elements(fpdco)]
-        lvheap.set_typeids(fpdco, tids)
+        self._direction(fpdco, is_ind)
+        self._direction(ddo, is_ind)
         con = el.get("conIdx")
         # conNum 0 is written by OMITTING the field, as LabVIEW's own files do; an explicit
         # <conNum>0</conNum> loads but LabVIEW logs the control as insane ({flags} 0x1000)
@@ -439,7 +796,10 @@ class Composer:
                 fpdco.insert(0, f)
             f.text = str(int(f.text or 0) | 0x10000 | {"recommended": 0x200, "required": 0x80}.get(need, 0))
         col = 1 if is_ind else 0
-        lvheap.move_to(ddo, 16 + 56 * row, 16 + 300 * col)
+        # stacked per column by real height: a cluster or array is taller than a numeric
+        self.fp_y = getattr(self, "fp_y", {0: 16, 1: 16})
+        lvheap.move_to(ddo, self.fp_y[col], 16 + 300 * col)
+        self.fp_y[col] += max(lvheap.size_of(ddo)[0], 24) + 32
         # z-order lists run NEWEST FIRST in LabVIEW's own files (ddoList and termList run
         # oldest first); appending made the first control LabVIEW's insane one ({flags} 0x1000)
         self.pane_z.insert(0, fpdco)
@@ -462,28 +822,19 @@ class Composer:
             for _, net in pairs(el.get("outputs")):
                 if net:
                     self.net_type[net] = type_tree(aixml_type)
-        self.report.append("%s %r <- %s" % (el.tag, name, src if not flipped else src + " (flipped)"))
+        self.report.append("%s %r <- %s" % (el.tag, name, src))
 
     def add_const(self, el):
         aixml_type = el.get("type")
-        t, ddo_class = SCALARS.get(aixml_type, (None, None))
-        if t is None:
-            raise Unsupported("Constant %r has type %r" % (el.get("_name"), aixml_type))
         diag = self.diag_of(el)
-        key, _ = self.pick("const/%s/" % ddo_class, None, None, t)
-        if key is None:
-            raise Unsupported("no constant part for %s" % t)
-        term, _, src = self.instantiate(key)
+        name = unescape(el.get("_name") or "")
+        tree = type_tree(aixml_type, label=name or None)
+        term, src, _, _ = self.build_ddo(tree, None, "const", None)
         dco = term.find("dco")
         ddo = dco.find("ddo")
-        adapt_numeric(ddo, t)
         old = int(ddo.get("uid"))
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
-        name = unescape(el.get("_name") or "")
-        self._set_label(ddo, name)
-        tree = type_tree(aixml_type, label=name or None)
-        lvheap.set_typeids(term, [self.heap_tid(tree) for _ in lvheap.typeid_elements(term)])
         dco.find("ConstValue").text = const_value(tree, el.get("value"))
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
@@ -578,6 +929,200 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    # ---- cluster and array nodes: classes of their own, not prims -------------------------
+    AGG_NODES = {"Bundle": "node/mux", "Unbundle": "node/demux",
+                 "Bundle By Name": "node/nMux/bundle", "Unbundle By Name": "node/nMux/unbundle",
+                 "Index Array": "node/aIndx", "Build Array": "node/aBuild"}
+
+    def _term_from(self, tpl, tree, flags=None, dco_flags=None, index=None):
+        """A fresh copy of a template terminal, typed `tree`; `index` is the field number a
+        nMux DCO carries as <i> (absent for field 0, as LabVIEW writes it)."""
+        t = copy.deepcopy(tpl)
+        lvheap.renumber(t, self.alloc)
+        dco = t.find("dco")
+        if flags is not None:
+            t.find("objFlags").text = str(flags)
+        if dco_flags is not None:
+            f = dco.find("objFlags")
+            if dco_flags == 0 and f is not None:
+                dco.remove(f)
+            elif dco_flags:
+                if f is None:
+                    f = ET.Element("objFlags")
+                    dco.insert(0, f)
+                f.text = str(dco_flags)
+        i = dco.find("i")
+        if index is not None:
+            if index == 0 and i is not None:
+                dco.remove(i)
+            elif index:
+                if i is None:
+                    i = ET.SubElement(dco, "i")
+                i.text = str(index)
+        dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)
+        return t
+
+    def add_agg_node(self, el):
+        """Bundle (mux), Unbundle (demux), Bundle/Unbundle By Name (nMux), Index Array (aIndx)
+        and Build Array (aBuild), measured on an AIXML-generated VI:
+
+          Unbundle By Name  [cluster in = dcoAgg, one out per field with <i> = field number]
+          Bundle By Name    [out = dcoAgg whose termList is [out, cluster in], cluster in
+                             (a bare <dco uid=agg/>, objFlags 0x28040), one in per field, <i>]
+          Bundle            the same with one in per FIELD OF THE CLUSTER, wired (0x8040) or
+                            not (0x40); its terminals are named after the fields
+          Unbundle          [cluster in = dcoAgg, one out per field]
+          Index Array       [array in = srcDCO, element out = dcoAgg, index in]
+          Build Array       [array out = dcoAgg, one in per element]
+        The terminal list is rebuilt from the WIRED types; dcoList names the per-field DCOs."""
+        name = unescape(el.get("_name"))
+        diag = self.diag_of(el)
+        got = self.instantiate(self.AGG_NODES[name], own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no part harvested for %r" % name)
+        node, _, src = got
+        for d in node.iter("dco"):
+            for e in d.findall("inplace"):
+                d.remove(e)
+        tl = node.find("termList")
+        terms = list(tl)
+        ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        ends = {}
+
+        def wired_type(net, what):
+            if net not in self.net_type:
+                raise Unsupported("%s %s: the type of %s (%r) is not known" % (name, el.get("uid"), what, net))
+            return self.net_type[net]
+
+        if name in ("Unbundle By Name", "Unbundle"):
+            agg, tpl = terms[0], terms[1]
+            cin = [n for t, n in ins if t in ("input cluster", "cluster")]
+            ctype = wired_type(cin[0] if cin else None, "the cluster")
+            if ctype.get("Type") != "Cluster":
+                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), ctype.get("Type")))
+            fs = fields(ctype)
+            agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
+            for c in terms[1:]:
+                tl.remove(c)
+            ends["input cluster" if name == "Unbundle By Name" else "cluster"] = (agg, None)
+            labels = [f.get("Label") or "element" for f in fs]
+            if name == "Unbundle By Name":
+                want = [unescape(x) for x in split_top(el.get("fields") or "") if x] or [t for t, _ in outs]
+                for w in want:
+                    if w not in labels:
+                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), w, ", ".join(labels)))
+                picked = [(w, labels.index(w)) for w in want]
+            else:
+                # every field, keyed like endpoints() keys repeated names: element, element#1...
+                picked = [(rep_key(labels[i], labels[:i].count(labels[i])), i) for i in range(len(fs))]
+            for key, idx in picked:
+                t = self._term_from(tpl, fs[idx], index=idx if name == "Unbundle By Name" else None)
+                tl.append(t)
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                ends[key] = (t, fs[idx])
+            for key, net in keyed(outs):
+                if key not in ends:
+                    raise Unsupported("%s %s: no output %r" % (name, el.get("uid"), key))
+                if net:
+                    self.net_type[net] = unlabel(ends[key][1])
+            for key, (t, _) in ends.items():
+                self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
+        elif name in ("Bundle By Name", "Bundle"):
+            agg, cref, tpl = terms[0], terms[1], terms[2]
+            cin = [n for t, n in ins if t in ("input cluster", "cluster")]
+            if not cin or cin[0] is None:
+                raise Unsupported("%s %s: a cluster input must be wired" % (name, el.get("uid")))
+            ctype = wired_type(cin[0], "the cluster")
+            if ctype.get("Type") != "Cluster":
+                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), ctype.get("Type")))
+            fs = fields(ctype)
+            labels = [f.get("Label") or "element" for f in fs]
+            agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
+            for c in terms[2:]:
+                tl.remove(c)
+            self.ends[(el.get("uid"), "input cluster" if name == "Bundle By Name" else "cluster")] = (cref.get("uid"), diag)
+            self.ends[(el.get("uid"), "output cluster")] = (agg.get("uid"), diag)
+            field_ins = [(t, n) for t, n in ins if t not in ("input cluster", "cluster")]
+            if name == "Bundle By Name":
+                for fname, net in field_ins:
+                    if fname not in labels:
+                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), fname, ", ".join(labels)))
+                    idx = labels.index(fname)
+                    t = self._term_from(tpl, fs[idx], flags=32832, index=idx)
+                    tl.append(t)
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                    self.ends[(el.get("uid"), fname)] = (t.get("uid"), diag)
+            else:
+                # one terminal per field, in field order; AIXML names them after the fields and
+                # repeats "element" for unlabelled ones
+                given = dict(keyed(field_ins))
+                keys = []
+                for idx, f in enumerate(fs):
+                    k = rep_key(labels[idx], labels[:idx].count(labels[idx]))
+                    keys.append(k)
+                    t = self._term_from(tpl, f, flags=32832 if given.get(k) else 64, dco_flags=0)
+                    tl.append(t)
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                    self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+                unknown = [k for k in given if k not in keys]
+                if unknown:
+                    raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), unknown[0], ", ".join(labels)))
+            for _, net in outs:
+                if net:
+                    self.net_type[net] = unlabel(ctype)
+        elif name == "Index Array":
+            src_t, out_t, idx_t = terms[0], terms[1], terms[2]
+            arr = [n for t, n in ins if t == "array"]
+            idxs = [n for t, n in ins if t.startswith("index")]
+            atype = wired_type(arr[0] if arr else None, "the array")
+            if atype.get("Type") != "Array" or len(atype.findall("Dimension")) != 1:
+                raise Unsupported("Index Array %s: only a 1D array is composable yet" % el.get("uid"))
+            if len(idxs) > 1 or len([t for t, _ in outs if t == "element"]) > 1:
+                raise Unsupported("Index Array %s: one index only, for now" % el.get("uid"))
+            et = unlabel(elem_of(atype))
+            src_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(atype)
+            out_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(et)
+            idx_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(type_tree("int32"))
+            if not idxs or idxs[0] is None:
+                idx_t.find("objFlags").text = "64"
+            ET.SubElement(dl, "SL__arrayElement", {"uid": idx_t.find("dco").get("uid")})
+            self.ends[(el.get("uid"), "array")] = (src_t.get("uid"), diag)
+            self.ends[(el.get("uid"), "element")] = (out_t.get("uid"), diag)
+            self.ends[(el.get("uid"), "index")] = (idx_t.get("uid"), diag)
+            for _, net in outs:
+                if net:
+                    self.net_type[net] = et
+        else:   # Build Array
+            agg, tpl = terms[0], terms[1]
+            if el.get("concat") == "true" or any(t == "array" for t, _ in ins):
+                raise Unsupported("Build Array %s: concatenating inputs are not composable yet" % el.get("uid"))
+            types = [wired_type(n, "an element") for _, n in ins]
+            et = numeric_join(types) if types else type_tree("double")
+            atype = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+            ET.SubElement(atype, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+            atype.append(copy.deepcopy(unlabel(et)))
+            agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(atype)
+            for c in terms[1:]:
+                tl.remove(c)
+            for k, ((tname, net), wt) in enumerate(zip(ins, types)):
+                t = self._term_from(tpl, wt)
+                tl.append(t)
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                self.ends[(el.get("uid"), rep_key("element", k))] = (t.get("uid"), diag)
+            self.ends[(el.get("uid"), "appended array")] = (agg.get("uid"), diag)
+            for _, net in outs:
+                if net:
+                    self.net_type[net] = atype
+        tl.set("elements", str(len(tl)))
+        dl.set("elements", str(len(dl)))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Node %r <- %s" % (name, src))
 
     # ---- structures ----------------------------------------------------------------------
     def add_loop(self, el):
@@ -1015,8 +1560,9 @@ class Composer:
             return ([(n, (uid, "value")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "value")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag in ("Node", "Call"):
-            return ([(n, (uid, t)) for t, n in pairs(el.get("outputs")) if n],
-                    [(n, (uid, t)) for t, n in pairs(el.get("inputs")) if n])
+            # a name used twice (Build Array's `element`) is numbered: element, element#1, ...
+            return ([(n, (uid, t)) for t, n in keyed(pairs(el.get("outputs"))) if n],
+                    [(n, (uid, t)) for t, n in keyed(pairs(el.get("inputs"))) if n])
         if el.tag in ("Tunnel", "Left", "Right"):
             return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
@@ -1278,7 +1824,9 @@ class Composer:
             if not ready:
                 ready = pending[:1]
             for e in ready:
-                if e.tag == "Node":
+                if e.tag == "Node" and unescape(e.get("_name") or "") in self.AGG_NODES:
+                    self.add_agg_node(e)
+                elif e.tag == "Node":
                     self.add_node(e)
                 elif e.tag == "Call":
                     self.add_call(e)

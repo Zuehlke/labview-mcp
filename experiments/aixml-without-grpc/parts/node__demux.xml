@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/demux" source="AIXML-generated probe: pclu2.vi" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="pq"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="p" /><TypeDesc Type="Boolean" Format="inline" Label="q" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="p" /><TypeDesc Type="Boolean" Format="inline" Label="q" /></types><heap><SL__arrayElement class="demux" uid="4290">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4555">
+            <objFlags>32832</objFlags>
+            <dco class="dmxDCO" uid="4553">
+              <typeDesc>TypeID(29)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 17, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4549">
+            <objFlags>64</objFlags>
+            <dco class="dmxDCO" uid="4547">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 8, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4552">
+            <objFlags>64</objFlags>
+            <dco class="dmxDCO" uid="4550">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 16, 16, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(232, 287, 249, 319)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4547" />
+          <SL__arrayElement uid="4550" />
+          </dcoList>
+        <dcoAgg uid="4553" />
+        </SL__arrayElement>
+      </heap></part>
