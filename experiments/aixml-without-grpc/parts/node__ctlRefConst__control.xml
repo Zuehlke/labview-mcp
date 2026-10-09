@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/ctlRefConst/control" source="C:\temp\aixml-no-grpc\probes\pvsr.bundle\pvsr.xml" clean="1"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0008" HasItem="0" Format="inline" Label="Flag"><TypeDesc Type="Boolean" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="ctlRefConst" uid="4300">
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="4617">
+            <dco class="ctlRefDCO" uid="4615">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(0, 0, 19, 62)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="4618">
+          <objFlags>1507650</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-15, 0, 0, 25)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Flag"</text>
+            <bgColor>01000000</bgColor>
+            <fr elements="1">
+              <SL__arrayElement class="fontRun">
+                <fontid>1</fontid>
+                </SL__arrayElement>
+              </fr>
+            </textRec>
+          </label>
+        <bounds>(236, 196, 255, 258)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <ddo uid="4200" />
+        <oMId>0004</oMId>
+        </SL__arrayElement>
+      </heap></part>

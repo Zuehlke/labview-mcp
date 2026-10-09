@@ -216,6 +216,35 @@ def refnum_type(inner, plain_class=False):
                                    "HasItem": "0", "Format": "inline"})
 
 
+# The VI Server class of a reference TO a front-panel object, by the object's data type, and
+# whether the strictly typed refnum carries that data type inside - read off an AIXML-generated
+# probe with one control reference per kind (probes/pvsr2.xml, 2026-10-10).
+CONTROL_REF_CLASS = {"Boolean": ("0x0008", True), "String": ("0x001B", False), "Path": ("0x000B", False),
+                     "Cluster": ("0x001E", True), "Array": ("0x000E", True)}
+
+
+def control_ref_type(ctl_tree, label=None):
+    """A strictly typed control refnum for a control of type `ctl_tree`: Refnum LVObjCtl with the
+    control's class (Digital 0x0012 for every numeric, Enum 0x0023, ...) and, for those that are
+    typed by their data, the data type inside."""
+    t = ctl_tree.get("Type") or ""
+    if is_enum(ctl_tree):
+        flags, inner = "0x0023", True
+    elif t.startswith("Num"):
+        flags, inner = "0x0012", True
+    elif t in CONTROL_REF_CLASS:
+        flags, inner = CONTROL_REF_CLASS[t]
+    else:
+        raise Unsupported("a reference to a %s control is not composable yet" % t)
+    el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": flags,
+                                 "HasItem": "0", "Format": "inline"})
+    if inner:
+        el.append(lvheap.strip_label(ctl_tree))
+    if label:
+        el.set("Label", label)
+    return el
+
+
 def is_compound(tree):
     return tree.get("Type") in ("Cluster", "Array")
 
@@ -1363,6 +1392,15 @@ class Composer:
             if t not in fixed.values():
                 tl.remove(t)
         ref_tree = refnum_type(cls, plain_class=True)
+        ins0 = dict(pairs(el.get("inputs")))
+        wired_ref = self.net_type.get(ins0.get("reference")) if ins0.get("reference") else None
+        strict = wired_ref is not None and wired_ref.get("Type") == "Refnum" and fields(wired_ref)
+        if strict:
+            # behind a STRICTLY TYPED control reference (VI Server Reference element=...) the
+            # node is typed with that refnum, its oMId names it, and its objFlags are 640, not
+            # 0x2000280 (measured on an AIXML-generated probe, probes/pvsr.xml)
+            ref_tree = lvheap.strip_label(wired_ref)
+            node.find("objFlags").text = "640"
         for role in ("reference", "reference out"):
             # each fixed terminal its OWN labelled type, as LabVIEW writes them
             lab = copy.deepcopy(ref_tree)
@@ -1455,7 +1493,7 @@ class Composer:
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(items) + 1, b[1] + width))
         node.find("nodeName").text = '"%s"' % crow["nodeName"]
-        node.find("oMId").text = self._om_id(cls)
+        node.find("oMId").text = self._om_id_of(ref_tree) if strict else self._om_id(cls)
         if linked:
             node.find("ddo").set("uid", linked[2].find("ddo").get("uid"))
             lab = node.find("label")
@@ -1526,20 +1564,27 @@ class Composer:
         diag.placed.append((node, el))
         self.report.append("Invoke Node %s.%s <- %s" % (cls, meth, src))
 
+    def _om_id_of(self, tree):
+        """oMId for an arbitrary class refnum type (a strictly typed control refnum included):
+        the consolidated index of the type without its label."""
+        bare = lvheap.strip_label(tree)
+        key = ET.tostring(bare, encoding="unicode")
+        self._om_ids = getattr(self, "_om_ids", {})
+        if key not in self._om_ids:
+            cons = self.types.use(self.types.register(bare))
+            if cons > 0x7FFF:
+                raise Unsupported("oMId %d is not encodable yet" % cons)
+            self._om_ids[key] = "%04X" % cons
+        return self._om_ids[key]
+
     def _om_id(self, cls):
         """A property or invoke node's oMId is NOT a class number: it is the index, in THIS VI's
         flat type list (VCTP), of the class's bare refnum type - measured: NI's probe wrote 0003
         and 0004 where flat types 3 and 4 were the VI and Application refnums, and a composed
         VI carrying those numbers over had LabVIEW resolve neither class (property shown as
         {Generic} read+Property, oMId rewritten 000000 on save) and was broken."""
-        self._om_ids = getattr(self, "_om_ids", {})
-        if cls not in self._om_ids:
-            # the CONSOLIDATED (TopLevel) index, which NI's file kept equal to the flat one
-            cons = self.types.use(self.types.register(refnum_type(cls, plain_class=True)))
-            if cons > 0x7FFF:
-                raise Unsupported("oMId %d is not encodable yet" % cons)
-            self._om_ids[cls] = "%04X" % cons
-        return self._om_ids[cls]
+        # the CONSOLIDATED (TopLevel) index, which NI's file kept equal to the flat one
+        return self._om_id_of(refnum_type(cls, plain_class=True))
 
     @staticmethod
     def parts_type_of(term, donor_types, tel):
@@ -2312,6 +2357,94 @@ class Composer:
         diag.placed.append((node, el))
         self.report.append("Call %r <- %s (pane %d, %d slots)" % (target, src, con_id, len(slots)))
 
+    def add_vi_server_ref(self, el):
+        """VI Server Reference: element="<label>" is a reference to that front-panel object (a
+        ctlRefConst naming its ddo, typed with the strictly typed control refnum); type="{LV.VI}"
+        with the output This VI is the VI's own reference. Both carry an oMId and a label."""
+        self.check_attrs(el, ("element", "type"))
+        diag = self.diag_of(el)
+        outs = pairs(el.get("outputs"))
+        element = unescape(el.get("element") or "")
+        if element:
+            info = getattr(self, "fp_info", {}).get(element)
+            if info is None:
+                raise Unsupported("VI Server Reference %s: no control %r" % (el.get("uid"), element))
+            tree = control_ref_type(info[1], element)
+            key, text = "node/ctlRefConst/control", element
+        else:
+            if (el.get("type") or "").strip() != "{LV.VI}":
+                raise Unsupported("VI Server Reference %s: %r is not composable yet" % (el.get("uid"), el.get("type")))
+            tree = refnum_type("LV.VI", plain_class=True)
+            tree.set("Label", "This VI")
+            key, text = "node/ctlRefConst/thisvi", "This VI"
+        got = self.instantiate(key, own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("VI Server Reference %s: no %s part harvested" % (el.get("uid"), key))
+        node, _, src = got
+        t = node.find("termList/SL__arrayElement")
+        t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)
+        node.find("oMId").text = self._om_id_of(tree)
+        lab = node.find("label")
+        if lab is not None:
+            lab.find("textRec/text").text = '"%s"' % text
+            lb = lvheap.parse_bounds(lab.find("bounds").text)
+            lab.find("bounds").text = lvheap.fmt_bounds((lb[0], lb[1], lb[2], lb[1] + max(8, 6 * len(text))))
+        if element:
+            node.find("ddo").set("uid", info[2].find("ddo").get("uid"))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        for tname, net in outs:
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+            if net:
+                self.net_type[net] = lvheap.strip_label(tree)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("VI Server Reference %s <- %s" % (text, src))
+
+    def add_static_ref(self, el):
+        """Static VI Reference: a statVIRef node (label = the VI's name, connectorTM = its pane,
+        one VI-refnum output) and a link pair - BSVR in the VI's block typed with the VI refnum,
+        SVVI in the diagram's naming the node by uid - as LabVIEW wrote them for Clear Errors.vi."""
+        self.check_attrs(el, ("target",))
+        target = unescape(el.get("target") or "")
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
+        if "error" in res:
+            raise Unsupported("Static VI Reference %s: %s" % (el.get("uid"), res["error"]))
+        callee = lvheap.Bundle(_extract_callee(res["path"]))
+        conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        pane = callee.tree(callee.flat_of_consolidated(conp))
+        diag = self.diag_of(el)
+        got = self.instantiate("node/statVIRef", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("Static VI Reference %s: no statVIRef part harvested" % el.get("uid"))
+        node, _, src = got
+        vi_ref = refnum_type("LV.VI", plain_class=True)
+        t = node.find("termList/SL__arrayElement")
+        t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(vi_ref)
+        node.find("connectorTM").text = "TypeID(%d)" % self.heap_tid(pane)
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        lab = node.find("label")
+        if lab is not None:
+            name = target.split(":")[-1]
+            lab.find("textRec/text").text = '"%s"' % name
+            lb = lvheap.parse_bounds(lab.find("bounds").text)
+            lab.find("bounds").text = lvheap.fmt_bounds((lb[0], lb[1], lb[2], lb[1] + max(8, 5 * len(name))))
+        for tname, net in pairs(el.get("outputs")):
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+            if net:
+                self.net_type[net] = vi_ref
+        self.static_links = getattr(self, "static_links", {})
+        link = self.static_links.setdefault(res["path"], dict(res, offsets=[]))
+        link["offsets"].append(int(node.get("uid")))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Static VI Reference %r <- %s" % (target, src))
+
     def write_links(self):
         """VIVI into LIvi/LVIN and IUVI into LIbd/BDHP, one pair per callee."""
         lvin = self.main.find("LIvi/Section/LVIN")
@@ -2342,6 +2475,25 @@ class Composer:
                     else:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
                     ET.SubElement(rec, "IUseStr")
+        vi_ref_cons = None
+        for path, link in getattr(self, "static_links", {}).items():
+            if vi_ref_cons is None:
+                vi_ref_cons = self.types.use(self.types.register(refnum_type("LV.VI", plain_class=True)))
+            for tag, holder in (("BSVR", lvin), ("SVVI", bdhp)):
+                rec = ET.SubElement(holder, tag, dict(attrs, VILinkProp2="0") if tag == "BSVR" else dict(attrs))
+                qual = ET.SubElement(rec, "LinkSaveQualName")
+                for q in link["qual"]:
+                    ET.SubElement(qual, "String").text = q
+                path_ref(rec, "LinkSavePathRef", *link["path_ref"])
+                ET.SubElement(rec, "TypeDesc", {"TypeID": str(vi_ref_cons) if tag == "BSVR" else "0"})
+                if tag == "SVVI":
+                    ol = ET.SubElement(rec, "LinkOffsetList")
+                    for uid in link["offsets"]:
+                        ET.SubElement(ol, "Offset").text = "0x%04X" % uid
+                    if link["lib_ref"]:
+                        path_ref(rec, "VILSPathRef", *link["lib_ref"])
+                    else:
+                        ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
 
     def add_case(self, el):
         frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
@@ -3576,6 +3728,10 @@ class Composer:
                     self.add_feedback(e)
                 elif e.tag == "Node" and nm == "Property Node":
                     self.add_property_node(e)
+                elif e.tag == "Node" and nm == "VI Server Reference":
+                    self.add_vi_server_ref(e)
+                elif e.tag == "Node" and nm == "Static VI Reference":
+                    self.add_static_ref(e)
                 elif e.tag == "Node" and nm == "Invoke Node":
                     self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):

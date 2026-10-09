@@ -847,5 +847,17 @@
     }
    }
   ]
+ },
+ "t93_references": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "flag visible": "True",
+     "static name": "Clear Errors.vi",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

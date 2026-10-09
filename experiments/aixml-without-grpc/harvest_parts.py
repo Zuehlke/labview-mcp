@@ -337,6 +337,14 @@ class Harvester:
             if cls in ("propNode", "invokeNode"):
                 self.vi_server_node(b, e, source)
                 continue
+            if cls == "ctlRefConst":
+                # a control reference (bound to a front-panel object: names its ddo) or This VI
+                self.save("node", "node/ctlRefConst/%s" % ("control" if e.find("ddo") is not None else "thisvi"),
+                          source, e, resolve_types(b, e))
+                continue
+            if cls == "statVIRef":
+                self.save("node", "node/statVIRef", source, e, resolve_types(b, e))
+                continue
             if self.only_props:
                 continue
             if cls == "fPTerm":
