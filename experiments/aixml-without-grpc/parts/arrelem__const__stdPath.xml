@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdPath" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Palette Editing API\Create New Palette.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdPath" uid="389">
+                  <objFlags>327684</objFlags>
+                  <howGrow>240</howGrow>
+                  <bounds>(40, 35, 59, 159)</bounds>
+                  <partsList elements="4">
+                    <SL__arrayElement class="label" uid="391">
+                      <objFlags>1050930</objFlags>
+                      <partID>11</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>240</howGrow>
+                      <bounds>(1, 9, 18, 123)</bounds>
+                      <image class="Image">
+                        <ImageResID>-11</ImageResID>
+                        </image>
+                      <fgColor>01000000</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      <textRec class="textHair">
+                        <mode>8471556</mode>
+                        <bgColor>00FFFFFF</bgColor>
+                        </textRec>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="392">
+                      <objFlags>3378</objFlags>
+                      <partID>43</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>4108</howGrow>
+                      <bounds>(4, 3, 14, 9)</bounds>
+                      <image class="Image">
+                        <ImageResID>-244</ImageResID>
+                        </image>
+                      <fgColor>00007F7F</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="393">
+                      <objFlags>2323</objFlags>
+                      <partID>9</partID>
+                      <howGrow>240</howGrow>
+                      <bounds>(0, 0, 19, 124)</bounds>
+                      <image class="Image">
+                        <ImageResID>-17</ImageResID>
+                        </image>
+                      <fgColor>00007F7F</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="annex" uid="549">
+                      <partID>66</partID>
+                      <rsrcID>2009</rsrcID>
+                      <annexDDOFlag>2</annexDDOFlag>
+                      </SL__arrayElement>
+                    </partsList>
+                  <typeDesc>TypeID(90)</typeDesc>
+                  <MouseWheelSupport>3</MouseWheelSupport>
+                  <browseOptions class="BrowseOptions">
+                    <pattern />
+                    <matchPattern />
+                    <mode>117833728</mode>
+                    <startPath>505448300000000400000000</startPath>
+                    <patternLabel />
+                    <buttonLabel />
+                    </browseOptions>
+                  </ddo>
+                </heap></part>

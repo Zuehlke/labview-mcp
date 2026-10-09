@@ -26,7 +26,36 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the bundle's .
 import lvheap  # noqa: E402
 
 
-def part_xml(kind, key, source, el, types, extra=None):
+def image_ids(el):
+    """Positive ImageResIDs: images EMBEDDED in the donor VI's DSIM block (negative ones are
+    LabVIEW's built-in images). Measured: a waveform control without them is "Could not load
+    the image" (fpinit.cpp) and a broken VI."""
+    out = set()
+    for e in el.iter("ImageResID"):
+        try:
+            v = int(e.text)
+        except (TypeError, ValueError):
+            continue
+        if v > 0:
+            out.add(v)
+    return sorted(out)
+
+
+def dsim_images(bundle, ids):
+    """{index: hex} for the DSIM sections a part needs, read from the donor bundle."""
+    out = {}
+    blk = bundle.main.find("DSIM")
+    if blk is None:
+        return out
+    for sec in blk.findall("Section"):
+        i = int(sec.get("Index"))
+        if i in ids and sec.get("File"):
+            with open(os.path.join(bundle.dir, sec.get("File")), "rb") as f:
+                out[i] = f.read().hex().upper()
+    return out
+
+
+def part_xml(kind, key, source, el, types, extra=None, images=None):
     p = ET.Element("part", {"kind": kind, "key": key, "source": source})
     # A CLEAN part comes from a VI LabVIEW generated from AIXML: default style, no captions,
     # no default data. Parts cut from NI's examples carry the example's styling and were
@@ -39,6 +68,10 @@ def part_xml(kind, key, source, el, types, extra=None):
         t.append(tree)
     h = ET.SubElement(p, "heap")
     h.append(copy.deepcopy(el))
+    if images:
+        im = ET.SubElement(p, "images")
+        for i, hx in sorted(images.items()):
+            ET.SubElement(im, "image", {"index": str(i)}).text = hx
     return p
 
 
@@ -155,7 +188,8 @@ class Harvester:
             return
         if self.clean:
             extra = dict(extra or {}, clean="1")
-        ET.ElementTree(part_xml(kind, key, source, el, types, extra)).write(
+        images = dsim_images(self.bundle, image_ids(el)) if getattr(self, "bundle", None) is not None else None
+        ET.ElementTree(part_xml(kind, key, source, el, types, extra, images)).write(
             path, encoding="utf-8", xml_declaration=True)
         self.found.append(key)
 
@@ -178,6 +212,7 @@ class Harvester:
 
     def harvest(self, main_xml, source):
         b = lvheap.Bundle(main_xml)
+        self.bundle = b     # save() reads the donor's embedded images (DSIM) from it
         fpdco_ind = {}
         if b.fp is not None:
             for fpdco in b.fp.iter("SL__arrayElement"):

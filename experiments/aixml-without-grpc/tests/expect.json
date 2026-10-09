@@ -714,5 +714,39 @@
     }
    }
   ]
+ },
+ "t82_basic_types": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Y": "",
+     "big out": 100,
+     "back": 2.5,
+     "c out": "[3,0]"
+    }
+   }
+  ]
+ },
+ "t83_more_prims": {
+  "cases": [
+   {
+    "inputs": "a=2;b=1;s=abc",
+    "outputs": {
+     "a > b": "True",
+     "a >= 0 as int": 1,
+     "upper": "ABC",
+     "as path": "abc"
+    }
+   },
+   {
+    "inputs": "a=-1;b=1;s=x",
+    "outputs": {
+     "a > b": "False",
+     "a >= 0 as int": 0,
+     "upper": "X"
+    }
+   }
+  ]
  }
 }

@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1224" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\control\fuzzy\Color Learner\FuzzyEx Color Learner.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="number: 0 to 1" /></types><heap><SL__arrayElement class="prim" uid="2215">
+                        <objFlags>65536</objFlags>
+                        <termList elements="3">
+                          <SL__arrayElement class="term" uid="2222">
+                            <dco class="parm" uid="2223">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(111)</typeDesc>
+                              <dcoFiller>3</dcoFiller>
+                              <termBounds>(0, 16, 32, 32)</termBounds>
+                              <primIndex>90</primIndex>
+                              <inplace>3</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2225">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="2226">
+                              <typeDesc>TypeID(112)</typeDesc>
+                              <dsw>4096</dsw>
+                              <termBounds>(16, 0, 32, 16)</termBounds>
+                              <primIndex>90</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2228">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="2229">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(113)</typeDesc>
+                              <termBounds>(0, 0, 16, 16)</termBounds>
+                              <primIndex>90</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(263, 155, 295, 187)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>327683</clumpNum>
+                        <primResID>1224</primResID>
+                        <primIndex>90</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

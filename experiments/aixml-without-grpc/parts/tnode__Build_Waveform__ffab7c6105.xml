@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Build_Waveform/ffab7c6105" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Signal Operation\Continuous Decimating.vi" node="Build Waveform" ins="waveform|Y|dt|t0" outs="output waveform" mode="fields=Y,dt,t0" nodeFlags="786432"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="Y"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="dt" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="t0" /></types><heap><SL__arrayElement class="nMux" uid="583">
+                <objFlags>786432</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="585" aixml="output waveform">
+                    <objFlags>64</objFlags>
+                    <dco class="nmxDCO" uid="586">
+                      <objFlags>1</objFlags>
+                      <termList elements="2">
+                        <SL__arrayElement uid="585" />
+                        <SL__arrayElement uid="588" />
+                        </termList>
+                      <typeDesc>TypeID(74)</typeDesc>
+                      <termBounds>(0, 19, 61, 35)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="588" aixml="waveform">
+                    <objFlags>131136</objFlags>
+                    <dco uid="586" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="595" aixml="Y">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="596">
+                      <typeDesc>TypeID(75)</typeDesc>
+                      <termBounds>(12, 0, 28, 19)</termBounds>
+                      <i>2</i>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="844" aixml="dt">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="843">
+                      <typeDesc>TypeID(76)</typeDesc>
+                      <termBounds>(28, 0, 44, 19)</termBounds>
+                      <i>1</i>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="851" aixml="t0">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="850">
+                      <typeDesc>TypeID(77)</typeDesc>
+                      <termBounds>(44, 0, 60, 19)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(321, 406, 382, 441)</bounds>
+                <shortCount>26</shortCount>
+                <clumpNum>589828</clumpNum>
+                <dcoList elements="3">
+                  <SL__arrayElement uid="596" />
+                  <SL__arrayElement uid="843" />
+                  <SL__arrayElement uid="850" />
+                  </dcoList>
+                <dcoAgg uid="586" />
+                </SL__arrayElement>
+              </heap></part>

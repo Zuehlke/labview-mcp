@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/fpdco/stdLvVariant" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\user.lib\Malleable\Length Of.vi"><types><TypeDesc Type="LVVariant" Format="inline" Label="Variant" /></types><heap><ddo class="stdLvVariant" uid="4439">
+              <objFlags>65540</objFlags>
+              <howGrow>240</howGrow>
+              <bounds>(19, 45, 94, 195)</bounds>
+              <partsList elements="4">
+                <SL__arrayElement class="label" uid="4441">
+                  <objFlags>1507658</objFlags>
+                  <partID>16</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-15, 0, 0, 40)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>1028</mode>
+                    <text>"Variant"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </SL__arrayElement>
+                <SL__arrayElement class="label" uid="4442">
+                  <objFlags>2354</objFlags>
+                  <partID>11</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>240</howGrow>
+                  <bounds>(2, 6, 73, 148)</bounds>
+                  <image class="Image">
+                    <ImageResID>-10</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  <textRec class="textHair">
+                    <mode>8401924</mode>
+                    <bgColor>00B3B3B3</bgColor>
+                    </textRec>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="4443">
+                  <objFlags>2323</objFlags>
+                  <partID>9</partID>
+                  <howGrow>240</howGrow>
+                  <bounds>(0, 0, 75, 150)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="annex" uid="4444">
+                  <partID>66</partID>
+                  <rsrcID>3310</rsrcID>
+                  </SL__arrayElement>
+                </partsList>
+              <typeDesc>TypeID(16)</typeDesc>
+              <MouseWheelSupport>3</MouseWheelSupport>
+              </ddo>
+            </heap></part>

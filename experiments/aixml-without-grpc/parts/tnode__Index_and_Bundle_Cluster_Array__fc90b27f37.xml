@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Index_and_Bundle_Cluster_Array/fc90b27f37" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Fitting\Sphere Fit.vi" node="Index &amp; Bundle Cluster Array" ins="component array|component array#1|component array#2" outs="array of clusters" mode="" nodeFlags="0"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="cABuild" uid="2367">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="2385" aixml="array of clusters">
+            <objFlags>64</objFlags>
+            <dco class="cABuildDCO" uid="2383">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(240)</typeDesc>
+              <termBounds>(0, 16, 25, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2376" aixml="component array">
+            <objFlags>32832</objFlags>
+            <dco class="cABuildDCO" uid="2374">
+              <typeDesc>TypeID(241)</typeDesc>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2379" aixml="component array#1">
+            <objFlags>32832</objFlags>
+            <dco class="cABuildDCO" uid="2377">
+              <typeDesc>TypeID(242)</typeDesc>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2382" aixml="component array#2">
+            <objFlags>32832</objFlags>
+            <dco class="cABuildDCO" uid="2380">
+              <typeDesc>TypeID(243)</typeDesc>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(277, 571, 302, 603)</bounds>
+        <shortCount>12</shortCount>
+        <clumpNum>196611</clumpNum>
+        <dcoList elements="3">
+          <SL__arrayElement uid="2374" />
+          <SL__arrayElement uid="2377" />
+          <SL__arrayElement uid="2380" />
+          </dcoList>
+        <dcoAgg uid="2383" />
+        </SL__arrayElement>
+      </heap></part>

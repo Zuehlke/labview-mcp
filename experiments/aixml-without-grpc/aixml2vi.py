@@ -49,7 +49,15 @@ SCALARS = {
     "uint32": ("NumUInt32", "stdNum"), "uint64": ("NumUInt64", "stdNum"),
     "bool": ("Boolean", "stdBool"), "string": ("String", "stdString"),
     "path": ("Path", "stdPath"),
+    "extended": ("NumFloatExt", "stdNum"), "complexsingle": ("NumComplex64", "stdNum"),
+    "complexdouble": ("NumComplex128", "stdNum"), "complexextended": ("NumComplexExt", "stdNum"),
+    "variant": ("LVVariant", "stdLvVariant"),
+    # a timestamp and a waveform are MeasureData with a Flavor (measured on an AIXML-generated VI)
+    "timestamp": ("MeasureData.TimeStamp", "absTime"),
+    "doublewaveform": ("MeasureData.Float64Waveform", "stdMeasureData"),
 }
+# type key (lvheap.type_key) -> the front-panel class of its object
+DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 # LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
 # 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
 TYPE_CODE = {"NumInt8": 0x01, "NumInt16": 0x02, "NumInt32": 0x03, "NumInt64": 0x04,
@@ -134,10 +142,13 @@ def type_tree(aixml_type, label=None):
             ET.SubElement(el, "EnumLabel").text = unescape(item)
     elif aixml_type in SCALARS:
         t, _ = SCALARS[aixml_type]
-        el = ET.Element("TypeDesc", {"Type": t})
-        if t not in ("Boolean",):
-            el.set("Prop1", "0xFFFFFFFF" if t in ("String", "Path") else "0")
-        el.set("Format", "inline")
+        if t.startswith("MeasureData."):
+            el = ET.Element("TypeDesc", {"Type": "MeasureData", "Flavor": t.split(".", 1)[1], "Format": "inline"})
+        else:
+            el = ET.Element("TypeDesc", {"Type": t})
+            if t not in ("Boolean", "LVVariant"):
+                el.set("Prop1", "0xFFFFFFFF" if t in ("String", "Path") else "0")
+            el.set("Format", "inline")
     else:
         raise Unsupported("type %r is not composable yet" % aixml_type)
     if label:
@@ -225,6 +236,8 @@ def adapt_numeric(ddo, t):
     AIXML-generated controls: %#_g for floating point, %.0f for integers."""
     if ddo.get("class") != "stdNum" or t not in NUM_RANK:
         return
+    if t not in INT_RANGE and t not in FLOAT_RANGE:
+        return      # complex and extended come from parts of their own representation
     if t in INT_RANGE:
         lo, hi = INT_RANGE[t]
         vals, fmt = (str(lo), str(hi), "0"), '"%.0f"'
@@ -390,6 +403,29 @@ def _flat(tree, value):
     return _const_value(tree, value)
 
 
+def _quad(x):
+    """A float as LabVIEW flattens an extended: IEEE 754 binary128, big-endian - measured,
+    100 is 4005 9000 0000 0000 0000 0000 0000 0000."""
+    import math
+    if x == 0:
+        return "00" * 16
+    sign = 1 if x < 0 else 0
+    if math.isinf(x):
+        return ("%04X" % ((sign << 15) | 0x7FFF)) + "00" * 14
+    m, e = math.frexp(abs(x))                   # x = m * 2^e, 0.5 <= m < 1
+    frac = int((m * 2 - 1) * (1 << 52)) << 60   # 52 bits of a double into 112
+    return ("%04X" % ((sign << 15) | (e - 1 + 16383))) + ("%028X" % frac)
+
+
+def _complex(value):
+    """'3', '1.5+2i', '-1-0.5i' -> (re, im)."""
+    v = unescape(value or "0").replace(" ", "")
+    m = re.fullmatch(r"([+-]?[^+-]+?)(?:([+-][^+-]*)i)?", v)
+    if not m:
+        raise Unsupported("complex literal %r is not readable" % value)
+    return float(m.group(1) or 0), float(m.group(2) or 0) if m.group(2) else 0.0
+
+
 def _const_value(tree, value):
     t = tree.get("Type")
     if t in ("Cluster", "Array") or t in ENUM_BASE.values():
@@ -405,6 +441,15 @@ def _const_value(tree, value):
     if t == "String":
         b = unescape(value or "").encode("mac_roman")
         return (struct.pack(">I", len(b)) + b).hex().upper()
+    if t == "NumFloatExt":
+        return _quad(float(value or 0))
+    if t in ("NumComplex128", "NumComplex64"):
+        re_, im = _complex(value)
+        f = ">d" if t == "NumComplex128" else ">f"
+        return (struct.pack(f, re_) + struct.pack(f, im)).hex().upper()
+    if t == "MeasureData" and tree.get("Flavor") == "TimeStamp":
+        # AIXML cannot carry a timestamp literal (LabVIEW's own converter discards it): zero
+        return "00" * 16
     if t == "Path":
         v = unescape(value or "")
         if not v:
@@ -421,30 +466,32 @@ def _const_value(tree, value):
     raise Unsupported("no constant encoding for %s" % t)
 
 
+def _tsv(path):
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [r for r in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t")
+                if r and r[0] != "primResID"]
+
+
 def load_names():
+    """primitive-names.tsv / terminal-names.tsv (experiments/pylabview), plus local supplements:
+    names primitive-names.tsv lacks (Greater?, Greater Or Equal? ... primitive-names-extra.tsv),
+    terminal names learned from NI's exports and re-harvested on 2026-10-10."""
     prim_by_name = {}
-    with open(os.path.join(TABLES, "primitive-names.tsv"), encoding="utf-8") as f:
-        for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
-            if not row or row[0] == "primResID":
-                continue
-            # the tables keep AIXML's escaping, XML entities AND \XX ("Boolean To (0\2C1)"),
-            # while a node's _name is compared unescaped
-            rid, name = row[0], unescape(html.unescape(row[1]))
-            seen = int(row[2]) if len(row) > 2 and row[2].isdigit() else 0
-            if name not in prim_by_name or seen > prim_by_name[name][1]:
-                prim_by_name[name] = (rid, seen)
+    for row in _tsv(os.path.join(TABLES, "primitive-names.tsv")) + _tsv(os.path.join(HERE, "primitive-names-extra.tsv")):
+        # the tables keep AIXML's escaping, XML entities AND \XX ("Boolean To (0\2C1)"),
+        # while a node's _name is compared unescaped
+        rid, name = row[0], unescape(html.unescape(row[1]))
+        seen = int(row[2]) if len(row) > 2 and row[2].isdigit() else 0
+        if name not in prim_by_name or seen > prim_by_name[name][1]:
+            prim_by_name[name] = (rid, seen)
     terms = {}
-    with open(os.path.join(TABLES, "terminal-names.tsv"), encoding="utf-8") as f:
-        for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
-            if not row or row[0] == "primResID":
-                continue
-            terms[(row[0], row[2])] = unescape(html.unescape(row[3]))
-    learned = os.path.join(HERE, "terminal-names-learned.tsv")
-    if os.path.exists(learned):
-        with open(learned, encoding="utf-8") as f:
-            for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
-                if row and row[0] != "primResID":
-                    terms.setdefault((row[0], row[2]), unescape(row[3]))
+    for row in _tsv(os.path.join(TABLES, "terminal-names.tsv")):
+        terms[(row[0], row[2])] = unescape(html.unescape(row[3]))
+    for extra in ("terminal-names-learned.tsv", "terminal-names-extra.tsv"):
+        for row in _tsv(os.path.join(HERE, extra)):
+            terms.setdefault((row[0], row[2]), unescape(html.unescape(row[3])))
     return {n: r for n, (r, _) in prim_by_name.items()}, terms
 
 
@@ -491,6 +538,9 @@ class Parts:
         root = ET.parse(p).getroot()
         types = list(root.find("types"))
         heap = copy.deepcopy(list(root.find("heap"))[0])
+        images = {int(i.get("index")): i.text for i in root.find("images")} if root.find("images") is not None else {}
+        if images:
+            heap.set("_images", json.dumps(images))   # carried to instantiate(), removed there
         return heap, types, root.get("source")
 
     def clean(self, key):
@@ -583,12 +633,35 @@ class Composer:
             return None
         heap, types, source = got
         lvheap.renumber(heap, self.alloc)
+        if heap.get("_images"):
+            # Images EMBEDDED in the donor (DSIM sections, positive ImageResIDs) come along under
+            # numbers free in this VI: a waveform control without them was "Could not load the
+            # image" and a broken VI. Identical images share one section.
+            mapping = {}
+            for old, hx in json.loads(heap.get("_images")).items():
+                self.images = getattr(self, "images", {})
+                same = next((i for i, h in self.images.items() if h == hx), None)
+                if same is None:
+                    same = max([1] + list(self.images)) + 1
+                    self.images[same] = hx
+                mapping[int(old)] = same
+            for e in heap.iter("ImageResID"):
+                try:
+                    v = int(e.text)
+                except (TypeError, ValueError):
+                    continue
+                if v in mapping:
+                    e.text = str(mapping[v])
+            del heap.attrib["_images"]
         # An annex's nRC/oRC is a coordinate pair tied to where the DONOR sat: the same array
         # constant was clean at the donor's (417, 231) and "Insane Array Constant {graphics}
         # (0x80)" at (102, 40); without the pair it was clean at both (measured 2026-10-09).
+        # Only a NEGATIVE pair is a position; a waveform control's (0, 4) / (0, 1) is not, and
+        # stripping it was one of two differences from a working reference.
         for p in heap.iter():
-            for c in list(p):
-                if c.tag in ("nRC", "oRC"):
+            pair = [c for c in p if c.tag in ("nRC", "oRC")]
+            if pair and any(v < 0 for c in pair for v in lvheap.parse_bounds("(%s, 0, 0)" % (c.text or "0, 0").strip("() "))[:2]):
+                for c in pair:
                     p.remove(c)
         if own_uid is not None:
             target = heap if own_path is None else heap.find(own_path)
@@ -614,6 +687,8 @@ class Composer:
         v = int(f.text) if f is not None else 0
         v = v | 1 if is_ind else v & ~1
         if f is None:
+            if not v:
+                return      # no field means 0; an added <objFlags>0</objFlags> differs from LabVIEW's form
             f = ET.Element("objFlags")
             e.insert(0, f)
         f.text = str(v)
@@ -772,7 +847,8 @@ class Composer:
             h, w = lvheap.size_of(ddo)
             return (holder if tag is None else ddo), src, h, w
         # scalars and enums: a front-panel or constant part's ddo, or an array element's
-        ddo_class = SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == t), ""), (None, None))[1]
+        tkey = lvheap.type_key(tree)
+        ddo_class = DDO_OF_KEY.get(tkey)
         if is_enum(tree):
             ddo_class = "stdRing"
         if ddo_class is None:
@@ -781,12 +857,12 @@ class Composer:
         if in_array and self.parts.get("arrelem/%s/%s" % (prefix, ddo_class)) is not None:
             key = "arrelem/%s/%s" % (prefix, ddo_class)
         if key is None:
-            key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, t)
+            key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, tkey)
         if key is None and is_enum(tree):
             key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, "UnitUInt16")
         if key is None:
             raise Unsupported("no %s part for %s (%s)" % (prefix, ddo_class, t))
-        holder, _, src = self.instantiate(key)
+        holder, donor_types, src = self.instantiate(key)
         ddo = self._ddo_of(holder)
         adapt_numeric(ddo, t)
         if is_enum(tree):
@@ -796,7 +872,16 @@ class Composer:
             # follows the cluster's direction
             self._direction(ddo, is_ind)
         self._set_label(ddo, name)
-        lvheap.set_typeids(holder, [self.heap_tid(tree) for _ in lvheap.typeid_elements(holder)])
+        # the object's own type is retyped; what it holds inside (a waveform control's t0, dt and
+        # Y, a timestamp's boolean part) keeps the donor's - all of them retyped, pylabview
+        # could not even parse the waveform's numeric parts
+        own = ET.tostring(plain(lvheap.strip_label(donor_types[0]))) if donor_types else None
+        tids = []
+        for dt in donor_types:
+            same = ET.tostring(plain(lvheap.strip_label(dt))) == own
+            # an inner part keeps its donor type WITH its label (the waveform's t0, dt, Y)
+            tids.append(self.heap_tid(tree) if same else self.heap_tid(plain(dt)))
+        lvheap.set_typeids(holder, tids or [self.heap_tid(tree) for _ in lvheap.typeid_elements(holder)])
         if tag is None:
             return holder, src, 0, 0
         h, w = lvheap.size_of(ddo)
@@ -990,6 +1075,11 @@ class Composer:
         ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
         for tname, _ in ins + outs:
             if tname not in by_name:
+                # NI's converter takes a terminal name in any case (`variant` for `Variant`)
+                hit = [k for k in by_name if k.lower() == tname.lower()]
+                if len(hit) == 1:
+                    by_name[tname] = by_name[hit[0]]
+                    continue
                 raise Unsupported("Node %r has no terminal %r (known: %s)"
                                   % (name, tname, ", ".join(sorted(by_name))))
         # One typeDesc per term, in term order - checked rather than assumed, because the
@@ -1300,6 +1390,85 @@ class Composer:
             for _, net in outs:
                 if net:
                     self.net_type[net] = atype
+        tl.set("elements", str(len(tl)))
+        dl.set("elements", str(len(dl)))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Node %r <- %s" % (name, src))
+
+    # ---- waveforms --------------------------------------------------------------------------
+    def waveform_fields(self):
+        """The fields a Float64 waveform bundles, as LabVIEW's waveform control lists them."""
+        err = type_tree("cluster{bool.status,int32.code,string.source}", "error")
+        return [type_tree("timestamp", "t0"), type_tree("double", "dt"),
+                type_tree("array{double}", "Y"), err, type_tree("variant", "attributes")]
+
+    def add_waveform_node(self, el):
+        """Build Waveform and Get Waveform Components are Bundle/Unbundle By Name (nMux) on the
+        waveform's fields, the node flagged 0x80000 on top (0xC0000 / 0xD0000, measured on an
+        AIXML-generated VI); each field DCO carries <i>, t0 0, dt 1, Y 2, error 3, attributes 4."""
+        name = unescape(el.get("_name"))
+        self.check_attrs(el)
+        build = name == "Build Waveform"
+        diag = self.diag_of(el)
+        node, _, src = self.instantiate("node/nMux/%s" % ("bundle" if build else "unbundle"), own_uid=el.get("uid"))
+        for d in node.iter("dco"):
+            for e in d.findall("inplace"):
+                d.remove(e)
+        fs = self.waveform_fields()
+        labels = [f.get("Label") for f in fs]
+        wtype = type_tree("doublewaveform")
+        tl = node.find("termList")
+        terms = list(tl)
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        ins, outs = keyed(pairs(el.get("inputs"))), keyed(pairs(el.get("outputs")))
+        if build:
+            agg, cref, tpl = terms[0], terms[1], terms[2]
+            for c in terms[2:]:
+                tl.remove(c)
+            agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(wtype)
+            win = dict(ins).get("waveform")
+            if not win:
+                cref.find("objFlags").text = str(0x20040)   # no waveform wired, as Bundle's
+            self.ends[(el.get("uid"), "waveform")] = (cref.get("uid"), diag)
+            self.ends[(el.get("uid"), "output waveform")] = (agg.get("uid"), diag)
+            for k, net in ins:
+                if k == "waveform":
+                    continue
+                if k not in labels:
+                    raise Unsupported("Build Waveform %s: no field %r" % (el.get("uid"), k))
+                idx = labels.index(k)
+                t = self._term_from(tpl, unlabel(fs[idx]) if k != "Y" else fs[idx], flags=32832, index=idx)
+                tl.append(t)
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+            for _, net in outs:
+                if net:
+                    self.net_type[net] = wtype
+        else:
+            agg, tpl = terms[0], terms[1]
+            for c in terms[1:]:
+                tl.remove(c)
+            agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(wtype)
+            self.ends[(el.get("uid"), "waveform")] = (agg.get("uid"), diag)
+            for k, net in outs:
+                if k not in labels:
+                    raise Unsupported("Get Waveform Components %s: no field %r" % (el.get("uid"), k))
+                idx = labels.index(k)
+                t = self._term_from(tpl, fs[idx], index=idx)
+                tl.append(t)
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+                if net:
+                    self.net_type[net] = unlabel(fs[idx])
+        f = node.find("objFlags")
+        if f is None:
+            f = ET.Element("objFlags")
+            node.insert(0, f)
+        f.text = str(int(f.text or 0) | 0x80000)
         tl.set("elements", str(len(tl)))
         dl.set("elements", str(len(dl)))
         diag.nodes.append(node)
@@ -2102,7 +2271,10 @@ class Composer:
             # an enum part serves every enum width: its items and maximum are rewritten anyway,
             # and the NI-example UnitUInt32 ring was measured breaking a VI on its own where the
             # clean UnitUInt16 one, re-typed, works
-            adaptable = exact or (kt in NUM_RANK and t in NUM_RANK) or \
+            # numeric parts adapt between integer and float representations only: a complex
+            # part re-typed int32 kept its complex limits and pylabview refused it
+            plain_num = set(INT_RANGE) | set(FLOAT_RANGE)
+            adaptable = exact or (kt in plain_num and t in plain_num) or \
                 (kt.startswith("UnitUInt") and t.startswith("UnitUInt"))
             if not adaptable:
                 continue
@@ -2410,6 +2582,8 @@ class Composer:
                 nm = unescape(e.get("_name") or "")
                 if e.tag == "Node" and nm in self.AGG_NODES:
                     self.add_agg_node(e)
+                elif e.tag == "Node" and nm in ("Build Waveform", "Get Waveform Components"):
+                    self.add_waveform_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):
                     self.add_template_node(e)
                 elif e.tag == "Node":
@@ -2482,6 +2656,18 @@ class Composer:
         sl.set("IndexShift", str(INDEX_SHIFT))
         sl.set("Count", str(heap_count))
         m.find("MUID/Section").set("Value", str(max(self.used_uids)))
+        if getattr(self, "images", None):
+            # the DSIM block ("Dynamic Size Image") sits before the front-panel heap, as in
+            # LabVIEW's own files; one binary section per image
+            blk = m.find("DSIM")
+            if blk is None:
+                blk = ET.Element("DSIM")
+                m.insert(list(m).index(m.find("FPHb")), blk)
+            for i, hx in sorted(self.images.items()):
+                fn = "%s_DSIM%d.bin" % (base, i)
+                with open(os.path.join(out_dir, fn), "wb") as f:
+                    f.write(bytes.fromhex(hx))
+                ET.SubElement(blk, "Section", {"Index": str(i), "Format": "bin", "File": fn})
         # NO COMPILED CODE, EVER - the user's rule of 2026-10-09: a composed VI is source-only,
         # so it carries less data and LabVIEW compiles it in memory on load. Asserted rather
         # than assumed, because a part or skeleton cut from a compiled VI could bring it in.

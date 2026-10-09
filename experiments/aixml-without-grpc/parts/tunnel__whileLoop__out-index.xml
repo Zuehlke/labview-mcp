@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tunnel" key="tunnel/whileLoop/out-index" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\MGI\MGI Monitored Actor\Example\Example Actor\Example Actor\Get ID.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></types><heap><wrap><SL__arrayElement class="term" uid="549">
+            <objFlags>2097216</objFlags>
+            <dco class="lpTun" uid="543">
+              <objFlags>2049</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="545" />
+                <SL__arrayElement uid="549" />
+                </termList>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(16, 280, 25, 289)</termBounds>
+              <innerLpTunDCO class="innerLpTun" uid="579">
+                <objFlags>1</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement uid="545" />
+                  <SL__arrayElement uid="549" />
+                  </termList>
+                <typeDesc>TypeID(11)</typeDesc>
+                <lpTunDCO uid="543" />
+                </innerLpTunDCO>
+              <TunnelType>01</TunnelType>
+              <DefaultTunnelType>01</DefaultTunnelType>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="545">
+                    <objFlags>2260992</objFlags>
+                    <dco uid="543" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

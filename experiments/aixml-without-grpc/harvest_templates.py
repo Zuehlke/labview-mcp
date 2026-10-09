@@ -63,6 +63,7 @@ def nets_of(el):
 
 
 def harvest(h, aixml_path, bundle, source, names):
+    h.bundle = bundle
     root = ET.parse(aixml_path).getroot()
     by_uid = {e.get("uid"): e for e in root.iter() if e.get("uid")}
     bd = bundle.bd

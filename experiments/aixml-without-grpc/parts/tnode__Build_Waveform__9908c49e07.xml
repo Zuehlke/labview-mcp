@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Build_Waveform/9908c49e07" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Signal Generation\Pulse Train demo.vi" node="Build Waveform" ins="waveform|Y|dt" outs="output waveform" mode="fields=Y,dt" nodeFlags="786432"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="Y"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="dt" /></types><heap><SL__arrayElement class="nMux" uid="424">
+                <objFlags>786432</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="441" aixml="output waveform">
+                    <objFlags>64</objFlags>
+                    <dco class="nmxDCO" uid="442">
+                      <objFlags>1</objFlags>
+                      <termList elements="2">
+                        <SL__arrayElement uid="441" />
+                        <SL__arrayElement uid="473" />
+                        </termList>
+                      <typeDesc>TypeID(168)</typeDesc>
+                      <termBounds>(0, 19, 45, 35)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="473" aixml="waveform">
+                    <objFlags>131136</objFlags>
+                    <dco uid="442" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="526" aixml="Y">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="838">
+                      <typeDesc>TypeID(169)</typeDesc>
+                      <termBounds>(12, 0, 28, 19)</termBounds>
+                      <i>2</i>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="840" aixml="dt">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="841">
+                      <typeDesc>TypeID(170)</typeDesc>
+                      <termBounds>(28, 0, 44, 19)</termBounds>
+                      <i>1</i>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(41, 577, 86, 612)</bounds>
+                <shortCount>16</shortCount>
+                <clumpNum>327686</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="838" />
+                  <SL__arrayElement uid="841" />
+                  </dcoList>
+                <dcoAgg uid="442" />
+                </SL__arrayElement>
+              </heap></part>

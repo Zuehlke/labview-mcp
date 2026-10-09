@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fixed" key="fixed/02" source="C:/temp/aixml-no-grpc/probes/b_pfix/pfix.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="4260.value" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="4260.value" /></types><heap><SL__arrayElement class="term" uid="4435">
+<part kind="fixed" key="fixed/02" source="AIXML-generated probe: pfix.vi" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="4260.value" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="4260.value" /></types><heap><SL__arrayElement class="term" uid="4435">
             <objFlags>131136</objFlags>
             <dco class="bDConstDCO" uid="4433">
               <typeDesc>TypeID(32)</typeDesc>

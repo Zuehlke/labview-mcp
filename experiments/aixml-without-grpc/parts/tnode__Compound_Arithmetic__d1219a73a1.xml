@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/d1219a73a1" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\addons\_JKI Toolkits\Caraya\run-tests\Run Test (Array Path).vi" node="Compound Arithmetic" ins="value|value#1" outs="result" mode="inversions= , , ;operation=AND" nodeFlags="655360"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="exists"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" Label="is directory" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="valid"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" Label="valid" /></TypeDesc></types><heap><SL__arrayElement class="cpdArith" uid="553">
+                <objFlags>655360</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="559" aixml="result">
+                    <objFlags>64</objFlags>
+                    <dco class="cpdArithDCO" uid="560">
+                      <objFlags>131073</objFlags>
+                      <typeDesc>TypeID(170)</typeDesc>
+                      <termBounds>(0, 12, 17, 24)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="565" aixml="value">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="566">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(171)</typeDesc>
+                      <termBounds>(0, 0, 8, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1274" aixml="value#1">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="1273">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(172)</typeDesc>
+                      <termBounds>(8, 0, 16, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(196, 94, 213, 118)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>196611</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="566" />
+                  <SL__arrayElement uid="1273" />
+                  </dcoList>
+                <dcoAgg uid="560" />
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdLvVariant/ctl/LVVariant" source="AIXML-generated probe: pbasic2.vi" clean="1"><types><TypeDesc Type="LVVariant" Format="inline" Label="v in" /><TypeDesc Type="LVVariant" Format="inline" Label="v in" /></types><heap><SL__arrayElement class="fPDCO" uid="4933">
+          <objFlags>66048</objFlags>
+          <typeDesc>TypeID(3)</typeDesc>
+          <ddo class="stdLvVariant" uid="4320">
+            <objFlags>65540</objFlags>
+            <bounds>(277, 16, 367, 166)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="4929">
+                <objFlags>1507650</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 0, 15, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>1028</mode>
+                  <text>"v in"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="label" uid="4930">
+                <objFlags>2354</objFlags>
+                <partID>11</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(17, 6, 88, 148)</bounds>
+                <image class="Image">
+                  <ImageResID>-10</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                <textRec class="textHair">
+                  <mode>8401924</mode>
+                  <bgColor>00B3B3B3</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="4931">
+                <objFlags>2323</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(15, 0, 90, 150)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="4932">
+                <partID>66</partID>
+                <rsrcID>3310</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <description class="cLStrObj" uid="4937">
+              <strings elements="1">
+                <SL__arrayElement>[NULL]</SL__arrayElement>
+                </strings>
+              </description>
+            <typeDesc>TypeID(4)</typeDesc>
+            <MouseWheelSupport>3</MouseWheelSupport>
+            </ddo>
+          <conNum>14</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

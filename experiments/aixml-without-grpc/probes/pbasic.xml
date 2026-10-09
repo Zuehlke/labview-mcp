@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pbasic2.vi" description="Probe: waveform, timestamp, variant, complex and extended controls, indicators and constants, Build Waveform and Get Waveform Components, To Variant and Variant To Data.">
+  <Control _name="wf" conIdx="0" connection="recommended" outputs="value:4200.value" type="doublewaveform" uid="4200" uid_parent="root" value=""/>
+  <Node _name="Get Waveform Components" inputs="waveform:4200.value" outputs="Y:4210.Y" uid="4210" uid_parent="root"/>
+  <Indicator _name="Y" conIdx="3" connection="recommended" inputs="value:4210.Y" type="array{double}" uid="4213" uid_parent="root" value="[]"/>
+  <Constant _name="ys" outputs="value:4220.value" type="array{double}" uid="4220" uid_parent="root" value="[1,2,3]"/>
+  <Node _name="Build Waveform" inputs="waveform:4200.value,Y:4220.value" outputs="output waveform:4230.output waveform" uid="4230" uid_parent="root"/>
+  <Indicator _name="wf out" conIdx="4" connection="recommended" inputs="value:4230.output waveform" type="doublewaveform" uid="4235" uid_parent="root" value=""/>
+  <Control _name="when" conIdx="5" connection="recommended" outputs="value:4240.value" type="timestamp" uid="4240" uid_parent="root" value=""/>
+  <Indicator _name="when out" conIdx="6" connection="recommended" inputs="value:4240.value" type="timestamp" uid="4245" uid_parent="root" value=""/>
+  <Control _name="z" conIdx="7" connection="recommended" outputs="value:4250.value" type="complexdouble" uid="4250" uid_parent="root" value="0"/>
+  <Indicator _name="z out" conIdx="8" connection="recommended" inputs="value:4250.value" type="complexdouble" uid="4255" uid_parent="root" value="0"/>
+  <Constant _name="big" outputs="value:4260.value" type="extended" uid="4260" uid_parent="root" value="100"/>
+  <Indicator _name="big out" conIdx="9" connection="recommended" inputs="value:4260.value" type="extended" uid="4265" uid_parent="root" value="0"/>
+  <Constant _name="x" outputs="value:4270.value" type="double" uid="4270" uid_parent="root" value="2.5"/>
+  <Node _name="To Variant" inputs="anything:4270.value" outputs="variant:4280.variant" uid="4280" uid_parent="root"/>
+  <Indicator _name="v" conIdx="10" connection="recommended" inputs="value:4280.variant" type="variant" uid="4285" uid_parent="root" value=""/>
+  <Constant _name="as" outputs="value:4290.value" type="double" uid="4290" uid_parent="root" value="0"/>
+  <Node _name="Variant To Data" inputs="variant:4280.variant,type:4290.value,error in:" outputs="data:4295.data,error out:" uid="4295" uid_parent="root"/>
+  <Indicator _name="back" conIdx="11" connection="recommended" inputs="value:4295.data" type="double" uid="4296" uid_parent="root" value="0"/>
+  <Constant _name="c" outputs="value:4300.value" type="complexdouble" uid="4300" uid_parent="root" value="3"/>
+  <Indicator _name="c out" conIdx="12" connection="recommended" inputs="value:4300.value" type="complexdouble" uid="4305" uid_parent="root" value="0"/>
+  <Constant _name="now const" outputs="value:4310.value" type="timestamp" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="ts out" conIdx="13" connection="recommended" inputs="value:4310.value" type="timestamp" uid="4315" uid_parent="root" value=""/>
+  <Control _name="v in" conIdx="14" connection="recommended" outputs="value:4320.value" type="variant" uid="4320" uid_parent="root" value=""/>
+  <Indicator _name="v echo" conIdx="15" connection="recommended" inputs="value:4320.value" type="variant" uid="4325" uid_parent="root" value=""/>
+</VI>

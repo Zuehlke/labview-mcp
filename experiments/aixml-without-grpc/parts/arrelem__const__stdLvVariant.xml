@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdLvVariant" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Astemes\LMock\Serial Driver\Mock Serial\Read.vi"><types><TypeDesc Type="LVVariant" Format="inline" Label="Value" /></types><heap><SL__arrayElement class="stdLvVariant" uid="533">
+                        <objFlags>65536</objFlags>
+                        <howGrow>240</howGrow>
+                        <bounds>(33, -135, 52, -120)</bounds>
+                        <partsList elements="4">
+                          <SL__arrayElement class="label" uid="535">
+                            <objFlags>1507658</objFlags>
+                            <partID>16</partID>
+                            <masterPart>9</masterPart>
+                            <howGrow>4096</howGrow>
+                            <bounds>(-15, 0, 0, 32)</bounds>
+                            <image class="Image">
+                              <ImageResID>-619</ImageResID>
+                              </image>
+                            <fgColor>01000000</fgColor>
+                            <bgColor>01000000</bgColor>
+                            <textRec class="textHair">
+                              <mode>82948</mode>
+                              <text>"Value"</text>
+                              <bgColor>01000000</bgColor>
+                              <fr elements="1">
+                                <SL__arrayElement class="fontRun">
+                                  <fontid>2</fontid>
+                                  </SL__arrayElement>
+                                </fr>
+                              </textRec>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="label" uid="536">
+                            <objFlags>1051954</objFlags>
+                            <partID>11</partID>
+                            <masterPart>9</masterPart>
+                            <howGrow>240</howGrow>
+                            <bounds>(1, 3, 18, 14)</bounds>
+                            <image class="Image">
+                              <ImageResID>-11</ImageResID>
+                              </image>
+                            <fgColor>01000000</fgColor>
+                            <bgColor>00FFFFFF</bgColor>
+                            <textRec class="textHair">
+                              <mode>8471556</mode>
+                              <bgColor>00FFFFFF</bgColor>
+                              </textRec>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="cosm" uid="537">
+                            <objFlags>2327</objFlags>
+                            <partID>9</partID>
+                            <howGrow>240</howGrow>
+                            <bounds>(0, 0, 19, 15)</bounds>
+                            <image class="Image">
+                              <ImageResID>-14</ImageResID>
+                              </image>
+                            <fgColor>007F007F</fgColor>
+                            <bgColor>00FFFFFF</bgColor>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="annex" uid="538">
+                            <partID>66</partID>
+                            <refListLength>0</refListLength>
+                            <hGrowNodeListLength>0</hGrowNodeListLength>
+                            <rsrcID>3311</rsrcID>
+                            </SL__arrayElement>
+                          </partsList>
+                        <typeDesc>TypeID(77)</typeDesc>
+                        <MouseWheelSupport>3</MouseWheelSupport>
+                        </SL__arrayElement>
+                      </heap></part>
