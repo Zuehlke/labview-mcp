@@ -160,6 +160,23 @@ LabVIEW involved. Every rule below was read off a link record LabVIEW wrote itse
 * **An installed `.lvlib` lists its members by symbolic URL** (`/<vilib>/Utility/AngleManip/
   Degrees to Radians (Scalar DBL).vi`), not relative to itself; a user's library writes them
   relative. Both are resolved.
+* **A user's or project's library lists members RELATIVE TO THE `.lvlib` FILE TREATED AS A
+  DIRECTORY** — `../Close Scripting References.vi` in DQMH's `DQMH New Event.lvlib` is the
+  library's own folder, the same convention as a `.lvproj`. Resolving from the folder lands one
+  level too high.
+* **Anything outside every anchor** — the examples tree, `project\`, the user's own code — is
+  linked RELATIVE TO THE CALLER FILE, one empty component per level up: `["", "X.vi"]` beside
+  it, `["", "sub", "X.vi"]` below, `["", "", "X.vi"]` one folder up (as LabVIEW's own caller in
+  `FlatSeqRepro\C_plain_noPane` writes it). The resolver looks for such a callee in the caller's
+  folder (three levels deep), its parent (two) and grandparent (one).
+* **A class member** (`X.lvclass:M.vi`, or `L.lvlib:X.lvclass:M.vi`) resolves through the
+  `.lvclass`, which lists members the same way a library does. A **dynamic-dispatch** method
+  (`DynamicDispatch="1"` in the callee's `LVSR`) is refused by name: it is called through a
+  different node, and its class terminal needs a class wire this composer cannot author yet.
+* **A backslash in an AIXML terminal name is a doubled backslash** — NI writes the label
+  `delimiter (\t)` as `delimiter (\\t)` — while a backslash in a VALUE is `\5C`. And pylabview
+  writes label text raw inside quotes, with only control characters other than LF and TAB as
+  literal `&#xNN;`.
 * **A polymorphic call** (`target` the parent, `instance` the member it adapted to) is written as
   a call to the instance — the same diagram with the choice fixed.
 * **A typedef's wrapped type stays INLINE in the type table** (`Nested="True"`); turning it into
@@ -176,9 +193,29 @@ Measured, each from a composed caller run in LabVIEW over COM, no sanity warning
 | `t54` | int32 into the double input of `t51`'s callee — coercion at a call terminal | 90 → 1.5707963267949 |
 | `t55` | the same call inside a For Loop, summed through a shift register | n = 4 → 0.10471975511966 |
 | `t56` | `Clear Errors.vi` twice, chained through the error cluster | runs; the cluster wire is typed from the callee's pane alone |
+| `t57` | a composed VI in a subfolder, `["", "sub", …]` | −3 + 0.5 = −2.5 |
+| (manual) | a composed VI one folder up, `["", "", …]` | 1.25 + 10 = 11.25 |
 
 Coercion at a call terminal needed nothing special — unlike a primitive's terminal (§3), whose
 coerced input had to carry the wired type and the coercion flag.
+
+**How many of NI's own calls the resolver reaches** — `call_coverage.py` takes every `<Call>` in
+the 792 cached exports, resolves it, reads the callee's pane through pylabview and checks every
+terminal name the call uses against it (everything `add_call` needs, short of composing):
+
+| | resolvable |
+|---|---|
+| first resolver (installation by bare name, libraries by symbolic URL) | 2 154 of 3 398 (63.4 %) |
+| plus class members, project-local libraries, VIs near the caller, `\\` in names | **3 078 of 3 398 (90.6 %)** |
+
+By kind: 1 447 library members, 1 000 bare names in the installation, 362 class members, 230
+near the caller, 39 siblings; 1 227 distinct callees read. Of the 320 left, about 160 call
+**DAQmx**, which is not installed on this station; 52 are **Express VIs**, whose configured
+instance has terminals its file does not carry; 39 are **xnodes** (`Database Variant To
+Data.xnode`, `Error Ring.xnode`), which are not subVIs at all; 7 name a terminal the callee's
+pane lacks; the rest are single targets such as a call into a packed library (`.lvlibp`).
+Dynamic-dispatch methods are refused by the composer but are at most 3 calls here (below the
+20 causes the run printed).
 
 ## 4. VI → AIXML, against NI's own exports
 
@@ -246,11 +283,11 @@ between them (`Append Waveforms.vi` alone makes 7); the 25th is NI's polymorphic
 `Trim Whitespace.vi`, whose export lists its instances as calls with nothing wired — the
 instance's `string` input is required (`0x1000`), so LabVIEW is right to call it broken.
 
-So the next milestone was unambiguous: **subVI calls**, done for sibling VIs since (section 4a).
-NI's own calls mostly target vi.lib and library members, which need symbolic paths
-(`<vilib>`, `TpVal 0`) and qualified names in the link records — the obvious next step, and the
-one that moves the 610. After that: clusters and arrays (types plus `Bundle`/`Index Array` parts,
-which the harvest already has), enum/ring/string case selectors, sequences.
+So calls are no longer the bottleneck: 90.6 % of NI's calls resolve with every terminal on the
+callee's pane (section 4b). The next milestones are the constructs those 610 VIs stop at now —
+a case structure on the error cluster or an enum/string selector, clusters and arrays (types
+plus `Bundle`/`Index Array` parts, which the harvest already has), `FixedConst`, enums, and
+sequences — and, for calls, dynamic-dispatch methods and Express VIs.
 
 ## 7. Limits and caveats
 
@@ -274,8 +311,9 @@ which the harvest already has), enum/ring/string case selectors, sequences.
 | `vi2aixml.py` | VI → AIXML reader |
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
-| `selftest.py`, `tests/` | 28 composition tests with expected outputs, LabVIEW-log sanity gate |
-| `compare_with_nigel.py`, `coverage.py` | the measurements of sections 4 and 6 |
+| `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
+| `selftest.py`, `tests/` | 35 composition tests with expected outputs, LabVIEW-log sanity gate |
+| `compare_with_nigel.py`, `coverage.py`, `call_coverage.py` | the measurements of sections 4, 4b and 6 |
 | `lv-com.ps1`, `lv-keeper.ps1`, `lv-windows.ps1` | LabVIEW over COM |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |
@@ -288,4 +326,5 @@ tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/harvest_corpus
 tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/selftest.py
 tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/compare_with_nigel.py
 tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/coverage.py
+tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/call_coverage.py
 ```
