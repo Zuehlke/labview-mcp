@@ -914,6 +914,39 @@ class Composer:
                 self.net_type[net] = type_tree(aixml_type)
         self.report.append("Constant %r <- %s" % (name, src))
 
+    # palette FIXED constants: AIXML's name -> the bDFixed ddo's `cnst` code (absent for 0),
+    # read off an AIXML-generated VI holding all ten that NI's exports use
+    FIXED = {"0STR": "03", "0PTH": "17", "2PI": "05", "PI": "04", "EOL": "19", "CRTN": "00",
+             "TAB": "02", "+INF": "0F", "MEPS": "1C", "NREF": "1A"}
+
+    def add_fixed(self, el):
+        """<FixedConst _name="PI"/>: a diagram constant whose ddo is a `bDFixed` carrying the
+        constant's code; its type and value come with the part."""
+        name = el.get("_name")
+        code = self.FIXED.get(name)
+        if code is None:
+            raise Unsupported("FixedConst %r is not composable yet" % name)
+        diag = self.diag_of(el)
+        got = self.instantiate("fixed/%s" % code)
+        if got is None:
+            raise Unsupported("no part harvested for FixedConst %r" % name)
+        term, donor_types, src = got
+        ddo = term.find("dco/ddo")
+        old = int(ddo.get("uid"))
+        ddo.set("uid", str(self.claim(el.get("uid"))))
+        self.used_uids.discard(old)
+        self._set_label(ddo, "")
+        tree = plain(lvheap.strip_label(donor_types[0]))
+        lvheap.set_typeids(term, [self.heap_tid(tree) for _ in lvheap.typeid_elements(term)])
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.srn_terms.append(term)
+        self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
+        diag.placed.append((ddo, el))
+        for _, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = tree
+        self.report.append("FixedConst %r <- %s" % (name, src))
+
     def add_node(self, el):
         name = unescape(el.get("_name"))
         rid = self.prim_by_name.get(name)
@@ -1768,6 +1801,14 @@ class Composer:
         mode = el.get("mode")
         if mode not in (None, "", "index"):
             raise Unsupported("Tunnel %s: mode=%r is not composable yet" % (el.get("uid"), mode))
+        if mode == "index" and d == "in":
+            src = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
+            st = self.net_type.get(src)
+            if st is not None and st.get("Type") != "Array":
+                # NI's exports mark some input tunnels `index` that a string or a scalar feeds -
+                # which LabVIEW cannot index (Database Delete.vi: a string constant); the
+                # tunnel in the VI is a plain one
+                mode = None
         loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
         kind = loop.get("class")
         suffix = "-index" if mode == "index" else ""
@@ -1925,7 +1966,7 @@ class Composer:
     def endpoints(self, el):
         """(sources, sinks) of one AIXML element, as [(net, endpoint key)]."""
         uid = el.get("uid")
-        if el.tag in ("Control", "Indicator", "Constant"):
+        if el.tag in ("Control", "Indicator", "Constant", "FixedConst"):
             return ([(n, (uid, "value")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "value")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag in ("Node", "Call"):
@@ -2143,7 +2184,7 @@ class Composer:
         elements = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
-                          "ShiftReg", "Left", "Right", "CaseFrame", "Call"):
+                          "ShiftReg", "Left", "Right", "CaseFrame", "Call", "FixedConst"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
@@ -2168,8 +2209,8 @@ class Composer:
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
             self.add_fp(el, row[el.tag])
             row[el.tag] += 1
-        for el in [e for e in elements if e.tag == "Constant"]:
-            self.add_const(el)
+        for el in [e for e in elements if e.tag in ("Constant", "FixedConst")]:
+            self.add_const(el) if el.tag == "Constant" else self.add_fixed(el)
         # nodes and tunnels in dependency order, so every input type is known when it is placed
         def is_case(uid):
             p = by_uid.get(uid)

@@ -660,5 +660,20 @@
     }
    }
   ]
+ },
+ "t79_fixed_consts": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "empty string": "",
+     "two pi": 6.283185307179586,
+     "pi": 3.141592653589793,
+     "tab": "\t",
+     "inf": "Infinity",
+     "eps": 2.220446049250313e-16
+    }
+   }
+  ]
  }
 }

@@ -204,7 +204,12 @@ class Harvester:
                     self.save("fpterm", "fpterm/%s" % ind, source, e, [])
             elif cls == "term":
                 dco = e.find("dco")
-                if dco is not None and dco.get("class") == "bDConstDCO":
+                if dco is not None and dco.get("class") == "bDConstDCO" and dco.find("ddo").get("class") == "bDFixed":
+                    # a palette FIXED constant (Empty String, Pi, End of Line ...): which one is
+                    # the ddo's `cnst` code, absent for 0 (Carriage Return)
+                    ddo = dco.find("ddo")
+                    self.save("fixed", "fixed/%s" % (ddo.findtext("cnst") or "00"), source, e, resolve_types(b, e))
+                elif dco is not None and dco.get("class") == "bDConstDCO":
                     ddo = dco.find("ddo")
                     types = resolve_types(b, e)
                     tk = lvheap.type_key(types[0])

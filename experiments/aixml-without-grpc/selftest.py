@@ -82,7 +82,9 @@ def same(want, got):
             return same(x, y)
         return eq(a, b)
     try:
-        return abs(float(want) - float(got)) < 1e-9 * max(1.0, abs(float(want)))
+        a, b = float(want), float(got)
+        # inf - inf is nan, so equal values are settled first
+        return a == b or abs(a - b) < 1e-9 * max(1.0, abs(a))
     except ValueError:
         return w.lower() == g.lower()
 
