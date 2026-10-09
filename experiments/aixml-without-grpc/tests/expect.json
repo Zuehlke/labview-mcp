@@ -332,5 +332,35 @@
     }
    }
   ]
+ },
+ "t51_call_lib_deg2rad": {
+  "cases": [
+   {
+    "inputs": "deg=180",
+    "outputs": {
+     "rad": 3.141592653589793
+    }
+   }
+  ]
+ },
+ "t52_call_lib_erf": {
+  "cases": [
+   {
+    "inputs": "x=0.5",
+    "outputs": {
+     "erf": 0.5204998778130465
+    }
+   }
+  ]
+ },
+ "t53_call_vilib_trim": {
+  "cases": [
+   {
+    "inputs": "s=  hi there  ",
+    "outputs": {
+     "t": "hi there"
+    }
+   }
+  ]
  }
 }

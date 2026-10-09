@@ -1,0 +1,5 @@
+<VI _name="T53 Trim.vi" description="Calls a plain vi.lib VI by bare name: Trim Whitespace (string).vi in error.llb.">
+  <Control _name="s" type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Call inputs="string:4200.value" outputs="trimmed string:4220.t" target="Trim Whitespace (string).vi" uid="4220" uid_parent="root"/>
+  <Indicator _name="t" type="string" uid="4230" uid_parent="root" value="" inputs="value:4220.t"/>
+</VI>

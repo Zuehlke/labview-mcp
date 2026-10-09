@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the bundle's ._pth leaves it off
 import lvheap  # noqa: E402
+import resolve  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TABLES = os.path.join(lvheap.REPO, "experiments", "pylabview")
@@ -335,6 +336,7 @@ class Composer:
         self.loops = []              # (loop heap element, its inner Diagram, parent Diagram)
         self.report = []
         self.search_dirs = []        # where a <Call> target is looked for; the output dir first
+        self.resolver = None         # built on the first <Call> that needs the installation
         self.links = {}              # callee path -> {"name", "flat", "cons", "offsets": [uid]}
 
     # ---- uids and types ------------------------------------------------------------------
@@ -658,13 +660,15 @@ class Composer:
         The link lives twice - VIVI in the VI's link block and IUVI in the diagram's, the
         latter naming the node by uid in LinkOffsetList - with a path relative to the CALLER
         FILE: ["", "<name>.vi"] for a sibling, TpVal 1."""
-        target = unescape(el.get("target") or "")
-        if "\\" in target or ":" in target or "/" in target:
-            raise Unsupported("Call %s: only a sibling VI by file name is composable (%r)" % (el.get("uid"), target))
-        path = next((os.path.join(d, target) for d in self.search_dirs
-                     if os.path.exists(os.path.join(d, target))), None)
-        if path is None:
-            raise Unsupported("Call %s: %r not found beside the output VI" % (el.get("uid"), target))
+        # A polymorphic call names its parent in `target` and the member it adapted to in
+        # `instance`; calling the instance directly is the same diagram with the choice fixed.
+        target = unescape(el.get("instance") or el.get("target") or "")
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        res = self.resolver.resolve(target, self.search_dirs)
+        if "error" in res:
+            raise Unsupported("Call %s: %s" % (el.get("uid"), res["error"]))
+        path = res["path"]
         diag = self.diag_of(el)
         callee = lvheap.Bundle(lvheap.extract(path, tempfile.mkdtemp(prefix="callee_")))
         conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
@@ -727,7 +731,7 @@ class Composer:
         node.find("objFlags").text = "512"
         for part in node.iter("label"):
             if part.find("textRec/text") is not None:
-                part.find("textRec/text").text = '"%s"' % target
+                part.find("textRec/text").text = '"%s"' % target.split(":")[-1]
                 break
         for tname, net in pairs(el.get("inputs")) + pairs(el.get("outputs")):
             if tname not in by_name:
@@ -738,7 +742,7 @@ class Composer:
                 self.net_type[net] = by_name[tname][1]
         for tname, (t, _) in by_name.items():
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
-        link = self.links.setdefault(path, {"name": target, "pane": pane, "offsets": []})
+        link = self.links.setdefault(path, dict(res, pane=pane, offsets=[]))
         link["offsets"].append(int(node.get("uid")))
         diag.nodes.append(node)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
@@ -751,20 +755,29 @@ class Composer:
         bdhp = self.main.find("LIbd/Section/BDHP")
         attrs = {"LinkSaveFlag": "0", "VILinkLibVersion": "1", "VILinkFieldA": "0", "VILinkField4": "1",
                  "VILinkFieldB": "", "VILinkFieldC": "", "VILinkFieldD": "0", "TypedLinkFlags": "0"}
+        def path_ref(holder, tag, tpval, comps):
+            pr = ET.SubElement(holder, tag, {"Ident": "PTH0", "TpVal": tpval})
+            for c in comps:
+                ET.SubElement(pr, "String").text = c or None
+            return pr
         for path, link in self.links.items():
             cons = self.types.use(self.types.register(link["pane"]))
             for tag, holder in (("VIVI", lvin), ("IUVI", bdhp)):
                 rec = ET.SubElement(holder, tag, dict(attrs))
-                ET.SubElement(ET.SubElement(rec, "LinkSaveQualName"), "String").text = link["name"]
-                pr = ET.SubElement(rec, "LinkSavePathRef", {"Ident": "PTH0", "TpVal": "1"})
-                ET.SubElement(pr, "String")
-                ET.SubElement(pr, "String").text = link["name"]
+                qual = ET.SubElement(rec, "LinkSaveQualName")
+                for q in link["qual"]:
+                    ET.SubElement(qual, "String").text = q
+                path_ref(rec, "LinkSavePathRef", *link["path_ref"])
                 ET.SubElement(rec, "TypeDesc", {"TypeID": str(cons) if tag == "VIVI" else "0"})
                 if tag == "IUVI":
                     ol = ET.SubElement(rec, "LinkOffsetList")
                     for uid in link["offsets"]:
                         ET.SubElement(ol, "Offset").text = "0x%04X" % uid
-                    ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
+                    # a library member's diagram record names the .lvlib; anything else zero-fills
+                    if link["lib_ref"]:
+                        path_ref(rec, "VILSPathRef", *link["lib_ref"])
+                    else:
+                        ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
                     ET.SubElement(rec, "IUseStr")
 
     def add_case(self, el):

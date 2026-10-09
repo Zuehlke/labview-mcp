@@ -123,7 +123,9 @@ class TypeTable:
         if "Format" not in el.attrib:
             el.set("Format", "inline")
         for child in tree:
-            if child.tag == "TypeDesc" and child.get("Type") is not None:
+            # A typedef's wrapped type is written INLINE (Nested="True"), never as a reference -
+            # pylabview's TypeDef reader requires a Type on it and refuses a TypeID.
+            if child.tag == "TypeDesc" and child.get("Type") is not None and child.get("Nested") != "True":
                 fid = self.register(child)
                 ref = ET.Element("TypeDesc", {"TypeID": str(fid)})
                 for k, v in child.attrib.items():

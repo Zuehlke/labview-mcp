@@ -1,0 +1,5 @@
+<VI _name="T52 Erf.vi" description="Calls a library member that lives inside an .llb folder: NI_Gmath.lvlib:Error Function.vi.">
+  <Control _name="x" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Call inputs="x:4200.value" outputs="erf(x):4220.erf" target="NI_Gmath.lvlib\3AError Function.vi" uid="4220" uid_parent="root"/>
+  <Indicator _name="erf" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4220.erf"/>
+</VI>
