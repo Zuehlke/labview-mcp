@@ -157,6 +157,16 @@ def pairs(attr):
 
 
 def const_value(tree, value):
+    """A constant's ConstValue as LabVIEW writes it in the heap: big-endian flattened data,
+    and ONE EXTRA ZERO BYTE when the data is all zero. Measured over 120 NI VIs, every
+    numeric, boolean and string constant: a default value carries exactly one more byte than
+    its type, a non-default one never does - 0 as int32 is 0000000000, false is 0000, the
+    empty string 0000000000. Without that byte a zero constant breaks the VI on its own."""
+    h = _const_value(tree, value)
+    return h + "00" if set(h) <= {"0"} else h
+
+
+def _const_value(tree, value):
     t = tree.get("Type")
     if t == "NumFloat64":
         return struct.pack(">d", float(value or 0)).hex().upper()
@@ -172,8 +182,8 @@ def const_value(tree, value):
     if t == "Path":
         v = unescape(value or "")
         if not v:
-            # LabVIEW's empty path: type 1 (relative), no components
-            body = struct.pack(">HH", 1, 0)
+            # LabVIEW's empty path, as NI's own constants carry it: type 0, no components
+            body = struct.pack(">HH", 0, 0)
         else:
             absolute = len(v) > 1 and v[1] == ":"
             comps = [c for c in v.replace("/", "\\").split("\\") if c]
@@ -611,6 +621,47 @@ class Composer:
         self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
         self.report.append("Tunnel %s (%s)" % (el.get("_id"), d))
 
+    def add_shiftreg(self, el, loop_el):
+        """AIXML <ShiftReg><Left/><Right/></ShiftReg> onto the harvested four-terminal group:
+        Left takes the initializer OUTSIDE and supplies the previous value INSIDE; Right
+        collects the next value INSIDE and delivers the final one OUTSIDE. Only an
+        INITIALIZED register is composed - an uninitialized one takes its type from the inner
+        diagram, a cycle this composer does not resolve."""
+        left = next((c for c in el if isinstance(c.tag, str) and c.tag == "Left"), None)
+        right = next((c for c in el if isinstance(c.tag, str) and c.tag == "Right"), None)
+        init = [n for _, n in pairs(left.get("inputs"))] if left is not None else []
+        if not init or init[0] is None or init[0] not in self.net_type:
+            raise Unsupported("ShiftReg %s: only an initialized register is composable" % el.get("uid"))
+        tree = self.net_type[init[0]]
+        loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
+        kind = loop.get("class")
+        got = self.instantiate("srpair/%s" % kind)
+        if got is None:
+            raise Unsupported("no shift register template harvested for %s" % kind)
+        wrap, _, src = got
+        r_out, l_out, r_in, l_in = list(wrap)
+        lvheap.set_typeids(wrap, [self.heap_tid(tree) for _ in lvheap.typeid_elements(wrap)])
+        loop.find("termList").append(r_out)
+        loop.find("termList").append(l_out)
+        ET.SubElement(loop.find("srDCOList"), "SL__arrayElement", {"uid": r_out.find("dco").get("uid")})
+        inner.srn_terms.append(r_in)
+        inner.srn_terms.append(l_in)
+        n = len(loop.find("srDCOList"))
+        for t in (r_out, l_out):
+            tb = t.find("dco/termBounds")
+            if tb is not None:
+                a, l, b, r = lvheap.parse_bounds(tb.text)
+                tb.text = lvheap.fmt_bounds((60 + 20 * n, l, 60 + 20 * n + (b - a), r))
+        self.ends[(left.get("uid"), "in")] = (l_out.get("uid"), parent)
+        self.ends[(left.get("uid"), "out")] = (l_in.get("uid"), inner)
+        self.ends[(right.get("uid"), "in")] = (r_in.get("uid"), inner)
+        self.ends[(right.get("uid"), "out")] = (r_out.get("uid"), parent)
+        for side in (left, right):
+            for _, net in pairs(side.get("outputs")):
+                if net:
+                    self.net_type[net] = tree
+        self.report.append("ShiftReg %s <- %s" % (el.get("uid"), src))
+
     def pick(self, prefix, want, other, t):
         """The best part for a control/constant of type t: (key, flipped).
 
@@ -663,7 +714,7 @@ class Composer:
         if el.tag == "Node":
             return ([(n, (uid, t)) for t, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, t)) for t, n in pairs(el.get("inputs")) if n])
-        if el.tag == "Tunnel":
+        if el.tag in ("Tunnel", "Left", "Right"):
             return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag == "Condition":
@@ -728,7 +779,11 @@ class Composer:
         sizes = {}
         for loop, inner, parent in reversed(self.loops):
             w, h = self._place(inner, lv, sizes, 30, 40)
-            sizes[loop.get("uid")] = (max(h + 40, 120), max(w + 40, 200))
+            side = {0: 0, 1: 0}
+            for c in loop.find("termList"):
+                side[int(c.find("dco").findtext("objFlags") or 0) & 1] += 1
+            border = 20 + 24 * max(side.values()) + 40     # room for the stacked terminals
+            sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200))
         self._place(self.root, lv, sizes, 40, 40)
         for loop, inner, parent in self.loops:
             t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
@@ -738,11 +793,27 @@ class Composer:
             sb = inner.srn.find("bounds")
             if sb is not None:
                 sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            # Border terminals must not OVERLAP: measured, a shift register placed on the
+            # donor's y of the counter `i` gave a broken VI exactly when `i` was wired (t26),
+            # while either alone worked. So `i` and the stop terminal go to the bottom corners
+            # and every border terminal gets its own slot - inputs down the left edge, outputs
+            # down the right.
+            h, w = b - t, r - l
+            for dco, x in ((loop.find("loopIndexDCO"), 11), (loop.find("loopTestDCO"), w - 27)):
+                tb = dco.find("termBounds")
+                if tb is not None:
+                    tb.text = lvheap.fmt_bounds((h - 26, x, h - 10, x + 16))
+            slot = {0: 0, 1: 0}
             for c in loop.find("termList"):
                 tb = c.find("dco/termBounds")
-                if tb is not None and int(c.find("dco").findtext("objFlags") or 0) & 1:
-                    tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
-                    tb.text = lvheap.fmt_bounds((tt, (r - l) - (tr - tl), tbb, r - l))
+                if tb is None:
+                    continue
+                out = int(c.find("dco").findtext("objFlags") or 0) & 1
+                tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
+                y = 20 + 24 * slot[out]
+                slot[out] += 1
+                x = w - (tr - tl) if out else 0
+                tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
 
     def _place(self, diag, lv, sizes, top0, left0):
         rows, right, bottom = {}, 0, 0
@@ -791,7 +862,11 @@ class Composer:
                         c.set("_loop", el.get("uid"))
                     out.append(c)
             elif el.tag == "ShiftReg":
-                raise Unsupported("ShiftReg is not composable yet")
+                out.append(el)
+                for side in el:
+                    if isinstance(side.tag, str) and side.tag in ("Left", "Right"):
+                        side.set("_sr", el.get("uid"))
+                        out.append(side)
             else:
                 out.append(el)
         return out
@@ -802,7 +877,8 @@ class Composer:
         self.pane_terms = []
         elements = []
         for el in self.flatten(vi):
-            if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition"):
+            if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
+                          "ShiftReg", "Left", "Right"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
@@ -819,17 +895,25 @@ class Composer:
         for el in [e for e in elements if e.tag == "Constant"]:
             self.add_const(el)
         # nodes and tunnels in dependency order, so every input type is known when it is placed
-        pending = [e for e in elements if e.tag in ("Node", "Tunnel")]
+        pending = [e for e in elements if e.tag in ("Node", "Tunnel", "ShiftReg")]
+
+        def inputs_of(e):
+            if e.tag == "ShiftReg":   # a register's type comes from its initializer
+                left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
+                return pairs(left.get("inputs"))
+            return pairs(e.get("inputs"))
         while pending:
             ready = [e for e in pending if all(net in self.net_type or net is None
-                                               for _, net in pairs(e.get("inputs")))]
+                                               for _, net in inputs_of(e))]
             if not ready:
                 ready = pending[:1]
             for e in ready:
                 if e.tag == "Node":
                     self.add_node(e)
-                else:
+                elif e.tag == "Tunnel":
                     self.add_tunnel(e, by_uid[e.get("uid_parent")])
+                else:
+                    self.add_shiftreg(e, by_uid[e.get("uid_parent")])
                 pending.remove(e)
         nets = self.wire(elements)
         self.layout(nets)

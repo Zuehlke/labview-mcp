@@ -1,0 +1,4 @@
+<VI _name="T28 Zero.vi" description="A zero-valued int32 constant straight into an indicator.">
+  <Constant _name="zero" type="int32" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Indicator _name="out" type="int32" uid="4300" uid_parent="root" value="0" inputs="value:4210.value"/>
+</VI>

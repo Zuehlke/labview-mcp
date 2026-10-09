@@ -185,5 +185,81 @@
     }
    }
   ]
+ },
+ "t22_while_sum": {
+  "cases": [
+   {
+    "inputs": "limit=4",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "limit=100",
+    "outputs": {
+     "sum": 5050
+    }
+   }
+  ]
+ },
+ "t23_sr_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 7
+    }
+   }
+  ]
+ },
+ "t24_sr_inc": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 8
+    }
+   }
+  ]
+ },
+ "t25_while_i_add": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 10
+    }
+   }
+  ]
+ },
+ "t26_sr_i": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sum": 0
+    }
+   }
+  ]
+ },
+ "t27_sr_i_seven": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sum": 7
+    }
+   }
+  ]
+ },
+ "t28_zero_const": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 0
+    }
+   }
+  ]
  }
 }

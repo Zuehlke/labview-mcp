@@ -1,0 +1,14 @@
+<VI _name="T24 SR Inc.vi" description="A shift register plus one, one iteration.">
+  <Constant _name="init" type="int32" uid="4210" uid_parent="root" value="7" outputs="value:4210.value"/>
+  <Structure _name="While Loop" count="" uid="5000" uid_parent="root">
+    <ShiftReg uid="5100" uid_parent="5000">
+      <Left inputs="value:4210.value" outputs="value:5110.value" uid="5110" uid_parent="5100"/>
+      <Right inputs="value:5020.x+y" outputs="value:5120.value" uid="5120" uid_parent="5100"/>
+    </ShiftReg>
+    <Constant _name="one" type="int32" uid="5030" uid_parent="5000" value="1" outputs="value:5030.value"/>
+    <Node _name="Add" inputs="x:5110.value,y:5030.value" outputs="x+y:5020.x+y" uid="5020" uid_parent="5000"/>
+    <Constant _name="once" type="bool" uid="5040" uid_parent="5000" value="true" outputs="value:5040.value"/>
+    <Condition inputs="value:5040.value" uid="5045" uid_parent="5000" value="stop"/>
+  </Structure>
+  <Indicator _name="out" type="int32" uid="4300" uid_parent="root" value="0" inputs="value:5120.value"/>
+</VI>

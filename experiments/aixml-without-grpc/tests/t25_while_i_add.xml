@@ -1,0 +1,11 @@
+<VI _name="T25 i Add.vi" description="The iteration count into Add inside a While Loop, no register.">
+  <Constant _name="k" type="int32" uid="4210" uid_parent="root" value="10" outputs="value:4210.value"/>
+  <Structure _name="While Loop" count="5000.value" uid="5000" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.value" outputs="value:5010.value" uid="5010" uid_parent="5000"/>
+    <Node _name="Add" inputs="x:5010.value,y:5000.value" outputs="x+y:5020.x+y" uid="5020" uid_parent="5000"/>
+    <Constant _name="once" type="bool" uid="5040" uid_parent="5000" value="true" outputs="value:5040.value"/>
+    <Condition inputs="value:5040.value" uid="5045" uid_parent="5000" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:5020.x+y" outputs="value:5050.value" uid="5050" uid_parent="5000"/>
+  </Structure>
+  <Indicator _name="out" type="int32" uid="4300" uid_parent="root" value="0" inputs="value:5050.value"/>
+</VI>

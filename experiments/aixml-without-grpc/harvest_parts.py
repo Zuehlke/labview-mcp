@@ -50,6 +50,29 @@ def resolve_types(bundle, el):
     return out
 
 
+def shift_register_pair(loop):
+    """One shift register as FOUR terminals in a <wrap>: right outer, left outer, right inner,
+    left inner. Measured on Get ID.vi: the rSR DCO's termList names [inner, outer] and its
+    lsrDCOList the matching lSR, whose rsrDCO points back; the inner terminals sit in the
+    inner diagram's sRN with a bare <dco uid=..> reference, outside its zPlaneList."""
+    outer = {t.find("dco").get("uid"): t for t in loop.find("termList")
+             if t.find("dco") is not None and t.find("dco").get("class") in ("rSR", "lSR")}
+    rsr = next((t for t in outer.values() if t.find("dco").get("class") == "rSR"), None)
+    if rsr is None:
+        return None
+    lsr_uid = rsr.find("dco/lsrDCOList/SL__arrayElement").get("uid")
+    lsr = outer.get(lsr_uid)
+    inner = loop.find("diagramList/SL__arrayElement[@class='diag']/nodeList/SL__arrayElement[@class='sRN']/termList")
+    ins = {t.find("dco").get("uid"): t for t in inner if t.find("dco") is not None and len(t.find("dco")) == 0}
+    r_in, l_in = ins.get(rsr.find("dco").get("uid")), ins.get(lsr_uid)
+    if lsr is None or r_in is None or l_in is None:
+        return None
+    wrap = ET.Element("wrap")
+    for t in (rsr, lsr, r_in, l_in):
+        wrap.append(copy.deepcopy(t))
+    return wrap
+
+
 def safe(key):
     return key.replace("/", "__").replace(".", "_")
 
@@ -123,6 +146,9 @@ class Harvester:
                 # a whole loop with its tunnels, shift registers and inner diagram; the
                 # composer keeps the shell and one template of each terminal kind
                 self.save("struct", "struct/%s" % cls, source, e, resolve_types(b, e))
+                pair = shift_register_pair(e)
+                if pair is not None:
+                    self.save("srpair", "srpair/%s" % cls, source, pair, resolve_types(b, pair))
             elif cls == "prim":
                 rid = e.findtext("primResID")
                 if rid is None:
