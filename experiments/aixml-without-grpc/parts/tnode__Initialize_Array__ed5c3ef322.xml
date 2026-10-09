@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Initialize_Array/ed5c3ef322" source="AIXML-generated probe: pnodes.vi" node="Initialize Array" ins="element|dimension size" outs="initialized array" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aInit" uid="4290">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4801" aixml="element">
+            <objFlags>32832</objFlags>
+            <dco class="aInitDCO" uid="4799">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(65)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 18, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4798" aixml="initialized array">
+            <objFlags>64</objFlags>
+            <dco class="aInitDCO" uid="4796">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(66)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 27, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4795" aixml="dimension size">
+            <objFlags>32832</objFlags>
+            <dco class="aInitDCO" uid="4793">
+              <typeDesc>TypeID(67)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(18, 0, 26, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(108, 375, 135, 407)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4793" />
+          </dcoList>
+        <dcoAgg uid="4796" />
+        <srcDCO uid="4799" />
+        </SL__arrayElement>
+      </heap></part>

@@ -427,7 +427,9 @@ def load_names():
         for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
             if not row or row[0] == "primResID":
                 continue
-            rid, name = row[0], html.unescape(row[1])  # the tables keep AIXML's escaping
+            # the tables keep AIXML's escaping, XML entities AND \XX ("Boolean To (0\2C1)"),
+            # while a node's _name is compared unescaped
+            rid, name = row[0], unescape(html.unescape(row[1]))
             seen = int(row[2]) if len(row) > 2 and row[2].isdigit() else 0
             if name not in prim_by_name or seen > prim_by_name[name][1]:
                 prim_by_name[name] = (rid, seen)
@@ -947,11 +949,25 @@ class Composer:
                 self.net_type[net] = tree
         self.report.append("FixedConst %r <- %s" % (name, src))
 
+    # attributes a Node may carry that the composer writes faithfully; anything else is a MODE
+    # (operation=OR, aggregate=true, includeLow, dimensions ...) that changes what the node
+    # computes, and ignoring it composed a VI that loads and computes something else - measured
+    # on NI's In Range and Coerce.vi (aggregate=true)
+    NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
+    PRIM_MODES = {}     # primitive name -> the mode attributes add_node writes
+
+    def check_attrs(self, el, extra=()):
+        unknown = [a for a in el.attrib if a not in self.NODE_ATTRS and a not in extra]
+        if unknown:
+            raise Unsupported("Node %r: mode %s is not composable yet" % (
+                unescape(el.get("_name") or ""), ", ".join("%s=%s" % (a, el.get(a)) for a in unknown)))
+
     def add_node(self, el):
         name = unescape(el.get("_name"))
         rid = self.prim_by_name.get(name)
         if rid is None:
             raise Unsupported("Node %r is not a primitive this prototype knows" % name)
+        self.check_attrs(el, self.PRIM_MODES.get(name, ()))
         diag = self.diag_of(el)
         got = self.instantiate("prim/%s" % rid, own_uid=el.get("uid"))
         if got is None:
@@ -1079,6 +1095,8 @@ class Composer:
           Build Array       [array out = dcoAgg, one in per element]
         The terminal list is rebuilt from the WIRED types; dcoList names the per-field DCOs."""
         name = unescape(el.get("_name"))
+        self.check_attrs(el, {"Unbundle By Name": ("fields",), "Bundle By Name": ("fields",),
+                              "Build Array": ("concat",), "Index Array": ("dimensions",)}.get(name, ()))
         diag = self.diag_of(el)
         got = self.instantiate(self.AGG_NODES[name], own_uid=el.get("uid"))
         if got is None:
@@ -1288,6 +1306,155 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Node %r <- %s" % (name, src))
+
+    # ---- template nodes: heap nodes harvested with each terminal named (harvest_templates.py)
+    CA_OPS = {"Add": 0, "Multiply": 0x10000, "AND": 0x20000, "OR": 0x30000, "XOR": 0x40000}
+    GROWABLE = {"Merge Errors", "Concatenate Strings", "Compound Arithmetic"}
+
+    def _templates(self, name):
+        if not hasattr(self, "_tcache"):
+            self._tcache = {}
+            for k in self._keys("tnode/"):
+                p = os.path.join(self.parts.d, k.replace("/", "__").replace(".", "_") + ".xml")
+                root = ET.parse(p).getroot()
+                self._tcache.setdefault(root.get("node"), []).append(
+                    (k, root.get("ins").split("|") if root.get("ins") else [],
+                     root.get("outs").split("|") if root.get("outs") else []))
+        return self._tcache.get(name, [])
+
+    def add_template_node(self, el):
+        """A node rebuilt from a harvested template whose terminals carry their AIXML names.
+        The template must have the element's terminals; a growable node (Merge Errors,
+        Concatenate Strings, Compound Arithmetic) gets more inputs by cloning one."""
+        name = unescape(el.get("_name"))
+        self.check_attrs(el, ("operation", "inversions") if name == "Compound Arithmetic" else ())
+        ins, outs = keyed(pairs(el.get("inputs"))), keyed(pairs(el.get("outputs")))
+        want_in = [k for k, _ in ins]
+        want_out = [k for k, _ in outs]
+        best = None
+        for key, t_in, t_out in self._templates(name):
+            if not set(want_out) <= set(t_out):
+                continue
+            if set(want_in) <= set(t_in):
+                score = len(t_in) - len(want_in)
+            elif name in self.GROWABLE and all(k.split("#")[0] in {x.split("#")[0] for x in t_in} for k in want_in):
+                score = 100 + len(want_in) - len(t_in)        # clone inputs
+            else:
+                continue
+            if best is None or score < best[0]:
+                best = (score, key, t_in, t_out)
+        if best is None:
+            raise Unsupported("Node %r: no template with terminals %s" % (name, ", ".join(want_in + want_out)))
+        _, key, t_in, t_out = best
+        diag = self.diag_of(el)
+        node, donor_types, src = self.instantiate(key, own_uid=el.get("uid"))
+        for i, e in enumerate(lvheap.typeid_elements(node)):
+            e.set("_t", str(i))
+        for d in node.iter("dco"):
+            for e in d.findall("inplace"):
+                d.remove(e)
+        tl = node.find("termList")
+        by_key = {t.get("aixml"): t for t in tl if t.get("aixml")}
+        # growable: clone the last input of the repeated kind until every wanted key exists
+        for k in want_in:
+            if k in by_key:
+                continue
+            base = k.split("#")[0]
+            proto = [t for kk, t in by_key.items() if kk.split("#")[0] == base][-1]
+            t = copy.deepcopy(proto)
+            lvheap.renumber(t, self.alloc)
+            t.set("aixml", k)
+            tl.insert(list(tl).index(proto) + 1, t)
+            dl = node.find("dcoList")
+            if dl is not None:
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                dl.set("elements", str(len(dl)))
+            by_key[k] = t
+        tl.set("elements", str(len(tl)))
+
+        def donor(t):
+            e = t.find("dco/typeDesc")
+            return plain(lvheap.strip_label(donor_types[int(e.get("_t"))])) if e is not None and e.get("_t") else None
+
+        types = {}
+        for k, net in ins:
+            types[k] = self.net_type.get(net) if net else None
+        wired = [types[k] for k, _ in ins if types.get(k) is not None]
+        for k, t in by_key.items():
+            if types.get(k) is None:
+                types[k] = donor(t)
+        # outputs whose type follows the inputs
+        arr = types.get("array")
+        if name == "Compound Arithmetic":
+            for k in want_out:
+                types[k] = numeric_join(wired) if wired else types.get(k)
+        elif name == "Initialize Array" and types.get("element") is not None:
+            a = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+            for _ in [k for k in by_key if k.startswith("dimension size")]:
+                ET.SubElement(a, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+            a.append(copy.deepcopy(unlabel(types["element"])))
+            types["initialized array"] = a
+        elif name in ("Array Subset", "Replace Array Subset", "Insert Into Array", "Delete From Array") and arr is not None:
+            for k in ("subarray", "output array", "array w/ subset deleted"):
+                types[k] = arr
+            if name == "Delete From Array":
+                lw = dict(ins).get("length")
+                types["deleted portion"] = arr if lw else unlabel(elem_of(arr)) if arr.get("Type") == "Array" else arr
+        elif name == "Scan From String":
+            for k in list(by_key):
+                if k.startswith("output "):
+                    dv = types.get("default value " + k.split(" ", 1)[1])
+                    if dv is not None:
+                        types[k] = dv
+        for k, t in by_key.items():
+            # a terminal sharing another's DCO (an in-place pair: <dco uid=../>) has no type
+            if types.get(k) is not None and t.find("dco/typeDesc") is not None:
+                t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(types[k])
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        if name == "Compound Arithmetic":
+            op = el.get("operation") or "Add"
+            if op not in self.CA_OPS:
+                raise Unsupported("Compound Arithmetic operation %r is not composable yet" % op)
+            f = node.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                node.insert(0, f)
+            f.text = str((int(f.text or 0) & ~0x70000) | self.CA_OPS[op])
+            # inversions: one entry per terminal, the OUTPUT first, then the inputs in order
+            inv = (el.get("inversions") or "").split(",")
+            order = ["result"] + [k for k in want_in]
+            for k, flag in zip(order, inv):
+                t = by_key.get(k)
+                if t is None:
+                    continue
+                d = t.find("dco")
+                f = d.find("objFlags")
+                v = int(f.text) if f is not None else 0
+                v = (v | 0x10000) if flag.strip() == "i" else (v & ~0x10000)
+                if f is None and v:
+                    f = ET.Element("objFlags")
+                    d.insert(0, f)
+                if f is not None:
+                    if v:
+                        f.text = str(v)
+                    else:
+                        d.remove(f)
+        for k, t in by_key.items():
+            self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+            t.attrib.pop("aixml", None)
+            f = t.find("objFlags")
+            if k in dict(ins) and f is not None:
+                # bit 0x8000 marks a wired input (the reader's sink test)
+                v = int(f.text or 0)
+                f.text = str(v | 0x8000 if dict(ins)[k] else v & ~0x8000)
+        for k, net in outs:
+            if net and types.get(k) is not None:
+                self.net_type[net] = unlabel(types[k])
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Node %r <- template %s (%s)" % (name, key, src))
 
     # ---- structures ----------------------------------------------------------------------
     def add_loop(self, el):
@@ -2240,8 +2407,11 @@ class Composer:
             if not ready:
                 ready = pending[:1]
             for e in ready:
-                if e.tag == "Node" and unescape(e.get("_name") or "") in self.AGG_NODES:
+                nm = unescape(e.get("_name") or "")
+                if e.tag == "Node" and nm in self.AGG_NODES:
                     self.add_agg_node(e)
+                elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):
+                    self.add_template_node(e)
                 elif e.tag == "Node":
                     self.add_node(e)
                 elif e.tag == "Call":

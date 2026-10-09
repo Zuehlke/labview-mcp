@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Replace_Array_Subset/2b33fb415d" source="AIXML-generated probe: pnodes.vi" node="Replace Array Subset" ins="array|index|new element/subarray" outs="output array" mode="" nodeFlags="262144" clean="1"><types><TypeDesc Type="Array" Format="inline" Label="arr"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="arr"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aReplace" uid="4330">
+        <objFlags>262144</objFlags>
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="5034" aixml="array">
+            <objFlags>32832</objFlags>
+            <dco class="aRepDCO" uid="5029">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(52)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5028" aixml="output array">
+            <objFlags>64</objFlags>
+            <dco class="aRepDCO" uid="5026">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(53)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 33, 32)</termBounds>
+              <termHotPoint>(0, -8)</termHotPoint>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5032" aixml="new element/subarray">
+            <objFlags>32832</objFlags>
+            <dco class="aRepDCO" uid="5030">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(54)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(25, 0, 33, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5025" aixml="index">
+            <objFlags>32832</objFlags>
+            <dco class="aRepDCO" uid="5023">
+              <objFlags>6291456</objFlags>
+              <typeDesc>TypeID(55)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(236, 375, 269, 407)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="5030" />
+          <SL__arrayElement uid="5023" />
+          </dcoList>
+        <dcoAgg uid="5026" />
+        <nDims>01</nDims>
+        <nChunks>01</nChunks>
+        <srcDCO2 uid="5029" />
+        </SL__arrayElement>
+      </heap></part>

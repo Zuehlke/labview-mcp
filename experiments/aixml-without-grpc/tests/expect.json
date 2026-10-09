@@ -675,5 +675,44 @@
     }
    }
   ]
+ },
+ "t80_template_nodes2": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "formatted": ">7-1.50",
+     "fmt error": "[False,0,]",
+     "remaining": " rest",
+     "offset": 2,
+     "scanned": 42,
+     "grid": "[1.5,1.5]",
+     "ab": "ab",
+     "abcd": "abcd",
+     "merged": "[False,0,]",
+     "sum4": 6,
+     "xor": "False"
+    }
+   }
+  ]
+ },
+ "t81_template_nodes": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "joined": "abcdef",
+     "formatted": "7-1.50",
+     "product": 6,
+     "any": "True",
+     "filled": "[1.5,1.5,1.5]",
+     "kept": "[1,4,5]",
+     "deleted": "[2,3]",
+     "sub": "[2,3]",
+     "replaced": "[1,1.5,3,4,5]",
+     "inserted": "[1,2,1.5,3,4,5]"
+    }
+   }
+  ]
  }
 }

@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Delete_From_Array/ba5ce5fbc8" source="AIXML-generated probe: pnodes.vi" node="Delete From Array" ins="array|length|index" outs="array w/ subset deleted|deleted portion" mode="" nodeFlags="262144" clean="1"><types><TypeDesc Type="Array" Format="inline" Label="arr"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="arr"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="arr"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aDelete" uid="4310">
+        <objFlags>262144</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="4897" aixml="deleted portion">
+            <objFlags>64</objFlags>
+            <dco class="aDelDCO" uid="4895">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(60)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 16, 32, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4894" aixml="array">
+            <objFlags>32832</objFlags>
+            <dco class="aDelDCO" uid="4892">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(61)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4891" aixml="length">
+            <objFlags>32832</objFlags>
+            <dco class="aDelDCO" uid="4889">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(62)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4888" aixml="array w/ subset deleted">
+            <objFlags>64</objFlags>
+            <dco class="aDelDCO" uid="4886">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(63)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 16, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4885" aixml="index">
+            <objFlags>32832</objFlags>
+            <dco class="aDelDCO" uid="4883">
+              <objFlags>6291456</objFlags>
+              <typeDesc>TypeID(64)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(24, 0, 32, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(409, 375, 442, 407)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4883" />
+          </dcoList>
+        <dcoAgg uid="4886" />
+        <srcDCO4 uid="4892" />
+        <lenDCO uid="4889" />
+        <delDCO uid="4895" />
+        </SL__arrayElement>
+      </heap></part>

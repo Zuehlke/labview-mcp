@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Scan_From_String/c12e1d37ce" source="AIXML-generated probe: pnodes2.vi" node="Scan From String" ins="input string|initial scan location|error in|default value 1|format string" outs="remaining string|offset past scan|error out|output 1" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="scan fmt" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="text" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="dflt" /></types><heap><SL__arrayElement class="scanf" uid="4270">
+        <termList elements="9">
+          <SL__arrayElement class="term" uid="4601" aixml="format string">
+            <objFlags>32768</objFlags>
+            <dco class="scanfArg" uid="4599">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(79)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 10, 12, 22)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4604" aixml="input string">
+            <objFlags>32768</objFlags>
+            <dco class="scanfArg" uid="4602">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(80)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 12, 10)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4607" aixml="remaining string">
+            <dco class="scanfArg" uid="4605">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(81)</typeDesc>
+              <termBounds>(0, 22, 12, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4610" aixml="initial scan location">
+            <objFlags>294912</objFlags>
+            <dco class="scanfArg" uid="4608">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(82)</typeDesc>
+              <dsw>5120</dsw>
+              <termBounds>(12, 0, 20, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4613" aixml="offset past scan">
+            <dco class="scanfArg" uid="4611">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(83)</typeDesc>
+              <termBounds>(12, 16, 20, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4616" aixml="error in">
+            <objFlags>32768</objFlags>
+            <dco class="scanfArg" uid="4614">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(84)</typeDesc>
+              <termBounds>(20, 0, 28, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4619" aixml="error out">
+            <dco class="scanfArg" uid="4617">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(85)</typeDesc>
+              <termBounds>(20, 16, 28, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4622" aixml="default value 1">
+            <objFlags>32768</objFlags>
+            <dco class="scanfArg" uid="4620">
+              <termList elements="2">
+                <SL__arrayElement uid="4622" />
+                <SL__arrayElement uid="4623" />
+                </termList>
+              <typeDesc>TypeID(86)</typeDesc>
+              <termBounds>(28, 0, 36, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4623" aixml="output 1">
+            <objFlags>131072</objFlags>
+            <dco uid="4620" />
+            </SL__arrayElement>
+          </termList>
+        <bounds>(291, 451, 328, 483)</bounds>
+        <shortCount>16</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4620" />
+          </dcoList>
+        <permDCOList elements="7">
+          <SL__arrayElement uid="4599" />
+          <SL__arrayElement uid="4602" />
+          <SL__arrayElement uid="4605" />
+          <SL__arrayElement uid="4608" />
+          <SL__arrayElement uid="4611" />
+          <SL__arrayElement uid="4614" />
+          <SL__arrayElement uid="4617" />
+          </permDCOList>
+        </SL__arrayElement>
+      </heap></part>

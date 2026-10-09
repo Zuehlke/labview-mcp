@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Merge_Errors/f99821dd5b" source="AIXML-generated probe: pnodes2.vi" node="Merge Errors" ins="error in|error in#1|error in#2" outs="error out" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error 2"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error 3"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="mergeErrors" uid="4330">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="5072" aixml="error out">
+            <objFlags>64</objFlags>
+            <dco class="mergeErrorsDCO" uid="5070">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(63)</typeDesc>
+              <termBounds>(0, 16, 26, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5066" aixml="error in">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="5064">
+              <typeDesc>TypeID(64)</typeDesc>
+              <termBounds>(1, 0, 9, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5069" aixml="error in#1">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="5067">
+              <typeDesc>TypeID(65)</typeDesc>
+              <termBounds>(9, 0, 17, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5075" aixml="error in#2">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="5074">
+              <typeDesc>TypeID(66)</typeDesc>
+              <termBounds>(17, 0, 25, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(444, 415, 470, 447)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="3">
+          <SL__arrayElement uid="5064" />
+          <SL__arrayElement uid="5067" />
+          <SL__arrayElement uid="5074" />
+          </dcoList>
+        <dcoAgg uid="5070" />
+        </SL__arrayElement>
+      </heap></part>

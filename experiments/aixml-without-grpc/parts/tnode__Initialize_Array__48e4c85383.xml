@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Initialize_Array/48e4c85383" source="AIXML-generated probe: pnodes2.vi" node="Initialize Array" ins="element|dimension size|dimension size#1" outs="initialized array" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aInit" uid="4290">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="4794" aixml="element">
+            <objFlags>32832</objFlags>
+            <dco class="aInitDCO" uid="4792">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(75)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 18, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4791" aixml="initialized array">
+            <objFlags>64</objFlags>
+            <dco class="aInitDCO" uid="4789">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(76)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 35, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4788" aixml="dimension size">
+            <objFlags>32832</objFlags>
+            <dco class="aInitDCO" uid="4786">
+              <typeDesc>TypeID(77)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(18, 0, 26, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4797" aixml="dimension size#1">
+            <objFlags>32832</objFlags>
+            <dco class="aInitDCO" uid="4796">
+              <typeDesc>TypeID(78)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(26, 0, 34, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(142, 450, 177, 482)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4786" />
+          <SL__arrayElement uid="4796" />
+          </dcoList>
+        <dcoAgg uid="4789" />
+        <srcDCO uid="4792" />
+        </SL__arrayElement>
+      </heap></part>

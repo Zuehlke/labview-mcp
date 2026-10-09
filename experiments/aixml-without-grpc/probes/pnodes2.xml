@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pnodes2.vi" description="Probe: growable and array nodes with EVERY terminal wired, so each heap terminal can be joined to its AIXML name.">
+  <Control _name="error in" conIdx="8" connection="recommended" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="init" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="&gt;"/>
+  <Constant _name="fmt" outputs="value:4240.value" type="string" uid="4240" uid_parent="root" value="%d-%.2f"/>
+  <Constant _name="n" outputs="value:4241.value" type="int32" uid="4241" uid_parent="root" value="7"/>
+  <Constant _name="x" outputs="value:4242.value" type="double" uid="4242" uid_parent="root" value="1.5"/>
+  <Node _name="Format Into String" inputs="initial string:4201.value,error in:4200.value,input 1:4241.value,input 2:4242.value,format string:4240.value" outputs="resulting string:4250.resulting string,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="formatted" conIdx="0" connection="recommended" inputs="value:4250.resulting string" type="string" uid="4255" uid_parent="root" value=""/>
+  <Indicator _name="fmt error" conIdx="1" connection="recommended" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4256" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="scan fmt" outputs="value:4260.value" type="string" uid="4260" uid_parent="root" value="%d"/>
+  <Constant _name="text" outputs="value:4261.value" type="string" uid="4261" uid_parent="root" value="42 rest"/>
+  <Constant _name="start" outputs="value:4262.value" type="int32" uid="4262" uid_parent="root" value="0"/>
+  <Constant _name="dflt" outputs="value:4263.value" type="int32" uid="4263" uid_parent="root" value="-1"/>
+  <Node _name="Scan From String" inputs="input string:4261.value,initial scan location:4262.value,error in:4200.value,default value 1:4263.value,format string:4260.value" outputs="remaining string:4270.remaining string,offset past scan:4270.offset past scan,error out:4270.error out,output 1:4270.output 1" uid="4270" uid_parent="root"/>
+  <Indicator _name="remaining" conIdx="2" connection="recommended" inputs="value:4270.remaining string" type="string" uid="4271" uid_parent="root" value=""/>
+  <Indicator _name="offset" conIdx="3" connection="recommended" inputs="value:4270.offset past scan" type="int32" uid="4272" uid_parent="root" value="0"/>
+  <Indicator _name="scan error" conIdx="4" connection="recommended" inputs="value:4270.error out" type="cluster{bool.status,int32.code,string.source}" uid="4273" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="scanned" conIdx="5" connection="recommended" inputs="value:4270.output 1" type="int32" uid="4274" uid_parent="root" value="0"/>
+  <Constant _name="arr" outputs="value:4300.value" type="array{double}" uid="4300" uid_parent="root" value="[1,2,3,4,5]"/>
+  <Constant _name="one" outputs="value:4301.value" type="int32" uid="4301" uid_parent="root" value="1"/>
+  <Constant _name="two" outputs="value:4302.value" type="int32" uid="4302" uid_parent="root" value="2"/>
+  <Node _name="Initialize Array" inputs="element:4242.value,dimension size:4302.value,dimension size:4301.value" outputs="initialized array:4290.initialized array" uid="4290" uid_parent="root"/>
+  <Indicator _name="grid" conIdx="6" connection="recommended" inputs="value:4290.initialized array" type="array.2{double}" uid="4295" uid_parent="root" value="[]"/>
+  <Constant _name="d1" outputs="value:4303.value" type="string" uid="4303" uid_parent="root" value="a"/>
+  <Constant _name="d2" outputs="value:4304.value" type="string" uid="4304" uid_parent="root" value="b"/>
+  <Constant _name="d3" outputs="value:4305.value" type="string" uid="4305" uid_parent="root" value="c"/>
+  <Constant _name="d4" outputs="value:4306.value" type="string" uid="4306" uid_parent="root" value="d"/>
+  <Node _name="Concatenate Strings" inputs="string:4303.value,string:4304.value" outputs="concatenated string:4310.concatenated string" uid="4310" uid_parent="root"/>
+  <Node _name="Concatenate Strings" inputs="string:4303.value,string:4304.value,string:4305.value,string:4306.value" outputs="concatenated string:4311.concatenated string" uid="4311" uid_parent="root"/>
+  <Indicator _name="ab" conIdx="7" connection="recommended" inputs="value:4310.concatenated string" type="string" uid="4315" uid_parent="root" value=""/>
+  <Indicator _name="abcd" conIdx="9" connection="recommended" inputs="value:4311.concatenated string" type="string" uid="4316" uid_parent="root" value=""/>
+  <Control _name="error 2" conIdx="10" connection="recommended" outputs="value:4320.value" type="cluster{bool.status,int32.code,string.source}" uid="4320" uid_parent="root" value="[false,0,]"/>
+  <Control _name="error 3" conIdx="12" connection="recommended" outputs="value:4321.value" type="cluster{bool.status,int32.code,string.source}" uid="4321" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Merge Errors" inputs="error in:4200.value,error in:4320.value,error in:4321.value" outputs="error out:4330.error out" uid="4330" uid_parent="root"/>
+  <Indicator _name="merged" conIdx="11" connection="recommended" inputs="value:4330.error out" type="cluster{bool.status,int32.code,string.source}" uid="4335" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Compound Arithmetic" inversions=" , , , " operation="Add" inputs="value:4242.value,value:4242.value,value:4242.value,value:4242.value" outputs="result:4340.result" uid="4340" uid_parent="root"/>
+  <Indicator _name="sum4" conIdx="13" connection="recommended" inputs="value:4340.result" type="double" uid="4345" uid_parent="root" value="0"/>
+  <Constant _name="t" outputs="value:4350.value" type="bool" uid="4350" uid_parent="root" value="true"/>
+  <Node _name="Compound Arithmetic" inversions=" , " operation="AND" inputs="value:4350.value,value:4350.value" outputs="result:4351.result" uid="4351" uid_parent="root"/>
+  <Node _name="Compound Arithmetic" inversions=" , " operation="XOR" inputs="value:4350.value,value:4351.result" outputs="result:4352.result" uid="4352" uid_parent="root"/>
+  <Indicator _name="xor" conIdx="14" connection="recommended" inputs="value:4352.result" type="bool" uid="4355" uid_parent="root" value="false"/>
+</VI>

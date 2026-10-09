@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/5736f744ac" source="AIXML-generated probe: pnodes2.vi" node="Compound Arithmetic" ins="value|value#1" outs="result" mode="inversions= , ;operation=AND" nodeFlags="131072" clean="1"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="t" /><TypeDesc Type="Boolean" Format="inline" Label="t" /></types><heap><SL__arrayElement class="cpdArith" uid="4351">
+        <objFlags>131072</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="5190" aixml="result">
+            <objFlags>64</objFlags>
+            <dco class="cpdArithDCO" uid="5188">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(55)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 12, 17, 24)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5184" aixml="value">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5182">
+              <typeDesc>TypeID(56)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5187" aixml="value#1">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5185">
+              <typeDesc>TypeID(57)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(101, 247, 118, 271)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="5182" />
+          <SL__arrayElement uid="5185" />
+          </dcoList>
+        <dcoAgg uid="5188" />
+        </SL__arrayElement>
+      </heap></part>

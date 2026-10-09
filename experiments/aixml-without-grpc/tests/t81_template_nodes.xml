@@ -1,0 +1,40 @@
+<VI _name="T81 Template Nodes.vi" description="Test: the common growable nodes - Merge Errors, Concatenate Strings, Format Into String, Compound Arithmetic, Initialize Array, Delete From Array, Array Subset, Replace Array Subset, Insert Into Array.">
+  <Control _name="error in" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+  <Control _name="error 2" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Merge Errors" inputs="error in:4200.value,error in:4201.value" outputs="error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4215" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="s1" outputs="value:4220.value" type="string" uid="4220" uid_parent="root" value="ab"/>
+  <Constant _name="s2" outputs="value:4221.value" type="string" uid="4221" uid_parent="root" value="cd"/>
+  <Constant _name="s3" outputs="value:4222.value" type="string" uid="4222" uid_parent="root" value="ef"/>
+  <Node _name="Concatenate Strings" inputs="string:4220.value,string:4221.value,string:4222.value" outputs="concatenated string:4230.concatenated string" uid="4230" uid_parent="root"/>
+  <Indicator _name="joined" inputs="value:4230.concatenated string" type="string" uid="4235" uid_parent="root" value=""/>
+  <Constant _name="fmt" outputs="value:4240.value" type="string" uid="4240" uid_parent="root" value="%d-%.2f"/>
+  <Constant _name="n" outputs="value:4241.value" type="int32" uid="4241" uid_parent="root" value="7"/>
+  <Constant _name="x" outputs="value:4242.value" type="double" uid="4242" uid_parent="root" value="1.5"/>
+  <Node _name="Format Into String" inputs="initial string:,error in:,input 1:4241.value,input 2:4242.value,format string:4240.value" outputs="resulting string:4250.resulting string,error out:" uid="4250" uid_parent="root"/>
+  <Indicator _name="formatted" inputs="value:4250.resulting string" type="string" uid="4255" uid_parent="root" value=""/>
+  <Constant _name="a" outputs="value:4260.value" type="double" uid="4260" uid_parent="root" value="2"/>
+  <Constant _name="b" outputs="value:4261.value" type="double" uid="4261" uid_parent="root" value="3"/>
+  <Constant _name="c" outputs="value:4262.value" type="double" uid="4262" uid_parent="root" value="4"/>
+  <Node _name="Compound Arithmetic" inversions=" ,i, " operation="Multiply" inputs="value:4260.value,value:4261.value,value:4262.value" outputs="result:4270.result" uid="4270" uid_parent="root"/>
+  <Indicator _name="product" inputs="value:4270.result" type="double" uid="4275" uid_parent="root" value="0"/>
+  <Constant _name="p" outputs="value:4263.value" type="bool" uid="4263" uid_parent="root" value="true"/>
+  <Constant _name="q" outputs="value:4264.value" type="bool" uid="4264" uid_parent="root" value="false"/>
+  <Node _name="Compound Arithmetic" inversions=" , " operation="OR" inputs="value:4263.value,value:4264.value" outputs="result:4276.result" uid="4276" uid_parent="root"/>
+  <Indicator _name="any" inputs="value:4276.result" type="bool" uid="4277" uid_parent="root" value="false"/>
+  <Constant _name="three" outputs="value:4280.value" type="int32" uid="4280" uid_parent="root" value="3"/>
+  <Node _name="Initialize Array" inputs="element:4242.value,dimension size:4280.value" outputs="initialized array:4290.initialized array" uid="4290" uid_parent="root"/>
+  <Indicator _name="filled" inputs="value:4290.initialized array" type="array{double}" uid="4295" uid_parent="root" value="[]"/>
+  <Constant _name="arr" outputs="value:4300.value" type="array{double}" uid="4300" uid_parent="root" value="[1,2,3,4,5]"/>
+  <Constant _name="one" outputs="value:4301.value" type="int32" uid="4301" uid_parent="root" value="1"/>
+  <Constant _name="two" outputs="value:4302.value" type="int32" uid="4302" uid_parent="root" value="2"/>
+  <Node _name="Delete From Array" inputs="array:4300.value,length:4302.value,index:4301.value" outputs="array w/ subset deleted:4310.array w/ subset deleted,deleted portion:4310.deleted portion" uid="4310" uid_parent="root"/>
+  <Indicator _name="kept" inputs="value:4310.array w/ subset deleted" type="array{double}" uid="4315" uid_parent="root" value="[]"/>
+  <Indicator _name="deleted" inputs="value:4310.deleted portion" type="array{double}" uid="4316" uid_parent="root" value="[]"/>
+  <Node _name="Array Subset" inputs="array:4300.value,index:4301.value,length:4302.value" outputs="subarray:4320.subarray" uid="4320" uid_parent="root"/>
+  <Indicator _name="sub" inputs="value:4320.subarray" type="array{double}" uid="4325" uid_parent="root" value="[]"/>
+  <Node _name="Replace Array Subset" inputs="array:4300.value,index:4301.value,new element/subarray:4242.value" outputs="output array:4330.output array" uid="4330" uid_parent="root"/>
+  <Indicator _name="replaced" inputs="value:4330.output array" type="array{double}" uid="4335" uid_parent="root" value="[]"/>
+  <Node _name="Insert Into Array" inputs="array:4300.value,index:4302.value,new element/subarray:4242.value" outputs="output array:4340.output array" uid="4340" uid_parent="root"/>
+  <Indicator _name="inserted" inputs="value:4340.output array" type="array{double}" uid="4345" uid_parent="root" value="[]"/>
+</VI>

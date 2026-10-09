@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Merge_Errors/885bb5611f" source="AIXML-generated probe: pnodes.vi" node="Merge Errors" ins="error in|error in#1" outs="error out" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error 2"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="mergeErrors" uid="4210">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4467" aixml="error out">
+            <objFlags>64</objFlags>
+            <dco class="mergeErrorsDCO" uid="4465">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(86)</typeDesc>
+              <termBounds>(0, 16, 18, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4461" aixml="error in">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="4459">
+              <typeDesc>TypeID(87)</typeDesc>
+              <termBounds>(1, 0, 9, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4464" aixml="error in#1">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="4462">
+              <typeDesc>TypeID(88)</typeDesc>
+              <termBounds>(9, 0, 17, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(688, 307, 706, 339)</bounds>
+        <shortCount>20</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4459" />
+          <SL__arrayElement uid="4462" />
+          </dcoList>
+        <dcoAgg uid="4465" />
+        </SL__arrayElement>
+      </heap></part>
