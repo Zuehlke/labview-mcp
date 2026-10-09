@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="srpair" key="srpair/forLoop" source="C:\temp\aixml-no-grpc\ex\forl\forl.xml"><types><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="tdms file out" /><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="tdms file out" /></types><heap><wrap><SL__arrayElement class="term" uid="1057">
+            <objFlags>64</objFlags>
+            <dco class="rSR" uid="1043">
+              <objFlags>1</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="1053" />
+                <SL__arrayElement uid="1057" />
+                </termList>
+              <typeDesc>TypeID(44)</typeDesc>
+              <termBounds>(29, 101, 41, 117)</termBounds>
+              <termHotPoint>(-4, 0)</termHotPoint>
+              <termBMPs>4</termBMPs>
+              <lsrDCOList elements="1">
+                <SL__arrayElement uid="1050" />
+                </lsrDCOList>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1060">
+            <objFlags>32832</objFlags>
+            <dco class="lSR" uid="1050">
+              <termList elements="2">
+                <SL__arrayElement uid="1059" />
+                <SL__arrayElement uid="1060" />
+                </termList>
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(29, 0, 41, 16)</termBounds>
+              <termHotPoint>(4, 0)</termHotPoint>
+              <termBMPs>3</termBMPs>
+              <rsrDCO uid="1043" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1053">
+                    <objFlags>163840</objFlags>
+                    <dco uid="1043" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1059">
+                    <objFlags>131072</objFlags>
+                    <dco uid="1050" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

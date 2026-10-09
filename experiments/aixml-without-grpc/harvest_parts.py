@@ -73,6 +73,25 @@ def shift_register_pair(loop):
     return wrap
 
 
+def plain_tunnels(loop):
+    """Each PLAIN (non-indexing) tunnel of a loop as a <wrap> of [outer, inner] terminal.
+    A plain input tunnel's lpTun DCO has objFlags 2048, a plain output's 2049 (bit 0 = output);
+    an indexing one carries TunnelType and an innerLpTunDCO and is left out."""
+    inner = loop.find("diagramList/SL__arrayElement[@class='diag']/nodeList/SL__arrayElement[@class='sRN']/termList")
+    ins = {t.find("dco").get("uid"): t for t in inner if t.find("dco") is not None and len(t.find("dco")) == 0}
+    out = []
+    for t in loop.find("termList"):
+        dco = t.find("dco")
+        if dco is None or dco.get("class") != "lpTun" or dco.find("innerLpTunDCO") is not None \
+                or dco.find("TunnelType") is not None or dco.get("uid") not in ins:
+            continue
+        wrap = ET.Element("wrap")
+        wrap.append(copy.deepcopy(t))
+        wrap.append(copy.deepcopy(ins[dco.get("uid")]))
+        out.append(("out" if int(dco.findtext("objFlags") or 0) & 1 else "in", wrap))
+    return out
+
+
 def safe(key):
     return key.replace("/", "__").replace(".", "_")
 
@@ -149,6 +168,9 @@ class Harvester:
                 pair = shift_register_pair(e)
                 if pair is not None:
                     self.save("srpair", "srpair/%s" % cls, source, pair, resolve_types(b, pair))
+                for direction, tun in plain_tunnels(e):
+                    self.save("tunnel", "tunnel/%s/%s" % (cls, direction), source, tun,
+                              resolve_types(b, tun))
             elif cls == "prim":
                 rid = e.findtext("primResID")
                 if rid is None:

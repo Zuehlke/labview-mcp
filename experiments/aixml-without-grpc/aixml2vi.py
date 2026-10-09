@@ -532,7 +532,7 @@ class Composer:
         own termList, the inner one in the inner diagram's sRN with a bare <dco uid=lpTun/>.
         A plain input tunnel's DCO has objFlags 2048, a plain output's 2049 (bit 0 = output);
         an INDEXING tunnel adds TunnelType 01 and an innerLpTunDCO and is not composed yet."""
-        kind = {"While Loop": "whileLoop"}.get(el.get("_name"))
+        kind = {"While Loop": "whileLoop", "For Loop": "forLoop"}.get(el.get("_name"))
         if kind is None:
             raise Unsupported("structure %r is not composable yet" % el.get("_name"))
         parent = self.diag_of(el)
@@ -540,24 +540,32 @@ class Composer:
         for i, e in enumerate(lvheap.typeid_elements(loop)):
             e.set("_t", str(i))     # so pruning below cannot misalign donor types
         inner = Diagram(loop.find("diagramList/SL__arrayElement[@class='diag']"), owner=el)
+        # A While Loop has a stop terminal (lTst); a For Loop has none and counts to N instead:
+        # its loopLimitDCO names an lMax DCO whose termList is [inner N, outer N], the outer
+        # terminal sitting on the loop's border beside the tunnels (TDMS Advanced Synchronous
+        # Write.vi). Both keep their counter `i` (lCnt).
         lcnt, ltst = loop.find("loopIndexDCO"), loop.find("loopTestDCO")
-        keep = {lcnt.find("termList")[0].get("uid"), ltst.find("termList")[0].get("uid")}
+        keep = {lcnt.find("termList")[0].get("uid")}
+        if ltst is not None:
+            keep.add(ltst.find("termList")[0].get("uid"))
+        lmax_outer = lmax_inner = None
+        if loop.find("loopLimitDCO") is not None:
+            lmax_uid = loop.find("loopLimitDCO").get("uid")
+            for t in loop.find("termList"):
+                if t.find("dco") is not None and t.find("dco").get("uid") == lmax_uid:
+                    lmax_outer = t
+            if lmax_outer is None:
+                raise Unsupported("For Loop shell has no N terminal on its border")
+            inner_n, _ = [x.get("uid") for x in lmax_outer.find("dco/termList")]
+            keep.add(inner_n)
+            lmax_inner = inner_n
         inner_by_dco = {t.find("dco").get("uid"): t for t in inner.srn_terms
                         if t.find("dco") is not None}
-        self.tunnel_tpl = getattr(self, "tunnel_tpl", {})
-        for ot in loop.find("termList"):
-            dco = ot.find("dco")
-            if dco.get("class") != "lpTun" or dco.find("innerLpTunDCO") is not None \
-                    or dco.find("TunnelType") is not None:
-                continue
-            d = "out" if int(dco.findtext("objFlags") or 0) & 1 else "in"
-            it = inner_by_dco.get(dco.get("uid"))
-            if d not in self.tunnel_tpl and it is not None:
-                self.tunnel_tpl[d] = (copy.deepcopy(ot), copy.deepcopy(it))
         for lst in (loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList"),
                     inner.signals):
             for c in list(lst):
-                lst.remove(c)
+                if c is not lmax_outer:
+                    lst.remove(c)
         for c in list(inner.srn_terms):
             if c.get("uid") not in keep:
                 inner.srn_terms.remove(c)
@@ -565,7 +573,7 @@ class Composer:
             if c.get("class") != "sRN":
                 inner.nodes.remove(c)
         for c in list(inner.z):
-            if c.get("uid") not in keep:
+            if c.get("uid") not in keep and c.get("class") != "attachment":
                 inner.z.remove(c)
         # the counter and the stop terminal keep their donor types (int32, boolean)
         for e in lvheap.typeid_elements(loop):
@@ -578,7 +586,13 @@ class Composer:
         self.diagrams[el.get("uid")] = inner
         self.loops.append((loop, inner, parent))
         self.ends[(el.get("uid"), "count")] = (lcnt.find("termList")[0].get("uid"), inner)
-        self.ends[(el.get("uid"), "stop")] = (ltst.find("termList")[0].get("uid"), inner)
+        if ltst is not None:
+            self.ends[(el.get("uid"), "stop")] = (ltst.find("termList")[0].get("uid"), inner)
+        if lmax_outer is not None:
+            self.ends[(el.get("uid"), "N")] = (lmax_outer.get("uid"), parent)
+            self.ends[(el.get("uid"), "maxout")] = (lmax_inner, inner)
+            if el.get("maxout"):
+                self.net_type[el.get("maxout")] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
         count = el.get("count") or ""
         if count:
             self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
@@ -588,14 +602,16 @@ class Composer:
         d = "in" if el.get("_id", "").startswith("In") else "out"
         if el.get("mode"):
             raise Unsupported("Tunnel %s: mode=%r (indexing) is not composable yet" % (el.get("uid"), el.get("mode")))
-        tpl = getattr(self, "tunnel_tpl", {}).get(d)
-        if tpl is None:
-            raise Unsupported("no %s-tunnel template harvested" % d)
         loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
-        wrap = ET.Element("wrap")
-        wrap.append(copy.deepcopy(tpl[0]))
-        wrap.append(copy.deepcopy(tpl[1]))
-        lvheap.renumber(wrap, self.alloc)
+        kind = loop.get("class")
+        got = None
+        for k in (kind, "whileLoop", "forLoop"):   # a plain lpTun is the same on both loops
+            got = self.instantiate("tunnel/%s/%s" % (k, d))
+            if got is not None:
+                break
+        if got is None:
+            raise Unsupported("no plain %s-tunnel part harvested" % d)
+        wrap = got[0]
         outer, innert = list(wrap)
         dco = outer.find("dco")
         src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
@@ -720,7 +736,11 @@ class Composer:
         if el.tag == "Condition":
             return [], [(n, (el.get("_loop"), "stop")) for _, n in pairs(el.get("inputs")) if n]
         if el.tag == "Structure":
-            return ([(el.get("count"), (uid, "count"))] if el.get("count") else []), []
+            srcs = [(el.get("count"), (uid, "count"))] if el.get("count") else []
+            if el.get("maxout"):
+                srcs.append((el.get("maxout"), (uid, "maxout")))
+            sinks = [(el.get("maxin"), (uid, "N"))] if el.get("maxin") else []
+            return srcs, sinks
         return [], []
 
     def wire(self, elements):
@@ -800,13 +820,15 @@ class Composer:
             # down the right.
             h, w = b - t, r - l
             for dco, x in ((loop.find("loopIndexDCO"), 11), (loop.find("loopTestDCO"), w - 27)):
+                if dco is None:
+                    continue
                 tb = dco.find("termBounds")
                 if tb is not None:
                     tb.text = lvheap.fmt_bounds((h - 26, x, h - 10, x + 16))
-            slot = {0: 0, 1: 0}
+            slot = {0: 1 if loop.find("loopLimitDCO") is not None else 0, 1: 0}
             for c in loop.find("termList"):
                 tb = c.find("dco/termBounds")
-                if tb is None:
+                if tb is None or c.find("dco").get("class") == "lMax":
                     continue
                 out = int(c.find("dco").findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)

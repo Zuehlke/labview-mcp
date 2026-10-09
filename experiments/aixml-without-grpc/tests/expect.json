@@ -261,5 +261,31 @@
     }
    }
   ]
+ },
+ "t30_for_sum": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "n=101",
+    "outputs": {
+     "sum": 5050
+    }
+   }
+  ]
+ },
+ "t31_for_scale": {
+  "cases": [
+   {
+    "inputs": "n=4;k=2.5",
+    "outputs": {
+     "last": 7.5
+    }
+   }
+  ]
  }
 }
