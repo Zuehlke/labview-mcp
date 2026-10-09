@@ -1103,9 +1103,23 @@ class Composer:
         elif name in ("Bundle By Name", "Bundle"):
             agg, cref, tpl = terms[0], terms[1], terms[2]
             cin = [n for t, n in ins if t in ("input cluster", "cluster")]
-            if not cin or cin[0] is None:
+            if (not cin or cin[0] is None) and name == "Bundle":
+                # NO cluster wired: the output is a cluster of the elements, each field named
+                # like its terminal (NI's "Frequency Analysis of a Filter Design.vi": Fs, #s);
+                # the unwired cluster input keeps its terminal, objFlags 0x20040 not 0x28040
+                ctype = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
+                for tname, net in ins:
+                    if tname in ("cluster", "input cluster"):
+                        continue
+                    f = copy.deepcopy(unlabel(wired_type(net, "an element")))
+                    if tname != "element":
+                        f.set("Label", tname)
+                    ctype.append(f)
+                cref.find("objFlags").text = str(0x20040)
+            elif not cin or cin[0] is None:
                 raise Unsupported("%s %s: a cluster input must be wired" % (name, el.get("uid")))
-            ctype = wired_type(cin[0], "the cluster")
+            else:
+                ctype = wired_type(cin[0], "the cluster")
             if ctype.get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), ctype.get("Type")))
             fs = fields(ctype)
