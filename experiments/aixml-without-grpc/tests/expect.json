@@ -287,5 +287,37 @@
     }
    }
   ]
+ },
+ "t40_case_bool": {
+  "cases": [
+   {
+    "inputs": "flag=true;x=3.5",
+    "outputs": {
+     "y": 7
+    }
+   },
+   {
+    "inputs": "flag=false;x=3.5",
+    "outputs": {
+     "y": 3.5
+    }
+   }
+  ]
+ },
+ "t41_nested": {
+  "cases": [
+   {
+    "inputs": "n=10;k=4",
+    "outputs": {
+     "sum": 6
+    }
+   },
+   {
+    "inputs": "n=3;k=100",
+    "outputs": {
+     "sum": 3
+    }
+   }
+  ]
  }
 }

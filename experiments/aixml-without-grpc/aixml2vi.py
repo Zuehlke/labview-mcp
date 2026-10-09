@@ -598,6 +598,99 @@ class Composer:
             self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
         self.report.append("Structure %r <- %s" % (el.get("_name"), src))
 
+    def add_case(self, el):
+        """A Case Structure with a BOOLEAN selector and frames "True" and "False".
+
+        Measured on NI's Multiply Force.vi: the selector is one caseSel DCO whose termList
+        names one inner terminal per frame, then the outer one; each frame is a diagram of its
+        own, mapped to a case value by SelectRangeArray32 (start 0 is the False frame, 1 the
+        True one); a tunnel is one selTun DCO with an inner terminal in EVERY frame."""
+        frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
+        if sorted(f.get("selector") for f in frames_el) != ["False", "True"]:
+            raise Unsupported("Case Structure %s: only a boolean True/False case is composable yet"
+                              % el.get("uid"))
+        parent = self.diag_of(el)
+        case, donor_types, src = self.instantiate("struct/select/bool", own_uid=el.get("uid"))
+        for i, e in enumerate(lvheap.typeid_elements(case)):
+            e.set("_t", str(i))
+        diags = list(case.find("diagramList"))
+        value_of = {}
+        for r in case.find("SelectRangeArray32"):
+            value_of[int(r.findtext("diagramIdx") or 0)] = int(r.findtext("start") or 0)
+        sel = next(t for t in case.find("termList") if t.find("dco").get("class") == "caseSel")
+        sel_inner = [x.get("uid") for x in sel.find("dco/termList")][:-1]
+        for c in list(case.find("termList")):
+            if c is not sel:
+                case.find("termList").remove(c)
+        for c in list(case.find("tunnelList")):
+            case.find("tunnelList").remove(c)
+        self.cases = getattr(self, "cases", [])
+        frame_diags = []
+        for idx, d in enumerate(diags):
+            fd = Diagram(d)
+            for c in list(fd.srn_terms):
+                if c.get("uid") not in sel_inner:
+                    fd.srn_terms.remove(c)
+            for c in list(fd.nodes):
+                if c.get("class") != "sRN":
+                    fd.nodes.remove(c)
+            for lst in (fd.z, fd.signals):
+                for c in list(lst):
+                    lst.remove(c)
+            frame_diags.append(fd)
+            want = "True" if value_of.get(idx) == 1 else "False"
+            frame = next(f for f in frames_el if f.get("selector") == want)
+            fd.owner = frame
+            self.diagrams[frame.get("uid")] = fd
+            self.ends[(frame.get("uid"), "selectout")] = (sel_inner[idx], fd)
+            if frame.get("selectout"):
+                self.net_type[frame.get("selectout")] = ET.Element("TypeDesc", {"Type": "Boolean", "Format": "inline"})
+        for e in lvheap.typeid_elements(case):
+            tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
+            e.text = "TypeID(%d)" % self.heap_tid(tree)
+            del e.attrib["_t"]
+        parent.nodes.append(case)
+        parent.z.append(ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
+        parent.placed.append((case, el))
+        self.cases.append((case, frame_diags, parent))
+        self.ends[(el.get("uid"), "sel")] = (sel.get("uid"), parent)
+        self.report.append("Structure 'Case Structure' (boolean) <- %s" % src)
+
+    def add_case_tunnel(self, outer_el, case_el, halves):
+        """One case tunnel: its outside half (`outer_el`, on the structure) and one inside half
+        per frame (`halves`: frame uid -> Tunnel element), as AIXML writes it."""
+        d = "in" if outer_el.get("_id", "").startswith("In") else "out"
+        case, frame_diags, parent = next(x for x in self.cases if x[0].get("uid") == case_el.get("uid"))
+        got = self.instantiate("seltun/bool/%s" % d)
+        if got is None:
+            raise Unsupported("no %s case-tunnel part harvested" % d)
+        wrap = got[0]
+        parts = list(wrap)
+        outer, inner_terms = parts[0], parts[1:]
+        if d == "in":
+            nets = [n for _, n in pairs(outer_el.get("inputs")) if n]
+        else:
+            nets = [n for h in halves.values() for _, n in pairs(h.get("inputs")) if n]
+        tree = next((self.net_type[n] for n in nets if n in self.net_type), None)
+        if tree is None:
+            raise Unsupported("case tunnel %s: no typed wire reaches it" % outer_el.get("_id"))
+        lvheap.set_typeids(wrap, [self.heap_tid(tree) for _ in lvheap.typeid_elements(wrap)])
+        case.find("termList").append(outer)
+        ET.SubElement(case.find("tunnelList"), "SL__arrayElement", {"uid": outer.find("dco").get("uid")})
+        self.ends[(outer_el.get("uid"), "in" if d == "in" else "out")] = (outer.get("uid"), parent)
+        for fd, it in zip(frame_diags, inner_terms):
+            fd.srn_terms.append(it)
+            h = halves.get(fd.owner.get("uid"))
+            if h is not None:
+                self.ends[(h.get("uid"), "out" if d == "in" else "in")] = (it.get("uid"), fd)
+                for _, n in pairs(h.get("outputs")):
+                    if n:
+                        self.net_type[n] = tree
+        for _, n in pairs(outer_el.get("outputs")):
+            if n:
+                self.net_type[n] = tree
+        self.report.append("Case tunnel %s (%s)" % (outer_el.get("_id"), d))
+
     def add_tunnel(self, el, loop_el):
         d = "in" if el.get("_id", "").startswith("In") else "out"
         if el.get("mode"):
@@ -735,6 +828,10 @@ class Composer:
                     [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag == "Condition":
             return [], [(n, (el.get("_loop"), "stop")) for _, n in pairs(el.get("inputs")) if n]
+        if el.tag == "CaseFrame":
+            return ([(el.get("selectout"), (uid, "selectout"))] if el.get("selectout") else []), []
+        if el.tag == "Structure" and el.get("_name") == "Case Structure":
+            return [], ([(el.get("selectin"), (uid, "sel"))] if el.get("selectin") else [])
         if el.tag == "Structure":
             srcs = [(el.get("count"), (uid, "count"))] if el.get("count") else []
             if el.get("maxout"):
@@ -804,7 +901,34 @@ class Composer:
                 side[int(c.find("dco").findtext("objFlags") or 0) & 1] += 1
             border = 20 + 24 * max(side.values()) + 40     # room for the stacked terminals
             sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200))
+        for case, frame_diags, parent in reversed(getattr(self, "cases", [])):
+            dims = [self._place(fd, lv, sizes, 30, 30) for fd in frame_diags]
+            w = max(x for x, _ in dims)
+            h = max(y for _, y in dims)
+            n = max(1, len(case.find("tunnelList")))
+            sizes[case.get("uid")] = (max(h + 40, 40 + 24 * n + 30, 120), max(w + 40, 200))
         self._place(self.root, lv, sizes, 40, 40)
+        for case, frame_diags, parent in getattr(self, "cases", []):
+            t, l, b, r = lvheap.parse_bounds(case.find("bounds").text)
+            cr = case.find("contRect")
+            if cr is not None:
+                cr.text = lvheap.fmt_bounds((t + 6, l + 6, b - 6, r - 6))
+            for fd in frame_diags:
+                sb = fd.srn.find("bounds")
+                if sb is not None:
+                    sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            slot = {0: 0, 1: 0}
+            for c in case.find("termList"):
+                dco = c.find("dco")
+                tb = dco.find("termBounds")
+                if tb is None or dco.get("class") == "caseSel":
+                    continue
+                out = int(dco.findtext("objFlags") or 0) & 1
+                tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
+                y = 30 + 24 * slot[out]
+                slot[out] += 1
+                x = (r - l) - (tr - tl) if out else 0
+                tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
         for loop, inner, parent in self.loops:
             t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
             cr = loop.find("contRect")
@@ -877,7 +1001,7 @@ class Composer:
         for el in parent_el:
             if not isinstance(el.tag, str):
                 continue
-            if el.tag == "Structure":
+            if el.tag in ("Structure", "CaseFrame"):
                 out.append(el)
                 for c in self.flatten(el):
                     if c.tag == "Condition":
@@ -900,7 +1024,7 @@ class Composer:
         elements = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
-                          "ShiftReg", "Left", "Right"):
+                          "ShiftReg", "Left", "Right", "CaseFrame"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
@@ -909,7 +1033,18 @@ class Composer:
         by_uid = {e.get("uid"): e for e in elements}
         # structures first, outermost first, so every diagram exists before anything lands in it
         for el in [e for e in elements if e.tag == "Structure"]:
-            self.add_loop(el)
+            if el.get("_name") == "Case Structure":
+                self.add_case(el)
+            else:
+                self.add_loop(el)
+        # a case tunnel is written as one outside half on the structure and one inside half
+        # per frame, sharing an _id; it is scheduled as one item, by its outside half
+        case_halves = {}
+        for e in elements:
+            if e.tag == "Tunnel":
+                p = by_uid.get(e.get("uid_parent"))
+                if p is not None and p.tag == "CaseFrame":
+                    case_halves.setdefault((p.get("uid_parent"), e.get("_id")), {})[p.get("uid")] = e
         row = {"Control": 0, "Indicator": 0}
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
             self.add_fp(el, row[el.tag])
@@ -917,12 +1052,21 @@ class Composer:
         for el in [e for e in elements if e.tag == "Constant"]:
             self.add_const(el)
         # nodes and tunnels in dependency order, so every input type is known when it is placed
-        pending = [e for e in elements if e.tag in ("Node", "Tunnel", "ShiftReg")]
+        def is_case(uid):
+            p = by_uid.get(uid)
+            return p is not None and p.tag == "Structure" and p.get("_name") == "Case Structure"
+        pending = [e for e in elements if e.tag in ("Node", "ShiftReg")
+                   or (e.tag == "Tunnel" and by_uid.get(e.get("uid_parent")) is not None
+                       and by_uid[e.get("uid_parent")].tag == "Structure")]
 
         def inputs_of(e):
             if e.tag == "ShiftReg":   # a register's type comes from its initializer
                 left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
                 return pairs(left.get("inputs"))
+            if e.tag == "Tunnel" and is_case(e.get("uid_parent")) and e.get("_id", "").startswith("Out"):
+                halves = case_halves.get((e.get("uid_parent"), e.get("_id")), {}).values()
+                ins = [x for h in halves for x in pairs(h.get("inputs")) if x[1]]
+                return ins[:1] if any(n in self.net_type for _, n in ins) else ins
             return pairs(e.get("inputs"))
         while pending:
             ready = [e for e in pending if all(net in self.net_type or net is None
@@ -932,6 +1076,9 @@ class Composer:
             for e in ready:
                 if e.tag == "Node":
                     self.add_node(e)
+                elif e.tag == "Tunnel" and is_case(e.get("uid_parent")):
+                    self.add_case_tunnel(e, by_uid[e.get("uid_parent")],
+                                         case_halves.get((e.get("uid_parent"), e.get("_id")), {}))
                 elif e.tag == "Tunnel":
                     self.add_tunnel(e, by_uid[e.get("uid_parent")])
                 else:
@@ -956,6 +1103,8 @@ class Composer:
             grown += list(d.lists())
         for loop, _, _ in self.loops:
             grown += [loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList")]
+        for case, _, _ in getattr(self, "cases", []):
+            grown += [case.find("termList"), case.find("tunnelList")]
         for lst in grown:
             lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))

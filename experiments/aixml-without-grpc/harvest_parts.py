@@ -73,6 +73,34 @@ def shift_register_pair(loop):
     return wrap
 
 
+def case_tunnels(case):
+    """Each tunnel of a Case Structure as a <wrap> of [outer, inner per frame...]. A selTun
+    DCO's termList names the inner terminal of every frame, in frame order, then the outer
+    one (measured on Multiply Force.vi). An input tunnel's DCO has objFlags 2048, an output's
+    has bit 0 set."""
+    frames = case.find("diagramList")
+    inner = {}
+    for f in frames:
+        for t in f.find("nodeList/SL__arrayElement[@class='sRN']/termList"):
+            d = t.find("dco")
+            if d is not None and len(d) == 0:
+                inner[t.get("uid")] = t
+    out = []
+    for t in case.find("termList"):
+        dco = t.find("dco")
+        if dco is None or dco.get("class") != "selTun":
+            continue
+        uids = [x.get("uid") for x in dco.find("termList")]
+        if len(uids) != len(frames) + 1 or uids[-1] != t.get("uid") or not all(u in inner for u in uids[:-1]):
+            continue
+        wrap = ET.Element("wrap")
+        wrap.append(copy.deepcopy(t))
+        for u in uids[:-1]:
+            wrap.append(copy.deepcopy(inner[u]))
+        out.append(("out" if int(dco.findtext("objFlags") or 0) & 1 else "in", wrap))
+    return out
+
+
 def plain_tunnels(loop):
     """Each PLAIN (non-indexing) tunnel of a loop as a <wrap> of [outer, inner] terminal.
     A plain input tunnel's lpTun DCO has objFlags 2048, a plain output's 2049 (bit 0 = output);
@@ -161,6 +189,19 @@ class Harvester:
                 if wt and (n not in self.wiretables or len(wt) < len(self.wiretables[n])):
                     self.wiretables[n] = wt
                     self.wt_new += 1
+            elif cls == "select":
+                # a Case Structure; only a TWO-frame BOOLEAN one is cut for now, so frame order
+                # and selector type are known: SelectorRange start 0 is False, 1 is True
+                frames = e.find("diagramList")
+                sel = next((t for t in e.find("termList") if t.find("dco") is not None
+                            and t.find("dco").get("class") == "caseSel"), None)
+                if frames is not None and len(frames) == 2 and sel is not None:
+                    st = resolve_types(b, sel)
+                    if st and st[0].get("Type") == "Boolean":
+                        self.save("struct", "struct/select/bool", source, e, resolve_types(b, e))
+                        for direction, tun in case_tunnels(e):
+                            self.save("seltun", "seltun/bool/%s" % direction, source, tun,
+                                      resolve_types(b, tun))
             elif cls in ("whileLoop", "forLoop"):
                 # a whole loop with its tunnels, shift registers and inner diagram; the
                 # composer keeps the shell and one template of each terminal kind
