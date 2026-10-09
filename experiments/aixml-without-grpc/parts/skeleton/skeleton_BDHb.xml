@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SL__rootObject class="oHExt" uid="2">
+  <root class="diag" uid="3">
+    <objFlags>18432</objFlags>
+    <zPlaneList elements="2">
+      <SL__arrayElement uid="4235" />
+      <SL__arrayElement uid="4222" />
+      </zPlaneList>
+    <nodeList elements="1">
+      <SL__arrayElement class="sRN" uid="7">
+        <objFlags>16384</objFlags>
+        <termList elements="2">
+          <SL__arrayElement class="fPTerm" uid="4222">
+            <objFlags>131136</objFlags>
+            <dco uid="4220" />
+            <bounds>(273, 375, 289, 407)</bounds>
+            <label class="label" uid="4223">
+              <objFlags>1507650</objFlags>
+              <partID>16</partID>
+              <howGrow>4096</howGrow>
+              <bounds>(0, -9, 15, 0)</bounds>
+              <image class="Image">
+                <ImageResID>-619</ImageResID>
+                </image>
+              <fgColor>01000000</fgColor>
+              <bgColor>01000000</bgColor>
+              <textRec class="textHair">
+                <flags>32768</flags>
+                <mode>17412</mode>
+                <bgColor>01000000</bgColor>
+                <fr elements="1">
+                  <SL__arrayElement class="fontRun">
+                    <fontid>1</fontid>
+                    </SL__arrayElement>
+                  </fr>
+                </textRec>
+              </label>
+            </SL__arrayElement>
+          <SL__arrayElement class="fPTerm" uid="4235">
+            <objFlags>163904</objFlags>
+            <dco uid="4233" />
+            <bounds>(273, 431, 289, 463)</bounds>
+            <label class="label" uid="4236">
+              <objFlags>1507650</objFlags>
+              <partID>16</partID>
+              <howGrow>4096</howGrow>
+              <bounds>(0, 32, 15, 42)</bounds>
+              <image class="Image">
+                <ImageResID>-619</ImageResID>
+                </image>
+              <fgColor>01000000</fgColor>
+              <bgColor>01000000</bgColor>
+              <textRec class="textHair">
+                <flags>32768</flags>
+                <mode>17412</mode>
+                <bgColor>01000000</bgColor>
+                <fr elements="1">
+                  <SL__arrayElement class="fontRun">
+                    <fontid>1</fontid>
+                    </SL__arrayElement>
+                  </fr>
+                </textRec>
+              </label>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(0, 0, 0, 0)</bounds>
+        <shortCount>1</shortCount>
+        <clumpNum>131075</clumpNum>
+        </SL__arrayElement>
+      </nodeList>
+    <signalList elements="1">
+      <SL__arrayElement class="signal" uid="4237">
+        <termList elements="2">
+          <SL__arrayElement uid="4222" />
+          <SL__arrayElement uid="4235" />
+          </termList>
+        <state>1</state>
+        <compressedWireTable>0208</compressedWireTable>
+        <lastSignalKind>266</lastSignalKind>
+        </SL__arrayElement>
+      </signalList>
+    <bgColor>00FFFFFF</bgColor>
+    <firstNodeIdx>1</firstNodeIdx>
+    </root>
+  <pBounds>(243, 336, 763, 1153)</pBounds>
+  <dBounds>(143, 162, 419, 677)</dBounds>
+  <origin>(420, 177)</origin>
+  <instrStyle>31</instrStyle>
+  </SL__rootObject>

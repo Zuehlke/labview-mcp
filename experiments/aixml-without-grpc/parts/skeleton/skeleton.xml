@@ -1,0 +1,209 @@
+<?xml version='1.0' encoding='utf-8'?>
+<RSRC FormatVersion="3" Type="LVIN" Encoding="mac_roman">
+  <LVSR>
+    <!-- LabView Save Record -->
+    <Section Index="0" Name="skeleton.vi" Format="inline">
+      <Version Major="26" Minor="0" Bugfix="0" Stage="release" Build="0" />
+      <Library Protected="0" PasswordHash="d41d8cd98f00b204e9800998ecf8427e" HashType="MD5" />
+      <Execution State="1" Priority="1" PrefExecSyst="-1" BadSignal="0" BadNode="0" BadSubVILink="0" BadSubVI="0" NotReservable="0" IsReentrant="0" CloseAfterCall="0" PooledReentrancy="0" LoadFP="0" HasNoBD="0" ShowFPOnLoad="0" DynamicDispatch="0" HasSetBP="0" RunOnOpen="0" ShowFPOnCall="0" BadCompile="0" IsSubroutine="0" DSRecord="0" CompilerBug="0" TypeDefVI="0" StrictTypeDefVI="0" BadDDO="0" CtlChanged="0" SaveParallel="0" LibIssuesNoRun="0" AllowAutoPrealloc="0" EvalWatermark="0" StdntWatermark="0" HasInsaneItems="0" PropTypesIssues="0" BrokenPolyVI="0" />
+      <Execution2 TaggedAndNotEdited="0" HideInstanceVICaption="0" SystemVI="0" VisibleVI="0" XDebugWindowVI="0" TemplateMask="0" SuppressXaction="0" AlwaysCallsParent="0" UndoRedoChangedNoTypes="0" InlinableDiagram="1" SourceOnly="1" InlineIfPossible="0" TransactionFailing="0" SSEOptiMask="0" StudentOnlyMask="0" EvalOnlyMask="0" AllowPolyTypeAdapt="0" ShouldInline="0" RecalcFPDSOs="0" MarkForPolyVI="0" VICanPassLVClassToDLL="0" UndoRedoInProgress="0" DrawInstanceIcon="0" ShowPolySelector="0" ClearIndMask="0" DefaultGrownView="0" DoNotClone="0" IsPrivateDataForUDClass="0" InstanceVI="0" DefaultErrorHandling="0" RemotePanel="0" SuppressInstanceHalo="0" />
+      <ButtonsHidden RunButton="0" ViBhBit1="0" ViBhBit2="0" ViBhBit3="0" ViBhBit4="0" FreeRunButton="0" ViBhBit6="0" AbortButton="0" ViBhBit8="0" ViBhBit9="0" ViBhBit10="0" ViBhBit11="0" ViBhBit12="0" ViBhBit13="0" ViBhBit14="0" ViBhBit15="0" />
+      <Instrument Type="Standard" Signature="7c7001657edce84a8d56d7f794cd4b45" InStBit0="0" InStBit1="0" InStBit2="0" InStBit3="0" InStBit4="0" InStBit5="0" InStBit6="0" InStBit7="0" InStBit8="0" DebugCapable="1" InStBit10="0" InStBit11="0" InStBit12="0" InStBit13="0" InStBit14="0" PrintAfterExec="0" InStBit16="0" InStBit17="0" InStBit18="0" InStBit19="0" InStBit20="0" InStBit21="0" InStBit22="0" InStBit23="1" InStBit24="0" InStBit25="0" InStBit26="0" InStBit27="0" InStBit28="0" InStBit29="0" InStBit30="1" InStBit31="0" />
+      <FrontPanel CtrlIndStyle="0" ShowScrollBar="3" ShowTitleBar="1" ToolBarVisible="1" ShowMenuBar="1" AutoCenter="0" SizeToScreen="0" NoRuntimePopUp="0" MarkReturnBtn="0" ViFpBit9="0" ScaleProportn="0" ViFpBit11="0" ViFpBit12="0" ViFpBit13="0" ViFpBit14="0" ViFpBit15="0" />
+      <Flags0C AutoHndlMenus="1" />
+      <Flags12 WndFloatUnk1="0" WndBit2="1" WndCanClose="1" WndCanResize="1" WndCanMinimize="1" WndTransparent="0" WndFloatUnk9="0" />
+      <Unknown Flags10="3" Field28="0" Field2C="0" Field30="0" AlignGridFP="12" AlignGridBD="16" Field4C="0" Field50Hash="0d064eb1b4b39a4ea46c01d9cda9c8d5" Field70="0" Field74="0" Field78Hash="8ed86faa405d9b45a0c9d9fd44e16f52" InlineStg="1" Field8C="4294967295" />
+      <Field90 Format="bin" File="skeleton_LVSR_Field90.bin" />
+      </Section>
+    </LVSR>
+  <RTSG>
+    <!-- Runtime Signature Guid -->
+    <Section Index="0" Format="inline">
+      <Guid>e04b35e8096272f8390c91b43ac67cdc</Guid>
+      </Section>
+    </RTSG>
+  <vers>
+    <!-- Version block -->
+    <Section Index="4" Format="inline">
+      <Version Major="26" Minor="3" Bugfix="1" Stage="release" Build="1" Language="0" Info="26.3.1" Comment="" />
+      </Section>
+    </vers>
+  <CONP>
+    <!-- Connector Pane Type Map -->
+    <Section Index="0" Format="inline">
+      <TypeDesc TypeID="1" />
+      </Section>
+    </CONP>
+  <LIvi>
+    <!-- LinkObj Refs for VI -->
+    <Section Index="0" Format="inline">
+      <LVIN />
+      </Section>
+    </LIvi>
+  <BDPW>
+    <!-- Block Diagram Password -->
+    <Section Index="0" Format="inline">
+      <Password Text="" SaltSource="CPC2" SaltFlatTypeID="2" />
+      </Section>
+    </BDPW>
+  <STRG>
+    <!-- String description / descriptions list -->
+    <Section Index="0" Format="inline">
+      <String>Probe - a Control with no value attribute and everything else valid.</String>
+      </Section>
+    </STRG>
+  <ICON>
+    <!-- Icon 32x32 1bpp -->
+    <Section Index="0" Format="png" File="skeleton_ICON.png" />
+    </ICON>
+  <icl8>
+    <!-- Icon Large 32x32 8bpp -->
+    <Section Index="0" Format="png" File="skeleton_icl8.png" />
+    </icl8>
+  <CPC2>
+    <!-- Connector Pane Content Type v2 -->
+    <Section Index="0" Format="inline">
+      <TypeDesc TypeID="2" />
+      </Section>
+    </CPC2>
+  <LIfp>
+    <!-- LinkObj Refs for Front Panel -->
+    <Section Index="0" Format="inline">
+      <FPHP />
+      </Section>
+    </LIfp>
+  <FPEx>
+    <!-- Generic block -->
+    <Section Index="0" Format="bin" File="skeleton_FPEx.bin" />
+    </FPEx>
+  <FPHb>
+    <!-- Front Panel Heap ver b -->
+    <Section Index="0" Format="xml" File="skeleton_FPHb.xml" />
+    </FPHb>
+  <FPSE>
+    <!-- Front Panel Size Estimate -->
+    <Section Index="0" Value="39" Format="inline" />
+    </FPSE>
+  <VPDP>
+    <!-- VI Primitive Dependency Flags -->
+    <Section Index="0" Format="bin" File="skeleton_VPDP.bin" />
+    </VPDP>
+  <LIbd>
+    <!-- LinkObj Refs for Block diagram -->
+    <Section Index="0" Format="inline">
+      <BDHP />
+      </Section>
+    </LIbd>
+  <BDEx>
+    <!-- Generic block -->
+    <Section Index="0" Format="bin" File="skeleton_BDEx.bin" />
+    </BDEx>
+  <BDHb>
+    <!-- Block Diagram Heap ver b -->
+    <Section Index="0" Format="xml" File="skeleton_BDHb.xml" />
+    </BDHb>
+  <BDSE>
+    <!-- Block Diagram Size Estimate -->
+    <Section Index="0" Value="19" Format="inline" />
+    </BDSE>
+  <VITS>
+    <!-- Virtual Instrument Tag Strings -->
+    <Section Index="0" Format="bin" File="skeleton_VITS.bin" />
+    </VITS>
+  <DTHP>
+    <!-- Data Types for Heap -->
+    <Section Index="0" Format="inline">
+      <!-- Heap TypeID  1 = Consolidated TypeID  3: NumFloat64 -->
+      <!-- Heap TypeID  2 = Consolidated TypeID  4: NumFloat64 -->
+      <!-- Heap TypeID  3 = Consolidated TypeID  5: NumFloat64 -->
+      <!-- Heap TypeID  4 = Consolidated TypeID  6: NumFloat64 -->
+      <TypeDescSlice IndexShift="3" Count="4" />
+      </Section>
+    </DTHP>
+  <MUID>
+    <!-- Map Unique Identifier -->
+    <Section Index="0" Value="4240" Format="inline" />
+    </MUID>
+  <HIST>
+    <!-- Changes History -->
+    <Section Index="0" Format="bin" File="skeleton_HIST.bin" />
+    </HIST>
+  <VCTP>
+    <!-- VI Consolidated Data Types -->
+    <Section Index="0" Format="inline">
+      <!-- FlatTypeID 0: Type Descriptor with Void data -->
+      <TypeDesc Type="Void" Format="inline" />
+      <!-- FlatTypeID 1: Type Descriptor with Function data -->
+      <TypeDesc Type="Function" FuncFlags="0x200" Pattern="0x108" HasThrall="0" Format="inline">
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        </TypeDesc>
+      <!-- FlatTypeID 2: Type Descriptor with Function data -->
+      <TypeDesc Type="Function" FuncFlags="0x0" Pattern="0x108" HasThrall="0" Format="inline">
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        <TypeDesc TypeID="0" Flags="0x0000" />
+        </TypeDesc>
+      <!-- FlatTypeID 3: Type Descriptor with single number as data -->
+      <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="b" />
+      <!-- FlatTypeID 4: Type Descriptor with single number as data -->
+      <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" />
+      <TopLevel>
+        <!-- When Consolidated Type is referred to in other blocks, the TypeID is Index from this list -->
+        <TypeDesc Index="1" FlatTypeID="1" />
+        <TypeDesc Index="2" FlatTypeID="2" />
+        <TypeDesc Index="3" FlatTypeID="3" />
+        <TypeDesc Index="4" FlatTypeID="3" />
+        <TypeDesc Index="5" FlatTypeID="4" />
+        <TypeDesc Index="6" FlatTypeID="4" />
+        </TopLevel>
+      </Section>
+    </VCTP>
+  <FTAB>
+    <!-- Font Table -->
+    <Section Index="128" Prop1="0x10002" Prop3="3" Format="inline">
+      <Font Prop2="13" Prop3="1024" Prop4="0" Prop6="13" Prop7="212" Prop8="196">
+        <Name>Segoe UI</Name>
+        </Font>
+      <Font Prop2="13" Prop3="1024" Prop4="0" Prop6="13" Prop7="212" Prop8="196">
+        <Name>Segoe UI</Name>
+        </Font>
+      <Font Prop2="13" Prop3="1024" Prop4="0" Prop6="13" Prop7="212" Prop8="196">
+        <Name>Segoe UI</Name>
+        </Font>
+      <Font Prop2="32768" Prop3="33792" Prop4="32768" Prop6="13" Prop7="212" Prop8="196">
+        <Name>0</Name>
+        </Font>
+      <Font Prop2="32768" Prop3="33792" Prop4="32768" Prop6="13" Prop7="212" Prop8="196">
+        <Name>2</Name>
+        </Font>
+      </Section>
+    </FTAB>
+  </RSRC>

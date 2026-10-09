@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdBool/Boolean" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\probe\probe.xml"><types><TypeDesc Type="Boolean" Format="inline" Label="c bool" /><TypeDesc Type="Boolean" Format="inline" Label="c bool" /></types><heap><SL__arrayElement class="term" uid="4394">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="4392">
+              <typeDesc>TypeID(23)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdBool" uid="4240">
+                <objFlags>4</objFlags>
+                <bounds>(205, 192, 220, 243)</bounds>
+                <partsList elements="3">
+                  <SL__arrayElement class="label" uid="4391">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>21</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(0, 0, 15, 35)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>82948</mode>
+                      <text>"c bool"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>1</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="multiCosm" uid="4389">
+                    <objFlags>2358</objFlags>
+                    <partID>21</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(0, 35, 14, 51)</bounds>
+                    <fgColor>00007F00</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <index>1</index>
+                    <table elements="2">
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2103</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2102</ImageResID>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="4390">
+                    <partID>66</partID>
+                    <rsrcID>2006</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(24)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                <MinButSize>(-201, -198)</MinButSize>
+                </ddo>
+              <ConstValue>01</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpterm" key="fpterm/ind" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\ControlWithValue\ControlWithValue.xml"><types /><heap><SL__arrayElement class="fPTerm" uid="4235">
+            <objFlags>163904</objFlags>
+            <dco uid="4233" />
+            <bounds>(273, 431, 289, 463)</bounds>
+            <label class="label" uid="4236">
+              <objFlags>1507650</objFlags>
+              <partID>16</partID>
+              <howGrow>4096</howGrow>
+              <bounds>(0, 32, 15, 42)</bounds>
+              <image class="Image">
+                <ImageResID>-619</ImageResID>
+                </image>
+              <fgColor>01000000</fgColor>
+              <bgColor>01000000</bgColor>
+              <textRec class="textHair">
+                <flags>32768</flags>
+                <mode>17412</mode>
+                <bgColor>01000000</bgColor>
+                <fr elements="1">
+                  <SL__arrayElement class="fontRun">
+                    <fontid>1</fontid>
+                    </SL__arrayElement>
+                  </fr>
+                </textRec>
+              </label>
+            </SL__arrayElement>
+          </heap></part>

@@ -1,0 +1,5 @@
+{
+  "t00_passthrough": {"cases": [{"inputs": "a=3.25", "outputs": {"b": 3.25}}]},
+  "t01_add": {"cases": [{"inputs": "a=3.25;b=4", "outputs": {"sum": 7.25}},
+                        {"inputs": "a=-10;b=2.5", "outputs": {"sum": -7.5}}]}
+}

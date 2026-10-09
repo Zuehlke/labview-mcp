@@ -1,0 +1,4 @@
+<VI _name="T00 Pass.vi" description="Composed without LabVIEW: b = a.">
+  <Control _name="a" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Indicator _name="b" type="double" uid="4210" uid_parent="root" inputs="value:4200.value" value="0"/>
+</VI>
