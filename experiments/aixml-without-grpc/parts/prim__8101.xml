@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8101" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Collections\Map Collection - Word Counting.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="token index" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Count the words in this text:" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="offset past token" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Count the words in this text:" /><TypeDesc Type="Boolean" Format="inline" Label="use cached delim/oper data? (F)" /><TypeDesc Type="Boolean" Format="inline" Label="allow empty tokens? (F)" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="offset" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Count the words in this text:" /></types><heap><SL__arrayElement class="prim" uid="3093">
+                <termList elements="10">
+                  <SL__arrayElement class="term" uid="3096">
+                    <dco class="parm" uid="3097">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(56)</typeDesc>
+                      <termBounds>(24, 16, 32, 32)</termBounds>
+                      <primIndex>353</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3099">
+                    <dco class="parm" uid="3100">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(57)</typeDesc>
+                      <termBounds>(16, 16, 24, 32)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3102">
+                    <dco class="parm" uid="3103">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(58)</typeDesc>
+                      <termBounds>(8, 16, 16, 32)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>2</parmIndex>
+                      <inplace>9</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3105">
+                    <dco class="parm" uid="3106">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(59)</typeDesc>
+                      <termBounds>(0, 16, 8, 32)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>3</parmIndex>
+                      <inplace>10</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3108">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3109">
+                      <typeDesc>TypeID(60)</typeDesc>
+                      <termBounds>(16, 8, 32, 16)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3111">
+                    <dco class="parm" uid="3112">
+                      <typeDesc>TypeID(61)</typeDesc>
+                      <termBounds>(0, 8, 16, 16)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>5</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3114">
+                    <dco class="parm" uid="3115">
+                      <typeDesc>TypeID(62)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(24, 0, 32, 8)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>6</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3117">
+                    <dco class="parm" uid="3118">
+                      <typeDesc>TypeID(63)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(16, 0, 24, 8)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>7</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3120">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3121">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(64)</typeDesc>
+                      <termBounds>(8, 0, 16, 8)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>8</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3123">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3124">
+                      <typeDesc>TypeID(65)</typeDesc>
+                      <termBounds>(0, 0, 8, 8)</termBounds>
+                      <primIndex>353</primIndex>
+                      <parmIndex>9</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="3094">
+                  <objFlags>1507658</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 123)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <flags>512</flags>
+                    <mode>82948</mode>
+                    <text>"Scan String For Tokens"</text>
+                    <bgColor>01000000</bgColor>
+                    <fr elements="1">
+                      <SL__arrayElement class="fontRun">
+                        <fontid>1</fontid>
+                        </SL__arrayElement>
+                      </fr>
+                    </textRec>
+                  </label>
+                <bounds>(30, 63, 62, 95)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>8101</primResID>
+                <primIndex>353</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdString/ind/String" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\probe\probe.xml"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /></types><heap><SL__arrayElement class="fPDCO" uid="4410">
+<part kind="fpdco" key="fpdco/stdString/ind/String" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /></types><heap><SL__arrayElement class="fPDCO" uid="4410">
           <objFlags>1</objFlags>
           <typeDesc>TypeID(13)</typeDesc>
           <ddo class="stdString" uid="4300">

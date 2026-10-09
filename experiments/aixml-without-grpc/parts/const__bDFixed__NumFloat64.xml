@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/bDFixed/NumFloat64" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="term" uid="256">
+                            <objFlags>131137</objFlags>
+                            <dco class="bDConstDCO" uid="127">
+                              <typeDesc>TypeID(260)</typeDesc>
+                              <dsw>4096</dsw>
+                              <ddo class="bDFixed" uid="257">
+                                <objFlags>32</objFlags>
+                                <bounds>(339, 228, 356, 247)</bounds>
+                                <partsList elements="2">
+                                  <SL__arrayElement class="cosm" uid="259">
+                                    <objFlags>2355</objFlags>
+                                    <partID>9</partID>
+                                    <howGrow>240</howGrow>
+                                    <bounds>(-8, -7, 24, 25)</bounds>
+                                    <image class="Image">
+                                      <ImageResID>-8028</ImageResID>
+                                      </image>
+                                    <fgColor>00FF7F00</fgColor>
+                                    <bgColor>00FFFFFF</bgColor>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="annex" uid="260">
+                                    <partID>66</partID>
+                                    <refListLength>0</refListLength>
+                                    <hGrowNodeListLength>0</hGrowNodeListLength>
+                                    <rsrcID>23528</rsrcID>
+                                    </SL__arrayElement>
+                                  </partsList>
+                                <typeDesc>TypeID(261)</typeDesc>
+                                <MouseWheelSupport>0</MouseWheelSupport>
+                                <cnst>1C</cnst>
+                                </ddo>
+                              <ConstValue>3CB0000000000000</ConstValue>
+                              </dco>
+                            </SL__arrayElement>
+                          </heap></part>

@@ -1,0 +1,6 @@
+<VI _name="T05 Mixed.vi" description="int32 times double: the output type must follow coercion, not the first input.">
+  <Control _name="n" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Constant _name="k" type="double" uid="4210" uid_parent="root" value="2.5" outputs="value:4210.value"/>
+  <Node _name="Multiply" inputs="x:4200.value,y:4210.value" outputs="x*y:4220.r" uid="4220" uid_parent="root"/>
+  <Indicator _name="r" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4220.r"/>
+</VI>

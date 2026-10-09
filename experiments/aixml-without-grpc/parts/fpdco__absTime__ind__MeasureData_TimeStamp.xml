@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/absTime/ind/MeasureData.TimeStamp" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\probe\probe.xml"><types><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="i timestamp" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="i timestamp" /></types><heap><SL__arrayElement class="fPDCO" uid="4493">
+<part kind="fpdco" key="fpdco/absTime/ind/MeasureData.TimeStamp" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="i timestamp" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="i timestamp" /></types><heap><SL__arrayElement class="fPDCO" uid="4493">
           <objFlags>1</objFlags>
           <typeDesc>TypeID(1)</typeDesc>
           <ddo class="absTime" uid="4350">

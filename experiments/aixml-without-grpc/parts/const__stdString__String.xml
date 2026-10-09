@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="const" key="const/stdString/String" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\probe\probe.xml"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="c string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="c string" /></types><heap><SL__arrayElement class="term" uid="4360">
+<part kind="const" key="const/stdString/String" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="c string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="c string" /></types><heap><SL__arrayElement class="term" uid="4360">
             <objFlags>131136</objFlags>
             <dco class="bDConstDCO" uid="4358">
               <typeDesc>TypeID(15)</typeDesc>

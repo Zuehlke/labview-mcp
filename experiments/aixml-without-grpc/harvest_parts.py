@@ -16,6 +16,7 @@ Part files are plain XML:
     </part>
 """
 import copy
+import json
 import os
 import sys
 import tempfile
@@ -27,6 +28,9 @@ import lvheap  # noqa: E402
 
 def part_xml(kind, key, source, el, types, extra=None):
     p = ET.Element("part", {"kind": kind, "key": key, "source": source})
+    # A CLEAN part comes from a VI LabVIEW generated from AIXML: default style, no captions,
+    # no default data. Parts cut from NI's examples carry the example's styling and were
+    # measured breaking a VI on their own (denylist.json), so the composer prefers clean ones.
     if extra:
         for k, v in extra.items():
             p.set(k, str(v))
@@ -51,16 +55,28 @@ def safe(key):
 
 
 class Harvester:
-    def __init__(self, parts_dir, replace=False):
+    def __init__(self, parts_dir, replace=False, clean=False):
         self.dir = parts_dir
         self.replace = replace
+        self.clean = clean
         os.makedirs(parts_dir, exist_ok=True)
         self.found = []
+        # Wire tables by number of ends. A signal's compressedWireTable is its routing, and
+        # LabVIEW repairs the GEOMETRY of a foreign table ("Wiring insanity found and fixed")
+        # but not its SHAPE: a two-ended table on a three-ended signal is a broken VI, and no
+        # table at all crashes LabVIEW. So the composer needs one table per end count.
+        self.wt_path = os.path.join(parts_dir, "wiretables.json")
+        self.wiretables = json.load(open(self.wt_path)) if os.path.exists(self.wt_path) else {}
+        self.wt_new = 0
+        dl = os.path.join(parts_dir, "denylist.json")
+        self.deny = set(k for k in (json.load(open(dl)) if os.path.exists(dl) else {}) if not k.startswith("$"))
 
     def save(self, kind, key, source, el, types, extra=None):
         path = os.path.join(self.dir, safe(key) + ".xml")
-        if os.path.exists(path) and not self.replace:
+        if key in self.deny or (os.path.exists(path) and not self.replace):
             return
+        if self.clean:
+            extra = dict(extra or {}, clean="1")
         ET.ElementTree(part_xml(kind, key, source, el, types, extra)).write(
             path, encoding="utf-8", xml_declaration=True)
         self.found.append(key)
@@ -97,6 +113,12 @@ class Harvester:
                     types = resolve_types(b, e)
                     tk = lvheap.type_key(types[0])
                     self.save("const", "const/%s/%s" % (ddo.get("class"), tk), source, e, types)
+            elif cls == "signal":
+                n = str(len(e.find("termList")))
+                wt = e.findtext("compressedWireTable")
+                if wt and (n not in self.wiretables or len(wt) < len(self.wiretables[n])):
+                    self.wiretables[n] = wt
+                    self.wt_new += 1
             elif cls == "prim":
                 rid = e.findtext("primResID")
                 if rid is None:
@@ -107,9 +129,10 @@ class Harvester:
 
 def main(argv):
     replace = "--replace" in argv
-    args = [a for a in argv if a != "--replace"]
+    clean = "--clean" in argv
+    args = [a for a in argv if a not in ("--replace", "--clean")]
     parts_dir, inputs = args[0], args[1:]
-    h = Harvester(parts_dir, replace)
+    h = Harvester(parts_dir, replace, clean)
     tmp = tempfile.mkdtemp(prefix="harvest_")
     for i, src in enumerate(inputs):
         try:
@@ -118,8 +141,11 @@ def main(argv):
             h.harvest(main_xml, src)
         except Exception as ex:  # one bad VI must not stop a sweep
             print("SKIP %s: %s" % (src, ex), file=sys.stderr)
+    json.dump(dict(sorted(h.wiretables.items(), key=lambda kv: int(kv[0]))),
+              open(h.wt_path, "w"), indent=1)
     for k in sorted(h.found):
         print(k)
+    print("wire tables for %d end counts (%d improved)" % (len(h.wiretables), h.wt_new), file=sys.stderr)
     print("%d new part(s) in %s" % (len(h.found), parts_dir), file=sys.stderr)
 
 

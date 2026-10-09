@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Scripting\Creating Objects\Create Control From Reference.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001E" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001E" HasItem="0" Format="inline" /></types><heap><SL__arrayElement class="term" uid="567">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="565">
+              <typeDesc>TypeID(45)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdRefNum" uid="554">
+                <objFlags>8196</objFlags>
+                <bounds>(252, 284, 272, 342)</bounds>
+                <partsList elements="4">
+                  <SL__arrayElement class="label" uid="560">
+                    <objFlags>2492720</objFlags>
+                    <partID>84</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(1, 17, 18, 57)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>16384</mode>
+                      <text>"Cluster"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontcolor>00007F7F</fontcolor>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="561">
+                    <objFlags>3377</objFlags>
+                    <partID>1</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(3, 3, 13, 15)</bounds>
+                    <image class="Image">
+                      <ImageResID>-403</ImageResID>
+                      </image>
+                    <fgColor>00007F7F</fgColor>
+                    <bgColor>00FFFFCC</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="562">
+                    <objFlags>2355</objFlags>
+                    <partID>9</partID>
+                    <bounds>(0, 0, 20, 58)</bounds>
+                    <image class="Image">
+                      <ImageResID>-17</ImageResID>
+                      </image>
+                    <fgColor>00007F7F</fgColor>
+                    <bgColor>00FFFFCC</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="563">
+                    <partID>66</partID>
+                    <rsrcID>2094</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(46)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                </ddo>
+              <ConstValue>0000000000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

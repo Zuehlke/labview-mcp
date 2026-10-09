@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1116" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Collections\Map Collection - Word Counting.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="4328">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4358">
+                    <dco class="parm" uid="4356">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(54)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>3</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4361">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="4359">
+                      <typeDesc>TypeID(55)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>3</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(68, 40, 100, 72)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1116</primResID>
+                <primIndex>3</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1902" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\File IO\TDMS\Advanced Read and Write\Asynchronous Read and Write\TDMS Advanced Ring Buffer.vi"><types><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1766">
+        <objFlags>16777216</objFlags>
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="1774">
+            <dco class="parm" uid="1772">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(74)</typeDesc>
+              <termBounds>(0, 16, 25, 32)</termBounds>
+              <primIndex>209</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1777">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1775">
+              <typeDesc>TypeID(75)</typeDesc>
+              <termBounds>(0, 0, 25, 16)</termBounds>
+              <primIndex>209</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(319, 1956, 351, 1988)</bounds>
+        <shortCount>46</shortCount>
+        <clumpNum>393219</clumpNum>
+        <primResID>1902</primResID>
+        <primIndex>209</primIndex>
+        </SL__arrayElement>
+      </heap></part>

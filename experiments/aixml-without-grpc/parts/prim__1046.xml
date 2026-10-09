@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1046" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Signal Generation\Colored Gaussian Noise Generation.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="2862">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="2868">
+                    <dco class="parm" uid="2869">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(153)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>92</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2871">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2872">
+                      <typeDesc>TypeID(154)</typeDesc>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>92</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2874">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2875">
+                      <typeDesc>TypeID(155)</typeDesc>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>92</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(297, 471, 329, 503)</bounds>
+                <shortCount>42</shortCount>
+                <clumpNum>786435</clumpNum>
+                <primResID>1046</primResID>
+                <primIndex>92</primIndex>
+                </SL__arrayElement>
+              </heap></part>

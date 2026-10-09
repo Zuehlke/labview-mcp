@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRing/ctl/NumUInt16" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Scripting\Creating VIs\Creating New VI From Template.vi"><types><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="Operation" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="Operation" /></types><heap><SL__arrayElement class="fPDCO" uid="1698">
+          <typeDesc>TypeID(1)</typeDesc>
+          <ddo class="stdRing" uid="1678">
+            <objFlags>262144</objFlags>
+            <bounds>(322, 6, 378, 217)</bounds>
+            <partsList elements="6">
+              <SL__arrayElement class="label" uid="1690">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>28</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 0, 17, 56)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>1536</flags>
+                  <mode>17412</mode>
+                  <text>"Operation"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="numLabel" uid="1691">
+                <objFlags>264526</objFlags>
+                <partID>10</partID>
+                <masterPart>28</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(29, 118, 46, 134)</bounds>
+                <image class="Image">
+                  <ImageResID>0</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>8406018</mode>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                <format>"%.0f"</format>
+                </SL__arrayElement>
+              <SL__arrayElement class="multiLabel" uid="1692">
+                <objFlags>2358</objFlags>
+                <partID>12</partID>
+                <masterPart>28</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(27, 9, 44, 181)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>512</flags>
+                  <mode>8406052</mode>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                <buf>(2)"Add""Multiply"</buf>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="1693">
+                <objFlags>537135410</objFlags>
+                <partID>47</partID>
+                <masterPart>28</masterPart>
+                <howGrow>14</howGrow>
+                <bounds>(27, 187, 43, 202)</bounds>
+                <image class="Image">
+                  <ImageResID>2</ImageResID>
+                  </image>
+                <bgColor>00FFFFFF</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="1694">
+                <objFlags>537135382</objFlags>
+                <partID>28</partID>
+                <howGrow>240</howGrow>
+                <bounds>(18, 0, 56, 211)</bounds>
+                <image class="Image">
+                  <ImageResID>-766</ImageResID>
+                  </image>
+                <fgColor>00646464</fgColor>
+                <bgColor>00CCCCCC</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="1695">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>21600</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(2)</typeDesc>
+            <MouseWheelSupport>2</MouseWheelSupport>
+            <StdNumMin>0</StdNumMin>
+            <StdNumMax>65535</StdNumMax>
+            <StdNumInc>0</StdNumInc>
+            <ringDisabledIndicies elements="0" />
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

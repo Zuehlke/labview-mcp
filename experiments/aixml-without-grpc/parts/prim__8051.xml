@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8051" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\File IO\Binary\Simple Binary\Read Binary File.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="cancelled" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="data type" /></TypeDesc><TypeDesc Type="Refnum" RefType="ByteStream" Format="inline" Label="refnum out" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="data type" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="prompt (Open existing file)" /><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="byte order (0:big-endian, network order)"><EnumLabel>big-endian, network order</EnumLabel>
+        <EnumLabel>native, host order</EnumLabel>
+        <EnumLabel>little-endian</EnumLabel>
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Refnum" RefType="ByteStream" Format="inline" Label="dup path or refnum" /></types><heap><SL__arrayElement class="prim" uid="349">
+        <objFlags>640</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="379">
+            <dco class="parm" uid="370">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>386</primIndex>
+              <inplace>7</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="386">
+            <dco class="parm" uid="381">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(37)</typeDesc>
+              <termBounds>(16, 24, 24, 32)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="391">
+            <dco class="parm" uid="387">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(8, 24, 16, 32)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="405">
+            <dco class="parm" uid="400">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(39)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>3</parmIndex>
+              <inplace>10</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="409">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="406">
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(0, 16, 16, 24)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>5</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="416">
+            <dco class="parm" uid="412">
+              <typeDesc>TypeID(41)</typeDesc>
+              <termBounds>(0, 8, 16, 16)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>7</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="420">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="417">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(42)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="424">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="421">
+              <typeDesc>TypeID(43)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="435">
+            <objFlags>294912</objFlags>
+            <dco class="parm" uid="425">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(44)</typeDesc>
+              <dsw>2048</dsw>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="452">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="441">
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>386</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(153, 311, 185, 343)</bounds>
+        <shortCount>12</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8051</primResID>
+        <primIndex>386</primIndex>
+        </SL__arrayElement>
+      </heap></part>

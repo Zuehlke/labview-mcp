@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1128" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" Label="Real Matrix Element" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline">
+          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+          <TypeDesc TypeID="2" />
+          </TypeDesc>
+        <Label Text="NI_Matrix.lvlib" />
+        <Label Text="RealMatrix.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="1193">
+                                        <termList elements="2">
+                                          <SL__arrayElement class="term" uid="1396">
+                                            <objFlags>1</objFlags>
+                                            <dco class="parm" uid="1397">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(72)</typeDesc>
+                                              <termBounds>(0, 10, 21, 21)</termBounds>
+                                              <primIndex>13</primIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1401">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="1402">
+                                              <typeDesc>TypeID(73)</typeDesc>
+                                              <termBounds>(0, 0, 21, 10)</termBounds>
+                                              <primIndex>13</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(60, 69, 92, 101)</bounds>
+                                        <shortCount>4</shortCount>
+                                        <clumpNum>655364</clumpNum>
+                                        <primResID>1128</primResID>
+                                        <primIndex>13</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

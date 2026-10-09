@@ -20,6 +20,8 @@ Structures, subVI calls, clusters and arrays are refused by name rather than hal
 """
 import copy
 import csv
+import html
+import json
 import os
 import random
 import shutil
@@ -46,6 +48,13 @@ SCALARS = {
     "bool": ("Boolean", "stdBool"), "string": ("String", "stdString"),
     "path": ("Path", "stdPath"),
 }
+# LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
+# 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
+TYPE_CODE = {"NumInt8": 0x01, "NumInt16": 0x02, "NumInt32": 0x03, "NumInt64": 0x04,
+             "NumUInt8": 0x05, "NumUInt16": 0x06, "NumUInt32": 0x07, "NumUInt64": 0x08,
+             "NumFloat32": 0x09, "NumFloat64": 0x0A, "NumFloatExt": 0x0B,
+             "NumComplex64": 0x0C, "NumComplex128": 0x0D, "NumComplexExt": 0x0E,
+             "Boolean": 0x21, "String": 0x30, "Path": 0x32}
 INT_FMT = {"NumInt8": ">b", "NumInt16": ">h", "NumInt32": ">i", "NumInt64": ">q",
            "NumUInt8": ">B", "NumUInt16": ">H", "NumUInt32": ">I", "NumUInt64": ">Q"}
 
@@ -65,6 +74,62 @@ def type_tree(aixml_type, label=None):
     if label:
         el.set("Label", label)
     return el
+
+
+NUM_RANK = ["NumUInt8", "NumInt8", "NumUInt16", "NumInt16", "NumUInt32", "NumInt32",
+            "NumUInt64", "NumInt64", "NumFloat32", "NumFloat64", "NumFloatExt",
+            "NumComplex64", "NumComplex128", "NumComplexExt"]
+
+
+def plain(tree):
+    """A donor type without units or enum labels: UnitFloat64+PhysUnit -> NumFloat64."""
+    t = copy.deepcopy(tree)
+    if (t.get("Type") or "").startswith("Unit"):
+        t.set("Type", "Num" + t.get("Type")[4:])
+        for c in list(t):
+            if c.tag in ("PhysUnit", "EnumLabel"):
+                t.remove(c)
+    return t
+
+
+def numeric_join(types):
+    """The type LabVIEW coerces mixed numeric inputs to: the widest representation wins.
+    Non-numeric groups are returned as the first member - they are not coerced."""
+    ranked = [t for t in types if t.get("Type") in NUM_RANK]
+    if len(ranked) != len(types):
+        return types[0]
+    return max(ranked, key=lambda t: NUM_RANK.index(t.get("Type")))
+
+
+INT_RANGE = {"NumInt8": (-2 ** 7, 2 ** 7 - 1), "NumInt16": (-2 ** 15, 2 ** 15 - 1),
+             "NumInt32": (-2 ** 31, 2 ** 31 - 1), "NumInt64": (-2 ** 63, 2 ** 63 - 1),
+             "NumUInt8": (0, 2 ** 8 - 1), "NumUInt16": (0, 2 ** 16 - 1),
+             "NumUInt32": (0, 2 ** 32 - 1), "NumUInt64": (0, 2 ** 64 - 1)}
+FLOAT_RANGE = {"NumFloat64": ("-inf (0xFFF0000000000000)", "inf (0x7FF0000000000000)", "0 (0x0000000000000000)"),
+               "NumFloat32": ("-inf (0xFF800000)", "inf (0x7F800000)", "0 (0x00000000)")}
+
+
+def adapt_numeric(ddo, t):
+    """Make a numeric control part carry representation t. StdNumMin/Max/Inc are typed by the
+    control's own type (pylabview reads them as data of that type), so a double part's
+    '-inf (0x...)' would not parse as an int32. Format strings follow what LabVIEW wrote on
+    AIXML-generated controls: %#_g for floating point, %.0f for integers."""
+    if ddo.get("class") != "stdNum" or t not in NUM_RANK:
+        return
+    if t in INT_RANGE:
+        lo, hi = INT_RANGE[t]
+        vals, fmt = (str(lo), str(hi), "0"), '"%.0f"'
+    elif t in FLOAT_RANGE:
+        vals, fmt = FLOAT_RANGE[t], '"%#_g"'
+    else:
+        raise Unsupported("numeric representation %s is not adaptable yet" % t)
+    for tag, v in zip(("StdNumMin", "StdNumMax", "StdNumInc"), vals):
+        e = ddo.find(tag)
+        if e is not None:
+            e.text = v
+    for part in ddo.find("partsList"):
+        if part.get("class") == "numLabel" and part.find("format") is not None:
+            part.find("format").text = fmt
 
 
 def unescape(s):
@@ -126,7 +191,7 @@ def load_names():
         for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
             if not row or row[0] == "primResID":
                 continue
-            rid, name = row[0], row[1]
+            rid, name = row[0], html.unescape(row[1])  # the tables keep AIXML's escaping
             seen = int(row[2]) if len(row) > 2 and row[2].isdigit() else 0
             if name not in prim_by_name or seen > prim_by_name[name][1]:
                 prim_by_name[name] = (rid, seen)
@@ -135,7 +200,7 @@ def load_names():
         for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
             if not row or row[0] == "primResID":
                 continue
-            terms[(row[0], row[2])] = row[3]
+            terms[(row[0], row[2])] = unescape(html.unescape(row[3]))
     return {n: r for n, (r, _) in prim_by_name.items()}, terms
 
 
@@ -163,6 +228,12 @@ class Parts:
         heap = copy.deepcopy(list(root.find("heap"))[0])
         return heap, types, root.get("source")
 
+    def clean(self, key):
+        p = os.path.join(self.d, key.replace("/", "__").replace(".", "_") + ".xml")
+        with open(p, encoding="utf-8") as f:
+            head = f.read(600)
+        return 'clean="1"' in head
+
 
 class Composer:
     def __init__(self, parts_dir):
@@ -173,6 +244,9 @@ class Composer:
         self.next_uid = 20000
         self.prim_by_name, self.term_names = load_names()
         self.pane_codes = load_pane_tables()
+        wt = os.path.join(parts_dir, "wiretables.json")
+        self.wiretables = json.load(open(wt)) if os.path.exists(wt) else {}
+        self.wiretables["2"] = "0208"   # measured on every two-ended wire; the harvest's "01" is not
         self.fp = ET.parse(os.path.join(self.skel, "skeleton_FPHb.xml")).getroot()
         self.bd = ET.parse(os.path.join(self.skel, "skeleton_BDHb.xml")).getroot()
         self.main = ET.parse(os.path.join(self.skel, "skeleton.xml")).getroot()
@@ -242,20 +316,12 @@ class Composer:
         if t is None:
             raise Unsupported("%s %r has type %r" % (el.tag, name, aixml_type))
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
-        key = "fpdco/%s/%s/%s" % (ddo_class, want, t)
-        got = self.instantiate(key)
-        flipped = False
-        if got is None:
-            # any representation of the same class will do; the type is rewritten anyway
-            for k in [k for k in self._keys("fpdco/%s/%s/" % (ddo_class, want))] + \
-                     [k for k in self._keys("fpdco/%s/%s/" % (ddo_class, other))]:
-                got = self.instantiate(k)
-                flipped = "/%s/" % other in k
-                break
-        if got is None:
+        key, flipped = self.pick("fpdco/%s/" % ddo_class, want, other, t)
+        if key is None:
             raise Unsupported("no front-panel part for %s (%s)" % (ddo_class, t))
-        fpdco, _, src = got
+        fpdco, _, src = self.instantiate(key)
         ddo = fpdco.find("ddo")
+        adapt_numeric(ddo, t)
         old = int(ddo.get("uid"))
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
@@ -305,15 +371,13 @@ class Composer:
         t, ddo_class = SCALARS.get(aixml_type, (None, None))
         if t is None:
             raise Unsupported("Constant %r has type %r" % (el.get("_name"), aixml_type))
-        got = self.instantiate("const/%s/%s" % (ddo_class, t))
-        if got is None:
-            keys = self._keys("const/%s/" % ddo_class)
-            got = self.instantiate(keys[0]) if keys else None
-        if got is None:
+        key, _ = self.pick("const/%s/" % ddo_class, None, None, t)
+        if key is None:
             raise Unsupported("no constant part for %s" % t)
-        term, _, src = got
+        term, _, src = self.instantiate(key)
         dco = term.find("dco")
         ddo = dco.find("ddo")
+        adapt_numeric(ddo, t)
         old = int(ddo.get("uid"))
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
@@ -340,6 +404,12 @@ class Composer:
         if got is None:
             raise Unsupported("Node %r (primResID %s) has no harvested part" % (name, rid))
         prim, donor_types, src = got
+        # `inplace` is a compiler hint from the DONOR's last compile: Add's output reusing an
+        # input buffer. Carried into a node whose inputs now differ in type it is wrong, and a
+        # source-only VI is recompiled anyway (FINDINGS 3.7), so it goes.
+        for d in prim.iter("dco"):
+            for e in d.findall("inplace"):
+                d.remove(e)
         terms = [t for t in prim.find("termList") if t.get("class") == "term"]
         by_name = {}
         for t in terms:
@@ -356,9 +426,16 @@ class Composer:
         # the type each term will carry: wired input -> the net's type; output -> the donor's,
         # unless the donor output had the same type as a donor input (polymorphic arithmetic),
         # in which case it follows what is wired to that input.
-        idx_of = {id(t): i for i, t in enumerate(terms)}
+        # One typeDesc per term, in term order - checked rather than assumed, because the
+        # whole type assignment below is indexed by it.
         tel = lvheap.typeid_elements(prim)
-        donor = [lvheap.strip_label(x) for x in donor_types]
+        term_td = [lvheap.typeid_elements(t) for t in terms]
+        if len(tel) != len(terms) or any(len(x) != 1 for x in term_td):
+            raise Unsupported("Node %r: part has %d typeDescs over %d terms" % (name, len(tel), len(terms)))
+        idx_of = {id(t): i for i, t in enumerate(terms)}
+        # Donor types lose their decorations first: a part cut from "Numeric with Units.vi"
+        # carries UnitFloat64 with a PhysUnit, one from an enum example an EnumLabel list.
+        donor = [plain(lvheap.strip_label(x)) for x in donor_types]
         new_types = list(donor)
         canon = [ET.tostring(x) for x in donor]
         wired_in = {}
@@ -367,22 +444,70 @@ class Composer:
                 i = idx_of[id(by_name[tname])]
                 new_types[i] = self.net_type[net]
                 wired_in[i] = net
+        # A polymorphic primitive ADAPTS: every terminal sharing a donor type (Add's x, y and
+        # x+y) takes the coerced type of what is wired into that group - int32 + double makes
+        # all three double, and the int32 wire is coerced at its terminal. Typing only the
+        # output that way, and leaving x at int32, was measured BROKEN.
+        # MEASURED on NI's Continuous Decimating.vi (Multiply, int32 into y): a coerced input
+        # keeps the WIRED type on its terminal, and the terminal carries objFlags bit 0x40000
+        # - the coercion dot - with dsw 1024; the adapted type sits on the other members.
+        # Typing the coerced terminal with the adapted type instead was measured BROKEN.
+        joined = list(new_types)
+        for i in range(len(terms)):
+            group = [j for j in range(len(terms)) if canon[j] == canon[i]]
+            wired = [new_types[j] for j in group if j in wired_in]
+            if wired:
+                joined[i] = numeric_join(wired)
+        for i, t in enumerate(terms):
+            if i in wired_in and ET.tostring(joined[i]) != ET.tostring(new_types[i]):
+                f = t.find("objFlags")
+                if f is None:
+                    f = ET.Element("objFlags")
+                    t.insert(0, f)
+                f.text = str(int(f.text or 0) | 0x40000)
+                dco = t.find("dco")
+                dsw = dco.find("dsw")
+                if dsw is None:
+                    dsw = ET.Element("dsw")
+                    dco.insert(list(dco).index(dco.find("typeDesc")) + 1, dsw)
+                dsw.text = "1024"
+            elif i not in wired_in:
+                new_types[i] = joined[i]
         for tname, net in outs:
-            i = idx_of[id(by_name[tname])]
-            for j, jnet in wired_in.items():
-                if canon[j] == canon[i]:
-                    new_types[i] = new_types[j]
-                    break
             if net:
-                self.net_type[net] = new_types[i]
-        # unwired terms of the same donor type follow too (e.g. the other operand)
-        lvheap.set_typeids(prim, [self.heap_tid(new_types[i]) for i in range(len(tel))])
+                self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
+        lvheap.set_typeids(prim, [self.heap_tid(new_types[i]) for i in range(len(terms))])
         for tname, t in by_name.items():
             self.terminal_uid[(el.get("uid"), tname)] = t.get("uid")
         self.node_list.append(prim)
         self.diag_z.append(ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         self.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    def pick(self, prefix, want, other, t):
+        """The best part for a control/constant of type t: (key, flipped).
+
+        Order, each rank measured or reasoned in the docs: a CLEAN part (cut from an
+        AIXML-generated VI) beats an exact type match from an NI example, because two example
+        parts broke even a pass-through VI (denylist.json). A numeric part of another
+        representation is adapted (adapt_numeric), and a part of the other direction is flipped
+        - an LED indicator flipped to a control was measured working."""
+        best = None
+        for k in self._keys(prefix):
+            parts = k.split("/")
+            direction = parts[2] if want else None
+            kt = parts[-1].replace("_", ".")
+            if want and direction not in (want, other):
+                continue
+            exact = kt == t
+            adaptable = exact or (kt in NUM_RANK and t in NUM_RANK)
+            if not adaptable:
+                continue
+            clean = self.parts.clean(k)
+            rank = (0 if clean else 4) + (0 if exact else 1) + (0 if direction == want else 2)
+            if best is None or rank < best[0]:
+                best = (rank, k, direction != want)
+        return (best[1], best[2]) if best else (None, False)
 
     def _keys(self, prefix):
         pre = prefix.replace("/", "__").replace(".", "_")
@@ -425,8 +550,16 @@ class Composer:
             for u in uids:
                 ET.SubElement(tl, "SL__arrayElement", {"uid": u})
             ET.SubElement(sig, "state").text = "1"
-            ET.SubElement(sig, "compressedWireTable").text = "0208"
-            ET.SubElement(sig, "lastSignalKind").text = "266"
+            # The table's SHAPE must match the end count - LabVIEW repairs foreign geometry
+            # but a two-ended table on a fan-out is a broken VI, and no table crashes LabVIEW.
+            table = self.wiretables.get(str(len(uids)))
+            if table is None:
+                raise Unsupported("net %r fans out to %d ends; no wire table of that shape harvested"
+                                  % (net, len(uids)))
+            ET.SubElement(sig, "compressedWireTable").text = table
+            kind = self.net_type.get(net)
+            code = TYPE_CODE.get(kind.get("Type")) if kind is not None else None
+            ET.SubElement(sig, "lastSignalKind").text = str(0x100 | code) if code else "266"
         return nets
 
     def layout(self, elements, nets):

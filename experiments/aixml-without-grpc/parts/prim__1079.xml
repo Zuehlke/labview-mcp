@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1079" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Signal Generation\Arbitrary Wave Display.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline"><PhysUnit Val1="2" Val2="1" />
+        </TypeDesc><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline"><PhysUnit Val1="2" Val2="1" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="334">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="338">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="336">
+                      <typeDesc>TypeID(75)</typeDesc>
+                      <termBounds>(0, 0, 11, 7)</termBounds>
+                      <primIndex>116</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="341">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="339">
+                      <typeDesc>TypeID(76)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(0, 7, 11, 17)</termBounds>
+                      <primIndex>116</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="344">
+                    <dco class="parm" uid="342">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(77)</typeDesc>
+                      <dcoFiller>1</dcoFiller>
+                      <termBounds>(0, 17, 11, 25)</termBounds>
+                      <primIndex>116</primIndex>
+                      <parmIndex>2</parmIndex>
+                      <inplace>1</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(355, 453, 387, 485)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1079</primResID>
+                <primIndex>116</primIndex>
+                </SL__arrayElement>
+              </heap></part>

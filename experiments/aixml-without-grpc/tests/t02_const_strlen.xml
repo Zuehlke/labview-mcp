@@ -1,0 +1,5 @@
+<VI _name="T02 Const StrLen.vi" description="A string constant through String Length.">
+  <Constant _name="greeting" type="string" uid="4200" uid_parent="root" value="Hello" outputs="value:4200.value"/>
+  <Node _name="String Length" inputs="string:4200.value" outputs="length:4210.length" uid="4210" uid_parent="root"/>
+  <Indicator _name="len" type="int32" uid="4220" uid_parent="root" value="0" inputs="value:4210.length"/>
+</VI>

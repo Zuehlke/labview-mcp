@@ -1,0 +1,4 @@
+<VI _name="T13 Int Pass.vi" description="int32 control straight into an int32 indicator.">
+  <Control _name="n" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Indicator _name="m" type="int32" uid="4210" uid_parent="root" value="0" inputs="value:4200.value"/>
+</VI>

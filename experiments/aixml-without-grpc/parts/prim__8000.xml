@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8000" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Connectivity\Excel\Excel - ActiveX Event Callback.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="AutoRef" RefFlags="0x01" Field20="1" Field24="4" Format="inline" Label="Excel._Application"><Item UID="0x01" ClassID="00020813-0000-0000-C000000000000046" />
+        <Item UID="0x02" ClassID="00024500-0000-0000-C000000000000046" />
+        <Item UID="0x04" ClassID="000208D5-0000-0000-C000000000000046" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="open new instance" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="machine name" /><TypeDesc Type="Refnum" RefType="AutoRef" RefFlags="0x01" Field20="1" Field24="4" Format="inline" Label="Excel._Application"><Item UID="0x01" ClassID="00020813-0000-0000-C000000000000046" />
+        <Item UID="0x02" ClassID="00024500-0000-0000-C000000000000046" />
+        <Item UID="0x04" ClassID="000208D5-0000-0000-C000000000000046" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="120">
+        <objFlags>512</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="193">
+            <dco class="parm" uid="191">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(3)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>345</primIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="196">
+            <dco class="parm" uid="194">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(4)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>345</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="199">
+            <dco class="parm" uid="197">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>345</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="202">
+            <dco class="parm" uid="200">
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>345</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="205">
+            <dco class="parm" uid="203">
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>345</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="208">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="206">
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>345</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="213">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 101)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <bgColor>00FFFFFF</bgColor>
+          <textRec class="textHair">
+            <mode>8471556</mode>
+            <text>"Automation Open"</text>
+            <bgColor>00FFFFFF</bgColor>
+            </textRec>
+          </label>
+        <bounds>(82, 8, 114, 40)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8000</primResID>
+        <primIndex>345</primIndex>
+        </SL__arrayElement>
+      </heap></part>

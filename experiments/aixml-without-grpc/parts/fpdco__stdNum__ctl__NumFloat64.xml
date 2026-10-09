@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdNum/ctl/NumFloat64" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\ControlWithValue\ControlWithValue.xml"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /></types><heap><SL__arrayElement class="fPDCO" uid="4220">
+<part kind="fpdco" key="fpdco/stdNum/ctl/NumFloat64" source="AIXML-generated probe: ControlWithValue.xml" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /></types><heap><SL__arrayElement class="fPDCO" uid="4220">
           <typeDesc>TypeID(3)</typeDesc>
           <ddo class="stdNum" uid="4200">
             <objFlags>393286</objFlags>

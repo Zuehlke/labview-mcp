@@ -1,5 +1,163 @@
 {
-  "t00_passthrough": {"cases": [{"inputs": "a=3.25", "outputs": {"b": 3.25}}]},
-  "t01_add": {"cases": [{"inputs": "a=3.25;b=4", "outputs": {"sum": 7.25}},
-                        {"inputs": "a=-10;b=2.5", "outputs": {"sum": -7.5}}]}
+ "t00_passthrough": {
+  "cases": [
+   {
+    "inputs": "a=3.25",
+    "outputs": {
+     "b": 3.25
+    }
+   }
+  ]
+ },
+ "t01_add": {
+  "cases": [
+   {
+    "inputs": "a=3.25;b=4",
+    "outputs": {
+     "sum": 7.25
+    }
+   },
+   {
+    "inputs": "a=-10;b=2.5",
+    "outputs": {
+     "sum": -7.5
+    }
+   }
+  ]
+ },
+ "t02_const_strlen": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "len": 5
+    }
+   }
+  ]
+ },
+ "t03_select": {
+  "cases": [
+   {
+    "inputs": "flag=true",
+    "outputs": {
+     "out": 1.5
+    }
+   },
+   {
+    "inputs": "flag=false",
+    "outputs": {
+     "out": -2
+    }
+   }
+  ]
+ },
+ "t04_compare_fanout": {
+  "cases": [
+   {
+    "inputs": "x=1;y=2",
+    "outputs": {
+     "lt": "True",
+     "ge": "False"
+    }
+   },
+   {
+    "inputs": "x=3;y=2",
+    "outputs": {
+     "lt": "False",
+     "ge": "True"
+    }
+   }
+  ]
+ },
+ "t05_mixed_types": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "r": 10
+    }
+   }
+  ]
+ },
+ "t06_bool_pass": {
+  "cases": [
+   {
+    "inputs": "in=true",
+    "outputs": {
+     "out": "True"
+    }
+   }
+  ]
+ },
+ "t07_less": {
+  "cases": [
+   {
+    "inputs": "x=1;y=2",
+    "outputs": {
+     "lt": "True"
+    }
+   }
+  ]
+ },
+ "t08_select_const": {
+  "cases": [
+   {
+    "inputs": "t=1.5;f=-2",
+    "outputs": {
+     "out": 1.5
+    }
+   }
+  ]
+ },
+ "t09_not_chain": {
+  "cases": [
+   {
+    "inputs": "x=3;y=2",
+    "outputs": {
+     "ge": "True"
+    }
+   }
+  ]
+ },
+ "t10_fanout": {
+  "cases": [
+   {
+    "inputs": "a=4.5",
+    "outputs": {
+     "b": 4.5,
+     "c": 4.5
+    }
+   }
+  ]
+ },
+ "t11_mul_same": {
+  "cases": [
+   {
+    "inputs": "x=3;y=2.5",
+    "outputs": {
+     "r": 7.5
+    }
+   }
+  ]
+ },
+ "t12_add_mixed": {
+  "cases": [
+   {
+    "inputs": "n=4;d=0.5",
+    "outputs": {
+     "r": 4.5
+    }
+   }
+  ]
+ },
+ "t13_int_pass": {
+  "cases": [
+   {
+    "inputs": "n=42",
+    "outputs": {
+     "m": 42
+    }
+   }
+  ]
+ }
 }

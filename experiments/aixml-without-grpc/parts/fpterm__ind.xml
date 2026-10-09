@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpterm" key="fpterm/ind" source="C:\Users\jcm\AppData\Local\Temp\claude\C--Projects-LabVIEWMCP\3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05\scratchpad\ex\ControlWithValue\ControlWithValue.xml"><types /><heap><SL__arrayElement class="fPTerm" uid="4235">
+<part kind="fpterm" key="fpterm/ind" source="AIXML-generated probe: ControlWithValue.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="4235">
             <objFlags>163904</objFlags>
             <dco uid="4233" />
             <bounds>(273, 431, 289, 463)</bounds>

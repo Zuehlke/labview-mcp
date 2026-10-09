@@ -1,0 +1,7 @@
+<VI _name="T08 Select Const.vi" description="Select driven by a boolean CONSTANT, doubles from controls.">
+  <Constant _name="pick" type="bool" uid="4200" uid_parent="root" value="true" outputs="value:4200.value"/>
+  <Control _name="t" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Control _name="f" type="double" uid="4220" uid_parent="root" value="0" outputs="value:4220.value"/>
+  <Node _name="Select" inputs="s:4200.value,t:4210.value,f:4220.value" outputs="s? t:f:4230.out" uid="4230" uid_parent="root"/>
+  <Indicator _name="out" type="double" uid="4240" uid_parent="root" value="0" inputs="value:4230.out"/>
+</VI>

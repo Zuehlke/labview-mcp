@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1167" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Instrument IO\Serial\RS-485 Transceiver Control.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="436">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="438">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="440">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(96)</typeDesc>
+              <termBounds>(0, 12, 11, 25)</termBounds>
+              <primIndex>69</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="437">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="439">
+              <typeDesc>TypeID(97)</typeDesc>
+              <termBounds>(0, 0, 11, 12)</termBounds>
+              <primIndex>69</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(337, 202, 369, 234)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1167</primResID>
+        <primIndex>69</primIndex>
+        </SL__arrayElement>
+      </heap></part>

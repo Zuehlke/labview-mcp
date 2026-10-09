@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdColorNum/NumUInt32" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Controls and Indicators\Numeric\Vertical Fill Slide.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Upper Limit Color (red)" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Upper Limit Color (red)" /></types><heap><SL__arrayElement class="term" uid="2008">
+                    <objFlags>131136</objFlags>
+                    <dco class="bDConstDCO" uid="2002">
+                      <typeDesc>TypeID(38)</typeDesc>
+                      <dsw>4096</dsw>
+                      <ddo class="stdColorNum" uid="2009">
+                        <objFlags>786464</objFlags>
+                        <bounds>(141, 221, 175, 346)</bounds>
+                        <partsList elements="4">
+                          <SL__arrayElement class="label" uid="2012">
+                            <objFlags>1507650</objFlags>
+                            <partID>16</partID>
+                            <masterPart>9</masterPart>
+                            <howGrow>4096</howGrow>
+                            <bounds>(0, 0, 17, 125)</bounds>
+                            <image class="Image">
+                              <ImageResID>-619</ImageResID>
+                              </image>
+                            <fgColor>01000000</fgColor>
+                            <bgColor>01000000</bgColor>
+                            <textRec class="textHair">
+                              <mode>82948</mode>
+                              <text>"Upper Limit Color (red)"</text>
+                              <bgColor>01000000</bgColor>
+                              </textRec>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="cosm" uid="2013">
+                            <objFlags>2354</objFlags>
+                            <partID>41</partID>
+                            <masterPart>9</masterPart>
+                            <howGrow>240</howGrow>
+                            <bounds>(20, 3, 32, 15)</bounds>
+                            <image class="Image">
+                              <ImageResID>-239</ImageResID>
+                              </image>
+                            <fgColor>00FF0000</fgColor>
+                            <bgColor>00FF0000</bgColor>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="cosm" uid="2014">
+                            <objFlags>2387</objFlags>
+                            <partID>9</partID>
+                            <howGrow>240</howGrow>
+                            <bounds>(18, 1, 34, 17)</bounds>
+                            <image class="Image">
+                              <ImageResID>-17</ImageResID>
+                              </image>
+                            <fgColor>000000FF</fgColor>
+                            <bgColor>00FFFFFF</bgColor>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="annex" uid="2015">
+                            <partID>66</partID>
+                            <refListLength>0</refListLength>
+                            <hGrowNodeListLength>0</hGrowNodeListLength>
+                            <rsrcID>2120</rsrcID>
+                            </SL__arrayElement>
+                          </partsList>
+                        <description class="cLStrObj" uid="2010">
+                          <strings elements="1">
+                            <SL__arrayElement>"Upper Limit Color:  If Current Value is above Upper Limit Value, this VI sets the Fill Color output to Upper Limit Color  (red by default)."</SL__arrayElement>
+                            </strings>
+                          </description>
+                        <typeDesc>TypeID(39)</typeDesc>
+                        <MouseWheelSupport>0</MouseWheelSupport>
+                        </ddo>
+                      <ConstValue>00FF0000</ConstValue>
+                      </dco>
+                    </SL__arrayElement>
+                  </heap></part>

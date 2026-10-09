@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1120" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Transforms\Generalized Fourier Spectrum.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="402">
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="1970">
+                            <dco class="parm" uid="1968">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(125)</typeDesc>
+                              <termBounds>(0, 16, 32, 32)</termBounds>
+                              <primIndex>206</primIndex>
+                              <inplace>2</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1973">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1971">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(126)</typeDesc>
+                              <termBounds>(0, 0, 32, 16)</termBounds>
+                              <primIndex>206</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(97, 117, 129, 149)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>786435</clumpNum>
+                        <primResID>1120</primResID>
+                        <primIndex>206</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1425" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Palette Editing API\Create New Palette.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /></types><heap><SL__arrayElement class="prim" uid="379">
+        <objFlags>512</objFlags>
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="396">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="397">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(0, 0, 16, 23)</termBounds>
+              <primIndex>199</primIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(233, -512, 265, -480)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>393219</clumpNum>
+        <primResID>1425</primResID>
+        <primIndex>199</primIndex>
+        </SL__arrayElement>
+      </heap></part>

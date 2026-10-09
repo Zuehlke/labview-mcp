@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/24208" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\MATLAB Node\Lorenz Diff Eq\MATLAB - Lorenz Diff Eq.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="MATLAB version" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="37" Format="inline" Label="session out" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="424">
+        <objFlags>512</objFlags>
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="426">
+            <dco class="parm" uid="427">
+              <typeDesc>TypeID(37)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>601</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="429">
+            <dco class="parm" uid="430">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>601</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="432">
+            <dco class="parm" uid="433">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(39)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>601</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="435">
+            <dco class="parm" uid="436">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>601</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="363">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 124)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Open MATLAB Session"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(87, -122, 119, -90)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>24208</primResID>
+        <primIndex>601</primIndex>
+        </SL__arrayElement>
+      </heap></part>
