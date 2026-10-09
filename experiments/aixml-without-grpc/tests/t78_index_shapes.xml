@@ -1,0 +1,17 @@
+<VI _name="T78 Index Array Shapes.vi" description="Test: Index Array with two indices on 1D, and on 2D with row and column, a row and a column.">
+  <Constant _name="v" outputs="value:4200.value" type="array{double}" uid="4200" uid_parent="root" value="[1.5,2.5,3.5]"/>
+  <Constant _name="i0" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Constant _name="i2" outputs="value:4211.value" type="int32" uid="4211" uid_parent="root" value="2"/>
+  <Node _name="Index Array" inputs="array:4200.value,index:4210.value,index:4211.value" outputs="element:4220.e0,element:4220.e1" uid="4220" uid_parent="root"/>
+  <Indicator _name="first" inputs="value:4220.e0" type="double" uid="4225" uid_parent="root" value="0"/>
+  <Indicator _name="third" inputs="value:4220.e1" type="double" uid="4226" uid_parent="root" value="0"/>
+  <Constant _name="m" outputs="value:4300.value" type="array.2{double}" uid="4300" uid_parent="root" value="[[1,2,3],[4,5,6]]"/>
+  <Constant _name="r" outputs="value:4310.value" type="int32" uid="4310" uid_parent="root" value="1"/>
+  <Constant _name="c" outputs="value:4311.value" type="int32" uid="4311" uid_parent="root" value="2"/>
+  <Node _name="Index Array" dimensions="2" inputs="array:4300.value,index (row):4310.value,index (col):4311.value" outputs="element:4320.element" uid="4320" uid_parent="root"/>
+  <Indicator _name="m12" inputs="value:4320.element" type="double" uid="4325" uid_parent="root" value="0"/>
+  <Node _name="Index Array" dimensions="2" inputs="array:4300.value,index (row):4310.value,disabled index (col):" outputs="subarray:4330.subarray" uid="4330" uid_parent="root"/>
+  <Indicator _name="row1" inputs="value:4330.subarray" type="array{double}" uid="4335" uid_parent="root" value="[]"/>
+  <Node _name="Index Array" dimensions="2" inputs="array:4300.value,disabled index (row):,index (col):4311.value" outputs="subarray:4340.subarray" uid="4340" uid_parent="root"/>
+  <Indicator _name="col2" inputs="value:4340.subarray" type="array{double}" uid="4345" uid_parent="root" value="[]"/>
+</VI>

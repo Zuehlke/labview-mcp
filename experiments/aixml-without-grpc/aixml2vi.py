@@ -1158,27 +1158,64 @@ class Composer:
                 if net:
                     self.net_type[net] = unlabel(ctype)
         elif name == "Index Array":
+            # Measured on an AIXML-generated VI with four shapes: the terminals run
+            # [array, out, its indices..., out, its indices...]; an index DCO carries 0x200000
+            # for the FIRST dimension and 0x400000 for the LAST (both on a 1D array), plus
+            # 0x10000 when disabled - a disabled index turns the output into a subarray; every
+            # output after the first is DCO 0x40001, and the node 0x80000 once there are two.
             src_t, out_t, idx_t = terms[0], terms[1], terms[2]
             arr = [n for t, n in ins if t == "array"]
-            idxs = [n for t, n in ins if t.startswith("index")]
             atype = wired_type(arr[0] if arr else None, "the array")
-            if atype.get("Type") != "Array" or len(atype.findall("Dimension")) != 1:
-                raise Unsupported("Index Array %s: only a 1D array is composable yet" % el.get("uid"))
-            if len(idxs) > 1 or len([t for t, _ in outs if t == "element"]) > 1:
-                raise Unsupported("Index Array %s: one index only, for now" % el.get("uid"))
-            et = unlabel(elem_of(atype))
+            n = len(atype.findall("Dimension")) if atype.get("Type") == "Array" else 0
+            if n not in (1, 2):
+                raise Unsupported("Index Array %s: a %s input is not composable yet"
+                                  % (el.get("uid"), "%dD array" % n if n else atype.get("Type")))
+            idx_ins = [(k, net) for (k, net), (t, _) in zip(keyed(ins), ins) if t != "array"]
+            raw = [t for t, _ in ins if t != "array"]
+            if not idx_ins:
+                idx_ins, raw = [("index", None)], ["index"]
+            if len(idx_ins) % n:
+                raise Unsupported("Index Array %s: %d indices for a %dD array" % (el.get("uid"), len(idx_ins), n))
+            for c in terms[1:]:
+                tl.remove(c)
             src_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(atype)
-            out_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(et)
-            idx_t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(type_tree("int32"))
-            if not idxs or idxs[0] is None:
-                idx_t.find("objFlags").text = "64"
-            ET.SubElement(dl, "SL__arrayElement", {"uid": idx_t.find("dco").get("uid")})
             self.ends[(el.get("uid"), "array")] = (src_t.get("uid"), diag)
-            self.ends[(el.get("uid"), "element")] = (out_t.get("uid"), diag)
-            self.ends[(el.get("uid"), "index")] = (idx_t.get("uid"), diag)
-            for _, net in outs:
-                if net:
-                    self.net_type[net] = et
+            out_keys = [k for k, _ in keyed(outs)]
+            out_nets = [net for _, net in keyed(outs)]
+            int32 = type_tree("int32")
+            for g in range(len(idx_ins) // n):
+                group = idx_ins[g * n:(g + 1) * n]
+                disabled = [raw[g * n + d].startswith("disabled") for d in range(n)]
+                keep = sum(disabled)
+                if keep:
+                    ot = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+                    for _ in range(keep):
+                        ET.SubElement(ot, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+                    ot.append(copy.deepcopy(unlabel(elem_of(atype))))
+                else:
+                    ot = unlabel(elem_of(atype))
+                o = out_t if g == 0 else self._term_from(out_t, ot, dco_flags=0x40001)
+                o.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ot)
+                tl.append(o)
+                if g > 0:
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": o.find("dco").get("uid")})
+                if g < len(out_keys):
+                    self.ends[(el.get("uid"), out_keys[g])] = (o.get("uid"), diag)
+                    if out_nets[g]:
+                        self.net_type[out_nets[g]] = ot
+                for d, (key, net) in enumerate(group):
+                    flags = (0x200000 if d == 0 else 0) | (0x400000 if d == n - 1 else 0) | \
+                        (0x10000 if disabled[d] else 0)
+                    t = self._term_from(idx_t, int32, flags=32832 if net else 64, dco_flags=flags)
+                    tl.append(t)
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+                    self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
+            if len(idx_ins) // n > 1:
+                f = node.find("objFlags")
+                if f is None:
+                    f = ET.Element("objFlags")
+                    node.insert(0, f)
+                f.text = str(int(f.text or 0) | 0x80000)
         else:   # Build Array
             agg, tpl = terms[0], terms[1]
             types = [wired_type(n, "an input") for _, n in ins]

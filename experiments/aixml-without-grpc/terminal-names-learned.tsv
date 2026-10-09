@@ -112,3 +112,4 @@ primResID	node	parmIndex	terminal
 9108	Obtain Queue	4	max queue size (-1, unlimited)
 9111	Enqueue Element	out	queue
 1302	Wait (ms)	out	millisecond timer value
+1328	Wait For Front Panel Activity	out	millisecond timer value
