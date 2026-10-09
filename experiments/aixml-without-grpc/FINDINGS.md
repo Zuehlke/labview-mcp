@@ -11,7 +11,7 @@ gRPC service **not running at all** — Nigel was never opened in this session.
 
 | direction | tool | result |
 |---|---|---|
-| AIXML → VI | `aixml2vi.py` | **27 of 27** test VIs load (`ExecState 1`) and compute the right answer; **19 of 19** of NI's own exports that the composer accepts load clean |
+| AIXML → VI | `aixml2vi.py` | **28 of 28** test VIs load (`ExecState 1`) and compute the right answer, one of them a composed caller of a composed callee; **19 of 19** of NI's own exports that the composer accepts load clean |
 | VI → AIXML | `vi2aixml.py` | over **552** installation VIs, compared with LabVIEW's own exports: **415 identical in every fact**, elements 99.6 %, constant values 95.5 %, wires 78.7 % |
 
 Neither direction needs LabVIEW. LabVIEW is used only as the **oracle** that loads and runs
@@ -20,7 +20,13 @@ the result, and it is reached over **ActiveX/COM** (`lv-com.ps1`), not over gRPC
 What the composer covers today: controls, indicators and constants of every scalar type
 (`double`, `single`, `intN`, `uintN`, `bool`, `string`, `path`), 241 primitives, fan-out,
 coercion, the connector pane, **While Loop, For Loop** (tunnels, shift registers, `i`, `N`,
-stop condition), **boolean Case Structure**, and arbitrary nesting of these.
+stop condition), **boolean Case Structure**, arbitrary nesting of these, and **subVI calls to a
+sibling VI** — composed from the callee's own file (section 4a), which is exactly the call the
+supported route refuses for project-local code that is not loaded.
+
+**Every VI it writes is source-only** — no `VICD`, `TM80`, `DFDS` or other compiled block, and
+`SourceOnly="1"`; `write()` refuses to emit anything else (the user's rule of 2026-10-09: less
+data, and LabVIEW compiles in memory on load). The nested loop-and-case test VI is 5 430 bytes.
 
 What it does not cover yet, and how much of NI's own code that blocks (section 6): **subVI
 calls block 77 %** of NI's exports, clusters and arrays most of the rest.
@@ -73,6 +79,25 @@ recognises it.
 | a terminal's objFlags bit `0x8000` marks a **sink** — the reader's direction test | — |
 | `lastSignalKind` is `0x100 | type code` (266 double, 259 int32, 289 boolean); written from the source type | not observed to break anything when wrong, written correctly anyway |
 | LabVIEW loads a VI with a **random `Instrument Signature`** and with **uids far above LabVIEW's own** (20 000+) | — (both measured harmless) |
+| a heap list's `elements` must match a list the composer REBUILT — a call node rebuilt for a 16-slot pane kept its 4815 donor's `elements="12"` | caller broken; the 4815 callee only worked because 12 = 12 |
+| z-order lists (`zPlaneList`) run **newest first**; `ddoList` and `termList` oldest first | — (LabVIEW's convention, adopted) |
+| a `ConpaneConnection` without `index` means *previous + 1*, so `cons` is written in slot order | out of order: `Connector Pane {index}` insane; with a wrong control order, a **fatal** DAbort (mask `0x1006`) |
+| a control ON the pane carries fPDCO objFlags `0x10000`, `+0x200` when recommended, `+0x80` when required, and omits `conNum` at slot 0 | — (LabVIEW's form, adopted; see the open item below) |
+| a case selector terminal must lie inside its (resized) structure | donor's y 230 in a 120 px case: `Case Selector {graphics}` insane |
+
+**Geometry is not entirely free after all.** §3.7 of the pylabview findings measured that bounds
+can be zeroed; that holds for nodes, and LabVIEW repairs wire geometry, but a structure's own
+terminal placed outside the structure is logged insane. Every border terminal the composer
+places now gets its own slot inside the structure.
+
+**Open item: the pane-control insanity.** Every control on a composed connector pane is logged
+`Insane FrontPanelDataController … {flags} (0x1000)` — LabVIEW reports the first per VI —
+although its fPDCO is field-for-field identical to the one in an AIXML-generated source-only
+reference that is NOT insane (`C:\temp\FlatSeqRepro\Repro Callee.vi`). Flags, slot, z-order,
+`cons` order and `conNum` were each ruled out by an A/B. The VI loads, runs, and is callable as
+a subVI (`t50`); the composed tests report it as `insane:1` rather than hiding it.
+`selftest.py` counts LabVIEW's `Insane` lines per VI as a gate, because the same category was
+fatal in another combination.
 
 **Donor quality matters, and that is the one non-obvious design rule.** Two parts cut from NI's
 examples broke even a one-wire pass-through VI: a boolean "Stop" push button from
@@ -90,6 +115,32 @@ inner diagram's `sRN` with a bare `<dco uid=…/>`; the loop's `i` (`lCnt`), sto
 (`lMax`) are DCOs on the structure with terminals inside. A plain input tunnel's DCO has objFlags
 2048, an output's 2049; an indexing one carries `TunnelType` and an `innerLpTunDCO` and is not
 composed yet. Signals live in the diagram that holds their ends — a tunnel splits a net in two.
+
+## 4a. SubVI calls, composed from the callee's file
+
+`<Call target="X.vi">` with `X.vi` beside the output VI. The composer reads the callee through
+pylabview — its pane Function type (`CONP`), its pattern (`conPane/conId`) and the label of the
+control on each slot — and writes three things, each read off a real call first (NI's
+`Acquire Array of Waveforms (simulated).vi` on 4815, an AIXML-generated caller of a 4833 VI):
+
+* an **`iUse` node** with ONE terminal per slot of the callee's pattern, typed with the callee's
+  labelled slot type (`Void` where unused), `paramIdx` = slot (absent for 0), `termBounds` from
+  `docs/connector-pane-patterns.tsv` (the table writes left,top,right,bottom; the heap
+  top,left,bottom,right); an input has term objFlags `0x8000` and DCO objFlags `0x200`, an
+  output DCO objFlags `0x201`; `connectorTM` is the pane type; node objFlags `512`;
+* **`VIVI`** in `LIvi/LVIN` and **`IUVI`** in `LIbd/BDHP`: the callee's name, its path relative
+  to the CALLER FILE (`TpVal 1`, `["", "X.vi"]` for a sibling — the empty component is "up one
+  level"), the pane type (`VIVI`), and the node's uid in `LinkOffsetList` (`IUVI`);
+* the callee's pane type as a **consolidated type outside the heap slice** — LabVIEW's own
+  caller has it at index 1, not among the `DTHP` heap types.
+
+The caller holds an **identical** copy of the callee's `CONP` type — read straight from the
+callee file, no LabVIEW needed. Verified three ways: a composed caller of NI's compiled 4815 VI,
+of an AIXML-generated source-only 4833 VI (`in = −4 → out = −8`), and of a **composed** callee
+(`t50`, `1.5 + 2 = 3.5`) — the last one written entirely without LabVIEW or gRPC.
+
+Not yet: callees in vi.lib or inside a library (`<vilib>` paths, qualified names), which is what
+most of NI's own calls are; coercion at a call terminal.
 
 ## 4. VI → AIXML, against NI's own exports
 
@@ -148,11 +199,11 @@ section 3: `Insane <class>(<uid>)` and `Con pane not pre-sized correctly` name t
 | refnum controls / constants | 19 |
 | Event Structure, Timed Loop, In Place, Feedback Node, CLFN … | a handful each |
 
-So the next milestone is unambiguous: **subVI calls**. They are also the case where this route
-beats the supported one — AIXML through gRPC refuses a `Call` to a project-local VI that is not
-loaded (CLAUDE.md), while pylabview writes the link records directly (`experiments/pylabview`
-FINDINGS §3.13). After that: clusters and arrays (types plus `Bundle`/`Index Array` parts, which
-the harvest already has), enum/ring/string case selectors, sequences.
+So the next milestone was unambiguous: **subVI calls**, done for sibling VIs since (section 4a).
+NI's own calls mostly target vi.lib and library members, which need symbolic paths
+(`<vilib>`, `TpVal 0`) and qualified names in the link records — the obvious next step, and the
+one that moves the 610. After that: clusters and arrays (types plus `Bundle`/`Index Array` parts,
+which the harvest already has), enum/ring/string case selectors, sequences.
 
 ## 7. Limits and caveats
 
@@ -176,7 +227,7 @@ the harvest already has), enum/ring/string case selectors, sequences.
 | `vi2aixml.py` | VI → AIXML reader |
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
-| `selftest.py`, `tests/` | 27 composition tests with expected outputs |
+| `selftest.py`, `tests/` | 28 composition tests with expected outputs, LabVIEW-log sanity gate |
 | `compare_with_nigel.py`, `coverage.py` | the measurements of sections 4 and 6 |
 | `lv-com.ps1`, `lv-keeper.ps1`, `lv-windows.ps1` | LabVIEW over COM |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |

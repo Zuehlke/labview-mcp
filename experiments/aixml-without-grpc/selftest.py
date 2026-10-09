@@ -40,6 +40,20 @@ def lvcom(vi, inputs, outputs, run=True, timeout=60):
     return (state.group(1) if state else None), got, out
 
 
+def insanities(vi):
+    """Lines LabVIEW's own log (LabVIEW_*_cur.txt in TEMP) wrote about this VI's heap. A VI can
+    load, run and compute while LabVIEW still calls one of its objects insane, and the same
+    insanity is FATAL in another combination (measured: a DAbort on mask 0x1006) - so every
+    composed VI is held to zero."""
+    import glob
+    name = os.path.basename(vi)
+    n = 0
+    for log in glob.glob(os.path.join(os.environ.get("TEMP", ""), "LabVIEW_*_cur.txt")):
+        with open(log, encoding="utf-8", errors="replace") as f:
+            n += sum(1 for l in f if l.startswith("Insane ") and '"%s"' % name in l)
+    return n
+
+
 def same(want, got):
     if got is None:
         return False
@@ -62,6 +76,17 @@ def main(argv):
         if flt and not any(f in name for f in flt):
             continue
         src = os.path.join(HERE, "tests", name + ".xml")
+        # a test may CALL other composed VIs: compose those first, under a per-run file name,
+        # because LabVIEW keeps a loaded VI in memory by name and would serve the old one
+        for fname, callee in expect[name].get("callees", {}).items():
+            cvi = os.path.join(out_dir, fname.replace("{stamp}", stamp))
+            ccode, clog = compose(os.path.join(HERE, "tests", callee + ".xml"), cvi)
+            if ccode != 0:
+                results.append((name, "CALLEE FAILED", clog.splitlines()[-1] if clog else ""))
+        text = open(src, encoding="utf-8").read()
+        if "{stamp}" in text:
+            src = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
+            open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
         vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
         code, log = compose(src, vi)
         if code != 0:
@@ -81,10 +106,13 @@ def main(argv):
             if "<TIMEOUT>" in raw:
                 verdicts[-1] += " (TIMEOUT)"
         status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
+        bad = insanities(vi)
+        if bad:
+            status += " insane:%d" % bad
         results.append((name, status if cases else "LOADS", "; ".join(verdicts)))
     for name, status, detail in results:
         print("%-28s %-22s %s" % (name, status, detail))
-    return 0 if all(s in ("PASS", "LOADS") for _, s, _ in results) else 1
+    return 0 if all(s in ("PASS", "LOADS") for _, s, _ in results) else 1  # insane counts as a failure
 
 
 if __name__ == "__main__":

@@ -189,6 +189,10 @@ class Harvester:
                 if wt and (n not in self.wiretables or len(wt) < len(self.wiretables[n])):
                     self.wiretables[n] = wt
                     self.wt_new += 1
+            elif cls == "iUse":
+                # a subVI call node; the composer keeps the node and one terminal of each kind
+                # (input, output, unused) and rebuilds the termList from the callee's own pane
+                self.save("iuse", "iuse/node", source, e, resolve_types(b, e))
             elif cls == "select":
                 # a Case Structure; only a TWO-frame BOOLEAN one is cut for now, so frame order
                 # and selector type are known: SelectorRange start 0 is False, 1 is True

@@ -132,6 +132,14 @@ def adapt_numeric(ddo, t):
             part.find("format").text = fmt
 
 
+def vi_label(ddo):
+    for part in ddo.find("partsList") if ddo.find("partsList") is not None else []:
+        if part.get("class") == "label" and part.findtext("partID") == "16":
+            t = part.findtext("textRec/text") or ""
+            return t[1:-1] if t.startswith('"') and t.endswith('"') else t
+    return ""
+
+
 def unescape(s):
     """AIXML escapes a few characters in names as \\XX hex."""
     out, i = [], 0
@@ -231,6 +239,27 @@ def load_pane_tables():
     return codes
 
 
+def load_pane_geometry():
+    """conId -> {slot: (top, left, bottom, right)} from docs/connector-pane-patterns.tsv.
+    The table writes a slot as left,top,right,bottom; a heap termBounds is top,left,bottom,right
+    - checked against a call node on 4815, whose slot 1 reads 24,16,32,24 in the table and
+    (16, 24, 24, 32) in the heap."""
+    geo = {}
+    with open(os.path.join(DOCS, "connector-pane-patterns.tsv"), encoding="utf-8") as f:
+        for l in f:
+            c = l.rstrip("\n").split("\t")
+            if l.startswith("#") or len(c) < 9 or not c[0].isdigit():
+                continue
+            slots = {}
+            for item in c[8].split(";"):
+                if ":" in item:
+                    i, b = item.split(":")
+                    x0, y0, x1, y1 = [int(v) for v in b.split(",")]
+                    slots[int(i)] = (y0, x0, y1, x1)
+            geo[int(c[0])] = slots
+    return geo
+
+
 class Parts:
     def __init__(self, d):
         self.d = d
@@ -279,6 +308,7 @@ class Composer:
         self.next_uid = 20000
         self.prim_by_name, self.term_names = load_names()
         self.pane_codes = load_pane_tables()
+        self.pane_geometry = load_pane_geometry()
         wt = os.path.join(parts_dir, "wiretables.json")
         self.wiretables = json.load(open(wt)) if os.path.exists(wt) else {}
         self.wiretables["2"] = "0208"   # measured on every two-ended wire; the harvest's "01" is not
@@ -304,6 +334,8 @@ class Composer:
         self.net_type = {}           # net -> inlined type tree (unlabelled)
         self.loops = []              # (loop heap element, its inner Diagram, parent Diagram)
         self.report = []
+        self.search_dirs = []        # where a <Call> target is looked for; the output dir first
+        self.links = {}              # callee path -> {"name", "flat", "cons", "offsets": [uid]}
 
     # ---- uids and types ------------------------------------------------------------------
     def alloc(self):
@@ -378,13 +410,29 @@ class Composer:
         tids = [self.heap_tid(tree) for _ in lvheap.typeid_elements(fpdco)]
         lvheap.set_typeids(fpdco, tids)
         con = el.get("conIdx")
+        # conNum 0 is written by OMITTING the field, as LabVIEW's own files do; an explicit
+        # <conNum>0</conNum> loads but LabVIEW logs the control as insane ({flags} 0x1000)
         conn = fpdco.find("conNum")
         if conn is None:
             conn = ET.SubElement(fpdco, "conNum")
         conn.text = con if con is not None else "-1"
+        if conn.text == "0":
+            fpdco.remove(conn)
+        if con is not None:
+            # A control ON the pane carries fPDCO objFlags 0x10000, plus 0x200 when recommended
+            # and 0x80 when required - read off an AIXML-generated stub. Without it LabVIEW logs
+            # the control as insane ({flags} 0x1000).
+            need = el.get("connection") or "required"
+            f = fpdco.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                fpdco.insert(0, f)
+            f.text = str(int(f.text or 0) | 0x10000 | {"recommended": 0x200, "required": 0x80}.get(need, 0))
         col = 1 if is_ind else 0
         lvheap.move_to(ddo, 16 + 56 * row, 16 + 300 * col)
-        self.pane_z.append(fpdco)
+        # z-order lists run NEWEST FIRST in LabVIEW's own files (ddoList and termList run
+        # oldest first); appending made the first control LabVIEW's insane one ({flags} 0x1000)
+        self.pane_z.insert(0, fpdco)
         ET.SubElement(self.ddo_list, "SL__arrayElement", {"uid": fpdco.get("uid")})
         if con is not None:
             c = ET.SubElement(self.cons, "SL__arrayElement", {"class": "ConpaneConnection"})
@@ -396,7 +444,7 @@ class Composer:
         # loop has its terminal in the loop's diagram, and so does its wire
         term, _, _ = self.instantiate("fpterm/%s" % want)
         term.find("dco").set("uid", fpdco.get("uid"))
-        diag.z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
         self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
         diag.placed.append((term, el))
@@ -427,7 +475,7 @@ class Composer:
         tree = type_tree(aixml_type, label=name or None)
         lvheap.set_typeids(term, [self.heap_tid(tree) for _ in lvheap.typeid_elements(term)])
         dco.find("ConstValue").text = const_value(tree, el.get("value"))
-        diag.z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
         self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
         diag.placed.append((ddo, el))
@@ -517,7 +565,7 @@ class Composer:
         for tname, t in by_name.items():
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         diag.nodes.append(prim)
-        diag.z.append(ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
 
@@ -581,7 +629,7 @@ class Composer:
             e.text = "TypeID(%d)" % self.heap_tid(tree)
             del e.attrib["_t"]
         parent.nodes.append(loop)
-        parent.z.append(ET.Element("SL__arrayElement", {"uid": loop.get("uid")}))
+        parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": loop.get("uid")}))
         parent.placed.append((loop, el))
         self.diagrams[el.get("uid")] = inner
         self.loops.append((loop, inner, parent))
@@ -597,6 +645,127 @@ class Composer:
         if count:
             self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
         self.report.append("Structure %r <- %s" % (el.get("_name"), src))
+
+    def add_call(self, el):
+        """A subVI call, composed from the CALLEE'S OWN FILE - no LabVIEW, no gRPC.
+
+        The callee is read through pylabview: its pane Function type (CONP), its pattern
+        (conPane/conId) and, per slot, the label of the control wired there. Measured on NI's
+        Acquire Array of Waveforms (simulated).vi: the caller holds an IDENTICAL copy of the
+        callee's CONP type; the iUse node has one terminal per pane slot, typed with the
+        callee's labelled slot type (Void where unused), an input carrying term objFlags 0x8000
+        and dco objFlags 0x200, an output dco objFlags 0x201; connectorTM is the pane type.
+        The link lives twice - VIVI in the VI's link block and IUVI in the diagram's, the
+        latter naming the node by uid in LinkOffsetList - with a path relative to the CALLER
+        FILE: ["", "<name>.vi"] for a sibling, TpVal 1."""
+        target = unescape(el.get("target") or "")
+        if "\\" in target or ":" in target or "/" in target:
+            raise Unsupported("Call %s: only a sibling VI by file name is composable (%r)" % (el.get("uid"), target))
+        path = next((os.path.join(d, target) for d in self.search_dirs
+                     if os.path.exists(os.path.join(d, target))), None)
+        if path is None:
+            raise Unsupported("Call %s: %r not found beside the output VI" % (el.get("uid"), target))
+        diag = self.diag_of(el)
+        callee = lvheap.Bundle(lvheap.extract(path, tempfile.mkdtemp(prefix="callee_")))
+        conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        pane = callee.tree(callee.flat_of_consolidated(conp))
+        slots = [c for c in pane if c.tag == "TypeDesc"]
+        con_id = int(callee.fp.findtext("root/conPane/conId"))
+        geo = self.pane_geometry.get(con_id, {})
+        name_at = {}
+        for fpdco in callee.fp.iter("SL__arrayElement"):
+            if fpdco.get("class") == "fPDCO":
+                con = fpdco.findtext("conNum")
+                con = 0 if con is None else int(con)
+                if con >= 0:
+                    name_at[con] = vi_label(fpdco.find("ddo"))
+        got = self.instantiate("iuse/node", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no call-node part harvested")
+        node, _, src = got
+        tl = node.find("termList")
+        tpl = {}
+        for t in tl:
+            d = t.find("dco")
+            f = int(d.findtext("objFlags") or 0)
+            kind = "out" if f & 1 else "in" if t.findtext("objFlags") == "32768" else "none"
+            tpl.setdefault(kind, t)
+        for kind in ("in", "out", "none"):
+            if kind not in tpl:
+                raise Unsupported("call-node part lacks a %s terminal" % kind)
+        for c in list(tl):
+            tl.remove(c)
+        by_name = {}
+        for i, slot in enumerate(slots):
+            flags = int(slot.get("ref.Flags") or "0", 16)
+            kind = "none" if slot.get("Type") == "Void" else "out" if flags & 0x100 else "in"
+            t = copy.deepcopy(tpl[kind])
+            lvheap.renumber(t, self.alloc)
+            dco = t.find("dco")
+            pi = dco.find("paramIdx")
+            if i == 0 and pi is not None:
+                dco.remove(pi)
+            elif i > 0:
+                if pi is None:
+                    pi = ET.SubElement(dco, "paramIdx")
+                pi.text = str(i)
+            if i in geo and dco.find("termBounds") is not None:
+                dco.find("termBounds").text = lvheap.fmt_bounds(geo[i])
+            slot_type = copy.deepcopy(slot)
+            for k in [k for k in slot_type.attrib if k.startswith("ref.")]:
+                del slot_type.attrib[k]
+            dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(slot_type)
+            tl.append(t)
+            if kind != "none" and i in name_at:
+                by_name[name_at[i]] = (t, lvheap.strip_label(slot_type))
+        # one terminal per slot of the CALLEE'S pattern: 16 on 4833 - the count must follow, or
+        # the node keeps the donor's 12 and LabVIEW calls the caller broken (measured)
+        tl.set("elements", str(len(tl)))
+        node.find("connectorTM").text = "TypeID(%d)" % self.heap_tid(pane)
+        # LabVIEW's own call node (AIXML-generated caller of a 4833 VI) carries objFlags 512;
+        # the 4815 donor's 640 adds a bit LabVIEW did not write there
+        node.find("objFlags").text = "512"
+        for part in node.iter("label"):
+            if part.find("textRec/text") is not None:
+                part.find("textRec/text").text = '"%s"' % target
+                break
+        for tname, net in pairs(el.get("inputs")) + pairs(el.get("outputs")):
+            if tname not in by_name:
+                raise Unsupported("Call %r has no terminal %r on its pane (has: %s)"
+                                  % (target, tname, ", ".join(sorted(by_name))))
+        for tname, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = by_name[tname][1]
+        for tname, (t, _) in by_name.items():
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+        link = self.links.setdefault(path, {"name": target, "pane": pane, "offsets": []})
+        link["offsets"].append(int(node.get("uid")))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Call %r <- %s (pane %d, %d slots)" % (target, src, con_id, len(slots)))
+
+    def write_links(self):
+        """VIVI into LIvi/LVIN and IUVI into LIbd/BDHP, one pair per callee."""
+        lvin = self.main.find("LIvi/Section/LVIN")
+        bdhp = self.main.find("LIbd/Section/BDHP")
+        attrs = {"LinkSaveFlag": "0", "VILinkLibVersion": "1", "VILinkFieldA": "0", "VILinkField4": "1",
+                 "VILinkFieldB": "", "VILinkFieldC": "", "VILinkFieldD": "0", "TypedLinkFlags": "0"}
+        for path, link in self.links.items():
+            cons = self.types.use(self.types.register(link["pane"]))
+            for tag, holder in (("VIVI", lvin), ("IUVI", bdhp)):
+                rec = ET.SubElement(holder, tag, dict(attrs))
+                ET.SubElement(ET.SubElement(rec, "LinkSaveQualName"), "String").text = link["name"]
+                pr = ET.SubElement(rec, "LinkSavePathRef", {"Ident": "PTH0", "TpVal": "1"})
+                ET.SubElement(pr, "String")
+                ET.SubElement(pr, "String").text = link["name"]
+                ET.SubElement(rec, "TypeDesc", {"TypeID": str(cons) if tag == "VIVI" else "0"})
+                if tag == "IUVI":
+                    ol = ET.SubElement(rec, "LinkOffsetList")
+                    for uid in link["offsets"]:
+                        ET.SubElement(ol, "Offset").text = "0x%04X" % uid
+                    ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
+                    ET.SubElement(rec, "IUseStr")
 
     def add_case(self, el):
         """A Case Structure with a BOOLEAN selector and frames "True" and "False".
@@ -650,7 +819,7 @@ class Composer:
             e.text = "TypeID(%d)" % self.heap_tid(tree)
             del e.attrib["_t"]
         parent.nodes.append(case)
-        parent.z.append(ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
+        parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
         parent.placed.append((case, el))
         self.cases.append((case, frame_diags, parent))
         self.ends[(el.get("uid"), "sel")] = (sel.get("uid"), parent)
@@ -820,7 +989,7 @@ class Composer:
         if el.tag in ("Control", "Indicator", "Constant"):
             return ([(n, (uid, "value")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "value")) for _, n in pairs(el.get("inputs")) if n])
-        if el.tag == "Node":
+        if el.tag in ("Node", "Call"):
             return ([(n, (uid, t)) for t, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, t)) for t, n in pairs(el.get("inputs")) if n])
         if el.tag in ("Tunnel", "Left", "Right"):
@@ -906,7 +1075,8 @@ class Composer:
             w = max(x for x, _ in dims)
             h = max(y for _, y in dims)
             n = max(1, len(case.find("tunnelList")))
-            sizes[case.get("uid")] = (max(h + 40, 40 + 24 * n + 30, 120), max(w + 40, 200))
+            # room for every tunnel slot plus the selector terminal below them
+            sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
         self._place(self.root, lv, sizes, 40, 40)
         for case, frame_diags, parent in getattr(self, "cases", []):
             t, l, b, r = lvheap.parse_bounds(case.find("bounds").text)
@@ -929,6 +1099,15 @@ class Composer:
                 slot[out] += 1
                 x = (r - l) - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
+            # The selector terminal keeps the donor's coordinates otherwise - y 230 in a donor
+            # 273 px tall - and outside a smaller case LabVIEW logs it insane ({graphics} 0x80).
+            # It goes on the left edge below the input tunnels.
+            sel = next(c for c in case.find("termList") if c.find("dco").get("class") == "caseSel")
+            stb = sel.find("dco/termBounds")
+            if stb is not None:
+                tt, tl, tbb, tr = lvheap.parse_bounds(stb.text)
+                y = 30 + 24 * slot[0] + 6
+                stb.text = lvheap.fmt_bounds((y, 0, y + (tbb - tt), tr - tl))
         for loop, inner, parent in self.loops:
             t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
             cr = loop.find("contRect")
@@ -1024,7 +1203,7 @@ class Composer:
         elements = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
-                          "ShiftReg", "Left", "Right", "CaseFrame"):
+                          "ShiftReg", "Left", "Right", "CaseFrame", "Call"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
@@ -1055,7 +1234,7 @@ class Composer:
         def is_case(uid):
             p = by_uid.get(uid)
             return p is not None and p.tag == "Structure" and p.get("_name") == "Case Structure"
-        pending = [e for e in elements if e.tag in ("Node", "ShiftReg")
+        pending = [e for e in elements if e.tag in ("Node", "ShiftReg", "Call")
                    or (e.tag == "Tunnel" and by_uid.get(e.get("uid_parent")) is not None
                        and by_uid[e.get("uid_parent")].tag == "Structure")]
 
@@ -1076,6 +1255,8 @@ class Composer:
             for e in ready:
                 if e.tag == "Node":
                     self.add_node(e)
+                elif e.tag == "Call":
+                    self.add_call(e)
                 elif e.tag == "Tunnel" and is_case(e.get("uid_parent")):
                     self.add_case_tunnel(e, by_uid[e.get("uid_parent")],
                                          case_halves.get((e.get("uid_parent"), e.get("_id")), {}))
@@ -1108,6 +1289,13 @@ class Composer:
         for lst in grown:
             lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))
+        # a ConpaneConnection without an index attribute means 'previous + 1' - so the list
+        # must be in slot order (out of order: Connector Pane insane {index})
+        conns = sorted(list(self.cons), key=lambda c: int(c.get("index", "0")))
+        for c in list(self.cons):
+            self.cons.remove(c)
+        for c in conns:
+            self.cons.append(c)
         ET.ElementTree(self.fp).write(os.path.join(out_dir, base + "_FPHb.xml"),
                                       encoding="utf-8", xml_declaration=True)
         ET.ElementTree(self.bd).write(os.path.join(out_dir, base + "_BDHb.xml"),
@@ -1120,16 +1308,27 @@ class Composer:
         m.find("RTSG/Section/Guid").text = "%032x" % random.getrandbits(128)
         m.find("LVSR/Section/Instrument").set("Signature", "%032x" % random.getrandbits(128))
         m.find("STRG/Section/String").text = self.description
+        # The heap slice is fixed BEFORE the link types are added: a callee's pane type is a
+        # consolidated type of the VI, not a heap type - LabVIEW's own callers keep it outside
+        # the DTHP slice (consolidated index 1 in an AIXML-generated caller).
+        heap_count = len(self.types.toplevel) - (INDEX_SHIFT - 1)
+        self.write_links()
         m.find("CONP/Section/TypeDesc").set("TypeID", "1")
         m.find("CPC2/Section/TypeDesc").set("TypeID", "2")
         vctp = m.find("VCTP")
         vctp.remove(vctp.find("Section"))
         vctp.append(self.types.vctp_section())
-        heap_count = len(self.types.toplevel) - (INDEX_SHIFT - 1)
         sl = m.find("DTHP/Section/TypeDescSlice")
         sl.set("IndexShift", str(INDEX_SHIFT))
         sl.set("Count", str(heap_count))
         m.find("MUID/Section").set("Value", str(max(self.used_uids)))
+        # NO COMPILED CODE, EVER - the user's rule of 2026-10-09: a composed VI is source-only,
+        # so it carries less data and LabVIEW compiles it in memory on load. Asserted rather
+        # than assumed, because a part or skeleton cut from a compiled VI could bring it in.
+        compiled = [b for b in ("VICD", "TM80", "DFDS", "CCST", "LIds", "BNID", "NUID", "SUID",
+                                "GCDI", "CNST") if m.find(b) is not None]
+        if compiled or m.find("LVSR/Section/Execution2").get("SourceOnly") != "1":
+            raise RuntimeError("composed VI would carry compiled code: %s" % (compiled or "SourceOnly != 1"))
         main_xml = os.path.join(out_dir, base + ".xml")
         ET.ElementTree(m).write(main_xml, encoding="utf-8", xml_declaration=True)
         return main_xml
@@ -1149,6 +1348,7 @@ def main(argv):
             args.append(argv[i]); i += 1
     src, out_vi = args
     c = Composer(parts)
+    c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))]
     try:
         c.compose(src)
     except Unsupported as ex:

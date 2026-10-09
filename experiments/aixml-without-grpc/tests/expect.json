@@ -319,5 +319,18 @@
     }
    }
   ]
+ },
+ "t50_call": {
+  "callees": {
+   "Callee Add {stamp}.vi": "t01_add"
+  },
+  "cases": [
+   {
+    "inputs": "p=1.5;q=2",
+    "outputs": {
+     "r": 3.5
+    }
+   }
+  ]
  }
 }
