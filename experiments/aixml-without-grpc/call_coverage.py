@@ -32,7 +32,8 @@ def pane_labels(path, tmp):
             if con is None or int(con) >= 0:
                 names.add(aixml2vi.vi_label(fpdco.find("ddo")))
     con_id = int(b.fp.findtext("root/conPane/conId"))
-    return names, con_id
+    dd = b.main.find("LVSR/Section/Execution").get("DynamicDispatch") == "1"
+    return names, con_id, dd
 
 
 def main(argv):
@@ -53,11 +54,11 @@ def main(argv):
         for c in root.iter("Call"):
             total += 1
             target = aixml2vi.unescape(c.get("instance") or c.get("target") or "")
-            res = r.resolve(target, [os.path.dirname(caller)])
+            res = r.resolve(target, [os.path.dirname(caller)], caller)
             if "error" in res:
-                why["unresolved: " + res["error"].split(" in this")[0].split(" is neither")[0][:60]] += 1
+                why["unresolved: " + res["error"][:70]] += 1
                 continue
-            kind = "library member" if res["lib_ref"] else "sibling" if res["path_ref"][0] == "1" else "bare name"
+            kind = res.get("kind", "?")
             path = res["path"]
             if path not in panes:
                 try:
@@ -67,14 +68,18 @@ def main(argv):
             if isinstance(panes[path], Exception):
                 why["callee unreadable: " + type(panes[path]).__name__] += 1
                 continue
-            names, con_id = panes[path]
+            names, con_id, dd = panes[path]
+            if dd:
+                why["dynamic-dispatch method (resolved; its node is not composable yet)"] += 1
+                continue
             if con_id not in aixml2vi.load_pane_geometry():
                 why["pane pattern %d has no measured geometry" % con_id] += 1
                 continue
             wanted = [t for t, _ in aixml2vi.pairs(c.get("inputs")) + aixml2vi.pairs(c.get("outputs"))]
             missing = [t for t in wanted if t not in names]
             if missing:
-                why["terminal name not on the callee's pane"] += 1
+                why["terminal name not on the callee's pane%s" % (" (Express VI)" if "Ex_" in os.path.basename(path)
+                    or "Express" in path else "")] += 1
                 continue
             ok += 1
             kinds[kind] += 1

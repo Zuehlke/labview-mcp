@@ -237,6 +237,15 @@ section 3: `Insane <class>(<uid>)` and `Con pane not pre-sized correctly` name t
 | refnum controls / constants | 19 |
 | Event Structure, Timed Loop, In Place, Feedback Node, CLFN … | a handful each |
 
+**After calls into vi.lib and libraries (section 4b), measured again:** 25 of 792 compose, and
+`<Call>` no longer appears among the first blockers at all — the 610 VIs it stopped now stop at
+the next construct: a non-boolean Case Structure (161, mostly the error case `No Error`/`Error`),
+clusters (117), arrays (131), `FixedConst` (57), Event Structure (52), refnums (58), and enums
+written as `uint16{…}` (54). Of the 25, **24 load clean in LabVIEW**, 5 of them making 20 calls
+between them (`Append Waveforms.vi` alone makes 7); the 25th is NI's polymorphic
+`Trim Whitespace.vi`, whose export lists its instances as calls with nothing wired — the
+instance's `string` input is required (`0x1000`), so LabVIEW is right to call it broken.
+
 So the next milestone was unambiguous: **subVI calls**, done for sibling VIs since (section 4a).
 NI's own calls mostly target vi.lib and library members, which need symbolic paths
 (`<vilib>`, `TpVal 0`) and qualified names in the link records — the obvious next step, and the

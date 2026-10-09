@@ -392,5 +392,18 @@
     }
    }
   ]
+ },
+ "t57_call_subfolder": {
+  "callees": {
+   "sub/SubCallee {stamp}.vi": "t01_add"
+  },
+  "cases": [
+   {
+    "inputs": "p=-3;q=0.5",
+    "outputs": {
+     "r": -2.5
+    }
+   }
+  ]
  }
 }

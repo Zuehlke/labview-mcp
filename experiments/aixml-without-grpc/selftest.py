@@ -80,6 +80,7 @@ def main(argv):
         # because LabVIEW keeps a loaded VI in memory by name and would serve the old one
         for fname, callee in expect[name].get("callees", {}).items():
             cvi = os.path.join(out_dir, fname.replace("{stamp}", stamp))
+            os.makedirs(os.path.dirname(cvi), exist_ok=True)   # a callee may live in a subfolder
             ccode, clog = compose(os.path.join(HERE, "tests", callee + ".xml"), cvi)
             if ccode != 0:
                 results.append((name, "CALLEE FAILED", clog.splitlines()[-1] if clog else ""))

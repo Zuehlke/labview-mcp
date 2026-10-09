@@ -24,6 +24,7 @@ import html
 import json
 import os
 import random
+import re
 import shutil
 import struct
 import sys
@@ -137,15 +138,22 @@ def vi_label(ddo):
     for part in ddo.find("partsList") if ddo.find("partsList") is not None else []:
         if part.get("class") == "label" and part.findtext("partID") == "16":
             t = part.findtext("textRec/text") or ""
-            return t[1:-1] if t.startswith('"') and t.endswith('"') else t
+            t = t[1:-1] if t.startswith('"') and t.endswith('"') else t
+            # pylabview writes control characters other than LF and TAB as literal &#xNN; text
+            return re.sub(r"&#x([0-9A-Fa-f]{2});", lambda m: chr(int(m.group(1), 16)), t)
     return ""
 
 
 def unescape(s):
-    """AIXML escapes a few characters in names as \\XX hex."""
+    """AIXML escapes a few characters in names as \\XX hex - and a BACKSLASH in a terminal name
+    as a doubled backslash: NI writes the label `delimiter (\\t)` as `delimiter (\\\\t)`,
+    counted in its own exports, where a value would carry \\5C."""
     out, i = [], 0
     while i < len(s):
-        if s[i] == "\\" and i + 2 < len(s) + 1 and all(c in "0123456789ABCDEFabcdef" for c in s[i + 1:i + 3]):
+        if s.startswith("\\\\", i):
+            out.append("\\")
+            i += 2
+        elif s[i] == "\\" and i + 2 < len(s) + 1 and all(c in "0123456789ABCDEFabcdef" for c in s[i + 1:i + 3]):
             out.append(chr(int(s[i + 1:i + 3], 16)))
             i += 3
         else:
@@ -665,12 +673,16 @@ class Composer:
         target = unescape(el.get("instance") or el.get("target") or "")
         if self.resolver is None:
             self.resolver = resolve.Resolver()
-        res = self.resolver.resolve(target, self.search_dirs)
+        res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
         if "error" in res:
             raise Unsupported("Call %s: %s" % (el.get("uid"), res["error"]))
         path = res["path"]
         diag = self.diag_of(el)
         callee = lvheap.Bundle(lvheap.extract(path, tempfile.mkdtemp(prefix="callee_")))
+        if callee.main.find("LVSR/Section/Execution").get("DynamicDispatch") == "1":
+            # a dynamic-dispatch method is called through a different node, and its class
+            # terminal needs a class wire this composer cannot author yet
+            raise Unsupported("Call %s: %r is a dynamic-dispatch method" % (el.get("uid"), target))
         conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
         pane = callee.tree(callee.flat_of_consolidated(conp))
         slots = [c for c in pane if c.tag == "TypeDesc"]
@@ -1362,6 +1374,7 @@ def main(argv):
     src, out_vi = args
     c = Composer(parts)
     c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))]
+    c.caller_file = os.path.abspath(out_vi)   # relative links are computed from the caller FILE
     try:
         c.compose(src)
     except Unsupported as ex:
