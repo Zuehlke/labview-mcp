@@ -1,0 +1,19 @@
+<VI _name="T72 Case String.vi" description="A string case: two named strings, one frame shared with Default.">
+  <Control _name="cmd" type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <CaseFrame selector="&quot;start&quot;" uid="4310" uid_parent="4300">
+      <Constant type="int32" uid="4311" uid_parent="4310" value="1" outputs="value:4311.value"/>
+      <Tunnel _id="Out1" inputs="value:4311.value" uid="4312" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;stop&quot;" uid="4320" uid_parent="4300">
+      <Constant type="int32" uid="4321" uid_parent="4320" value="2" outputs="value:4321.value"/>
+      <Tunnel _id="Out1" inputs="value:4321.value" uid="4322" uid_parent="4320"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;idle&quot;\2C Default" uid="4330" uid_parent="4300">
+      <Constant type="int32" uid="4331" uid_parent="4330" value="0" outputs="value:4331.value"/>
+      <Tunnel _id="Out1" inputs="value:4331.value" uid="4332" uid_parent="4330"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="code" type="int32" uid="4345" uid_parent="root" value="0" inputs="value:4340.value"/>
+</VI>

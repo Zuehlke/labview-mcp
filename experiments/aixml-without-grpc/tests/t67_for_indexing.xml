@@ -1,0 +1,10 @@
+<VI _name="T67 For Indexing.vi" description="A For Loop indexes an array in, doubles each element and builds the result array out; the count comes from the array.">
+  <Control _name="values" type="array{double}" uid="4200" uid_parent="root" value="[]" outputs="value:4200.value"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4410.value" uid="4410" uid_parent="4400"/>
+    <Constant _name="two" type="double" uid="4420" uid_parent="4400" value="2" outputs="value:4420.value"/>
+    <Node _name="Multiply" inputs="x:4410.value,y:4420.value" outputs="x*y:4430.x*y" uid="4430" uid_parent="4400"/>
+    <Tunnel _id="Out1" inputs="value:4430.x*y" mode="index" outputs="value:4440.value" uid="4440" uid_parent="4400"/>
+  </Structure>
+  <Indicator _name="doubled" type="array{double}" uid="4445" uid_parent="root" value="[]" inputs="value:4440.value"/>
+</VI>

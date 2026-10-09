@@ -481,5 +481,121 @@
     }
    }
   ]
+ },
+ "t67_for_indexing": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,-2,4]",
+    "outputs": {
+     "doubled": "[3,-4,8]"
+    }
+   }
+  ]
+ },
+ "t68_for_build_i": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "indices": "[0,1,2,3]"
+    }
+   }
+  ]
+ },
+ "t70_case_int": {
+  "cases": [
+   {
+    "inputs": "sel=0",
+    "outputs": {
+     "out": 10
+    }
+   },
+   {
+    "inputs": "sel=2",
+    "outputs": {
+     "out": 20
+    }
+   },
+   {
+    "inputs": "sel=-7",
+    "outputs": {
+     "out": -1
+    }
+   },
+   {
+    "inputs": "sel=4",
+    "outputs": {
+     "out": 99
+    }
+   }
+  ]
+ },
+ "t71_case_enum": {
+  "cases": [
+   {
+    "inputs": "mode=0;x=8",
+    "outputs": {
+     "level": 0
+    }
+   },
+   {
+    "inputs": "mode=1;x=8",
+    "outputs": {
+     "level": 8
+    }
+   },
+   {
+    "inputs": "mode=2;x=8",
+    "outputs": {
+     "level": 4
+    }
+   }
+  ]
+ },
+ "t72_case_string": {
+  "cases": [
+   {
+    "inputs": "cmd=start",
+    "outputs": {
+     "code": 1
+    }
+   },
+   {
+    "inputs": "cmd=stop",
+    "outputs": {
+     "code": 2
+    }
+   },
+   {
+    "inputs": "cmd=idle",
+    "outputs": {
+     "code": 0
+    }
+   },
+   {
+    "inputs": "cmd=other",
+    "outputs": {
+     "code": 0
+    }
+   }
+  ]
+ },
+ "t73_case_error": {
+  "cases": [
+   {
+    "inputs": "error in={false,0,}",
+    "outputs": {
+     "ok": "True",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "error in={true,42,boom}",
+    "outputs": {
+     "ok": "False",
+     "error out": "[True,42,boom]"
+    }
+   }
+  ]
  }
 }

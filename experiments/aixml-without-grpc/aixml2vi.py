@@ -1338,6 +1338,192 @@ class Composer:
                     ET.SubElement(rec, "IUseStr")
 
     def add_case(self, el):
+        frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
+        if sorted(f.get("selector") for f in frames_el) == ["False", "True"]:
+            return self.add_case_bool(el)
+        return self.add_case_n(el)
+
+    @staticmethod
+    def _selector_items(sel):
+        """'0, 2..5, Default' -> ['0', '2..5', 'Default']; commas inside a quoted string stay."""
+        items, cur, quoted = [], [], False
+        for ch in sel:
+            if ch == '"':
+                quoted = not quoted
+            if ch == "," and not quoted:
+                items.append("".join(cur).strip())
+                cur = []
+            else:
+                cur.append(ch)
+        items.append("".join(cur).strip())
+        return [x for x in items if x]
+
+    def add_case_n(self, el):
+        """A Case Structure on an integer, an enum, a string or an error cluster, with any
+        number of frames. Measured on AIXML-generated VIs: every frame is a diagram whose sRN
+        holds the caseSel's inner terminal; SelectRangeArray32 maps values to frames as
+        {start, end, startRangeType, endRangeType, diagramIdx} - a single value is (v, v, 0, 0),
+        a range a..b is (a, b, 1, 1), an open end is type 3 at INT_MIN/INT_MAX; a string case
+        lists its strings (hex) in SelectStringArray and ranges over their indices;
+        SelectDefaultCase is the Default frame's index as one hex byte, FF for none;
+        SelectNRightType is the number of ranges. The selector's TYPE and the ranges are set in
+        finish_cases(), once the wire into the selector is typed."""
+        frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
+        sels = [unescape(f.get("selector") or "") for f in frames_el]
+        items = [self._selector_items(s) for s in sels]
+        flat = [x for its in items for x in its if x != "Default"]
+        if flat and all(x in ("No Error", "Error") for x in flat):
+            kind = "error"
+        elif any(x.startswith('"') for x in flat):
+            kind = "string"
+        elif all(re.fullmatch(r"-?(0x[0-9A-Fa-f]+|\d+)?(\.\.)?(-?(0x[0-9A-Fa-f]+|\d+))?", x) for x in flat):
+            kind = "int"
+        else:
+            kind = "enum"
+        parent = self.diag_of(el)
+        got = self.instantiate("struct/select/%s" % ("int" if kind == "enum" else kind), own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no %s case structure part harvested" % kind)
+        case, donor_types, src = got
+        donor_ranges = [(int(r.findtext("diagramIdx") or 0), copy.deepcopy(r)) for r in case.find("SelectRangeArray32")]
+        sel = next(t for t in case.find("termList") if t.find("dco").get("class") == "caseSel")
+        sel_dco = sel.find("dco")
+        dl = case.find("diagramList")
+        proto = copy.deepcopy(dl[0])
+        pd = Diagram(proto)
+        for c in list(pd.srn_terms):
+            d = c.find("dco")
+            if d is None or d.get("uid") != sel_dco.get("uid"):
+                pd.srn_terms.remove(c)
+        for c in list(pd.nodes):
+            if c.get("class") != "sRN":
+                pd.nodes.remove(c)
+        for lst in (pd.z, pd.signals):
+            for c in list(lst):
+                lst.remove(c)
+        for c in list(dl):
+            dl.remove(c)
+        for c in list(case.find("termList")):
+            if c is not sel:
+                case.find("termList").remove(c)
+        for c in list(case.find("tunnelList")):
+            case.find("tunnelList").remove(c)
+        sel_tl = sel_dco.find("termList")
+        for c in list(sel_tl):
+            sel_tl.remove(c)
+        frame_diags = []
+        for f in frames_el:
+            d = copy.deepcopy(proto)
+            lvheap.renumber(d, self.alloc)
+            dl.append(d)
+            fd = Diagram(d, owner=f)
+            inner = fd.srn_terms[0]
+            ET.SubElement(sel_tl, "SL__arrayElement", {"uid": inner.get("uid")})
+            self.diagrams[f.get("uid")] = fd
+            self.ends[(f.get("uid"), "selectout")] = (inner.get("uid"), fd)
+            frame_diags.append(fd)
+        ET.SubElement(sel_tl, "SL__arrayElement", {"uid": sel.get("uid")})
+        sel_tl.set("elements", str(len(sel_tl)))
+        dl.set("elements", str(len(dl)))
+        if case.find("dIdx") is not None:
+            case.find("dIdx").text = "0"
+        for e in case.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        parent.nodes.append(case)
+        parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
+        parent.placed.append((case, el))
+        self.cases = getattr(self, "cases", [])
+        self.cases.append((case, frame_diags, parent))
+        self.ends[(el.get("uid"), "sel")] = (sel.get("uid"), parent)
+        self.pending_cases = getattr(self, "pending_cases", [])
+        self.pending_cases.append((case, el, kind, items, donor_ranges, frames_el))
+        self.report.append("Structure 'Case Structure' (%s, %d frames) <- %s" % (kind, len(frames_el), src))
+
+    def finish_cases(self):
+        """Selector type and value-to-frame ranges, once every wire is typed."""
+        INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
+        for case, el, kind, items, donor_ranges, frames_el in getattr(self, "pending_cases", []):
+            net = el.get("selectin")
+            st = self.net_type.get(net)
+            if st is None:
+                raise Unsupported("Case Structure %s: the selector wire %r is not typed" % (el.get("uid"), net))
+            sel = next(t for t in case.find("termList") if t.find("dco").get("class") == "caseSel")
+            sel.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(st)
+            for f in frames_el:
+                if f.get("selectout"):
+                    self.net_type[f.get("selectout")] = unlabel(st)
+            ranges, strings, default = [], [], 0xFF
+            if kind == "error":
+                if st.get("Type") != "Cluster":
+                    raise Unsupported("Case Structure %s: 'No Error'/'Error' frames need an error cluster" % el.get("uid"))
+                # the donor's own two ranges, matched to the frames by name: the donor was
+                # authored [No Error, Error], and LabVIEW kept that order
+                by_name = {"No Error": 0, "Error": 1}
+                for i, its in enumerate(items):
+                    for x in its:
+                        if x == "Default":
+                            default = i
+                            continue
+                        for di, r in donor_ranges:
+                            if di == by_name[x]:
+                                r = copy.deepcopy(r)
+                                r.find("diagramIdx").text = str(i)
+                                ranges.append((int(r.findtext("start")), r))
+            else:
+                if kind == "string":
+                    if st.get("Type") != "String":
+                        raise Unsupported("Case Structure %s: string selectors on a %s wire" % (el.get("uid"), st.get("Type")))
+                    strs = sorted({x[1:-1] for its in items for x in its if x.startswith('"') and ".." not in x},
+                                  key=lambda s: s.encode("mac_roman"))
+                    strings = strs
+                    value = lambda x: strs.index(x[1:-1])
+                elif kind == "enum":
+                    labels = [e.text for e in st.findall("EnumLabel")]
+                    if not labels:
+                        raise Unsupported("Case Structure %s: enum selectors on a %s wire" % (el.get("uid"), st.get("Type")))
+                    def value(x, labels=labels):
+                        if x not in labels:
+                            raise Unsupported("Case Structure %s: %r is not an item of the enum" % (el.get("uid"), x))
+                        return labels.index(x)
+                else:
+                    if st.get("Type") not in INT_RANGE and st.get("Type") not in ENUM_BASE.values():
+                        raise Unsupported("Case Structure %s: an integer case on a %s wire" % (el.get("uid"), st.get("Type")))
+                    value = lambda x: int(x, 0)
+                for i, its in enumerate(items):
+                    for x in its:
+                        if x == "Default":
+                            default = i
+                            continue
+                        if ".." in x and kind != "string":
+                            a, b = x.split("..", 1)
+                            s, st_t = (value(a), 1) if a else (INT_MIN, 3)
+                            e, et_t = (value(b), 1) if b else (INT_MAX, 3)
+                        elif ".." in x:
+                            raise Unsupported("Case Structure %s: string ranges are not composable yet" % el.get("uid"))
+                        else:
+                            s = e = value(x)
+                            st_t = et_t = 0
+                        r = ET.Element("SL__arrayElement", {"class": "SelectorRange"})
+                        for tag, v in (("start", s), ("end", e), ("startRangeType", st_t),
+                                       ("endRangeType", et_t), ("diagramIdx", i)):
+                            ET.SubElement(r, tag).text = str(v)
+                        ranges.append((s, r))
+            ra = case.find("SelectRangeArray32")
+            for c in list(ra):
+                ra.remove(c)
+            for _, r in sorted(ranges, key=lambda x: x[0]):
+                ra.append(r)
+            ra.set("elements", str(len(ra)))
+            sa = case.find("SelectStringArray")
+            for c in list(sa):
+                sa.remove(c)
+            for s in strings:
+                ET.SubElement(sa, "SL__arrayElement").text = s.encode("mac_roman").hex().upper() or None
+            sa.set("elements", str(len(sa)))
+            case.find("SelectDefaultCase").text = "%02X" % default
+            case.find("SelectNRightType").text = str(len(ra))
+
+    def add_case_bool(self, el):
         """A Case Structure with a BOOLEAN selector and frames "True" and "False".
 
         Measured on NI's Multiply Force.vi: the selector is one caseSel DCO whose termList
@@ -1400,12 +1586,27 @@ class Composer:
         per frame (`halves`: frame uid -> Tunnel element), as AIXML writes it."""
         d = "in" if outer_el.get("_id", "").startswith("In") else "out"
         case, frame_diags, parent = next(x for x in self.cases if x[0].get("uid") == case_el.get("uid"))
-        got = self.instantiate("seltun/bool/%s" % d)
+        got = self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d)
         if got is None:
             raise Unsupported("no %s case-tunnel part harvested" % d)
         wrap = got[0]
         parts = list(wrap)
         outer, inner_terms = parts[0], parts[1:]
+        if len(inner_terms) != len(frame_diags):
+            # one inner terminal per FRAME: the template's first, cloned; the selTun DCO's
+            # termList names them in frame order, then the outer terminal
+            tpl = inner_terms[0]
+            inner_terms = []
+            for _ in frame_diags:
+                t = copy.deepcopy(tpl)
+                t.set("uid", str(self.alloc()))
+                inner_terms.append(t)
+            tl = outer.find("dco/termList")
+            for c in list(tl):
+                tl.remove(c)
+            for t in inner_terms + [outer]:
+                ET.SubElement(tl, "SL__arrayElement", {"uid": t.get("uid")})
+            tl.set("elements", str(len(tl)))
         if d == "in":
             nets = [n for _, n in pairs(outer_el.get("inputs")) if n]
         else:
@@ -1432,17 +1633,19 @@ class Composer:
 
     def add_tunnel(self, el, loop_el):
         d = "in" if el.get("_id", "").startswith("In") else "out"
-        if el.get("mode"):
-            raise Unsupported("Tunnel %s: mode=%r (indexing) is not composable yet" % (el.get("uid"), el.get("mode")))
+        mode = el.get("mode")
+        if mode not in (None, "", "index"):
+            raise Unsupported("Tunnel %s: mode=%r is not composable yet" % (el.get("uid"), mode))
         loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
         kind = loop.get("class")
+        suffix = "-index" if mode == "index" else ""
         got = None
-        for k in (kind, "whileLoop", "forLoop"):   # a plain lpTun is the same on both loops
-            got = self.instantiate("tunnel/%s/%s" % (k, d))
+        for k in (kind, "whileLoop", "forLoop"):   # an lpTun is the same on both loops
+            got = self.instantiate("tunnel/%s/%s%s" % (k, d, suffix))
             if got is not None:
                 break
         if got is None:
-            raise Unsupported("no plain %s-tunnel part harvested" % d)
+            raise Unsupported("no %s%s tunnel part harvested" % (d, suffix))
         wrap = got[0]
         outer, innert = list(wrap)
         dco = outer.find("dco")
@@ -1450,12 +1653,30 @@ class Composer:
         tree = self.net_type.get(src_net)
         if tree is None:
             raise Unsupported("Tunnel %s: the type of %r is not known" % (el.get("uid"), src_net))
-        lvheap.set_typeids(outer, [self.heap_tid(tree) for _ in lvheap.typeid_elements(outer)])
+        if mode == "index":
+            # An INDEXING tunnel is the lpTun typed with the ARRAY plus an innerLpTunDCO typed
+            # with the ELEMENT (measured on an AIXML-generated For Loop): going in, the wire
+            # outside is the array; going out, the wire inside is the element.
+            if d == "in":
+                if tree.get("Type") != "Array" or len(tree.findall("Dimension")) != 1:
+                    raise Unsupported("Tunnel %s: an indexing input needs a 1D array" % el.get("uid"))
+                arr, elem = tree, unlabel(elem_of(tree))
+            else:
+                elem = tree
+                arr = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+                ET.SubElement(arr, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+                arr.append(copy.deepcopy(elem))
+            dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(arr)
+            dco.find("innerLpTunDCO/typeDesc").text = "TypeID(%d)" % self.heap_tid(elem)
+            out_tree = elem if d == "in" else arr
+        else:
+            lvheap.set_typeids(outer, [self.heap_tid(tree) for _ in lvheap.typeid_elements(outer)])
+            out_tree = tree
         for e in wrap.iter():
             e.attrib.pop("_t", None)   # the shell's bookkeeping travelled with the template
         for _, net in pairs(el.get("outputs")):
             if net:
-                self.net_type[net] = tree
+                self.net_type[net] = out_tree
         n = len(loop.find("tunnelList"))
         tb = dco.find("termBounds")
         if tb is not None:
@@ -1819,6 +2040,12 @@ class Composer:
                 return ins[:1] if any(n in self.net_type for _, n in ins) else ins
             return pairs(e.get("inputs"))
         while pending:
+            # a frame's selector value (selectout) is typed as soon as the selector's wire is
+            for case, cel, kind, items, dr, frames_el in getattr(self, "pending_cases", []):
+                if cel.get("selectin") in self.net_type:
+                    for f in frames_el:
+                        if f.get("selectout"):
+                            self.net_type[f.get("selectout")] = unlabel(self.net_type[cel.get("selectin")])
             ready = [e for e in pending if all(net in self.net_type or net is None
                                                for _, net in inputs_of(e))]
             if not ready:
@@ -1838,6 +2065,7 @@ class Composer:
                 else:
                     self.add_shiftreg(e, by_uid[e.get("uid_parent")])
                 pending.remove(e)
+        self.finish_cases()
         nets = self.wire(elements)
         self.layout(nets)
         self.connector_pane()

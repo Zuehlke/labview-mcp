@@ -1,0 +1,24 @@
+<VI _name="T71 Case Enum.vi" description="An enum case with one frame per item; the frame passes a value in through a tunnel and scales it.">
+  <Control _name="mode" type="uint16{Off,On,Auto}" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="x" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.value" uid="4301" uid_parent="4300"/>
+    <CaseFrame selector="Off" uid="4310" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:" uid="4313" uid_parent="4310"/>
+      <Constant type="double" uid="4311" uid_parent="4310" value="0" outputs="value:4311.value"/>
+      <Tunnel _id="Out1" inputs="value:4311.value" uid="4312" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="On" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4323.value" uid="4323" uid_parent="4320"/>
+      <Tunnel _id="Out1" inputs="value:4323.value" uid="4322" uid_parent="4320"/>
+    </CaseFrame>
+    <CaseFrame selector="Auto" uid="4330" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4333.value" uid="4333" uid_parent="4330"/>
+      <Constant type="double" uid="4331" uid_parent="4330" value="0.5" outputs="value:4331.value"/>
+      <Node _name="Multiply" inputs="x:4333.value,y:4331.value" outputs="x*y:4334.x*y" uid="4334" uid_parent="4330"/>
+      <Tunnel _id="Out1" inputs="value:4334.x*y" uid="4332" uid_parent="4330"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="level" type="double" uid="4345" uid_parent="root" value="0" inputs="value:4340.value"/>
+</VI>
