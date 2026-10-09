@@ -182,7 +182,7 @@ def type_tree(aixml_type, label=None):
 _REF_CLASSES = None
 
 
-def refnum_type(inner):
+def refnum_type(inner, plain_class=False):
     """ref{LV.<Class>} -> Refnum RefType=LVObjCtl with the class's ID in CtlFlags, read off one
     AIXML-generated control per class (parts/refnum-classes.tsv); ref{Visa.Instr} -> the VISA
     refnum with its Void variant, as the same probe wrote it. A control refnum (ref{LV.Boolean},
@@ -207,7 +207,10 @@ def refnum_type(inner):
     row = _REF_CLASSES.get(inner)
     if row is None:
         raise Unsupported("type 'ref{%s}' is not composable yet" % inner)
-    if row[1]:
+    if row[1] and not plain_class:
+        # (a property node's own reference terminals are the PLAIN class refnum even for a
+        # control class - measured on an implicit node on a string control: CtlFlags 0x001B,
+        # nothing nested - so they pass plain_class)
         raise Unsupported("type 'ref{%s}' is a control refnum (it carries a %s), not composable yet" % (inner, row[1]))
     return ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": row[0],
                                    "HasItem": "0", "Format": "inline"})
@@ -1139,10 +1142,15 @@ class Composer:
             pidx = t.find("dco").findtext("parmIndex") or "out"
             tname = self.term_names.get((rid, pidx))
             if tname is None:
-                raise Unsupported("Node %r: no name for parmIndex %s" % (name, pidx))
+                # a terminal the name tables do not know is only a problem when the AIXML WIRES
+                # it - an unwired one keeps a placeholder, and a wired name that matches nothing
+                # is refused below with the list of known names
+                tname = "?parm%s" % pidx
             by_name[tname] = t
         ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
-        for tname, _ in ins + outs:
+        for tname, net in ins + outs:
+            if tname not in by_name and net is None:
+                continue        # listed but unwired (NI's exports list every terminal): no need to place it
             if tname not in by_name:
                 # NI's converter takes a terminal name in any case (`variant` for `Variant`)
                 hit = [k for k in by_name if k.lower() == tname.lower()]
@@ -1264,25 +1272,35 @@ class Composer:
 
     def _property_row(self, cls, name):
         """The table row for property `name` on class `cls` - harvested off NI's VIs and probes
-        (vi-server-props.json). A property INHERITED from a base class is found under any class
-        whose row says that base declared it."""
+        (vi-server-props.json). A property seen only on OTHER classes is taken over when every
+        class it was seen on agrees on its code (Visible is 104013824 on Array, Boolean, String
+        ... - an inherited property keeps its code) AND LabVIEW's catalogue lists it for `cls`
+        (docs/vi-server-properties.tsv lists inherited properties per class). Value and Disabled
+        carry different codes per class (String 104093696, Path 104032256; Disabled and
+        DisabledEnum) and are therefore never borrowed."""
         table = self._vi_server_table()["props"]
         row = table.get(cls, {}).get(name)
         if row is not None:
             return row
-        for other in table.values():
-            r = other.get(name)
-            if r is not None and r.get("declaredBy") and r["declaredBy"] != cls and \
-                    r["declaredBy"] in self._ancestors_of(cls):
-                return r
-        return None
+        seen = [other[name] for other in table.values() if name in other]
+        if not seen or len({r["code"] for r in seen}) != 1 or len({r["type"] for r in seen}) != 1:
+            return None
+        if (cls, name) not in self._catalogue():
+            return None
+        return dict(seen[0], declaredBy=cls)
 
-    def _ancestors_of(self, cls):
-        """The VI Server classes `cls` inherits from, read off the refnum-to-class table's
-        companion list when present; GObject and Generic are every front-panel and diagram
-        object's bases (measured as the declaring class of Label.Text, Bounds ...)."""
-        base = {"LV.Generic", "LV.GObject"}
-        return base
+    def _catalogue(self):
+        cat = getattr(self, "_cat", None)
+        if cat is None:
+            cat = set()
+            with open(os.path.join(DOCS, "vi-server-properties.tsv"), encoding="utf-8") as f:
+                for line in f:
+                    row = line.rstrip("\r\n").split("\t")
+                    m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+)\}", row[0]) if row else None
+                    if m and len(row) > 1:
+                        cat.add((m.group(1), row[1]))
+            self._cat = cat
+        return cat
 
     def _hgrow_terms(self, node):
         """The four fixed terminals of a property/invoke node by role: their DCO objFlags are
@@ -1304,12 +1322,20 @@ class Composer:
         rows from y=18, each carrying a propItemInfo with the property's NAME, CODE, the data
         type twice (typeDesc labelled with the short name, dataTypeDesc bare) and the declaring
         class as VoidBlock{refnum} (omidTypeDesc) - measured on an AIXML-generated probe."""
-        self.check_attrs(el, ("fields", "type"))
+        self.check_attrs(el, ("fields", "type", "link"))
         cls = self._vi_server_class(el)
         table = self._vi_server_table()
         crow = table["classes"].get(cls)
         if crow is None:
             raise Unsupported("Property Node %s: no property node on %s harvested yet" % (el.get("uid"), cls))
+        link = unescape(el.get("link") or "")
+        linked = None
+        if link:
+            # an IMPLICIT node, bound to a front-panel object by name: it names that object's
+            # ddo, carries a label with its name and hides its reference terminals
+            linked = getattr(self, "fp_info", {}).get(link)
+            if linked is None:
+                raise Unsupported("Property Node %s: no control %r to link to" % (el.get("uid"), link))
         fields_ = [unescape(f) for f in split_top(el.get("fields") or "") if f]
         items = []
         for f in fields_:
@@ -1321,7 +1347,10 @@ class Composer:
                 raise Unsupported("Property Node %s: property %r of %s is not in the harvested table" % (el.get("uid"), name, cls))
             items.append((mode, name, row))
         diag = self.diag_of(el)
-        node, donor_types, src = self.instantiate("node/propNode", own_uid=el.get("uid"))
+        got = self.instantiate("node/propNode/implicit" if linked else "node/propNode", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("Property Node %s: no %s property node template harvested" % (el.get("uid"), "implicit" if linked else "explicit"))
+        node, donor_types, src = got
         for i, e in enumerate(lvheap.typeid_elements(node)):
             e.set("_t", str(i))
         fixed = self._hgrow_terms(node)
@@ -1333,7 +1362,7 @@ class Composer:
         for t in list(tl):
             if t not in fixed.values():
                 tl.remove(t)
-        ref_tree = refnum_type(cls)
+        ref_tree = refnum_type(cls, plain_class=True)
         for role in ("reference", "reference out"):
             # each fixed terminal its OWN labelled type, as LabVIEW writes them
             lab = copy.deepcopy(ref_tree)
@@ -1377,7 +1406,7 @@ class Composer:
                 d.remove(f)
             d.find("termBounds").text = lvheap.fmt_bounds((18 + 16 * k, 0, 34 + 16 * k, width))
             info = d.find("propList/SL__arrayElement")
-            decl = refnum_type(row.get("declaredBy") or cls)
+            decl = refnum_type(row.get("declaredBy") or cls, plain_class=True)
             vb = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
             vb.append(decl)
             info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
@@ -1407,6 +1436,8 @@ class Composer:
         dl.set("elements", str(len(dl)))
         for role, t in fixed.items():
             self.ends[(el.get("uid"), role)] = (t.get("uid"), diag)
+            if linked and role in ("reference", "reference out"):
+                continue        # hidden (objFlags 0x800000), as the template has them
             if role in ("reference", "error in (no error)"):
                 tf = t.find("objFlags")
                 wired = bool(ins.get(role))
@@ -1425,6 +1456,13 @@ class Composer:
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(items) + 1, b[1] + width))
         node.find("nodeName").text = '"%s"' % crow["nodeName"]
         node.find("oMId").text = self._om_id(cls)
+        if linked:
+            node.find("ddo").set("uid", linked[2].find("ddo").get("uid"))
+            lab = node.find("label")
+            if lab is not None:
+                lab.find("textRec/text").text = '"%s"' % link
+                lb = lvheap.parse_bounds(lab.find("bounds").text)
+                lab.find("bounds").text = lvheap.fmt_bounds((lb[0], lb[1], lb[2], lb[1] + max(8, 6 * len(link))))
         diag.nodes.append(node)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
@@ -1467,11 +1505,15 @@ class Composer:
         # (an Element with no children is FALSE in a boolean context - never `a or b` on them)
         for tname, net in ins.items():
             t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00in")
+            if t is None and net is None:
+                continue    # listed and unwired, as NI's exports list every parameter
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no input %r" % (el.get("uid"), cls, meth, tname))
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         for tname, net in outs.items():
             t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00out")
+            if t is None and net is None:
+                continue
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no output %r" % (el.get("uid"), cls, meth, tname))
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
@@ -1493,7 +1535,7 @@ class Composer:
         self._om_ids = getattr(self, "_om_ids", {})
         if cls not in self._om_ids:
             # the CONSOLIDATED (TopLevel) index, which NI's file kept equal to the flat one
-            cons = self.types.use(self.types.register(refnum_type(cls)))
+            cons = self.types.use(self.types.register(refnum_type(cls, plain_class=True)))
             if cons > 0x7FFF:
                 raise Unsupported("oMId %d is not encodable yet" % cons)
             self._om_ids[cls] = "%04X" % cons

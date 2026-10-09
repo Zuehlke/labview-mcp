@@ -835,5 +835,17 @@
     }
    }
   ]
+ },
+ "t92_implicit_property_nodes": {
+  "cases": [
+   {
+    "inputs": "Text=hello",
+    "outputs": {
+     "flag visible": "False",
+     "text value": "hello",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

@@ -274,7 +274,11 @@ class Harvester:
             if not cl:
                 cl.update({"oMId": node.findtext("oMId"), "nodeName": (node.findtext("nodeName") or "").strip('"')})
                 self.props_new += 1
-            self.save("node", "node/propNode", source, node, resolve_types(b, node))
+            # an IMPLICIT node (linked to a front-panel object) names that object's ddo and
+            # carries a label; its reference terminals are hidden (term objFlags 0x800000)
+            implicit = node.find("ddo") is not None
+            self.save("node", "node/propNode/implicit" if implicit else "node/propNode", source, node,
+                      resolve_types(b, node))
             table = self.props["props"].setdefault(cname, {})
             for t in terms:
                 dco = t.find("dco")
