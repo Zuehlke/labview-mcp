@@ -241,6 +241,25 @@ class Parts:
         return 'clean="1"' in head
 
 
+class Diagram:
+    """One block diagram: the VI's root, or the inside of a structure. Every diagram has its
+    own sRN (the node that owns constants and front-panel terminals), its own z-order list,
+    node list and signal list - a wire never crosses a diagram, a tunnel splits it in two."""
+
+    def __init__(self, diag_el, owner=None):
+        self.el = diag_el
+        self.z = diag_el.find("zPlaneList")
+        self.nodes = diag_el.find("nodeList")
+        self.srn = self.nodes.find("SL__arrayElement[@class='sRN']")
+        self.srn_terms = self.srn.find("termList")
+        self.signals = diag_el.find("signalList")
+        self.owner = owner          # the AIXML <Structure>, None for the root
+        self.placed = []            # (heap object with bounds, AIXML element)
+
+    def lists(self):
+        return (self.z, self.nodes, self.srn_terms, self.signals)
+
+
 class Composer:
     def __init__(self, parts_dir):
         self.parts = Parts(parts_dir)
@@ -256,7 +275,6 @@ class Composer:
         self.fp = ET.parse(os.path.join(self.skel, "skeleton_FPHb.xml")).getroot()
         self.bd = ET.parse(os.path.join(self.skel, "skeleton_BDHb.xml")).getroot()
         self.main = ET.parse(os.path.join(self.skel, "skeleton.xml")).getroot()
-        self.used_uids = set(lvheap.all_uids(self.fp)) | set(lvheap.all_uids(self.bd))
         # empty the skeleton's own two controls
         root = self.fp.find("root")
         self.ddo_list = root.find("ddoList")
@@ -266,18 +284,15 @@ class Composer:
         for lst in (self.ddo_list, self.pane_z, self.cons):
             for c in list(lst):
                 lst.remove(c)
-        diag = self.bd.find("root")
-        self.diag_z = diag.find("zPlaneList")
-        self.node_list = diag.find("nodeList")
-        self.srn = self.node_list.find("SL__arrayElement[@class='sRN']")
-        self.srn_terms = self.srn.find("termList")
-        self.signals = diag.find("signalList")
-        for lst in (self.diag_z, self.srn_terms, self.signals):
+        self.root = Diagram(self.bd.find("root"))
+        for lst in (self.root.z, self.root.srn_terms, self.root.signals):
             for c in list(lst):
                 lst.remove(c)
+        self.diagrams = {"root": self.root}     # AIXML uid of a structure -> its Diagram
         self.used_uids = set(lvheap.all_uids(self.fp)) | set(lvheap.all_uids(self.bd))
-        self.terminal_uid = {}       # (aixml uid, terminal name) -> heap term uid
+        self.ends = {}               # (aixml uid, terminal) -> (heap term uid, Diagram)
         self.net_type = {}           # net -> inlined type tree (unlabelled)
+        self.loops = []              # (loop heap element, its inner Diagram, parent Diagram)
         self.report = []
 
     # ---- uids and types ------------------------------------------------------------------
@@ -313,6 +328,13 @@ class Composer:
             self.used_uids.discard(int(old))
         return heap, types, source
 
+    def diag_of(self, el):
+        d = self.diagrams.get(el.get("uid_parent") or "root")
+        if d is None:
+            raise Unsupported("%s %s sits in %s, which is not a composable diagram"
+                              % (el.tag, el.get("uid"), el.get("uid_parent")))
+        return d
+
     # ---- elements ------------------------------------------------------------------------
     def add_fp(self, el, row):
         name = unescape(el.get("_name"))
@@ -321,6 +343,7 @@ class Composer:
         t, ddo_class = SCALARS.get(aixml_type, (None, None))
         if t is None:
             raise Unsupported("%s %r has type %r" % (el.tag, name, aixml_type))
+        diag = self.diag_of(el)
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
         key, flipped = self.pick("fpdco/%s/" % ddo_class, want, other, t)
         if key is None:
@@ -359,13 +382,14 @@ class Composer:
                 c.set("index", con)
             ET.SubElement(c, "ConnectionDCO", {"uid": fpdco.get("uid")})
             self.pane_terms.append((int(con), tree, is_ind, el.get("connection") or "required"))
-        # diagram terminal
+        # the diagram terminal goes where the AIXML puts the control: a control read INSIDE a
+        # loop has its terminal in the loop's diagram, and so does its wire
         term, _, _ = self.instantiate("fpterm/%s" % want)
         term.find("dco").set("uid", fpdco.get("uid"))
-        self.diag_z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
-        self.srn_terms.append(term)
-        self.terminal_uid[(el.get("uid"), "value")] = term.get("uid")
-        self.placed.append((term, el))
+        diag.z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.srn_terms.append(term)
+        self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
+        diag.placed.append((term, el))
         if not is_ind:
             for _, net in pairs(el.get("outputs")):
                 if net:
@@ -377,6 +401,7 @@ class Composer:
         t, ddo_class = SCALARS.get(aixml_type, (None, None))
         if t is None:
             raise Unsupported("Constant %r has type %r" % (el.get("_name"), aixml_type))
+        diag = self.diag_of(el)
         key, _ = self.pick("const/%s/" % ddo_class, None, None, t)
         if key is None:
             raise Unsupported("no constant part for %s" % t)
@@ -392,10 +417,10 @@ class Composer:
         tree = type_tree(aixml_type, label=name or None)
         lvheap.set_typeids(term, [self.heap_tid(tree) for _ in lvheap.typeid_elements(term)])
         dco.find("ConstValue").text = const_value(tree, el.get("value"))
-        self.diag_z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
-        self.srn_terms.append(term)
-        self.terminal_uid[(el.get("uid"), "value")] = term.get("uid")
-        self.placed.append((ddo, el))
+        diag.z.append(ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.srn_terms.append(term)
+        self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
+        diag.placed.append((ddo, el))
         for _, net in pairs(el.get("outputs")):
             if net:
                 self.net_type[net] = type_tree(aixml_type)
@@ -406,6 +431,7 @@ class Composer:
         rid = self.prim_by_name.get(name)
         if rid is None:
             raise Unsupported("Node %r is not a primitive this prototype knows" % name)
+        diag = self.diag_of(el)
         got = self.instantiate("prim/%s" % rid, own_uid=el.get("uid"))
         if got is None:
             raise Unsupported("Node %r (primResID %s) has no harvested part" % (name, rid))
@@ -429,9 +455,6 @@ class Composer:
             if tname not in by_name:
                 raise Unsupported("Node %r has no terminal %r (known: %s)"
                                   % (name, tname, ", ".join(sorted(by_name))))
-        # the type each term will carry: wired input -> the net's type; output -> the donor's,
-        # unless the donor output had the same type as a donor input (polymorphic arithmetic),
-        # in which case it follows what is wired to that input.
         # One typeDesc per term, in term order - checked rather than assumed, because the
         # whole type assignment below is indexed by it.
         tel = lvheap.typeid_elements(prim)
@@ -452,12 +475,10 @@ class Composer:
                 wired_in[i] = net
         # A polymorphic primitive ADAPTS: every terminal sharing a donor type (Add's x, y and
         # x+y) takes the coerced type of what is wired into that group - int32 + double makes
-        # all three double, and the int32 wire is coerced at its terminal. Typing only the
-        # output that way, and leaving x at int32, was measured BROKEN.
-        # MEASURED on NI's Continuous Decimating.vi (Multiply, int32 into y): a coerced input
-        # keeps the WIRED type on its terminal, and the terminal carries objFlags bit 0x40000
-        # - the coercion dot - with dsw 1024; the adapted type sits on the other members.
-        # Typing the coerced terminal with the adapted type instead was measured BROKEN.
+        # all three double. MEASURED on NI's Continuous Decimating.vi (Multiply, int32 into y):
+        # a coerced input keeps the WIRED type on its terminal, and the terminal carries
+        # objFlags bit 0x40000 - the coercion dot - with dsw 1024; the adapted type sits on
+        # the other members. Typing the coerced terminal with the adapted type was BROKEN.
         joined = list(new_types)
         for i in range(len(terms)):
             group = [j for j in range(len(terms)) if canon[j] == canon[i]]
@@ -484,11 +505,111 @@ class Composer:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
         lvheap.set_typeids(prim, [self.heap_tid(new_types[i]) for i in range(len(terms))])
         for tname, t in by_name.items():
-            self.terminal_uid[(el.get("uid"), tname)] = t.get("uid")
-        self.node_list.append(prim)
-        self.diag_z.append(ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
-        self.placed.append((prim, el))
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+        diag.nodes.append(prim)
+        diag.z.append(ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
+        diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    # ---- structures ----------------------------------------------------------------------
+    def add_loop(self, el):
+        """A While Loop: the harvested shell keeps its counter `i` (lCnt) and its stop
+        terminal (lTst); every tunnel, shift register and inner node of the DONOR is removed,
+        one plain input and one plain output tunnel are kept as templates.
+
+        Measured on NI's BUIP_Get_ProjItemRef_From_Path.vi: a tunnel is ONE lpTun DCO whose
+        termList names [inner terminal, outer terminal]; the outer terminal sits in the loop's
+        own termList, the inner one in the inner diagram's sRN with a bare <dco uid=lpTun/>.
+        A plain input tunnel's DCO has objFlags 2048, a plain output's 2049 (bit 0 = output);
+        an INDEXING tunnel adds TunnelType 01 and an innerLpTunDCO and is not composed yet."""
+        kind = {"While Loop": "whileLoop"}.get(el.get("_name"))
+        if kind is None:
+            raise Unsupported("structure %r is not composable yet" % el.get("_name"))
+        parent = self.diag_of(el)
+        loop, donor_types, src = self.instantiate("struct/%s" % kind, own_uid=el.get("uid"))
+        for i, e in enumerate(lvheap.typeid_elements(loop)):
+            e.set("_t", str(i))     # so pruning below cannot misalign donor types
+        inner = Diagram(loop.find("diagramList/SL__arrayElement[@class='diag']"), owner=el)
+        lcnt, ltst = loop.find("loopIndexDCO"), loop.find("loopTestDCO")
+        keep = {lcnt.find("termList")[0].get("uid"), ltst.find("termList")[0].get("uid")}
+        inner_by_dco = {t.find("dco").get("uid"): t for t in inner.srn_terms
+                        if t.find("dco") is not None}
+        self.tunnel_tpl = getattr(self, "tunnel_tpl", {})
+        for ot in loop.find("termList"):
+            dco = ot.find("dco")
+            if dco.get("class") != "lpTun" or dco.find("innerLpTunDCO") is not None \
+                    or dco.find("TunnelType") is not None:
+                continue
+            d = "out" if int(dco.findtext("objFlags") or 0) & 1 else "in"
+            it = inner_by_dco.get(dco.get("uid"))
+            if d not in self.tunnel_tpl and it is not None:
+                self.tunnel_tpl[d] = (copy.deepcopy(ot), copy.deepcopy(it))
+        for lst in (loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList"),
+                    inner.signals):
+            for c in list(lst):
+                lst.remove(c)
+        for c in list(inner.srn_terms):
+            if c.get("uid") not in keep:
+                inner.srn_terms.remove(c)
+        for c in list(inner.nodes):
+            if c.get("class") != "sRN":
+                inner.nodes.remove(c)
+        for c in list(inner.z):
+            if c.get("uid") not in keep:
+                inner.z.remove(c)
+        # the counter and the stop terminal keep their donor types (int32, boolean)
+        for e in lvheap.typeid_elements(loop):
+            tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
+            e.text = "TypeID(%d)" % self.heap_tid(tree)
+            del e.attrib["_t"]
+        parent.nodes.append(loop)
+        parent.z.append(ET.Element("SL__arrayElement", {"uid": loop.get("uid")}))
+        parent.placed.append((loop, el))
+        self.diagrams[el.get("uid")] = inner
+        self.loops.append((loop, inner, parent))
+        self.ends[(el.get("uid"), "count")] = (lcnt.find("termList")[0].get("uid"), inner)
+        self.ends[(el.get("uid"), "stop")] = (ltst.find("termList")[0].get("uid"), inner)
+        count = el.get("count") or ""
+        if count:
+            self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
+        self.report.append("Structure %r <- %s" % (el.get("_name"), src))
+
+    def add_tunnel(self, el, loop_el):
+        d = "in" if el.get("_id", "").startswith("In") else "out"
+        if el.get("mode"):
+            raise Unsupported("Tunnel %s: mode=%r (indexing) is not composable yet" % (el.get("uid"), el.get("mode")))
+        tpl = getattr(self, "tunnel_tpl", {}).get(d)
+        if tpl is None:
+            raise Unsupported("no %s-tunnel template harvested" % d)
+        loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
+        wrap = ET.Element("wrap")
+        wrap.append(copy.deepcopy(tpl[0]))
+        wrap.append(copy.deepcopy(tpl[1]))
+        lvheap.renumber(wrap, self.alloc)
+        outer, innert = list(wrap)
+        dco = outer.find("dco")
+        src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
+        tree = self.net_type.get(src_net)
+        if tree is None:
+            raise Unsupported("Tunnel %s: the type of %r is not known" % (el.get("uid"), src_net))
+        lvheap.set_typeids(outer, [self.heap_tid(tree) for _ in lvheap.typeid_elements(outer)])
+        for e in wrap.iter():
+            e.attrib.pop("_t", None)   # the shell's bookkeeping travelled with the template
+        for _, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = tree
+        n = len(loop.find("tunnelList"))
+        tb = dco.find("termBounds")
+        if tb is not None:
+            t, l, b, r = lvheap.parse_bounds(tb.text)
+            tb.text = lvheap.fmt_bounds((20 + 16 * n, l, 20 + 16 * n + (b - t), r))
+        loop.find("termList").append(outer)
+        ET.SubElement(loop.find("tunnelList"), "SL__arrayElement", {"uid": dco.get("uid")})
+        inner.srn_terms.append(innert)
+        outer_end, inner_end = (outer.get("uid"), parent), (innert.get("uid"), inner)
+        self.ends[(el.get("uid"), "in")] = outer_end if d == "in" else inner_end
+        self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
+        self.report.append("Tunnel %s (%s)" % (el.get("_id"), d))
 
     def pick(self, prefix, want, other, t):
         """The best part for a control/constant of type t: (key, flipped).
@@ -533,25 +654,44 @@ class Composer:
                 return
 
     # ---- wiring, layout, pane -------------------------------------------------------------
+    def endpoints(self, el):
+        """(sources, sinks) of one AIXML element, as [(net, endpoint key)]."""
+        uid = el.get("uid")
+        if el.tag in ("Control", "Indicator", "Constant"):
+            return ([(n, (uid, "value")) for _, n in pairs(el.get("outputs")) if n],
+                    [(n, (uid, "value")) for _, n in pairs(el.get("inputs")) if n])
+        if el.tag == "Node":
+            return ([(n, (uid, t)) for t, n in pairs(el.get("outputs")) if n],
+                    [(n, (uid, t)) for t, n in pairs(el.get("inputs")) if n])
+        if el.tag == "Tunnel":
+            return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
+                    [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
+        if el.tag == "Condition":
+            return [], [(n, (el.get("_loop"), "stop")) for _, n in pairs(el.get("inputs")) if n]
+        if el.tag == "Structure":
+            return ([(el.get("count"), (uid, "count"))] if el.get("count") else []), []
+        return [], []
+
     def wire(self, elements):
         nets = {}
         for el in elements:
-            for tname, net in pairs(el.get("outputs")):
-                if net:
-                    nets.setdefault(net, {"src": None, "sinks": []})["src"] = (el, tname)
-            for tname, net in pairs(el.get("inputs")):
-                if net:
-                    nets.setdefault(net, {"src": None, "sinks": []})["sinks"].append((el, tname))
+            srcs, sinks = self.endpoints(el)
+            for net, key in srcs:
+                nets.setdefault(net, {"src": None, "sinks": []})["src"] = (el, key)
+            for net, key in sinks:
+                nets.setdefault(net, {"src": None, "sinks": []})["sinks"].append((el, key))
         for net, ends in nets.items():
             if ends["src"] is None:
                 raise Unsupported("net %r has no source" % net)
             if not ends["sinks"]:
                 continue
-            uids = []
-            for el, tname in [ends["src"]] + ends["sinks"]:
-                key = (el.get("uid"), "value" if el.tag in ("Control", "Indicator", "Constant") else tname)
-                uids.append(self.terminal_uid[key])
-            sig = ET.SubElement(self.signals, "SL__arrayElement", {"class": "signal", "uid": str(self.alloc())})
+            resolved = [self.ends[key] for _, key in [ends["src"]] + ends["sinks"]]
+            diags = {id(d) for _, d in resolved}
+            if len(diags) != 1:
+                raise Unsupported("net %r crosses a diagram boundary without a tunnel" % net)
+            diag = resolved[0][1]
+            uids = [u for u, _ in resolved]
+            sig = ET.SubElement(diag.signals, "SL__arrayElement", {"class": "signal", "uid": str(self.alloc())})
             tl = ET.SubElement(sig, "termList", {"elements": str(len(uids))})
             for u in uids:
                 ET.SubElement(tl, "SL__arrayElement", {"uid": u})
@@ -568,12 +708,15 @@ class Composer:
             ET.SubElement(sig, "lastSignalKind").text = str(0x100 | code) if code else "266"
         return nets
 
-    def layout(self, elements, nets):
-        level = {}
+    def layout(self, nets):
+        """Left to right by dependency depth, inner diagrams first so a loop can be sized
+        around what it holds. Geometry is not load-bearing (FINDINGS 3.7) - this is for
+        whoever opens the VI."""
         src_of = {}
         for net, ends in nets.items():
             for sink, _ in ends["sinks"]:
                 src_of.setdefault(sink.get("uid"), []).append(ends["src"][0].get("uid"))
+        level = {}
 
         def lv(uid, stack=()):
             if uid in level:
@@ -582,14 +725,40 @@ class Composer:
                 return 0
             level[uid] = 1 + max([lv(s, stack + (uid,)) for s in src_of.get(uid, [])] or [-1])
             return level[uid]
-        for el in elements:
-            lv(el.get("uid"))
-        rows = {}
-        for obj, el in self.placed:
-            L = level.get(el.get("uid"), 0)
-            r = rows.get(L, 0)
-            rows[L] = r + 1
-            lvheap.move_to(obj, 40 + 70 * r, 40 + 160 * L)
+        sizes = {}
+        for loop, inner, parent in reversed(self.loops):
+            w, h = self._place(inner, lv, sizes, 30, 40)
+            sizes[loop.get("uid")] = (max(h + 40, 120), max(w + 40, 200))
+        self._place(self.root, lv, sizes, 40, 40)
+        for loop, inner, parent in self.loops:
+            t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
+            cr = loop.find("contRect")
+            if cr is not None:
+                cr.text = lvheap.fmt_bounds((t + 6, l + 6, b - 6, r - 6))
+            sb = inner.srn.find("bounds")
+            if sb is not None:
+                sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            for c in loop.find("termList"):
+                tb = c.find("dco/termBounds")
+                if tb is not None and int(c.find("dco").findtext("objFlags") or 0) & 1:
+                    tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
+                    tb.text = lvheap.fmt_bounds((tt, (r - l) - (tr - tl), tbb, r - l))
+
+    def _place(self, diag, lv, sizes, top0, left0):
+        rows, right, bottom = {}, 0, 0
+        for obj, el in diag.placed:
+            L = lv(el.get("uid"))
+            y = top0 + rows.get(L, 0)
+            x = left0 + 160 * L
+            if el.tag == "Structure":
+                h, w = sizes.get(obj.get("uid"), (120, 200))
+                obj.find("bounds").text = lvheap.fmt_bounds((y, x, y + h, x + w))
+            else:
+                lvheap.move_to(obj, y, x)
+                h, w = lvheap.size_of(obj)
+            rows[L] = rows.get(L, 0) + max(h, 32) + 30
+            right, bottom = max(right, x + w), max(bottom, y + h)
+        return right, bottom
 
     def connector_pane(self):
         code, slots = self.pane_codes.get(self.con_id, (0x108, 16))
@@ -608,36 +777,62 @@ class Composer:
             self.types.toplevel[idx] = self.types.add_flat(f)
 
     # ---- the whole thing -----------------------------------------------------------------
+    def flatten(self, parent_el):
+        """Every element below parent_el, structures' children included. A Condition is
+        tagged with its loop's uid; a Left/Right inside a ShiftReg is refused for now."""
+        out = []
+        for el in parent_el:
+            if not isinstance(el.tag, str):
+                continue
+            if el.tag == "Structure":
+                out.append(el)
+                for c in self.flatten(el):
+                    if c.tag == "Condition":
+                        c.set("_loop", el.get("uid"))
+                    out.append(c)
+            elif el.tag == "ShiftReg":
+                raise Unsupported("ShiftReg is not composable yet")
+            else:
+                out.append(el)
+        return out
+
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
-        self.placed, self.pane_terms = [], []
+        self.pane_terms = []
         elements = []
-        for el in vi:
-            if el.tag in ("Control", "Indicator", "Constant", "Node"):
+        for el in self.flatten(vi):
+            if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition"):
                 elements.append(el)
             elif el.tag in ("FreeLabel",):
                 self.report.append("skipped %s (comments are not composed yet)" % el.tag)
             else:
                 raise Unsupported("element <%s> is not composable yet" % el.tag)
+        by_uid = {e.get("uid"): e for e in elements}
+        # structures first, outermost first, so every diagram exists before anything lands in it
+        for el in [e for e in elements if e.tag == "Structure"]:
+            self.add_loop(el)
         row = {"Control": 0, "Indicator": 0}
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
             self.add_fp(el, row[el.tag])
             row[el.tag] += 1
         for el in [e for e in elements if e.tag == "Constant"]:
             self.add_const(el)
-        # nodes in dependency order, so a node's input types are known when it is placed
-        pending = [e for e in elements if e.tag == "Node"]
+        # nodes and tunnels in dependency order, so every input type is known when it is placed
+        pending = [e for e in elements if e.tag in ("Node", "Tunnel")]
         while pending:
             ready = [e for e in pending if all(net in self.net_type or net is None
                                                for _, net in pairs(e.get("inputs")))]
             if not ready:
                 ready = pending[:1]
             for e in ready:
-                self.add_node(e)
+                if e.tag == "Node":
+                    self.add_node(e)
+                else:
+                    self.add_tunnel(e, by_uid[e.get("uid_parent")])
                 pending.remove(e)
         nets = self.wire(elements)
-        self.layout(elements, nets)
+        self.layout(nets)
         self.connector_pane()
         self.description = vi.get("description") or ""
 
@@ -650,9 +845,13 @@ class Composer:
         # count: the connector pane's `cons` is a sparse array whose `elements` is the SLOT count
         # (16 on 4833) with one child per wired slot, each carrying its own `index`. Recounting
         # it to its children gave LabVIEW "Con pane not pre-sized correctly" and a broken VI.
-        for lst in (self.ddo_list, self.pane_z, self.diag_z, self.srn_terms, self.node_list,
-                    self.signals):
-            lst.set("elements", str(len(lst)))
+        grown = [self.ddo_list, self.pane_z]
+        for d in self.diagrams.values():
+            grown += list(d.lists())
+        for loop, _, _ in self.loops:
+            grown += [loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList")]
+        for lst in grown:
+            lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))
         ET.ElementTree(self.fp).write(os.path.join(out_dir, base + "_FPHb.xml"),
                                       encoding="utf-8", xml_declaration=True)

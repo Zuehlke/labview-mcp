@@ -119,6 +119,10 @@ class Harvester:
                 if wt and (n not in self.wiretables or len(wt) < len(self.wiretables[n])):
                     self.wiretables[n] = wt
                     self.wt_new += 1
+            elif cls in ("whileLoop", "forLoop"):
+                # a whole loop with its tunnels, shift registers and inner diagram; the
+                # composer keeps the shell and one template of each terminal kind
+                self.save("struct", "struct/%s" % cls, source, e, resolve_types(b, e))
             elif cls == "prim":
                 rid = e.findtext("primResID")
                 if rid is None:

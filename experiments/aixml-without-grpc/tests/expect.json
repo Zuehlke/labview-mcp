@@ -159,5 +159,31 @@
     }
    }
   ]
+ },
+ "t20_while_count": {
+  "cases": [
+   {
+    "inputs": "limit=5",
+    "outputs": {
+     "last i": 5
+    }
+   },
+   {
+    "inputs": "limit=0",
+    "outputs": {
+     "last i": 0
+    }
+   }
+  ]
+ },
+ "t21_while_add": {
+  "cases": [
+   {
+    "inputs": "a=1.25;b=2",
+    "outputs": {
+     "sum": 3.25
+    }
+   }
+  ]
  }
 }
