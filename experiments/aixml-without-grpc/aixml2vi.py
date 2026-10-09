@@ -58,6 +58,7 @@ SCALARS = {
 }
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
+DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum"})
 # LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
 # 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
 TYPE_CODE = {"NumInt8": 0x01, "NumInt16": 0x02, "NumInt32": 0x03, "NumInt64": 0x04,
@@ -71,6 +72,26 @@ INT_FMT = {"NumInt8": ">b", "NumInt16": ">h", "NumInt32": ">i", "NumInt64": ">q"
 
 class Unsupported(Exception):
     pass
+
+
+_CALLEES = {}
+
+
+def _extract_callee(path):
+    """A callee's bundle, extracted once per process - a coverage run meets the same vi.lib VIs
+    hundreds of times. A callee pylabview cannot read in 30 s (several Wovalab VIs hang it) is
+    refused, and remembered as refused."""
+    key = os.path.normcase(os.path.abspath(path))
+    got = _CALLEES.get(key)
+    if got is None:
+        try:
+            got = lvheap.extract(path, tempfile.mkdtemp(prefix="callee_"), timeout=30)
+        except RuntimeError as ex:
+            got = ex
+        _CALLEES[key] = got
+    if isinstance(got, Exception):
+        raise Unsupported("callee %s cannot be read: %s" % (os.path.basename(path), str(got).splitlines()[0][:120]))
+    return got
 
 
 def split_top(s, sep=","):
@@ -140,6 +161,8 @@ def type_tree(aixml_type, label=None):
         el = ET.Element("TypeDesc", {"Type": ENUM_BASE[m.group(1)], "Prop1": "0", "Format": "inline"})
         for item in split_top(m.group(3)):
             ET.SubElement(el, "EnumLabel").text = unescape(item)
+    elif m and m.group(1) == "ref" and m.group(2) is None:
+        el = refnum_type(m.group(3))
     elif aixml_type in SCALARS:
         t, _ = SCALARS[aixml_type]
         if t.startswith("MeasureData."):
@@ -154,6 +177,40 @@ def type_tree(aixml_type, label=None):
     if label:
         el.set("Label", label)
     return el
+
+
+_REF_CLASSES = None
+
+
+def refnum_type(inner):
+    """ref{LV.<Class>} -> Refnum RefType=LVObjCtl with the class's ID in CtlFlags, read off one
+    AIXML-generated control per class (parts/refnum-classes.tsv); ref{Visa.Instr} -> the VISA
+    refnum with its Void variant, as the same probe wrote it. A control refnum (ref{LV.Boolean},
+    ...) carries an object of the control's class that fixes its data type - not composed yet."""
+    global _REF_CLASSES
+    if _REF_CLASSES is None:
+        _REF_CLASSES = {}
+        with open(os.path.join(HERE, "parts", "refnum-classes.tsv"), encoding="utf-8") as f:
+            for line in f:
+                row = line.rstrip("\r\n").split("\t")
+                if line.startswith("#") or row[0] == "class" or not line.strip():
+                    continue
+                cls, flags, nested = (row + [""])[:3]
+                _REF_CLASSES[cls] = (flags, nested)
+    inner = inner.strip()
+    if inner == "Visa.Instr":
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "VisaRef", "Ident": "Instr",
+                                     "FirstClient": "0", "Format": "inline"})
+        v = ET.SubElement(el, "LVVariant", {"Index": "0", "HasVarItem2": "1", "VarType2": "0", "Version": "auto"})
+        ET.SubElement(v, "DataType", {"Index": "0", "Type": "Void", "Format": "inline"})
+        return el
+    row = _REF_CLASSES.get(inner)
+    if row is None:
+        raise Unsupported("type 'ref{%s}' is not composable yet" % inner)
+    if row[1]:
+        raise Unsupported("type 'ref{%s}' is a control refnum (it carries a %s), not composable yet" % (inner, row[1]))
+    return ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": row[0],
+                                   "HasItem": "0", "Format": "inline"})
 
 
 def is_compound(tree):
@@ -190,6 +247,9 @@ def signal_kind(tree):
         return 0x350
     if t == "String":
         return 0x230
+    if t == "Refnum":
+        # measured on an AIXML-generated probe: 0x170 on VI Server refnum wires, 0x237 on VISA
+        return 0x237 if tree.get("RefType") == "VisaRef" else 0x170
     if t in ENUM_BASE.values():
         t = "Num" + t[4:]
     code = TYPE_CODE.get(t)
@@ -463,6 +523,12 @@ def _const_value(tree, value):
                 cb = c.encode("mac_roman")
                 body += struct.pack(">B", len(cb)) + cb
         return (b"PTH0" + struct.pack(">I", len(body)) + body).hex().upper()
+    if t == "Refnum":
+        # a refnum constant is the null refnum - 4 zero bytes (an AIXML-generated probe wrote
+        # 0000000000: those plus the default marker); there is no literal for a live one
+        if (value or "").strip():
+            raise Unsupported("a refnum constant has no literal value (%r)" % value)
+        return "00000000"
     raise Unsupported("no constant encoding for %s" % t)
 
 
@@ -1130,6 +1196,45 @@ class Composer:
                 dsw.text = "1024"
             elif i not in wired_in:
                 new_types[i] = joined[i]
+        # An OUTPUT of another donor type follows the input's ARRAY SHAPE: Not A Number/Path/
+        # Refnum? cut from a matrix example answers an array of booleans, and with a scalar wired
+        # in LabVIEW answers one boolean. The output keeps its element type and loses (or gains)
+        # as many array levels as the wired input differs from the donor's.
+        def depth(x):
+            n = 0
+            while x is not None and x.get("Type") in ("Array", "TypeDef"):
+                if x.get("Type") == "Array":
+                    n += len(x.findall("Dimension"))
+                kids = fields(x)
+                x = kids[0] if kids else None
+            return n
+
+        def reshape(x, k):
+            if k < 0:
+                left = -k
+                while left > 0:
+                    if x.get("Type") != "Array" or len(x.findall("Dimension")) > left:
+                        return None
+                    left -= len(x.findall("Dimension"))
+                    x = copy.deepcopy(elem_of(x))
+                x.attrib.pop("Label", None)
+                return x
+            a = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+            for _ in range(k):
+                ET.SubElement(a, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+            a.append(copy.deepcopy(x))
+            return a
+        deltas = {depth(new_types[i]) - depth(donor[i]) for i in wired_in}
+        if len(deltas) == 1 and 0 not in deltas:
+            k = deltas.pop()
+            donor_in_depth = {depth(donor[i]) for i in wired_in}
+            for j, t in enumerate(terms):
+                out = int(t.find("dco").findtext("objFlags") or 0) & 1
+                same_group = any(canon[j] == canon[i] for i in wired_in)
+                if out and not same_group and j not in wired_in and depth(donor[j]) in donor_in_depth:
+                    r = reshape(new_types[j], k)
+                    if r is not None:
+                        new_types[j] = r
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
@@ -1140,6 +1245,267 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    # ---- VI Server: property and invoke nodes ------------------------------------------------
+    def _vi_server_table(self):
+        t = getattr(self, "_vist", None)
+        if t is None:
+            path = os.path.join(self.parts.d, "vi-server-props.json")
+            t = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {"classes": {}, "props": {}, "methods": {}}
+            self._vist = t
+        return t
+
+    @staticmethod
+    def _vi_server_class(el):
+        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+)\}", (el.get("type") or "").strip())
+        if not m:
+            raise Unsupported("%s %s: class %r is not composable yet" % (el.get("_name"), el.get("uid"), el.get("type")))
+        return m.group(1)
+
+    def _property_row(self, cls, name):
+        """The table row for property `name` on class `cls` - harvested off NI's VIs and probes
+        (vi-server-props.json). A property INHERITED from a base class is found under any class
+        whose row says that base declared it."""
+        table = self._vi_server_table()["props"]
+        row = table.get(cls, {}).get(name)
+        if row is not None:
+            return row
+        for other in table.values():
+            r = other.get(name)
+            if r is not None and r.get("declaredBy") and r["declaredBy"] != cls and \
+                    r["declaredBy"] in self._ancestors_of(cls):
+                return r
+        return None
+
+    def _ancestors_of(self, cls):
+        """The VI Server classes `cls` inherits from, read off the refnum-to-class table's
+        companion list when present; GObject and Generic are every front-panel and diagram
+        object's bases (measured as the declaring class of Label.Text, Bounds ...)."""
+        base = {"LV.Generic", "LV.GObject"}
+        return base
+
+    def _hgrow_terms(self, node):
+        """The four fixed terminals of a property/invoke node by role: their DCO objFlags are
+        0x10000 reference, 0x40001 reference out, 0x20000 error in, 0x80001 error out."""
+        roles = {0x10000: "reference", 0x40001: "reference out", 0x20000: "error in (no error)", 0x80001: "error out"}
+        out = {}
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is not None and d.get("class") == "hGrowCItem":
+                r = roles.get(int(d.findtext("objFlags") or 0))
+                if r:
+                    out[r] = t
+        return out
+
+    def add_property_node(self, el):
+        """A Property Node on a VI Server class (type="{LV.VI}"), composed from one harvested
+        propNode: the four fixed terminals (reference, reference out, error in, error out) are
+        kept and retyped with the class's refnum, then one propItem terminal per field, 16 px
+        rows from y=18, each carrying a propItemInfo with the property's NAME, CODE, the data
+        type twice (typeDesc labelled with the short name, dataTypeDesc bare) and the declaring
+        class as VoidBlock{refnum} (omidTypeDesc) - measured on an AIXML-generated probe."""
+        self.check_attrs(el, ("fields", "type"))
+        cls = self._vi_server_class(el)
+        table = self._vi_server_table()
+        crow = table["classes"].get(cls)
+        if crow is None:
+            raise Unsupported("Property Node %s: no property node on %s harvested yet" % (el.get("uid"), cls))
+        fields_ = [unescape(f) for f in split_top(el.get("fields") or "") if f]
+        items = []
+        for f in fields_:
+            mode, _, name = f.partition("+")
+            if mode not in ("read", "write") or not name:
+                raise Unsupported("Property Node %s: field %r is not read+/write+" % (el.get("uid"), f))
+            row = self._property_row(cls, name)
+            if row is None:
+                raise Unsupported("Property Node %s: property %r of %s is not in the harvested table" % (el.get("uid"), name, cls))
+            items.append((mode, name, row))
+        diag = self.diag_of(el)
+        node, donor_types, src = self.instantiate("node/propNode", own_uid=el.get("uid"))
+        for i, e in enumerate(lvheap.typeid_elements(node)):
+            e.set("_t", str(i))
+        fixed = self._hgrow_terms(node)
+        tl = node.find("termList")
+        tpl = next((t for t in tl if t.find("dco") is not None and t.find("dco").get("class") == "propItem"), None)
+        if tpl is None or len(fixed) != 4:
+            raise Unsupported("Property Node %s: the harvested template is incomplete" % el.get("uid"))
+        tpl = copy.deepcopy(tpl)
+        for t in list(tl):
+            if t not in fixed.values():
+                tl.remove(t)
+        ref_tree = refnum_type(cls)
+        for role in ("reference", "reference out"):
+            # each fixed terminal its OWN labelled type, as LabVIEW writes them
+            lab = copy.deepcopy(ref_tree)
+            lab.set("Label", role)
+            fixed[role].find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(lab)
+            fixed[role].find("dco/typeDesc").attrib.pop("_t", None)
+        for role in ("error in (no error)", "error out"):
+            e = fixed[role].find("dco/typeDesc")
+            lab = copy.deepcopy(donor_types[int(e.get("_t"))])
+            lab.set("Label", role)
+            e.text = "TypeID(%d)" % self.heap_tid(lab)
+            del e.attrib["_t"]
+        for e in node.iter("typeDesc"):
+            if e.get("_t") is not None:
+                e.text = "TypeID(%d)" % self.heap_tid(plain(lvheap.strip_label(donor_types[int(e.get("_t"))])))
+                del e.attrib["_t"]
+        ins = dict(pairs(el.get("inputs")))
+        outs = dict(pairs(el.get("outputs")))
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        width = int(lvheap.parse_bounds(node.find("bounds").text)[3] - lvheap.parse_bounds(node.find("bounds").text)[1])
+        for k, (mode, name, row) in enumerate(items):
+            t = copy.deepcopy(tpl)
+            lvheap.renumber(t, self.alloc)
+            d = t.find("dco")
+            dt = ET.fromstring(row["type"])
+            lab = copy.deepcopy(dt)
+            if row.get("label"):
+                lab.set("Label", row["label"])
+            for e in t.iter():
+                e.attrib.pop("_t", None)
+            d.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(lab)
+            f = d.find("objFlags")
+            if mode == "read":
+                if f is None:
+                    f = ET.Element("objFlags")
+                    d.insert(0, f)
+                f.text = "1"
+            elif f is not None:
+                d.remove(f)
+            d.find("termBounds").text = lvheap.fmt_bounds((18 + 16 * k, 0, 34 + 16 * k, width))
+            info = d.find("propList/SL__arrayElement")
+            decl = refnum_type(row.get("declaredBy") or cls)
+            vb = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
+            vb.append(decl)
+            info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
+            info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(dt)
+            info.find("PropItemName").text = '"%s"' % name
+            pc = info.find("PropItemCode")
+            if row["code"]:
+                if pc is None:
+                    pc = ET.SubElement(info, "PropItemCode")
+                pc.text = str(row["code"])
+            elif pc is not None:
+                info.remove(pc)
+            tf = t.find("objFlags")
+            if mode == "write":
+                if tf is None:
+                    tf = ET.Element("objFlags")
+                    t.insert(0, tf)
+                tf.text = "32768"
+            elif tf is not None:
+                t.remove(tf)
+            tl.append(t)
+            ET.SubElement(dl, "SL__arrayElement", {"uid": d.get("uid")})
+            self.ends[(el.get("uid"), name)] = (t.get("uid"), diag)
+            if mode == "read" and outs.get(name):
+                self.net_type[outs[name]] = dt
+        tl.set("elements", str(len(tl)))
+        dl.set("elements", str(len(dl)))
+        for role, t in fixed.items():
+            self.ends[(el.get("uid"), role)] = (t.get("uid"), diag)
+            if role in ("reference", "error in (no error)"):
+                tf = t.find("objFlags")
+                wired = bool(ins.get(role))
+                if wired and tf is None:
+                    tf = ET.Element("objFlags")
+                    t.insert(0, tf)
+                if tf is not None:
+                    tf.text = str((int(tf.text or 0) | 0x8000) if wired else (int(tf.text or 0) & ~0x8000))
+                    if tf.text == "0":
+                        t.remove(tf)
+        if outs.get("reference out"):
+            self.net_type[outs["reference out"]] = ref_tree
+        if outs.get("error out"):
+            self.net_type[outs["error out"]] = type_tree("cluster{bool.status,int32.code,string.source}")
+        b = lvheap.parse_bounds(node.find("bounds").text)
+        node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(items) + 1, b[1] + width))
+        node.find("nodeName").text = '"%s"' % crow["nodeName"]
+        node.find("oMId").text = self._om_id(cls)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Property Node %s %s <- %s" % (cls, ", ".join(n for _, n, _ in items), src))
+
+    def add_invoke_node(self, el):
+        """An Invoke Node: a whole harvested node per class and method (invoke/<class>/<method>),
+        its parameter rows as LabVIEW laid them out. A row is two invokeItem terminals - the left
+        one an input, the right one an output (DCO objFlags bit 0), Void where the row has no
+        such side; the return value is the row named after the method. Terminals are named by
+        the label of their type."""
+        self.check_attrs(el, ("type", "target"))
+        cls = self._vi_server_class(el)
+        meth = unescape(el.get("target") or "")
+        import harvest_parts
+        got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(meth)), own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("Invoke Node %s: no invoke node %s.%s harvested yet" % (el.get("uid"), cls, meth))
+        node, donor_types, src = got
+        diag = self.diag_of(el)
+        tel = lvheap.typeid_elements(node)
+        if len(tel) != len(donor_types):
+            raise Unsupported("Invoke Node %s: part has %d typeDescs for %d types" % (el.get("uid"), len(tel), len(donor_types)))
+        names = {}
+        for e, tree in zip(tel, donor_types):
+            e.text = "TypeID(%d)" % self.heap_tid(tree)
+        ins = dict(pairs(el.get("inputs")))
+        outs = dict(pairs(el.get("outputs")))
+        for role, t in self._hgrow_terms(node).items():
+            names[role] = t
+        for t, tree in zip([x for x in node.find("termList")], [None] * len(node.find("termList"))):
+            d = t.find("dco")
+            if d is None or d.get("class") != "invokeItem":
+                continue
+            ty = self.parts_type_of(t, donor_types, tel)
+            if ty is None or ty.get("Type") == "Void":
+                continue
+            out = int(d.findtext("objFlags") or 0) & 1
+            names[(ty.get("Label") or "") + ("\x00out" if out else "\x00in")] = t
+        # (an Element with no children is FALSE in a boolean context - never `a or b` on them)
+        for tname, net in ins.items():
+            t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00in")
+            if t is None:
+                raise Unsupported("Invoke Node %s: %s.%s has no input %r" % (el.get("uid"), cls, meth, tname))
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+        for tname, net in outs.items():
+            t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00out")
+            if t is None:
+                raise Unsupported("Invoke Node %s: %s.%s has no output %r" % (el.get("uid"), cls, meth, tname))
+            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+            if net:
+                ty = self.parts_type_of(t, donor_types, tel)
+                self.net_type[net] = lvheap.strip_label(ty) if ty is not None else None
+        node.find("oMId").text = self._om_id(cls)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Invoke Node %s.%s <- %s" % (cls, meth, src))
+
+    def _om_id(self, cls):
+        """A property or invoke node's oMId is NOT a class number: it is the index, in THIS VI's
+        flat type list (VCTP), of the class's bare refnum type - measured: NI's probe wrote 0003
+        and 0004 where flat types 3 and 4 were the VI and Application refnums, and a composed
+        VI carrying those numbers over had LabVIEW resolve neither class (property shown as
+        {Generic} read+Property, oMId rewritten 000000 on save) and was broken."""
+        self._om_ids = getattr(self, "_om_ids", {})
+        if cls not in self._om_ids:
+            # the CONSOLIDATED (TopLevel) index, which NI's file kept equal to the flat one
+            cons = self.types.use(self.types.register(refnum_type(cls)))
+            if cons > 0x7FFF:
+                raise Unsupported("oMId %d is not encodable yet" % cons)
+            self._om_ids[cls] = "%04X" % cons
+        return self._om_ids[cls]
+
+    @staticmethod
+    def parts_type_of(term, donor_types, tel):
+        e = term.find("dco/typeDesc")
+        for x, tree in zip(tel, donor_types):
+            if x is e:
+                return tree
+        return None
 
     # ---- cluster and array nodes: classes of their own, not prims -------------------------
     AGG_NODES = {"Bundle": "node/mux", "Unbundle": "node/demux",
@@ -1821,7 +2187,7 @@ class Composer:
             raise Unsupported("Call %s: %s" % (el.get("uid"), res["error"]))
         path = res["path"]
         diag = self.diag_of(el)
-        callee = lvheap.Bundle(lvheap.extract(path, tempfile.mkdtemp(prefix="callee_")))
+        callee = lvheap.Bundle(_extract_callee(path))
         if callee.main.find("LVSR/Section/Execution").get("DynamicDispatch") == "1":
             # a dynamic-dispatch method is called through a different node, and its class
             # terminal needs a class wire this composer cannot author yet
@@ -3166,6 +3532,10 @@ class Composer:
                     self.add_local(e)
                 elif e.tag == "Node" and nm == "Feedback Node":
                     self.add_feedback(e)
+                elif e.tag == "Node" and nm == "Property Node":
+                    self.add_property_node(e)
+                elif e.tag == "Node" and nm == "Invoke Node":
+                    self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):
                     self.add_template_node(e)
                 elif e.tag == "Node":

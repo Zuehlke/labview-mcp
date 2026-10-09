@@ -597,3 +597,5 @@ primResID	node	parmIndex	terminal	seen	competing
 1114	Greater Or Equal To 0?	out	x &gt;= 0?	0	
 1117	Greater Than 0?	1	x	0	
 1117	Greater Than 0?	out	x &gt; 0?	0	
+8012	?	out	error out	1
+8012	?	9	timeout ms	1

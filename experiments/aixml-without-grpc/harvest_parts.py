@@ -165,11 +165,53 @@ def safe(key):
     return key.replace("/", "__").replace(".", "_")
 
 
+_REF_CLASS_BY_FLAGS = None
+
+
+def ref_class(tree):
+    """A VI Server refnum type -> its class name (LV.VI ...) from parts/refnum-classes.tsv, or
+    None for any other refnum."""
+    global _REF_CLASS_BY_FLAGS
+    if tree is None or tree.get("Type") != "Refnum" or tree.get("RefType") != "LVObjCtl":
+        return None
+    if _REF_CLASS_BY_FLAGS is None:
+        _REF_CLASS_BY_FLAGS = {}
+        tsv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "refnum-classes.tsv")
+        for line in open(tsv, encoding="utf-8"):
+            row = line.rstrip("\r\n").split("\t")
+            if line.startswith("#") or row[0] == "class" or len(row) < 2:
+                continue
+            _REF_CLASS_BY_FLAGS.setdefault(row[1].upper(), row[0])
+    return _REF_CLASS_BY_FLAGS.get((tree.get("CtlFlags") or "").upper())
+
+
+def meth_key(name):
+    """A method name as a part-file-safe key component: anything but letters, digits, space,
+    _ and - becomes %XX (method names carry dots, colons, brackets)."""
+    import re
+    return re.sub(r"[^A-Za-z0-9 _-]", lambda m: "%%%02X" % ord(m.group()), name)
+
+
+def fields_of(tree):
+    return [c for c in tree if c.tag == "TypeDesc"]
+
+
+def type_xml(tree):
+    return ET.tostring(lvheap.strip_label(tree), encoding="unicode")
+
+
 class Harvester:
-    def __init__(self, parts_dir, replace=False, clean=False):
+    def __init__(self, parts_dir, replace=False, clean=False, only_props=False):
         self.dir = parts_dir
         self.replace = replace
         self.clean = clean
+        # --props: a corpus sweep for property and invoke nodes only, so no other part an NI
+        # example happens to carry slips into the set the composer picks from
+        self.only_props = only_props
+        self.props_path = os.path.join(parts_dir, "vi-server-props.json")
+        self.props = json.load(open(self.props_path, encoding="utf-8")) if os.path.exists(self.props_path) \
+            else {"classes": {}, "props": {}, "methods": {}}
+        self.props_new = 0
         os.makedirs(parts_dir, exist_ok=True)
         self.found = []
         # Wire tables by number of ends. A signal's compressedWireTable is its routing, and
@@ -210,11 +252,66 @@ class Harvester:
                     self.save("arrelem", "arrelem/%s/%s" % (where, f.get("class")), source, f,
                               resolve_types(b, f))
 
+    def vi_server_node(self, b, node, source):
+        """A Property Node or an Invoke Node on a VI Server class. A property node is composed
+        item by item, so what is kept is a TABLE: per class its oMId and nodeName, per property
+        its PropItemCode (absent = 0), the short label its terminal type carries, the data type,
+        the class that declares it (omidTypeDesc) and whether it was seen read or written.
+        An invoke node's parameter rows are kept whole, as a part per class and method."""
+        terms = list(node.find("termList"))
+        ref = next((t for t in terms if t.find("dco") is not None and t.find("dco").get("class") == "hGrowCItem"
+                    and int(t.find("dco").findtext("objFlags") or 0) == 0x10000), None)
+        if ref is None:
+            return
+        rt = resolve_types(b, ref)
+        cname = ref_class(rt[0] if rt else None)
+        if cname is None:
+            return
+        if node.get("class") == "propNode":
+            # nodeName is the PROPERTY node's caption ("VI"); an invoke node on the same class
+            # carries another ("Instr"), so the class row is read off property nodes only
+            cl = self.props["classes"].setdefault(cname, {})
+            if not cl:
+                cl.update({"oMId": node.findtext("oMId"), "nodeName": (node.findtext("nodeName") or "").strip('"')})
+                self.props_new += 1
+            self.save("node", "node/propNode", source, node, resolve_types(b, node))
+            table = self.props["props"].setdefault(cname, {})
+            for t in terms:
+                dco = t.find("dco")
+                if dco is None or dco.get("class") != "propItem":
+                    continue
+                plist = dco.find("propList")
+                if plist is None or len(plist) != 1:
+                    continue        # a multi-level item - not tabled yet
+                info = plist[0]
+                name = (info.findtext("PropItemName") or "").strip('"')
+                dt = resolve_types(b, dco)[0]
+                m = lvheap.TYPEID_RE.fullmatch((info.findtext("omidTypeDesc") or "").strip())
+                omid = b.heap_type_tree(int(m.group(1))) if m else None
+                decl = ref_class(fields_of(omid)[0]) if omid is not None and fields_of(omid) else None
+                access = "r" if int(dco.findtext("objFlags") or 0) & 1 else "w"
+                row = table.get(name)
+                if row is None:
+                    table[name] = row = {"code": int(info.findtext("PropItemCode") or 0), "label": dt.get("Label") or "",
+                                         "type": type_xml(dt), "declaredBy": decl, "access": "", "source": source}
+                    self.props_new += 1
+                if access not in row["access"]:
+                    row["access"] = "".join(sorted(row["access"] + access))
+        else:
+            meth = (node.findtext("methName") or "").strip('"')
+            if not meth:
+                return
+            self.save("invoke", "invoke/%s/%s" % (cname, meth_key(meth)), source, node, resolve_types(b, node))
+            mt = self.props["methods"].setdefault(cname, {})
+            if meth not in mt:
+                mt[meth] = {"code": int(node.findtext("methCode") or 0), "source": source}
+                self.props_new += 1
+
     def harvest(self, main_xml, source):
         b = lvheap.Bundle(main_xml)
         self.bundle = b     # save() reads the donor's embedded images (DSIM) from it
         fpdco_ind = {}
-        if b.fp is not None:
+        if b.fp is not None and not self.only_props:
             for fpdco in b.fp.iter("SL__arrayElement"):
                 if fpdco.get("class") != "fPDCO":
                     continue
@@ -233,6 +330,11 @@ class Harvester:
             return
         for e in b.bd.iter("SL__arrayElement"):
             cls = e.get("class")
+            if cls in ("propNode", "invokeNode"):
+                self.vi_server_node(b, e, source)
+                continue
+            if self.only_props:
+                continue
             if cls == "fPTerm":
                 ind = fpdco_ind.get(e.find("dco").get("uid"))
                 if ind:
@@ -361,9 +463,12 @@ class Harvester:
 def main(argv):
     replace = "--replace" in argv
     clean = "--clean" in argv
-    args = [a for a in argv if a not in ("--replace", "--clean")]
+    only_props = "--props" in argv
+    args = [a for a in argv if a not in ("--replace", "--clean", "--props")]
     parts_dir, inputs = args[0], args[1:]
-    h = Harvester(parts_dir, replace, clean)
+    if len(inputs) == 1 and inputs[0].startswith("@"):
+        inputs = [l.strip() for l in open(inputs[0][1:], encoding="utf-8") if l.strip()]   # a list file
+    h = Harvester(parts_dir, replace, clean, only_props)
     tmp = tempfile.mkdtemp(prefix="harvest_")
     for i, src in enumerate(inputs):
         try:
@@ -374,6 +479,10 @@ def main(argv):
             print("SKIP %s: %s" % (src, ex), file=sys.stderr)
     json.dump(dict(sorted(h.wiretables.items(), key=lambda kv: int(kv[0]))),
               open(h.wt_path, "w"), indent=1)
+    if h.props_new:
+        json.dump(h.props, open(h.props_path, "w", encoding="utf-8", newline="\n"), indent=1, sort_keys=True,
+                  ensure_ascii=False)
+        print("vi-server-props.json: %d new entries" % h.props_new)
     for k in sorted(h.found):
         print(k)
     print("wire tables for %d end counts (%d improved)" % (len(h.wiretables), h.wt_new), file=sys.stderr)

@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Set Drawable" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\MATLAB Node\Cell Phone Towers\SubVIs\Add New Tower.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Voronoi grid ref" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Voronoi grid ref" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Set Drawable" /><TypeDesc Type="Void" Format="inline" Label="Set Drawable" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0080" HasItem="0" Format="inline" Label="Drawable" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0080" HasItem="0" Format="inline" Label="Drawable" /></types><heap><SL__arrayElement class="invokeNode" uid="354">
+        <objFlags>66176</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="356">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="357">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(104)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="359">
+            <dco class="hGrowCItem" uid="360">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(105)</typeDesc>
+              <termBounds>(0, 93, 9, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="362">
+            <objFlags>32769</objFlags>
+            <dco class="hGrowCItem" uid="363">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(106)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="365">
+            <dco class="hGrowCItem" uid="366">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(107)</typeDesc>
+              <termBounds>(9, 93, 18, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="368">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="369">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(108)</typeDesc>
+              <termBounds>(18, 0, 34, 53)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="372">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="373">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(109)</typeDesc>
+              <termBounds>(18, 53, 34, 106)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="376">
+            <objFlags>294913</objFlags>
+            <dco class="invokeItem" uid="377">
+              <typeDesc>TypeID(110)</typeDesc>
+              <dsw>2048</dsw>
+              <termBounds>(34, 0, 50, 53)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="380">
+            <dco class="invokeItem" uid="381">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(111)</typeDesc>
+              <termBounds>(34, 53, 50, 106)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(117, 558, 168, 664)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>262150</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="369" />
+          <SL__arrayElement uid="373" />
+          <SL__arrayElement uid="377" />
+          <SL__arrayElement uid="381" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="357" />
+          <SL__arrayElement uid="360" />
+          <SL__arrayElement uid="363" />
+          <SL__arrayElement uid="366" />
+          </permDCOList>
+        <nodeName>"SceneObject"</nodeName>
+        <oMId>000B</oMId>
+        <methName>"Set Drawable"</methName>
+        <methCode>763851825</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

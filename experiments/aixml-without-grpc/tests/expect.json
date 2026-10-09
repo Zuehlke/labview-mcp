@@ -809,5 +809,31 @@
     }
    }
   ]
+ },
+ "t90_refnums": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "app is null": "True",
+     "local is null": "False",
+     "close error": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t91_property_nodes": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "app dir": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026",
+     "app name": "LabVIEW.exe",
+     "name length": 28,
+     "index": 1,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

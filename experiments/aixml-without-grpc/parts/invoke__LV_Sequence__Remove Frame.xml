@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Sequence/Remove Frame" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Scripting\Structures\VI Scripting with Structures - Stacked Sequence Structure.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4017" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4017" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Remove Frame" /><TypeDesc Type="Void" Format="inline" Label="Remove Frame" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Frame Index" /><TypeDesc Type="Void" Format="inline" Label="Frame Index" /></types><heap><SL__arrayElement class="invokeNode" uid="777">
+        <objFlags>640</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="779">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="780">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(1)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="782">
+            <dco class="hGrowCItem" uid="783">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(2)</typeDesc>
+              <termBounds>(0, 73, 9, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="785">
+            <dco class="hGrowCItem" uid="786">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(3)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="788">
+            <dco class="hGrowCItem" uid="789">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(4)</typeDesc>
+              <termBounds>(9, 73, 18, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="791">
+            <dco class="invokeItem" uid="792">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(18, 0, 34, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="795">
+            <dco class="invokeItem" uid="796">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(18, 43, 34, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="799">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="800">
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(34, 0, 50, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="803">
+            <dco class="invokeItem" uid="804">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(34, 43, 50, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(807, 648, 858, 734)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>262148</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="792" />
+          <SL__arrayElement uid="796" />
+          <SL__arrayElement uid="800" />
+          <SL__arrayElement uid="804" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="780" />
+          <SL__arrayElement uid="783" />
+          <SL__arrayElement uid="786" />
+          <SL__arrayElement uid="789" />
+          </permDCOList>
+        <nodeName>"Seq"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Remove Frame"</methName>
+        <methCode>104215553</methCode>
+        <invokeFlags>1008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

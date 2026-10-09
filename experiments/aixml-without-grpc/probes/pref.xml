@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pref.vi" description="Probe: refnum controls, indicators and constants of several VI Server classes and VISA.">
+  <Control _name="Application in" outputs="value:4200.value" type="ref{LV.Application}" uid="4200" uid_parent="root" value=""/>
+  <Indicator _name="Application out" inputs="value:4200.value" type="ref{LV.Application}" uid="4205" uid_parent="root" value=""/>
+  <Control _name="VI in" outputs="value:4210.value" type="ref{LV.VI}" uid="4210" uid_parent="root" value=""/>
+  <Indicator _name="VI out" inputs="value:4210.value" type="ref{LV.VI}" uid="4215" uid_parent="root" value=""/>
+  <Control _name="Project in" outputs="value:4220.value" type="ref{LV.Project}" uid="4220" uid_parent="root" value=""/>
+  <Indicator _name="Project out" inputs="value:4220.value" type="ref{LV.Project}" uid="4225" uid_parent="root" value=""/>
+  <Control _name="Library in" outputs="value:4230.value" type="ref{LV.Library}" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="Library out" inputs="value:4230.value" type="ref{LV.Library}" uid="4235" uid_parent="root" value=""/>
+  <Control _name="Control in" outputs="value:4240.value" type="ref{LV.Control}" uid="4240" uid_parent="root" value=""/>
+  <Indicator _name="Control out" inputs="value:4240.value" type="ref{LV.Control}" uid="4245" uid_parent="root" value=""/>
+  <Control _name="ProjectItem in" outputs="value:4250.value" type="ref{LV.ProjectItem}" uid="4250" uid_parent="root" value=""/>
+  <Indicator _name="ProjectItem out" inputs="value:4250.value" type="ref{LV.ProjectItem}" uid="4255" uid_parent="root" value=""/>
+  <Control _name="Function in" outputs="value:4260.value" type="ref{LV.Function}" uid="4260" uid_parent="root" value=""/>
+  <Indicator _name="Function out" inputs="value:4260.value" type="ref{LV.Function}" uid="4265" uid_parent="root" value=""/>
+  <Control _name="GObject in" outputs="value:4270.value" type="ref{LV.GObject}" uid="4270" uid_parent="root" value=""/>
+  <Indicator _name="GObject out" inputs="value:4270.value" type="ref{LV.GObject}" uid="4275" uid_parent="root" value=""/>
+  <Control _name="Instr in" outputs="value:4280.value" type="ref{Visa.Instr}" uid="4280" uid_parent="root" value=""/>
+  <Indicator _name="Instr out" inputs="value:4280.value" type="ref{Visa.Instr}" uid="4285" uid_parent="root" value=""/>
+  <Control _name="Numeric in" outputs="value:4290.value" type="ref{LV.Numeric}" uid="4290" uid_parent="root" value=""/>
+  <Indicator _name="Numeric out" inputs="value:4290.value" type="ref{LV.Numeric}" uid="4295" uid_parent="root" value=""/>
+  <Constant _name="VI const" outputs="value:4300.value" type="ref{LV.VI}" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="VI from const" inputs="value:4300.value" type="ref{LV.VI}" uid="4305" uid_parent="root" value=""/>
+  <Constant _name="Application const" outputs="value:4310.value" type="ref{LV.Application}" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="Application from const" inputs="value:4310.value" type="ref{LV.Application}" uid="4315" uid_parent="root" value=""/>
+  <Constant _name="Instr const" outputs="value:4320.value" type="ref{Visa.Instr}" uid="4320" uid_parent="root" value=""/>
+  <Indicator _name="Instr from const" inputs="value:4320.value" type="ref{Visa.Instr}" uid="4325" uid_parent="root" value=""/>
+</VI>

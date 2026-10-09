@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Panel/Clear Selection" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Scripting\Selected Objects and the Clipboard\Clear Entire Selection Lists.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="Panel" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="Panel" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Clear Selection" /><TypeDesc Type="Void" Format="inline" Label="Clear Selection" /></types><heap><SL__arrayElement class="invokeNode" uid="2198">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="2204">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="2205">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2207">
+            <dco class="hGrowCItem" uid="2208">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(0, 75, 9, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2210">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="2211">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2213">
+            <dco class="hGrowCItem" uid="2214">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(9, 75, 18, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2216">
+            <dco class="invokeItem" uid="2217">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(18, 0, 34, 44)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2220">
+            <dco class="invokeItem" uid="2221">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(18, 44, 34, 88)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(61, 51, 96, 139)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="2217" />
+          <SL__arrayElement uid="2221" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="2205" />
+          <SL__arrayElement uid="2208" />
+          <SL__arrayElement uid="2211" />
+          <SL__arrayElement uid="2214" />
+          </permDCOList>
+        <nodeName>"Pnl"</nodeName>
+        <oMId>0006</oMId>
+        <methName>"Clear Selection"</methName>
+        <methCode>104104962</methCode>
+        <invokeFlags>201008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

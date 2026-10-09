@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="ppn.vi" description="Probe: property nodes reading and writing, on This VI and on an opened application reference, and an invoke node.">
+  <Node _name="Open Application Reference" outputs="application reference:4200.application reference,error out:4200.error out" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3ADirectory Path,read+Application\3AName" inputs="reference:4200.application reference,error in (no error):4200.error out" outputs="Application\3ADirectory Path:4210.Path,Application\3AName:4210.Name,reference out:4210.reference out,error out:4210.error out" type="{LV.Application}" uid="4210" uid_parent="root"/>
+  <Indicator _name="app dir" inputs="value:4210.Path" type="path" uid="4215" uid_parent="root" value=""/>
+  <Indicator _name="app name" inputs="value:4210.Name" type="string" uid="4216" uid_parent="root" value=""/>
+  <Node _name="Close Reference" inputs="reference:4210.reference out,error in (no error):4210.error out" outputs="error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Path,read+VI Name" inputs="error in (no error):4220.error out" outputs="VI Path:4230.VI Path,VI Name:4230.VI Name,reference out:4230.reference out,error out:4230.error out" type="{LV.VI}" uid="4230" uid_parent="root"/>
+  <Indicator _name="name" inputs="value:4230.VI Name" type="string" uid="4235" uid_parent="root" value=""/>
+  <Indicator _name="path" inputs="value:4230.VI Path" type="path" uid="4236" uid_parent="root" value=""/>
+  <Constant _name="title" outputs="value:4240.value" type="string" uid="4240" uid_parent="root" value="probe"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3ATitle" inputs="reference:4230.reference out,error in (no error):4230.error out,Front Panel Window\3ATitle:4240.value" outputs="reference out:4250.reference out,error out:4250.error out" type="{LV.VI}" uid="4250" uid_parent="root"/>
+  <Constant _name="which" outputs="value:4260.value" type="string" uid="4260" uid_parent="root" value="name"/>
+  <Node _name="Invoke Node" inputs="reference:4250.reference out,error in (no error):4250.error out,name:4260.value" outputs="reference out:,error out:4270.error out,GetControlIndexByName:4270.GetControlIndexByName" target="GetControlIndexByName" type="{LV.VI}" uid="4270" uid_parent="root"/>
+  <Indicator _name="index" inputs="value:4270.GetControlIndexByName" type="int32" uid="4275" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4270.error out" type="cluster{bool.status,int32.code,string.source}" uid="4280" uid_parent="root" value="[false,0,]"/>
+</VI>

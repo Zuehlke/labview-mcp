@@ -39,12 +39,12 @@ def run_pylabview(args, timeout=120):
     return p.returncode, out + err
 
 
-def extract(vi_path, out_dir):
+def extract(vi_path, out_dir, timeout=120):
     """VI -> bundle. Returns the main xml path."""
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.splitext(os.path.basename(vi_path))[0]
     main = os.path.join(out_dir, base + ".xml")
-    code, out = run_pylabview(["-x", "-i", vi_path, "-m", main])
+    code, out = run_pylabview(["-x", "-i", vi_path, "-m", main], timeout=timeout)
     if code != 0 or not os.path.exists(main):
         raise RuntimeError("extract failed for %s: %s" % (vi_path, out[-2000:]))
     return main
@@ -172,6 +172,10 @@ def type_key(tree):
         dims = len(tree.findall("Dimension"))
         elem = [c for c in tree if c.tag == "TypeDesc"]
         return "Array%s.%s" % (dims if dims > 1 else "", type_key(elem[0]) if elem else "?")
+    if t == "Refnum":
+        # a VI Server, VISA, user-event and class refnum are different objects behind one Type:
+        # the parts once filed as plain "Refnum" were four kinds under one key (2026-10-10)
+        return "Refnum." + (tree.get("RefType") or "?")
     return t
 
 

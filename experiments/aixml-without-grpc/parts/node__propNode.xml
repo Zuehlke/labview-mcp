@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/propNode" source="C:\temp\aixml-no-grpc\probes\ppn.bundle\ppn.xml" clean="1"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Front Panel.Title" /></types><heap><SL__arrayElement class="propNode" uid="4250">
+        <objFlags>33555072</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="4461">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4459">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4464">
+            <dco class="hGrowCItem" uid="4462">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(0, 39, 9, 52)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4467">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4465">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(28)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4470">
+            <dco class="hGrowCItem" uid="4468">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(9, 39, 18, 52)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4476">
+            <objFlags>32768</objFlags>
+            <dco class="propItem" uid="4472">
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(18, 0, 34, 52)</termBounds>
+              <privDataList elements="0" />
+              <propList elements="1">
+                <SL__arrayElement class="propItemInfo" uid="4477">
+                  <omidTypeDesc>TypeID(31)</omidTypeDesc>
+                  <dataTypeDesc>TypeID(32)</dataTypeDesc>
+                  <PropItemName>"Front Panel Window:Title"</PropItemName>
+                  <PropItemCode>553</PropItemCode>
+                  </SL__arrayElement>
+                </propList>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(201, 541, 236, 593)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4472" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4459" />
+          <SL__arrayElement uid="4462" />
+          <SL__arrayElement uid="4465" />
+          <SL__arrayElement uid="4468" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0003</oMId>
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,2684 @@
+{
+ "classes": {
+  "LV.Application": {
+   "nodeName": "App",
+   "oMId": "0004"
+  },
+  "LV.Array": {
+   "nodeName": "Array",
+   "oMId": "0009"
+  },
+  "LV.Boolean": {
+   "nodeName": "Bool",
+   "oMId": "000E"
+  },
+  "LV.CaseStructure": {
+   "nodeName": "CaseStructure",
+   "oMId": "000A"
+  },
+  "LV.Cluster": {
+   "nodeName": "Cluster",
+   "oMId": "0006"
+  },
+  "LV.ComboBox": {
+   "nodeName": "CmbBox",
+   "oMId": "0010"
+  },
+  "LV.ConnectorPane": {
+   "nodeName": "ConPane",
+   "oMId": "0004"
+  },
+  "LV.Constant": {
+   "nodeName": "Const",
+   "oMId": "000E"
+  },
+  "LV.Control": {
+   "nodeName": "Ctl",
+   "oMId": "0005"
+  },
+  "LV.ControlTerminal": {
+   "nodeName": "CtrlTerm",
+   "oMId": "0006"
+  },
+  "LV.Digital": {
+   "nodeName": "DigNum (strict)",
+   "oMId": "0009"
+  },
+  "LV.DisableStructure": {
+   "nodeName": "DisableStructure",
+   "oMId": "0003"
+  },
+  "LV.EventStructure": {
+   "nodeName": "EvntStruct",
+   "oMId": "0006"
+  },
+  "LV.FlatSequence": {
+   "nodeName": "FlatSeq",
+   "oMId": "0004"
+  },
+  "LV.FlatSequenceFrame": {
+   "nodeName": "FlatSeqFrame",
+   "oMId": "0003"
+  },
+  "LV.ForLoop": {
+   "nodeName": "FLoop",
+   "oMId": "0006"
+  },
+  "LV.Function": {
+   "nodeName": "Function",
+   "oMId": "0009"
+  },
+  "LV.GObject": {
+   "nodeName": "GObj",
+   "oMId": "0007"
+  },
+  "LV.GrowableFunction": {
+   "nodeName": "GrowFunc",
+   "oMId": "0007"
+  },
+  "LV.IntensityGraph": {
+   "nodeName": "IntensityGraph (strict)",
+   "oMId": "0003"
+  },
+  "LV.Knob": {
+   "nodeName": "Knob (strict)",
+   "oMId": "0009"
+  },
+  "LV.LVClassLibrary": {
+   "nodeName": "LVClassLibrary",
+   "oMId": "00D6"
+  },
+  "LV.LabVIEWClassConstant": {
+   "nodeName": "LVClassConstant",
+   "oMId": "0006"
+  },
+  "LV.LabVIEWClassControl": {
+   "nodeName": "LVClassControl",
+   "oMId": "0007"
+  },
+  "LV.LeftShiftRegister": {
+   "nodeName": "LShftReg",
+   "oMId": "000B"
+  },
+  "LV.Library": {
+   "nodeName": "Library",
+   "oMId": "000E"
+  },
+  "LV.ListBox": {
+   "nodeName": "LstBox (strict)",
+   "oMId": "0004"
+  },
+  "LV.MulticolumnListbox": {
+   "nodeName": "MCListbox",
+   "oMId": "000A"
+  },
+  "LV.Node": {
+   "nodeName": "Node",
+   "oMId": "0007"
+  },
+  "LV.Numeric": {
+   "nodeName": "Numeric",
+   "oMId": "0005"
+  },
+  "LV.OuterTerminal": {
+   "nodeName": "OuterTerminal",
+   "oMId": "0009"
+  },
+  "LV.Page": {
+   "nodeName": "Page",
+   "oMId": "0005"
+  },
+  "LV.Panel": {
+   "nodeName": "Pnl",
+   "oMId": "0005"
+  },
+  "LV.Path": {
+   "nodeName": "Path",
+   "oMId": "0022"
+  },
+  "LV.Picture": {
+   "nodeName": "Pict",
+   "oMId": "0004"
+  },
+  "LV.Project": {
+   "nodeName": "Project",
+   "oMId": "0007"
+  },
+  "LV.ProjectItem": {
+   "nodeName": "ProjectItem",
+   "oMId": "0005"
+  },
+  "LV.RadioButtonsControl": {
+   "nodeName": "RadioBtnsControl (strict)",
+   "oMId": "0024"
+  },
+  "LV.Ring": {
+   "nodeName": "Ring (strict)",
+   "oMId": "0005"
+  },
+  "LV.SceneSphere": {
+   "nodeName": "SceneSphere",
+   "oMId": "0011"
+  },
+  "LV.Sequence": {
+   "nodeName": "Seq",
+   "oMId": "0003"
+  },
+  "LV.Slide": {
+   "nodeName": "Slide (strict)",
+   "oMId": "0003"
+  },
+  "LV.String": {
+   "nodeName": "Str",
+   "oMId": "0003"
+  },
+  "LV.StringConstant": {
+   "nodeName": "StringConstant",
+   "oMId": "0006"
+  },
+  "LV.SubVI": {
+   "nodeName": "SubVI",
+   "oMId": "0008"
+  },
+  "LV.TabControl": {
+   "nodeName": "TabCtl (strict)",
+   "oMId": "0004"
+  },
+  "LV.Table": {
+   "nodeName": "Tbl (strict)",
+   "oMId": "0004"
+  },
+  "LV.TargetItem": {
+   "nodeName": "TargetItem",
+   "oMId": "000B"
+  },
+  "LV.Terminal": {
+   "nodeName": "Terminal",
+   "oMId": "0007"
+  },
+  "LV.Text": {
+   "nodeName": "Txt",
+   "oMId": "000A"
+  },
+  "LV.TimedSequence": {
+   "nodeName": "TimedSequence",
+   "oMId": "0004"
+  },
+  "LV.TopLevelDiagram": {
+   "nodeName": "TopLevelDiagram",
+   "oMId": "0008"
+  },
+  "LV.TreeControl": {
+   "nodeName": "Tree",
+   "oMId": "0008"
+  },
+  "LV.Tunnel": {
+   "nodeName": "Tunnel",
+   "oMId": "0006"
+  },
+  "LV.TypedRefNum": {
+   "nodeName": "TypRef",
+   "oMId": "0010"
+  },
+  "LV.VI": {
+   "nodeName": "VI",
+   "oMId": "0003"
+  },
+  "LV.WaveformChart": {
+   "nodeName": "WFChart",
+   "oMId": "000D"
+  },
+  "LV.WaveformGraph": {
+   "nodeName": "WaveformGraph (strict)",
+   "oMId": "0004"
+  },
+  "LV.WhileLoop": {
+   "nodeName": "WLoop",
+   "oMId": "000F"
+  },
+  "LV.Wire": {
+   "nodeName": "Wire",
+   "oMId": "0008"
+  }
+ },
+ "methods": {
+  "LV.Application": {
+   "FeatureToggleEnabled": {
+    "code": 2471,
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\plugins\\Show code suggestions.vi"
+   },
+   "Get VI Tag": {
+    "code": 2180,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Find RT Tester on Disk.vi"
+   },
+   "LVClass.Create": {
+    "code": 2191,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Create Child Actor.vi"
+   },
+   "LVClass.Create Interface": {
+    "code": 2461,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddInterface\\Support\\Add Interface to Project (path).vi"
+   },
+   "LVClass.Open": {
+    "code": 2190,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\New Test Case.vi"
+   },
+   "Library.Create": {
+    "code": 2086,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor Library to Project.vi"
+   },
+   "Library.Open": {
+    "code": 2085,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Create DQMH Module Template.vi"
+   },
+   "Open.LV Document": {
+    "code": 2075,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Libraries and Executables\\External Code (DLL) Execution.vi"
+   },
+   "OpenErrWdw": {
+    "code": 2205,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Remove DQMH Event.vi"
+   },
+   "Project.New": {
+    "code": 2068,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi"
+   },
+   "Project.Open": {
+    "code": 2067,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Validate Module\\Validate DQMH Module (Headless).vi"
+   },
+   "Refresh Palettes": {
+    "code": 2145,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Palette Editing API\\Add Subpalettes.vi"
+   }
+  },
+  "LV.CaseStructure": {
+   "Add Frame": {
+    "code": 104215552,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Case Structure.vi"
+   },
+   "GetFrameIndex": {
+    "code": 104221700,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Case Structure.vi"
+   },
+   "Remove Frame": {
+    "code": 104215553,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Case Structure.vi"
+   }
+  },
+  "LV.Cluster": {
+   "Set Cluster Order": {
+    "code": 104101888,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi"
+   }
+  },
+  "LV.ConnectorPane": {
+   "AssignCtrlToTerm": {
+    "code": 597327872,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Connector Pane\\Add Terminals to Connector Pane.vi"
+   }
+  },
+  "LV.Constant": {
+   "Delete": {
+    "code": 103969792,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Tester.vi"
+   }
+  },
+  "LV.Control": {
+   "Move": {
+    "code": 103982080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Arguments Cluster.vi"
+   },
+   "Replace": {
+    "code": 103982082,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi"
+   }
+  },
+  "LV.ControlTerminal": {
+   "Connect Wire": {
+    "code": 104111107,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   },
+   "Move": {
+    "code": 103982080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   }
+  },
+  "LV.Digital": {
+   "Reinit To Default": {
+    "code": 104012800,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Express VIs\\Express VI - Collector.vi"
+   }
+  },
+  "LV.DisableStructure": {
+   "Add Frame": {
+    "code": 104215552,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi"
+   },
+   "Change Disable Style": {
+    "code": 1721491458,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi"
+   },
+   "Remove Frame": {
+    "code": 104215553,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi"
+   }
+  },
+  "LV.EventStructure": {
+   "Add Frame": {
+    "code": 104215552,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi"
+   },
+   "GetHandledEvents": {
+    "code": 85530626,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi"
+   },
+   "Remove Frame": {
+    "code": 104215553,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Main (Module).vi"
+   },
+   "SetHandledEvents": {
+    "code": 85530627,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi"
+   }
+  },
+  "LV.FlatSequence": {
+   "Add Frame": {
+    "code": 897103872,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Flat Sequence Structure.vi"
+   }
+  },
+  "LV.Function": {
+   "Replace": {
+    "code": 103982082,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigation Overview.vi"
+   },
+   "Tag.Get Tag": {
+    "code": 103969795,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Tagging.vi"
+   }
+  },
+  "LV.GObject": {
+   "Delete": {
+    "code": 103969792,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Tester.vi"
+   },
+   "Tag.Set Tag": {
+    "code": 103969793,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Tagging.vi"
+   }
+  },
+  "LV.LVClassLibrary": {
+   "Get All Descendents": {
+    "code": 901068816,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_GetProjItemOfMemberVI.vi"
+   },
+   "HiliteInProjectWindow": {
+    "code": 1292952601,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\New Test Case.vi"
+   },
+   "Save": {
+    "code": 1292952584,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Create Child Actor.vi"
+   },
+   "Save a Copy": {
+    "code": 1292952590,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Class.vi"
+   },
+   "Write Parent Interfaces": {
+    "code": 159214610,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddClass\\Support\\Add Class to Project (path).vi"
+   }
+  },
+  "LV.Library": {
+   "AddFile": {
+    "code": 901068800,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "AddItem": {
+    "code": 901068801,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor Library to Project.vi"
+   },
+   "ApplyIconToVIs": {
+    "code": 1292952598,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Get All Descendents": {
+    "code": 901068816,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Save": {
+    "code": 1292952584,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Save a Copy": {
+    "code": 1292952590,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   }
+  },
+  "LV.ListBox": {
+   "Point To Row": {
+    "code": 104034304,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+   }
+  },
+  "LV.Node": {
+   "Move": {
+    "code": 103982080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Move Into Block Diagram Object.vi"
+   }
+  },
+  "LV.Numeric": {
+   "Move": {
+    "code": 103982080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Move Into Control.vi"
+   }
+  },
+  "LV.Panel": {
+   "Clear Selection": {
+    "code": 104104962,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Clear Entire Selection Lists.vi"
+   },
+   "Copy Selection": {
+    "code": 104104965,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Copy Selection.vi"
+   }
+  },
+  "LV.Project": {
+   "Open Window": {
+    "code": 655396873,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi"
+   },
+   "Save": {
+    "code": 655396867,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Convert Event\\Convert Event.vi"
+   }
+  },
+  "LV.ProjectItem": {
+   "AddFile": {
+    "code": 901068800,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi"
+   },
+   "AddItem": {
+    "code": 901068801,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Delete": {
+    "code": 901068803,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Expand": {
+    "code": 901068838,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   },
+   "Get All Descendents": {
+    "code": 901068816,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Parse Project for DQMH Modules.vi"
+   },
+   "SelectItem": {
+    "code": 901068818,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   }
+  },
+  "LV.RightShiftRegister": {
+   "Delete": {
+    "code": 103969792,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Tester.vi"
+   }
+  },
+  "LV.SceneObject": {
+   "Set Drawable": {
+    "code": 763851825,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MATLAB Node\\Cell Phone Towers\\SubVIs\\Add New Tower.vi"
+   }
+  },
+  "LV.Sequence": {
+   "Add Frame": {
+    "code": 104215552,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Stacked Sequence Structure.vi"
+   },
+   "Convert To FlatSeq": {
+    "code": 104218625,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Stacked Sequence Structure.vi"
+   },
+   "Remove Frame": {
+    "code": 104215553,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Stacked Sequence Structure.vi"
+   }
+  },
+  "LV.String": {
+   "Get Nth Line": {
+    "code": 104092673,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\String\\String Word Wrapping with Get Nth Line Method.vi"
+   }
+  },
+  "LV.Structure": {
+   "Move": {
+    "code": 103982080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Enclose Selection And Move.vi"
+   }
+  },
+  "LV.SubPanel": {
+   "Remove VI": {
+    "code": 1918385153,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Multiple VIs in a Subpanel.vi"
+   }
+  },
+  "LV.SubVI": {
+   "Delete": {
+    "code": 103969792,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi"
+   },
+   "Replace": {
+    "code": 103982082,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating VIs\\Creating New VI From Template.vi"
+   }
+  },
+  "LV.TargetItem": {
+   "AddFile": {
+    "code": 901068800,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi"
+   },
+   "AddItem": {
+    "code": 901068801,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi"
+   },
+   "Get All Descendents": {
+    "code": 901068816,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi"
+   }
+  },
+  "LV.Terminal": {
+   "Connect Wire": {
+    "code": 104111107,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   },
+   "Create Constant": {
+    "code": 104111104,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   }
+  },
+  "LV.TimedLoop": {
+   "Replace With TimedSeq": {
+    "code": 1526525953,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Loop.vi"
+   },
+   "Replace With WhileLoop": {
+    "code": 1526525952,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Loop.vi"
+   }
+  },
+  "LV.TimedSequence": {
+   "Convert T oTimedLoop": {
+    "code": 1817131009,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Sequence.vi"
+   },
+   "Convert To FlatSeq": {
+    "code": 1817131008,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Sequence.vi"
+   }
+  },
+  "LV.TopLevelDiagram": {
+   "Clear Selection": {
+    "code": 104108033,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Clear Entire Selection Lists.vi"
+   },
+   "CutSelection": {
+    "code": 104108036,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Cut Selection.vi"
+   },
+   "EncloseSelection2": {
+    "code": 104108048,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Enclose Selection And Move.vi"
+   },
+   "Make Selection": {
+    "code": 104108034,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Select Multiple Objects.vi"
+   },
+   "Move Selected Objects": {
+    "code": 104108047,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Move Selection.vi"
+   },
+   "Paste": {
+    "code": 104289280,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Paste From Clipboard.vi"
+   },
+   "RemoveFromSelection": {
+    "code": 104108044,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Deselect Multiple Objects.vi"
+   }
+  },
+  "LV.TreeControl": {
+   "Edit Tree Items.Add Item": {
+    "code": 1969895428,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\Common\\BUIP_Add_File_Hierarchy_To_Project.vi"
+   },
+   "Edit Tree Items.Add Item to End": {
+    "code": 1969895429,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Tree\\Populate Tree Items.vi"
+   },
+   "Edit Tree Items.Delete": {
+    "code": 1969895427,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Tree\\Populate Tree Items.vi"
+   }
+  },
+  "LV.VI": {
+   "Abort VI": {
+    "code": 1004,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Multiple VIs in a Subpanel.vi"
+   },
+   "BD.CleanUp": {
+    "code": 1140,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   },
+   "BD.Remove Bad Wires": {
+    "code": 1040,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Tester.vi"
+   },
+   "Create from Reference": {
+    "code": 1091,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Create Control From Reference.vi"
+   },
+   "CtlVIApplyChanges": {
+    "code": 1111,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi"
+   },
+   "Ctrl Val.Set": {
+    "code": 1051,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Benchmarking Asynchronous Calls.vi"
+   },
+   "Default Vals.Reinit All": {
+    "code": 1012,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Helper Methods\\Helper Methods\\Actor Core.vi"
+   },
+   "FP.Center": {
+    "code": 1089,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\MGI Monitored Actor\\Example\\Special Monitor\\Actor Core.vi"
+   },
+   "FP.Close": {
+    "code": 1061,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\VI Properties\\VI Properties - Front Panel States.vi"
+   },
+   "FP.Open": {
+    "code": 1080,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Digital Numeric Inside Cluster.vi"
+   },
+   "GetControlIndexByName": {
+    "code": 1191,
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml"
+   },
+   "Populate Async Call Pool": {
+    "code": 1186,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Asynchronous Call and Collect (Using Option 0x40).vi"
+   },
+   "Revert VI": {
+    "code": 1018,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Move Into Block Diagram Object.vi"
+   },
+   "Run VI": {
+    "code": 1003,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi"
+   },
+   "Save.Instrument": {
+    "code": 1002,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi"
+   },
+   "Transaction.Begin Undo": {
+    "code": 1026,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Supporting Undo\\Supporting Undo.vi"
+   },
+   "Transaction.End Undo": {
+    "code": 1027,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Supporting Undo\\Supporting Undo.vi"
+   },
+   "Transaction.Fail": {
+    "code": 1066,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Supporting Undo\\Supporting Undo.vi"
+   },
+   "VI Strings.Import XLIFF": {
+    "code": 1211,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\UTF-8\\Multilingual User Interface\\Multilingual Temperature Monitor.vi"
+   }
+  },
+  "LV.WaveformGraph": {
+   "Reinit To Default": {
+    "code": 104012800,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Express VIs\\Express VI - Collector.vi"
+   },
+   "Start Drag": {
+    "code": 104012814,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Event Structure\\Drag and Drop - Initiating a Custom Drag.vi"
+   }
+  },
+  "LV.Wire": {
+   "Delete": {
+    "code": 103969792,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigation Overview.vi"
+   },
+   "DisconnectTerminal": {
+    "code": 104270861,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi"
+   },
+   "Insert Node": {
+    "code": 104270854,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Tester Event Case Contents.vi"
+   },
+   "RemoveLooseEnds": {
+    "code": 104270856,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi"
+   }
+  }
+ },
+ "props": {
+  "LV.Application": {
+   "App.AllContexts": {
+    "access": "r",
+    "code": 104,
+    "declaredBy": "LV.Application",
+    "label": "App.AllContexts",
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\plugins\\Get editor app ref.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "App.AllVIs": {
+    "access": "r",
+    "code": 28,
+    "declaredBy": "LV.Application",
+    "label": "App.AllVIs",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Validate DQMH Module.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "App.Args": {
+    "access": "r",
+    "code": 79,
+    "declaredBy": "LV.Application",
+    "label": "App.Args",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\addons\\_JKI Toolkits\\Caraya\\Caraya CLI.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "App.ContextName": {
+    "access": "r",
+    "code": 122,
+    "declaredBy": "LV.Application",
+    "label": "App.ContextName",
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\plugins\\Get editor app ref.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "App.DefaultApplication": {
+    "access": "r",
+    "code": 144,
+    "declaredBy": "LV.Application",
+    "label": "App.DefaultApplication",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Class.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "App.Dir": {
+    "access": "r",
+    "code": 25,
+    "declaredBy": "LV.Application",
+    "label": "App.Dir",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Palette Editing API\\Add Subpalettes.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "App.Kind": {
+    "access": "r",
+    "code": 3,
+    "declaredBy": "LV.Application",
+    "label": "App.Kind",
+    "source": "C:\\Program Files\\NI\\LVAddons\\dct\\1\\examples\\database\\EXE\\Using Connection Strings.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>invalid app kind</EnumLabel>\n        <EnumLabel>Development System</EnumLabel>\n        <EnumLabel>Run Time System</EnumLabel>\n        <EnumLabel>Student Edition</EnumLabel>\n        <EnumLabel>Embedded LabVIEW</EnumLabel>\n        <EnumLabel>Evaluation</EnumLabel>\n        <EnumLabel>Custom</EnumLabel>\n        </TypeDesc>"
+   },
+   "App.MenuLaunchApp": {
+    "access": "r",
+    "code": 127,
+    "declaredBy": "LV.Application",
+    "label": "App.MenuLaunchApp",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\New Test Case.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "App.Name": {
+    "access": "r",
+    "code": 0,
+    "declaredBy": "LV.Application",
+    "label": "App.Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Application Builder API\\Generate Programmatic Build Command Line String.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "App.UnattendedMode": {
+    "access": "w",
+    "code": 77,
+    "declaredBy": "LV.Application",
+    "label": "App.UnattendedMode",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Module\\Script New Module.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "App.UserName": {
+    "access": "r",
+    "code": 1,
+    "declaredBy": "LV.Application",
+    "label": "App.UserName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\Standard Read and Write\\TDMS Write Time Domain Data.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Application:Directory Path": {
+    "access": "r",
+    "code": 25,
+    "declaredBy": "LV.Application",
+    "label": "App.Dir",
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Application:Name": {
+    "access": "r",
+    "code": 0,
+    "declaredBy": "LV.Application",
+    "label": "App.Name",
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Project.ActiveProject": {
+    "access": "r",
+    "code": 146,
+    "declaredBy": "LV.Application",
+    "label": "Project.ActiveProject",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Validate DQMH Module.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0049\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Project.TargetItem": {
+    "access": "r",
+    "code": 134,
+    "declaredBy": "LV.Application",
+    "label": "Project.TargetItem",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add to Project.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x005F\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Array": {
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Array",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Signal Operation\\Edge Detection with 2D Convolution.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Index Values": {
+    "access": "r",
+    "code": 104041476,
+    "declaredBy": "LV.Array",
+    "label": "Index Values",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Conditioning\\FIR Filtering and Response.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Terminal": {
+    "access": "r",
+    "code": 104013830,
+    "declaredBy": "LV.Array",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating VIs\\Creating New VI From Scratch.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.Array",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Linear Algebra\\Linear Algebra Calculator.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.Boolean": {
+   "Disabled": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Boolean",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\DataPlugins\\General\\Manage DataPlugins.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Boolean",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing the Menubar\\Customizing the Menubar.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Terminal": {
+    "access": "r",
+    "code": 104013830,
+    "declaredBy": "LV.Boolean",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Visible": {
+    "access": "rw",
+    "code": 104013824,
+    "declaredBy": "LV.Boolean",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Linear Algebra\\Linear Algebra Calculator.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.CaseStructure": {
+   "FrameNames": {
+    "access": "rw",
+    "code": 104222722,
+    "declaredBy": "LV.CaseStructure",
+    "label": "FrameNames",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Case Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Frames[]": {
+    "access": "r",
+    "code": 104216577,
+    "declaredBy": "LV.CaseStructure",
+    "label": "Frames[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Case Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Selector": {
+    "access": "r",
+    "code": 104222720,
+    "declaredBy": "LV.CaseStructure",
+    "label": "Selector",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Structures.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x402A\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Cluster": {
+   "AllObjs[]": {
+    "access": "r",
+    "code": 104102916,
+    "declaredBy": "LV.Cluster",
+    "label": "AllObjs[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Numeric\\Vertical Scrollbar.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "AutoSize": {
+    "access": "w",
+    "code": 104102920,
+    "declaredBy": "LV.Cluster",
+    "label": "AutoSize",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Digital Numeric Inside Cluster.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Controls[]": {
+    "access": "r",
+    "code": 104102914,
+    "declaredBy": "LV.Cluster",
+    "label": "Controls[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Arguments Cluster.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Disabled": {
+    "access": "w",
+    "code": 104013825,
+    "declaredBy": "LV.Cluster",
+    "label": "Disabled",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\OpenG\\dictionary\\Dictionary Example.vi",
+    "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Cluster",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\control\\PID\\Setpoint Profile with Gain Scheduling on Rising and Falling.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Top": {
+    "access": "r",
+    "code": 103983106,
+    "declaredBy": "LV.Cluster",
+    "label": "Top",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Numeric\\Vertical Scrollbar.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "rw",
+    "code": 104013842,
+    "declaredBy": "LV.Cluster",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\OpenG\\dictionary\\Dictionary Example.vi",
+    "type": "<TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Country\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Age\" /></TypeDesc>"
+   }
+  },
+  "LV.ComboBox": {
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.ComboBox",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Create DQMH Module Template.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Strings[]": {
+    "access": "w",
+    "code": 104099843,
+    "declaredBy": "LV.ComboBox",
+    "label": "Strings[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Create DQMH Module Template.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Value": {
+    "access": "rw",
+    "code": 104099840,
+    "declaredBy": "LV.ComboBox",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.ConnectorPane": {
+   "Ctrls[]": {
+    "access": "r",
+    "code": 597328899,
+    "declaredBy": "LV.ConnectorPane",
+    "label": "Ctrls[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Pattern": {
+    "access": "w",
+    "code": 597328896,
+    "declaredBy": "LV.ConnectorPane",
+    "label": "Pattern",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Connector Pane\\Add Terminals to Connector Pane.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "TermBnds[]": {
+    "access": "r",
+    "code": 597328900,
+    "declaredBy": "LV.ConnectorPane",
+    "label": "TermBnds[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Rectangle\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc></TypeDesc>"
+   },
+   "WiringRules[]": {
+    "access": "r",
+    "code": 597328901,
+    "declaredBy": "LV.ConnectorPane",
+    "label": "WiringRules[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Wire Rule\"><EnumLabel>Invalid Wire Rule</EnumLabel>\n        <EnumLabel>Required</EnumLabel>\n        <EnumLabel>Recommended</EnumLabel>\n        <EnumLabel>Optional</EnumLabel>\n        <EnumLabel>Dynamic Dispatch</EnumLabel>\n        </TypeDesc></TypeDesc>"
+   }
+  },
+  "LV.Constant": {},
+  "LV.Control": {
+   "ClassName": {
+    "access": "r",
+    "code": 103970819,
+    "declaredBy": "LV.Control",
+    "label": "ClassName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Grouped": {
+    "access": "r",
+    "code": 103983110,
+    "declaredBy": "LV.Control",
+    "label": "Grouped",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Locked": {
+    "access": "r",
+    "code": 103983111,
+    "declaredBy": "LV.Control",
+    "label": "Locked",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Plot Specific:Active Plot": {
+    "access": "w",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Plot Specific:Active Plot",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Interpolation\\2D Interpolation.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Plot Specific:Plot Opacity": {
+    "access": "w",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Plot Specific:Plot Opacity",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Interpolation\\2D Interpolation.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Plot Specific:Surface Color Ramp": {
+    "access": "w",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Interpolation\\2D Interpolation.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Specific:Surface Color Ramp\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"3D Plot.lvclass\" />\n        <Label Text=\"Color Ramp Cluster.ctl\" />\n        </TypeDesc>"
+   },
+   "Typedef Path": {
+    "access": "r",
+    "code": 104013851,
+    "declaredBy": "LV.Control",
+    "label": "Typedef Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Typedef?": {
+    "access": "r",
+    "code": 104013850,
+    "declaredBy": "LV.Control",
+    "label": "Typedef?",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>not a typedef</EnumLabel>\n        <EnumLabel>typedef</EnumLabel>\n        <EnumLabel>strict typedef</EnumLabel>\n        <EnumLabel>class private data</EnumLabel>\n        </TypeDesc>"
+   },
+   "Visible": {
+    "access": "rw",
+    "code": 104013824,
+    "declaredBy": "LV.Control",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Control References\\Control References.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.ControlTerminal": {},
+  "LV.Digital": {
+   "Disabled": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Digital",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Control References\\Control References.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Digital",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\Regression Solver.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.Digital",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\Parametric Curve Fit.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.DisableStructure": {
+   "ActiveFrame": {
+    "access": "w",
+    "code": 1721492482,
+    "declaredBy": "LV.DisableStructure",
+    "label": "ActiveFrame",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Conditions": {
+    "access": "w",
+    "code": 1721492481,
+    "declaredBy": "LV.DisableStructure",
+    "label": "Conditions",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Frames[]": {
+    "access": "r",
+    "code": 104216577,
+    "declaredBy": "LV.DisableStructure",
+    "label": "Frames[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Conditional Disable and Diagram Disable Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.EventStructure": {
+   "DynamicTerminalLeft": {
+    "access": "r",
+    "code": 85531650,
+    "declaredBy": "LV.EventStructure",
+    "label": "DynamicTerminalLeft",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x402A\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "DynamicTerminalRight": {
+    "access": "r",
+    "code": 85531651,
+    "declaredBy": "LV.EventStructure",
+    "label": "DynamicTerminalRight",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x402A\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "DynamicTermsVisible?": {
+    "access": "w",
+    "code": 85531648,
+    "declaredBy": "LV.EventStructure",
+    "label": "DynamicTermsVisible?",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "EventSelectors": {
+    "access": "r",
+    "code": 85531653,
+    "declaredBy": "LV.EventStructure",
+    "label": "EventSelectors",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Frames[]": {
+    "access": "r",
+    "code": 104216577,
+    "declaredBy": "LV.EventStructure",
+    "label": "Frames[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "NumEventCases": {
+    "access": "r",
+    "code": 85531652,
+    "declaredBy": "LV.EventStructure",
+    "label": "NumEventCases",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "TimeoutTerminal": {
+    "access": "r",
+    "code": 85531649,
+    "declaredBy": "LV.EventStructure",
+    "label": "TimeoutTerminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x402A\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.FlatSequence": {
+   "Frames[]": {
+    "access": "r",
+    "code": 897104903,
+    "declaredBy": "LV.FlatSequence",
+    "label": "Frames[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Flat Sequence Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x405F\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.FlatSequenceFrame": {
+   "Diagram": {
+    "access": "r",
+    "code": 417818626,
+    "declaredBy": "LV.FlatSequenceFrame",
+    "label": "Diagram",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Flat Sequence Structure.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.ForLoop": {
+   "Diagram": {
+    "access": "r",
+    "code": 104207361,
+    "declaredBy": "LV.ForLoop",
+    "label": "Diagram",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Moving Objects\\Move Into Block Diagram Object.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "HasConditionalTerm": {
+    "access": "w",
+    "code": 104210433,
+    "declaredBy": "LV.ForLoop",
+    "label": "HasConditionalTerm",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - For Loop.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "LpCount": {
+    "access": "r",
+    "code": 104210432,
+    "declaredBy": "LV.ForLoop",
+    "label": "LpCount",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - For Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x402A\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "LpCounter": {
+    "access": "r",
+    "code": 104207360,
+    "declaredBy": "LV.ForLoop",
+    "label": "LpCounter",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - For Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "LpEndRef": {
+    "access": "r",
+    "code": 104210434,
+    "declaredBy": "LV.ForLoop",
+    "label": "LpEndRef",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - For Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Function": {
+   "Style": {
+    "access": "r",
+    "code": 104173577,
+    "declaredBy": "LV.Function",
+    "label": "Style",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Terms[]": {
+    "access": "r",
+    "code": 104173568,
+    "declaredBy": "LV.Function",
+    "label": "Terms[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.GObject": {
+   "ClassName": {
+    "access": "r",
+    "code": 103970819,
+    "declaredBy": "LV.GObject",
+    "label": "ClassName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Using Traverse.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Selected": {
+    "access": "rw",
+    "code": 103983113,
+    "declaredBy": "LV.GObject",
+    "label": "Selected",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Toggle Selection Of An Object.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Top": {
+    "access": "w",
+    "code": 103983106,
+    "declaredBy": "LV.GObject",
+    "label": "Top",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Numeric\\Vertical Scrollbar.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.GrowableFunction": {
+   "Style": {
+    "access": "r",
+    "code": 104173577,
+    "declaredBy": "LV.GrowableFunction",
+    "label": "Style",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Event Structure.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.IntensityGraph": {
+   "Active Cursor": {
+    "access": "w",
+    "code": 104090629,
+    "declaredBy": "LV.IntensityGraph",
+    "label": "Active Cursor",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Transforms\\2D FFT of a Pulse.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Color Table": {
+    "access": "w",
+    "code": 104090628,
+    "declaredBy": "LV.IntensityGraph",
+    "label": "Color Table",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Transforms\\STFT Spectrogram Demo.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Knob": {
+   "BGColor": {
+    "access": "w",
+    "code": 104069135,
+    "declaredBy": "LV.Knob",
+    "label": "BGColor",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\control\\fuzzy\\Tanks with PI control\\FuzzyEx Tanks with PI control.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.LVClassLibrary": {
+   "Is Interface": {
+    "access": "r",
+    "code": 159215641,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Is Interface",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Astemes\\LMock\\Mock Class Generator\\LMock Create.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "LocalName": {
+    "access": "w",
+    "code": 1292953600,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "LocalName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Class.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Member Data": {
+    "access": "r",
+    "code": 159215631,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Member Data",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Member Data to Private Data Control.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Name": {
+    "access": "r",
+    "code": 1292953628,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add to Project.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Parent": {
+    "access": "w",
+    "code": 159215619,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Parent",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Create Child Actor.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0055\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Path": {
+    "access": "r",
+    "code": 901069826,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Abstract Message to Actor.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Project": {
+    "access": "r",
+    "code": 901069829,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Project",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\New Test Case.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0049\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Type String": {
+    "access": "r",
+    "code": 901069841,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Type String",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add to Project.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.LabVIEWClassConstant": {
+   "Terminal": {
+    "access": "r",
+    "code": 104115204,
+    "declaredBy": "LV.LabVIEWClassConstant",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Wire Class to Enqueue.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.LabVIEWClassControl": {
+   "Terminal": {
+    "access": "r",
+    "code": 104013830,
+    "declaredBy": "LV.LabVIEWClassControl",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Wire Class to Enqueue.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.LeftShiftRegister": {
+   "RightReg": {
+    "access": "r",
+    "code": 104287232,
+    "declaredBy": "LV.LeftShiftRegister",
+    "label": "RightReg",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Tester.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400F\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Library": {
+   "Context": {
+    "access": "r",
+    "code": 1292953634,
+    "declaredBy": "LV.Library",
+    "label": "Context",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Create RT Tester\\Scripter - Create RT Tester.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Name": {
+    "access": "r",
+    "code": 1292953628,
+    "declaredBy": "LV.Library",
+    "label": "Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Query Library for Do Something Info.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Path": {
+    "access": "r",
+    "code": 901069826,
+    "declaredBy": "LV.Library",
+    "label": "Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Create RT Tester\\Scripter - Create RT Tester.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Project": {
+    "access": "r",
+    "code": 901069829,
+    "declaredBy": "LV.Library",
+    "label": "Project",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Create RT Tester\\Scripter - Create RT Tester.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0049\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "QualifiedName": {
+    "access": "r",
+    "code": 1292953629,
+    "declaredBy": "LV.Library",
+    "label": "QualifiedName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.ListBox": {
+   "Item Names": {
+    "access": "rw",
+    "code": 104035337,
+    "declaredBy": "LV.ListBox",
+    "label": "Item Names",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Exporting VIs\\Exporting VIs.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.ListBox",
+    "label": "Val(Sgnl)",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Exporting VIs\\Exporting VIs.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "w",
+    "code": 104013842,
+    "declaredBy": "LV.ListBox",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Changing Panels\\Changing Panels\\Actor Core.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.MulticolumnListbox": {
+   "ItemNames": {
+    "access": "rw",
+    "code": 416911360,
+    "declaredBy": "LV.MulticolumnListbox",
+    "label": "ItemNames",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\To More Specific Class\\To More Specific Class.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Node": {
+   "Terms[]": {
+    "access": "r",
+    "code": 104173568,
+    "declaredBy": "LV.Node",
+    "label": "Terms[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating VIs\\Creating New VI From Scratch.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Numeric": {
+   "Rep": {
+    "access": "w",
+    "code": 104050691,
+    "declaredBy": "LV.Numeric",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Obtaining Known Object Reference.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"Rep\">\n          <EnumLabel>Extended Precision</EnumLabel>\n          <EnumLabel>Double Precision</EnumLabel>\n          <EnumLabel>Single Precision</EnumLabel>\n          <EnumLabel>Long</EnumLabel>\n          <EnumLabel>Word</EnumLabel>\n          <EnumLabel>Byte</EnumLabel>\n          <EnumLabel>Unsigned Long</EnumLabel>\n          <EnumLabel>Unsigned Word</EnumLabel>\n          <EnumLabel>Unsigned Byte</EnumLabel>\n          <EnumLabel>Complex Extended</EnumLabel>\n          <EnumLabel>Complex Double</EnumLabel>\n          <EnumLabel>Complex Single</EnumLabel>\n          <EnumLabel>Quad</EnumLabel>\n          <EnumLabel>Unsigned Quad</EnumLabel>\n          <EnumLabel>Fixed-Point</EnumLabel>\n          </TypeDesc>\n        <Label Text=\"LVNumericRepresentation.ctl\" />\n        </TypeDesc>"
+   },
+   "Terminal": {
+    "access": "r",
+    "code": 104013830,
+    "declaredBy": "LV.Numeric",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating VIs\\Creating New VI From Scratch.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.OuterTerminal": {
+   "Connected Wire": {
+    "access": "r",
+    "code": 104112128,
+    "declaredBy": "LV.OuterTerminal",
+    "label": "Wire",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Structures.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4037\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Page": {
+   "FG Color": {
+    "access": "w",
+    "code": 402934795,
+    "declaredBy": "LV.Page",
+    "label": "FG Color",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "PageEnb": {
+    "access": "w",
+    "code": 402934784,
+    "declaredBy": "LV.Page",
+    "label": "PageEnb",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Page Enabled</EnumLabel>\n        <EnumLabel>Page Disabled</EnumLabel>\n        <EnumLabel>Page Disabled &amp; Grayed</EnumLabel>\n        </TypeDesc>"
+   },
+   "PageVis": {
+    "access": "w",
+    "code": 402934785,
+    "declaredBy": "LV.Page",
+    "label": "PageVis",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "TabCaption": {
+    "access": "w",
+    "code": 402934789,
+    "declaredBy": "LV.Page",
+    "label": "TabCaption",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.Panel": {
+   "Controls[]": {
+    "access": "r",
+    "code": 104105985,
+    "declaredBy": "LV.Panel",
+    "label": "Controls[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Connector Pane\\Add Terminals to Connector Pane.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Panes[]": {
+    "access": "r",
+    "code": 104105990,
+    "declaredBy": "LV.Panel",
+    "label": "Panes[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Controls to Method.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x004B\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "SelList[]": {
+    "access": "r",
+    "code": 104105988,
+    "declaredBy": "LV.Panel",
+    "label": "SelList[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Get All Selected Objects.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Path": {
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Path",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "StartPath": {
+    "access": "w",
+    "code": 104032266,
+    "declaredBy": "LV.Path",
+    "label": "StartPath",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104032270,
+    "declaredBy": "LV.Path",
+    "label": "Val(Sgnl)",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\_Set Test Path.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "w",
+    "code": 104032256,
+    "declaredBy": "LV.Path",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.Path",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.Picture": {
+   "Left": {
+    "access": "r",
+    "code": 103983105,
+    "declaredBy": "LV.Picture",
+    "label": "Left",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\2D Picture Control\\Annotating a Picture.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Position": {
+    "access": "w",
+    "code": 103983104,
+    "declaredBy": "LV.Picture",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Events\\Dynamic Event Generation.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"47\" />\n          <TypeDesc TypeID=\"48\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Top": {
+    "access": "r",
+    "code": 103983106,
+    "declaredBy": "LV.Picture",
+    "label": "Top",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\2D Picture Control\\Annotating a Picture.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Project": {
+   "My Computer": {
+    "access": "r",
+    "code": 655397921,
+    "declaredBy": "LV.Project",
+    "label": "My Computer",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Manipulating Projects\\Add Files to Project.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x005F\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Name": {
+    "access": "r",
+    "code": 655397889,
+    "declaredBy": "LV.Project",
+    "label": "Name",
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\Framework\\Providers\\AI\\AI_Global_OnCommand.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Path": {
+    "access": "r",
+    "code": 655397890,
+    "declaredBy": "LV.Project",
+    "label": "Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Module\\Validate DQMH Module.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Root": {
+    "access": "r",
+    "code": 655397891,
+    "declaredBy": "LV.Project",
+    "label": "Root",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Parse Project for DQMH Modules.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x004A\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.ProjectItem": {
+   "Children[]": {
+    "access": "r",
+    "code": 901069832,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Children[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_CopyVIProjectItemHierarchy.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x004A\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Item ID": {
+    "access": "r",
+    "code": 901069830,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Item ID",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_RetoolVI.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Name": {
+    "access": "r",
+    "code": 901069825,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Parse Project for DQMH Modules.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Parent": {
+    "access": "r",
+    "code": 901069833,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Parent",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Abstract Message to Actor.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x004A\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Path": {
+    "access": "r",
+    "code": 901069826,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Is Project Item Dirty.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Reference": {
+    "access": "r",
+    "code": 901069831,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Reference",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Open Main and Tester References.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Target": {
+    "access": "r",
+    "code": 901069846,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Target",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x005F\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Type String": {
+    "access": "r",
+    "code": 901069841,
+    "declaredBy": "LV.ProjectItem",
+    "label": "Type String",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\AddActor\\Support\\Add Actor.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "VIReferenceNoLoad": {
+    "access": "r",
+    "code": 901069853,
+    "declaredBy": "LV.ProjectItem",
+    "label": "VIReferenceNoLoad",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Is Project Item Dirty.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.RadioButtonsControl": {
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.RadioButtonsControl",
+    "label": "Val(Sgnl)",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>New Argument</EnumLabel>\n        <EnumLabel>Existing Argument</EnumLabel>\n        </TypeDesc>"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.RadioButtonsControl",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.Ring": {
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Ring",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "HideLastVal": {
+    "access": "w",
+    "code": 104056852,
+    "declaredBy": "LV.Ring",
+    "label": "HideLastVal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Convert DQMH Event.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Strings []": {
+    "access": "rw",
+    "code": 104056839,
+    "declaredBy": "LV.Ring",
+    "label": "Strings []",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\OpenG\\dictionary\\Dictionary Example.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.Ring",
+    "label": "Val(Sgnl)",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Multiple VIs in a Subpanel.vi",
+    "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "rw",
+    "code": 104013842,
+    "declaredBy": "LV.Ring",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\OpenG\\dictionary\\Dictionary Example.vi",
+    "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.Ring",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Linear Algebra\\Linear Algebra Calculator.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.SceneSphere": {
+   "Color": {
+    "access": "w",
+    "code": 98948098,
+    "declaredBy": "LV.SceneSphere",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\Sphere Fit.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Color\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   }
+  },
+  "LV.Sequence": {
+   "Frames[]": {
+    "access": "r",
+    "code": 104216577,
+    "declaredBy": "LV.Sequence",
+    "label": "Frames[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Stacked Sequence Structure.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Slide": {
+   "Active Slider": {
+    "access": "w",
+    "code": 104069123,
+    "declaredBy": "LV.Slide",
+    "label": "Active Slider",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\control\\PID\\General PID Simulator with Alarm.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Blinking": {
+    "access": "w",
+    "code": 104013827,
+    "declaredBy": "LV.Slide",
+    "label": "Blinking",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\control\\PID\\General PID Simulator with Alarm.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Fill Color": {
+    "access": "w",
+    "code": 104072194,
+    "declaredBy": "LV.Slide",
+    "label": "Fill Color",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Numeric\\Vertical Fill Slide.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.String": {
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.String",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Transforms\\FFT Symbolic.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Key Focus": {
+    "access": "w",
+    "code": 104013826,
+    "declaredBy": "LV.String",
+    "label": "Key Focus",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\OpenG\\dictionary\\Dictionary Example.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "rw",
+    "code": 104093696,
+    "declaredBy": "LV.String",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Visible": {
+    "access": "w",
+    "code": 104013824,
+    "declaredBy": "LV.String",
+    "label": "Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Linear Algebra\\Linear Algebra Calculator.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Width": {
+    "access": "w",
+    "code": 104093710,
+    "declaredBy": "LV.String",
+    "label": "Width",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\String\\String Word Wrapping with Get Nth Line Method.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.StringConstant": {
+   "Value": {
+    "access": "rw",
+    "code": 104115200,
+    "declaredBy": "LV.StringConstant",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"LVVariant\" Format=\"inline\" />"
+   }
+  },
+  "LV.SubVI": {
+   "Bounds": {
+    "access": "r",
+    "code": 103983107,
+    "declaredBy": "LV.SubVI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"43\" />\n          <TypeDesc TypeID=\"44\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Owner": {
+    "access": "r",
+    "code": 103970822,
+    "declaredBy": "LV.SubVI",
+    "label": "Owner",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0003\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Position": {
+    "access": "r",
+    "code": 103983104,
+    "declaredBy": "LV.SubVI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"54\" />\n          <TypeDesc TypeID=\"55\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Terms[]": {
+    "access": "r",
+    "code": 104173568,
+    "declaredBy": "LV.SubVI",
+    "label": "Terms[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.TabControl": {
+   "Pages": {
+    "access": "r",
+    "code": 65605633,
+    "declaredBy": "LV.TabControl",
+    "label": "Pages",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0036\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.Table": {
+   "Active Cell": {
+    "access": "w",
+    "code": 104038415,
+    "declaredBy": "LV.Table",
+    "label": "",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Active Cell\">\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "CellFontColor": {
+    "access": "w",
+    "code": 104038445,
+    "declaredBy": "LV.Table",
+    "label": "CellFontColor",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Column Header Strings[]": {
+    "access": "w",
+    "code": 104038414,
+    "declaredBy": "LV.Table",
+    "label": "Column Headers[]",
+    "source": "C:\\Program Files\\NI\\LVAddons\\dct\\1\\examples\\database\\Read All Data.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Column Headers[]": {
+    "access": "r",
+    "code": 104038414,
+    "declaredBy": "LV.Table",
+    "label": "Column Headers[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Excel\\Excel - Write Table.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Row Headers[]": {
+    "access": "r",
+    "code": 104038413,
+    "declaredBy": "LV.Table",
+    "label": "Row Headers[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Excel\\Excel - Write Table.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Selection Size": {
+    "access": "r",
+    "code": 104038412,
+    "declaredBy": "LV.Table",
+    "label": "",
+    "source": "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_Pass_Fail_Analysis.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Size\">\n          <TypeDesc TypeID=\"109\" />\n          <TypeDesc TypeID=\"110\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Selection Start": {
+    "access": "r",
+    "code": 104038411,
+    "declaredBy": "LV.Table",
+    "label": "",
+    "source": "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_Pass_Fail_Analysis.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Start\">\n          <TypeDesc TypeID=\"109\" />\n          <TypeDesc TypeID=\"110\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Value": {
+    "access": "w",
+    "code": 104013842,
+    "declaredBy": "LV.Table",
+    "label": "Value",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Rename Aliases.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.TargetItem": {
+   "Context": {
+    "access": "r",
+    "code": 1750198273,
+    "declaredBy": "LV.TargetItem",
+    "label": "Context",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Parse Project for DQMH Modules.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Terminal": {
+   "Name": {
+    "access": "r",
+    "code": 104112132,
+    "declaredBy": "LV.Terminal",
+    "label": "Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Wire Class to Enqueue.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Owner": {
+    "access": "r",
+    "code": 103970822,
+    "declaredBy": "LV.Terminal",
+    "label": "Owner",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0003\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "OwningVI": {
+    "access": "r",
+    "code": 103970818,
+    "declaredBy": "LV.Terminal",
+    "label": "OwningVI",
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\plugins\\Show code suggestions.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Wire": {
+    "access": "r",
+    "code": 104112128,
+    "declaredBy": "LV.Terminal",
+    "label": "Wire",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4037\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Text": {
+   "Text": {
+    "access": "rw",
+    "code": 103995392,
+    "declaredBy": "LV.Text",
+    "label": "Text",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Main (Module).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.TimedSequence": {
+   "TSFlatSeq": {
+    "access": "r",
+    "code": 1817132036,
+    "declaredBy": "LV.TimedSequence",
+    "label": "TSFlatSeq",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Sequence.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x406F\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.TopLevelDiagram": {
+   "AllObjs[]": {
+    "access": "r",
+    "code": 104290308,
+    "declaredBy": "LV.TopLevelDiagram",
+    "label": "AllObjs[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Using Traverse.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "SelList[]": {
+    "access": "r",
+    "code": 104109056,
+    "declaredBy": "LV.TopLevelDiagram",
+    "label": "SelList[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Deselect Multiple Objects.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.TreeControl": {
+   "Active Item Tag": {
+    "access": "w",
+    "code": 1969896461,
+    "declaredBy": "LV.TreeControl",
+    "label": "Active Item Tag",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Tree\\Tree.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "ActiveColNum": {
+    "access": "w",
+    "code": 1969896467,
+    "declaredBy": "LV.TreeControl",
+    "label": "ActiveColNum",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Tree\\Tree.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "All Tags": {
+    "access": "r",
+    "code": 1969896515,
+    "declaredBy": "LV.TreeControl",
+    "label": "All Tags",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\To More Specific Class\\To More Specific Class.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Cell String": {
+    "access": "r",
+    "code": 1969896473,
+    "declaredBy": "LV.TreeControl",
+    "label": "Cell String",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Tree\\Tree.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.Tunnel": {
+   "Outside Terminal": {
+    "access": "r",
+    "code": 104161281,
+    "declaredBy": "LV.Tunnel",
+    "label": "Outer Term",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Structures.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4048\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.TypedRefNum": {
+   "Element": {
+    "access": "r",
+    "code": 104026112,
+    "declaredBy": "LV.TypedRefNum",
+    "label": "Element",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.VI": {
+   "BD Win.Origin": {
+    "access": "w",
+    "code": 579,
+    "declaredBy": "LV.VI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BD Win.Origin\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "BDWin.Bounds": {
+    "access": "w",
+    "code": 568,
+    "declaredBy": "LV.VI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "BDWin.Open": {
+    "access": "w",
+    "code": 567,
+    "declaredBy": "LV.VI",
+    "label": "BDWin.Open",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Block Diagram Window:Window Bounds": {
+    "access": "w",
+    "code": 568,
+    "declaredBy": "LV.VI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Add Function Inside While Loop.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"5\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "ConPane": {
+    "access": "r",
+    "code": 574,
+    "declaredBy": "LV.VI",
+    "label": "ConPane",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Build Send.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0038\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Connector Pane:Reference": {
+    "access": "r",
+    "code": 574,
+    "declaredBy": "LV.VI",
+    "label": "ConPane",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Connector Pane\\Add Terminals to Connector Pane.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0038\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Diagram": {
+    "access": "r",
+    "code": 572,
+    "declaredBy": "LV.VI",
+    "label": "Diagram",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Using Traverse.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4027\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "FP.State": {
+    "access": "r",
+    "code": 608,
+    "declaredBy": "LV.VI",
+    "label": "FP.State",
+    "source": "C:\\Program Files\\NI\\LVAddons\\lvai\\26.3\\resource\\Framework\\Providers\\AI\\AI_Item_OnCommand.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Invalid</EnumLabel>\n        <EnumLabel>Standard</EnumLabel>\n        <EnumLabel>Closed</EnumLabel>\n        <EnumLabel>Hidden</EnumLabel>\n        <EnumLabel>Minimized</EnumLabel>\n        <EnumLabel>Maximized</EnumLabel>\n        </TypeDesc>"
+   },
+   "Front Panel": {
+    "access": "r",
+    "code": 573,
+    "declaredBy": "LV.VI",
+    "label": "Panel",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Connector Pane\\Add Terminals to Connector Pane.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x001F\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Front Panel Window:State": {
+    "access": "w",
+    "code": 608,
+    "declaredBy": "LV.VI",
+    "label": "FP.State",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\VI Properties\\VI Properties - Front Panel States.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Invalid</EnumLabel>\n        <EnumLabel>Standard</EnumLabel>\n        <EnumLabel>Closed</EnumLabel>\n        <EnumLabel>Hidden</EnumLabel>\n        <EnumLabel>Minimized</EnumLabel>\n        <EnumLabel>Maximized</EnumLabel>\n        </TypeDesc>"
+   },
+   "Front Panel Window:Title": {
+    "access": "w",
+    "code": 553,
+    "declaredBy": "LV.VI",
+    "label": "Front Panel.Title",
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Front Panel Window:Window Bounds": {
+    "access": "w",
+    "code": 536,
+    "declaredBy": "LV.VI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Add Function Inside While Loop.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"5\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Front Panel.Closeable": {
+    "access": "w",
+    "code": 506,
+    "declaredBy": "LV.VI",
+    "label": "Front Panel.Closeable",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Industry Applications\\Temperature Monitoring\\Temperature Monitoring.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Front Panel.CustomTitle": {
+    "access": "w",
+    "code": 561,
+    "declaredBy": "LV.VI",
+    "label": "Front Panel.CustomTitle",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Abstract Message to Actor.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Front Panel.IsFrontmost": {
+    "access": "w",
+    "code": 535,
+    "declaredBy": "LV.VI",
+    "label": "Front Panel.IsFrontmost",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\LUnit\\_Set Test Path.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Front Panel.Title": {
+    "access": "w",
+    "code": 553,
+    "declaredBy": "LV.VI",
+    "label": "Front Panel.Title",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Show Arguments Window.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Front Panel.WinBounds": {
+    "access": "rw",
+    "code": 536,
+    "declaredBy": "LV.VI",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Library": {
+    "access": "r",
+    "code": 630,
+    "declaredBy": "LV.VI",
+    "label": "Library",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Build Send.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0050\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Mods.Block Diagram": {
+    "access": "r",
+    "code": 539,
+    "declaredBy": "LV.VI",
+    "label": "Mods.Block Diagram",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Is Project Item Dirty.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Mods.Front Panel": {
+    "access": "r",
+    "code": 538,
+    "declaredBy": "LV.VI",
+    "label": "Mods.Front Panel",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Is Project Item Dirty.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Name": {
+    "access": "r",
+    "code": 500,
+    "declaredBy": "LV.VI",
+    "label": "Name",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Using the VI Activation Event for VI Scripting.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Panel": {
+    "access": "r",
+    "code": 573,
+    "declaredBy": "LV.VI",
+    "label": "Panel",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Create Control From Reference.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x001F\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Path": {
+    "access": "r",
+    "code": 501,
+    "declaredBy": "LV.VI",
+    "label": "Path",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating VIs\\Creating New VI From Template.vi",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "VI Name": {
+    "access": "r",
+    "code": 500,
+    "declaredBy": "LV.VI",
+    "label": "Name",
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "VI Path": {
+    "access": "r",
+    "code": 501,
+    "declaredBy": "LV.VI",
+    "label": "Path",
+    "source": "C:\\temp\\aixml-no-grpc\\probes\\ppn.bundle\\ppn.xml",
+    "type": "<TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
+  "LV.WaveformChart": {
+   "Active Plot": {
+    "access": "w",
+    "code": 104081412,
+    "declaredBy": "LV.WaveformChart",
+    "label": "Active Plot",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "DisabledEnum": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.WaveformChart",
+    "label": "DisabledEnum",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "History Data": {
+    "access": "w",
+    "code": 104081416,
+    "declaredBy": "LV.WaveformChart",
+    "label": "History Data",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Linear Algebra\\Norm of a Matrix and Fixpoint.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "LegNumRows": {
+    "access": "w",
+    "code": 104081428,
+    "declaredBy": "LV.WaveformChart",
+    "label": "LegNumRows",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LegPlotMin": {
+    "access": "w",
+    "code": 104081429,
+    "declaredBy": "LV.WaveformChart",
+    "label": "LegPlotMin",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Terminal": {
+    "access": "r",
+    "code": 104013830,
+    "declaredBy": "LV.WaveformChart",
+    "label": "Terminal",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "w",
+    "code": 104013842,
+    "declaredBy": "LV.WaveformChart",
+    "label": "Value",
+    "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Temp 1\" /></TypeDesc>"
+   }
+  },
+  "LV.WaveformGraph": {
+   "Active Cursor": {
+    "access": "w",
+    "code": 104084485,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "Active Cursor",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Measurements\\Basic Level Triggering of Waveforms.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Plot": {
+    "access": "w",
+    "code": 104084483,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "Active Plot",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Windows\\Window Comparison.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "AnntList": {
+    "access": "rw",
+    "code": 104084508,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Graph Annotations.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AnntList\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"49\" />\n          </TypeDesc>\n        <Label Text=\"LVAnnotationListTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "LegNumRows": {
+    "access": "w",
+    "code": 104084510,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "LegNumRows",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Legend Visible": {
+    "access": "w",
+    "code": 104084481,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "Legend Visible",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "PlotImages.Back": {
+    "access": "w",
+    "code": 104084502,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "PlotImages.Back",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Plot Images Property.vi",
+    "type": "<TypeDesc Type=\"Picture\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "PlotImages.Front": {
+    "access": "w",
+    "code": 104084504,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "PlotImages.Front",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Plot Images Property.vi",
+    "type": "<TypeDesc Type=\"Picture\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "PlotImages.Middle": {
+    "access": "w",
+    "code": 104084503,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "PlotImages.Middle",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Plot Images Property.vi",
+    "type": "<TypeDesc Type=\"Picture\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "w",
+    "code": 104013842,
+    "declaredBy": "LV.WaveformGraph",
+    "label": "Value",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"MeasureData\" Flavor=\"Float64Waveform\" Format=\"inline\" Label=\"Waveform\" /></TypeDesc>"
+   }
+  },
+  "LV.WhileLoop": {
+   "Diagram": {
+    "access": "r",
+    "code": 104207361,
+    "declaredBy": "LV.WhileLoop",
+    "label": "Diagram",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - While Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4000\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Loop End Ref": {
+    "access": "r",
+    "code": 104213504,
+    "declaredBy": "LV.WhileLoop",
+    "label": "LpEndRef",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Script Random Strip Chart with Diagram Cleanup.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "LpCounter": {
+    "access": "r",
+    "code": 104207360,
+    "declaredBy": "LV.WhileLoop",
+    "label": "LpCounter",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - While Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "LpEndRef": {
+    "access": "r",
+    "code": 104213504,
+    "declaredBy": "LV.WhileLoop",
+    "label": "LpEndRef",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - While Loop.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.Wire": {
+   "Terminals[]": {
+    "access": "r",
+    "code": 104271875,
+    "declaredBy": "LV.Wire",
+    "label": "Terms[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Structures.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Terms[]": {
+    "access": "r",
+    "code": 104271875,
+    "declaredBy": "LV.Wire",
+    "label": "Terms[]",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Finding and Modifying Objects\\Navigating Nodes and Wires.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4001\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  }
+ }
+}

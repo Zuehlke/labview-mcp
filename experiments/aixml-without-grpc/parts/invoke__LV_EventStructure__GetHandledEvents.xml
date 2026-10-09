@@ -1,0 +1,360 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.EventStructure/GetHandledEvents" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Scripting\Structures\VI Scripting with Structures - Event Structure.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x404A" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x404A" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="GetHandledEvents" /><TypeDesc Type="Void" Format="inline" Label="GetHandledEvents" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="FrameIndex" /><TypeDesc Type="Void" Format="inline" Label="FrameIndex" /><TypeDesc Type="Void" Format="inline" Label="StaticAppVIEvents" /><TypeDesc Type="Array" Format="inline" Label="StaticAppVIEvents"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Static App/VI Events"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="Event Type">
+          <EnumLabel>Null</EnumLabel>
+          <EnumLabel>Timeout</EnumLabel>
+          <EnumLabel>Annotation Menu Selection</EnumLabel>
+          <EnumLabel>Annotation Menu Selection?</EnumLabel>
+          <EnumLabel>App Instance Close</EnumLabel>
+          <EnumLabel>App Instance Close?</EnumLabel>
+          <EnumLabel>Autoscale Range Change</EnumLabel>
+          <EnumLabel>Bookmark Info Change</EnumLabel>
+          <EnumLabel>Cell Edit</EnumLabel>
+          <EnumLabel>Cell Edit?</EnumLabel>
+          <EnumLabel>Cursor Grab</EnumLabel>
+          <EnumLabel>Cursor Grab?</EnumLabel>
+          <EnumLabel>Cursor Menu Selection</EnumLabel>
+          <EnumLabel>Cursor Menu Selection?</EnumLabel>
+          <EnumLabel>Cursor Move</EnumLabel>
+          <EnumLabel>Cursor Release</EnumLabel>
+          <EnumLabel>Data Change</EnumLabel>
+          <EnumLabel>Direction Change</EnumLabel>
+          <EnumLabel>Display State Change</EnumLabel>
+          <EnumLabel>Drag Ended</EnumLabel>
+          <EnumLabel>Drag Enter</EnumLabel>
+          <EnumLabel>Drag Leave</EnumLabel>
+          <EnumLabel>Drag Over</EnumLabel>
+          <EnumLabel>Drag Source Update</EnumLabel>
+          <EnumLabel>Drag Starting</EnumLabel>
+          <EnumLabel>Drag Starting?</EnumLabel>
+          <EnumLabel>Drop</EnumLabel>
+          <EnumLabel>Exec State Change</EnumLabel>
+          <EnumLabel>Key Down</EnumLabel>
+          <EnumLabel>Key Down?</EnumLabel>
+          <EnumLabel>Key Repeat</EnumLabel>
+          <EnumLabel>Key Repeat?</EnumLabel>
+          <EnumLabel>Key Up</EnumLabel>
+          <EnumLabel>Listbox Double Click</EnumLabel>
+          <EnumLabel>Menu Activation?</EnumLabel>
+          <EnumLabel>Menu Selection (App)</EnumLabel>
+          <EnumLabel>Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Menu Selection (User)</EnumLabel>
+          <EnumLabel>Mouse Down</EnumLabel>
+          <EnumLabel>Mouse Down?</EnumLabel>
+          <EnumLabel>Mouse Enter</EnumLabel>
+          <EnumLabel>Mouse Leave</EnumLabel>
+          <EnumLabel>Mouse Move</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Mouse Wheel</EnumLabel>
+          <EnumLabel>NI Security User Change (App)</EnumLabel>
+          <EnumLabel>Pane Size</EnumLabel>
+          <EnumLabel>Panel Close</EnumLabel>
+          <EnumLabel>Panel Close?</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Plot Attribute Change</EnumLabel>
+          <EnumLabel>Scale Range Change</EnumLabel>
+          <EnumLabel>Shortcut Menu Activation?</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (User)</EnumLabel>
+          <EnumLabel>Tree Double Click</EnumLabel>
+          <EnumLabel>Tree Drag</EnumLabel>
+          <EnumLabel>Tree Drag?</EnumLabel>
+          <EnumLabel>Tree Drop</EnumLabel>
+          <EnumLabel>Tree Drop?</EnumLabel>
+          <EnumLabel>Tree Item Close</EnumLabel>
+          <EnumLabel>Tree Item Close?</EnumLabel>
+          <EnumLabel>Tree Item Open</EnumLabel>
+          <EnumLabel>Tree Item Open?</EnumLabel>
+          <EnumLabel>URL Change?</EnumLabel>
+          <EnumLabel>User Event</EnumLabel>
+          <EnumLabel>Value Change</EnumLabel>
+          </TypeDesc>
+        <Label Text="lveventtype.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Limit (-1=none)" /><TypeDesc Type="Boolean" Format="inline" Label="Lock Panel?" /></TypeDesc></TypeDesc><TypeDesc Type="Void" Format="inline" Label="StaticControlEvents" /><TypeDesc Type="Array" Format="inline" Label="StaticControlEvents"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Static Control Events"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="Event Type">
+          <EnumLabel>Null</EnumLabel>
+          <EnumLabel>Timeout</EnumLabel>
+          <EnumLabel>Annotation Menu Selection</EnumLabel>
+          <EnumLabel>Annotation Menu Selection?</EnumLabel>
+          <EnumLabel>App Instance Close</EnumLabel>
+          <EnumLabel>App Instance Close?</EnumLabel>
+          <EnumLabel>Autoscale Range Change</EnumLabel>
+          <EnumLabel>Bookmark Info Change</EnumLabel>
+          <EnumLabel>Cell Edit</EnumLabel>
+          <EnumLabel>Cell Edit?</EnumLabel>
+          <EnumLabel>Cursor Grab</EnumLabel>
+          <EnumLabel>Cursor Grab?</EnumLabel>
+          <EnumLabel>Cursor Menu Selection</EnumLabel>
+          <EnumLabel>Cursor Menu Selection?</EnumLabel>
+          <EnumLabel>Cursor Move</EnumLabel>
+          <EnumLabel>Cursor Release</EnumLabel>
+          <EnumLabel>Data Change</EnumLabel>
+          <EnumLabel>Direction Change</EnumLabel>
+          <EnumLabel>Display State Change</EnumLabel>
+          <EnumLabel>Drag Ended</EnumLabel>
+          <EnumLabel>Drag Enter</EnumLabel>
+          <EnumLabel>Drag Leave</EnumLabel>
+          <EnumLabel>Drag Over</EnumLabel>
+          <EnumLabel>Drag Source Update</EnumLabel>
+          <EnumLabel>Drag Starting</EnumLabel>
+          <EnumLabel>Drag Starting?</EnumLabel>
+          <EnumLabel>Drop</EnumLabel>
+          <EnumLabel>Exec State Change</EnumLabel>
+          <EnumLabel>Key Down</EnumLabel>
+          <EnumLabel>Key Down?</EnumLabel>
+          <EnumLabel>Key Repeat</EnumLabel>
+          <EnumLabel>Key Repeat?</EnumLabel>
+          <EnumLabel>Key Up</EnumLabel>
+          <EnumLabel>Listbox Double Click</EnumLabel>
+          <EnumLabel>Menu Activation?</EnumLabel>
+          <EnumLabel>Menu Selection (App)</EnumLabel>
+          <EnumLabel>Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Menu Selection (User)</EnumLabel>
+          <EnumLabel>Mouse Down</EnumLabel>
+          <EnumLabel>Mouse Down?</EnumLabel>
+          <EnumLabel>Mouse Enter</EnumLabel>
+          <EnumLabel>Mouse Leave</EnumLabel>
+          <EnumLabel>Mouse Move</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Mouse Wheel</EnumLabel>
+          <EnumLabel>NI Security User Change (App)</EnumLabel>
+          <EnumLabel>Pane Size</EnumLabel>
+          <EnumLabel>Panel Close</EnumLabel>
+          <EnumLabel>Panel Close?</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Plot Attribute Change</EnumLabel>
+          <EnumLabel>Scale Range Change</EnumLabel>
+          <EnumLabel>Shortcut Menu Activation?</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (User)</EnumLabel>
+          <EnumLabel>Tree Double Click</EnumLabel>
+          <EnumLabel>Tree Drag</EnumLabel>
+          <EnumLabel>Tree Drag?</EnumLabel>
+          <EnumLabel>Tree Drop</EnumLabel>
+          <EnumLabel>Tree Drop?</EnumLabel>
+          <EnumLabel>Tree Item Close</EnumLabel>
+          <EnumLabel>Tree Item Close?</EnumLabel>
+          <EnumLabel>Tree Item Open</EnumLabel>
+          <EnumLabel>Tree Item Open?</EnumLabel>
+          <EnumLabel>URL Change?</EnumLabel>
+          <EnumLabel>User Event</EnumLabel>
+          <EnumLabel>Value Change</EnumLabel>
+          </TypeDesc>
+        <Label Text="lveventtype.ctl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0024" HasItem="0" Format="inline" Label="Reference" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Limit (-1=none)" /><TypeDesc Type="Boolean" Format="inline" Label="Lock Panel?" /></TypeDesc></TypeDesc><TypeDesc Type="Void" Format="inline" Label="DynamicEvents" /><TypeDesc Type="Array" Format="inline" Label="DynamicEvents"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Dynamic Events"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="Event Type">
+          <EnumLabel>Null</EnumLabel>
+          <EnumLabel>Timeout</EnumLabel>
+          <EnumLabel>Annotation Menu Selection</EnumLabel>
+          <EnumLabel>Annotation Menu Selection?</EnumLabel>
+          <EnumLabel>App Instance Close</EnumLabel>
+          <EnumLabel>App Instance Close?</EnumLabel>
+          <EnumLabel>Autoscale Range Change</EnumLabel>
+          <EnumLabel>Bookmark Info Change</EnumLabel>
+          <EnumLabel>Cell Edit</EnumLabel>
+          <EnumLabel>Cell Edit?</EnumLabel>
+          <EnumLabel>Cursor Grab</EnumLabel>
+          <EnumLabel>Cursor Grab?</EnumLabel>
+          <EnumLabel>Cursor Menu Selection</EnumLabel>
+          <EnumLabel>Cursor Menu Selection?</EnumLabel>
+          <EnumLabel>Cursor Move</EnumLabel>
+          <EnumLabel>Cursor Release</EnumLabel>
+          <EnumLabel>Data Change</EnumLabel>
+          <EnumLabel>Direction Change</EnumLabel>
+          <EnumLabel>Display State Change</EnumLabel>
+          <EnumLabel>Drag Ended</EnumLabel>
+          <EnumLabel>Drag Enter</EnumLabel>
+          <EnumLabel>Drag Leave</EnumLabel>
+          <EnumLabel>Drag Over</EnumLabel>
+          <EnumLabel>Drag Source Update</EnumLabel>
+          <EnumLabel>Drag Starting</EnumLabel>
+          <EnumLabel>Drag Starting?</EnumLabel>
+          <EnumLabel>Drop</EnumLabel>
+          <EnumLabel>Exec State Change</EnumLabel>
+          <EnumLabel>Key Down</EnumLabel>
+          <EnumLabel>Key Down?</EnumLabel>
+          <EnumLabel>Key Repeat</EnumLabel>
+          <EnumLabel>Key Repeat?</EnumLabel>
+          <EnumLabel>Key Up</EnumLabel>
+          <EnumLabel>Listbox Double Click</EnumLabel>
+          <EnumLabel>Menu Activation?</EnumLabel>
+          <EnumLabel>Menu Selection (App)</EnumLabel>
+          <EnumLabel>Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Menu Selection (User)</EnumLabel>
+          <EnumLabel>Mouse Down</EnumLabel>
+          <EnumLabel>Mouse Down?</EnumLabel>
+          <EnumLabel>Mouse Enter</EnumLabel>
+          <EnumLabel>Mouse Leave</EnumLabel>
+          <EnumLabel>Mouse Move</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Mouse Wheel</EnumLabel>
+          <EnumLabel>NI Security User Change (App)</EnumLabel>
+          <EnumLabel>Pane Size</EnumLabel>
+          <EnumLabel>Panel Close</EnumLabel>
+          <EnumLabel>Panel Close?</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Plot Attribute Change</EnumLabel>
+          <EnumLabel>Scale Range Change</EnumLabel>
+          <EnumLabel>Shortcut Menu Activation?</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (User)</EnumLabel>
+          <EnumLabel>Tree Double Click</EnumLabel>
+          <EnumLabel>Tree Drag</EnumLabel>
+          <EnumLabel>Tree Drag?</EnumLabel>
+          <EnumLabel>Tree Drop</EnumLabel>
+          <EnumLabel>Tree Drop?</EnumLabel>
+          <EnumLabel>Tree Item Close</EnumLabel>
+          <EnumLabel>Tree Item Close?</EnumLabel>
+          <EnumLabel>Tree Item Open</EnumLabel>
+          <EnumLabel>Tree Item Open?</EnumLabel>
+          <EnumLabel>URL Change?</EnumLabel>
+          <EnumLabel>User Event</EnumLabel>
+          <EnumLabel>Value Change</EnumLabel>
+          </TypeDesc>
+        <Label Text="lveventtype.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Event Registration Index" /></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="invokeNode" uid="714">
+                <objFlags>640</objFlags>
+                <termList elements="14">
+                  <SL__arrayElement class="term" uid="735">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="731">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(24)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="738">
+                    <dco class="hGrowCItem" uid="736">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(25)</typeDesc>
+                      <termBounds>(0, 99, 9, 112)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="742">
+                    <dco class="hGrowCItem" uid="739">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(26)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="746">
+                    <dco class="hGrowCItem" uid="743">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(27)</typeDesc>
+                      <termBounds>(9, 99, 18, 112)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="753">
+                    <dco class="invokeItem" uid="750">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(28)</typeDesc>
+                      <termBounds>(18, 0, 34, 56)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="757">
+                    <dco class="invokeItem" uid="754">
+                      <objFlags>196609</objFlags>
+                      <typeDesc>TypeID(29)</typeDesc>
+                      <termBounds>(18, 56, 34, 112)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="764">
+                    <objFlags>32768</objFlags>
+                    <dco class="invokeItem" uid="762">
+                      <typeDesc>TypeID(30)</typeDesc>
+                      <termBounds>(34, 0, 50, 56)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="768">
+                    <dco class="invokeItem" uid="766">
+                      <objFlags>131073</objFlags>
+                      <typeDesc>TypeID(31)</typeDesc>
+                      <termBounds>(34, 56, 50, 112)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="772">
+                    <dco class="invokeItem" uid="770">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(32)</typeDesc>
+                      <termBounds>(50, 0, 66, 56)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="776">
+                    <dco class="invokeItem" uid="774">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(33)</typeDesc>
+                      <termBounds>(50, 56, 66, 112)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="780">
+                    <dco class="invokeItem" uid="778">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(34)</typeDesc>
+                      <termBounds>(66, 0, 82, 56)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="784">
+                    <dco class="invokeItem" uid="782">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(35)</typeDesc>
+                      <termBounds>(66, 56, 82, 112)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="788">
+                    <dco class="invokeItem" uid="786">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(36)</typeDesc>
+                      <termBounds>(82, 0, 98, 56)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="792">
+                    <dco class="invokeItem" uid="790">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(37)</typeDesc>
+                      <termBounds>(82, 56, 98, 112)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(26, 84, 125, 196)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>1572870</clumpNum>
+                <dcoList elements="10">
+                  <SL__arrayElement uid="750" />
+                  <SL__arrayElement uid="754" />
+                  <SL__arrayElement uid="762" />
+                  <SL__arrayElement uid="766" />
+                  <SL__arrayElement uid="770" />
+                  <SL__arrayElement uid="774" />
+                  <SL__arrayElement uid="778" />
+                  <SL__arrayElement uid="782" />
+                  <SL__arrayElement uid="786" />
+                  <SL__arrayElement uid="790" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="731" />
+                  <SL__arrayElement uid="736" />
+                  <SL__arrayElement uid="739" />
+                  <SL__arrayElement uid="743" />
+                  </permDCOList>
+                <nodeName>"EvntStruct"</nodeName>
+                <oMId>0006</oMId>
+                <methName>"GetHandledEvents"</methName>
+                <methCode>85530626</methCode>
+                <invokeFlags>201008</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>

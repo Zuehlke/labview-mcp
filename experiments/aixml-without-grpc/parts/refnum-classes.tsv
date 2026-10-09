@@ -1,0 +1,171 @@
+# VI Server class -> the CtlFlags of its refnum type (Refnum RefType=LVObjCtl), read off an
+# AIXML-generated probe with one control per class (probes/pref2.xml, 2026-10-10). A class with a
+# nested object (a control refnum carries an object of the control's own class, which fixes its
+# data type) names that object's heap class in the third column; those are not composed yet.
+class	ctlFlags	nested
+LV.Application	0x0001	
+LV.VI	0x0002	
+LV.Generic	0x0003	
+LV.Decoration	0x0004	
+LV.Text	0x0005	
+LV.Control	0x0006	
+LV.ColorBox	0x0007	stdColorNum
+LV.Boolean	0x0008	stdBool
+LV.RefNum	0x0009	stdRefNum
+LV.LVVariant	0x000A	stdLvVariant
+LV.Path	0x000B	stdPath
+LV.ListBox	0x000C	listbox
+LV.Table	0x000D	tableControl
+LV.Array	0x000E	indArr
+LV.Picture	0x000F	stdPict
+LV.ActiveXContainer	0x0010	stdCont
+LV.Numeric	0x0011	stdNum
+LV.Digital	0x0012	stdNum
+LV.NamedNumeric	0x0013	stdRing
+LV.ColorRamp	0x0014	stdRamp
+LV.Slide	0x0015	stdSlide
+LV.GraphChart	0x0016	stdGraph
+LV.WaveformChart	0x0017	stdGraph
+LV.WaveformGraph	0x0018	stdGraph
+LV.IntensityChart	0x0019	stdGraph
+LV.IntensityGraph	0x001A	stdGraph
+LV.String	0x001B	stdString
+LV.IOName	0x001C	stdTag
+LV.ComboBox	0x001D	stdComboBox
+LV.Cluster	0x001E	stdClust
+LV.Panel	0x001F	
+LV.Knob	0x0020	stdKnob
+LV.NumericWithScale	0x0021	stdSlide
+LV.Ring	0x0022	stdRing
+LV.Enum	0x0023	stdRing
+LV.GObject	0x0024	
+LV.Plot	0x0025	
+LV.Cursor	0x0026	
+LV.NumericText	0x0027	
+LV.Scale	0x0028	
+LV.ColorScale	0x0029	
+LV.GraphScale	0x002A	
+LV.ColorGraphScale	0x002B	
+LV.TypedRefNum	0x002C	stdRefNum
+LV.MulticolumnListbox	0x002E	listbox
+LV.WaveformData	0x002F	stdMeasureData
+LV.DAQChannelName	0x0031	stdTag
+LV.VISAResourceName	0x0032	stdRefNum
+LV.IVILogicalName	0x0033	stdRefNum
+LV.SlideScale	0x0034	
+LV.PageSelector	0x0035	tabControl
+LV.Page	0x0036	
+LV.TabControl	0x0037	tabControl
+LV.ConnectorPane	0x0038	
+LV.DAQmxName	0x0039	stdRefNum
+LV.AbsTime	0x003C	absTime
+LV.DigitalTable	0x003D	digitalTable
+LV.SubPanel	0x0041	stdSubPanel
+LV.TreeControl	0x0042	treeControl
+LV.RotaryColorScale	0x0045	
+LV.RadioButtonsControl	0x0048	radioClust
+LV.Project	0x0049	
+LV.ProjectItem	0x004A	
+LV.Library	0x0050	
+LV.LVClassLibrary	0x0055	
+LV.TargetItem	0x005F	
+LV.ProjectItemType	0x0060	
+LV.LabVIEWClassControl	0x0066	udClassDDO
+LV.SceneNode	0x0068	
+LV.SceneObject	0x0069	
+LV.SceneSphere	0x0075	
+LV.Diagram	0x4000	
+LV.Terminal	0x4001	
+LV.Constant	0x4002	
+LV.PathConstant	0x4003	
+LV.ArrayConstant	0x4004	
+LV.NumericConstant	0x4005	
+LV.DigitalNumericConstant	0x4006	
+LV.NamedNumericConstant	0x4007	
+LV.StringConstant	0x4008	
+LV.ClusterConstant	0x4009	
+LV.FixedConstant	0x400A	
+LV.ControlTerminal	0x400B	
+LV.FormulaParameter	0x400C	
+LV.Global	0x400D	
+LV.Local	0x400E	
+LV.RightShiftRegister	0x400F	
+LV.Function	0x4010	
+LV.SubVI	0x4011	
+LV.CallByRef	0x4012	
+LV.UnitCast	0x4013	
+LV.Structure	0x4014	
+LV.Loop	0x4015	
+LV.MultiFrameStructure	0x4016	
+LV.Sequence	0x4017	
+LV.CaseStructure	0x4018	
+LV.Formula	0x4019	
+LV.GrowableFunction	0x401A	
+LV.BuildClusterArray	0x401B	
+LV.CompoundArithmetic	0x401C	
+LV.IndexArray	0x401D	
+LV.BuildArray	0x401E	
+LV.NamedBundler	0x401F	
+LV.CIN	0x4020	
+LV.CallLibrary	0x4021	
+LV.ObjectFunction	0x4022	
+LV.Property	0x4023	
+LV.Invoke	0x4024	
+LV.Node	0x4025	
+LV.BooleanConstant	0x4026	
+LV.TopLevelDiagram	0x4027	
+LV.RingConstant	0x4028	
+LV.EnumConstant	0x4029	
+LV.Tunnel	0x402A	
+LV.LoopTunnel	0x402B	
+LV.SequenceLocal	0x402C	
+LV.Comparison	0x402D	
+LV.ReadWriteFile	0x402E	
+LV.TypeCast	0x402F	
+LV.FlattenUnflattenString	0x4030	
+LV.GPIBReadWrite	0x4031	
+LV.ForLoop	0x4032	
+LV.WhileLoop	0x4033	
+LV.ScriptNode	0x4034	
+LV.ArrayToCluster	0x4035	
+LV.FormatScanString	0x4036	
+LV.Wire	0x4037	
+LV.Probe	0x4038	
+LV.InnerTerminal	0x4039	
+LV.LeftShiftRegister	0x403A	
+LV.PolymorphicSubVI	0x403B	
+LV.PropertyItem	0x403C	
+LV.IONameConstant	0x403D	
+LV.DSCTagConstant	0x403E	
+LV.DAQChannelNameConstant	0x403F	
+LV.VISAResourceNameConstant	0x4040	
+LV.IVILogicalNameConstant	0x4041	
+LV.ColorBoxConstant	0x4042	
+LV.ControlReferenceConstant	0x4043	
+LV.ClassSpecifierConstant	0x4044	
+LV.ConfNode	0x4045	
+LV.StateDiagramWizard	0x4047	
+LV.OuterTerminal	0x4048	
+LV.DAQmxNameConstant	0x4049	
+LV.EventStructure	0x404A	
+LV.FlatSequence	0x404B	
+LV.AbsTimeConstant	0x404D	
+LV.ExternalNode	0x404E	
+LV.SubWizard	0x404F	
+LV.ScriptNodeParameter	0x4050	
+LV.StaticVIReference	0x4051	
+LV.ComboBoxConstant	0x4052	
+LV.TimedLoop	0x4053	
+LV.SimDiagram	0x4058	
+LV.CompanionDiagram	0x4059	
+LV.SimulationNode	0x405A	
+LV.SimulationDCO	0x405B	
+LV.Bundler	0x405C	
+LV.Unbundler	0x405D	
+LV.NamedUnbundler	0x405E	
+LV.FlatSequenceFrame	0x405F	
+LV.FlatSequenceInnerTunnel	0x4060	
+LV.FlatSequenceOuterTunnel	0x4061	
+LV.DisableStructure	0x4067	
+LV.TimedSequence	0x4070	
+LV.LabVIEWClassConstant	0x4075	
