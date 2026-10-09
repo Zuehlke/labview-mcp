@@ -779,5 +779,16 @@
     }
    }
   ]
+ },
+ "t87_disable": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "enabled": 5,
+     "conditional": 5
+    }
+   }
+  ]
  }
 }

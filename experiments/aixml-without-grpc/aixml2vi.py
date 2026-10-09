@@ -2184,7 +2184,8 @@ class Composer:
         per frame (`halves`: frame uid -> Tunnel element), as AIXML writes it."""
         d = "in" if outer_el.get("_id", "").startswith("In") else "out"
         case, frame_diags, parent = next(x for x in self.cases if x[0].get("uid") == case_el.get("uid"))
-        got = self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d)
+        part = getattr(self, "case_tunnel_part", {}).get(case.get("uid"))
+        got = self.instantiate("%s/%s" % (part, d)) if part else             (self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d))
         if got is None:
             raise Unsupported("no %s case-tunnel part harvested" % d)
         wrap = got[0]
@@ -2228,6 +2229,101 @@ class Composer:
             if n:
                 self.net_type[n] = tree
         self.report.append("Case tunnel %s (%s)" % (outer_el.get("_id"), d))
+
+    DISABLES = {"Diagram Disable Structure": "diagram", "Conditional Disable Structure": "conditional"}
+
+    def _cond_expr(self, sel, el):
+        """' RUN_TIME_ENGINE==True ' -> an ExpressionInfo as LabVIEW writes it: the strings in
+        Tag0000, a prefix tree in activeDiag - an operator TreeElt (Tag0000 FF, two children,
+        activePlot FD for ==) then one leaf per string (activePlot = its index). Measured on an
+        AIXML-generated Conditional Disable Structure; other operators are refused."""
+        info = ET.Element("activeDiag", {"class": "ExpressionInfo"})
+        s = sel.strip()
+        if s in ("Default", ""):
+            ET.SubElement(info, "Tag0000", {"elements": "0"})
+            ET.SubElement(info, "activeDiag", {"elements": "0"})
+            return info
+        m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\s*==\s*(\S+)", s)
+        if not m:
+            raise Unsupported("Conditional Disable %s: condition %r is not composable yet" % (el.get("uid"), s))
+        strs = ET.SubElement(info, "Tag0000", {"elements": "2"})
+        for x in m.groups():
+            ET.SubElement(strs, "SL__arrayElement").text = x.encode("mac_roman").hex().upper()
+        tree = ET.SubElement(info, "activeDiag", {"elements": "3"})
+        for tag0, ad, mk, plot in (("FF", "01", "2", "FD"), ("00", "FF", "-1", "00"), ("00", "FF", "-1", "01")):
+            t = ET.SubElement(tree, "SL__arrayElement", {"class": "TreeElt"})
+            ET.SubElement(t, "Tag0000").text = tag0
+            ET.SubElement(t, "activeDiag").text = ad
+            ET.SubElement(t, "activeMarker").text = mk
+            ET.SubElement(t, "activePlot").text = plot
+        return info
+
+    def add_disable(self, el):
+        """Diagram Disable and Conditional Disable structures: a commentNode, built like a case
+        structure - one diagram per frame, commentTun tunnels with an inner terminal per frame
+        - plus commentSelInfoArray (one ExpressionInfo per frame). A Diagram Disable carries
+        commentMode True and activeDiag/defaultDiag, the ENABLED frame's index: NI's own
+        converter set it to the last frame whatever the labels said (its probe ran 'Disabled'),
+        the composer sets the frame whose selector is ' Enabled '."""
+        kind = self.DISABLES[unescape(el.get("_name"))]
+        self.check_attrs(el)
+        frames_el = [c for c in el if isinstance(c.tag, str) and c.tag == "Diagram"]
+        parent = self.diag_of(el)
+        node, _, src = self.instantiate("struct/disable/%s" % kind, own_uid=el.get("uid"))
+        dl = node.find("diagramList")
+        proto = copy.deepcopy(dl[0])
+        pd = Diagram(proto)
+        for c in list(pd.srn_terms):
+            pd.srn_terms.remove(c)
+        for c in list(pd.nodes):
+            if c.get("class") != "sRN":
+                pd.nodes.remove(c)
+        for lst in (pd.z, pd.signals):
+            for c in list(lst):
+                lst.remove(c)
+        for c in list(dl):
+            dl.remove(c)
+        for lst in (node.find("termList"), node.find("tunnelList")):
+            for c in list(lst):
+                lst.remove(c)
+        info = node.find("commentSelInfoArray")
+        proto_info = copy.deepcopy(info[0])
+        for c in list(info):
+            info.remove(c)
+        frame_diags = []
+        enabled = 0
+        for i, f in enumerate(frames_el):
+            d = copy.deepcopy(proto)
+            lvheap.renumber(d, self.alloc)
+            dl.append(d)
+            fd = Diagram(d, owner=f)
+            self.diagrams[f.get("uid")] = fd
+            frame_diags.append(fd)
+            e = copy.deepcopy(proto_info)
+            sel = unescape(f.get("selector") or "")
+            if kind == "conditional":
+                e.remove(e.find("activeDiag"))
+                e.append(self._cond_expr(sel, el))
+            elif sel.strip() == "Enabled":
+                enabled = i
+            info.append(e)
+        info.set("elements", str(len(info)))
+        dl.set("elements", str(len(dl)))
+        for tag in ("activeDiag", "defaultDiag"):
+            if node.find(tag) is not None:
+                node.find(tag).text = "%02X" % enabled
+        if node.find("dIdx") is not None:
+            node.find("dIdx").text = "0"
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        parent.nodes.append(node)
+        parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        parent.placed.append((node, el))
+        self.cases = getattr(self, "cases", [])
+        self.cases.append((node, frame_diags, parent))
+        self.case_tunnel_part = getattr(self, "case_tunnel_part", {})
+        self.case_tunnel_part[node.get("uid")] = "commenttun"
+        self.report.append("Structure %r (%d frames) <- %s" % (el.get("_name"), len(frames_el), src))
 
     def add_flatseq(self, el):
         """A Flat Sequence: a flatSequence object (defined in the parent's z list) holding one
@@ -2642,8 +2738,8 @@ class Composer:
             # The selector terminal keeps the donor's coordinates otherwise - y 230 in a donor
             # 273 px tall - and outside a smaller case LabVIEW logs it insane ({graphics} 0x80).
             # It goes on the left edge below the input tunnels.
-            sel = next(c for c in case.find("termList") if c.find("dco").get("class") == "caseSel")
-            stb = sel.find("dco/termBounds")
+            sel = next((c for c in case.find("termList") if c.find("dco").get("class") == "caseSel"), None)
+            stb = sel.find("dco/termBounds") if sel is not None else None   # a disable has none
             if stb is not None:
                 tt, tl, tbb, tr = lvheap.parse_bounds(stb.text)
                 y = 30 + 24 * slot[0] + 6
@@ -2720,7 +2816,7 @@ class Composer:
         for el in parent_el:
             if not isinstance(el.tag, str):
                 continue
-            if el.tag in ("Structure", "CaseFrame", "Diagram"):
+            if el.tag in ("Structure", "CaseFrame", "Diagram") or                     (el.tag == "Node" and any(isinstance(c.tag, str) and c.tag == "Diagram" for c in el)):
                 out.append(el)
                 for c in self.flatten(el):
                     if c.tag == "Condition":
@@ -2758,6 +2854,8 @@ class Composer:
                 self.add_flatseq(el)
             else:
                 self.add_loop(el)
+        for el in [e for e in elements if e.tag == "Node" and unescape(e.get("_name") or "") in self.DISABLES]:
+            self.add_disable(el)
 
         def seq_frame(uid):
             """The flat-sequence frame a tunnel sits on: a <Diagram> of one, or the structure."""
@@ -2772,7 +2870,8 @@ class Composer:
         for e in elements:
             if e.tag == "Tunnel":
                 p = by_uid.get(e.get("uid_parent"))
-                if p is not None and p.tag == "CaseFrame":
+                gp = by_uid.get(p.get("uid_parent")) if p is not None else None
+                if p is not None and (p.tag == "CaseFrame" or (p.tag == "Diagram" and gp is not None and gp.tag == "Node")):
                     case_halves.setdefault((p.get("uid_parent"), e.get("_id")), {})[p.get("uid")] = e
         row = {"Control": 0, "Indicator": 0}
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
@@ -2782,11 +2881,15 @@ class Composer:
             self.add_const(el) if el.tag == "Constant" else self.add_fixed(el)
         # nodes and tunnels in dependency order, so every input type is known when it is placed
         def is_case(uid):
+            """A case structure, or a disable structure - tunnels with one inner half per frame."""
             p = by_uid.get(uid)
-            return p is not None and p.tag == "Structure" and p.get("_name") == "Case Structure"
-        pending = [e for e in elements if e.tag in ("Node", "ShiftReg", "Call")
+            return p is not None and ((p.tag == "Structure" and p.get("_name") == "Case Structure")
+                                      or (p.tag == "Node" and unescape(p.get("_name") or "") in self.DISABLES))
+        pending = [e for e in elements if (e.tag in ("Node", "ShiftReg", "Call")
+                                           and unescape(e.get("_name") or "") not in self.DISABLES)
                    or (e.tag == "Tunnel" and by_uid.get(e.get("uid_parent")) is not None
-                       and (by_uid[e.get("uid_parent")].tag == "Structure" or seq_frame(e.get("uid_parent")) is not None))]
+                       and (by_uid[e.get("uid_parent")].tag == "Structure" or is_case(e.get("uid_parent"))
+                            or seq_frame(e.get("uid_parent")) is not None))]
 
         def inputs_of(e):
             if e.tag == "Node" and unescape(e.get("_name") or "") == "Feedback Node":
