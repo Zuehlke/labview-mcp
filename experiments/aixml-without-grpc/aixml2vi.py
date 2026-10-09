@@ -1891,7 +1891,11 @@ class Composer:
             if want and direction not in (want, other):
                 continue
             exact = kt == t
-            adaptable = exact or (kt in NUM_RANK and t in NUM_RANK)
+            # an enum part serves every enum width: its items and maximum are rewritten anyway,
+            # and the NI-example UnitUInt32 ring was measured breaking a VI on its own where the
+            # clean UnitUInt16 one, re-typed, works
+            adaptable = exact or (kt in NUM_RANK and t in NUM_RANK) or \
+                (kt.startswith("UnitUInt") and t.startswith("UnitUInt"))
             if not adaptable:
                 continue
             clean = self.parts.clean(k)

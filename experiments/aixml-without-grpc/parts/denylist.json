@@ -1,4 +1,5 @@
 {
  "$comment": "Parts the harvester must NOT cut, each with the measurement that excluded it. A donor is a whole example VI, and some carry state a plain AIXML control does not have.",
- "fpdco/stdBool/ctl/Boolean": "Cut from Sample Main.vi: a 'Stop' push button with boolean text. Even a one-wire pass-through VI built on it loaded ExecState 0, LabVIEW logging 'Going from good to bad after compiling'; the LED indicator part flipped to a control works (measured 2026-10-09, t06_bool_pass)."
+ "fpdco/stdBool/ctl/Boolean": "Cut from Sample Main.vi: a 'Stop' push button with boolean text. Even a one-wire pass-through VI built on it loaded ExecState 0, LabVIEW logging 'Going from good to bad after compiling'; the LED indicator part flipped to a control works (measured 2026-10-09, t06_bool_pass).",
+ "fpdco/stdRing/ctl/UnitUInt32": "Cut from an NI example: a uint32 enum control on it alone loaded ExecState 0 (8 of 18 broken composed NI VIs had one, mostly tab controls); the clean UnitUInt16 enum part re-typed to UnitUInt32 works (measured 2026-10-10, try e32a)."
 }

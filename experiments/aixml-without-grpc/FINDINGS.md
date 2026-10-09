@@ -223,6 +223,16 @@ Two traps, each a broken VI first:
   `Insane Array Constant {graphics}` (array constant). A constant's fields now come from
   constant parts, and an array element of the donor's own kind is the donor's element, re-typed.
 * The `nRC`/`oRC` pair above.
+* **A cluster's inside lives in a frame tied to where the cluster sits**: its pane's
+  `docBounds` is the negated top-left of the cluster (every top-level cluster of four
+  AIXML-generated VIs, front panel and diagram alike), and the fields' bounds are in that frame
+  — so is an array's cluster element. Moving a cluster constant without its insides left an
+  array field outside the pane: `Insane Array Constant {graphics}`. `move_obj()` now shifts a
+  cluster's `docBounds` and fields against its own move, recursively.
+* **An array's element is a part of its own kind** (`arrelem/<fpdco|const>/<class>`, cut from
+  arrays of numerics, strings, booleans and clusters), and an array part is keyed by element
+  kind and dimensions (`Array.String`, `Array2.NumInt32`): the number of dimensions is the
+  container's own shape (`arrayIndices` has one entry per dimension).
 
 **Data** is flattened big-endian: a cluster is its fields in order, an array one int32 per
 dimension then the elements (`[1,2,3]` as int32 = `00000003 00000001 00000002 00000003`). AIXML
@@ -235,17 +245,19 @@ wired types (`add_agg_node`):
 |---|---|---|
 | `Unbundle By Name` | `nMux`, objFlags `0x50000` | cluster in = `dcoAgg`, one out per field, `<i>` = field number (absent for 0) |
 | `Bundle By Name` | `nMux`, objFlags `0x40000` | out = `dcoAgg` whose termList is [out, cluster in]; cluster in a bare `<dco uid=agg/>` (objFlags `0x28040`); one in per field with `<i>` |
-| `Bundle` | `mux` | the same, with one in per FIELD OF THE CLUSTER — `0x8040` when wired, `0x40` when not — named after the fields |
+| `Bundle` | `mux` | the same, with one in per FIELD OF THE CLUSTER — `0x8040` when wired, `0x40` when not — named after the fields. With NO cluster wired (`cluster:` empty, 12 NI VIs) the output is a cluster of the elements, each field labelled like its terminal, and the cluster input keeps its terminal at `0x20040` (NI's `Frequency Analysis of a Filter Design.vi`) |
 | `Unbundle` | `demux` | cluster in = `dcoAgg`, one out per field |
-| `Index Array` | `aIndx` | array in = `srcDCO`, element out = `dcoAgg`, index in (1D, one index) |
-| `Build Array` | `aBuild` | array out = `dcoAgg`, one in per element (non-concatenating) |
+| `Index Array` | `aIndx` | [array in = `srcDCO`, out = `dcoAgg`, its indices…, out, its indices…]; an index DCO is `0x200000` for the FIRST dimension and `0x400000` for the LAST (both on 1D), `+0x10000` when disabled — which makes the output a subarray; every out after the first is `0x40001`, and the node `0x80000` once there are two |
+| `Build Array` | `aBuild` | array out = `dcoAgg`, one in per element; a CONCATENATING `array` input is DCO `0x10000`, the first one `0x810000` |
 
-A repeated terminal name (`element` twice) is keyed `element`, `element#1`, … in order. NI's
-exports never leave `Bundle`'s cluster input unwired, and the generator refused one that did.
+A repeated terminal name (`element` twice) is keyed `element`, `element#1`, … in order. The AIXML
+generator cannot write a `Bundle` without its cluster input (it built "a cluster of 1 element"
+from two `element` inputs), but NI's own VIs have it, and the composer writes it.
 
 **Indexing tunnels**: the `lpTun` DCO is typed with the ARRAY and carries an `innerLpTunDCO`
 typed with the ELEMENT, `TunnelType 01` — going in the outside wire is the array, going out the
-inside wire is the element.
+inside wire is the element. Indexing an N-D array yields its (N−1)-D rows, and collecting arrays
+builds one array of one more dimension.
 
 **Case selectors** (`add_case_n`, `finish_cases`): any number of frames, each a diagram whose
 `sRN` holds the selector's inner terminal. `SelectRangeArray32` maps values to frames as
@@ -271,8 +283,13 @@ The selector's type and the ranges are written last, once the wire into the sele
 | `t71` | enum case, a tunnel in, `Multiply` in one frame | 0, 8, 4 |
 | `t72` | string case, `"idle", Default` shared | 1, 2, 0, 0 |
 | `t73` | error case, cluster passed through | `True`/`[False,0,]`, `False`/`[True,42,boom]` |
+| `t74` | string, boolean and cluster arrays; concatenating `Build Array`; a cluster indexed out of an array | `[alpha,beta]`, `[True,False,True]`, 3.5, 4 |
+| `t75` | 2D constant and control, a cluster holding a cluster and an array | `[1,2,3,4]`, `[0,0]`, `probe`, `[1,2]`, `[7,8]` |
+| `t76` | a For Loop over a 2D array's rows | row sums `[6,15]`, rows collected back |
+| `t77` | `Bundle` with no cluster wired | `[2.5,7]`, 7 |
+| `t78` | `Index Array`: two indices on 1D; element, row and column of 2D | 1.5, 3.5, 6, `[4,5,6]`, `[3,6]` |
 
-All thirteen load with **no** `Insane` line in LabVIEW's log (checked on a fresh log, see §5).
+`t60`–`t75` load with **no** `Insane` line in LabVIEW's log (checked on fresh logs, see §5).
 Over COM a cluster input must be a VARIANT array (`lv-com.ps1 -Inputs "pt={1.5,2.25}"`): a
 `double[]` is accepted without an error and silently ignored.
 
