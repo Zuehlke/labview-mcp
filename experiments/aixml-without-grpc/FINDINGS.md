@@ -469,6 +469,8 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t109` | TDMS Open (create or replace) → TDMS Close: a TDMS file refnum wire | file written, path back, no error |
 | `t110` | graph and chart styles (waveform graph, chart, XY, intensity) - composed as plain controls by default | loads |
 | `t111` | In Range and Coerce with each include setting | x on a limit: none F, low T/F, high F/T, both T |
+| `t112` | 2D Array Subset (`dimensions="2"`) | row 1, columns 1-2 of 2 x 3 → `[5,6]` |
+| `t113` | connector pane terminals at slots 17 and 19 - the 20-slot pattern 4834 | 3.5 |
 
 **Global Variables** (`t98`) are the local variable's `gRef` plus `connectorTM` - the global
 VI's pane - and the SAME `VIVI`/`IUVI` link pair a subVI call has (read out of the binary link
@@ -612,6 +614,16 @@ their strict VI reference feeding the polymorphic solver - once an indexing tunn
 sub-array kept its `mode="index"`. *Separate Array Values.vi* composed from NI's export runs on
 its own default input (`[6,3.9,-5.8,0,-2.6,-1,2.2,-4.3]` → `[6,3.9,2.2]` and
 `[-5.8,0,-2.6,-1,-4.3]`), which needs the conditional tunnels AND the composed default values.
+
+**Three composer crashes found by the coverage run, now refusals or fixes.** A `Condition` was
+tagged with its loop by EVERY enclosing structure in turn, so the outermost won: a While Loop
+inside a Case Structure wired its stop terminal to the case (`KeyError ('<case uid>', 'stop')`,
+seven of NI's VIs; two compose now). A For Loop WITH a conditional terminal is the rest of
+them, and is refused by name - any net end nothing composed is, instead of a KeyError. And a
+`conIdx` past the default pattern's 16 slots was an IndexError; the composer now takes 4834
+(20 slots) or 4835 (28) as NI's converter does (`t113`). **2D Array Subset** (`t112`) needed no
+new heap knowledge: a harvested template already had two index/length pairs, the composer just
+refused NI's `dimensions="2"`.
 
 **Polymorphic calls stay calls of the instance**, deliberately: of the 355 distinct instances
 NI's exports name, 1 is library-private; the other 354 are callable directly, so the

@@ -1406,7 +1406,12 @@ class Composer:
     PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000}}
 
     def check_attrs(self, el, extra=()):
-        unknown = [a for a in el.attrib if a not in self.NODE_ATTRS and a not in extra]
+        if el.get("comment"):
+            # a comment NI attaches to a node is documentation, like a FreeLabel: reported, not
+            # composed - refused, it stopped eight of NI's VIs at their first such node
+            self.report.append("skipped comment on %s %s (comments are not composed yet)"
+                               % (unescape(el.get("_name") or el.tag), el.get("uid")))
+        unknown = [a for a in el.attrib if a not in self.NODE_ATTRS and a not in extra and a != "comment"]
         if unknown:
             raise Unsupported("Node %r: mode %s is not composable yet" % (
                 unescape(el.get("_name") or ""), ", ".join("%s=%s" % (a, el.get(a)) for a in unknown)))
