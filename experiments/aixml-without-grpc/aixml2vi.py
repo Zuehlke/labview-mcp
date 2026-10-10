@@ -2421,12 +2421,19 @@ class Composer:
         The template must have the element's terminals; a growable node (Merge Errors,
         Concatenate Strings, Compound Arithmetic) gets more inputs by cloning one."""
         name = unescape(el.get("_name"))
-        self.check_attrs(el, ("operation", "inversions") if name == "Compound Arithmetic" else ())
+        dims_node = name in ("Array Subset", "Replace Array Subset")
+        self.check_attrs(el, ("operation", "inversions") if name == "Compound Arithmetic" else
+                         ("dimensions",) if dims_node else ())
         ins, outs = keyed(pairs(el.get("inputs"))), keyed(pairs(el.get("outputs")))
         want_in = [k for k, _ in ins]
         want_out = [k for k, _ in outs]
         best = None
         for key, t_in, t_out in self._templates(name):
+            if dims_node and el.get("dimensions"):
+                # a node of N dimensions has N index terminals (index, index#1 / index (row),
+                # index (col)); NI's export says how many in `dimensions`
+                if sum(1 for k in t_in if "index" in k) != int(el.get("dimensions")):
+                    continue
             if not set(want_out) <= set(t_out):
                 continue
             if set(want_in) <= set(t_in):

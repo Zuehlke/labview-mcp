@@ -1150,6 +1150,12 @@ class Reader:
             for t in outs[:1] + ins:
                 inv.append("i" if int(t.find("dco").findtext("objFlags") or 0) & 0x10000 else " ")
             el.set("inversions", ",".join(inv))
+        if el.get("_name") in ("Array Subset", "Replace Array Subset"):
+            # NI writes the number of dimensions when it is more than one (dimensions="2"):
+            # one index terminal per dimension
+            n = sum(1 for t in terms if "index" in (self.term_owner.get(t.get("uid"), (None, ""))[1] or ""))
+            if n > 1:
+                el.set("dimensions", str(n))
         return el
 
     def nmux(self, node, parent_uid):

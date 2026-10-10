@@ -465,6 +465,10 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t105` | In Place structure with an in/out pair AND plain tunnels | x 2.5, k 4 → 10, 10 |
 | `t106` | control DEFAULT values: double, int32, string, boolean, array, cluster, enum | read back unset |
 | `t107` | `style`: latched boolean, text Ring with `items`, Table | ring 1 |
+| `t108` | empty variant constant; To Variant → Variant To Data | 4.5 back, no error |
+| `t109` | TDMS Open (create or replace) → TDMS Close: a TDMS file refnum wire | file written, path back, no error |
+| `t110` | graph and chart styles (waveform graph, chart, XY, intensity) - composed as plain controls by default | loads |
+| `t111` | In Range and Coerce with each include setting | x on a limit: none F, low T/F, high F/T, both T |
 
 **Global Variables** (`t98`) are the local variable's `gRef` plus `connectorTM` - the global
 VI's pane - and the SAME `VIVI`/`IUVI` link pair a subVI call has (read out of the binary link
@@ -579,6 +583,42 @@ were such cuts, `int32` and `path` controls among them. `probes/pclean.xml` - a 
 indicator and a constant of every scalar type, as 1D and 2D arrays, plus rings and enums,
 generated once through NI's converter - replaced them: 212 of 281 are clean now.
 
+**The pane insanity of `t01` was the PANEL ROOT's flag, and it showed only on a FRESH
+LabVIEW.** `Nonfatal insanity (0x1000)` on the first control of every VI with a connector pane
+(`t01`, and the callees of `t50`/`t57` once the DWarn-delta gate looked) - but only when that
+VI was the first one loaded after a start; loaded after others it was clean, which is why it
+looked intermittent for weeks. NI's converter wrote the same `t01` clean. The difference was
+one flag: the front panel's root `supC` carries `objFlags 0x10000` in EVERY AIXML-generated VI
+WITHOUT a connector pane (ten probes) and not in NI's `t01`, which has one - so it means "no
+terminal on the pane", and the skeleton had it. Cleared when the composer assigns terminals;
+an A/B on a freshly restarted LabVIEW settled it, and the explicit `index` on a "previous + 1"
+pane connection (NI omits it) was measured irrelevant first.
+
+**In Range and Coerce** (`t111`): `includeLow` is prim objFlags 0x200000, `includeHigh`
+0x100000 (`probes/pmodes.xml` through NI's converter); NI writes the attribute only when true.
+
+**Graphs and charts** (`t110`): one ddo class, `stdGraph`, for every kind - the kind is the
+`rsrcID` of the annex in its parts list, which is also NI's `style="graphNNNNN"`. A graph's
+plot pictures live in the VI's `PICC` block, one binary section per picture named by
+`<ImageInternalsResID>` (42 ids, 42 sections in the probe); without them every graph VI was
+broken, with them it is executable. **It is nevertheless OFF by default**
+(`AIXML2VI_GRAPHS=1` turns it on): loading the composed graph VI logged `bad mutex verifier
+in ThMutexDestroy`, and every later COM call timed out until LabVIEW was restarted - twice,
+while NI's own graph VI of the same objects logged nothing. A graph is composed as the plain
+control of its type and the report says so; the data is the same.
+
+**NI's ODE examples compose and load now** - *ODE-PredatorPrey.vi* and *ODE-Circuit.vi*,
+their strict VI reference feeding the polymorphic solver - once an indexing tunnel fed by a
+sub-array kept its `mode="index"`. *Separate Array Values.vi* composed from NI's export runs on
+its own default input (`[6,3.9,-5.8,0,-2.6,-1,2.2,-4.3]` → `[6,3.9,2.2]` and
+`[-5.8,0,-2.6,-1,-4.3]`), which needs the conditional tunnels AND the composed default values.
+
+**Polymorphic calls stay calls of the instance**, deliberately: of the 355 distinct instances
+NI's exports name, 1 is library-private; the other 354 are callable directly, so the
+simplification costs fidelity (the diagram shows the instance, not the polymorphic VI with its
+selector), not correctness. A real `polyIUse` node needs `VIPV`/`PUPV` links and the instance's
+position in the polymorphic VI - read off NI's ODE-PredatorPrey.vi, not built.
+
 ## 4. VI → AIXML, against NI's own exports
 
 **Since 2026-10-10 the reader walks the WHOLE VI**, and `compare_full.py` measures it on every
@@ -586,13 +626,13 @@ fact of every cached export rather than on the top-level subset: elements with t
 `uid_parent`, the attributes that carry meaning (`selector`, `fields`, `target`, `text`,
 `element`, `link`, `cond`, `mode`, `selectin`), constant values and wires.
 
-| | the old reader | now |
-|---|---|---|
-| VIs identical in every fact (all 760 cached exports) | - | **103** |
-| elements | 24 % (150-VI sample) | **91.5 %** (37 599 of 41 085) |
-| attributes | 0 % | **75.2 %** |
-| constant values | 62 % | **91.3 %** |
-| wires | 10 % | **82.7 %** (25 800 of 31 181) |
+| | the old reader | 2026-10-10 morning | 2026-10-10, 05:00 |
+|---|---|---|---|
+| VIs identical in every fact (all 760 cached exports) | - | 103 | **133** |
+| elements | 24 % (150-VI sample) | 91.5 % | **92.7 %** (38 098 of 41 085) |
+| attributes | 0 % | 75.2 % | **78.6 %** (8 262 of 10 516) |
+| constant values | 62 % | 91.3 % | **92.0 %** |
+| wires | 10 % | 82.7 % | **85.6 %** (26 684 of 31 181) |
 
 **And the two directions together** (`roundtrip.py`): every test of `tests/` composed, READ
 back by `vi2aixml.py`, composed again from that AIXML and RUN - all 71 runnable tests compute
