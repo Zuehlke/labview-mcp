@@ -58,7 +58,8 @@ SCALARS = {
 }
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
-DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum"})
+DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
+                   "Picture": "stdPict", "MeasureData.Dynamicdata": "stdMeasureData"})
 # LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
 # 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
 TYPE_CODE = {"NumInt8": 0x01, "NumInt16": 0x02, "NumInt32": 0x03, "NumInt64": 0x04,
@@ -176,6 +177,18 @@ def type_tree(aixml_type, label=None):
             ET.SubElement(el, "EnumLabel").text = unescape(item)
     elif m and m.group(1) == "ref" and m.group(2) is None:
         el = refnum_type(m.group(3))
+    elif m and m.group(1) == "tag" and m.group(2) is None:
+        # tag{N}: an I/O name control - N is pylabview's TAG_TYPE (13 a DAQmx terminal, 14 a
+        # DAQmx physical channel, 2 the old DAQ channel), read off an AIXML-generated probe
+        name = TAG_TYPES.get(m.group(3).strip())
+        if name is None:
+            raise Unsupported("type %r is not composable yet" % aixml_type)
+        el = ET.Element("TypeDesc", {"Type": "Tag", "Prop1": "0xFFFFFFFF", "TagType": name, "Format": "inline"})
+        el.append(_void_variant())
+    elif aixml_type == "picture":
+        el = ET.Element("TypeDesc", {"Type": "Picture", "Prop1": "0xFFFFFFFF", "Format": "inline"})
+    elif aixml_type == "dynamicdata":
+        el = ET.Element("TypeDesc", {"Type": "MeasureData", "Flavor": "Dynamicdata", "Format": "inline"})
     elif aixml_type in SCALARS:
         t, _ = SCALARS[aixml_type]
         if t.startswith("MeasureData."):
@@ -193,6 +206,19 @@ def type_tree(aixml_type, label=None):
 
 
 _REF_CLASSES = None
+EMPTY_STR_SECTION = ('<Section Index="0" Format="inline"><LVVariant HasVarItem2="1" VarType2="0" '
+                     'Version="auto"><DataType Index="0" Type="Void" Format="inline" />'
+                     '<DataFill><Void /></DataFill></LVVariant></Section>')
+TAG_TYPES = {"1": "SharedVarCtl", "2": "DAQChannelOld", "3": "IVILogicalName", "4": "VISArsrcName",
+             "5": "UserDefined", "7": "FldPointIOPoint", "8": "MotionResource", "9": "DAQmxTaskName",
+             "10": "DAQmxChannel", "11": "DAQmxScaleName", "12": "DAQmxDeviceName", "13": "DAQmxTerminal",
+             "14": "DAQmxPhysChannel", "16": "DAQmxSwitch"}
+
+
+def _void_variant():
+    v = ET.Element("LVVariant", {"Index": "0", "HasVarItem2": "1", "VarType2": "0", "Version": "auto"})
+    ET.SubElement(v, "DataType", {"Index": "0", "Type": "Void", "Format": "inline"})
+    return v
 
 
 def refnum_type(inner, plain_class=False):
@@ -211,6 +237,17 @@ def refnum_type(inner, plain_class=False):
                 cls, flags, nested = (row + [""])[:3]
                 _REF_CLASSES[cls] = (flags, nested)
     inner = inner.strip()
+    m = re.fullmatch(r"GenClassTag\.([^.]+)\.(.+)", inner)
+    if m:
+        # a user-defined tag refnum (NI System Configuration, DataFinder, DAQmx task ...): a
+        # UsrDefndTag refnum holding a UserDefined Tag that names the class, as the probe wrote it
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UsrDefndTag", "Ident": m.group(1),
+                                     "FirstClient": "1", "TypeName": m.group(2), "Format": "inline"})
+        tag = ET.SubElement(el, "TypeDesc", {"Type": "Tag", "Prop1": "0xFFFFFFFF", "TagType": "UserDefined", "Format": "inline"})
+        ET.SubElement(tag, "Ident").text = m.group(2)
+        tag.append(_void_variant())
+        el.append(_void_variant())
+        return el
     if inner == "Visa.Instr":
         el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "VisaRef", "Ident": "Instr",
                                      "FirstClient": "0", "Format": "inline"})
@@ -273,7 +310,10 @@ def fields(tree):
 WIRE_SAFE = {"Boolean", "String", "Path", "LVVariant", "Void", "NumInt8", "NumInt16", "NumInt32", "NumInt64",
              "NumUInt8", "NumUInt16", "NumUInt32", "NumUInt64", "NumFloat32", "NumFloat64", "NumFloatExt",
              "NumComplex64", "NumComplex128", "NumComplexExt", "UnitUInt8", "UnitUInt16", "UnitUInt32",
-             "UnitFloat64", "UnitFloat32", "UnitInt32", "UnitInt16"}
+             "UnitFloat64", "UnitFloat32", "UnitInt32", "UnitInt16",
+             # t99, 2026-10-10: DAQmx terminal / physical channel / old DAQ channel tags and a
+             # picture wired control -> indicator, no insanity, values through
+             "Tag", "Picture"}
 
 
 def unverified_wire_type(tree):
@@ -291,9 +331,9 @@ def unverified_wire_type(tree):
                 return bad
         return None
     if t == "MeasureData":
-        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp") else "MeasureData." + (tree.get("Flavor") or "")
+        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata") else "MeasureData." + (tree.get("Flavor") or "")
     if t == "Refnum":
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef"):
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag"):
             return "Refnum." + (tree.get("RefType") or "?")
         for f in fields(tree):
             bad = unverified_wire_type(f)
@@ -583,7 +623,9 @@ def _const_value(tree, value):
         return struct.pack(INT_FMT[t], int(float(value or 0))).hex().upper()
     if t == "Boolean":
         return "01" if str(value).lower() in ("true", "1") else "00"
-    if t == "String":
+    if t in ("String", "Tag"):
+        # a Tag constant (a DAQmx terminal name ...) is flattened like a string: measured
+        # 0000000C 4F6E626F617264436C6F636B for "OnboardClock"
         b = unescape(value or "").encode("mac_roman")
         return (struct.pack(">I", len(b)) + b).hex().upper()
     if t == "NumFloatExt":
@@ -692,6 +734,9 @@ class Parts:
         images = {int(i.get("index")): i.text for i in root.find("images")} if root.find("images") is not None else {}
         if images:
             heap.set("_images", json.dumps(images))   # carried to instantiate(), removed there
+        if root.find("strs") is not None:
+            heap.set("_strs", json.dumps({s.get("Index"): ET.tostring(s, encoding="unicode")
+                                          for s in root.find("strs")}))
         return heap, types, root.get("source")
 
     def clean(self, key):
@@ -804,6 +849,25 @@ class Composer:
                 if v in mapping:
                     e.text = str(mapping[v])
             del heap.attrib["_images"]
+        if heap.get("_strs") or any(True for _ in heap.iter("variantIndex")):
+            # a tag control or refnum names its STR section (displayFilter, typeClass): each
+            # object gets a section of its own under a number free in this VI, as LabVIEW's
+            # own files do. A part harvested before the STR sections were kept has none - it
+            # then gets an empty attribute list rather than an index into nothing.
+            strs = json.loads(heap.get("_strs") or "{}")
+            self.strs = getattr(self, "strs", {})
+            for e in heap.iter("variantIndex"):
+                old = (e.text or "").strip()
+                if not old.isdigit():
+                    continue
+                new = max([1] + list(self.strs)) + 1
+                sec = ET.fromstring(strs[old]) if old in strs else None
+                if sec is None:
+                    sec = ET.fromstring(EMPTY_STR_SECTION)
+                sec.set("Index", str(new))
+                self.strs[new] = sec
+                e.text = str(new)
+            heap.attrib.pop("_strs", None)
         # An annex's nRC/oRC is a coordinate pair tied to where the DONOR sat: the same array
         # constant was clean at the donor's (417, 231) and "Insane Array Constant {graphics}
         # (0x80)" at (102, 40); without the pair it was clean at both (measured 2026-10-09).
@@ -999,7 +1063,7 @@ class Composer:
             return (holder if tag is None else ddo), src, h, w
         # scalars and enums: a front-panel or constant part's ddo, or an array element's
         tkey = lvheap.type_key(tree)
-        ddo_class = DDO_OF_KEY.get(tkey)
+        ddo_class = DDO_OF_KEY.get(tkey) or ("stdTag" if tkey.startswith("Tag.") else None)
         if is_enum(tree):
             ddo_class = "stdRing"
         if ddo_class is None:
@@ -3645,7 +3709,9 @@ class Composer:
                 lab = next((x.get("Text") for x in kind0.iter("Label")), "?")
                 raise Unsupported("net %r carries the typedef %s; typedef links are not composed yet" % (net, lab))
             bad = unverified_wire_type(kind0)
-            if bad:
+            if bad and bad not in os.environ.get("AIXML2VI_TRY_WIRES", "").split(","):
+                # AIXML2VI_TRY_WIRES=Tag.DAQmxTerminal,... lets ONE measurement carry a type
+                # before it joins the verified set
                 # the same FATAL "Insane Wire {sub}" with a DataLog refnum from a subVI's pane
                 # (NI's Monitoring Keyboard and Mouse Activity.vi): a wire may only carry a type
                 # this composer has carried on a measured wire
@@ -4084,6 +4150,14 @@ class Composer:
         sl.set("IndexShift", str(INDEX_SHIFT))
         sl.set("Count", str(heap_count))
         m.find("MUID/Section").set("Value", str(max(self.used_uids)))
+        if getattr(self, "strs", None):
+            # the STR block sits between FPEx and DSIM, as in LabVIEW's own files
+            blk = m.find("STR")
+            if blk is None:
+                blk = ET.Element("STR")
+                m.insert(list(m).index(m.find("FPEx")) + 1, blk)
+            for i, sec in sorted(self.strs.items()):
+                blk.append(sec)
         if getattr(self, "images", None):
             # the DSIM block ("Dynamic Size Image") sits before the front-panel heap, as in
             # LabVIEW's own files; one binary section per image

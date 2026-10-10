@@ -220,4 +220,32 @@
           <termListLength>1</termListLength>
           <DefaultData>"&amp;#x00;&amp;#x00;&amp;#x00;&amp;#x0F;GPIB0::2::INSTR"</DefaultData>
           </SL__arrayElement>
-        </heap></part>
+        </heap><strs><Section Index="20" Format="inline">
+      <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+        <DataType Index="0" Type="Void" Format="inline" />
+        <Attributes>
+          <LVVariant Name="classString" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>?*::(INSTR|SOCKET)</String>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="displayFilter" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+            <DataFill>
+              <U32>73728</U32>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="typeClass" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>Instr</String>
+              </DataFill>
+            </LVVariant>
+          </Attributes>
+        <DataFill>
+          <Void />
+          </DataFill>
+        </LVVariant>
+      </Section>
+    </strs></part>

@@ -55,7 +55,33 @@ def dsim_images(bundle, ids):
     return out
 
 
-def part_xml(kind, key, source, el, types, extra=None, images=None):
+def variant_ids(el):
+    """The STR sections a part needs: a tag control or a refnum (DAQmx terminal, VISA, NI
+    System Configuration ...) keeps its I/O-name attributes - displayFilter, typeClass - in the
+    VI's STR block, one section per object, named by <variantIndex>. Without it LabVIEW logs
+    "GetTagVariant: variant has value of null" on every load (measured 2026-10-10: 16 events
+    for 8 such objects, against 0 for LabVIEW's own VI of the same objects)."""
+    out = set()
+    for e in el.iter("variantIndex"):
+        if (e.text or "").strip().isdigit():
+            out.add(int(e.text))
+    return sorted(out)
+
+
+def str_sections(bundle, ids):
+    """{index: section XML} for the STR sections a part needs, read from the donor bundle."""
+    out = {}
+    blk = bundle.main.find("STR")
+    if blk is None:
+        return out
+    for sec in blk.findall("Section"):
+        i = int(sec.get("Index"))
+        if i in ids:
+            out[i] = ET.tostring(sec, encoding="unicode")
+    return out
+
+
+def part_xml(kind, key, source, el, types, extra=None, images=None, strs=None):
     p = ET.Element("part", {"kind": kind, "key": key, "source": source})
     # A CLEAN part comes from a VI LabVIEW generated from AIXML: default style, no captions,
     # no default data. Parts cut from NI's examples carry the example's styling and were
@@ -72,6 +98,10 @@ def part_xml(kind, key, source, el, types, extra=None, images=None):
         im = ET.SubElement(p, "images")
         for i, hx in sorted(images.items()):
             ET.SubElement(im, "image", {"index": str(i)}).text = hx
+    if strs:
+        st = ET.SubElement(p, "strs")
+        for i, sx in sorted(strs.items()):
+            st.append(ET.fromstring(sx))
     return p
 
 
@@ -230,8 +260,10 @@ class Harvester:
             return
         if self.clean:
             extra = dict(extra or {}, clean="1")
-        images = dsim_images(self.bundle, image_ids(el)) if getattr(self, "bundle", None) is not None else None
-        ET.ElementTree(part_xml(kind, key, source, el, types, extra, images)).write(
+        b = getattr(self, "bundle", None)
+        images = dsim_images(b, image_ids(el)) if b is not None else None
+        strs = str_sections(b, variant_ids(el)) if b is not None else None
+        ET.ElementTree(part_xml(kind, key, source, el, types, extra, images, strs)).write(
             path, encoding="utf-8", xml_declaration=True)
         self.found.append(key)
 

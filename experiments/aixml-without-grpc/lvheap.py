@@ -172,6 +172,8 @@ def type_key(tree):
         dims = len(tree.findall("Dimension"))
         elem = [c for c in tree if c.tag == "TypeDesc"]
         return "Array%s.%s" % (dims if dims > 1 else "", type_key(elem[0]) if elem else "?")
+    if t == "Tag":
+        return "Tag." + (tree.get("TagType") or "?")
     if t == "Refnum":
         # a VI Server, VISA, user-event and class refnum are different objects behind one Type:
         # the parts once filed as plain "Refnum" were four kinds under one key (2026-10-10)

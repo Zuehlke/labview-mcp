@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <RSRC FormatVersion="3" Type="LVIN" Encoding="mac_roman">
   <LVSR>
-    <!-- LabView Save Record -->
+    
     <Section Index="0" Name="skeleton.vi" Format="inline">
       <Version Major="26" Minor="0" Bugfix="0" Stage="release" Build="0" />
       <Library Protected="0" PasswordHash="d41d8cd98f00b204e9800998ecf8427e" HashType="MD5" />
@@ -17,123 +17,123 @@
       </Section>
     </LVSR>
   <RTSG>
-    <!-- Runtime Signature Guid -->
+    
     <Section Index="0" Format="inline">
       <Guid>e04b35e8096272f8390c91b43ac67cdc</Guid>
       </Section>
     </RTSG>
   <vers>
-    <!-- Version block -->
+    
     <Section Index="4" Format="inline">
       <Version Major="26" Minor="3" Bugfix="1" Stage="release" Build="1" Language="0" Info="26.3.1" Comment="" />
       </Section>
     </vers>
   <CONP>
-    <!-- Connector Pane Type Map -->
+    
     <Section Index="0" Format="inline">
       <TypeDesc TypeID="1" />
       </Section>
     </CONP>
   <LIvi>
-    <!-- LinkObj Refs for VI -->
+    
     <Section Index="0" Format="inline">
       <LVIN />
       </Section>
     </LIvi>
   <BDPW>
-    <!-- Block Diagram Password -->
+    
     <Section Index="0" Format="inline">
       <Password Text="" SaltSource="CPC2" SaltFlatTypeID="2" />
       </Section>
     </BDPW>
   <STRG>
-    <!-- String description / descriptions list -->
+    
     <Section Index="0" Format="inline">
       <String>Probe - a Control with no value attribute and everything else valid.</String>
       </Section>
     </STRG>
   <ICON>
-    <!-- Icon 32x32 1bpp -->
+    
     <Section Index="0" Format="png" File="skeleton_ICON.png" />
     </ICON>
   <icl8>
-    <!-- Icon Large 32x32 8bpp -->
+    
     <Section Index="0" Format="png" File="skeleton_icl8.png" />
     </icl8>
   <CPC2>
-    <!-- Connector Pane Content Type v2 -->
+    
     <Section Index="0" Format="inline">
       <TypeDesc TypeID="2" />
       </Section>
     </CPC2>
   <LIfp>
-    <!-- LinkObj Refs for Front Panel -->
+    
     <Section Index="0" Format="inline">
       <FPHP />
       </Section>
     </LIfp>
   <FPEx>
-    <!-- Generic block -->
+    
     <Section Index="0" Format="bin" File="skeleton_FPEx.bin" />
     </FPEx>
   <FPHb>
-    <!-- Front Panel Heap ver b -->
+    
     <Section Index="0" Format="xml" File="skeleton_FPHb.xml" />
     </FPHb>
   <FPSE>
-    <!-- Front Panel Size Estimate -->
+    
     <Section Index="0" Value="39" Format="inline" />
     </FPSE>
   <VPDP>
-    <!-- VI Primitive Dependency Flags -->
+    
     <Section Index="0" Format="bin" File="skeleton_VPDP.bin" />
     </VPDP>
   <LIbd>
-    <!-- LinkObj Refs for Block diagram -->
+    
     <Section Index="0" Format="inline">
       <BDHP />
       </Section>
     </LIbd>
   <BDEx>
-    <!-- Generic block -->
+    
     <Section Index="0" Format="bin" File="skeleton_BDEx.bin" />
     </BDEx>
   <BDHb>
-    <!-- Block Diagram Heap ver b -->
+    
     <Section Index="0" Format="xml" File="skeleton_BDHb.xml" />
     </BDHb>
   <BDSE>
-    <!-- Block Diagram Size Estimate -->
+    
     <Section Index="0" Value="19" Format="inline" />
     </BDSE>
   <VITS>
-    <!-- Virtual Instrument Tag Strings -->
+    
     <Section Index="0" Format="bin" File="skeleton_VITS.bin" />
     </VITS>
   <DTHP>
-    <!-- Data Types for Heap -->
+    
     <Section Index="0" Format="inline">
-      <!-- Heap TypeID  1 = Consolidated TypeID  3: NumFloat64 -->
-      <!-- Heap TypeID  2 = Consolidated TypeID  4: NumFloat64 -->
-      <!-- Heap TypeID  3 = Consolidated TypeID  5: NumFloat64 -->
-      <!-- Heap TypeID  4 = Consolidated TypeID  6: NumFloat64 -->
+      
+      
+      
+      
       <TypeDescSlice IndexShift="3" Count="4" />
       </Section>
     </DTHP>
   <MUID>
-    <!-- Map Unique Identifier -->
+    
     <Section Index="0" Value="4240" Format="inline" />
     </MUID>
   <HIST>
-    <!-- Changes History -->
+    
     <Section Index="0" Format="bin" File="skeleton_HIST.bin" />
     </HIST>
   <VCTP>
-    <!-- VI Consolidated Data Types -->
+    
     <Section Index="0" Format="inline">
-      <!-- FlatTypeID 0: Type Descriptor with Void data -->
+      
       <TypeDesc Type="Void" Format="inline" />
-      <!-- FlatTypeID 1: Type Descriptor with Function data -->
+      
       <TypeDesc Type="Function" FuncFlags="0x200" Pattern="0x108" HasThrall="0" Format="inline">
         <TypeDesc TypeID="0" Flags="0x0000" />
         <TypeDesc TypeID="0" Flags="0x0000" />
@@ -152,7 +152,7 @@
         <TypeDesc TypeID="0" Flags="0x0000" />
         <TypeDesc TypeID="0" Flags="0x0000" />
         </TypeDesc>
-      <!-- FlatTypeID 2: Type Descriptor with Function data -->
+      
       <TypeDesc Type="Function" FuncFlags="0x0" Pattern="0x108" HasThrall="0" Format="inline">
         <TypeDesc TypeID="0" Flags="0x0000" />
         <TypeDesc TypeID="0" Flags="0x0000" />
@@ -171,12 +171,12 @@
         <TypeDesc TypeID="0" Flags="0x0000" />
         <TypeDesc TypeID="0" Flags="0x0000" />
         </TypeDesc>
-      <!-- FlatTypeID 3: Type Descriptor with single number as data -->
+      
       <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="b" />
-      <!-- FlatTypeID 4: Type Descriptor with single number as data -->
+      
       <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" />
       <TopLevel>
-        <!-- When Consolidated Type is referred to in other blocks, the TypeID is Index from this list -->
+        
         <TypeDesc Index="1" FlatTypeID="1" />
         <TypeDesc Index="2" FlatTypeID="2" />
         <TypeDesc Index="3" FlatTypeID="3" />
@@ -187,7 +187,7 @@
       </Section>
     </VCTP>
   <FTAB>
-    <!-- Font Table -->
+    
     <Section Index="128" Prop1="0x10002" Prop3="3" Format="inline">
       <Font Prop2="13" Prop3="1024" Prop4="0" Prop6="13" Prop7="212" Prop8="196">
         <Name>Segoe UI</Name>
@@ -199,6 +199,12 @@
         <Name>Segoe UI</Name>
         </Font>
       <Font Prop2="32768" Prop3="33792" Prop4="32768" Prop6="13" Prop7="212" Prop8="196">
+        <Name>0</Name>
+        </Font>
+      <Font Prop2="32768" Prop3="33792" Prop4="32768" Prop6="13" Prop7="212" Prop8="196">
+        <Name>1</Name>
+        </Font>
+      <Font Prop2="32768" Prop3="33792" Prop4="1000" Prop6="13" Prop7="216" Prop8="207">
         <Name>0</Name>
         </Font>
       <Font Prop2="32768" Prop3="33792" Prop4="32768" Prop6="13" Prop7="212" Prop8="196">

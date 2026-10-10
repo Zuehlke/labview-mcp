@@ -113,3 +113,242 @@ primResID	node	parmIndex	terminal
 9111	Enqueue Element	out	queue
 1302	Wait (ms)	out	millisecond timer value
 1328	Wait For Front Panel Activity	out	millisecond timer value
+1063	Exclusive Or	1	y
+1063	Exclusive Or	out	x .xor. y?
+1079	Cast Unit Bases	1	unit (none)
+1079	Cast Unit Bases	2	x
+1084	DataSocket Open	3	connection id
+1084	DataSocket Open	8	error in (no error)
+1084	DataSocket Open	out	error out
+1085	DataSocket Close	11	connection id
+1085	DataSocket Close	8	error in (no error)
+1086	DataSocket Read	3	connection out
+1086	DataSocket Read	8	error in (no error)
+1187	Fract/Exp String To Number	2	use system decimal point (T)
+1213	Power Of X	2	y
+1340	One Button Dialog	1	button name ("OK")
+1340	One Button Dialog	out	true
+1352	Quit LabVIEW	out	quit? (T)
+1538	Search/Split String	out	offset of match
+1608	String To Byte Array	1	string
+1610	?	out	flag
+1701	Wait on Occurrence	2	occurrence
+1701	Wait on Occurrence	out	timed out
+1702	Set Occurrence	out	occurrence
+1712	TCP Wait On Listener	3	listener ID out
+1712	TCP Wait On Listener	4	connection ID
+1712	TCP Wait On Listener	out	error out
+1714	TCP Write	11	connection ID
+1714	TCP Write	8	error in (no error)
+1715	TCP Open Connection	3	connection ID
+1715	TCP Open Connection	out	error out
+1716	TCP Read	11	connection ID
+1716	TCP Read	8	error in (no error)
+1717	TCP Create Listener	3	listener ID
+1717	TCP Create Listener	8	error in (no error)
+1730	New TLS Configuration	10	load OS trusted CAs?
+1730	New TLS Configuration	3	TLS configuration out
+1731	Start TLS	11	TCP connection
+1731	Start TLS	8	error in (no error)
+1731	Start TLS	out	error out
+1732	Accept TLS	10	immutable TLS configuration
+1732	Accept TLS	11	TCP connection
+1732	Accept TLS	3	TLS connection
+1732	Accept TLS	8	error in (no error)
+1732	Accept TLS	out	error out
+1733	Load Private Key Into Memory	10	format
+1734	Load Certificates Into Memory	10	format
+1736	Add Trusted Certificate To TLS Configuration	11	TLS configuration
+1736	Add Trusted Certificate To TLS Configuration	3	TLS configuration out
+1736	Add Trusted Certificate To TLS Configuration	out	error out
+1737	Make TLS Configuration Immutable	11	TLS configuration
+1737	Make TLS Configuration Immutable	8	error in (no error)
+1901	Search 1D Array	1	start index (0)
+1905	Interpolate 1D Array	2	array of numbers or points
+1929	VISA Assert Trigger	10	protocol (default:  0)
+1929	VISA Assert Trigger	11	VISA resource name
+1929	VISA Assert Trigger	3	VISA resource name out
+1929	VISA Assert Trigger	8	error in (no error)
+1929	VISA Assert Trigger	out	error out
+1940	VISA Disable Event	11	VISA resource name
+1940	VISA Disable Event	3	VISA resource name out
+1940	VISA Disable Event	8	error in (no error)
+1940	VISA Disable Event	out	error out
+1941	VISA Discard Events	10	event type (all enabled)
+1941	VISA Discard Events	3	VISA resource name out
+1941	VISA Discard Events	out	error out
+1942	VISA Enable Event	3	VISA resource name out
+1942	VISA Enable Event	8	error in (no error)
+1942	VISA Enable Event	out	error out
+1943	VISA Wait on Event	1	event  resource name
+1943	VISA Wait on Event	10	event type (all enabled)
+1943	VISA Wait on Event	3	VISA resource name out
+1943	VISA Wait on Event	8	error in (no error)
+1943	VISA Wait on Event	9	event  resource name (for class)
+1994	VISA Unlock	11	VISA resource name
+1994	VISA Unlock	3	VISA resource name out
+1994	VISA Unlock	8	error in (no error)
+1994	VISA Unlock	out	error out
+2010	TDMS Write	6	group name out
+2011	TDMS Read	1	offset (0)
+2011	TDMS Read	2	count (-1: all)
+2011	TDMS Read	6	group name out
+2014	TDMS Set Properties	1	channel name out
+2014	TDMS Set Properties	11	tdms file
+2014	TDMS Set Properties	2	group name out
+2014	TDMS Set Properties	3	tdms file out
+2014	TDMS Set Properties	8	error in (no error)
+2014	TDMS Set Properties	out	error out
+2015	TDMS Get Properties	1	channel name out
+2015	TDMS Get Properties	10	group name
+2015	TDMS Get Properties	2	group name out
+2015	TDMS Get Properties	9	channel name
+2016	TDMS List Contents	4	error in (no error)
+2016	TDMS List Contents	6	group name
+2016	TDMS List Contents	7	tdms file
+2017	TDMS Flush	3	tdms file out
+2017	TDMS Flush	4	error in (no error)
+2017	TDMS Flush	7	tdms file
+2017	TDMS Flush	out	error out
+2022	TDMS Set Channel Information	11	tdms file
+2022	TDMS Set Channel Information	3	tdms file out
+2022	TDMS Set Channel Information	8	error in (no error)
+2022	TDMS Set Channel Information	out	error out
+2023	TDMS Reserve File Size	11	tdms file
+2023	TDMS Reserve File Size	8	error in (no error)
+2024	TDMS Configure Asynchronous Writes	11	tdms file
+2024	TDMS Configure Asynchronous Writes	3	tdms file out
+2024	TDMS Configure Asynchronous Writes	8	error in (no error)
+2024	TDMS Configure Asynchronous Writes	out	error out
+2025	TDMS Set Next Write Position	11	tdms file
+2025	TDMS Set Next Write Position	8	error in (no error)
+2026	TDMS Advanced Synchronous Write	3	tdms file out
+2026	TDMS Advanced Synchronous Write	out	error out
+2027	TDMS Configure Asynchronous Reads	11	tdms file
+2027	TDMS Configure Asynchronous Reads	8	error in (no error)
+2028	TDMS Start Asynchronous Reads	3	tdms file out
+2028	TDMS Start Asynchronous Reads	out	error out
+2029	TDMS Advanced Synchronous Read	3	tdms file out
+2029	TDMS Advanced Synchronous Read	7	count (-1)
+2029	TDMS Advanced Synchronous Read	out	error out
+2030	TDMS Stop Asynchronous Reads	11	tdms file
+2030	TDMS Stop Asynchronous Reads	3	tdms file out
+2030	TDMS Stop Asynchronous Reads	8	error in (no error)
+2030	TDMS Stop Asynchronous Reads	out	error out
+2031	TDMS Get Asynchronous Write Status	3	tdms file out
+2033	TDMS Set Next Read Position	11	tdms file
+2033	TDMS Set Next Read Position	3	tdms file out
+2033	TDMS Set Next Read Position	8	error in (no error)
+2033	TDMS Set Next Read Position	out	error out
+2034	TDMS Get Asynchronous Read Status	2	number of buffers available
+2034	TDMS Get Asynchronous Read Status	3	tdms file out
+2034	TDMS Get Asynchronous Read Status	out	error out
+2035	TDMS Advanced Asynchronous Write	3	tdms file out
+2035	TDMS Advanced Asynchronous Write	out	error out
+2036	TDMS Advanced Asynchronous Read	2	data
+2036	TDMS Advanced Asynchronous Read	3	tdms file out
+2036	TDMS Advanced Asynchronous Read	4	read process finished?
+2036	TDMS Advanced Asynchronous Read	6	data type
+2036	TDMS Advanced Asynchronous Read	out	error out
+2086	VISA USB Control In	11	error in (no error)
+2086	VISA USB Control In	15	error out
+2086	VISA USB Control In	4	VISA resource name out
+2086	VISA USB Control In	out	VISA resource name
+2087	VISA USB Control Out	11	error in (no error)
+2087	VISA USB Control Out	15	error out
+2087	VISA USB Control Out	4	VISA resource name out
+2087	VISA USB Control Out	out	VISA resource name
+2156	TDMS In Memory Open	3	tdms file out
+2156	TDMS In Memory Open	out	error out
+2157	TDMS In Memory Close	11	tdms file
+2157	TDMS In Memory Close	8	error in (no error)
+2158	TDMS In Memory Read Bytes	11	tdms file
+2158	TDMS In Memory Read Bytes	8	error in (no error)
+2159	TDMS Delete Data	10	group name in
+2159	TDMS Delete Data	11	file path
+2159	TDMS Delete Data	3	file path out
+2159	TDMS Delete Data	5	count (-1: all)
+2159	TDMS Delete Data	6	keep empty group/channel? (T)
+2159	TDMS Delete Data	7	from (0: start)
+2159	TDMS Delete Data	8	error in (no error)
+2159	TDMS Delete Data	9	channel name(s) in
+2159	TDMS Delete Data	out	error out
+23060	Re/Im To Polar	2	y
+2311	VISA Map Trigger	11	VISA resource name
+2311	VISA Map Trigger	3	VISA resource name out
+2311	VISA Map Trigger	8	error in (no error)
+2311	VISA Map Trigger	out	error out
+2312	VISA Unmap Trigger	11	VISA resource name
+2312	VISA Unmap Trigger	3	VISA resource name out
+2312	VISA Unmap Trigger	8	error in (no error)
+2312	VISA Unmap Trigger	out	error out
+2456	Insert Into Map	10	key
+2456	Insert Into Map	9	value
+2457	Remove From Map	10	key
+2457	Remove From Map	3	map out
+3913	Replace Substring	1	result string
+3913	Replace Substring	2	length
+3913	Replace Substring	3	offset
+3914	Search and Replace String	2	case sensitive?
+3915	Add with Error Terminals	4	error in (no error)
+5566	Fixed-Point to Integer Cast	1	fixed-point
+5567	Integer to Fixed-Point Cast	1	fixed-point type
+5567	Integer to Fixed-Point Cast	3	fixed-point
+8000	Automation Open	out	error out
+8014	New VI	3	vi refnum
+8014	New VI	out	error out
+8051	Read from Binary File	11	file (use dialog)
+8051	Read from Binary File	8	error in
+8052	Close File	3	path
+8053	?	out	error out
+8055	Create Folder	8	error in
+8058	File Dialog	2	exists
+8068	?	10	target path (use dialog)
+8068	?	11	source path
+8068	?	8	error in
+8068	?	out	error out
+8070	Read from Text File	3	refnum out
+8078	Write to Binary File	8	error in
+8078	Write to Binary File	out	error out
+8080	Write to Text File	3	refnum out
+8080	Write to Text File	8	error in
+8083	?	2	filenames
+8083	?	6	pattern
+8100	Format Date/Time String	1	UTC format
+8100	Format Date/Time String	3	time format string (%c)
+8101	Scan String For Tokens	7	operators (none)
+8101	Scan String For Tokens	9	input string
+8204	Set Variant Attribute	3	Variant out
+8204	Set Variant Attribute	7	Variant
+8205	Get Variant Attribute	3	duplicate Variant
+8205	Get Variant Attribute	5	default value (empty Variant)
+8205	Get Variant Attribute	6	name
+8206	Delete Variant Attribute	4	error in
+8206	Delete Variant Attribute	6	name (all attributes)
+8206	Delete Variant Attribute	7	Variant
+9003	Insert Menu Items	8	item names
+9004	Delete Menu Items	3	menu reference out
+9004	Delete Menu Items	7	items
+9004	Delete Menu Items	8	menu tag
+9004	Delete Menu Items	out	error out
+9006	Set Menu Item Info	11	menu reference
+9006	Set Menu Item Info	3	menu reference out
+9006	Set Menu Item Info	4	short cut
+9006	Set Menu Item Info	7	item tag
+9006	Set Menu Item Info	8	error in (no error)
+9006	Set Menu Item Info	out	error out
+9106	Wait on Notification from Multiple	11	error out
+9106	Wait on Notification from Multiple	out	notifiers
+9108	Obtain Queue	out	name (unnamed)
+9110	Get Queue Status	3	error in (no error)
+9110	Get Queue Status	8	queue out
+9110	Get Queue Status	out	queue
+9111	Enqueue Element	8	queue out
+9113	Dequeue Element	8	queue out
+9114	Flush Queue	11	error out
+9114	Flush Queue	3	error in (no error)
+9114	Flush Queue	out	queue
+9129	Enqueue Element At Opposite End	11	error out
+9129	Enqueue Element At Opposite End	out	queue
+9154	Get Drag Drop Data	8	type
+9154	Get Drag Drop Data	9	data name

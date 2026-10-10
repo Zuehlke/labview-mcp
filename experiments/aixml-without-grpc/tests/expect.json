@@ -940,5 +940,22 @@
     }
    }
   ]
+ },
+ "t99_io_types": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "clock out": "OnboardClock",
+     "named out": "demo"
+    }
+   },
+   {
+    "inputs": "channel=Dev1/ai0",
+    "outputs": {
+     "channel out": "Dev1/ai0"
+    }
+   }
+  ]
  }
 }

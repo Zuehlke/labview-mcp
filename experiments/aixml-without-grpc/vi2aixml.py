@@ -80,7 +80,13 @@ def aixml_type(tree):
         parts = [_sub(k) for k in kids]
         return None if any(x is None for x in parts) else "cluster{%s}" % ",".join(parts)
     if t == "MeasureData":
-        return {"TimeStamp": "timestamp", "Float64Waveform": "doublewaveform"}.get(tree.get("Flavor"))
+        return {"TimeStamp": "timestamp", "Float64Waveform": "doublewaveform",
+                "Dynamicdata": "dynamicdata"}.get(tree.get("Flavor"))
+    if t == "Picture":
+        return "picture"
+    if t == "Tag":
+        n = {v: k for k, v in aixml2vi.TAG_TYPES.items()}.get(tree.get("TagType"))
+        return "tag{%s}" % n if n else None
     if t == "Refnum":
         rt = tree.get("RefType")
         if rt == "LVObjCtl":
@@ -234,7 +240,7 @@ def _decode_value(tree, hexstr):
         return str(struct.unpack(INT_FMT[t], b)[0]) if b else "0"
     if t == "Boolean":
         return "true" if b and b[0] else "false"
-    if t == "String":
+    if t in ("String", "Tag"):
         n = struct.unpack(">I", b[:4])[0] if b else 0
         return escape_value(b[4:4 + n].decode("mac_roman"))
     if t == "Path":
@@ -558,7 +564,10 @@ class Reader:
     # ---- elements ----------------------------------------------------------------------------
     def default_value(self, tree, dd):
         if dd is None:
-            return {"Boolean": "false", "String": "", "Path": ""}.get(tree.get("Type"), "0")
+            # NI's exports write nothing for a type with no literal: 261 refnums, 34 waveforms,
+            # 30 dynamic data, 27 timestamps, 9 variants, 7 pictures in the cache, all value=""
+            return {"Boolean": "false"}.get(tree.get("Type"), "" if tree.get("Type") in (
+                "String", "Path", "Refnum", "Picture", "MeasureData", "LVVariant", "Tag") else "0")
         # pylabview renders DefaultData as MacRoman text with &#x..; escapes for unprintables
         raw = dd.strip('"')
         out = bytearray()
