@@ -94,9 +94,12 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
             """)]
         string? className = null,
         [Description("""
-            Folder to create the message class in. Defaults to a folder named after the class
-            BESIDE the actor's own folder, which is where NI's wizard puts it. The class lands
-            directly in this folder, not in a subfolder of it.
+            Folder to create the message class in. Defaults to `<method> Msg` in the folder that
+            holds the actor's own folder, i.e. a sibling of it. The class lands directly in this
+            folder, not in a subfolder of it, so give EVERY message its own folder: two message
+            classes in one folder answer Error 1055 at replaceActorMethod. A layout that keeps an
+            actor's messages together is `<actor folder>\..\<Actor> Messages\<Method> Msg`, which
+            earlier builds passed explicitly and the AF guide describes as NI's wizard's own.
             """)]
         string? directory = null,
         [Description("""
