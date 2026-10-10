@@ -14,7 +14,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 | direction | tool | result |
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
-| AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **249 of 792** of NI's own exports compose (31.4 %; 159 in the morning, 19 on 2026-10-09), **148 of them executable** in LabVIEW, none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.4 %** |
+| AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
 | VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **133 identical in every fact**, elements 92.7 %, constant values 92.0 %, wires 85.6 %, attributes 78.6 % |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
 
@@ -775,21 +775,21 @@ computing exact tables needs a per-primitive calibration of hot points. Until th
 
 ## 6. How far it reaches on real code
 
-**State of 2026-10-10, 05:00** (`coverage.py --tsv`, `parity.py`, then `cov_load.py` with
-crash recovery):
+**State of 2026-10-10, 05:30** (`coverage.py --build --tsv`, `parity.py`, then `cov_load.py`
+with crash recovery):
 
 | | 2026-10-09 evening | 2026-10-10 morning | 2026-10-10, 05:00 |
 |---|---|---|---|
-| NI exports that compose | 84 of 792 | 159 of 792 (20.1 %) | **249 of 792 (31.4 %)** |
-| of those, executable in LabVIEW | 72 | 99 | **148** |
+| NI exports that compose | 84 of 792 | 159 of 792 (20.1 %) | **252 of 792 (31.8 %)** |
+| of those, executable in LabVIEW | 72 | 99 | **216 (86 %)** |
 | of those, crash LabVIEW on load | not measured | 0 | **0** |
 
-**Measured against what NI's own converter could do** (`parity.py`): 176 of the 543 refused
+**Measured against what NI's own converter could do** (`parity.py`): 176 of the 540 refused
 VIs stop at something ConvertAIXMLToVI cannot build either - class data (105: AIXML writes a
 class object as a bare `ref{UDClassInst}` that names no class), Express VIs and XNodes (29),
 subVIs that do not resolve (19), exports NI wrote incomplete (14), Timed Loops (5), Stacked
 Sequences NI exported without frames (4). **Of the 616 exports NI's converter could at best
-rebuild, this composer rebuilds 249 - 40.4 %.** What stops the rest is a long tail: the
+rebuild, this composer rebuilds 252 - 40.9 %.** What stops the rest is a long tail: the
 largest single blocker is nine VIs (a typedef wire), then seven each for an NI System
 Configuration filter property node, `Panel Close?` events, and controls inside a construct
 that is not composable; .NET constructor and Call Library Function nodes, the Python node,
@@ -804,8 +804,8 @@ search folder as if it lay beside the caller. Composed with correct links (`bise
 --near`, which needed the resolver to search near EVERY search folder), NI's *Waveform - Min
 Max.vi*, *Waveform - XY Pairs.vi*, *Single Tone Measurements.vi* and the PID tank simulation
 all came out executable, and a static VI reference to a sibling read its target's name. Both
-defects are fixed; the corrected sweep is in the table above if it was re-measured, otherwise
-the 148 is a lower bound. `bisect_vi.py --near ORIGINAL.vi` splits a still-broken VI into
+defects are fixed and the sweep re-measured: 148 of 249 executable with the artefact, **216 of 252**
+without it - the table above. `bisect_vi.py --near ORIGINAL.vi` splits a still-broken VI into
 its independent pieces and loads each.
 
 **The history**, measured as the work went on:
