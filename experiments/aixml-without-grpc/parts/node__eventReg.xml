@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/eventReg" source="LabVIEW's save of aixml-skeletons/user-event-two-loops.xml, finished by NI's converter and the two event tools (2026-10-10)"><types><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="event registration refnum"><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="Tick" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Boolean" Format="inline" Label="Tick" /></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="Event Registration Refnum"><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="Tick" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Boolean" Format="inline" Label="Tick" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="Tick"><TypeDesc Type="Boolean" Format="inline" Label="Tick" /></TypeDesc></types><heap><SL__arrayElement class="eventRegNode" uid="4203">
+        <objFlags>131072</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="4333">
+            <dco class="hGrowCItem" uid="4331">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(69)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4336">
+            <dco class="hGrowCItem" uid="4334">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(70)</typeDesc>
+              <termBounds>(0, 89, 9, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4339">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4337">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(71)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4342">
+            <dco class="hGrowCItem" uid="4340">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(72)</typeDesc>
+              <termBounds>(9, 89, 18, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4346">
+            <objFlags>32768</objFlags>
+            <dco class="eventRegItem" uid="4344">
+              <typeDesc>TypeID(73)</typeDesc>
+              <termBounds>(18, 0, 34, 102)</termBounds>
+              <code>03E8</code>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(526, 347, 561, 449)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4344" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4331" />
+          <SL__arrayElement uid="4334" />
+          <SL__arrayElement uid="4337" />
+          <SL__arrayElement uid="4340" />
+          </permDCOList>
+        <nodeName>"Reg Events"</nodeName>
+        <oMId>0003</oMId>
+        </SL__arrayElement>
+      </heap></part>

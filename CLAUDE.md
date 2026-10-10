@@ -1113,8 +1113,9 @@ FILE by `pylv-conpane.py`, matching NI's probe. **The server's own HELPER VIs ar
 route**: measured over the `scripts` documents, the composer builds 9 with the parts as committed and
 31 with parts harvested from the NI-built helpers - one property, `Application` on `{LV.Project}`,
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
-**77 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs - after the
-remaining blockers**, recorded in FINDINGS §7a, with the composer's own suite at 118 of 118. **No `.ctl` link is needed for a
+**78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
+user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
+own suite at 121 of 121. **No `.ctl` link is needed for a
 typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **`lvai_create_class`
@@ -2188,6 +2189,10 @@ So: design the frame to read the payload, then make the toolchain reach it.
 into a **prim** input plus `lvai_set_event_data_fields` as a third build step — and a front-panel
 Local Variable is never the substitute, because it holds what the panel has at that instant rather
 than what the event carried. `scripts/aixml-skeletons/user-event-two-loops.md` is the worked example.
+**On the `pylabview` backend none of that detour is needed** (2026-10-10): our composer writes the
+user-event spec, the wire onto the dynamic event terminal and the payload field in one compose - the
+skeleton runs `Ticks Received = 5`, a variant only the payload can stop stopped on it, and a cluster
+payload is read element by element. One user event per registration so far; `docs/aixml-backends.md`.
 
 **FOR A FRONT-PANEL EVENT THERE IS A CHEAPER ROUTE, AND IT DOES NOT GENERALISE TO A USER EVENT.**
 A control terminal placed inside its own event frame already carries the value the event just

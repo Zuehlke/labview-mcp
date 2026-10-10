@@ -1195,5 +1195,39 @@
     }
    }
   ]
+ },
+ "t118_user_event": {
+  "cases": [
+   {
+    "inputs": "Ticks To Send=5",
+    "outputs": {
+     "Ticks Received": 5,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t119_user_event_payload": {
+  "cases": [
+   {
+    "inputs": "Ticks To Send=3",
+    "outputs": {
+     "Ticks Received": 3,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t120_user_event_cluster_payload": {
+  "cases": [
+   {
+    "inputs": "Ticks To Send=3",
+    "outputs": {
+     "Ticks Received": 3,
+     "Last N": 2,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

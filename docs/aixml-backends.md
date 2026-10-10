@@ -191,6 +191,17 @@ conversion is not executable either), a skeleton NI's converter refuses (`Error 
 `{{TYPE}}` templates. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Option 1" and the section
 after it.
 
+**A USER EVENT composes in ONE step on `pylabview`** - where the gRPC route needs three calls
+(generate, `lvai_wire_dynamic_events` with a project open, `lvai_set_event_data_fields`), because NI's
+converter cannot express the wire onto the dynamic event terminal or the payload field. The composer
+writes both, read off LabVIEW's own save of the finished skeleton: `Register For Events` is its own
+node class, the registration refnum becomes a four-ended wire onto the dynamic terminal, the frame's
+EventSpec has `dynIndex 1`, and the payload is field 4 of the data cluster. Measured: the skeleton
+runs `Ticks Received = 5`, LabVIEW's export of the finished VI (which names the payload) does too,
+and a variant that only the payload can stop stopped on it. A cluster payload is flattened into the
+data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. One user
+event per registration; more is refused by name. `scripts/aixml-skeletons/user-event-two-loops.md`.
+
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over
 ActiveX so far, `lvai_create_class`** (with `lvai_open_file` and `lvai_close_active_project`), and

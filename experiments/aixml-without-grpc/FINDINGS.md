@@ -1033,6 +1033,43 @@ left are not helpers: `user-event-two-loops` (NI's own conversion of it is not e
 two follow-up tools finish it), `web-browser-title-poll` (a `ref{LV.String}` front-panel control;
 NI's converter answers `Error 53` on the document), and the three `{{TYPE}}` LUnit templates.
 
+### User events, composed in ONE step
+
+NI's converter cannot build a user-event VI that works: the wire onto the Event Structure's DYNAMIC
+EVENT terminal and the Event Data Node's payload field are not expressible in what it reads, so
+`aixml-skeletons/user-event-two-loops.xml` takes three calls on the gRPC route - generate,
+`lvai_wire_dynamic_events` (with a project open), `lvai_set_event_data_fields`. **The composer
+writes all of it in one compose**, read off LabVIEW's own SAVE of the VI that route finishes (the
+tools' pylabview edits are reconciled by LabVIEW on load, so the save is the canonical form):
+
+| what | measured |
+|---|---|
+| the event's NAME | the datatype's label: `<Constant _name="Tick">` into `Create User Event` gives a `UserEvent` refnum labelled `Tick` around a `Tick` boolean - and the frame selector `<Tick>: User Event` must agree |
+| `Register For Events` | its own node class, `eventRegNode`: four fixed terminals like a property node's, one `eventRegItem` per source with code `03E8`. The registration type is an `EventReg` refnum around the `UserEvent` one, the child carrying `CField0 0x0001`, `CField2 0x0000`, `CField4 0x03E8` |
+| the frame's EventSpec | source 1, regFlags 1, eSource 25, type 1000, eFlags 0, ddoUID 0, **dynIndex 1** (a static event has 0) |
+| the dynamic event terminals | typed with the registration; the left one is one more end of the registration's net - a FOUR-ended wire with the tunnel the document routes it through |
+| the user-event data cluster | `Source` (the typedef), `Type` and `Time` as plain u32, `UsrEvtRef` the user-event refnum, then the payload as field 4 |
+
+**Measured, both through the built server and directly**: the skeleton as written composes
+executable and runs, `Ticks Received = 5`, no error; LabVIEW's export of the FINISHED VI - which
+names the payload field, `fields="Source,Tick,Time"`, and wires `Tick` - does the same; and a variant
+of that export whose count condition is a `false` constant, so that ONLY the payload can stop the
+handler, stops after 3 ticks for `Ticks To Send = 3`. Suite tests `t118_user_event` and
+`t119_user_event_payload`; the composed skeleton also joined the helper coverage, which is now
+**78 of 82, all executable**, with parity 12 of 12 and the suite 120 of 120 on both sets of parts. The `eventRegNode` part (`harvest_event_reg.py`) is cut from LabVIEW's
+save of that skeleton, and the `UserEvent` and `EventReg` refnums joined the wire gate.
+
+**A CLUSTER payload is FLATTENED**, measured the same way on a two-element one (`Last`, `N`): NI's
+route finished it, LabVIEW's save wrote the data cluster `Source, Type, Time, UsrEvtRef, Last, N`
+with `UsrEvtRef` around the whole cluster, and NI's export names the element in `fields=`
+(`Source,Last,Time`). Composed from that export, reading both elements and with only `Last` able to
+stop the handler: `Ticks Received = 3`, `Last N = 2` for three ticks - suite test
+`t120_user_event_cluster_payload`.
+
+**Not measured, and refused by name**: more than one event source on one `Register For Events`
+(what a second source's code and `CField4` are), and a user-event frame without the registration
+routed in through a tunnel.
+
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
 existed and may be the same shared-terminal bug. Each harvested part set from before today needs
@@ -1057,6 +1094,7 @@ through `Project:Active Project` should not care, and that is untested.
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
 | `repair_nested_types.py` | resolves a part's typedef type ids against its donor VI - parts harvested before 2026-10-10 carried the donor's numbers (§7a, "Option 1") |
+| `harvest_event_reg.py` | cuts `Register For Events` (`eventRegNode`, which the harvester does not know) out of a VI into a part (§7a, "User events") |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |

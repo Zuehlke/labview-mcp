@@ -350,7 +350,11 @@ def unverified_wire_type(tree):
         # UDClassInst: a class object out of a subVI (DQMH's Default Module Icon.vi), through a
         # case tunnel into the next call - lvdqmh_new_module.xml loaded executable with no
         # insanity in LabVIEW's log (2026-10-10); loaded, not run - it creates a module
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst"):
+        # UserEvent, EventReg: the user-event skeleton composed and RAN - Create, Register, the
+        # dynamic event terminal, Generate, Unregister, Destroy - with Ticks Received = 5 and no
+        # insanity in the log, and stopped by the payload alone in a variant (2026-10-10)
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
+                                       "UserEvent", "EventReg"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -579,7 +583,7 @@ def out_key(el, tname):
     landed on ONE terminal: a wire into it and a wire out of it, three "Insane Wire {sub}" and a
     FATAL DAbort (NI's Get Item Info.vi, 2026-10-10). Only subVI calls and invoke nodes, which
     name terminals after the callee's labels; a primitive keeps its own naming rules."""
-    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") == "Invoke Node"):
+    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events")):
         if tname in {t for t, _ in pairs(el.get("inputs"))}:
             return tname + "\x00out"
     return tname
@@ -1663,6 +1667,21 @@ class Composer:
                     r = reshape(new_types[j], k)
                     if r is not None:
                         new_types[j] = r
+        if name == "Create User Event" and "user event" in by_name:
+            # its output is a UserEvent refnum around the datatype, NAMED by the datatype's label:
+            # `Tick` in LabVIEW's own save of the user-event skeleton, and the event frame's
+            # selector `<Tick>: User Event` must agree with it
+            net = dict(ins).get("user event datatype")
+            lab = self._source_label(net) if net else None
+            dt = self.net_type.get(net) if net else None
+            if dt is None or not lab:
+                raise Unsupported("Create User Event %s: the datatype needs a LABELLED source - the label "
+                                  "names the event" % el.get("uid"))
+            u = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UserEvent", "Format": "inline", "Label": lab})
+            inner = copy.deepcopy(dt)
+            inner.set("Label", lab)
+            u.append(inner)
+            new_types[idx_of[id(by_name["user event"])]] = u
         if name == "Read from Text File" and (el.get("readLines") or "").lower() == "true" \
                 and dict(ins).get("count") and "text" in by_name:
             # reading LINES with `count` wired answers an ARRAY of strings - NI's build of the
@@ -1732,7 +1751,8 @@ class Composer:
             for n, key in srcs:
                 if n != net:
                     continue
-                if e.tag == "Control":
+                if e.tag in ("Control", "Constant"):
+                    # (a constant's label names a user event: `<Constant _name="Tick">`)
                     return unescape(e.get("_name") or "") or None
                 end = self.ends.get(key)
                 if end is None:
@@ -3683,7 +3703,11 @@ class Composer:
 
     # EventSpec rows by event kind, read off NI's own VIs (event_specs.py over 40 of them):
     # (source, regFlags, eSource, type, eFlags, bound to a control?)
-    EVENT_SPECS = {"Value Change": ("3", "1", "0", "1073741826", "4", True),
+    # "User Event": read off LabVIEW's own save of the finished user-event skeleton (2026-10-10):
+    # source 1, regFlags 1, eSource 25, type 1000 (the 0x03E8 the registration carries), and
+    # dynIndex 1 - the first dynamic-event terminal pair - where a static event has 0
+    EVENT_SPECS = {"User Event": ("1", "1", "25", "1000", "0", False),
+                   "Value Change": ("3", "1", "0", "1073741826", "4", True),
                    "Mouse Enter": ("3", "1", "0", "1073741839", "4", True),
                    "Mouse Leave": ("3", "1", "0", "1073741838", "4", True),
                    "Timeout": ("4", "0", "0", "1073741825", "1", False)}
@@ -3773,7 +3797,7 @@ class Composer:
             if f.get("uid") not in have:
                 # with one (unwired) field, as LabVIEW draws a fresh frame's node
                 _, kind = self._event_of(self._selector_items(unescape(f.get("selector") or ""))[0])
-                fld = "Time" if kind == "Timeout" else "NewVal"
+                fld = "Time" if kind in ("Timeout", "User Event") else "NewVal"
                 self._synth_event_data.append(ET.Element("Node", {"_name": "Event Data Node", "fields": fld,
                                                                   "outputs": fld + ":", "uid": "0", "uid_parent": f.get("uid")}))
         self.report.append("Structure 'Event Structure' (%d frames) <- %s" % (len(frames_el), src))
@@ -3783,10 +3807,38 @@ class Composer:
         """' "Stop": Value Change ' -> ('Stop', 'Value Change'); ' Timeout ' -> (None, 'Timeout')."""
         s = unescape(selector or "").strip()
         m = re.fullmatch(r'"(.*)"\s*:\s*(.+)', s)
-        return (m.group(1), m.group(2).strip()) if m else (None, s)
+        if m:
+            return m.group(1), m.group(2).strip()
+        # ' <Tick>: User Event ' - the user event is named by its datatype's label
+        u = re.fullmatch(r'<(.*)>\s*:\s*User Event', s)
+        return (u.group(1), "User Event") if u else (None, s)
+
+    def _is_user_event_frame(self, frame):
+        items = self._selector_items(unescape(frame.get("selector") or ""))
+        return bool(items) and self._event_of(items[0])[1] == "User Event"
+
+    def _registration_of(self, struct_el):
+        """(net, type) of the EVENT REGISTRATION REFNUM wired into an Event Structure through one
+        of its input tunnels - the tunnel the skeleton routes it through on purpose."""
+        for t in struct_el:
+            if not isinstance(t.tag, str) or t.tag != "Tunnel":
+                continue
+            for _, n in pairs(t.get("inputs")):
+                tree = self.net_type.get(n) if n else None
+                if tree is not None and tree.get("Type") == "Refnum" and tree.get("RefType") == "EventReg":
+                    return n, tree
+        return None, None
+
+    @staticmethod
+    def _user_events_of(reg):
+        """The UserEvent refnums a registration type carries, by name."""
+        return {(c.get("Label") or (fields(c)[0].get("Label") if fields(c) else "")): c
+                for c in fields(reg) if c.get("Type") == "Refnum" and c.get("RefType") == "UserEvent"}
 
     def finish_events(self):
         for node, el, frames_el in getattr(self, "events", []):
+            if any(self._is_user_event_frame(f) for f in frames_el):
+                self._wire_registration(node, el, frames_el)
             specs = node.find("EventNodeEvents")
             for c in list(specs):
                 specs.remove(c)
@@ -3808,7 +3860,7 @@ class Composer:
                                    ("ddoUID", ddo)):
                         ET.SubElement(sp, tag).text = v
                     ET.SubElement(sp, "menuTag")
-                    ET.SubElement(sp, "dynIndex").text = "0"
+                    ET.SubElement(sp, "dynIndex").text = "1" if kind == "User Event" else "0"
             specs.set("elements", str(len(specs)))
             dn = getattr(self, "event_data_nodes", {})
             for lst_tag in ("dataNodeList", "filterNodeList"):
@@ -3824,6 +3876,118 @@ class Composer:
             sel = node.find("selString/textRec/text")
             if sel is not None and frames_el:
                 sel.text = '" [0] %s "' % unescape(frames_el[0].get("selector") or "").strip()
+
+    def _wire_registration(self, node, el, frames_el):
+        """A structure with user-event frames: its DYNAMIC EVENT terminals carry the registration
+        type, and the left one is one more end of the registration's net - the tunnel the document
+        routes it through stays, as in LabVIEW's own save (a four-ended wire there). This is the
+        wire lvai_wire_dynamic_events makes after NI's converter; composed, it is there at once."""
+        net, reg = self._registration_of(el)
+        if net is None:
+            raise Unsupported("Event Structure %s: a user-event frame needs the event registration refnum "
+                              "wired into the structure through a tunnel" % el.get("uid"))
+        have = self._user_events_of(reg)
+        for f in frames_el:
+            if self._is_user_event_frame(f):
+                name = self._event_of(self._selector_items(unescape(f.get("selector") or ""))[0])[0]
+                if name not in have:
+                    raise Unsupported("Event Structure %s: no user event %r in the registration (it has %s)"
+                                      % (el.get("uid"), name, ", ".join(sorted(have)) or "none"))
+        dyn = [t for t in node.find("termList") if t.find("dco").get("class") == "eventDynDCO"]
+        left = [t for t in dyn if not int(t.find("dco").findtext("objFlags") or 0) & 1]
+        if len(dyn) != 2 or len(left) != 1:
+            raise Unsupported("Event Structure %s: the part's dynamic-event terminals are not one pair" % el.get("uid"))
+        labelled = copy.deepcopy(reg)
+        labelled.set("Label", "Event Registration Refnum")
+        for t in dyn:
+            t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(labelled)
+        f_ = left[0].find("objFlags")
+        if f_ is None:
+            f_ = ET.Element("objFlags")
+            left[0].insert(0, f_)
+        f_.text = str(int(f_.text or 0) | 0x8000)
+        self.dyn_reg = getattr(self, "dyn_reg", {})
+        self.dyn_reg[el.get("uid")] = net
+        self.ends[(el.get("uid"), "dyn")] = (left[0].get("uid"), self.diag_of(el))
+
+    def add_event_reg(self, el):
+        """Register For Events (eventRegNode): built like a property node - four fixed hGrowCItem
+        terminals (registration refnum in and out, error in and out) and one eventRegItem per event
+        source, code 03E8 for a user event. The registration type is the source's UserEvent refnum
+        inside an EventReg refnum, the child carrying CField0 0x0001, CField2 0x0000, CField4
+        0x03E8 - all read off LabVIEW's own save of the finished user-event skeleton (2026-10-10).
+        ONE user-event source: what a second one's CField4 and code are is not measured."""
+        uid = el.get("uid")
+        ins = keyed(pairs(el.get("inputs")))
+        srcs = [(k, n) for k, n in ins if grow_base(k) == "event source" and n]
+        if len(srcs) != 1:
+            raise Unsupported("Register For Events %s: %d event sources - one user event is composable" % (uid, len(srcs)))
+        u = self.net_type.get(srcs[0][1])
+        if u is None or u.get("Type") != "Refnum" or u.get("RefType") != "UserEvent" or not fields(u):
+            raise Unsupported("Register For Events %s: the event source is not a user event refnum" % uid)
+        name = fields(u)[0].get("Label") or ""
+        got = self.instantiate("node/eventReg", own_uid=uid)
+        if got is None:
+            raise Unsupported("Register For Events %s: no eventRegNode part harvested" % uid)
+        node, donor_types, src = got
+        diag = self.diag_of(el)
+        terms = list(node.find("termList"))
+        roles = {0x10000: "event registration refnum", 0x40001: "event registration refnum out",
+                 0x20000: "error in (no error)", 0x80001: "error out"}
+        by = {}
+        item = None
+        for t in terms:
+            d = t.find("dco")
+            if d.get("class") == "hGrowCItem":
+                by[roles.get(int(d.findtext("objFlags") or 0))] = t
+            elif d.get("class") == "eventRegItem":
+                item = t
+        if len(by) != 4 or item is None:
+            raise Unsupported("Register For Events %s: the harvested part is not the measured shape" % uid)
+        uev = copy.deepcopy(u)
+        uev.set("Label", name)
+        child = copy.deepcopy(uev)
+        for k, v in (("ref.CField0", "0x0001"), ("ref.CField2", "0x0000"), ("ref.CField4", "0x03E8")):
+            child.set(k, v)
+        reg = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "EventReg", "Field0": "0x0000", "Format": "inline"})
+        reg.append(child)
+        err = type_tree("cluster{bool.status,int32.code,string.source}")
+        for role, label, tree in (("event registration refnum", "event registration refnum", reg),
+                                  ("event registration refnum out", "Event Registration Refnum", reg),
+                                  ("error in (no error)", "error in (no error)", err),
+                                  ("error out", "error out", err)):
+            tt = copy.deepcopy(tree)
+            tt.set("Label", label)
+            by[role].find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(tt)
+        item.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(uev)
+        wired = {k for k, n in ins if n}
+        for t, on in ((by["event registration refnum"], "event registration refnum" in wired),
+                      (by["error in (no error)"], "error in (no error)" in wired), (item, True)):
+            f = t.find("objFlags")
+            if on and f is None:
+                f = ET.Element("objFlags")
+                t.insert(0, f)
+            if f is not None:
+                f.text = str((int(f.text or 0) | 0x8000) if on else (int(f.text or 0) & ~0x8000))
+                if f.text == "0":
+                    t.remove(f)
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        node.find("oMId").text = self._om_id_of(reg)
+        self.ends[(uid, "event registration refnum")] = (by["event registration refnum"].get("uid"), diag)
+        self.ends[(uid, out_key(el, "event registration refnum"))] = (by["event registration refnum out"].get("uid"), diag)
+        self.ends[(uid, "error in (no error)")] = (by["error in (no error)"].get("uid"), diag)
+        self.ends[(uid, "error out")] = (by["error out"].get("uid"), diag)
+        self.ends[(uid, srcs[0][0])] = (item.get("uid"), diag)
+        for k, n in pairs(el.get("outputs")):
+            if n and k == "event registration refnum":
+                self.net_type[n] = reg
+            elif n and k == "error out":
+                self.net_type[n] = err
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Register For Events (user event %r) <- %s" % (name, src))
 
     def add_event_data(self, el):
         """An Event Data Node: Unbundle By Name over the frame's "Event Data" cluster - for a
@@ -3857,8 +4021,24 @@ class Composer:
                 fs[i].set("Label", lab)
         elif kind == "Timeout":
             fs = fs[:3]
-        else:
-            raise Unsupported("Event Data Node %s: %r events are not composable yet" % (el.get("uid"), kind))
+        elif kind == "User Event":
+            # LabVIEW's own save of the finished skeleton: Source (the typedef), Type and Time as
+            # plain u32, UsrEvtRef the user event refnum, then the payload - field 4
+            _, reg = self._registration_of(self._by_uid.get(frame.get("uid_parent")))
+            u = self._user_events_of(reg).get(ctl) if reg is not None else None
+            if u is None:
+                raise Unsupported("Event Data Node %s: no registration carries the user event %r" % (el.get("uid"), ctl))
+            payload = copy.deepcopy(fields(u)[0])
+            # a CLUSTER payload is FLATTENED: its elements are fields 4, 5, ... - LabVIEW's save of
+            # a two-element one (Last, N) wrote Source, Type, Time, UsrEvtRef, Last, N, and NI's
+            # export names `Last` in `fields=` directly (2026-10-10)
+            payload = [copy.deepcopy(f) for f in fields(payload)] if payload.get("Type") == "Cluster" else [payload]
+            uref = copy.deepcopy(u)
+            for k in [k for k in uref.attrib if k.startswith("ref.")]:
+                del uref.attrib[k]
+            uref.set("Label", "UsrEvtRef")
+            typ = ET.Element("TypeDesc", {"Type": "NumUInt32", "Prop1": "0", "Format": "inline", "Label": "Type"})
+            fs = [fs[0], typ, fs[2], uref] + payload
         cl = ET.Element("TypeDesc", dict(donor.attrib))
         for f in fs:
             cl.append(f)
@@ -4516,6 +4696,9 @@ class Composer:
             return [], [(n, (el.get("_loop"), "stop")) for _, n in pairs(el.get("inputs")) if n]
         if el.tag == "CaseFrame":
             return ([(el.get("selectout"), (uid, "selectout"))] if el.get("selectout") else []), []
+        if el.tag == "Structure" and el.get("_name") == "Event Structure":
+            net = getattr(self, "dyn_reg", {}).get(uid)
+            return [], ([(net, (uid, "dyn"))] if net else [])
         if el.tag == "Structure" and el.get("_name") == "Case Structure":
             return [], ([(el.get("selectin"), (uid, "sel"))] if el.get("selectin") else [])
         if el.tag == "Structure":
@@ -4927,6 +5110,14 @@ class Composer:
                 ins = pairs(e.get("inputs"))
                 init = [(k, n) for k, n in ins if k == "initializer"]
                 return init if any(n for _, n in init) else [(k, n) for k, n in ins if k == "next value"]
+            if e.tag == "Node" and unescape(e.get("_name") or "") == "Event Data Node":
+                # a USER EVENT's data cluster is read off the registration wired into the
+                # structure, so its node waits until every input tunnel of the structure is typed
+                frame = by_uid.get(e.get("uid_parent"))
+                st = by_uid.get(frame.get("uid_parent")) if frame is not None else None
+                if frame is not None and st is not None and self._is_user_event_frame(frame):
+                    return [("reg", n) for t in st if isinstance(t.tag, str) and t.tag == "Tunnel"
+                            for _, n in pairs(t.get("inputs")) if n]
             if e.tag == "ShiftReg":   # a register's type comes from its initializer
                 left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
                 return pairs(left.get("inputs"))
@@ -4954,6 +5145,8 @@ class Composer:
                     self.add_waveform_node(e)
                 elif e.tag == "Node" and nm == "Event Data Node":
                     self.add_event_data(e)
+                elif e.tag == "Node" and nm == "Register For Events":
+                    self.add_event_reg(e)
                 elif e.tag == "Node" and nm == "Local Variable":
                     self.add_local(e)
                 elif e.tag == "Node" and nm == "Feedback Node":
