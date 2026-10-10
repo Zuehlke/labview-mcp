@@ -14,8 +14,8 @@ State of 2026-10-10 morning (the night's work is §4d; the table below is the cu
 | direction | tool | result |
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **70 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs: loops, case/event/sequence/disable structures, clusters, arrays, enums, waveforms, refnums, property and invoke nodes, references, subVI calls into `vi.lib` and libraries - see §4d for the coverage of NI's own code |
-| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **81 identical in every fact**, elements 84.9 %, wires 77.1 %, constant values 77.1 %, attributes 66.9 % |
-| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI: see §4d |
+| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **103 identical in every fact**, elements 91.5 %, constant values 91.3 %, wires 82.7 %, attributes 75.2 % |
+| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **all 71 runnable tests pass** (2 skipped: they call composed callees) |
 
 The earlier table (2026-10-09), kept for the record: 28 of 28 tests; the reader on the TOP-LEVEL
 subset only, 415 of 552 identical.
@@ -454,6 +454,15 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t94` | expression nodes `2*x+1`, `n*n` | 7, 49 |
 | `t95` | feedback node in a For Loop, initializer outside | n = 5 → 10, n = 0 → 0 |
 | `t96` | stacked shift register, three elements | n = 5 → 6, n = 3 → 1 |
+| `t97` | an enum case with QUOTED selectors, as NI exports them (`"Auto"`) | 0, 8, 4 |
+| `t98` | a Global Variable of a `vi.lib` global VI, written then read in a flat sequence | `hello`, `second` |
+
+**Global Variables** (`t98`) are the local variable's `gRef` plus `connectorTM` - the global
+VI's pane - and the SAME `VIVI`/`IUVI` link pair a subVI call has (read out of the binary link
+block of NI's *Add to Project.vi*, which pylabview leaves unparsed); `paramIdx` is the control's
+position in the GLOBAL VI's `ddoList`. **`cond="true"` is the `selTun` bit 0x200000** on input
+and output tunnels alike - NI's *DataFinder_Pass_Fail_Analysis.vi* exports inputs at 0x200800
+and outputs at 0x200801 and 0x300801 all as `cond="true"`; 0x100000 is something else.
 
 A Conditional Disable's `!=` is the root `TreeElt`'s `activePlot` `FE` (`==` is `FD`), read off
 NI's *Scale TDMS Data.vi* (` TARGET_TYPE!=RT `); NI's export writes the error case's error
@@ -468,11 +477,19 @@ fact of every cached export rather than on the top-level subset: elements with t
 
 | | the old reader | now |
 |---|---|---|
-| VIs identical in every fact (all 760 cached exports) | - | **81** |
-| elements | 24 % (150-VI sample) | **84.9 %** (34 870 of 41 085) |
-| attributes | 0 % | **66.9 %** |
-| constant values | 62 % | **77.1 %** |
-| wires | 10 % | **77.1 %** (24 050 of 31 181) |
+| VIs identical in every fact (all 760 cached exports) | - | **103** |
+| elements | 24 % (150-VI sample) | **91.5 %** (37 599 of 41 085) |
+| attributes | 0 % | **75.2 %** |
+| constant values | 62 % | **91.3 %** |
+| wires | 10 % | **82.7 %** (25 800 of 31 181) |
+
+**And the two directions together** (`roundtrip.py`): every test of `tests/` composed, READ
+back by `vi2aixml.py`, composed again from that AIXML and RUN - all 71 runnable tests compute
+their expected outputs from the rebuilt VI. The round trip found five reader defects the
+NI comparison could not (it compares sets): two outputs of one name sharing a net name, Build
+Array inputs out of order, Scan From String's outputs read as inputs, a stacked shift
+register written as one Left per element, and a Flat Sequence that is defined only in the z
+list.
 
 What it reads: loops (tunnels with `mode="index"`, shift registers including stacked ones,
 `count`/`maxin`/`maxout`, `Condition`), Case Structures (selectors as NI writes them: `0..`,
@@ -643,7 +660,7 @@ user first.
    cannot build safely, so a fallback never writes a VI that is silently different.
 
 What makes the route trustworthy today is the test discipline, not the code: every construct
-has a test that LOADS and RUNS (`selftest.py`, 72 tests), the reader is measured against NI's
+has a test that LOADS and RUNS (`selftest.py`, 73 tests), the reader is measured against NI's
 own exports (`compare_full.py`), both directions together by `roundtrip.py`, and a crash of
 LabVIEW is a recorded outcome (`cov_load.py`) rather than a lost run.
 
@@ -670,7 +687,7 @@ LabVIEW is a recorded outcome (`cov_load.py`) rather than a lost run.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 71 composition tests with expected outputs, LabVIEW-log sanity gate, LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 73 composition tests with expected outputs, LabVIEW-log sanity gate, LabVIEW restarted when its log fills |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
 | `compare_with_nigel.py`, `compare_full.py`, `uid_survey.py` | the reader against NI's exports: top-level subset, whole VI, uid conventions |
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |

@@ -41,17 +41,20 @@ def main(argv):
             rows.append((name, "SKIPPED", "calls composed callees"))
             continue
         src = os.path.join(HERE, "tests", name + ".xml")
-        vi1 = os.path.join(out_dir, "%s_a%s.vi" % (name, stamp))
+        # the two VIs carry the SAME name as selftest.py gives it (<test>_<stamp>.vi), in two
+        # folders: a test that reads its own VI name (t91) must not see a longer one
+        os.makedirs(os.path.join(out_dir, "a"), exist_ok=True)
+        vi1 = os.path.join(out_dir, "a", "%s_%s.vi" % (name, stamp))
         code, log = run([os.path.join(HERE, "aixml2vi.py"), src, vi1])
         if code:
             rows.append((name, "COMPOSE 1 FAILED", log.splitlines()[-1] if log else ""))
             continue
-        xml2 = os.path.join(out_dir, "%s_b%s.xml" % (name, stamp))
+        xml2 = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
         code, log = run([os.path.join(HERE, "vi2aixml.py"), vi1, xml2])
         if code:
             rows.append((name, "READ FAILED", log.splitlines()[-1] if log else ""))
             continue
-        vi2 = os.path.join(out_dir, "%s_b%s.vi" % (name, stamp))
+        vi2 = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
         code, log = run([os.path.join(HERE, "aixml2vi.py"), xml2, vi2])
         if code:
             rows.append((name, "COMPOSE 2 FAILED", log.splitlines()[-1] if log else ""))

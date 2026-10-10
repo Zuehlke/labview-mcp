@@ -594,6 +594,8 @@ class Reader:
 
     def prim(self, node, parent_uid):
         rid = node.findtext("primResID")
+        self.prim_rid = getattr(self, "prim_rid", {})
+        self.prim_rid[node.get("uid")] = rid
         name = self.prim_name.get(rid)
         el = ET.Element("Node", {"_name": name or "?primResID %s" % rid,
                                  "uid": node.get("uid"), "uid_parent": parent_uid})
