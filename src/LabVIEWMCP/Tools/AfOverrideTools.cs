@@ -472,9 +472,10 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             AfOverrides.Check(plan, request, hookTerms.Inputs, hookTerms.Outputs,
                 diagram.PanelNames, diagram.WireEnds);
             string? source = null;
+            var hookNodes = HookCandidates(diagram.SubVis, target.OverridePath);
             if (parsed == AfOverrides.Shape.BranchFromNode && sourceHookName is { Length: > 0 })
             {
-                var matches = AfOverrides.MatchSubVi(diagram.SubVis, sourceHookName);
+                var matches = AfOverrides.MatchSubVi(hookNodes, sourceHookName);
                 if (matches.Distinct(StringComparer.Ordinal).Count() != 1 || matches.Count != 1)
                     plan.Problems.Add(new(matches.Count == 0 ? "sourceHookNotFound" : "sourceHookAmbiguous",
                         $"{matches.Count} subVI node(s) on the override match '{sourceHookName}'; " +
@@ -482,11 +483,12 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                         string.Join(", ", diagram.SubVis)));
                 else source = matches[0];
             }
-            if (!allowSecondInstance && AfOverrides.MatchSubVi(diagram.SubVis, Path.GetFileName(hook)).Count > 0)
+            if (!allowSecondInstance && AfOverrides.MatchSubVi(hookNodes, Path.GetFileName(hook)).Count > 0)
                 plan.Problems.Add(new("hookAlreadyPlaced",
                     $"'{Path.GetFileName(hook)}' is already on the override - a re-run would place it " +
                     "twice. Remove it with lvai_af_remove_hook first, or pass allowSecondInstance."));
             var detail = Detail(plan, request, hookTerms, diagram, target, hook);
+            if (source is not null) detail["sourceHookMatched"] = source;
             if (plan.Problems.Count > 0) return Refuse(plan, request, detail);
 
             // The save after placing writes the whole override, so edits already pending on it
@@ -644,7 +646,8 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                     new { helperError = readError, steps });
             var diagram = Diagram.From(read);
 
-            var (exact, count, choice) = RemovalTarget(diagram.SubVis, hookName, occurrence);
+            var (exact, count, choice) = RemovalTarget(HookCandidates(diagram.SubVis, target.OverridePath),
+                hookName, occurrence);
             var detail = new JsonObject
             {
                 ["overridePath"] = target.OverridePath,
@@ -786,6 +789,22 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         var count = matches.Count;
         var choice = occurrence ?? (count == 1 ? 0 : null);
         return (spellings[0], count, choice is { } c && c < count ? c : null);
+    }
+
+    /// <summary>
+    /// The subVI nodes a hook name may match: every top-level subVI except the Call Parent node.
+    /// CALL PARENT IS IN SubVIs[] TOO, measured 2026-10-10 (LabVIEW 2026 Q3): besides its own node
+    /// class CallParentNode it is listed with the PARENT's VI Name, e.g.
+    /// `Actor Framework.lvlib:Actor.lvclass:Actor Core.vi` on an Actor Core override. A hook name
+    /// such as "Actor Core" would otherwise select it, and the remove would delete Call Parent.
+    /// An override keeps its parent's file name, so that name is what is left out.
+    /// </summary>
+    internal static List<string> HookCandidates(IEnumerable<string> subVis, string overridePath)
+    {
+        var parentFile = Path.GetFileName(overridePath);
+        return [.. subVis.Where(n =>
+            !string.Equals(n, parentFile, StringComparison.OrdinalIgnoreCase)
+            && !n.EndsWith(":" + parentFile, StringComparison.OrdinalIgnoreCase))];
     }
 
     /// <summary>The class's other AF lifecycle overrides, as absolute paths that exist.</summary>

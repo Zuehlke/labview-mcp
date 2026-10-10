@@ -346,6 +346,16 @@ public sealed class AfOverrideToolsTests
     }
 
     [Fact]
+    public void The_Call_Parent_node_is_never_a_hook_candidate()
+    {
+        // Measured 2026-10-10: SubVIs[] lists Call Parent under the parent's VI Name.
+        string[] listed = ["Lib.lvlib:C.lvclass:log.vi", "Actor Framework.lvlib:Actor.lvclass:Actor Core.vi"];
+        var nodes = AfOverrideTools.HookCandidates(listed, @"C:\c\Actor Core.vi");
+        Assert.Equal(["Lib.lvlib:C.lvclass:log.vi"], nodes);
+        Assert.Null(AfOverrideTools.RemovalTarget(nodes, "Actor Core", null).Exact);
+    }
+
+    [Fact]
     public void Sibling_overrides_are_the_other_lifecycle_members_on_disk()
     {
         using var tree = new Tree(actorMembers: ["Actor Core.vi", "Stop Core.vi", "Pre Launch Init.vi", "hook.vi"]);
