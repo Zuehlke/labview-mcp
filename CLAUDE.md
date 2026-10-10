@@ -1632,7 +1632,10 @@ metric is not the corruption metric, and reading it as one gave the opposite con
 first-run path — the same `dropExistingMembers` step `lvai_lunit_add_test_method` already had. It
 therefore needs `projectPath`: without one the edit would be undone by LabVIEW's own save, so the
 re-run is REFUSED (`memberAlreadyListedWithoutProject`), and a class file the remover declines stops
-the call (`memberEntryCouldNotBeDropped`) instead of proceeding hopefully. Read `privateDataBytes`
+the call (`memberEntryCouldNotBeDropped`) instead of proceeding hopefully. A member a LOADED VI
+calls (an override hook) still fails the re-add with 56003 after the drop, so a re-run first asks
+the project's instance for its callers and refuses with `memberHasLoadedCallers` (unmeasured;
+`docs/af-override-tools.md` §5). Read `privateDataBytes`
 before and after anyway — it costs no LabVIEW and nothing else in the chain reports anything.
 Repair of an already-damaged class is a rebuild: `lvai_create_accessors` with an explicit
 `fromField` DUPLICATES rather than repairs (NI's wizard appends a number; the tool catches that
@@ -1652,10 +1655,11 @@ chicken-and-egg with no way round it. An override reads what it needs through th
 accessors instead. Note a *static* call to the parent's method would be wrong anyway: a dynamic
 dispatch subVI dispatches on the object, so a child's wire recurses into the child's own override.
 **That workaround does NOT apply to Actor Framework lifecycle overrides** (Pre Launch Init, Actor
-Core, Stop Core, Handle Error): they must call the parent - Actor Core's Call Parent is the message
-loop, Stop Core's stops the nested actors - so never build one with `lvai_add_class_method`. No
-tool here creates them yet; a colleague's fork has `lvai_create_override`, which lets NI's provider
-place the Call Parent node, and it is a candidate to port.
+Core, Stop Core, Handle Error, Handle Last Ack Core): they must call the parent - Actor Core's Call
+Parent is the message loop, Stop Core's stops the nested actors - so never build one with
+`lvai_add_class_method`. Create them with `lvai_create_override`, which has NI's provider place Call
+Parent, and script their bodies with `lvai_af_add_hook` (ported from a colleague's fork on
+2026-10-17). `docs/af-override-tools.md`.
 
 **A PRIVATE CLASS MEMBER MUST BE STATIC - measured 2026-10-17.** A private dynamic-dispatch VI is
 `eBad` (*"Dynamic dispatch VIs cannot be in private scope"*, linker text `error of type 2000000`)
@@ -2925,7 +2929,8 @@ literally it argued away 600 usable palette VIs.
 | How do I REMOVE / RENAME / CONVERT a DQMH event, rename a module, add an RT tester, drop Do Something, make a module TEMPLATE, or VALIDATE - with no dialog? | `docs/dqmh-scripting.md` §9d, §9e | `lvai_dqmh_remove_event`, `_rename_event`, `_convert_event`, `_rename_module`, `_create_rt_tester`, `_remove_do_something`, `_create_module_template`, `_validate_module` - each reports in `completionNeeded` what Delacor leaves for a person |
 | How do I put CODE into a DQMH message frame (the `#CodeNeeded` one)? | `docs/dqmh-scripting.md` §9h | `lvai_dqmh_place_handler` - a handler subVI whose terminals are NAMED after the event's argument and reply fields, wired by name; a Request and Wait for Reply frame leaves Main.vi not executable through its unwired Merge Errors input (VI Server names no cause - the user found it in the IDE), which the handler's error out fills |
 | How do I create a DQMH UNIT TEST, and which DQMH functions run without their dialog? | `docs/dqmh-scripting.md` §9, §9a | `lvai_dqmh_new_unit_test` - a generated wrapper calls Delacor's LOADED scripters; the test VI is `execState 0` by Delacor's design (`#CodeNeeded` frames) |
-| What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` - but NOT its lifecycle overrides, which need Call Parent |
+| What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` for its own methods; its lifecycle OVERRIDES come from `lvai_create_override`, never from `lvai_add_class_method` |
+| How do I override Pre Launch Init / Actor Core / Stop Core / Handle Error, and hook a body into it? | `docs/af-override-tools.md` | `lvai_create_override` (NI's provider places Call Parent, which AIXML cannot author), then `lvai_af_add_hook` (`branch`, `series`, `seriesAfter`, `branchFromNode`; refuses an unfed required input and a Handle Error hook before Call Parent), `lvai_af_remove_hook` to take one out. Overrides come after the library and the messages |
 | How does an actor BEHAVE at run time - lifecycle, error 43 at Handle Error, helper-loop stop, error propagation? | `docs/labview-actor-framework.md` §19 | — each fact marked NI source / measured here / documented / reported |
 | How do I put a class or VI INTO a `.lvlib`? | `docs/labview-actor-framework.md` §8 | `lvai_add_to_library` — NEVER write `NI.Lib.ContainingLib` by hand: it changes the class's QUALIFIED NAME without relinking the members that call each other by it, and every file-level check stays green while every VI goes `eBad`. NI's `{LV.Library}` `AddItem` + `Save All This Library.vi` writes both halves and relinks |
 | How do I create an Actor Framework MESSAGE? | `docs/labview-actor-framework.md` | `lvai_create_message_class` — NEVER author `Do.vi`: a GENERATED override of `Message.lvclass:Do.vi` is `eBad` whatever its diagram, measured down to a pass-through with zero nodes. The tool drives NI's own Message Maker instead |
