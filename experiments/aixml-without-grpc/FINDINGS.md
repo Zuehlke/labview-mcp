@@ -796,8 +796,17 @@ that is not composable; .NET constructor and Call Library Function nodes, the Py
 control refnums of a specific type, and For Loops with a conditional terminal follow with
 three to six each.
 
-The composed but broken VIs are the next work item; `bisect_vi.py` splits one into its
-independent pieces and loads each.
+**The "broken" count was partly the measurement's own fault, and two link defects hid
+behind it.** `coverage.py --build` computed every relative link from the ORIGINAL VI's place
+(`caller_file`) while writing the VI into the build folder, so a callee found beside the
+original was linked to the wrong folder; and the resolver linked a "sibling" found in any
+search folder as if it lay beside the caller. Composed with correct links (`bisect_vi.py
+--near`, which needed the resolver to search near EVERY search folder), NI's *Waveform - Min
+Max.vi*, *Waveform - XY Pairs.vi*, *Single Tone Measurements.vi* and the PID tank simulation
+all came out executable, and a static VI reference to a sibling read its target's name. Both
+defects are fixed; the corrected sweep is in the table above if it was re-measured, otherwise
+the 148 is a lower bound. `bisect_vi.py --near ORIGINAL.vi` splits a still-broken VI into
+its independent pieces and loads each.
 
 **The history**, measured as the work went on:
 

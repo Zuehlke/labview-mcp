@@ -145,10 +145,13 @@ class Resolver:
             return os.path.normpath(os.path.join(owner, *url.split("/")))
         return None
 
-    def _owner_files(self, name, caller_dir):
+    def _owner_files(self, name, caller_dirs):
+        """Library/class files of that name near ANY search folder first, then the installation's."""
         self._index()
-        near = self._near_index(caller_dir)[1] if caller_dir else {}
-        return near.get(name.lower(), []) + self._owners.get(name.lower(), [])
+        near = []
+        for d in (caller_dirs or []):
+            near += self._near_index(d)[1].get(name.lower(), [])
+        return near + self._owners.get(name.lower(), [])
 
     # ---- the one call -----------------------------------------------------------------------
     def resolve(self, target, caller_dirs, caller_file=None):
@@ -162,7 +165,7 @@ class Resolver:
             if not all(p.lower().endswith(OWNER_EXT) for p in owners):
                 return {"error": "unrecognised qualified name %r" % target}
             # walk the chain: Lib.lvlib -> Class.lvclass -> member, or just the last owner
-            candidates = self._owner_files(owners[-1], caller_dir)
+            candidates = self._owner_files(owners[-1], caller_dirs)
             if not candidates:
                 return {"error": "no %s in the installation or near the caller" % owners[-1]}
             for owner in candidates:
