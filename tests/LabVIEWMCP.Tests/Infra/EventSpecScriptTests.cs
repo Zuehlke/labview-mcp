@@ -484,5 +484,148 @@ public sealed class EventSpecScriptTests : IDisposable
         Assert.Equal(before, Bd(directory));
     }
 
+    // ------------------------------------------------ several user events, 2026-10-10
 
+    /// <summary>
+    /// A bundle whose VCTP carries an EVENT REGISTRATION of two user events, Tick then Count, in
+    /// the shape pylabview writes one off a real VI (t121's): each user event's refnum type
+    /// pointing at its payload type, and two EventReg types - the node's in and out terminals -
+    /// listing the items by flat type id, in item order. Frame 0 is a Timeout; frames 1.. are
+    /// user-event frames with the given dynIndex, unfinished (type 0, the state LabVIEW's
+    /// normalisation leaves) or finished (type 1000, the state the generation step writes).
+    /// </summary>
+    private string RegistrationBundle(int[] dynIndexes, bool finished, string[]? events = null)
+    {
+        events ??= ["Tick", "Count"];
+        var directory = Bundle(specs: 1);
+        var specs = string.Concat(dynIndexes.Select((dyn, i) => $"""
+                          <SL__arrayElement class="EventSpec">
+                            <diagramIdx>{i + 1}</diagramIdx>
+                            <source>1</source>
+                            <regFlags>{(finished ? "1" : "0")}</regFlags>
+                            <eSource>25</eSource>
+                            <type>{(finished ? "1000" : "0")}</type>
+                            <eFlags>0</eFlags>
+                            <ddoUID>0</ddoUID>
+                            <menuTag />
+                            <dynIndex>{dyn}</dynIndex>
+                            </SL__arrayElement>
+            """ + "\n"));
+        var bd = Bd(directory);
+        bd = bd.Replace("<EventNodeEvents elements=\"1\">", $"<EventNodeEvents elements=\"{1 + dynIndexes.Length}\">")
+               .Replace("      </EventNodeEvents>", specs + "      </EventNodeEvents>");
+        File.WriteAllText(Path.Combine(directory, $"{Base}_BDHb.xml"), bd);
+
+        // flat ids: payloads 0..n-1, user events n..2n-1, then the two EventReg types
+        var n = events.Length;
+        var payloads = string.Concat(events.Select(e => $"<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"{e}\" />"));
+        var userEvents = string.Concat(events.Select((e, i) =>
+            $"<TypeDesc Type=\"Refnum\" RefType=\"UserEvent\" Format=\"inline\" Label=\"{e}\"><TypeDesc TypeID=\"{i}\" /></TypeDesc>"));
+        var items = string.Concat(Enumerable.Range(n, n).Select(id =>
+            $"<TypeDesc TypeID=\"{id}\" CField0=\"0x0001\" CField2=\"0x0000\" CField4=\"0x03E8\" />"));
+        var regs = string.Concat(new[] { "event registration refnum", "Event Registration Refnum" }.Select(label =>
+            $"<TypeDesc Type=\"Refnum\" RefType=\"EventReg\" Field0=\"0x0000\" Format=\"inline\" Label=\"{label}\">{items}</TypeDesc>"));
+        var main = File.ReadAllText(Path.Combine(directory, $"{Base}.xml"))
+            .Replace("<TypeDesc Type=\"Boolean\" />", payloads + userEvents + regs);
+        File.WriteAllText(Path.Combine(directory, $"{Base}.xml"), main);
+        return directory;
+    }
+
+    /// <summary>{diagramIdx: (type, dynIndex)} of every user-event spec in the heap.</summary>
+    private static Dictionary<string, (string Type, string DynIndex)> UserEventSpecs(string heap) =>
+        System.Text.RegularExpressions.Regex.Matches(heap,
+                @"<SL__arrayElement class=""EventSpec"">(.*?)</SL__arrayElement>",
+                System.Text.RegularExpressions.RegexOptions.Singleline)
+            .Select(m => m.Groups[1].Value)
+            .Where(b => b.Contains("<source>1</source>"))
+            .ToDictionary(
+                b => System.Text.RegularExpressions.Regex.Match(b, @"<diagramIdx>(\d+)</diagramIdx>").Groups[1].Value,
+                b => (System.Text.RegularExpressions.Regex.Match(b, @"<type>(-?\d+)</type>").Groups[1].Value,
+                      System.Text.RegularExpressions.Regex.Match(b, @"<dynIndex>(\d+)</dynIndex>").Groups[1].Value));
+
+    /// <summary>
+    /// dynIndex is the user event's POSITION among the registration's items - measured on MGI's
+    /// Actor Core.vi (1, 2) and the icon editor's Buffer for lossless tracking.vi (6 for the sixth
+    /// item) - so the script resolves it from the bundle's own registration, as it resolves a
+    /// control label to its ddoUID. Count is the SECOND item, so 2, not the old fixed 1.
+    /// </summary>
+    [Fact]
+    public async Task ResolvesAUserEventsDynIndexFromTheRegistration()
+    {
+        var directory = RegistrationBundle([2], finished: false);
+        var run = await RunAsync("pylv-set-event-spec.py", directory, Base, "1", "--user-event", "Count");
+        if (run is null) return;
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(("1000", "2"), UserEventSpecs(Bd(directory))["1"]);
+    }
+
+    /// <summary>A name the registration does not hold is refused by name, with what it does hold.</summary>
+    [Fact]
+    public async Task RefusesAUserEventTheRegistrationDoesNotHold()
+    {
+        var directory = RegistrationBundle([1], finished: false);
+        var before = Bd(directory);
+        var run = await RunAsync("pylv-set-event-spec.py", directory, Base, "1", "--user-event", "Tock");
+        if (run is null) return;
+
+        Assert.NotEqual(0, run.ExitCode);
+        Assert.Contains("REFUSED", run.StdErr);
+        Assert.Contains("Tick, Count", run.StdErr);
+        Assert.Equal(before, Bd(directory));
+    }
+
+    /// <summary>
+    /// SEVERAL FRAMES, FINISHED FROM THE VI AS GENERATED. After the wiring save every frame reads
+    /// type 0 / dynIndex 2 - nothing says which event it handled. The --before bundle still does:
+    /// frame 1 was written as Count (2), frame 2 as Tick (1), and that is what comes back - the
+    /// order deliberately NOT the registration's, so a positional guess would fail this.
+    /// </summary>
+    [Fact]
+    public async Task FinishesSeveralFramesFromTheBundleAsGenerated()
+    {
+        var after = RegistrationBundle([2, 2], finished: false);
+        var generated = RegistrationBundle([2, 1], finished: true);
+        var run = await RunAsync("pylv-finish-user-events.py", after, Base, "--before", generated, Base);
+        if (run is null) return;
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("RESULT: changed", run.StdOut);
+        var specs = UserEventSpecs(Bd(after));
+        Assert.Equal(("1000", "2"), specs["1"]);
+        Assert.Equal(("1000", "1"), specs["2"]);
+    }
+
+    /// <summary>
+    /// A VI generated BEFORE 2026-10-10 wrote dynIndex 1 on every user-event frame, so its frames
+    /// do not say which event they handle - refused, and the fix named, rather than guessed.
+    /// </summary>
+    [Fact]
+    public async Task RefusesABundleAsGeneratedWhoseFramesDoNotSayWhichEvent()
+    {
+        var after = RegistrationBundle([2, 2], finished: false);
+        var generated = RegistrationBundle([1, 1], finished: true);
+        var before = Bd(after);
+        var run = await RunAsync("pylv-finish-user-events.py", after, Base, "--before", generated, Base);
+        if (run is null) return;
+
+        Assert.NotEqual(0, run.ExitCode);
+        Assert.Contains("REFUSED", run.StdErr);
+        Assert.Contains("lvai_generate_vi_with_events", run.StdErr);
+        Assert.Equal(before, Bd(after));
+    }
+
+    /// <summary>Several frames and no record of the VI as generated: still refused.</summary>
+    [Fact]
+    public async Task RefusesSeveralFramesWithoutTheBundleAsGenerated()
+    {
+        var after = RegistrationBundle([2, 2], finished: false);
+        var before = Bd(after);
+        var run = await RunAsync("pylv-finish-user-events.py", after, Base);
+        if (run is null) return;
+
+        Assert.NotEqual(0, run.ExitCode);
+        Assert.Contains("--before", run.StdErr);
+        Assert.Equal(before, Bd(after));
+    }
 }

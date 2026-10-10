@@ -1073,11 +1073,13 @@ code `03E8`; the registration carrying them in source order, every child with th
 POSITION in the registration (1 and 2 there - not a dynamic-terminal pair, of which there is one).
 The AIXML repeats the input name, `event source:…,event source:…`. Composed, two events `Tick` and
 `Count` in one node ran: the handler stored `Count` 0, 1, 2 and stopped on `Tick` - suite test
-`t121_user_events_two`. **The gRPC route did not finish that document**: `lvai_wire_dynamic_events`
-answered `userEventsNotFinished`, because `scripts/pylv-finish-user-events.py` REFUSES more than one
-user-event frame on purpose - "dynIndex is the registration item's position and only the value 1
-has been measured". That mapping is what MGI's VI and this run settle, so the refusal can be lifted
-there; it has not been.
+`t121_user_events_two`. **The gRPC route did not finish that document** at first:
+`lvai_wire_dynamic_events` answered `userEventsNotFinished`, because
+`scripts/pylv-finish-user-events.py` REFUSED more than one user-event frame on purpose. That mapping
+is what MGI's VI and this run settle, and **the refusal is lifted since 2026-10-11**: the generation
+step writes each frame's real position, and the wiring tool reads it off the VI before its save
+destroys it - measured with the frames in the opposite order to the registration and a swapped copy
+as control (`docs/labview-vit-templates.md` §5a).
 
 A user-event frame without the registration routed in through a tunnel is refused by name. This
 paragraph said until the next section that an event source other than a user event was not

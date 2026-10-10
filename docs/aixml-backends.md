@@ -201,9 +201,9 @@ runs `Ticks Received = 5`, LabVIEW's export of the finished VI (which names the 
 and a variant that only the payload can stop stopped on it. A cluster payload is flattened into the
 data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. Several
 user events may share one registration (each frame's `dynIndex` is its event's position there, as in
-MGI's shipped `Actor Core.vi`) - which the gRPC route does not finish yet: `pylv-finish-user-events.py`
-refuses more than one user-event frame until that mapping is measured, and it now is.
-`scripts/aixml-skeletons/user-event-two-loops.md`.
+MGI's shipped `Actor Core.vi`) - and the gRPC route finishes that now as well (2026-10-11): it refused
+more than one user-event frame until then. `scripts/aixml-skeletons/user-event-two-loops.md`,
+`docs/labview-vit-templates.md` §5a.
 
 **A CONTROL REFERENCE as an event source composes too** (a control, the VI): one registration item
 per (source, event), the event taken from the frame that names it - NI's AIXML writes only

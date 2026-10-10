@@ -60,11 +60,77 @@ ddo to bind to.
 WHAT IS NOT ISOLATED: which of `regFlags`, `type` and `dynIndex` is decisive.
 They were changed together from `0 / 0 / 2`. `type 1000` is `0x03E8` and equals
 the `eventRegItem`'s own `code`, so it is the candidate; this writes the whole
-row rather than guessing. `dynIndex` defaults to 1 and only 1 is measured - it
-is the registration item's position, so a structure fed several user events
-needs the real one.
+row rather than guessing.
+
+`dynIndex` IS THE USER EVENT'S 1-BASED POSITION AMONG ALL THE REGISTRATION'S
+ITEMS - measured 2026-10-10: MGI's Special Monitor Actor Core.vi registers two
+user events as 1 and 2, the icon editor's Buffer for lossless tracking.vi its
+user event as the sixth item and `dynIndex 6`, and VIs composed that way ran
+right. So this RESOLVES it, from the VI's own registration - VCTP's EventReg
+refnum, whose children point at the items' types in item order - the way a
+control label is resolved to its ddoUID. An explicit `[dynIndex]` still wins;
+a bundle carrying no registration falls back to 1, the value measured first.
 """
 import io, re, sys
+import xml.etree.ElementTree as ET
+
+
+def registration_items(bundle, base):
+    """The VI's event registration as a list in ITEM order - each user event's
+    type label, None for an item that is not a user event (a control reference).
+
+    Read off VCTP: a `Refnum RefType="EventReg"` TypeDesc lists one child per
+    registration item, each pointing at the item's own type by FLAT type id
+    (the position among VCTP's TypeDescs), and a user event's type carries its
+    name as `Label`. Every terminal of one registration carries the same list,
+    so duplicates collapse; two DIFFERENT lists are refused, because which one
+    feeds the structure is not readable here. None when there is no
+    registration with items at all (a VI that registers no event)."""
+    root = ET.parse("%s/%s.xml" % (bundle, base)).getroot()
+    sec = root.find("VCTP/Section")
+    if sec is None:
+        return None
+    flat = [t for t in sec if t.tag == "TypeDesc"]
+    lists = []
+    for t in flat:
+        if t.get("RefType") != "EventReg":
+            continue
+        kids = [c for c in t if c.tag == "TypeDesc"]
+        if not kids:
+            continue
+        names = []
+        for c in kids:
+            tid = c.get("TypeID")
+            target = flat[int(tid)] if tid is not None and int(tid) < len(flat) else c
+            names.append(target.get("Label") if target.get("RefType") == "UserEvent" else None)
+        if names not in lists:
+            lists.append(names)
+    if not lists:
+        return None
+    if len(lists) > 1:
+        raise SystemExit(
+            "REFUSED: the VI carries %d different event registrations (%s), and which one "
+            "feeds this Event Structure is not readable from the type table - so no dynIndex "
+            "is resolved. Pass it explicitly." % (len(lists), "; ".join(
+                ", ".join(n or "(not a user event)" for n in l) for l in lists)))
+    return lists[0]
+
+
+def user_event_position(bundle, base, name):
+    """`name`'s 1-based position in the registration, or None when the bundle
+    carries none. Refuses a name the registration does not hold, listing what
+    it does hold."""
+    items = registration_items(bundle, base)
+    if items is None:
+        return None
+    if name not in items:
+        raise SystemExit(
+            "REFUSED: no user event %r in the VI's event registration - it holds %s."
+            % (name, ", ".join(n or "(not a user event)" for n in items)))
+    if items.count(name) > 1:
+        raise SystemExit("REFUSED: the registration holds user event %r %d times, so its "
+                         "position is ambiguous." % (name, items.count(name)))
+    return items.index(name) + 1
 
 VALUE_CHANGE = (('source', '3'), ('type', '1073741826'), ('eFlags', '4'))
 USER_EVENT = (('source', '1'), ('regFlags', '1'), ('eSource', '25'),
@@ -125,16 +191,21 @@ def resolve_control(bundle, base, name):
         % (name, p, ", ".join("%s (%s)" % (n, c) for n, _, c in found) or "(none)"))
 
 
-def main(bundle, base, diagram_idx, control, label=None):
+def main(bundle, base, diagram_idx, control, label=None, dyn=None):
     # THREE argument forms, distinguished here so the rest of the function is
     # shared: a control LABEL (the normal one), a bare ddoUID, and the
-    # --user-event flag, whose next argument is the USER EVENT's name.
+    # --user-event flag, whose next argument is the USER EVENT's name and the
+    # optional one after it the dynIndex (the usage promised it for a month and
+    # main() took no such argument - a sixth one was a TypeError).
     user_event = None
     dyn_index = None
     if control == '--user-event':
         if label is None:
             raise SystemExit("--user-event needs the event's name")
         user_event, label = label, None
+        dyn_index = dyn if dyn is not None else user_event_position(bundle, base, user_event)
+        if dyn_index is None:
+            print("   no event registration in this bundle - dynIndex 1, the value measured first")
         ddo = '0'
     elif re.fullmatch(r'\d+', control):
         ddo = control

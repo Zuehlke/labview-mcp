@@ -2193,9 +2193,12 @@ than what the event carried. `scripts/aixml-skeletons/user-event-two-loops.md` i
 **On the `pylabview` backend none of that detour is needed** (2026-10-10): our composer writes the
 user-event spec, the wire onto the dynamic event terminal and the payload field in one compose - the
 skeleton runs `Ticks Received = 5`, a variant only the payload can stop stopped on it, and a cluster
-payload is read element by element, and several user events may share one registration - which the
-gRPC route does not finish yet, its finishing script refusing more than one until the `dynIndex`
-mapping was measured (it now is). A CONTROL REFERENCE as the source composes too, the event read off
+payload is read element by element, and several user events may share one registration. **The gRPC
+route finishes several user-event frames too, since 2026-10-11** - it refused them until then:
+`dynIndex` is the event's position among the registration's items, the generation step writes it
+per frame, and `lvai_wire_dynamic_events` reads it off the VI BEFORE its wiring save destroys it.
+Measured with the frames in the opposite order to the registration: the run counted right, and a
+copy with the two frames swapped counted 0. A CONTROL REFERENCE as the source composes too, the event read off
 the frame that names it and the code off a surveyed (class, event) table - and **registering for a
 front-panel object's events needs the VI's panel OPEN**: closed, `Register For Events` answers
 `Error 1001` and the Event Structure waits for ever, LabVIEW's own save of such a VI included.

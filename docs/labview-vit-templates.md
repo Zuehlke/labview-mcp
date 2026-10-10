@@ -1103,9 +1103,20 @@ after the save. The name comes from `VCTP`'s own
 `<TypeDesc Type="Refnum" RefType="UserEvent" Label="...">`, survives the normalisation too, and is
 needed only for the cached label - executability comes from the spec row alone.
 
-**It REFUSES more than one user-event frame** rather than guessing, and that refusal is the
-feature: `dynIndex` is the registration item's position, only `1` is measured, and a wrong one
-gives a VI that loads, compiles and fires the WRONG event.
+**SEVERAL user-event frames are finished since 2026-10-11** - this paragraph said "it REFUSES more
+than one user-event frame rather than guessing", because `dynIndex` was measured only as `1`. It is
+the event's 1-based POSITION among the registration's items (MGI's `Actor Core.vi`: two user events,
+1 and 2; the icon editor's `Buffer for lossless tracking.vi`: the sixth item, 6). So
+`pylv-set-event-spec.py` resolves it per frame from the VI's own registration - VCTP's `EventReg`
+refnum lists the items in order - and `lvai_generate_vi_with_events` writes it that way; the wiring
+save then destroys it, so `lvai_wire_dynamic_events` extracts the VI BEFORE that save and hands the
+bundle to `pylv-finish-user-events.py` as `--before`, which writes each frame back from it.
+**Measured end to end** on a VI whose frames are listed in the OPPOSITE order to its registration
+(Count frame first, Count registered second): generate wrote `dynIndex 2` and `1`, the wire step
+finished both and read `execState 1`, and the run counted three Count events and stopped on Tick -
+while a copy with the two frames swapped counted 0, which is what makes the run a test. A wrong
+`dynIndex` still gives a VI that loads, compiles and fires the WRONG event, so a VI generated before
+that date - `dynIndex 1` on every frame - is refused, and several frames with no `--before` too.
 
 **VERIFIED end to end 2026-09-11**, on a VI generated from scratch into a throwaway project:
 `lvai_generate_vi_with_events` left it `eBad` with the explanatory note, and one

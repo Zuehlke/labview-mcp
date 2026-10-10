@@ -94,9 +94,12 @@ internal sealed class WireEventTools(LvaiConnection connection)
         LabVIEW keeps serving its own copy - so without the release the verification reads the VI
         it replaced. It is skipped entirely, project included, when the VI has no unresolved
         user-event frame, and finishUserEvents: false turns it off.
-        IT REFUSES MORE THAN ONE USER-EVENT FRAME rather than guessing: dynIndex is the
-        registration item's position and only the value 1 is measured, and a wrong one gives a VI
-        that loads, compiles and fires the WRONG event.
+        SEVERAL USER-EVENT FRAMES ARE FINISHED TOO (since 2026-10-10): dynIndex is the event's
+        position among the registration's items, lvai_generate_vi_with_events writes it per frame,
+        and this tool reads it off the VI BEFORE its wiring save destroys it, then writes each
+        frame back. A VI generated before that date wrote dynIndex 1 on every frame and is refused
+        rather than guessed - a wrong dynIndex gives a VI that loads, compiles and fires the WRONG
+        event; generate it again.
         """)]
     public async Task<string> WireDynamicEventsAsync(
         [Description("Absolute path of the .vi to wire. It is SAVED in place on success.")]
@@ -159,6 +162,12 @@ internal sealed class WireEventTools(LvaiConnection connection)
             }
 
             var bytesBefore = new FileInfo(viPath).Length;
+
+            // The VI AS GENERATED, read before the wiring save below - that save is the load at
+            // which LabVIEW discards every user-event spec, and with it which frame handles which
+            // user event. Several user-event frames are finished from this record (step 3).
+            var before = finishUserEvents ? await ExtractBeforeWiringAsync(viPath, timeoutSeconds, ct) : null;
+
             var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
             request.Inputs["VI Path"] = Path.GetFullPath(viPath);
 
@@ -209,6 +218,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             payload["helperGenerated"] = JsonValue.Create(helperGenerated);
             payload["helperWasStale"] = JsonValue.Create(stale);
             payload["elapsedMs"] = JsonValue.Create(stopwatch.ElapsedMilliseconds);
+            payload["readBeforeWiring"] = JsonValue.Create(before is not null);
             payload["note"] = JsonValue.Create(outcome.Note);
             payload["verifyBy"] = JsonValue.Create(VerifyHint);
 
@@ -226,7 +236,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             var wired = outcome.Ok || endsAfter >= 3;
             if (finishUserEvents && wired)
             {
-                var finish = await FinishUserEventsAsync(viPath, timeoutSeconds, ct);
+                var finish = await FinishUserEventsAsync(viPath, before, timeoutSeconds, ct);
                 payload["userEventStep"] = finish;
                 payload["viBytesAfter"] = JsonValue.Create(
                     File.Exists(viPath) ? new FileInfo(viPath).Length : 0L);
@@ -267,6 +277,9 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 }
             }
 
+            if (before is { } b)
+                try { Directory.Delete(b.Directory, recursive: true); } catch (IOException) { }
+
             if (!outcome.Ok)
             {
                 payload["wireEndsAfterXml"] = JsonValue.Create(Text(outputs, "wire ends after"));
@@ -299,12 +312,14 @@ internal sealed class WireEventTools(LvaiConnection connection)
     /// when there is really something to write, which is why the cheap read comes first and the
     /// script's own <c>RESULT:</c> line decides.
     ///
-    /// IT DOES NOT GUESS. The script refuses more than one user-event frame, because
-    /// <c>dynIndex</c> is the registration item's position and only the value 1 is measured; a
-    /// wrong one gives a VI that loads, compiles and fires the wrong event.
+    /// SEVERAL USER-EVENT FRAMES are finished from <paramref name="before"/>, the VI as generated:
+    /// <c>dynIndex</c> is the event's position among the registration's items (measured
+    /// 2026-10-10), the generation step writes it per frame, and the wiring save destroys it - so
+    /// the script reads it there. Without that record it still refuses more than one, because a
+    /// wrong <c>dynIndex</c> gives a VI that loads, compiles and fires the wrong event.
     /// </summary>
     private async Task<JsonObject> FinishUserEventsAsync(
-        string viPath, int timeoutSeconds, CancellationToken ct)
+        string viPath, (string Directory, string BaseName)? before, int timeoutSeconds, CancellationToken ct)
     {
         var step = new JsonObject { ["changed"] = false };
 
@@ -351,8 +366,11 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
         var baseName = Path.GetFileNameWithoutExtension(mainXml);
 
+        string[] arguments = before is { } b
+            ? [directory, baseName, "--before", b.Directory, b.BaseName]
+            : [directory, baseName];
         var finish = await EventStructureTools.RunScriptAsync(bundle, scripts,
-            "pylv-finish-user-events.py", [directory, baseName], "finishUserEvents",
+            "pylv-finish-user-events.py", arguments, "finishUserEvents",
             timeoutSeconds, ct);
         steps.Add(finish);
         if (finish["exitCode"]?.GetValue<int>() != 0)
@@ -430,6 +448,28 @@ internal sealed class WireEventTools(LvaiConnection connection)
         try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
         step["bundleDirectory"] = null;
         return step;
+    }
+
+    /// <summary>
+    /// The VI AS GENERATED, extracted before the wiring save: each user-event frame's
+    /// <c>dynIndex</c> is still the generation step's there, and the save destroys it. Reading a
+    /// file LabVIEW holds is fine. Null when pylabview is not provisioned or the extract fails -
+    /// the finishing step then refuses several frames as it always did, rather than guessing.
+    /// </summary>
+    private async Task<(string Directory, string BaseName)?> ExtractBeforeWiringAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        if (PyLabview.Locate() is null) return null;
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "userevents",
+            Path.GetFileNameWithoutExtension(viPath) + "-before-" + Environment.ProcessId + "-"
+            + Guid.NewGuid().ToString("N")[..7]);
+        Directory.CreateDirectory(directory);
+        var json = await new PyLabviewTools(connection)
+            .ExtractAsync(viPath, directory, annotate: false, timeoutSeconds, ct);
+        if (JsonNode.Parse(json)?["mainXml"]?.GetValue<string>() is { Length: > 0 } mainXml)
+            return (directory, Path.GetFileNameWithoutExtension(mainXml));
+        try { Directory.Delete(directory, recursive: true); } catch (IOException) { }
+        return null;
     }
 
     /// <summary>
