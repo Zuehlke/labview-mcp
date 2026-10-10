@@ -22,8 +22,8 @@ LabVIEW's visible window titles, because it is waiting behind a dialog.
 
 The composer's reach is measured in `experiments/aixml-without-grpc/FINDINGS.md` (source tree
 only): 88 composition tests load and run; 252 of NI's 792 exports compose and 216 of those are
-executable, with no LabVIEW crash; the reader matches NI's own export in every fact for 133 of 760
-VIs. So it is a second converter with a known, smaller reach — not a stand-in that answers for the
+executable, with no LabVIEW crash; the reader matches NI's own export in every fact for 143 of 768
+VIs (2026-10-11, after it learned dynamic-dispatch calls; 109 of the same 768 before). So it is a second converter with a known, smaller reach — not a stand-in that answers for the
 first. **It refuses by name what it cannot build** (`errorKind: composerRefused`), which is what
 makes it safe to put behind a switch: it does not write a VI that is silently different.
 
@@ -62,6 +62,15 @@ explicit `backend` argument still reaches any tool. There is deliberately **no t
 the backend at run time**: parallel agents share one server, and one agent would switch it under
 the others.
 
+**A ROUTE TOOL HANDS ITS CHOICE DOWN** (since 2026-10-11). A tool that runs a whole route - the class
+tools, the test generators, the swap, the runner - and resolves to `pylabview` sets
+`AixmlBackend.Inherited`, and every call it makes inside that route with no `backend` of its own
+inherits it (`backendSource: inherited from <tool>`). Without that, a route promised to avoid NI's
+service had to pass `backend` to some thirty inner calls by hand, and one forgotten call would reach
+NI in the middle of it. It is an `AsyncLocal`: it ends with the tool that set it and never leaks
+into another client call. Helpers are composed into `%TEMP%\LabVIEWMCP\helpers-pylabview`, NI's built
+ones stay in `helpers`, so neither backend runs or overwrites the other's.
+
 ## What each tool does on `pylabview`
 
 | tool | on `pylabview` |
@@ -71,9 +80,17 @@ the others.
 | `lvai_convert_vi_to_aixml` | `vi2aixml.py`; never cached (the export cache holds NI's output), `readerNote` carries the measured fidelity |
 | `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` over ActiveX in its place and stops on a broken VI. **No step touches NI's service**: the diagram size is LabVIEW's own `PrintVIToHTML` over ActiveX, the connector pane is read from the FILE by `pylv-conpane.py`, `panePattern` rebuilds without closing a project. A VI with no conIdx at all has no pane — the composer writes none — and says so |
 | `lvai_generate_vis` | each entry as `lvai_generate_vi`, with the batch's backend |
-| `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry. A VI is refused (`notAvailableOnBackend`) |
+| `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry, then a REOPEN retry (`reopenRetry`): a project already LOADED but not active stays inactive however often it is opened, so it is saved and closed by path (`lvai_close_project.xml`) and opened again. A VI is refused (`notAvailableOnBackend`) |
 | `lvai_close_active_project` | the composed close helper over ActiveX - the same Save and Close, the same sweep |
 | `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` is refused; the typedef binding has no such route yet |
+| `lvai_create_interface`, `lvai_create_accessors` | as `lvai_create_class`: NI's own providers run from composed helpers over ActiveX, no step touches NI's service |
+| `lvai_add_class_method` | each method COMPOSED from its AIXML (path and cluster stand-ins compose like any type), the pane repaired by pylabview, the retype-and-membership helper composed and run over ActiveX - LabVIEW writes the class links on its own save. Validation is the composer's, not NI's wiring check |
+| `lvai_generate_class_test`, `lvai_generate_method_test` | the SOCKET route, always - the direct route names a loaded class member in a Call, which only NI's converter resolves; the composer writes no link to a class member. Sockets are composed, the suite is composed, and `lvai_swap_subvis` points them at the real members (`route.reason` says so) |
+| `lvai_generate_test` | the PLACEHOLDER route, and the call is pointed at the subject by LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage. One swap per case, because every case calls the same stub |
+| `lvai_swap_subvis` | the same helper, composed and run over ActiveX - in LabVIEW's main instance, so `{LV.SubVI}` Replace works with no project open. Verified against the READER's export of the saved file, and the answer says so |
+| `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc |
+| `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
+| `lvai_set_vi_icon` | the icon helper composed and run over ActiveX, judged by the same read-back file. Until 2026-10-11 it took the parameter and still called NI's `RunVIAsTopLevel` |
 | `lvai_exec_state` | `ExecState` over ActiveX — no helper VI; no linker errors, which ActiveX does not expose |
 | `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
 
@@ -239,15 +256,78 @@ Filter events (`Panel Close?`), VI and application events are still refused by n
 "Static events".
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
-where a release gets its parts is the user's open decision. **One tool runs its helpers over
-ActiveX so far, `lvai_create_class`** (with `lvai_open_file` and `lvai_close_active_project`), and
-it answered the instance question: in LabVIEW's main instance NI's class provider found the active
-project and built the same class. **It needs the harvested parts** - with the parts as committed
-its helper is not composable and the call answers `helperNotComposable` - so until the parts
-decision it runs with `LABVIEWMCP_AIXML_PARTS` pointing at a harvested copy. Composed helpers are
-cached in `%TEMP%\LabVIEWMCP\helpers-pylabview`, apart from NI's, and rebuilt when their AIXML or
-the parts in use change.
+where a release gets its parts is the user's open decision. `lvai_create_class` was the first tool
+to run its helpers over ActiveX (2026-10-10), and it answered the instance question: in LabVIEW's
+main instance NI's class provider found the active project and built the same class. The whole
+class-and-test chain followed on 2026-10-11 - next section. **All of it needs the harvested parts**
+- with the parts as committed the helpers are not composable and a call answers
+`helperNotComposable` - so until the parts decision it runs with `LABVIEWMCP_AIXML_PARTS` pointing at
+a harvested copy. Composed helpers are cached in `%TEMP%\LabVIEWMCP\helpers-pylabview`, apart from
+NI's, and rebuilt when their AIXML or the parts in use change.
 `experiments/aixml-without-grpc/FINDINGS.md` §7a has the per-kind table (source tree only).
+
+## A class, an interface and Caraya tests with NI's service unreachable (measured 2026-10-11)
+
+One script builds the same project on each backend through the built server: interface `Shape`
+with `Area` and `Perimeter`, class `Rectangle` (Width, Height) implementing it with both overrides
+(an `Unbundle By Name` on a cluster stand-in, retyped to the class), its four accessors, an accessor
+test, a method test (Area 3 x 4, Area 2.5 x 2, Perimeter 3 x 4), a Caraya runner, the run. The
+pylabview build ran with `LABVIEW_GRPC_PORT=1`, so any call reaching NI's service would have FAILED
+rather than quietly succeeded - the control call (`lvai_status`) answered `Unavailable` - and every
+one of the 70 recorded steps says `backend: pylabview`. LabVIEW was restarted before each build,
+because the other build's same-named classes would still be in memory (`Error 1721` from the
+interface provider, seen once).
+
+| step | pylabview, NI unreachable | grpc |
+|---|---|---|
+| create interface | 5.7 s | 8.1 s |
+| interface methods (2) | 10.0 s | 7.3 s |
+| close the project | 0.8 s | 0.1 s |
+| create class | 6.6 s | 3.8 s |
+| overrides (2) | 13.5 s | 5.0 s |
+| accessors (4) | 25.9 s | 25.2 s |
+| accessor test | 43.4 s | 26.6 s |
+| method test | 50.1 s | 24.2 s |
+| Caraya runner | 9.8 s | 5.5 s |
+| run the suite | 6.5 s | 5.4 s |
+| **total** | **172.2 s** | **111.2 s** |
+
+Both: 5 of 5 tests green, all 11 VIs `execState 1`, and a negative control - Area of 3 x 4 expected
+as 13 - failing exactly that case, green again once restored. One run each, so the per-step numbers
+are a single sample. **pylabview is about 1.5x slower, and the difference is the test generators**:
+on grpc they take the direct route (the class open, its members named in the Call), on pylabview the
+socket route - sockets composed, the suite composed, a swap - and every composed VI starts the
+interpreter. The class steps are within a few seconds of each other except the overrides. LabVIEW's
+DWarn log saturated during the pylabview build (`Wiring insanity found and fixed`), the known cost
+of composed wires (FINDINGS); nothing failed with it.
+
+**What it took, and what the first runs found** - each of these answered `ok`, or a misleading
+error, before it was fixed:
+
+- **Our reader could not read a VI LabVIEW had saved with calls into classes.** pylabview leaves such
+  a link block BINARY, and the binary fallback looked for the name count at one fixed offset -
+  LabVIEW wrote it at two others, one after a pad byte - so every target read `?`; and a
+  dynamic-dispatch call (`dynIUse`, linked through a `DyOM` record that names its `dynLink` child)
+  was not read at all, so the accessor calls and their wires vanished. The swap's verify then called
+  a correct swap a failure. NI's export of the same file named all seven calls; after the fix the
+  reader does too, and over all 768 cached exports it went from 109 to 143 VIs identical, wires
+  82.7 % to 87.3 %, nothing worse. `Infra/ReaderClassCallTests.cs` reads the real saved VI.
+- **A string array whose element carries a label came back empty over ActiveX** - the reader types
+  it `array{string.String}`, and `ComValues` looked `string.String` up as a type. The swap helper's
+  `node names found` is such an array, so every socket read as "not on the diagram".
+- **The method test's socket route had never matched its own socket**: the call wrote
+  `error in (no error)` while the socket it calls says `error in`, and its unit test pinned the
+  wrong one. gRPC never noticed because it takes the direct route; every converter refuses it.
+- **A project LOADED but not active cannot be reopened into activity** - 5 of 5 opens, after
+  `lvai_create_class` had left it so - hence `reopenRetry`. And the hint said "LabVIEW's main window
+  was not found" where Windows had refused `SetForegroundWindow` to a background process.
+- **`lvai_set_vi_icon` and `lvai_generate_test` took the parameter and did not keep its promise**:
+  the icon tool called NI's service anyway (caught by the dead port), the test generator answered ok
+  for a test that failed with Bad Linkage. Both have a real pylabview route now, measured the same
+  way with the port dead.
+- **The script's own mistake, worth repeating**: it called `lvai_create_class` while an earlier
+  tool had left the project open, and the next close saved LabVIEW's older copy over the new class
+  entry - CLAUDE.md's "close the project before any `lvai_create_class`", on either backend.
 
 ## Not covered, and not measured
 
@@ -255,9 +335,12 @@ the parts in use change.
   the pylabview backend writes and reads VIs and reports executability as not measured.
 - **`lvai_render_diagrams` and `lvai_connector_pane` are not switched** — `lvai_generate_vi` uses
   the pylabview routes internally, the standalone tools still run NI's helpers.
-- **The internal tools stay on gRPC** — class, accessor, test, DQMH, graft and swap tools — and so
-  does the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output.
+- **Still on gRPC**: the DQMH, graft, typedef, LUnit, mock and malleable tools, `lvai_add_class_field`,
+  and the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output. The class
+  creation, method, accessor, Caraya test, swap, placeholder, runner and icon tools take `backend`
+  (previous section).
 - **Not measured yet**: the server default through a real Claude client (a new parameter is only
-  visible after the client restarts); ActiveX on a VI that calls project-local subVIs; and whether
-  LabVIEW's ActiveX server is on by default on every installation — it answered here with no
-  configuration change.
+  visible after the client restarts), and the new `backend` parameters of the class and test tools
+  likewise - they were measured over raw stdio only; and whether LabVIEW's ActiveX server is on by
+  default on every installation — it answered here with no configuration change. (ActiveX on a VI
+  calling project-local code IS measured now: the Caraya suites above call the class's own members.)

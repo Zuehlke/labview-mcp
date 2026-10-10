@@ -1087,7 +1087,7 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
         Path.Combine(CacheDirectory.Root, "flat-typedefs");
 
     private static string HelperViPath(string aixmlFileName) =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        Path.Combine(AixmlBackend.HelperFolder(),
                      Path.ChangeExtension(aixmlFileName, ".vi"));
 
     private static int Occurrences(string text, string needle)

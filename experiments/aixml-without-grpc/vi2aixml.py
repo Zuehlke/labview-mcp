@@ -261,16 +261,58 @@ def _decode_value(tree, hexstr):
     return None
 
 
-LINK_TAGS = (b"IUVI", b"PUPV", b"SVVI", b"IUCI", b"CCCI", b"DNDP")
+# DyOM is a DYNAMIC DISPATCH call (a dynIUse node): its offset names the node's dynLink child
+LINK_TAGS = (b"IUVI", b"PUPV", b"SVVI", b"IUCI", b"CCCI", b"DNDP", b"DyOM")
+
+# every record identifier pylabview knows (LVlinkinfo.py), less the path tags inside a record -
+# where one record ends is where the next one's identifier starts
+RECORD_TAGS = tuple(t.encode() for t in (
+    "AP2A AP2C AP2I AXDT AXTL AXVT BSVR C2Pr C2VI C2vi CBMS CCCC CCLO CILO CLIB CMem DDPI DNDA "
+    "DNVA DOPI DRPI DSCB DSCN DSDS DSEF DSSC DSSV DSVl DSVr DyOM EiVr FBIV FPHP FPPI GIAY GINT "
+    "GIVI GUGV H2CC H2LD HEIR HOPI HOXF HVIR HXCI HXNI HpCI HpEr HpEx HpFN HpFl HpVI HpVL HpVr "
+    "IUIV IUPR IUVI IVGV IVOV LIBR LVCC LVIN LVPR LVSB LVXC MNMS MSIM MUDF NCIN NEXF NSCR OBDR "
+    "OVIR OXTR PNOM POLY PUPV RCFL RFil RVPI SCVI SFTB SVVI TDCC UDPI V2CC V2LD VIAV VICC VICI "
+    "VIDS VIFN VIFl VIGV VIIV VILB VIMS VIPI VIPR VIPV VIRC VIVI VIVl VIVr VIXC VIXF VIXN VRPI "
+    "VTVN XCXI XFil XFun XHPR XIMD XINT XIPY XNDI XNEF XNFP XNVI XNXI XPLO XVPR IUCI CCCI DNDP"
+).split())
+
+
+def _pascal_names(data, j, n):
+    """n Pascal strings from j: ([bytes], index after them), or (None, j) when they overrun."""
+    names = []
+    for _ in range(n):
+        if j >= len(data):
+            return None, j
+        ln = data[j]
+        if j + 1 + ln > len(data):
+            return None, j
+        names.append(data[j + 1:j + 1 + ln])
+        j += 1 + ln
+    return names, j
+
+
+def _expand_nested(name):
+    """A DyOM record's method name is itself a qualified name - b'\\x01\\x0eWrite Width.vi' is
+    one Pascal string - so a name that parses EXACTLY as a count and that many strings is
+    replaced by them."""
+    if len(name) >= 2 and 1 <= name[0] <= 4:
+        inner, end = _pascal_names(name, 1, name[0])
+        if inner is not None and end == len(name) and all(inner):
+            return inner
+    return [name]
 
 
 def binary_link_records(data):
     """[(node uid, record tag, qualified name)] read straight out of a binary LIbd block, for
-    the records that name diagram nodes. Read off LUnit's Test Failing.vi: a record is its tag,
-    4 bytes, a uint16 count of Pascal strings (the qualified name), a PTH0 path, more fields,
-    then the LinkOffsetList - a uint32 count and that many uint32 node uids - right before the
-    record's second PTH0 (the library path). Heuristic by construction: a record whose layout
-    differs yields nothing rather than a wrong name."""
+    the records that name diagram nodes. A record is its tag, a uint16 count of Pascal strings
+    (the qualified name) two to six bytes later, a PTH0 path, more fields, and the
+    LinkOffsetList - a uint32 count and that many uint32 uids. Read off LUnit's Test
+    Failing.vi, where the count sat at tag+8, and off a LabVIEW-saved Caraya test calling class
+    accessors (2026-10-11), where it sat at tag+6 - and at tag+7 for a record LabVIEW wrote at
+    an ODD offset, so the count is found, not assumed. The offset list sits right before the
+    record's second PTH0 (the library path) for a static call; a DyOM record has no second path
+    and ends with it, before the next record's identifier. Heuristic by construction: a record
+    whose layout differs yields nothing rather than a wrong name."""
     out = []
     for tag in LINK_TAGS:
         start = 0
@@ -279,33 +321,36 @@ def binary_link_records(data):
             if i < 0:
                 break
             start = i + 4
-            j = i + 8
-            if j + 2 > len(data):
-                continue
-            n = int.from_bytes(data[j:j + 2], "big")
-            j += 2
-            if not 1 <= n <= 6:
-                continue
-            names = []
-            for _ in range(n):
-                if j >= len(data):
+            names = j = None
+            for s in range(i + 6, i + 12):
+                n = int.from_bytes(data[s - 2:s], "big")
+                if not 1 <= n <= 6:
+                    continue
+                cand, end = _pascal_names(data, s, n)
+                if not cand or not cand[-1].lower().endswith((b".vi", b".vim", b".ctl", b".vit")):
+                    continue
+                p = data.find(b"PTH0", end)
+                if 0 <= p and p - end <= 8:
+                    names, j = cand, end
                     break
-                ln = data[j]
-                names.append(data[j + 1:j + 1 + ln].decode("mac_roman", "replace"))
-                j += 1 + ln
-            if len(names) != n or not names[-1].lower().endswith((".vi", ".vim", ".ctl", ".vit")):
+            if names is None:
                 continue
+            names = [x.decode("mac_roman", "replace") for nm in names for x in _expand_nested(nm)]
             p1 = data.find(b"PTH0", j)
-            if p1 < 0 or p1 - j > 8:
-                continue
             ln = int.from_bytes(data[p1 + 4:p1 + 8], "big")
-            p2 = data.find(b"PTH0", p1 + 8 + ln)
-            nxt = min([data.find(t, i + 4) for t in LINK_TAGS if data.find(t, i + 4) > 0] or [len(data)])
-            if p2 < 0 or p2 > nxt:
-                continue
+            path_end = p1 + 8 + ln
+            nxt = min([k for k in (data.find(t, i + 4) for t in RECORD_TAGS) if k > 0] or [len(data)])
+            p2 = data.find(b"PTH0", path_end)
+            if 0 <= p2 < nxt:
+                end, floor = p2, p1
+            else:
+                # no library path in this record: the offset list ends it, before the uint16
+                # that precedes the next identifier
+                end = nxt - 2 if data[nxt - 2:nxt] == b"\x00\x02" else nxt
+                floor = path_end
             for k in range(1, 64):
-                at = p2 - 4 * k - 4
-                if at <= p1:
+                at = end - 4 * k - 4
+                if at <= floor:
                     break
                 if int.from_bytes(data[at:at + 4], "big") == k:
                     offs = [int.from_bytes(data[at + 4 + 4 * m:at + 8 + 4 * m], "big") for m in range(k)]
@@ -636,7 +681,7 @@ class Reader:
                 continue        # read with its In Place Element Structure
             elif cls == "commentNode":
                 el = self.disable(node, parent_uid)
-            elif cls in ("iUse", "polyIUse"):
+            elif cls in ("iUse", "polyIUse", "dynIUse"):
                 el = self.call(node, parent_uid)
             elif cls in TEMPLATE_CLASSES:
                 el = self.template_node(node, parent_uid)
@@ -716,6 +761,10 @@ class Reader:
         from the LABELS of the terminal types (a call node's terminals carry the callee's
         labelled pane types)."""
         recs = self.call_targets.get(node.get("uid"), {})
+        link = node.find("dynLink")
+        if not recs and link is not None:
+            # a DYNAMIC DISPATCH call (dynIUse): its DyOM record names the dynLink child
+            recs = self.call_targets.get(link.get("uid"), {})
         el = ET.Element("Call", {"uid": node.get("uid"), "uid_parent": parent_uid})
         target = recs.get("PUPV") or recs.get("IUVI") or next(iter(recs.values()), None)
         if target is None:

@@ -180,7 +180,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             if (aixml is null || !File.Exists(aixml)) return null;
 
             var helperVi = helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_exec_state.vi");
+                AixmlBackend.HelperFolder(), "lvai_exec_state.vi");
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 

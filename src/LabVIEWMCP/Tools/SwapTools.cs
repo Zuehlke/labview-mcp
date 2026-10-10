@@ -163,8 +163,11 @@ internal sealed class SwapTools(LvaiConnection connection)
             """)]
         string? editsJson = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null)
     {
+        if (!AixmlBackend.TryResolve(backend, "lvai_swap_subvis", out _, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
         if (editsJson is { Length: > 0 })
             return await ManyAsync(editsJson, verify, verbose, helperViPath, helperAixmlPath,
                                    regenerateHelper, timeoutSeconds, ct: ct);
@@ -252,7 +255,7 @@ internal sealed class SwapTools(LvaiConnection connection)
             ["edits"] = answers,
             ["elapsedMs"] = elapsed.ElapsedMilliseconds,
             ["note"] = stoppedAt is null
-                ? "Every VI was swapped and verified against LabVIEW's own export."
+                ? $"Every VI was swapped and verified against {AixmlBackend.ExportName()}."
                 : $"Stopped at '{Path.GetFileName(stoppedAt)}'. The {written} VI(s) before " +
                   "it are already SAVED - they were swapped successfully. That one and " +
                   "everything after it still call their sockets, so the suite tests nothing.",
@@ -316,7 +319,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                     "folder lvai_status reports as scriptsDirectory). Pass helperAixmlPath.");
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_swap_subvis.vi"));
+                AixmlBackend.HelperFolder(), "lvai_swap_subvis.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
@@ -575,13 +578,13 @@ internal sealed class SwapTools(LvaiConnection connection)
                    "`Centrifugal Pump.lvclass:Read Last Event.vi`, not `Read Last Event.vi` - " +
                    "which is what a second swap over the same diagram has to use." + onDiagram;
         if (socketsLeft > 0)
-            return $"{socketsLeft} socket name(s) are STILL in LabVIEW's own export of the VI, so " +
+            return $"{socketsLeft} socket name(s) are STILL in {AixmlBackend.ExportName()} of the VI, so " +
                    "that many ENTRIES did not land. IT IS NOT A NODE COUNT: it counts swapsJson " +
                    "entries still present in the export, so one entry naming a repeated socket " +
                    "reads 1 until the LAST node is swapped. `diagramSubVis` lists the diagram's " +
                    "names with repetition and is the per-node view." + onDiagram;
         return verify
-            ? "Swapped, and verified against LabVIEW's own export: no socket name survives in "
+            ? $"Swapped, and verified against {AixmlBackend.ExportName()}: no socket name survives in "
               + "it, and `callTargets` is what the diagram now calls. `wiringLost` is REPORTING "
               + "ONLY and nothing branches on it - it gated `ok` for one day and produced false "
               + "negatives on three runs, because a uid is not stable across `Replace` when "

@@ -1119,10 +1119,14 @@ own suite at 127 of 127 - control references as event sources, frames handling s
 static mouse events included. **No `.ctl` link is needed for a
 typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
-were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **`lvai_create_class`
-runs end to end without NI's service** (with `lvai_open_file` for a project and
-`lvai_close_active_project`): measured with the gRPC port deliberately dead, the same class as over
-grpc, NI's provider working from LabVIEW's MAIN instance - but only with the harvested parts
+were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,
+AN INTERFACE AND THEIR CARAYA TESTS BUILD END TO END WITHOUT NI's SERVICE since 2026-10-11** -
+`lvai_create_interface`, `_create_class`, `_add_class_method`, `_create_accessors`,
+`_generate_class_test`, `_generate_method_test`, the runner and the run, with `LABVIEW_GRPC_PORT`
+dead so any hidden NI call would have failed: 5 of 5 green, every VI executable, a negative control
+failing on demand, **172 s against 111 s for the same build over grpc** - the gap is the test
+generators, which on pylabview take the socket route. A route tool given `backend` hands it to every
+inner call (`AixmlBackend.Inherited`). Still only with the harvested parts
 (`LABVIEWMCP_AIXML_PARTS`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
 written for the gRPC shape reads both. A binary install has no composer yet: where its NI-derived
 parts come from is the user's open decision. `docs/aixml-backends.md`.

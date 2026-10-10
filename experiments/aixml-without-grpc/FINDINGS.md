@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **133 identical in every fact**, elements 92.7 %, constant values 92.0 %, wires 85.6 %, attributes 78.6 % |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4) |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -644,13 +644,32 @@ fact of every cached export rather than on the top-level subset: elements with t
 `uid_parent`, the attributes that carry meaning (`selector`, `fields`, `target`, `text`,
 `element`, `link`, `cond`, `mode`, `selectin`), constant values and wires.
 
-| | the old reader | 2026-10-10 morning | 2026-10-10, 05:00 |
-|---|---|---|---|
-| VIs identical in every fact (all 760 cached exports) | - | 103 | **133** |
-| elements | 24 % (150-VI sample) | 91.5 % | **92.7 %** (38 098 of 41 085) |
-| attributes | 0 % | 75.2 % | **78.6 %** (8 262 of 10 516) |
-| constant values | 62 % | 91.3 % | **92.0 %** |
-| wires | 10 % | 82.7 % | **85.6 %** (26 684 of 31 181) |
+| | the old reader | 2026-10-10 morning | 2026-10-10, 05:00 | 2026-10-11, same reader, 768 exports | 2026-10-11, class calls read |
+|---|---|---|---|---|---|
+| VIs identical in every fact | - | 103 | 133 (of 760) | 109 (of 768) | **143** (of 768) |
+| elements | 24 % (150-VI sample) | 91.5 % | 92.7 % (38 098 of 41 085) | 92.8 % | **93.4 %** (39 712 of 42 496) |
+| attributes | 0 % | 75.2 % | 78.6 % (8 262 of 10 516) | 79.8 % | **81.7 %** (8 807 of 10 780) |
+| constant values | 62 % | 91.3 % | 92.0 % | 94.9 % | **94.9 %** |
+| wires | 10 % | 82.7 % | 85.6 % (26 684 of 31 181) | 82.7 % | **87.3 %** (27 868 of 31 907) |
+
+**The last two columns are the only valid comparison with each other.** The cache changed between
+2026-10-10 and 2026-10-11 - 768 exports instead of 760, and the UNCHANGED reader scores 109 on it
+where it scored 133 the day before - so a jump from 133 to 143 would be read across two corpora.
+Run the same day, on the same 768, with HEAD's reader copied beside the new one: 109 -> 143 VIs
+identical, no category worse.
+
+**What changed: a link block pylabview leaves BINARY, and a DYNAMIC DISPATCH call.** Found on a
+Caraya test LabVIEW had saved after `{LV.SubVI}` Replace pointed it at a class's accessors: every
+call target read `?` and the four accessor calls were missing with their wires, while NI's export of
+the same file named all seven. Two causes. The binary fallback (`binary_link_records`) took the
+qualified name's count at tag+8, as read off LUnit's Test Failing.vi; this file has it at tag+6, and
+at tag+7 for a record LabVIEW wrote at an ODD offset (a pad byte follows the tag) - so the count is
+now searched for, each candidate checked by its names ending in `.vi` and a `PTH0` within 8 bytes.
+And a dynamic-dispatch call is a `dynIUse` node, whose link record is a `DyOM`: a class name plus a
+NESTED qualified name (`\x01\x0eWrite Width.vi` is one Pascal string), no second path, and an
+offset that names the node's `dynLink` CHILD (the node's uid + 2 here), not the node. Record ends
+are found from pylabview's own list of record identifiers. Pinned by
+`tests/LabVIEWMCP.Tests/Infra/ReaderClassCallTests.cs`, on that very VI.
 
 **And the two directions together** (`roundtrip.py`): every test of `tests/` composed, READ
 back by `vi2aixml.py`, composed again from that AIXML and RUN - all 71 runnable tests compute

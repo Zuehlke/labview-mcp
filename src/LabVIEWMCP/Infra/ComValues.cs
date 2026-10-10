@@ -275,20 +275,26 @@ internal static class ComValues
 
         if (Braces(type) is { Head: "array" } array && value is Array { Rank: 1 } items)
         {
-            var elementType = array.Body.Trim();
+            // AN ELEMENT MAY CARRY A LABEL - `array{string.String}`, as the reader writes a composed
+            // helper's `node names found` - and the label is a name, not part of the type. Looking
+            // `string.String` up as a type dropped the whole array, so the swap tool read no names
+            // and listed every socket as not on the diagram, measured 2026-10-11.
+            var body = array.Body.Trim();
+            var elementType = FieldType(body);
+            var elementName = body.Length > elementType.Length ? body[(elementType.Length + 1)..] : "";
             var element = new System.Xml.Linq.XElement("Array",
                 new System.Xml.Linq.XElement("Name", name),
                 new System.Xml.Linq.XElement("Dimsize", items.Length));
             // AN EMPTY ARRAY STILL CARRIES ONE ELEMENT, with an empty Val, as its type template.
             if (items.Length == 0)
             {
-                if (ToLabviewXml("", elementType, null) is not { } template) return null;
+                if (ToLabviewXml(elementName, elementType, null) is not { } template) return null;
                 template.Element("Val")?.SetValue("");
                 element.Add(template);
             }
             foreach (var item in items)
             {
-                if (ToLabviewXml("", elementType, item) is not { } child) return null;
+                if (ToLabviewXml(elementName, elementType, item) is not { } child) return null;
                 element.Add(child);
             }
             return element;

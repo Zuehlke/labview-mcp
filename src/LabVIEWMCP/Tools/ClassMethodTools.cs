@@ -208,8 +208,20 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview NO STEP touches NI's service: each method is COMPOSED from its AIXML (the
+            path stand-ins compose like any path), the pane repaired by pylabview as before, and the
+            retype-and-membership helper COMPOSED and run over LabVIEW's ActiveX server, where
+            {LV.Control} Replace, AddItemFromMemory and both saves work as in the add-on's instance.
+            A pylabview "validation" is a scratch compose, not NI's wiring check. helperViPath is
+            ignored there. LabVIEW must already be running.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_add_class_method", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
@@ -250,12 +262,20 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     "folder lvai_status reports as scriptsDirectory). Pass helperAixmlPath.");
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_class_method.vi"));
+                AixmlBackend.HelperFolder(), "lvai_add_class_method.vi"));
             Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
             // NOT `!File.Exists` - see Infra/HelperCache. This site kept running the helper
             // built before the per-terminal class path was added to the AIXML, which is not an
             // error anywhere: the missing control simply keeps its default.
-            if (regenerateHelper || HelperCache.NeedsRebuild(source, helperVi))
+            if (choice.Name == AixmlBackend.PyLabview)
+            {
+                // COMPOSED and run over ActiveX: Replace, AddItemFromMemory and the saves work from
+                // LabVIEW's main instance, which is the IDE's own.
+                var (composed, problem) = await ComposedHelpers.EnsureAsync(HelperFileName, timeoutSeconds, ct);
+                if (composed is null) return Json.Error("helperNotComposable", problem!);
+                helperVi = composed;
+            }
+            else if (regenerateHelper || HelperCache.NeedsRebuild(source, helperVi))
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     source, helperVi, openVI: false, measurePane: false, panePattern: null,
@@ -315,7 +335,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             {
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                    timeoutSeconds: timeoutSeconds, ct: ct);
+                    timeoutSeconds: timeoutSeconds, ct: ct, backend: choice.Name);
                 prologue.Add(new JsonObject
                 {
                     ["order"] = ++order,
@@ -447,7 +467,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     if (validateFirst)
                     {
                         var check = await new AixmlTools(connection).ValidateAixmlAsync(
-                            aixml, timeoutSeconds, ct: ct);
+                            aixml, timeoutSeconds, backend: choice.Name, ct: ct);
                         var message = (Read(check) as JsonObject)?["errorMessage"]?
                             .GetValue<string>() ?? "";
                         var classWire = Code(check) != 0 && IsClassTypeComplaint(message);
@@ -485,7 +505,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     }
 
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
-                        aixml, viPath, openVI: false, timeoutSeconds, checkExecutable: false, ct: ct);
+                        aixml, viPath, openVI: false, timeoutSeconds, checkExecutable: false,
+                        backend: choice.Name, ct: ct);
                     steps.Add(new JsonObject { ["step"] = "convert", ["answer"] = Read(convert) });
                     if (Code(convert) != 0 || !File.Exists(viPath))
                     {
@@ -522,7 +543,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
                     projectName: Path.GetFileName(projectPath),
-                    checkActive: true, timeoutSeconds, ct: ct);
+                    checkActive: true, timeoutSeconds, ct: ct, backend: choice.Name);
                 prologue.Add(new JsonObject
                 {
                     ["order"] = ++order,
@@ -545,7 +566,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var indices = method.DispatchTerminalIndices;
                 if (indices is null && method.DispatchTerminals is { Count: > 0 } names)
                 {
-                    var (resolved, note) = await ResolveConIdxAsync(viPath, names, timeoutSeconds, ct: ct);
+                    var (resolved, note) = await ResolveConIdxAsync(viPath, names, timeoutSeconds, ct: ct,
+                                                                    backend: choice.Name);
                     if (resolved is null)
                     {
                         results.Add(Failed(method, viPath, "dispatchTerminals", steps,
@@ -568,7 +590,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 var inputs = HelperInputs(method, viPath, classPath, indices, memberExists);
                 var run = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
-                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+                    backend: choice.Name, ct: ct);
                 steps.Add(new JsonObject { ["step"] = "member", ["answer"] = Read(run) });
 
                 var values = (Read(run) as JsonObject)?["values"] as JsonObject;
@@ -668,7 +691,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     : "A method that failed at `member` left the class saved and the VI a member; " +
                       "one that failed at `convert` or `conpane` never reached the class at all.",
             });
-        });
+        }), choice);
+    }
 
     // ------------------------------------------------------------------ verification
 
@@ -760,14 +784,18 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// means opposite edges on 4815 and 4833. The export is what the file says now.
     /// </summary>
     private async Task<(List<int>? Indices, string Note)> ResolveConIdxAsync(
-        string viPath, IReadOnlyList<string> names, int timeoutSeconds, CancellationToken ct)
+        string viPath, IReadOnlyList<string> names, int timeoutSeconds, CancellationToken ct,
+        string? backend = null)
     {
+        // unset means the route's own choice - inherited when the calling tool runs on
+        // pylabview, grpc otherwise
+        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
         var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
             Path.ChangeExtension(Path.GetFileName(viPath), ".conidx.xml"));
         Directory.CreateDirectory(Path.GetDirectoryName(export)!);
         var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
             viPath, export, returnContent: true, maxContentChars: 200000,
-            timeoutSeconds: timeoutSeconds, refresh: true, ct: ct);
+            timeoutSeconds: timeoutSeconds, refresh: true, backend: backend, ct: ct);
         if ((Read(answer) as JsonObject)?["xml"]?.GetValue<string>() is not { } xml)
             return (null, "The VI could not be exported, so a terminal NAME cannot be turned into " +
                           "a conIdx. Pass dispatchTerminalIndices instead.");

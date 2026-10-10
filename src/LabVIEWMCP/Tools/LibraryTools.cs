@@ -195,7 +195,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_one_to_library.vi"));
+                AixmlBackend.HelperFolder(), "lvai_add_one_to_library.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder)
                 Directory.CreateDirectory(helperFolder);
 

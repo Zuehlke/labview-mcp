@@ -154,7 +154,7 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_add_class_field.vi"));
+                AixmlBackend.HelperFolder(), "lvai_add_class_field.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder)
                 Directory.CreateDirectory(helperFolder);
 

@@ -610,5 +610,5 @@ internal sealed class PaneTools(LvaiConnection connection)
     /// when saving a generated VI under %LOCALAPPDATA%, while %TEMP% accepts it.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvpane_probe.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvpane_probe.vi");
 }

@@ -761,8 +761,17 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         int settleMs = 400,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview NO STEP touches NI's service: the throwaway project is opened and closed
+            and NI's own interface provider run through COMPOSED helpers over LabVIEW's ActiveX
+            server, as lvai_create_class does there. LabVIEW must already be running.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_create_interface", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (string.IsNullOrWhiteSpace(interfaceName))
                 return Json.Error("badArguments", "interfaceName is empty.");
@@ -843,7 +852,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, backend: choice.Name);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, interfacePath, null,
@@ -851,7 +860,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                             "NI's interface provider has nothing to work in."));
 
                 var helperRun = await RunCreateInterfaceHelperAsync(
-                    interfacePath, parents, timeoutSeconds, ct: ct);
+                    interfacePath, parents, timeoutSeconds, ct: ct, backend: choice.Name);
                 steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
                 var provider = ReadInterfaceProviderRun(helperRun);
@@ -864,7 +873,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                    timeoutSeconds: timeoutSeconds, ct: ct);
+                    timeoutSeconds: timeoutSeconds, ct: ct, backend: choice.Name);
                 steps.Add(Step("closeScratchProject", closed));
 
                 steps.Add(userProject is { Length: > 0 }
@@ -956,7 +965,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             {
                 TryDeleteDirectory(work);
             }
-        });
+        }), choice);
+    }
 
     private static (int ErrorCode, int ParentsOpened) ReadInterfaceProviderRun(string answer)
     {
@@ -971,8 +981,11 @@ internal sealed class ClassTools(LvaiConnection connection)
 
     private async Task<string> RunCreateInterfaceHelperAsync(
         string interfacePath, IReadOnlyList<string> parents, int timeoutSeconds,
-        CancellationToken ct)
+        CancellationToken ct, string? backend = null)
     {
+        // unset means the route's own choice - inherited when the calling tool runs on
+        // pylabview, grpc otherwise
+        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, CreateInterfaceHelperAixmlFileName) : null;
         if (aixml is null || !File.Exists(aixml))
@@ -981,12 +994,25 @@ internal sealed class ClassTools(LvaiConnection connection)
                 $"({CreateInterfaceHelperAixmlFileName} in the scripts folder next to the exe; " +
                 "lvai_status reports it as scriptsDirectory).");
 
-        var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var helperVi = Path.Combine(AixmlBackend.HelperFolder(),
                                     "lvai_create_interface.vi");
-        Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-        if (HelperNeedsRebuild(aixml, helperVi) &&
-            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
-            return failure;
+        if (backend == AixmlBackend.PyLabview)
+        {
+            // COMPOSED and run over ActiveX, as lvai_create_class does - NI's interface provider is
+            // the same VI either way, and it reaches the IDE through Project:Active Project from
+            // LabVIEW's main instance as well as from the add-on's.
+            var (composed, problem) = await ComposedHelpers.EnsureAsync(
+                CreateInterfaceHelperAixmlFileName, timeoutSeconds, ct);
+            if (composed is null) return Json.Error("helperNotComposable", problem!);
+            helperVi = composed;
+        }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
+            if (HelperNeedsRebuild(aixml, helperVi) &&
+                await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
+                return failure;
+        }
 
         // ONLY THE INPUTS THAT HAVE A VALUE - the runner pairs names and values by POSITION and
         // refuses an empty one, which would shift every later input onto the wrong control. A
@@ -1005,7 +1031,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         return await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
-            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, backend: backend, ct: ct);
     }
 
     // ---------------------------------------------------------------- describe
@@ -1643,8 +1669,11 @@ internal sealed class ClassTools(LvaiConnection connection)
     private async Task<string> RunCreateClassHelperAsync(
         string classPath, string? parentClassPath, string carrierPath,
         IReadOnlyList<string> parentInterfaces, int timeoutSeconds,
-        CancellationToken ct, string backend = AixmlBackend.Grpc)
+        CancellationToken ct, string? backend = null)
     {
+        // unset means the route's own choice - inherited when the calling tool runs on
+        // pylabview, grpc otherwise
+        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, CreateClassHelperAixmlFileName) : null;
         if (aixml is null || !File.Exists(aixml))
@@ -1653,7 +1682,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 "in the scripts folder next to the exe; lvai_status reports it as " +
                 "scriptsDirectory).");
 
-        var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var helperVi = Path.Combine(AixmlBackend.HelperFolder(),
                                     "lvai_create_class.vi");
         if (backend == AixmlBackend.PyLabview)
         {
@@ -2032,8 +2061,18 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         int budgetSeconds = 45,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview NO STEP touches NI's service: the wizard helper is COMPOSED and run over
+            LabVIEW's ActiveX server, and the project opened and closed the same way. NI's accessor
+            wizard is the same VI either way. helperViPath is ignored there - composed helpers live
+            in their own folder. LabVIEW must already be running.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_create_accessors", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(lvclassPath))
                 throw new FileNotFoundException($"No .lvclass at '{lvclassPath}'.", lvclassPath);
@@ -2071,12 +2110,20 @@ internal sealed class ClassTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_create_accessors.vi"));
+                AixmlBackend.HelperFolder(), "lvai_create_accessors.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || HelperNeedsRebuild(aixml, helperVi))
+            if (choice.Name == AixmlBackend.PyLabview)
+            {
+                // COMPOSED and run over ActiveX - NI's accessor wizard is the same VI either way
+                var (composed, problem) = await ComposedHelpers.EnsureAsync(
+                    AccessorHelperAixmlFileName, timeoutSeconds, ct);
+                if (composed is null) return Json.Error("helperNotComposable", problem!);
+                helperVi = composed;
+            }
+            else if (regenerateHelper || HelperNeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
@@ -2139,7 +2186,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
                     projectName: Path.GetFileName(projectPath),
-                    checkActive: true, timeoutSeconds, ct: ct);
+                    checkActive: true, timeoutSeconds, ct: ct, backend: choice.Name);
                 projectOpened = Parsed(opened);
             }
 
@@ -2180,7 +2227,8 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputObject.ToJsonString(), includeRawXml: false, helperViPath: null,
-                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                    helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+                    backend: choice.Name, ct: ct);
 
                 verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
                     fromField, membersBefore, helperGenerated);
@@ -2299,8 +2347,9 @@ internal sealed class ClassTools(LvaiConnection connection)
             if (!tidyProject || !Succeeded(verdict)) return verdict;
 
             return await TidyProjectAsync(verdict, lvclassPath, helperVi, projectPath,
-                closeProject, timeoutSeconds, ct: ct);
-        });
+                closeProject, timeoutSeconds, ct: ct, backend: choice.Name);
+        }), choice);
+    }
 
     /// <summary>
     /// Take the helper back out of the project. LabVIEW adds it as a real top-level item while the
@@ -2315,8 +2364,11 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// </summary>
     private async Task<string> TidyProjectAsync(
         string verdict, string lvclassPath, string helperVi, string? projectPath,
-        bool closeProject, int timeoutSeconds, CancellationToken ct)
+        bool closeProject, int timeoutSeconds, CancellationToken ct, string? backend = null)
     {
+        // unset means the route's own choice - inherited when the calling tool runs on
+        // pylabview, grpc otherwise
+        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
         // NOT BY DEFAULT, and the reason is measured. Saving and closing the project immediately
         // after an accessor run KILLED LabVIEW on 2026-08-26: eight
         // `BadLinkerObjs.cpp(276) … LinkIdentity "Bus.lvclass:Bus.ctl" … is NOT a bad subObj`
@@ -2326,7 +2378,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         var close = closeProject
             ? await new CloseTools(connection).CloseActiveProjectAsync(
                 helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds: timeoutSeconds,
-                ct: ct)
+                ct: ct, backend: backend)
             : null;
 
         // RELEASING THE HELPER FROM MEMORY IS NOT REACHABLE, and the attempt was removed rather
@@ -2422,9 +2474,11 @@ internal sealed class ClassTools(LvaiConnection connection)
         // reported removing the helper beside it. A NEW TOOL THAT WRITES INTO A NEW DIRECTORY HAS
         // TO TEACH THIS PATTERN ABOUT IT; nothing else in the chain notices, because the file
         // still exists and so the dangling pass below cannot see it either.
+        // `helpers-pylabview/` IS THE FOURTH (2026-10-11): the composed helpers the pylabview
+        // backend runs over ActiveX, kept apart from NI's built ones in `helpers/`.
         const string helperItem =
             "<Item Name=\"[^\"]*\\.vi\" Type=\"VI\" URL=\"[^\"]*" +
-            "(?:LabVIEWMCP/(?:helpers|classes|carriers)" +
+            "(?:LabVIEWMCP/(?:helpers|helpers-pylabview|classes|carriers)" +
             "|(?:&lt;userlib&gt;|<userlib>)/LV_MCP)/[^\"]*\"\\s*/>";
 
         var helperMatches = System.Text.RegularExpressions.Regex.Matches(projectXml, helperItem);

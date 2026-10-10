@@ -120,9 +120,12 @@ internal sealed class TestTools(LvaiConnection connection)
             """)]
         string testFolderName = "Tests",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_generate_test", out _, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
 
@@ -153,6 +156,8 @@ internal sealed class TestTools(LvaiConnection connection)
             var route = new JsonObject { ["route"] = "placeholder" };
             if (!directCall)
                 route["reason"] = "directCall was false.";
+            else if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+                route["reason"] = AixmlBackend.NoDirectSubjectCall;
             else
             {
                 var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
@@ -210,6 +215,45 @@ internal sealed class TestTools(LvaiConnection connection)
                     route: route);
 
             // 3. point the call node at the subject
+            // ON PYLABVIEW WITH LabVIEW's OWN REPLACE, not the pylabview retarget. Measured
+            // 2026-10-11 with NI's service unreachable: the retarget answered ok - its verify reads
+            // link NAMES - and the test VI, one folder below its subject, then failed to load with
+            // Error 7 Bad Linkage, the case docs/labview-unit-testing.md §3 records for this route.
+            // gRPC never meets it because its direct route names the subject; pylabview has no
+            // direct route, and {LV.SubVI} Replace run over ActiveX - in LabVIEW's main instance,
+            // with no project needed - is what the class and method tests already swap with.
+            if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+            {
+                // ONE CALL PER NODE: every case calls the same stub, and a swap replaces one node
+                // per call (measured to N=3, CLAUDE.md) - so repeat until no socket is left, and
+                // stop early on a call that landed nothing.
+                JsonObject? swapAnswer = null;
+                for (var round = 0; round < Math.Max(1, cases.Count); round++)
+                {
+                    var swapped = await new SwapTools(connection).SwapSubVisAsync(
+                        testViPath,
+                        new JsonArray(new JsonObject
+                        { ["socket"] = stubName, ["target"] = Path.GetFullPath(viPath) }).ToJsonString(),
+                        null, verify: true, verbose: false, helperViPath: null, helperAixmlPath: null,
+                        regenerateHelper: false, editsJson: null, timeoutSeconds, ct: ct);
+                    steps.Add(new JsonObject { ["step"] = "swap", ["round"] = round + 1, ["answer"] = Read(swapped) });
+                    swapAnswer = Read(swapped) as JsonObject;
+                    if (swapAnswer?["ok"]?.GetValue<bool>() is true
+                        || swapAnswer?["nodesSwapped"]?.GetValue<int>() is not > 0)
+                        break;
+                }
+                if (swapAnswer is null || swapAnswer["ok"]?.GetValue<bool>() is not true)
+                    return Outcome(false, "swap", steps, total, testViPath, aixmlPath,
+                        "THE TEST VI WAS WRITTEN and still calls the placeholder, so it would test " +
+                        "nothing. Read the swap step.", route: route);
+                return Outcome(true, null, steps, total, testViPath, aixmlPath,
+                    $"Generated. {cases.Count} case(s), each a static call to " +
+                    $"'{Path.GetFileName(viPath)}', linked by LabVIEW's own Replace. Run it through " +
+                    "Caraya's runner with a Report Path ending in .xml and read the JUnit report - the " +
+                    "VI's own error cluster carries only the first failed assertion.",
+                    swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases));
+            }
+
             var retarget = new JsonArray(new JsonObject
             {
                 ["op"] = "retarget",
@@ -563,9 +607,12 @@ internal sealed class TestTools(LvaiConnection connection)
             """)]
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_generate_class_test", out _, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
 
@@ -651,6 +698,8 @@ internal sealed class TestTools(LvaiConnection connection)
             var route = new JsonObject { ["route"] = "sockets" };
             if (!directCall)
                 route["reason"] = "directCall was false.";
+            else if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+                route["reason"] = AixmlBackend.NoDirectClassCall;
             else
             {
                 var (done, fallback) = await DirectClassTestAsync(
@@ -786,7 +835,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {CaseSummary(cases)}, each a static call to the class's own " +
-                "Write and Read accessors, verified against LabVIEW's own export. Run it through " +
+                $"Write and Read accessors, verified against {AixmlBackend.ExportName()}. Run it through " +
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
                 "break one case on purpose once, because an all-green first run proves very " +
                 "little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
@@ -1067,9 +1116,12 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Open the project again afterwards. Leave false when the next step generates")]
         bool reopen = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_add_vis_to_project", out _, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(projectPath))
                 return Json.Error("fileNotFound", $"No .lvproj at projectPath '{projectPath}'.",
                     new { projectPath });
@@ -1142,9 +1194,12 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_generate_caraya_test_runner", out _, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             // The third tool that writes a VI where the caller says. Same reason as the other
             // two: ConvertAIXMLToVI does not create the folder and blames a memory conflict.
             if (Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) is { Length: > 0 } runnerFolder)

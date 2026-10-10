@@ -157,8 +157,10 @@ internal sealed class ActionTools(LvaiConnection connection)
                "not having the foreground, and " +
                (retryRan
                    ? "this call already tried fronting it and opening again - see foregroundRetry."
-                   : "this call could NOT try that: LabVIEW's main window was not found, so no " +
-                     "retry ran and foregroundRetry is null. Front LabVIEW and call again.") +
+                   : "this call could NOT try that: LabVIEW could not be fronted - it has no " +
+                     "main window, or Windows refused SetForegroundWindow to a background " +
+                     "process - so no retry ran and foregroundRetry is null. Front LabVIEW and " +
+                     "call again.") +
                " Checked with scripts/lvai_active_project.xml, which only reads.";
     }
 
@@ -567,10 +569,43 @@ internal sealed class ActionTools(LvaiConnection connection)
                 ["projectBecameActive"] = active,
             };
         }
+        // A PROJECT ALREADY LOADED BUT NOT ACTIVE stays inactive however often it is opened:
+        // Project.Open hands back LabVIEW's existing reference and Open Window activates nothing.
+        // Measured 2026-10-11, 5 of 5 opens after lvai_create_class had left the project in that
+        // state, with fronting refused by Windows. A fresh open made it active at once
+        // (2026-10-10), so save and close it BY PATH - nothing is active for the usual close to
+        // reach - and open it again.
+        JsonObject? reopen = null;
+        if (active is false)
+        {
+            var (closer, closerProblem) = await ComposedHelpers.EnsureAsync(
+                CloseProjectHelperAixmlFileName, timeoutSeconds, ct);
+            if (closer is null)
+                reopen = new JsonObject { ["ran"] = false, ["reason"] = closerProblem };
+            else
+            {
+                var closed = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(
+                    closer, new JsonObject { ["project path"] = projectPath }.ToJsonString(),
+                    timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct)) as JsonObject;
+                var closeXml = closed?["values"]?["error out"]?["xml"]?.GetValue<string>() ?? "";
+                var closeCode = System.Text.RegularExpressions.Regex.Match(
+                    closeXml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+                var (againCode, _, _) = await OpenAsync();
+                (active, note, activePath) = await ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
+                reopen = new JsonObject
+                {
+                    ["ran"] = true,
+                    ["closeErrorCode"] = closeCode.Success ? int.Parse(closeCode.Groups[1].Value) : null,
+                    ["openErrorCode"] = againCode,
+                    ["projectBecameActive"] = active,
+                };
+            }
+        }
         result["projectBecameActive"] = active;
         result["activeProjectPath"] = activePath;
         result["activeProjectCheck"] = note;
         result["foregroundRetry"] = retry;
+        result["reopenRetry"] = reopen;
         if (active is false)
         {
             result["errorKind"] = "projectDidNotBecomeActive";
@@ -578,6 +613,9 @@ internal sealed class ActionTools(LvaiConnection connection)
         }
         return Json.Document(result);
     }
+
+    /// <summary>Saves and closes a project by path - the composed route's reopen step.</summary>
+    internal const string CloseProjectHelperAixmlFileName = "lvai_close_project.xml";
 
     /// <summary>
     /// Whether a project is active, by reading <c>Project:Active Project</c> and closing the
@@ -587,8 +625,11 @@ internal sealed class ActionTools(LvaiConnection connection)
     /// project": a missing helper is not evidence about the IDE's state.
     /// </summary>
     internal async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
-        int timeoutSeconds, CancellationToken ct, string backend = AixmlBackend.Grpc)
+        int timeoutSeconds, CancellationToken ct, string? backend = null)
     {
+        // unset means the route's own choice - inherited when the calling tool runs on
+        // pylabview, grpc otherwise
+        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
         if (backend == AixmlBackend.PyLabview)
             return await ProjectIsActiveOverComAsync(timeoutSeconds, ct);
 
@@ -597,7 +638,7 @@ internal sealed class ActionTools(LvaiConnection connection)
         if (source is null || !File.Exists(source))
             return (null, "not checked - lvai_active_project.xml was not found beside the exe.", null);
 
-        var helper = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var helper = Path.Combine(AixmlBackend.HelperFolder(),
                                   "lvai_active_project.vi");
         try
         {

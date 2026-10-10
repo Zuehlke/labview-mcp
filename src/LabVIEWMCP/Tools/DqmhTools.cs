@@ -429,7 +429,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
         .Replace("<", "&lt;").Replace(">", "&gt;");
 
     internal static string HelperDirectory() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers");
+        Path.Combine(AixmlBackend.HelperFolder());
 
     // ------------------------------------------------------------------ the window layer
 

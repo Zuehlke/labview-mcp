@@ -209,7 +209,7 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_create_message_class.vi"));
+                AixmlBackend.HelperFolder(), "lvai_create_message_class.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } folder)
                 Directory.CreateDirectory(folder);
 

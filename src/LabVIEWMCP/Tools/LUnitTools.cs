@@ -201,7 +201,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
 
             var total = Stopwatch.StartNew();
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvlu_add_test_method.vi"));
+                AixmlBackend.HelperFolder(), "lvlu_add_test_method.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder)
                 Directory.CreateDirectory(helperFolder);
 
@@ -1046,7 +1046,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
             var steps = new JsonArray();
 
             var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvlu_run_tests.vi"));
+                AixmlBackend.HelperFolder(), "lvlu_run_tests.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder)
                 Directory.CreateDirectory(helperFolder);
 

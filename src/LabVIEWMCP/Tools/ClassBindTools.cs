@@ -190,7 +190,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
             // ---- 3. The three helpers.
             var scripts = StatusTools.ScriptsDirectory();
             var helperFolder = helperDirectory ??
-                               Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers");
+                               Path.Combine(AixmlBackend.HelperFolder());
             Directory.CreateDirectory(helperFolder);
 
             var helpers = new Dictionary<string, string>();

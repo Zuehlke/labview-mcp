@@ -96,9 +96,12 @@ internal sealed class IconTools(LvaiConnection connection)
         [Description(@"1 px frame of a drawn icon as RRGGBB. Defaults to black 000000")]
         string? borderColor = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_set_vi_icon", out var choice, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
@@ -150,6 +153,11 @@ internal sealed class IconTools(LvaiConnection connection)
                     $"explicitly, pointing at {HelperAixmlFileName}.");
             if (!File.Exists(aixml))
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
+
+            if (choice.Name == AixmlBackend.PyLabview)
+                return AixmlTools.WithBackend(
+                    await SetIconOverComAsync(viPath, iconImagePath, readBackPath, imageNotes,
+                                              iconRendered, timeoutSeconds, ct), choice);
 
             var helperVi = Path.GetFullPath(helperViPath ?? DefaultHelperViPath());
             var readBack = Path.GetFullPath(readBackPath ?? DefaultReadBackPath(viPath));
@@ -220,6 +228,63 @@ internal sealed class IconTools(LvaiConnection connection)
                     "code is kept under runnerErrorCode. Open readBackPath to see the icon now " +
                     "stored in the VI."))), verified);
         });
+
+    /// <summary>
+    /// The pylabview route: the same helper COMPOSED and run over LabVIEW's ActiveX server, and the
+    /// same verdict - a read-back file written during this call, which the helper writes LAST.
+    /// Until 2026-10-11 this tool took the backend parameter and still ran the helper through NI's
+    /// RunVIAsTopLevel, measured with NI's port dead: the parameter promised a route the code did
+    /// not take.
+    /// </summary>
+    private async Task<string> SetIconOverComAsync(string viPath, string iconImagePath,
+                                                   string? readBackPath, List<string> imageNotes,
+                                                   bool iconRendered, int timeoutSeconds,
+                                                   CancellationToken ct)
+    {
+        var (helper, problem) = await ComposedHelpers.EnsureAsync(HelperAixmlFileName, timeoutSeconds, ct);
+        if (helper is null)
+            return Json.Error("helperNotComposable", problem!, new { viPath });
+
+        var readBack = Path.GetFullPath(readBackPath ?? DefaultReadBackPath(viPath));
+        EnsureDirectoryOf(readBack);
+        var viBefore = Snapshot(viPath);
+        var started = DateTime.UtcNow;
+        var run = await new RunTools(connection).RunViAndReadValuesAsync(
+            helper, new JsonObject
+            {
+                ["VI Path"] = Path.GetFullPath(viPath),
+                ["Icon File Path"] = Path.GetFullPath(iconImagePath),
+                ["Read Back Path"] = readBack,
+            }.ToJsonString(), timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+        var viAfter = Snapshot(viPath);
+        var readBackAfter = Snapshot(readBack);
+        var verified = readBackAfter.Exists && readBackAfter.WriteUtc >= started.AddSeconds(-2);
+
+        var warnings = new JsonArray();
+        foreach (var note in imageNotes) warnings.Add(note);
+        if (!verified)
+            warnings.Add("No read-back file was written, so the icon was probably NOT applied. " +
+                         "Read `run` for the helper's own answer.");
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = verified,
+            ["verified"] = verified,
+            ["via"] = "ActiveX",
+            ["helperViPath"] = helper,
+            ["viBytesBefore"] = viBefore.Bytes,
+            ["viBytesAfter"] = viAfter.Bytes,
+            ["viResaved"] = viAfter.WriteUtc != viBefore.WriteUtc,
+            ["readBackPath"] = readBack,
+            ["readBackBytes"] = readBackAfter.Bytes,
+            ["readBackSize"] = readBackAfter.Exists ? PngSize(readBack) : null,
+            ["iconImagePath"] = iconImagePath,
+            ["iconRendered"] = iconRendered,
+            ["warnings"] = warnings,
+            ["run"] = verified ? null : JsonNode.Parse(run),
+            ["note"] = "Judged by `verified` - a read-back file written during this call. Open " +
+                       "readBackPath to see the icon now stored in the VI.",
+        });
+    }
 
     /// <summary>RunVIAsTopLevel's code on a SUCCESSFUL run of a helper whose outputs it cannot read.</summary>
     internal const int RunnerReadBackArtefact = 91;
@@ -390,7 +455,7 @@ internal sealed class IconTools(LvaiConnection connection)
     /// an AppContainer ACE which TEMP does not. Error 7 therefore carries its own hint below.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvdoc_set_icon.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvdoc_set_icon.vi");
 
     /// <summary>
     /// Where a drawn icon lands. Kept rather than written to a scratch file and deleted: the

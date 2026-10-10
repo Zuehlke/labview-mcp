@@ -333,7 +333,7 @@ internal sealed class RenderTools(LvaiConnection connection)
             : null;
 
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvdoc_print.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvdoc_print.vi");
 
     private static string DefaultOutputDirectory() =>
         Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "renders");

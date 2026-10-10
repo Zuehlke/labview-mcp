@@ -465,7 +465,7 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         var aixml = Path.Combine(scripts, fileName);
         if (!File.Exists(aixml))
             return (null, Json.Error("helperMissing", $"No helper AIXML at '{aixml}'."));
-        var vi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var vi = Path.Combine(AixmlBackend.HelperFolder(),
                               Path.ChangeExtension(fileName, ".vi"));
         Directory.CreateDirectory(Path.GetDirectoryName(vi)!);
         // Rebuilt whenever the AIXML is newer, so a changed helper cannot be shadowed by a stale VI.

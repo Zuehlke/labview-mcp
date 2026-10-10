@@ -628,5 +628,5 @@ internal sealed class MockTools(LvaiConnection connection)
     /// when saving a generated VI under %LOCALAPPDATA%, while %TEMP% accepts it.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lmock_generate_mock.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lmock_generate_mock.vi");
 }

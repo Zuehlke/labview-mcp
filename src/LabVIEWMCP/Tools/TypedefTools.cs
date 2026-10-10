@@ -433,7 +433,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             if (!File.Exists(aixml)) return null;
 
             var helperVi = Path.Combine(
-                Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvbd_pane_typedefs.vi");
+                AixmlBackend.HelperFolder(), "lvbd_pane_typedefs.vi");
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
@@ -951,7 +951,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ??
-                Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+                Path.Combine(AixmlBackend.HelperFolder(),
                              "lvai_bind_pane_typedef.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
@@ -1163,7 +1163,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 throw new FileNotFoundException($"No helper AIXML at '{aixml}'.", aixml);
 
             var helperVi = Path.GetFullPath(helperViPath ??
-                Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_resave_ctl.vi"));
+                Path.Combine(AixmlBackend.HelperFolder(), "lvai_resave_ctl.vi"));
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
@@ -1293,7 +1293,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             : null;
 
     private static string DefaultDotsHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvbd_coercion_dots.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvbd_coercion_dots.vi");
 
     /// <summary>
     /// The helper's inputs. `subvi name` is OMITTED rather than passed empty, because the runner
@@ -1447,5 +1447,5 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// %LOCALAPPDATA% with the directory present and writable, while %TEMP% accepts it.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvbd_bind_constant.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvbd_bind_constant.vi");
 }

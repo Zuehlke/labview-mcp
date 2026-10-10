@@ -190,9 +190,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             """)]
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (!AixmlBackend.TryResolve(backend, "lvai_generate_method_test", out _, out var badBackend))
+                return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
@@ -399,6 +402,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             var route = new JsonObject { ["route"] = "sockets" };
             if (!directCall)
                 route["reason"] = "directCall was false.";
+            else if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+                route["reason"] = AixmlBackend.NoDirectClassCall;
             else
             {
                 var (done, fallback) = await DirectMethodTestAsync(
@@ -1243,13 +1248,18 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 wired.Add($"{input.Name}:{constant}.value");
             }
 
+            // With no real method this calls the SOCKET, whose pane MethodSocketAixml writes -
+            // `obj in` and `error in`. The fallback said `error in (no error)` here while the
+            // socket said `error in`, so the socket route was refused by every converter
+            // (`Object terminal not found`, the composer's `has no input`) - found 2026-10-11
+            // when the pylabview backend, which has no direct route, took it for the first time.
             var call = uid++;
             var inputs = new List<string>
             { $"{method?.ClassIn ?? "obj in"}:{objectIn}" };
             if (setupChain is not null)
-                inputs.Add($"{method?.ErrorIn ?? "error in (no error)"}:{setupChain}");
+                inputs.Add($"{method?.ErrorIn ?? "error in"}:{setupChain}");
             else if (noError >= 0)
-                inputs.Add($"{method?.ErrorIn ?? "error in (no error)"}:{noError}.value");
+                inputs.Add($"{method?.ErrorIn ?? "error in"}:{noError}.value");
             inputs.AddRange(wired);
 
             // An output the real method does not have is left out rather than named: a Call naming

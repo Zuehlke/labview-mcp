@@ -576,7 +576,7 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// while %TEMP% accepts it.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_close_vi.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvai_close_vi.vi");
 
     private static string? DefaultProjectHelperAixmlPath() =>
         StatusTools.ScriptsDirectory() is { } scripts
@@ -584,5 +584,5 @@ internal sealed class CloseTools(LvaiConnection connection)
             : null;
 
     private static string DefaultProjectHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_close_active_project.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvai_close_active_project.vi");
 }

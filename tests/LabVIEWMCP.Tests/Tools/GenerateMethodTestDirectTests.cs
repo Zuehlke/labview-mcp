@@ -238,6 +238,13 @@ public sealed class GenerateMethodTestDirectTests
             [Case(1, "Scale", errorCode: 0)]));
 
         var call = CallTo(suite, "LVMCP Mth1.vi");
-        Assert.Equal(["obj in", "error in (no error)"], Pins(call, "inputs").Keys.ToArray());
+        Assert.Equal(["obj in", "error in"], Pins(call, "inputs").Keys.ToArray());
+
+        // AGAINST THE SOCKET IT CALLS, not against a spelling: this test asserted `error in (no
+        // error)` while MethodSocketAixml labels the socket's input `error in`, so the route was
+        // refused by every converter and the fixture agreed with the defect (2026-10-11).
+        var socket = XElement.Parse(MethodTestTools.MethodSocketAixml("LVMCP Mth1.vi"));
+        var socketInputs = socket.Elements("Control").Select(c => (string)c.Attribute("_name")!).ToList();
+        Assert.All(Pins(call, "inputs").Keys, name => Assert.Contains(name, socketInputs));
     }
 }

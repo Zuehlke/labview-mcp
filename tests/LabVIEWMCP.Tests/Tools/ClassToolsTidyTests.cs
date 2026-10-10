@@ -61,6 +61,35 @@ public class ClassToolsTidyTests
     }
 
     /// <summary>
+    /// THE COMPOSED HELPERS ARE THE FOURTH TREE: the pylabview backend builds its helpers into
+    /// <c>LabVIEWMCP/helpers-pylabview/</c>, apart from NI's, and LabVIEW adopts them on a project
+    /// save exactly as it adopts NI's. Taught to the pattern the day the folder was introduced,
+    /// because the carriers tree above shows what happens when it is not.
+    /// </summary>
+    [Fact]
+    public void A_composed_helper_is_swept_too()
+    {
+        const string withHelper = """
+            <?xml version='1.0' encoding='UTF-8'?>
+            <Project Type="Project" LVVersion="26008000">
+            	<Item Name="My Computer" Type="My Computer">
+            		<Item Name="Shape.lvclass" Type="LVClass" URL="../Shape/Shape.lvclass"/>
+            		<Item Name="lvai_swap_subvis.vi" Type="VI" URL="../../../Users/jcm/AppData/Local/Temp/LabVIEWMCP/helpers-pylabview/lvai_swap_subvis.vi"/>
+            		<Item Name="Dependencies" Type="Dependencies"/>
+            	</Item>
+            </Project>
+            """;
+
+        var (text, removed, names) = ClassTools.StripHelperItems(withHelper);
+
+        Assert.Equal(1, removed);
+        Assert.Contains(names, n => n.Contains("lvai_swap_subvis"));
+        Assert.DoesNotContain("helpers-pylabview/", text);
+        // the control, as above
+        Assert.Contains("Shape.lvclass", text);
+    }
+
+    /// <summary>
     /// AND IT SAYS WHICH ONES. The count alone was what this returned until 2026-09-15, and it cost
     /// a wrong diagnosis: a `strayVisRemoved: 5` reported beside a class that had vanished from a
     /// .lvproj read as the cause, while the real cause was LabVIEW's save-on-close replacing the

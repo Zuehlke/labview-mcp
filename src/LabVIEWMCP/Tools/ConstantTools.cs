@@ -252,7 +252,7 @@ internal sealed class ConstantTools(LvaiConnection connection)
     {
         if (!File.Exists(aixml))
             return (null, Json.Error("helperMissing", $"No helper AIXML at '{aixml}'."));
-        var vi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var vi = Path.Combine(AixmlBackend.HelperFolder(),
                               Path.ChangeExtension(Path.GetFileName(aixml), ".vi"));
         Directory.CreateDirectory(Path.GetDirectoryName(vi)!);
         if (File.Exists(vi) && File.GetLastWriteTimeUtc(aixml) <= File.GetLastWriteTimeUtc(vi))

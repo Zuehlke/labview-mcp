@@ -354,7 +354,7 @@ internal sealed class DiscussTools(LvaiConnection connection)
     /// though the directory exists. Measured for lvai_set_vi_icon; see IconTools for the detail.
     /// </summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_discuss.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvai_discuss.vi");
 
     /// <summary>
     /// Validate then generate the helper VI. Returns null on success, or a ready-made error

@@ -31,6 +31,55 @@ internal static class AixmlBackend
     /// <summary>The MCP tool the client invoked in this async flow; set by DiagnosingTool.</summary>
     public static readonly AsyncLocal<string?> ClientTool = new();
 
+    /// <summary>
+    /// The backend a tool chose for its WHOLE ROUTE, which every internal call it makes inherits
+    /// when that call names none (since 2026-10-11). Without it a tool asked to run on pylabview
+    /// had to pass `backend` to each of its thirty-odd inner calls by hand, and one forgotten call
+    /// would quietly reach NI's service in the middle of a route promised to avoid it. Set only for
+    /// pylabview: an inner call with no backend is grpc anyway. AsyncLocal, so it reaches the
+    /// tool's own awaited calls and nothing outside them.
+    /// </summary>
+    public static readonly AsyncLocal<Choice?> Inherited = new();
+
+    /// <summary>
+    /// The folder helper VIs are built in for the backend in force: NI's converter writes
+    /// <c>%TEMP%\LabVIEWMCP\helpers</c>, the composer <c>helpers-pylabview</c> - the folder
+    /// <see cref="ComposedHelpers"/> uses - so a route on one backend never runs, or overwrites, a
+    /// helper the other one built.
+    /// </summary>
+    public static string HelperFolder() =>
+        Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
+                     Inherited.Value?.Name == PyLabview ? "helpers-pylabview" : "helpers");
+
+    /// <summary>
+    /// What a verification export IS on the route in force, for an answer's wording: NI's
+    /// converter on grpc, our reader on pylabview. A note saying "LabVIEW's own export" about the
+    /// reader's output claims a second opinion that was never asked for.
+    /// </summary>
+    public static string ExportName() =>
+        Inherited.Value?.Name == PyLabview
+            ? "the reader's export of the saved file (vi2aixml.py, not NI's converter)"
+            : "LabVIEW's own export";
+
+    /// <summary>
+    /// Why a test generator on pylabview never tries the DIRECT route, which names a loaded class
+    /// member in a Call: NI's converter resolves that by name, and the composer writes no link to a
+    /// class member at all - the records it would need (LIbd DyOM, FPPI, DDPI) are ones pylabview
+    /// cannot write. Sockets plus LabVIEW's own Replace give the same diagram, measured 2026-10-11.
+    /// </summary>
+    public const string NoDirectClassCall =
+        "pylabview backend: the composer writes no link to a class member, so the members are " +
+        "called through sockets and LabVIEW's own {LV.SubVI} Replace links them to the real ones.";
+
+    /// <summary>
+    /// The same for a plain VI under test: the direct route names the LOADED subject in a Call,
+    /// which NI's converter resolves by name and the composer does not.
+    /// </summary>
+    public const string NoDirectSubjectCall =
+        "pylabview backend: the direct route names the loaded subject in a Call, which only NI's " +
+        "converter resolves, so the test calls a placeholder and LabVIEW's own {LV.SubVI} Replace " +
+        "points it at the subject.";
+
     private static string? _flagValue;
 
     /// <summary>The backend named on the command line, already checked by <see cref="Normalise"/>.</summary>
@@ -49,13 +98,29 @@ internal static class AixmlBackend
     /// value is refused rather than ignored, because falling back to grpc would answer a question
     /// nobody asked.
     /// </summary>
-    public static bool TryResolve(string? perCall, string tool, out Choice choice, out string error) =>
-        TryResolve(perCall, tool, ClientTool.Value, _flagValue,
-                   Environment.GetEnvironmentVariable(Variable), out choice, out error);
+    public static bool TryResolve(string? perCall, string tool, out Choice choice, out string error)
+    {
+        var resolved = TryResolve(perCall, tool, ClientTool.Value, _flagValue,
+                                  Environment.GetEnvironmentVariable(Variable), Inherited.Value,
+                                  out choice, out error);
+        // A route on pylabview hands its choice down: every inner call this tool makes from here on
+        // inherits it. Set in the CALLER's async context (this method is synchronous), so it ends
+        // with the tool that resolved it.
+        if (resolved && choice.Name == PyLabview && Inherited.Value is null)
+            Inherited.Value = new Choice(PyLabview, $"inherited from {tool}");
+        return resolved;
+    }
 
     /// <summary>The same, with every input explicit - this is what the tests exercise.</summary>
     internal static bool TryResolve(string? perCall, string tool, string? clientTool,
                                     string? flagValue, string? environmentValue,
+                                    out Choice choice, out string error) =>
+        TryResolve(perCall, tool, clientTool, flagValue, environmentValue, inherited: null,
+                   out choice, out error);
+
+    /// <summary>The same, with the inherited choice explicit as well.</summary>
+    internal static bool TryResolve(string? perCall, string tool, string? clientTool,
+                                    string? flagValue, string? environmentValue, Choice? inherited,
                                     out Choice choice, out string error)
     {
         choice = new Choice(Grpc, "default");
@@ -69,6 +134,12 @@ internal static class AixmlBackend
                 return false;
             }
             choice = new Choice(named, "call");
+            return true;
+        }
+
+        if (inherited is not null && !string.Equals(clientTool, tool, StringComparison.Ordinal))
+        {
+            choice = inherited;
             return true;
         }
 
@@ -112,6 +183,19 @@ internal static class AixmlBackend
     /// <summary>The refusal for an unknown backend, in the shape every tool error has.</summary>
     public static string Refusal(string error) =>
         Json.Error("unknownBackend", error, new { accepted = Names });
+
+    /// <summary>
+    /// The parameter text for a tool that runs a whole ROUTE - a test generator, a swap, a runner -
+    /// whose inner conversions, runs and helpers all follow the one choice.
+    /// </summary>
+    public const string RouteParameterDescription = """
+        Which route the WHOLE call takes: "grpc" (NI's service, the default) or "pylabview" (no NI
+        service at all). On pylabview every step inside this call follows - each VI it writes is
+        COMPOSED, each helper composed into %TEMP%\LabVIEWMCP\helpers-pylabview and run over
+        LabVIEW's ActiveX server, each export read by our own reader - and a step that has no such
+        route yet is refused by name rather than sent to NI's service. LabVIEW must be running. Omit
+        it to use the server's default. docs/aixml-backends.md.
+        """;
 
     /// <summary>The parameter text, shared so the four tools describe it alike.</summary>
     public const string ParameterDescription = """

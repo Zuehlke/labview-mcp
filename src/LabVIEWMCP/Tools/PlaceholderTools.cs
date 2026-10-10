@@ -109,8 +109,11 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             """)]
         string typedefRoute = "flag",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null)
     {
+        if (!AixmlBackend.TryResolve(backend, "lvai_placeholder_subvi", out _, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
         if (viPaths is { Length: > 0 })
             return await ManyAsync(viPaths, refresh, flattenTypedefs, typedefRoute, timeoutSeconds, ct: ct);
 

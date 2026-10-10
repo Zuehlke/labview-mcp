@@ -677,7 +677,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
     /// <summary>Under TEMP, for the reason IconTools records: Save:Instrument fails elsewhere.</summary>
     private static string DefaultHelperViPath() =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers", "lvai_wire_dyn_events.vi");
+        Path.Combine(AixmlBackend.HelperFolder(), "lvai_wire_dyn_events.vi");
 
     /// <summary>
     /// Whether the shipped AIXML is newer than the cached helper. An upgrade must not leave a

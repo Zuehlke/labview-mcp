@@ -140,6 +140,19 @@ public sealed class ComValuesTests
     }
 
     [Fact]
+    public void An_array_whose_element_carries_a_label_keeps_its_values()
+    {
+        // the reader types a composed helper's `node names found` as array{string.String}; the
+        // label once made the element type unknown and the whole array came back null
+        var xml = ComValues.ToLabviewXml("node names found", "array{string.String}",
+                                         new object[] { "LVMCP ClsW1.vi", "Define Test.vi" });
+        Assert.NotNull(xml);
+        Assert.Equal(["LVMCP ClsW1.vi", "Define Test.vi"],
+                     xml!.Elements("String").Select(e => e.Element("Val")!.Value));
+        Assert.All(xml.Elements("String"), e => Assert.Equal("String", e.Element("Name")!.Value));
+    }
+
+    [Fact]
     public void Type_spellings_split_at_the_top_level_only()
     {
         Assert.Equal("cluster{double.x,double.y}", ComValues.FieldType("cluster{double.x,double.y}.p"));

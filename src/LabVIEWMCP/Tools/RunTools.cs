@@ -920,7 +920,7 @@ internal sealed class RunTools(LvaiConnection connection)
     /// though the directory exists. Measured for lvai_set_vi_icon; see IconTools for the detail.
     /// </summary>
     private static string DefaultHelperViPath(bool timed = false) =>
-        Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        Path.Combine(AixmlBackend.HelperFolder(),
             timed ? "lvai_run_for_ms.vi" : "lvai_run_and_read_typed.vi");
 
     /// <summary>

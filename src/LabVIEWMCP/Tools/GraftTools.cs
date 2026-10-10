@@ -982,7 +982,7 @@ internal sealed class GraftTools(LvaiConnection connection)
         // Under %TEMP%\LabVIEWMCP\helpers on purpose: LabVIEW adopts the helpers into the active
         // project when it saves it, and that is the tree lvai_close_active_project's sweep removes.
         // A probe helper kept in a folder of its own was measured staying listed in the project.
-        var vi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
+        var vi = Path.Combine(AixmlBackend.HelperFolder(),
                               Path.ChangeExtension(Path.GetFileName(aixml), ".vi"));
         Directory.CreateDirectory(Path.GetDirectoryName(vi)!);
         if (File.Exists(vi) && File.GetLastWriteTimeUtc(aixml) <= File.GetLastWriteTimeUtc(vi))
