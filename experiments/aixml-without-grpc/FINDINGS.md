@@ -9,33 +9,39 @@ gRPC service **not running at all** — Nigel was never opened in this session.
 
 **Yes, for a real and growing subset, in both directions.**
 
-State of 2026-10-10 morning (the night's work is §4d; the table below is the current one):
+State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4):
 
 | direction | tool | result |
 |---|---|---|
-| AIXML → VI | `aixml2vi.py` | **70 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs: loops, case/event/sequence/disable structures, clusters, arrays, enums, waveforms, refnums, property and invoke nodes, references, subVI calls into `vi.lib` and libraries - see §4d for the coverage of NI's own code |
-| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **103 identical in every fact**, elements 91.5 %, constant values 91.3 %, wires 82.7 %, attributes 75.2 % |
-| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **all 71 runnable tests pass** (2 skipped: they call composed callees) |
+| AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
+| AIXML → VI, NI's code | `coverage.py`, `parity.py` | **249 of 792** of NI's own exports compose (31.4 %; 159 in the morning, 19 on 2026-10-09). 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.4 %** |
+| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **133 identical in every fact**, elements 92.7 %, constant values 92.0 %, wires 85.6 %, attributes 78.6 % |
+| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: see §6 for the last run |
 
-The earlier table (2026-10-09), kept for the record: 28 of 28 tests; the reader on the TOP-LEVEL
-subset only, 415 of 552 identical.
+The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
+TOP-LEVEL subset only (415 of 552 identical); 2026-10-10 morning, 70 tests, 159 of 792, the
+reader 103 identical.
 
 Neither direction needs LabVIEW. LabVIEW is used only as the **oracle** that loads and runs
 the result, and it is reached over **ActiveX/COM** (`lv-com.ps1`), not over gRPC.
 
-What the composer covers today: controls, indicators and constants of every scalar type
-(`double`, `single`, `intN`, `uintN`, `bool`, `string`, `path`), 241 primitives, fan-out,
-coercion, the connector pane, **While Loop, For Loop** (tunnels, shift registers, `i`, `N`,
-stop condition), **boolean Case Structure**, arbitrary nesting of these, and **subVI calls to a
-sibling VI** — composed from the callee's own file (section 4a), which is exactly the call the
-supported route refuses for project-local code that is not loaded.
+What the composer covers today, every item with a test that runs: controls, indicators and
+constants of every scalar type, with their **default values** and **styles** (latched, ring,
+table; graphs as plain controls); clusters, arrays (1D and 2D), enums, waveforms, timestamps,
+variants, paths, DAQmx/DAQ I/O names, pictures, dynamic data; refnums (VI Server, VISA, TDMS,
+NI System Configuration) and VI Server property/invoke nodes; 241+ primitives and the template
+nodes; While/For Loops (tunnels, indexing and CONDITIONAL tunnels, shift registers incl.
+stacked ones, feedback nodes with and without initializer); Case Structures on every selector
+type; Event, Flat Sequence, Diagram/Conditional Disable and In Place Element structures; subVI
+calls into `vi.lib`, libraries and siblings; static (also strict) and VI Server references;
+global and local variables; the connector pane up to 28 terminals.
 
 **Every VI it writes is source-only** — no `VICD`, `TM80`, `DFDS` or other compiled block, and
 `SourceOnly="1"`; `write()` refuses to emit anything else (the user's rule of 2026-10-09: less
 data, and LabVIEW compiles in memory on load). The nested loop-and-case test VI is 5 430 bytes.
 
-What it does not cover yet, and how much of NI's own code that blocks (section 6): **subVI
-calls block 77 %** of NI's exports, clusters and arrays most of the rest.
+What it does not cover yet is listed by count in §6; nothing on that list is more than nine of
+NI's 792 VIs any more.
 
 ## 2. How it works
 
@@ -862,7 +868,12 @@ LabVIEW is a recorded outcome (`cov_load.py`) rather than a lost run.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 73 composition tests with expected outputs, LabVIEW-log sanity gate, LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 88 composition tests with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
+| `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
+| `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
+| `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
+| `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
 | `compare_with_nigel.py`, `compare_full.py`, `uid_survey.py` | the reader against NI's exports: top-level subset, whole VI, uid conventions |
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |

@@ -392,6 +392,13 @@ NUM_RANK = ["NumUInt8", "NumInt8", "NumUInt16", "NumInt16", "NumUInt32", "NumInt
             "NumComplex64", "NumComplex128", "NumComplexExt"]
 
 
+def grow_base(key):
+    """The kind of a growable node's terminal: `element#2` is an element, and Format Into
+    String's numbered `input 5` is an input - its arguments are printfArg DCOs in the node's
+    dcoList with no index of their own, so a fifth one is a clone of the fourth."""
+    return re.sub(r" \d+$", "", key.split("#")[0])
+
+
 def type_sig(tree):
     """A type's shape with every label and reference annotation dropped - for deciding whether
     a part was built around exactly this type."""
@@ -2408,7 +2415,7 @@ class Composer:
 
     # ---- template nodes: heap nodes harvested with each terminal named (harvest_templates.py)
     CA_OPS = {"Add": 0, "Multiply": 0x10000, "AND": 0x20000, "OR": 0x30000, "XOR": 0x40000}
-    GROWABLE = {"Merge Errors", "Concatenate Strings", "Compound Arithmetic"}
+    GROWABLE = {"Merge Errors", "Concatenate Strings", "Compound Arithmetic", "Format Into String"}
 
     def _templates(self, name):
         if not hasattr(self, "_tcache"):
@@ -2443,7 +2450,7 @@ class Composer:
                 continue
             if set(want_in) <= set(t_in):
                 score = len(t_in) - len(want_in)
-            elif name in self.GROWABLE and all(k.split("#")[0] in {x.split("#")[0] for x in t_in} for k in want_in):
+            elif name in self.GROWABLE and all(grow_base(k) in {grow_base(x) for x in t_in} for k in want_in):
                 score = 100 + len(want_in) - len(t_in)        # clone inputs
             else:
                 continue
@@ -2465,8 +2472,8 @@ class Composer:
         for k in want_in:
             if k in by_key:
                 continue
-            base = k.split("#")[0]
-            proto = [t for kk, t in by_key.items() if kk.split("#")[0] == base][-1]
+            base = grow_base(k)
+            proto = [t for kk, t in by_key.items() if grow_base(kk) == base][-1]
             t = copy.deepcopy(proto)
             lvheap.renumber(t, self.alloc)
             t.set("aixml", k)
