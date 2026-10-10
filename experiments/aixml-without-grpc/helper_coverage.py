@@ -140,7 +140,9 @@ def main(argv):
                 continue
             base = os.path.splitext(name)[0]
             ni_vi = os.path.join(OUT, f"P3 ni {base}.vi")
-            py_vi = os.path.join(OUT, f"P3 py {base}.vi")
+            # REAL NAMES in a folder of their own, so a helper that calls another helper
+            # (lvdqmh_pick_event.vi) finds it beside itself, as it does in production.
+            py_vi = os.path.join(OUT, "py", f"{base}.vi")
             row = {"helper": os.path.relpath(path, os.path.join(REPO, "scripts")).replace("\\", "/"),
                    "tools": " ".join(users_of(name))}
 
@@ -167,9 +169,19 @@ def main(argv):
                 if py.get("executableNote"):
                     row["py_reason"] = one_line(py["executableNote"])
 
+            row["_args"] = {"aiXmlFilePath": path, "viPath": py_vi, "backend": "pylabview"}
             rows.append(row)
             print(f"{row['helper']:<48} ni {row['ni_convert']}/{row['ni_exec_grpc']}/{row['ni_exec_com']:<3}"
                   f" py {row['py_compose']:<16} {row['py_exec_com']:<2} {row['py_reason'][:70]}", flush=True)
+        # SECOND PASS for helpers that call helpers: the callee exists now if it composed.
+        for row in rows:
+            if "neither near the caller" in row.get("py_reason", ""):
+                py, _ = step(server, "py compose (2nd pass)", "lvai_convert_aixml_to_vi", row["_args"])
+                if not py.get("crash"):
+                    row["py_compose"] = "composed" if py.get("errorCode") == 0 else py.get("errorKind", "?")
+                    row["py_reason"] = "" if py.get("errorCode") == 0 else one_line(py.get("errorMessage"))
+                    row["py_exec_com"] = str(py.get("execState", "")) if py.get("errorCode") == 0 else ""
+                    print(f"2nd pass {row['helper']}: {row['py_compose']} {row['py_exec_com']} {row['py_reason'][:70]}")
     finally:
         server.close()
 

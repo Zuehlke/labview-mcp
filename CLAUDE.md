@@ -1110,9 +1110,10 @@ quits when the call ends and leaves an invisible dialog), never runs a broken VI
 deadline and an Abort; it has no linker errors and no Value (Signaling). Measured against NI's
 helpers: the same states, 11 of 11 runs right, 0.02 s per state read. The pane is read from the
 FILE by `pylv-conpane.py`, matching NI's probe. **The server's own HELPER VIs are NOT yet on this
-route**: measured over 81 `scripts` documents, the composer builds 9 with the parts as committed and
-31 (29 executable, output-identical to NI's on six read-only ones) with parts harvested from the
-NI-built helpers - one property, `Application` on `{LV.Project}`, blocked 28. **`lvai_create_class`
+route**: measured over the `scripts` documents, the composer builds 9 with the parts as committed and
+31 with parts harvested from the NI-built helpers - one property, `Application` on `{LV.Project}`,
+blocked 28 - and 39 of 82 (35 executable, 9 of 9 output-identical to NI's) after the repairs
+recorded in FINDINGS §7a, with the composer's own suite still 114 of 114. **`lvai_create_class`
 runs end to end without NI's service** (with `lvai_open_file` for a project and
 `lvai_close_active_project`): measured with the gRPC port deliberately dead, the same class as over
 grpc, NI's provider working from LabVIEW's MAIN instance - but only with the harvested parts

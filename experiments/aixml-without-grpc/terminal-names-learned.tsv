@@ -352,3 +352,10 @@ primResID	node	parmIndex	terminal
 9129	Enqueue Element At Opposite End	out	queue
 9154	Get Drag Drop Data	8	type
 9154	Get Drag Drop Data	9	data name
+1187	Fract/Exp String To Number	1	offset past number
+3914	Search and Replace String	1	replace all?
+8014	New VI	9	vi type (standard vi)
+8401	Unflatten From XML	4	error in (no error)
+8401	Unflatten From XML	6	xml string
+8401	Unflatten From XML	out	error out
+8402	Flatten To XML	6	anything

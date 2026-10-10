@@ -140,10 +140,10 @@ from `scripts/*.xml`, today by NI's converter and `RunVIAsTopLevel`. Over all 81
 the built server, with NI's converter as the control (`experiments/aixml-without-grpc/helper_coverage.py`,
 0 crashes):
 
-| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers |
-|---|---|---|---|
-| builds | 63 | 9 | **31** |
-| executable over ActiveX | 63 | 7 | **29** |
+| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers | after the repairs |
+|---|---|---|---|---|
+| builds | 63 | 9 | 31 | **39** of 82 |
+| executable over ActiveX | 63 | 7 | 29 | **35** |
 
 One property was most of the gap: `Application` on `{LV.Project}` - the hop into the IDE's
 instance - blocked 28 helpers, and harvesting the NI-built helpers supplied it. **Composed helpers
@@ -152,7 +152,18 @@ include the class route (`lvai_create_class`, `_interface`, `_add_class_method`,
 `lvai_swap_subvis`, the project close, the typedef checks, `lvdoc_print` and LUnit. What blocks the
 rest is mostly DATA - terminal names and method aliases that NI's exports of the same helpers would
 teach - plus control-refnum types the composer cannot build yet, and Delacor's DQMH libraries,
-which live under `project\` where the composer does not search. Two helpers compose and are broken.
+which live under `project\` where the composer did not search.
+
+**The repairs** (the last column; 82 documents, because `lvai_open_project.xml` was added): seven
+terminal names learned from NI's exports of the NI-built helpers (`anything` on Flatten To XML among
+them), a method found by its CATALOGUE name (`Save VI Icon to File` is the one harvested method with
+the same words as `VI Icon.Save to File`), LabVIEW's `project\` folder searched last, and a typedef
+parameter named from the type inside it. That last one made five helpers COMPOSE BROKEN - the
+composer writes no link to the `.ctl` - so a WIRED typedef parameter is refused by name now instead.
+**No regression**: the composer's own suite, run through the built server, passed 114 of 114 cases
+with every test built, with both sets of parts; parity rose to 9 of 9 helpers. Still blocking:
+control-refnum types (9), wired typedef parameters (6), DQMH helpers waiting on
+`lvdqmh_pick_event` (9), a few invoke terminals (6) and single constructs; 4 compose broken.
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

@@ -4,7 +4,10 @@ where vi2aixml can only say ?parmN, the wire that ends there has a partner both 
 and NI's export names the terminal. Unambiguous names (one name per slot) are appended to
 terminal-names-learned.tsv.
 
-    learn_names_full.py [--max N] [--write]
+    learn_names_full.py [--max N] [--write] [--cache <dir>]
+
+--cache reads export/VI pairs from another folder laid out like the export cache (<x>.xml beside
+<x>.json naming ViPath) - the NI-built helper VIs and their exports, for instance (Phase 3).
 """
 import collections
 import glob
@@ -46,7 +49,8 @@ def main(argv):
     votes = collections.defaultdict(collections.Counter)
     names = {}
     n = 0
-    for x in sorted(glob.glob(os.path.join(CACHE, "*.xml")), key=os.path.getsize):
+    cache = argv[argv.index("--cache") + 1] if "--cache" in argv else CACHE
+    for x in sorted(glob.glob(os.path.join(cache, "*.xml")), key=os.path.getsize):
         meta = x[:-4] + ".json"
         if not os.path.exists(meta):
             continue

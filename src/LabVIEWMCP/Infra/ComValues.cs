@@ -46,6 +46,9 @@ internal static class ComValues
 
         if (type is "string" or "path") return text;
 
+        // An I/O name - a DAQmx channel, a VISA resource - `tag{N}`: its value crosses as text.
+        if (type.StartsWith("tag{", StringComparison.Ordinal)) return text;
+
         if (type == "bool")
         {
             if (text.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)) return true;

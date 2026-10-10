@@ -7,7 +7,14 @@ Window:Open", "Block Diagram", "Front Panel". Each pair becomes an ALIAS row in
 parts/vi-server-props.json: the catalogue name, carrying the heap's row and its `heapName`, so
 the composer accepts what NI exports and writes into the heap what LabVIEW stores.
 
-    alias_props.py [--max N] [--write]
+    alias_props.py [--max N] [--write] [--cache <dir>] [--parts <dir>]
+
+METHODS TOO, since Phase 3: NI's export writes an Invoke Node's `target` as AIXML spells it
+("Save VI Icon to File"), the heap stores `methName` as LabVIEW does ("VI Icon.Save to File"), and
+invoke parts are filed under the heap name - so a composer looking up the AIXML spelling found
+nothing. Each pair becomes an alias row in `methods`, carrying the heap row and its `heapName`.
+--cache reads export/VI pairs from another folder laid out like the export cache; --parts writes
+another parts folder's table.
 """
 import glob
 import json
@@ -42,12 +49,14 @@ def heap_items(node):
 def main(argv):
     limit = int(argv[argv.index("--max") + 1]) if "--max" in argv else None
     pairs, seen_vis, mism = {}, 0, 0
-    for j in sorted(glob.glob(os.path.join(CACHE, "*.json"))):
+    method_pairs = {}
+    cache = argv[argv.index("--cache") + 1] if "--cache" in argv else CACHE
+    for j in sorted(glob.glob(os.path.join(cache, "*.json"))):
         xml = j[:-5] + ".xml"
         if not os.path.exists(xml):
             continue
         text = open(xml, encoding="utf-8", errors="replace").read()
-        if '_name="Property Node"' not in text:
+        if '_name="Property Node"' not in text and '_name="Invoke Node"' not in text:
             continue
         vp = json.load(open(j, encoding="utf-8")).get("ViPath")
         if not vp or not os.path.exists(vp):
@@ -60,7 +69,10 @@ def main(argv):
         except ET.ParseError:
             continue
         want = {}
+        want_methods = {}
         for n in exp.iter("Node"):
+            if n.get("_name") == "Invoke Node" and n.get("target") and n.get("type", "").startswith("{LV."):
+                want_methods[n.get("uid")] = (n.get("type")[1:-1], aixml2vi.unescape(n.get("target")))
             if n.get("_name") == "Property Node" and n.get("fields") and n.get("type", "").startswith("{LV."):
                 want[n.get("uid")] = (n.get("type")[1:-1],
                                       [aixml2vi.unescape(f.split("+", 1)[1]) for f in aixml2vi.split_top(n.get("fields")) if "+" in f])
@@ -76,6 +88,12 @@ def main(argv):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
         for node in heap.iter("SL__arrayElement"):
+            if node.get("class") == "invokeNode" and node.get("uid") in want_methods:
+                cls, target = want_methods[node.get("uid")]
+                stored = (node.findtext("methName") or "").strip('"')
+                if stored and stored != target:
+                    method_pairs.setdefault((cls, target), set()).add(stored)
+                continue
             if node.get("class") != "propNode" or node.get("uid") not in want:
                 continue
             cls, longs = want[node.get("uid")]
@@ -87,7 +105,8 @@ def main(argv):
                 if long_name != short:
                     pairs.setdefault((cls, long_name), set()).add((short, code))
     print("%d VIs read, %d node(s) with a field count that did not match" % (seen_vis, mism))
-    path = os.path.join(HERE, "parts", "vi-server-props.json")
+    parts_dir = argv[argv.index("--parts") + 1] if "--parts" in argv else os.path.join(HERE, "parts")
+    path = os.path.join(parts_dir, "vi-server-props.json")
     table = json.load(open(path, encoding="utf-8"))
     props = table["props"]
     added = 0
@@ -113,6 +132,23 @@ def main(argv):
         added += 1
         print("alias %s %r -> %r (%s)" % (cls, long_name, short, code))
     print("%d alias row(s)" % added)
+    methods = table.setdefault("methods", {})
+    m_added = 0
+    for (cls, target), stored in sorted(method_pairs.items()):
+        if len(stored) != 1:
+            print("ambiguous method %s %s: %s" % (cls, target, sorted(stored)))
+            continue
+        heap_name = next(iter(stored))
+        row = methods.get(cls, {}).get(heap_name)
+        if row is None:
+            print("no method row for %s %s (heap %s)" % (cls, target, heap_name))
+            continue
+        if target in methods.setdefault(cls, {}):
+            continue
+        methods[cls][target] = dict(row, heapName=heap_name)
+        m_added += 1
+        print("method alias %s %r -> %r" % (cls, target, heap_name))
+    print("%d method alias row(s)" % m_added)
     if "--write" in argv:
         json.dump(table, open(path, "w", encoding="utf-8"), indent=1, sort_keys=True)
         print("wrote %s" % path)

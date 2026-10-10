@@ -35,6 +35,8 @@ public sealed class ComValuesTests
         Assert.Equal(true, Convert("TRUE", "bool"));
         Assert.Equal("  hi there  ", Convert("  hi there  ", "string"));
         Assert.Equal(@"C:\data\in.csv", Convert(@"C:\data\in.csv", "path"));
+        // An I/O name crosses as text - measured on the composer's t99 test, a DAQmx channel.
+        Assert.Equal("Dev1/ai0", Convert("Dev1/ai0", "tag{13}"));
     }
 
     [Fact]

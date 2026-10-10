@@ -30,6 +30,11 @@ CASES = [
     ("lvdoc_print", {"VI Path": LV + r"\vi.lib\Utility\AggHandler\Bounds.vi",
                      "HTML File Path": os.path.join(WORK, "{arm}", "bounds.html"),
                      "Image Directory": os.path.join(WORK, "{arm}")}),
+    # composed only after the Phase 3 repairs (learned terminal names, method aliases)
+    ("lvai_exec_state", {"vi path": BROKEN}),
+    ("lvai_exec_state", {"vi path": LV + r"\vi.lib\Utility\AggHandler\Bounds.vi"}),
+    ("lvdoc_get_icon", {"VI Path": LV + r"\vi.lib\Utility\AggHandler\Bounds.vi",
+                        "Read Back Path": os.path.join(WORK, "{arm}", "icon.png")}),
 ]
 
 
@@ -67,7 +72,7 @@ class Server:
 
 def normalise(value, arm):
     """The helper's own name appears in what it reads about memory; the arm prefix is not a result."""
-    return (value or "").replace(f"P3 {arm} ", "P3 <arm> ")
+    return (value or "").replace("P3 ni ", "").replace("P3 py ", "")
 
 
 def main():
@@ -88,7 +93,8 @@ def main():
                     os.makedirs(os.path.dirname(v), exist_ok=True)
             os.makedirs(os.path.join(WORK, arm), exist_ok=True)
             body = server.tool("lvai_run_vi_and_read_values", {
-                "viPath": os.path.join(BUILT, f"P3 {arm} {helper}.vi"),
+                "viPath": os.path.join(BUILT, f"P3 ni {helper}.vi") if arm == "ni"
+                          else os.path.join(BUILT, "py", f"{helper}.vi"),
                 "inputsJson": json.dumps(args), "backend": "pylabview", "timeoutSeconds": 60})
             if not body.get("ok"):
                 results[arm] = {"FAILED": f"{body.get('errorKind')}: {body.get('error')}"}

@@ -127,6 +127,11 @@ internal static class AixmlComposer
 
         var args = new List<string> { "--parts", setup.PartsDirectory };
         foreach (var search in searchFolders) { args.Add("--search"); args.Add(search); }
+        // LabVIEW's project\ folder LAST: vendor toolkits install their scriptable VIs there -
+        // Delacor's DQMH libraries among them, three levels down - and NI's converter resolves
+        // those only once they are loaded, while the composer resolves by file. Measured in
+        // Phase 3: 13 of the server's DQMH helpers refused only because it was not searched.
+        if (ProjectFolder.Value is { } project) { args.Add("--search"); args.Add(project); }
         args.Add(Path.GetFullPath(aixmlPath));
         args.Add(target);
 
@@ -193,6 +198,19 @@ internal static class AixmlComposer
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }
+
+    /// <summary>The installation's project\ folder, looked up once; null when there is none.</summary>
+    private static readonly Lazy<string?> ProjectFolder = new(() =>
+    {
+        try
+        {
+            var install = LabVIEWMcp.Grpc.LabViewLocator.Select(LabVIEWMcp.Grpc.LabViewLocator.Discover());
+            var folder = install is null ? null
+                : Path.Combine(Path.GetDirectoryName(install.ExePath) ?? "", "project");
+            return folder is not null && Directory.Exists(folder) ? folder : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+    });
 
     private static IEnumerable<string> Lines(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

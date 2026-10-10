@@ -1807,6 +1807,24 @@ class Composer:
         import harvest_parts
         got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(meth)), own_uid=el.get("uid"))
         if got is None:
+            # The part is filed under the name the HEAP stores; AIXML may spell the method the way
+            # NI's export does ("Save VI Icon to File" for "VI Icon.Save to File"). alias_props.py
+            # learns those pairs into the methods table as rows carrying `heapName`.
+            alias = self._vi_server_table().get("methods", {}).get(cls, {}).get(meth, {}).get("heapName")
+            if alias:
+                got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(alias)), own_uid=el.get("uid"))
+        if got is None:
+            # LabVIEW's CATALOGUE names a method one way and its export another - "Save VI Icon to
+            # File" against "VI Icon.Save to File" - and NI's converter takes both. The one known
+            # method of this class with exactly the same WORDS is the same method; two such and
+            # it stays a refusal, because then it would be a guess.
+            def words(name):
+                return sorted(w for w in re.split(r"[ .:]+", name.lower()) if w)
+            same = [k for k in self._vi_server_table().get("methods", {}).get(cls, {})
+                    if words(k) == words(meth) and k != meth]
+            if len(same) == 1:
+                got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(same[0])), own_uid=el.get("uid"))
+        if got is None:
             raise Unsupported("Invoke Node %s: no invoke node %s.%s harvested yet" % (el.get("uid"), cls, meth))
         node, donor_types, src = got
         diag = self.diag_of(el)
@@ -1828,7 +1846,14 @@ class Composer:
             if ty is None or ty.get("Type") == "Void":
                 continue
             out = int(d.findtext("objFlags") or 0) & 1
-            names[(ty.get("Label") or "") + ("\x00out" if out else "\x00in")] = t
+            # A TYPEDEF parameter carries its name on the type INSIDE it, not on the wrapper:
+            # Control.Move's `position` is a TypeDef of LVPositionTypeDef.ctl around a cluster
+            # labelled "position" (Phase 3, 2026-10-10 - six helpers refused for it).
+            label = ty.get("Label") or ""
+            if not label and ty.get("Type") == "TypeDef":
+                inner = next((c for c in ty if c.tag == "TypeDesc"), None)
+                label = (inner.get("Label") or "") if inner is not None else ""
+            names[label + ("\x00out" if out else "\x00in")] = t
         # (an Element with no children is FALSE in a boolean context - never `a or b` on them)
         for tname, net in ins.items():
             t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00in")
@@ -1836,6 +1861,7 @@ class Composer:
                 continue    # listed and unwired, as NI's exports list every parameter
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no input %r" % (el.get("uid"), cls, meth, tname))
+            self._refuse_wired_typedef(el, cls, meth, tname, t, donor_types, tel)
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         for tname, net in outs.items():
             t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00out")
@@ -1843,6 +1869,8 @@ class Composer:
                 continue
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no output %r" % (el.get("uid"), cls, meth, tname))
+            if net:
+                self._refuse_wired_typedef(el, cls, meth, tname, t, donor_types, tel)
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
             if net:
                 ty = self.parts_type_of(t, donor_types, tel)
@@ -1852,6 +1880,19 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Invoke Node %s.%s <- %s" % (cls, meth, src))
+
+    def _refuse_wired_typedef(self, el, cls, meth, tname, t, donor_types, tel):
+        """A WIRED invoke parameter whose type is a TYPEDEF is refused: the part carries the TypeDef
+        descriptor but the composer writes no link to its .ctl, and LabVIEW then loads the VI
+        BROKEN. Measured 2026-10-10 on Control.Move's `position` (LVPositionTypeDef.ctl): five
+        helpers composed and all five were eBad. A named refusal keeps "the composer writes nothing
+        silently different" true."""
+        ty = self.parts_type_of(t, donor_types, tel)
+        if ty is not None and ty.get("Type") == "TypeDef":
+            link = ty.find("Label")
+            raise Unsupported("Invoke Node %s: %s.%s parameter %r is a typedef (%s); typedef links are "
+                              "not composed yet" % (el.get("uid"), cls, meth, tname,
+                                                    link.get("Text") if link is not None else "?"))
 
     def _om_id_of(self, tree):
         """oMId for an arbitrary class refnum type (a strictly typed control refnum included):

@@ -939,6 +939,30 @@ identical, the file sets of the print included.
 | templates with `{{TYPE}}` placeholders | 3 | not meant to compose |
 | **composed but BROKEN**: `lvai_inventory`, `lvai_create_message_class` | 2 | composer; NI builds both executable, LabVIEW's broken-reason list is empty, cause not found |
 
+**Repairs, the same day - 39 build, 35 executable** (of 82: `lvai_open_project.xml` was added for
+`lvai_create_class` on ActiveX). `helper-coverage-repaired.tsv`. What changed, each named by what
+it fixed:
+
+| repair | how | fixed |
+|---|---|---|
+| terminal names | `helper_pairs.py` exports the 63 NI-built helpers with NI's exporter as learning pairs; `learn_names_full.py --cache` learned 7 slots - `anything` on Flatten To XML, `xml string` on Unflatten From XML, `vi type (standard vi)` on New VI | `lvai_exec_state`, `lvbd_set_constant`, `lvai_wire_dyn_events` |
+| a method by its catalogue name | the catalogue says `Save VI Icon to File`, NI's export and the heap `VI Icon.Save to File`, and NI's converter takes both: the composer now takes the ONE harvested method of the class with the same words (split at space, dot and colon); two such stay a refusal. `alias_props.py` also learns method aliases now, from export/heap pairs - here it found none, because NI's export already writes the heap spelling | `lvdoc_get_icon` |
+| Delacor's DQMH libraries | the server passes LabVIEW's `project\` folder as the last search folder - they sit three levels down | `lvdqmh_close_modules`, `lvdqmh_find_testers` (both COMPOSE and are BROKEN; cause not found) |
+| a typedef parameter's name | a TypeDef parameter carries its name on the type INSIDE it (`position` on Control.Move is a TypeDef of LVPositionTypeDef.ctl around a cluster labelled `position`); the composer read the wrapper | five helpers then COMPOSED - and all five were BROKEN: the composer writes no link to the .ctl. So a WIRED typedef parameter is now REFUSED by name (`... is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet`), which keeps "writes nothing silently different" true |
+| invoke parts with the wrong labels | five invoke parts re-harvested from the NI-built helpers into the copy - the first sighting, off NI's shipped VIs, carried other labels | nothing by itself; each helper met its next blocker |
+
+**No regression**: `regression_via_server.py` runs this experiment's own suite through the built
+server - compose, run every case over ActiveX, compare with `expect.json` - and answered **114 of 114
+cases, every test built**, with the parts as committed AND with the harvested copy (5 skipped: two
+need callees, two have no cases, t91 counts its own VI name). **Parity again 9 of 9**, now including
+`lvai_exec_state` on a broken and a working VI and `lvdoc_get_icon`.
+
+**What still blocks**, after the repairs: a control-refnum type (9), a call to `lvdqmh_pick_event.vi`,
+which itself fails on an Unbundle By Name whose cluster arrives with unnamed elements (6+3), a
+WIRED typedef parameter (6 - Terminal.Move's `position` is one too), `Ctrl Val.Get All`'s `Controls`, `Library.Open`'s `Path` and
+`Ctrl Val.Get`'s `Value` (6 - the label is not the problem there), `Label.Text` (2), a concat tunnel
+(2), typedefs on nets (2), templates (3) and four singles - Unbundle on an array, `readLines`, user-event data, a Web Browser refnum; built but broken: 4.
+
 **What this does NOT show.** A composed, executable, output-identical helper is not yet a tool that
 runs without Nigel: the tools call `RunVIAsTopLevel`, and over ActiveX the helper runs in LabVIEW's
 MAIN application instance rather than the AI add-on's. Helpers that hop into the IDE's instance
