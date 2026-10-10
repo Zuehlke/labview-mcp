@@ -452,7 +452,10 @@ class Harvester:
                 # a Local Variable: one terminal, an input when it writes (term objFlags 0x8000)
                 t = e.find("termList/SL__arrayElement")
                 rw = "write" if int(t.findtext("objFlags") or 0) & 0x8000 else "read"
-                self.save("node", "node/gRef/%s" % rw, source, e, resolve_types(b, e))
+                # a GLOBAL variable is the same gRef plus connectorTM - the global VI's pane -
+                # and an IUVI link record naming the node, as a subVI call has
+                kind = "global/" if e.find("connectorTM") is not None else ""
+                self.save("node", "node/gRef/%s%s" % (kind, rw), source, e, resolve_types(b, e))
             elif cls == "hiddenFBNode":
                 # a Feedback Node is TWO heap nodes naming each other, saved as one <wrap>
                 su = e.find("SlaveFBInputNode").get("uid") if e.find("SlaveFBInputNode") is not None else None

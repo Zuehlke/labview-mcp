@@ -577,6 +577,26 @@ computing exact tables needs a per-primitive calibration of hot points. Until th
 
 ## 6. How far it reaches on real code
 
+**State of 2026-10-10 morning** (`coverage.py`, then `cov_load.py` with crash recovery):
+
+| | 2026-10-09 evening | 2026-10-10 morning |
+|---|---|---|
+| NI exports that compose | 84 of 792 | **159 of 792 (20.1 %)** |
+| of those, executable in LabVIEW | 72 | **99** |
+| of those, crash LabVIEW on load | not measured | **0** (3 before the refusals in §4d) |
+
+The first blockers now, by count: class objects `ref{UDClassInst}` (84 - AIXML does not even
+say WHICH class, see below), `tag{…}` (19), Global Variables (19), `nisyscfg` and DataFinder
+refnums (24), In Place Element Structures (16), picture (14), dynamic data (12), strictly typed
+Static VI References (11). Several of these are outside what NI's own converter composes too:
+it refuses a class-typed terminal and writes every class object as a bare `ref{UDClassInst}`,
+which names no class at all.
+
+The 60 composed but broken VIs are the next work item; `bisect_vi.py` splits one into its
+independent pieces and loads each. Many are waveform examples calling waveform library VIs.
+
+**The history**, measured as the work went on:
+
 `coverage.py` runs the composer over all 792 cached NI exports, compose-only:
 
 | | |
@@ -604,6 +624,28 @@ callee's pane (section 4b). The next milestones are the constructs those 610 VIs
 a case structure on the error cluster or an enum/string selector, clusters and arrays (types
 plus `Bundle`/`Index Array` parts, which the harvest already has), `FixedConst`, enums, and
 sequences — and, for calls, dynamic-dispatch methods and Express VIs.
+
+## 6a. How this would become MCP tools (proposal, not built)
+
+Nothing of this branch is wired into the server yet, on purpose: two decisions belong to the
+user first.
+
+1. **Where the parts come from.** `parts/` holds fragments of NI's shipped VIs (and the
+   property table names NI's property codes). Committed here for the investigation; a release
+   should HARVEST them on the user's own machine from the user's own installation - the
+   front-panel/diagram parts (`harvest_corpus.py`, ~72 s) and the property sweep (~60 min in six
+   processes over `vi.lib`, the examples and `resource\Framework`). A `--harvest` step of the
+   server, run once per LabVIEW version, like the example index.
+2. **Which route is primary.** Three tools would mirror the gRPC ones - `pylv_compose`
+   (AIXML → VI, `aixml2vi.py`), `pylv_read` (VI → AIXML, `vi2aixml.py`) and a COM verifier
+   (`lv-com.ps1`: ExecState, run, read outputs) - and the existing `lvai_*` tools could fall
+   back to them when the gRPC service does not answer. The composer refuses by name what it
+   cannot build safely, so a fallback never writes a VI that is silently different.
+
+What makes the route trustworthy today is the test discipline, not the code: every construct
+has a test that LOADS and RUNS (`selftest.py`, 72 tests), the reader is measured against NI's
+own exports (`compare_full.py`), both directions together by `roundtrip.py`, and a crash of
+LabVIEW is a recorded outcome (`cov_load.py`) rather than a lost run.
 
 ## 7. Limits and caveats
 

@@ -785,7 +785,8 @@ class Reader:
                     n_in += 1
                 tid = ("Out%d" % n_out) if out else ("In%d" % n_in)
                 tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
-                if out and f & 0x300000:
+                if f & 0x200000:
+                    # cond="true" is the 0x200000 bit, on input and output tunnels alike
                     tun.set("cond", "true")
                 self.term_owner[term.get("uid")] = (tun, "value", not out)
                 outer_tunnels.append(tun)
@@ -1069,9 +1070,8 @@ class Reader:
         terms = list(node.find("termList"))
         out = next((t for t in terms if self._is_out(t)), None)
         ot = self.tid_tree(out) if out is not None else None
-        # the heap holds Build Array's inputs BOTTOM first: a composed [7, 2.5] had 2.5's
-        # terminal first in termList, and LabVIEW built [7, 2.5] from it
-        terms = [t for t in terms if t is out] + list(reversed([t for t in terms if t is not out]))
+        # inputs in termList order, which is the order LabVIEW builds in (a probe with 1 then 2
+        # built [1,2]; reading them reversed broke the round trip of t66)
         for t in terms:
             if t is out:
                 self.term_owner[t.get("uid")] = (el, "appended array", False)
@@ -1179,7 +1179,13 @@ class Reader:
         t = node.find("termList/SL__arrayElement")
         tree = self.tid_tree(t) if t is not None else None
         name = (tree.get("Label") if tree is not None else None) or "?"
-        el = self._node_el(node, parent_uid, "Local Variable", element=name)
+        if node.find("connectorTM") is not None:
+            # a GLOBAL variable: the same gRef with the global VI's pane and a call link
+            recs = self.call_targets.get(node.get("uid"), {})
+            el = self._node_el(node, parent_uid, "Global Variable", element=name,
+                               target=recs.get("IUVI") or next(iter(recs.values()), "?"))
+        else:
+            el = self._node_el(node, parent_uid, "Local Variable", element=name)
         if t is not None:
             self.term_owner[t.get("uid")] = (el, name, not self._is_out(t))
         return el

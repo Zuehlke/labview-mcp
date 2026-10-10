@@ -924,5 +924,21 @@
     }
    }
   ]
+ },
+ "t98_global_variable": {
+  "cases": [
+   {
+    "inputs": "text=hello",
+    "outputs": {
+     "read back": "hello"
+    }
+   },
+   {
+    "inputs": "text=second",
+    "outputs": {
+     "read back": "second"
+    }
+   }
+  ]
  }
 }

@@ -1,0 +1,14 @@
+<VI _name="T98 Global Variable.vi" description="A global variable of a vi.lib global VI, written in the first frame of a flat sequence and read back in the second.">
+  <Control _name="text" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Structure _name="Flat Sequence Frame" uid="4500" uid_parent="root">
+    <Diagram uid="4510" uid_parent="4500">
+      <Tunnel _id="In1" inputs="value:4200.value" outputs="value:4511.value" uid="4511" uid_parent="4510"/>
+      <Node _name="Global Variable" element="config header text" inputs="config header text:4511.value" target="exnSharedSub locale global.vi" uid="4512" uid_parent="4510"/>
+    </Diagram>
+    <Diagram uid="4520" uid_parent="4500">
+      <Node _name="Global Variable" element="config header text" outputs="config header text:4521.config header text" target="exnSharedSub locale global.vi" uid="4521" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4521.config header text" outputs="value:4530.value" uid="4530" uid_parent="4520"/>
+    </Diagram>
+  </Structure>
+  <Indicator _name="read back" inputs="value:4530.value" type="string" uid="4540" uid_parent="root" value=""/>
+</VI>

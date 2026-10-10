@@ -1954,6 +1954,80 @@ class Composer:
         diag.placed.append((node, el))
         self.report.append("Local Variable %r <- %s" % (name, src))
 
+    def add_global(self, el):
+        """A Global Variable: the same gRef node as a local, plus connectorTM - the global VI's
+        pane - and the call link pair (VIVI + IUVI naming the node), as a subVI call has; the
+        terminal is typed like the global's control and paramIdx is that control's position in
+        the global VI's ddoList. Read off NI's Add to Project.vi (Localized Strings.vi)."""
+        self.check_attrs(el, ("element", "target"))
+        name = unescape(el.get("element") or "")
+        target = unescape(el.get("target") or "")
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
+        if "error" in res:
+            raise Unsupported("Global Variable %s: %s" % (el.get("uid"), res["error"]))
+        g = lvheap.Bundle(_extract_callee(res["path"]))
+        if (g.main.find("LVSR/Section/Instrument").get("Type") or "") != "Global":
+            raise Unsupported("Global Variable %s: %r is not a global VI" % (el.get("uid"), target))
+        order = [x.get("uid") for x in (g.fp.find("root/ddoList") if g.fp.find("root/ddoList") is not None else [])]
+        hit = None
+        for f in g.fp.iter("SL__arrayElement"):
+            if f.get("class") == "fPDCO" and vi_label(f.find("ddo")) == name:
+                hit = f
+                break
+        if hit is None or hit.get("uid") not in order:
+            raise Unsupported("Global Variable %s: %r has no control %r" % (el.get("uid"), target, name))
+        idx = order.index(hit.get("uid"))
+        e = lvheap.typeid_elements(hit)[0]
+        tree = g.heap_type_tree(int(lvheap.TYPEID_RE.fullmatch(e.text.strip()).group(1)))
+        conp = int(g.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        pane = g.tree(g.flat_of_consolidated(conp))
+        ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
+        write = any(n for _, n in ins)
+        diag = self.diag_of(el)
+        got = self.instantiate("node/gRef/global/read", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no global variable part harvested")
+        node, _, src = got
+        term = node.find("termList")[0]
+        dco = term.find("dco")
+        if write:
+            # a WRITING gRef: the terminal is a sink (term objFlags 0x8000) and its DCO drops
+            # the output bit - the difference between the local read and write parts
+            tf = term.find("objFlags")
+            if tf is None:
+                tf = ET.Element("objFlags")
+                term.insert(0, tf)
+            tf.text = str(int(tf.text or 0) | 0x8000)
+            df = dco.find("objFlags")
+            if df is not None:
+                dco.remove(df)
+        pi = dco.find("paramIdx")
+        if idx == 0 and pi is not None:
+            dco.remove(pi)
+        elif idx:
+            if pi is None:
+                pi = ET.SubElement(dco, "paramIdx")
+            pi.text = str(idx)
+        dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)
+        node.find("connectorTM").text = "TypeID(%d)" % self.heap_tid(pane)
+        for x in node.iter("typeDesc"):
+            x.attrib.pop("_t", None)
+        lab = node.find("label/textRec/text")
+        if lab is not None:
+            lab.text = '"%s"' % os.path.basename(res["path"])
+        self.ends[(el.get("uid"), name)] = (term.get("uid"), diag)
+        for _, net in outs:
+            if net:
+                self.net_type[net] = unlabel(tree)
+        link = self.links.setdefault(res["path"], dict(res, pane=pane, offsets=[]))
+        link["offsets"].append(int(node.get("uid")))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Global Variable %r of %r <- %s" % (name, target, src))
+
     def add_feedback(self, el):
         """A Feedback Node is two heap nodes naming each other - hiddenFBNode (previous value =
         leftFeedback, initializer = initFeedback) and slaveFBInputNode (next value =
@@ -2900,11 +2974,16 @@ class Composer:
         # tunnel (objFlags 0x300801) with it and an AIXML-generated one without cond (0x801)
         # without (measured 2026-10-10); written only when the AIXML asks for it
         cond = outer_el.get("cond") or next((h.get("cond") for h in halves.values() if h.get("cond")), None)
-        if cond not in (None, "true") or (cond and d == "in"):
+        if cond not in (None, "true"):
             raise Unsupported("case tunnel %s: cond=%r is not composable yet" % (outer_el.get("_id"), cond))
+        f = outer.find("dco/objFlags")
         if d == "out":
-            f = outer.find("dco/objFlags")
             f.text = str((int(f.text) & ~0x300000) | (0x300000 if cond == "true" else 0))
+        elif cond == "true":
+            # NI exports an INPUT tunnel with cond="true" as well: its selTun carries 0x200000,
+            # the bit every cond="true" tunnel has (DataFinder_Pass_Fail_Analysis.vi: in
+            # 0x200800, out 0x200801 and 0x300801, all exported cond="true")
+            f.text = str(int(f.text) | 0x200000)
         case.find("termList").append(outer)
         ET.SubElement(case.find("tunnelList"), "SL__arrayElement", {"uid": outer.find("dco").get("uid")})
         self.ends[(outer_el.get("uid"), "in" if d == "in" else "out")] = (outer.get("uid"), parent)
@@ -3912,6 +3991,8 @@ class Composer:
                     self.add_static_ref(e)
                 elif e.tag == "Node" and nm == "Expression Node":
                     self.add_expr_node(e)
+                elif e.tag == "Node" and nm == "Global Variable":
+                    self.add_global(e)
                 elif e.tag == "Node" and nm == "Invoke Node":
                     self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):
