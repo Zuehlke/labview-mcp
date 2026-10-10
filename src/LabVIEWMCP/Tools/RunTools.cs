@@ -496,7 +496,10 @@ internal sealed class RunTools(LvaiConnection connection)
             inputs.Add(new LabViewCom.Input(name, value, text));
         }
 
-        var names = panel.Select(i => i.Name).Distinct().ToList();
+        // INDICATORS ONLY, as NI's helper reads them: Ctrl Val.Get All with its default answered
+        // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer
+        // has to look the same whichever backend ran, or a parser written for one breaks on the other.
+        var names = panel.Where(i => i.Indicator).Select(i => i.Name).Distinct().ToList();
         LabViewCom.RunResult run;
         try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct); }
         catch (LabViewCom.ComException e)
@@ -514,16 +517,25 @@ internal sealed class RunTools(LvaiConnection connection)
                 "LabVIEW refused to set: " + string.Join("; ", run.SetProblems) + ". Nothing ran.",
                 new { viPath = full, via = "ActiveX" });
 
+        // THE SAME SHAPE AS THE gRPC HELPER'S: LabVIEW's type tag, the Val text of a scalar, and the
+        // value as LabVIEW's flattened XML - generated from the value and its AIXML type, then read
+        // back exactly as LvValuesXml reads NI's. `literal` is the AIXML spelling beside it.
         var types = panel.GroupBy(i => i.Name).ToDictionary(g => g.Key, g => g.First().Type);
         var values = new JsonObject();
         foreach (var reading in run.Values)
+        {
+            var aixmlType = types.GetValueOrDefault(reading.Name) ?? "";
+            var xml = reading.Problem is null
+                ? ComValues.ToLabviewXml(reading.Name, aixmlType, reading.Raw) : null;
             values[reading.Name] = new JsonObject
             {
-                ["type"] = types.GetValueOrDefault(reading.Name),
-                ["value"] = reading.Value,
-                ["xml"] = null,
+                ["type"] = xml?.Name.LocalName ?? aixmlType,
+                ["value"] = xml is null ? reading.Value : xml.Element("Val")?.Value,
+                ["xml"] = xml?.ToString(),
+                ["literal"] = reading.Value,
                 ["problem"] = reading.Problem,
             };
+        }
 
         return new JsonObject
         {

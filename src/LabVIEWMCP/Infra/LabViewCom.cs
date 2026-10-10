@@ -125,8 +125,8 @@ internal static class LabViewCom
     /// <summary>One control to set: its name, the value already converted, and the text it came from.</summary>
     internal sealed record Input(string Name, object Value, string Text);
 
-    /// <summary>One control read back, or the reason it could not be.</summary>
-    internal sealed record Reading(string Name, string? Value, string? Problem);
+    /// <summary>One control read back - its literal and the raw .NET value - or the reason it could not be.</summary>
+    internal sealed record Reading(string Name, string? Value, string? Problem, object? Raw = null);
 
     internal sealed record RunResult(int ExecState, bool Ran, bool Finished, bool Aborted,
                                      long RunMs, IReadOnlyList<string> SetProblems,
@@ -189,7 +189,11 @@ internal static class LabViewCom
         var values = new List<Reading>();
         foreach (var name in names)
         {
-            try { values.Add(new Reading(name, ComValues.Format(Call(vi, "GetControlValue", name)), null)); }
+            try
+            {
+                var raw = Call(vi, "GetControlValue", name);
+                values.Add(new Reading(name, ComValues.Format(raw), null, raw));
+            }
             catch (Exception e) when (e is TargetInvocationException or COMException)
             {
                 values.Add(new Reading(name, null, Inner(e)));

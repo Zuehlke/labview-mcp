@@ -293,6 +293,45 @@ public sealed class AixmlBackendTests
         Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
     }
 
+    /// <summary>
+    /// The server's own helpers on the pylabview backend: composed once into their own folder,
+    /// reused while neither their AIXML nor the parts change, and a helper that does not exist is
+    /// a named problem, not a throw. lvai_active_project composes with the parts as committed.
+    /// </summary>
+    [Fact]
+    public async Task A_helper_is_composed_once_and_reused()
+    {
+        if (!ComposerHere()) return;
+
+        var (first, problem) = await ComposedHelpers.EnsureAsync("lvai_active_project.xml", 120, default);
+        Assert.True(first is not null, problem);
+        var written = File.GetLastWriteTimeUtc(first!);
+
+        var (second, _) = await ComposedHelpers.EnsureAsync("lvai_active_project.xml", 120, default);
+        Assert.Equal(first, second);
+        Assert.Equal(written, File.GetLastWriteTimeUtc(second!));
+        Assert.False(AixmlTools.ContainsCompiledCode(first!));
+
+        var (none, why) = await ComposedHelpers.EnsureAsync("lvai_no_such_helper.xml", 120, default);
+        Assert.Null(none);
+        Assert.Contains("lvai_no_such_helper.xml", why);
+    }
+
+    /// <summary>On pylabview lvai_open_file opens projects only; a VI is refused before LabVIEW is asked.</summary>
+    [Fact]
+    public async Task Opening_a_VI_is_refused_on_the_ActiveX_route()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        var vi = server.TempPath("any.vi");
+        await File.WriteAllBytesAsync(vi, [0]);
+
+        var result = await new ActionTools(server.Connection).OpenFileAsync(viPath: vi, backend: "pylabview");
+
+        Assert.Equal("notAvailableOnBackend", Res.Str(result, "errorKind"));
+        Assert.Equal("pylabview", Res.Str(result, "backend"));
+        Assert.Equal(0, server.Service.CountOf("OpenFile"));
+    }
+
     [Fact]
     public async Task Generate_vi_on_pylabview_skips_NI_validation_and_names_the_backend()
     {

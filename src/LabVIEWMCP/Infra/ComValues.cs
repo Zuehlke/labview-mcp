@@ -208,6 +208,108 @@ internal static class ComValues
         return rows.Append(']').ToString();
     }
 
+    // ------------------------------------------------------------ LabVIEW's flattened XML
+
+    private static readonly Dictionary<string, string> Tags = new(StringComparer.Ordinal)
+    {
+        ["double"] = "DBL", ["single"] = "SGL", ["extended"] = "EXT",
+        ["int8"] = "I8", ["int16"] = "I16", ["int32"] = "I32", ["int64"] = "I64",
+        ["uint8"] = "U8", ["uint16"] = "U16", ["uint32"] = "U32", ["uint64"] = "U64",
+        ["bool"] = "Boolean", ["string"] = "String", ["path"] = "Path",
+    };
+
+    private static readonly Dictionary<string, string> EnumTags = new(StringComparer.Ordinal)
+        { ["uint8"] = "EB", ["uint16"] = "EW", ["uint32"] = "EL" };
+
+    /// <summary>
+    /// A value read over ActiveX, written as LabVIEW's own Flatten To XML writes it - so the COM
+    /// route answers in the SAME shape as the gRPC helper, and every parser written against that
+    /// (the class tools read `error out` and their counts out of it) works on both. Null for a type
+    /// this does not cover; the caller then has the literal only.
+    ///
+    /// MEASURED 2026-10-10 against LabVIEW's output for the same VIs and inputs: element names, an
+    /// array element's EMPTY name, Dimsize, the one empty template element of an empty array,
+    /// NumElts, Boolean as 0/1, I32 as an integer. A DBL is written with 14 decimals and below 0.01
+    /// as `1.23400000000000E-3` - LabVIEW's shape, NOT its digits: it printed 5050 as
+    /// `5049.99999999999999`, which no exact conversion reproduces, so compare numbers, not text.
+    /// An enum's EW/EB/EL with its Choice list is LabVIEW's documented shape, not measured here.
+    /// </summary>
+    public static System.Xml.Linq.XElement? ToLabviewXml(string name, string type, object? value)
+    {
+        type = type.Trim();
+        static System.Xml.Linq.XElement Scalar(string tag, string name, string text) =>
+            new(tag, new System.Xml.Linq.XElement("Name", name), new System.Xml.Linq.XElement("Val", text));
+
+        if (Tags.TryGetValue(type, out var tag))
+            return Scalar(tag, name, LabviewText(type, value));
+
+        if (Braces(type) is { } parts && EnumTags.TryGetValue(parts.Head, out var enumTag))
+        {
+            var element = new System.Xml.Linq.XElement(enumTag, new System.Xml.Linq.XElement("Name", name));
+            foreach (var choice in SplitTop(parts.Body))
+                element.Add(new System.Xml.Linq.XElement("Choice", choice));
+            element.Add(new System.Xml.Linq.XElement("Val", LabviewText("uint16", value)));
+            return element;
+        }
+
+        if (Braces(type) is { Head: "cluster" } cluster && value is Array fieldsValue)
+        {
+            var fields = SplitTop(cluster.Body);
+            if (fields.Count != fieldsValue.Length) return null;
+            var element = new System.Xml.Linq.XElement("Cluster",
+                new System.Xml.Linq.XElement("Name", name),
+                new System.Xml.Linq.XElement("NumElts", fields.Count));
+            for (var i = 0; i < fields.Count; i++)
+            {
+                var field = fields[i];
+                var fieldType = FieldType(field);
+                var fieldName = field.Length > fieldType.Length ? field[(fieldType.Length + 1)..] : "";
+                if (ToLabviewXml(fieldName, fieldType, fieldsValue.GetValue(i)) is not { } child) return null;
+                element.Add(child);
+            }
+            return element;
+        }
+
+        if (Braces(type) is { Head: "array" } array && value is Array { Rank: 1 } items)
+        {
+            var elementType = array.Body.Trim();
+            var element = new System.Xml.Linq.XElement("Array",
+                new System.Xml.Linq.XElement("Name", name),
+                new System.Xml.Linq.XElement("Dimsize", items.Length));
+            // AN EMPTY ARRAY STILL CARRIES ONE ELEMENT, with an empty Val, as its type template.
+            if (items.Length == 0)
+            {
+                if (ToLabviewXml("", elementType, null) is not { } template) return null;
+                template.Element("Val")?.SetValue("");
+                element.Add(template);
+            }
+            foreach (var item in items)
+            {
+                if (ToLabviewXml("", elementType, item) is not { } child) return null;
+                element.Add(child);
+            }
+            return element;
+        }
+
+        return null;
+    }
+
+    private static string LabviewText(string type, object? value)
+    {
+        if (value is null) return type is "bool" ? "0" : type is "string" or "path" ? "" : "0";
+        if (type == "bool") return value is true ? "1" : "0";
+        if (Floats.Contains(type))
+        {
+            var d = Convert.ToDouble(value, Invariant);
+            if (d == 0 || Math.Abs(d) >= 0.01 || double.IsNaN(d) || double.IsInfinity(d))
+                return d.ToString("F14", Invariant);
+            var exponent = (int)Math.Floor(Math.Log10(Math.Abs(d)));
+            var mantissa = d / Math.Pow(10, exponent);
+            return mantissa.ToString("F14", Invariant) + "E" + exponent.ToString(Invariant);
+        }
+        return value is IFormattable number ? number.ToString(null, Invariant) : value.ToString() ?? "";
+    }
+
     // ------------------------------------------------------------ the AIXML spellings
 
     /// <summary>`head{body}` split at the first brace, or null for a type without one.</summary>

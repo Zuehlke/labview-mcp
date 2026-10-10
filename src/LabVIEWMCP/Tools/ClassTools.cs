@@ -158,8 +158,18 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         bool keepCarrier = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview NO STEP touches NI's service: the throwaway project is opened and closed,
+            the carrier composed, and NI's own class provider run, all through COMPOSED helpers over
+            LabVIEW's ActiveX server. LabVIEW must already be running. typedefFieldsJson is refused
+            there - the typedef binding has no such route yet.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_create_class", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             // ---- arguments, all of it before anything is written -------------------------
             if (string.IsNullOrWhiteSpace(className))
@@ -179,6 +189,10 @@ internal sealed class ClassTools(LvaiConnection connection)
             // a `typedef.X` marker in fields decides where X's placeholder sits.
             var (typedefFields, typedefRefusal) = TypedefFieldRequest(typedefFieldsJson, parsed, projectPath);
             if (typedefRefusal is not null) return typedefRefusal;
+            if (typedefFields.Count > 0 && choice.Name == AixmlBackend.PyLabview)
+                return Json.Error("notAvailableOnBackend",
+                    "typedefFieldsJson needs the typedef binding, which runs only on the grpc backend " +
+                    "so far. Create the class with backend grpc, or without the typedef fields.");
             parsed = WithTypedefPlaceholders(parsed, typedefFields);
 
             // pylabview is NO LONGER a precondition here. It was, while the private data control
@@ -301,7 +315,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var opened = await new ActionTools(connection).OpenFileAsync(
                     viPath: null, viName: null, projectUsed, Path.GetFileName(projectUsed), true,
-                    timeoutSeconds, ct: ct);
+                    timeoutSeconds, ct: ct, backend: choice.Name);
                 steps.Add(Step("openProject", opened));
                 if (ErrorCode(opened) is not 0)
                     return Outcome(false, "openProject", steps, total, classPath, null,
@@ -321,7 +335,8 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 var carrier = await new BulkTools(connection).GenerateViAsync(
                     carrierAixml, carrierPath, openVI: false, measurePane: false,
-                    panePattern: null, timeoutSeconds, ct: ct, measureDiagram: false);
+                    panePattern: null, timeoutSeconds, ct: ct, measureDiagram: false,
+                    backend: choice.Name);
                 steps.Add(Step("carrier", carrier));
                 if (!File.Exists(carrierPath))
                     return Outcome(false, "carrier", steps, total, classPath, null,
@@ -331,7 +346,8 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 // 3. NI's Add Class + Add Member Data, in one helper run
                 var helperRun = await RunCreateClassHelperAsync(
-                    classPath, parentClassPath, carrierPath, interfacePaths, timeoutSeconds, ct: ct);
+                    classPath, parentClassPath, carrierPath, interfacePaths, timeoutSeconds, ct: ct,
+                    backend: choice.Name);
                 steps.Add(new JsonObject { ["step"] = "provider", ["answer"] = Parsed(helperRun) });
 
                 var provider = ReadProviderRun(helperRun);
@@ -373,7 +389,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 //    to guard this is gone with the reason for it.
                 var closed = await new CloseTools(connection).CloseActiveProjectAsync(
                     helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                    timeoutSeconds: timeoutSeconds, ct: ct);
+                    timeoutSeconds: timeoutSeconds, ct: ct, backend: choice.Name);
                 steps.Add(Step("closeScratchProject", closed));
 
                 // A FAILED CLOSE IS A CONSEQUENCE FOR THE NEXT CALL, so it must not stay buried in
@@ -565,7 +581,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // next `--finish-project` or a reboot clears. Litter is the cheaper failure.
                 if (keepCarrier is false) TryDeleteDirectory(work);
             }
-        });
+        }), choice);
+    }
 
     // ---------------------------------------------------------------- create interface
 
@@ -1626,7 +1643,7 @@ internal sealed class ClassTools(LvaiConnection connection)
     private async Task<string> RunCreateClassHelperAsync(
         string classPath, string? parentClassPath, string carrierPath,
         IReadOnlyList<string> parentInterfaces, int timeoutSeconds,
-        CancellationToken ct)
+        CancellationToken ct, string backend = AixmlBackend.Grpc)
     {
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, CreateClassHelperAixmlFileName) : null;
@@ -1638,10 +1655,23 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         var helperVi = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers",
                                     "lvai_create_class.vi");
-        Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
-        if (HelperNeedsRebuild(aixml, helperVi) &&
-            await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
-            return failure;
+        if (backend == AixmlBackend.PyLabview)
+        {
+            // COMPOSED and run over ActiveX: NI's class provider is the same VI either way, only
+            // the road to it changes. It runs in LabVIEW's main instance and reaches the IDE's
+            // through Project:Active Project, exactly as from the add-on's instance.
+            var (composed, problem) = await ComposedHelpers.EnsureAsync(
+                CreateClassHelperAixmlFileName, timeoutSeconds, ct);
+            if (composed is null) return Json.Error("helperNotComposable", problem!);
+            helperVi = composed;
+        }
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
+            if (HelperNeedsRebuild(aixml, helperVi) &&
+                await GenerateAccessorHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is { } failure)
+                return failure;
+        }
 
         // ONLY THE INPUTS THAT HAVE A VALUE. The runner pairs names and values by POSITION and
         // refuses an empty one outright, because an empty value does not survive its split and
@@ -1682,7 +1712,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         return await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-            regenerateHelper: false, timeoutSeconds, ct: ct);
+            regenerateHelper: false, timeoutSeconds, backend: backend, ct: ct);
     }
 
 

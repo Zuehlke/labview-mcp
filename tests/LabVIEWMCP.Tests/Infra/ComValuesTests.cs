@@ -89,6 +89,54 @@ public sealed class ComValuesTests
         Assert.Equal("[[1,2],[3,4]]", ComValues.Format(new double[,] { { 1, 2 }, { 3, 4 } }));
     }
 
+    /// <summary>
+    /// LabVIEW's own Flatten To XML for the same VIs and inputs, read through the gRPC helper on
+    /// 2026-10-10 - the ground truth the COM route reproduces so the two answer alike. A DBL's
+    /// digits are LabVIEW's (it printed 5050 as 5049.99999999999999), so DBL values compare as
+    /// numbers; everything else compares as text.
+    /// </summary>
+    [Theory]
+    [InlineData("sum", "double", "7.25", "<DBL><Name>sum</Name><Val>7.25000000000000</Val></DBL>")]
+    [InlineData("out", "double", "-2", "<DBL><Name>out</Name><Val>-2.00000000000000</Val></DBL>")]
+    [InlineData("m", "int32", "42", "<I32><Name>m</Name><Val>42</Val></I32>")]
+    [InlineData("t", "string", "hi there", "<String><Name>t</Name><Val>hi there</Val></String>")]
+    [InlineData("consts", "array{int32}", "[1,2,3]",
+        "<Array><Name>consts</Name><Dimsize>3</Dimsize><I32><Name></Name><Val>1</Val></I32><I32><Name></Name><Val>2</Val></I32><I32><Name></Name><Val>3</Val></I32></Array>")]
+    [InlineData("values out", "array{double}", "[]",
+        "<Array><Name>values out</Name><Dimsize>0</Dimsize><DBL><Name></Name><Val></Val></DBL></Array>")]
+    [InlineData("pt out", "cluster{double.x,double.y}", "[1.5,2.5]",
+        "<Cluster><Name>pt out</Name><NumElts>2</NumElts><DBL><Name>x</Name><Val>1.50000000000000</Val></DBL><DBL><Name>y</Name><Val>2.50000000000000</Val></DBL></Cluster>")]
+    [InlineData("error out", "cluster{bool.status,int32.code,string.source}", "[false,0,]",
+        "<Cluster><Name>error out</Name><NumElts>3</NumElts><Boolean><Name>status</Name><Val>0</Val></Boolean><I32><Name>code</Name><Val>0</Val></I32><String><Name>source</Name><Val></Val></String></Cluster>")]
+    public void A_COM_value_is_written_as_LabVIEW_flattens_it(string name, string type, string literal,
+                                                               string labview)
+    {
+        var generated = ComValues.ToLabviewXml(name, type, Convert(literal, type));
+
+        Assert.NotNull(generated);
+        Assert.Equal(Normalised(System.Xml.Linq.XElement.Parse(labview)), Normalised(generated!));
+    }
+
+    /// <summary>Every DBL Val as a number, so LabVIEW's last-digit artefacts do not count.</summary>
+    private static string Normalised(System.Xml.Linq.XElement element)
+    {
+        var copy = new System.Xml.Linq.XElement(element);
+        foreach (var dbl in copy.DescendantsAndSelf("DBL"))
+            if (dbl.Element("Val") is { Value.Length: > 0 } val)
+                val.Value = double.Parse(val.Value, System.Globalization.CultureInfo.InvariantCulture)
+                    .ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        return copy.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
+    }
+
+    [Fact]
+    public void A_double_takes_LabVIEWs_shape_fixed_or_exponent()
+    {
+        Assert.Equal("0.25000000000000", ComValues.ToLabviewXml("x", "double", 0.25)!.Element("Val")!.Value);
+        Assert.Equal("1.23400000000000E-3", ComValues.ToLabviewXml("x", "double", 0.001234)!.Element("Val")!.Value);
+        Assert.Equal("1.00000000000000E-7", ComValues.ToLabviewXml("x", "double", 1e-7)!.Element("Val")!.Value);
+        Assert.Equal("0.00000000000000", ComValues.ToLabviewXml("x", "double", 0.0)!.Element("Val")!.Value);
+    }
+
     [Fact]
     public void Type_spellings_split_at_the_top_level_only()
     {

@@ -346,8 +346,21 @@ internal sealed class ActionTools(LvaiConnection connection)
             2026-09-25: loading five callees for a direct Call cost five round trips in the third
             ATM cold build. `alsoOpened` reports each one's own error code.
             """)]
-        string? viPaths = null) =>
-        await Rpc.GuardAsync(async () =>
+        string? viPaths = null,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview only a PROJECT is opened - with a composed helper over LabVIEW's ActiveX
+            server (Project.Open plus its window), checked for being ACTIVE the same way; a VI is
+            refused. LabVIEW must already be running.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_open_file", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        if (choice.Name == AixmlBackend.PyLabview)
+            return AixmlTools.WithBackend(await Rpc.GuardAsync(() =>
+                OpenProjectOverComAsync(viPath, projectPath, viPaths, checkActive, timeoutSeconds, ct)),
+                choice);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             // FORWARD SLASHES ARE NORMALISED FIRST. Measured 2026-09-30 as an A/B on one existing
             // project: `C:/Temp/.../Accept.lvproj` answered Error 1025 twice - the code LabVIEW gives
@@ -490,7 +503,81 @@ internal sealed class ActionTools(LvaiConnection connection)
                 ("hint", active is false
                     ? JsonValue.Create(NoActiveProjectHint(response.ErrorCode, retry is not null))
                     : null));
-        });
+        }), choice);
+    }
+
+    /// <summary>
+    /// lvai_open_file on the pylabview backend: a PROJECT opened by the composed lvai_open_project
+    /// helper over ActiveX - Project.Open and Open Window, in LabVIEW's main instance, which is the
+    /// IDE's. Measured 2026-10-10: the project was the active one at once, and the composed close
+    /// closed it again. The answer keeps lvai_open_file's fields.
+    /// </summary>
+    private async Task<string> OpenProjectOverComAsync(string? viPath, string? projectPath,
+                                                       string? viPaths, bool checkActive,
+                                                       int timeoutSeconds, CancellationToken ct)
+    {
+        viPath = NormalizedPath(viPath);
+        projectPath = NormalizedPath(projectPath);
+        if (viPath is { Length: > 0 } || ViPathList(viPaths).Any())
+            return Json.Error("notAvailableOnBackend",
+                "Opening a VI in the IDE is not built for the pylabview backend - only a project. " +
+                "Use the grpc backend for a VI.", new { viPath, viPaths });
+        if (projectPath is not { Length: > 0 })
+            return Json.Error("badArguments", "Name the .lvproj to open in projectPath.");
+        if (OpenFilePrecheck(null, null, projectPath, Path.GetFileName(projectPath)) is { } refusal)
+            return refusal;
+
+        var (helper, problem) = await ComposedHelpers.EnsureAsync("lvai_open_project.xml", timeoutSeconds, ct);
+        if (helper is null)
+            return Json.Error("helperNotComposable", problem!, new { projectPath });
+
+        async Task<(int Code, string Source, string? Failure)> OpenAsync()
+        {
+            var run = await new RunTools(connection).RunViAndReadValuesAsync(
+                helper, new JsonObject { ["project path"] = projectPath }.ToJsonString(),
+                timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+            var answer = JsonNode.Parse(run) as JsonObject;
+            if (answer?["ok"]?.GetValue<bool>() is not true) return (-1, "", run);
+            var xml = answer["values"]?["error out"]?["xml"]?.GetValue<string>() ?? "";
+            var code = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+            var source = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>source</Name>\s*<Val>([^<]*)");
+            return (code.Success ? int.Parse(code.Groups[1].Value) : -1,
+                    source.Success ? source.Groups[1].Value : "", null);
+        }
+
+        var (errorCode, errorSource, failure) = await OpenAsync();
+        if (failure is not null) return failure;
+        var result = new JsonObject
+        {
+            ["errorCode"] = errorCode,
+            ["errorMessage"] = errorCode == 0 ? "No Error" : errorSource,
+            ["via"] = "ActiveX",
+        };
+        if (!checkActive || errorCode != 0) return Json.Document(result);
+
+        var (active, note, activePath) = await ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
+        JsonObject? retry = null;
+        if (active is false && LabViewWindow.BringToFront() is { } fronted)
+        {
+            var (againCode, _, _) = await OpenAsync();
+            (active, note, activePath) = await ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
+            retry = new JsonObject
+            {
+                ["ran"] = true, ["frontedProcessId"] = fronted, ["openErrorCode"] = againCode,
+                ["projectBecameActive"] = active,
+            };
+        }
+        result["projectBecameActive"] = active;
+        result["activeProjectPath"] = activePath;
+        result["activeProjectCheck"] = note;
+        result["foregroundRetry"] = retry;
+        if (active is false)
+        {
+            result["errorKind"] = "projectDidNotBecomeActive";
+            result["hint"] = NoActiveProjectHint(errorCode, retry is not null);
+        }
+        return Json.Document(result);
+    }
 
     /// <summary>
     /// Whether a project is active, by reading <c>Project:Active Project</c> and closing the
@@ -500,8 +587,11 @@ internal sealed class ActionTools(LvaiConnection connection)
     /// project": a missing helper is not evidence about the IDE's state.
     /// </summary>
     internal async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
-        int timeoutSeconds, CancellationToken ct)
+        int timeoutSeconds, CancellationToken ct, string backend = AixmlBackend.Grpc)
     {
+        if (backend == AixmlBackend.PyLabview)
+            return await ProjectIsActiveOverComAsync(timeoutSeconds, ct);
+
         var source = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, "lvai_active_project.xml") : null;
         if (source is null || !File.Exists(source))
@@ -545,6 +635,29 @@ internal sealed class ActionTools(LvaiConnection connection)
         {
             return (null, $"not checked - {failure.Message}", null);
         }
+    }
+
+    /// <summary>
+    /// The same check with the COMPOSED lvai_active_project helper over ActiveX - the pylabview
+    /// backend's. The run answer has the gRPC shape, so it is read the same way.
+    /// </summary>
+    private async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveOverComAsync(
+        int timeoutSeconds, CancellationToken ct)
+    {
+        var (helper, problem) = await ComposedHelpers.EnsureAsync("lvai_active_project.xml", timeoutSeconds, ct);
+        if (helper is null) return (null, "not checked - " + problem, null);
+        var run = await new RunTools(connection).RunViAndReadValuesAsync(
+            helper, "{}", timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+        var values = (JsonNode.Parse(run) as JsonObject)?["values"] as JsonObject;
+        var code = (values?["code"] as JsonObject)?["value"]?.GetValue<string>();
+        if (!int.TryParse(code, out var errorCode))
+            return (null, "not checked - the helper returned no error code over ActiveX.", null);
+        var activePath = (values?["project path"] as JsonObject)?["value"]?.GetValue<string>();
+        return errorCode == 0
+            ? (true, "a project is active: " +
+                     (string.IsNullOrWhiteSpace(activePath) ? "(path not reported)" : activePath), activePath)
+            : (false, $"NO project is active - Project:Active Project answered {errorCode}. " +
+                      "1055 is the expected code for that state.", null);
     }
 
     [McpServerTool(Name = "lvai_find_palette_item", Destructive = true,

@@ -71,8 +71,11 @@ the others.
 | `lvai_convert_vi_to_aixml` | `vi2aixml.py`; never cached (the export cache holds NI's output), `readerNote` carries the measured fidelity |
 | `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` over ActiveX in its place and stops on a broken VI. **No step touches NI's service**: the diagram size is LabVIEW's own `PrintVIToHTML` over ActiveX, the connector pane is read from the FILE by `pylv-conpane.py`, `panePattern` rebuilds without closing a project. A VI with no conIdx at all has no pane — the composer writes none — and says so |
 | `lvai_generate_vis` | each entry as `lvai_generate_vi`, with the batch's backend |
+| `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry. A VI is refused (`notAvailableOnBackend`) |
+| `lvai_close_active_project` | the composed close helper over ActiveX - the same Save and Close, the same sweep |
+| `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` is refused; the typedef binding has no such route yet |
 | `lvai_exec_state` | `ExecState` over ActiveX — no helper VI; no linker errors, which ActiveX does not expose |
-| `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. Values come back as AIXML literals (`7.25`, `[1.5,2,3]`, `[false,0,]`) with the reader's type (`double`, not `DBL`) and `xml` null. `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
+| `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
@@ -116,6 +119,14 @@ shipping the composer is a separate step from this switch. Until then `pylabview
 - **The pane from the file matches NI's probe**: pattern 4833, 0 violations, 1 warning and the same
   corrected assignment on both. `lvai_generate_vi` with every step on: about 1 s, NI's service never
   touched.
+- **`lvai_create_class` with NI's service UNREACHABLE** (`LABVIEW_GRPC_PORT` set to a dead port, so
+  any hidden gRPC call would have failed): `ok: true` in 5.1 s, every step over ActiveX, and a class
+  that matches the same class created over grpc - 4 fields, 6681 bytes of private data, the `.lvclass`
+  files differing only in the binary blocks that carry the class name. The open/close cycle on its
+  own: before no active project (1055), after the composed open the requested project active at once
+  without fronting, after the composed close none again.
+- **Run answers alike on both backends**: 11 of 11 values of the composer's test VIs - names, LabVIEW
+  type tags and flattened XML - once the COM route generated LabVIEW's XML and read indicators only.
 - **`lvai_generate_vi` answered `ok: true` with nothing vouching for the VI** — NI's validation
   skipped by design, executability unreadable without LabVIEW — and its note spoke only of the pane;
   the reason sat inside the convert step. The note now says `NOTHING VOUCHES FOR THIS VI'S WIRING`
@@ -144,9 +155,14 @@ teach - plus control-refnum types the composer cannot build yet, and Delacor's D
 which live under `project\` where the composer does not search. Two helpers compose and are broken.
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
-where a release gets its parts is the user's open decision. **And no tool runs its helper over
-ActiveX yet**: that is the next step, with one untested question - over ActiveX a helper runs in
-LabVIEW's main application instance instead of the AI add-on's.
+where a release gets its parts is the user's open decision. **One tool runs its helpers over
+ActiveX so far, `lvai_create_class`** (with `lvai_open_file` and `lvai_close_active_project`), and
+it answered the instance question: in LabVIEW's main instance NI's class provider found the active
+project and built the same class. **It needs the harvested parts** - with the parts as committed
+its helper is not composable and the call answers `helperNotComposable` - so until the parts
+decision it runs with `LABVIEWMCP_AIXML_PARTS` pointing at a harvested copy. Composed helpers are
+cached in `%TEMP%\LabVIEWMCP\helpers-pylabview`, apart from NI's, and rebuilt when their AIXML or
+the parts in use change.
 `experiments/aixml-without-grpc/FINDINGS.md` §7a has the per-kind table (source tree only).
 
 ## Not covered, and not measured

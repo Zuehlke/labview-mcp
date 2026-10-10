@@ -169,8 +169,18 @@ internal sealed class CloseTools(LvaiConnection connection)
             """)]
         string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the close helper is COMPOSED and run over LabVIEW's ActiveX server - the
+            same Save and Close, the same sweep afterwards. helperViPath and regenerateHelper apply
+            to the grpc helper only.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_close_active_project", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        var overCom = choice.Name == AixmlBackend.PyLabview;
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             var aixml = helperAixmlPath ?? DefaultProjectHelperAixmlPath()
                 ?? throw new FileNotFoundException(
@@ -185,7 +195,15 @@ internal sealed class CloseTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (overCom)
+            {
+                // The COMPOSED helper, in its own folder - NI's helper above is not touched.
+                var (composed, problem) = await ComposedHelpers.EnsureAsync(
+                    ProjectHelperAixmlFileName, timeoutSeconds, ct);
+                if (composed is null) return Json.Error("helperNotComposable", problem!);
+                helperVi = composed;
+            }
+            else if (regenerateHelper || !File.Exists(helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
@@ -205,7 +223,7 @@ internal sealed class CloseTools(LvaiConnection connection)
             if (pathFrom is null)
             {
                 var (active, _, activePath) = await new ActionTools(connection)
-                    .ProjectIsActiveAsync(timeoutSeconds, ct);
+                    .ProjectIsActiveAsync(timeoutSeconds, ct, choice.Name);
                 if (active is true && activePath is { Length: > 0 } && File.Exists(activePath))
                 {
                     projectPath = activePath;
@@ -215,7 +233,8 @@ internal sealed class CloseTools(LvaiConnection connection)
 
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
-                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+                backend: choice.Name, ct: ct);
 
             var described = DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
                                                  wall.ElapsedMilliseconds, projectPath);
@@ -231,7 +250,8 @@ internal sealed class CloseTools(LvaiConnection connection)
             }
             catch (System.Text.Json.JsonException) { }
             return described;
-        });
+        }), choice);
+    }
 
     /// <summary>
     /// Sweep the project LabVIEW has just saved and closed.

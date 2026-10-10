@@ -19,8 +19,9 @@ The server also exposes its five embedded documents as **MCP resources** —
 resources rather than call tools.
 
 `lvai_validate_aixml`, `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`
-and `lvai_generate_vis` take a `backend`, and so do `lvai_exec_state` and
-`lvai_run_vi_and_read_values`: `grpc` — NI's RPCs named in the tables below, the default — or
+and `lvai_generate_vis` take a `backend`, and so do `lvai_exec_state`,
+`lvai_run_vi_and_read_values`, `lvai_open_file` (projects), `lvai_close_active_project` and
+`lvai_create_class`: `grpc` — NI's RPCs named in the tables below, the default — or
 `pylabview`, our own composer, which writes and reads a VI with no NI service and no LabVIEW, and
 reaches a running LabVIEW over its ActiveX server where a question needs one.
 [AIXML backends](../aixml-backends.md) has the switch and what each one covers.
