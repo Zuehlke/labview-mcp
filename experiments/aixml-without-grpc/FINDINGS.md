@@ -884,6 +884,66 @@ refusals.
 * `%TEMP%` was wiped by something outside this session at 20:34, taking the scratchpad with it;
   work files moved to `C:\temp\aixml-no-grpc`.
 
+## 7a. The server's own helper VIs (Phase 3, 2026-10-10)
+
+The VI Server tools of this server - class creation, swaps, typedefs, LUnit, DQMH, renders - work
+by running HELPER VIs generated from `scripts/*.xml`, today through NI's converter and
+`RunVIAsTopLevel`. Without Nigel those helpers would have to be COMPOSED, and run over ActiveX.
+`helper_coverage.py` measured how far that reaches, through the built server over raw stdio, with
+NI's converter on the same documents as the control arm. 81 documents: 74 helpers, 4 skeletons, 3
+LUnit templates. **0 crashes.**
+
+| | NI's converter | composer, parts as committed | composer, parts harvested from NI-built helpers |
+|---|---|---|---|
+| builds | 63 (18 are `Error 53`: DQMH helpers that resolve only with Delacor's VIs loaded) | 9 | **31** |
+| executable over ActiveX | 63 | 7 | **29** |
+
+`helper-coverage.tsv` has the first two columns per helper, `helper-coverage-harvested.tsv` the
+third. NI's helpers read the SAME execution state over gRPC and over ActiveX, all 63 - so the
+instrument agrees with itself before it is used on the composer.
+
+**One property was most of the gap: `Application` on `{LV.Project}` blocked 28 helpers** - the
+hop into the IDE's application instance that nearly every class and project helper makes. The
+table already held it as `App Ref`, harvested from NI's `BuildMonitor_ContextLoader.vi`; the
+catalogue name `Application` was simply never seen. Harvesting the NI-BUILT helpers
+(`harvest_parts.py <copy-of-parts> @list --props`, then once more without `--props`) added it with
+the identical code 655397901, plus 35 more property rows and invoke parts for `Project.Close`,
+`Print.VI To HTML`, `Constant.Replace`, `Control.Create Control Ref`, `Copy Selection` and the icon
+methods, and the `Flatten`/`Unflatten To XML` primitives. The wire tables did not change. These
+parts come from OUR AIXML built by NI's converter - the "generated probes" source §6a prefers over
+NI's shipped VIs - and they are NOT committed: where a release gets its parts is still the user's
+decision. Reproduce with the two scripts and a copy of `parts\`, `LABVIEWMCP_AIXML_PARTS` pointing
+at it.
+
+**Composed helpers compute what NI's do.** `helper_parity.py` ran six read-only helpers both ways
+over ActiveX with the same inputs - `lvai_active_project`, `lvai_vis_in_memory`, `lvctl_kind` on
+NI's DAQmx task control, `lvbd_pane_typedefs` on `AggHandler\Bounds.vi` (both typedefs found,
+`State.ctl` named), `lvbd_broken_reason` on a broken VI, `lvdoc_print` - and every output was
+identical, the file sets of the print included.
+
+**What the 29 cover** - the class route (`lvai_create_class`, `lvai_create_interface`,
+`lvai_add_class_method`, `lvai_add_class_field`, `lvai_create_override`), `lvai_swap_subvis`,
+`lvai_close_active_project`, `lvai_close_vi`, the typedef checks and binds (`lvai_resave_ctl`,
+`lvai_bind_pane_typedef`, `lvbd_bind_constant`, `lvbd_coercion_dots`, `lvbd_pane_typedefs`,
+`lvctl_kind`), `lvdoc_print`, the LUnit pair, `lmock_generate_mock`, `lvai_create_actor_library`.
+
+**What blocks the rest, by kind:**
+
+| blocker | helpers | nature |
+|---|---|---|
+| a CONTROL REFNUM type - `ref{LV.Cluster}`, `ref{LV.Enum}`, `ref{LV.Boolean}`, `ref{LV.String}` | 9 | composer: a refnum carrying a control class is not composable yet. `lvai_create_accessors`, the typedef binders and the typed run helper |
+| a CALL the composer cannot resolve - DQMH: Delacor's libraries are under `project\`, which the composer does not search, and helpers calling helpers | 13 | the sibling half is an artefact of this measurement (every VI got a `P3 py` prefix, so `lvdqmh_pick_event.vi` was nowhere); the library half needs `project\Delacor` as a search folder |
+| terminal NAMES: `Flatten To XML` has no `anything`, `Unflatten From XML` no `xml string`, `New VI` no `vi type (standard vi)`, an invoke part without `Path`, `position`, `Controls`, `Value` | 16 | data: learnable from NI exports of the NI-built helpers (`learn_names_full.py`), or invoke parts re-harvested from them |
+| method ALIASES: AIXML says `Save VI Icon to File`, the heap stores `VI Icon.Save to File` | 2 | data: the method counterpart of `alias_props.py` |
+| one construct each: `Label.Text` (dotted), concat tunnel, `readLines`, user-event data, Web Browser refnum, Unbundle on an array | 7 | composer |
+| templates with `{{TYPE}}` placeholders | 3 | not meant to compose |
+| **composed but BROKEN**: `lvai_inventory`, `lvai_create_message_class` | 2 | composer; NI builds both executable, LabVIEW's broken-reason list is empty, cause not found |
+
+**What this does NOT show.** A composed, executable, output-identical helper is not yet a tool that
+runs without Nigel: the tools call `RunVIAsTopLevel`, and over ActiveX the helper runs in LabVIEW's
+MAIN application instance rather than the AI add-on's. Helpers that hop into the IDE's instance
+through `Project:Active Project` should not care, and that is untested.
+
 ## 8. Files
 
 | file | |

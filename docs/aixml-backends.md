@@ -122,6 +122,33 @@ shipping the composer is a separate step from this switch. Until then `pylabview
   and why. `ok` stays true, as it does for `measurePane: false`: the VI is written, and the note
   carries what was not checked.
 
+## Could the helper-based tools run without NI's service? (measured 2026-10-10)
+
+The VI Server tools - class creation, swaps, typedefs, LUnit, DQMH, renders - run HELPER VIs built
+from `scripts/*.xml`, today by NI's converter and `RunVIAsTopLevel`. Over all 81 documents, through
+the built server, with NI's converter as the control (`experiments/aixml-without-grpc/helper_coverage.py`,
+0 crashes):
+
+| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers |
+|---|---|---|---|
+| builds | 63 | 9 | **31** |
+| executable over ActiveX | 63 | 7 | **29** |
+
+One property was most of the gap: `Application` on `{LV.Project}` - the hop into the IDE's
+instance - blocked 28 helpers, and harvesting the NI-built helpers supplied it. **Composed helpers
+compute what NI's do**: six read-only ones gave identical outputs both ways over ActiveX. The 29
+include the class route (`lvai_create_class`, `_interface`, `_add_class_method`, `_add_class_field`),
+`lvai_swap_subvis`, the project close, the typedef checks, `lvdoc_print` and LUnit. What blocks the
+rest is mostly DATA - terminal names and method aliases that NI's exports of the same helpers would
+teach - plus control-refnum types the composer cannot build yet, and Delacor's DQMH libraries,
+which live under `project\` where the composer does not search. Two helpers compose and are broken.
+
+**The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
+where a release gets its parts is the user's open decision. **And no tool runs its helper over
+ActiveX yet**: that is the next step, with one untested question - over ActiveX a helper runs in
+LabVIEW's main application instance instead of the AI add-on's.
+`experiments/aixml-without-grpc/FINDINGS.md` §7a has the per-kind table (source tree only).
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW

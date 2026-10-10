@@ -1,0 +1,82 @@
+helper	tools	ni_convert	ni_exec_grpc	ni_exec_com	ni_reason	py_compose	py_exec_com	py_reason	ni_s	py_s
+lmock_generate_mock.xml	MockTools	0	1	1		composed	1		7.35	2.5
+lvai_active_project.xml	ActionTools	0	1	1		composed	1		0.21	0.63
+lvai_add_class_field.xml	ClassFieldTools ClassTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	1.05	0.2
+lvai_add_class_method.xml	AixmlCheck AixmlTools ClassMethodTools ClassTools ConnectorPane HelperCache LUnitTools MethodTestTools TypedefTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	2.1	0.61
+lvai_add_one_to_library.xml	LibraryTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	0.79	0.27
+lvai_bind_pane_typedef.xml	TypedefTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	1.43	0.36
+lvai_build_message_do.xml		0	1	1		composerRefused		Property Node 4210: property 'Application' of LV.Project is not in the harvested table	1.91	0.29
+lvai_class_names.xml		0	1	1		composerRefused		Unbundle By Name 72: input is Array, not a cluster	0.3	0.22
+lvai_close_active_project.xml	AixmlTools BulkTools ClassTools CloseTools Corpus DqmhHeadless GraftTools MalleableTools MockTools TestTools	0	1	1		composerRefused		Invoke Node 40: no invoke node LV.Project.Close harvested yet	0.2	0.19
+lvai_close_own_panel.xml	RunTools	0	1	1		composed	1		0.25	0.59
+lvai_close_vi.xml	ClassTools Classes CloseTools ProjectMembership PyLabviewTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	0.25	0.18
+lvai_create_accessors.xml	ClassBindTools ClassFieldTools ClassTools Classes CloseTools CtlTools LUnitTools LvClass TestTools TypedefTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	5.06	0.22
+lvai_create_actor_library.xml	LibraryTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	0.57	0.23
+lvai_create_class.xml	ActorFrameworkTools ClassBindTools ClassFieldTools ClassTools Classes CloseTools DqmhTools HelperCache LUnitTools LvClass LvaiConnection MockTools StatusTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	1.0	0.23
+lvai_create_interface.xml	ClassTools MockTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	0.59	0.21
+lvai_create_message_class.xml	ActorFrameworkTools	0	1	1		composerRefused		Property Node 4210: property 'Application' of LV.Project is not in the harvested table	3.72	0.33
+lvai_create_override.xml		0	1	1		composerRefused		Property Node 4210: property 'Application' of LV.Project is not in the harvested table	1.88	0.28
+lvai_discuss.xml	DiscussTools MonitorTools	0	1	1		composerRefused		Node 'Flatten To XML' (primResID 8402) has no harvested part	0.69	0.22
+lvai_exec_state.xml	ActorFrameworkTools AixmlTools BulkTools ClassFieldTools DqmhEventEditTools DqmhNewModuleTools EventDataFieldTools ExecStateTools LibraryTools MalleableTools MalleableVi RunTools WireEventTools	0	1	1		composerRefused		Property Node 5040: property 'VI Linker Errors' of LV.VI is not in the harvested table	0.28	0.18
+lvai_inventory.xml		0	1	1		composed	0		0.29	0.66
+lvai_resave_ctl.xml	CtlTools TypedefCreateTools TypedefTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	0.32	0.21
+lvai_run_and_read.xml	ClassTools Classes DqmhHeadless DqmhTools DqmhUnitTestTools RunTools	0	1	1		composerRefused		Invoke Node 160: LV.VI.Ctrl Val.Get All has no output 'Controls'	0.41	0.23
+lvai_run_and_read_typed.xml	DqmhTools RunTools	0	1	1		composerRefused		type 'ref{LV.Enum}' is a control refnum (it carries a stdRing), not composable yet	1.09	0.21
+lvai_run_for_ms.xml	RunTools	0	1	1		composerRefused		Invoke Node 5500: LV.VI.Ctrl Val.Get All has no output 'Controls'	2.0	0.33
+lvai_swap_subvis.xml	BulkTools CloseTools Json LUnitTools MalleableTools MethodTestTools MockTools PlaceholderTools SwapTools TestTools ToolArguments	0	1	1		composerRefused		Invoke Node 420: no invoke node LV.Constant.Replace harvested yet	1.23	1.49
+lvai_typedef_bind.xml	TypedefFlattenTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	0.72	0.19
+lvai_typedef_discon.xml	TypedefFlattenTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	1.06	0.22
+lvai_typedef_tree.xml	TypedefFlattenTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	1.1	0.24
+lvai_vis_in_memory.xml		0	1	1		composerRefused		Property Node 32: property 'Application' of LV.Project is not in the harvested table	0.41	0.19
+lvai_wire_dyn_events.xml	CloseTools WireEventTools	0	1	1		composerRefused		Property Node 4221: property 'Application' of LV.Project is not in the harvested table	3.27	0.25
+lvbd_bind_constant.xml	TypedefTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	1.22	0.29
+lvbd_bind_control_refs.xml	BindReferenceTools	0	1	1		composerRefused		Property Node 4221: property 'Application' of LV.Project is not in the harvested table	1.71	0.29
+lvbd_broken_reason.xml		0	1	1		composerRefused		Property Node 4211: property 'Application' of LV.Project is not in the harvested table	0.49	0.2
+lvbd_broken_wires.xml		0	1	1		composerRefused		Property Node 4211: property 'Application' of LV.Project is not in the harvested table	0.54	0.21
+lvbd_coercion_dots.xml	TypedefTools	0	1	1		composerRefused		Property Node 210: property 'Coercion Dot?' of LV.Terminal is not in the harvested table	0.64	0.22
+lvbd_connect_by_names.xml	DqmhFrameTools	0	1	1		composed	1		1.02	1.03
+lvbd_fill_unwired_inputs.xml	DqmhHeadless	0	1	1		composed	1		0.58	0.79
+lvbd_graft_clear.xml	GraftTools	0	1	1		composerRefused		Property Node 4221: property 'Application' of LV.Project is not in the harvested table	0.85	0.23
+lvbd_graft_paste.xml	GraftTools	0	1	1		composerRefused		Property Node 4221: property 'Application' of LV.Project is not in the harvested table	0.67	0.21
+lvbd_graft_rewire.xml	GraftTools	0	1	1		composerRefused		type 'ref{LV.Boolean}' is a control refnum (it carries a stdBool), not composable yet	2.98	0.22
+lvbd_pane_typedefs.xml	TypedefTools	0	1	1		composed	0		0.48	0.65
+lvbd_set_constant.xml	ConstantTools	0	1	1		composerRefused		Node 'Unflatten From XML' (primResID 8401) has no harvested part	0.85	0.21
+lvctl_kind.xml	CtlTools	0	1	1		composerRefused		Property Node 26: property 'Control VI Type' of LV.VI is not in the harvested table	0.24	0.18
+lvdoc_get_icon.xml		0	1	1		composerRefused		Invoke Node 38: no invoke node LV.VI.Save VI Icon to File harvested yet	0.24	0.18
+lvdoc_print.xml	RenderTools	0	1	1		composerRefused		Invoke Node 30: no invoke node LV.VI.Print.VI To HTML harvested yet	0.28	0.18
+lvdoc_set_icon.xml	IconTools	0	1	1		composerRefused		Invoke Node 30: no invoke node LV.VI.Set VI Icon from File harvested yet	0.33	0.18
+lvdqmh_close_modules.xml	DqmhEventEditTools DqmhHeadless	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4304: no DQMH New Event.lvlib in the installation or near the caller	0.09	1.02
+lvdqmh_convert_event.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.11	0.97
+lvdqmh_create_rt_tester.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.13	0.98
+lvdqmh_dirty_members.xml	DqmhHeadless	0	1	1		composerRefused		Property Node 4211: property 'Application' of LV.Project is not in the harvested table	0.55	0.2
+lvdqmh_find_testers.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4305: no DQMH New Event.lvlib in the installation or near the caller	0.1	0.99
+lvdqmh_module_types.xml	DqmhTemplateTools	0	1	1		composerRefused		Property Node 4222: property 'Application' of LV.Project is not in the harvested table	0.37	0.23
+lvdqmh_new_module.xml	DqmhNewModuleTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: no DQMH New Module.lvlib in the installation or near the caller	0.12	0.99
+lvdqmh_new_unit_test.xml	DqmhUnitTestTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: no DQMH New Event.lvlib in the installation or near the caller	0.15	1.01
+lvdqmh_pick_event.xml	DqmhEventEditTools DqmhHeadless	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: no DQMH New Event.lvlib in the installation or near the caller	0.12	1.08
+lvdqmh_place_frame_handler.xml	DqmhFrameTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Property Node 4221: property 'Application' of LV.Project is not in the harvested table	0.29	0.29
+lvdqmh_remove_do_something.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.12	0.99
+lvdqmh_remove_event.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.14	1.02
+lvdqmh_rename_event.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.12	1.0
+lvdqmh_rename_module.xml	DqmhEventEditTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation	0.1	0.99
+lvdqmh_save_library.xml	DqmhEventEditTools	0	1	1		composerRefused		Property Node 4215: property 'Application' of LV.Project is not in the harvested table	0.23	0.2
+lvdqmh_script_new_event.xml	DqmhHeadless	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Call 4300: no DQMH New Event.lvlib in the installation or near the caller	0.15	1.04
+lvdqmh_wire_tester_event.xml	DqmhHeadless	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		Property Node 4211: property 'Application' of LV.Project is not in the harvested table	0.14	0.23
+lvlu_add_test_method.xml	LUnitTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	1.45	0.29
+lvlu_run_tests.xml	LUnitTools	0	1	1		composed	1		4.92	2.55
+lvpane_probe.xml	PaneTools	0	1	1		composerRefused		Property Node 24: property 'Number of Connection Terminals' of LV.ConnectorPane is not in the harvested table	0.37	0.18
+lvpane_sweep.xml	CommandLine ConnectorPanePatterns Panes	0	1	1		composerRefused		Node 'Read from Text File': mode readLines=true is not composable yet	0.37	0.19
+lvpdc_bind_typedef.xml	ClassBindTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	0.53	0.19
+lvpdc_export.xml	ClassBindTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	0.34	0.21
+lvpdc_export_original_lv2025.xml		0	1	1		composerRefused		Node 'New VI' has no terminal 'vi type (standard vi)' (known: ?parm11, ?parm5, ?parm6, ?parm7, ?parm9, error in (no error), error out, template, vi refnum)	0.35	0.28
+lvpdc_import.xml	ClassBindTools	0	1	1		composerRefused		Property Node 22: property 'Application' of LV.Project is not in the harvested table	0.41	0.2
+lvpdc_import_original_lv2025.xml		0	1	1		composerRefused		Invoke Node 187: LV.Control.Move has no input 'position'	0.42	0.24
+lvtd_bind_elements.xml	TypedefCreateTools	0	1	1		composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet	0.81	0.19
+lvtd_make_typedef.xml	TypedefCreateTools	0	1	1		composerRefused		Node 'New VI' has no terminal 'vi type (standard vi)' (known: ?parm11, ?parm5, ?parm6, ?parm7, ?parm9, error in (no error), error out, template, vi refnum)	0.56	0.2
+aixml-skeletons/accumulate-across-a-loop.xml		0	1	1		composed	1		0.44	1.74
+aixml-skeletons/user-event-two-loops.xml		0	0	0		composerRefused		Event Data Node 4244: '<Tick>: User Event' events are not composable yet	0.15	0.26
+aixml-skeletons/web-browser-read-page-title.xml		0	1	1		composerRefused		type 'ref{LV.WebBrowser}' is not composable yet	0.97	0.17
+aixml-skeletons/web-browser-title-poll.xml		53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		type 'ref{LV.String}' is a control refnum (it carries a stdString), not composable yet	0.16	0.18
+templates/lunit/defaults.xml	ActorFrameworkTools BulkTools ClassBindTools ClassFieldTools ClassMethodTools ClassTools CommandLine DiagnosingTool DqmhHeadless FlatDefaults LUnitScaffold LUnitTools LibraryTools LvClass MockTools RunTools SwapTools TestTools TypedefTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		type '{{TYPE1}}' is not composable yet	0.3	0.2
+templates/lunit/independence.xml	LUnitScaffold LUnitTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		type '{{TYPE1}}' is not composable yet	0.27	0.2
+templates/lunit/round-trip.xml	AixmlCheck AixmlTools CommandLine Corpus LUnitScaffold LUnitTools PyLabviewTools TestTools	53	None		Error 53 occurred at LV AI Core.lvlibp:VI generator.vi Possible reason(s): LabVIEW: (Hex 0x35) Manager call not supported.	composerRefused		type '{{TYPE}}' is not composable yet	0.11	0.19

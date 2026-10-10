@@ -1109,8 +1109,12 @@ that run tool take `backend` too. ActiveX ATTACHES ONLY, never starts LabVIEW (o
 quits when the call ends and leaves an invisible dialog), never runs a broken VI, and runs with a
 deadline and an Abort; it has no linker errors and no Value (Signaling). Measured against NI's
 helpers: the same states, 11 of 11 runs right, 0.02 s per state read. The pane is read from the
-FILE by `pylv-conpane.py`, matching NI's probe. A binary install has no composer yet: where its
-NI-derived parts come from is the user's open decision. `docs/aixml-backends.md`.
+FILE by `pylv-conpane.py`, matching NI's probe. **The server's own HELPER VIs are NOT yet on this
+route**: measured over 81 `scripts` documents, the composer builds 9 with the parts as committed and
+31 (29 executable, output-identical to NI's on six read-only ones) with parts harvested from the
+NI-built helpers - one property, `Application` on `{LV.Project}`, blocked 28. No tool runs its
+helper over ActiveX yet. A binary install has no composer yet: where its NI-derived parts come
+from is the user's open decision. `docs/aixml-backends.md`.
 
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of
