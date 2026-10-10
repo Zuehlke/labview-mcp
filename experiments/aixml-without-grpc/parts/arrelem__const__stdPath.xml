@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="arrelem" key="arrelem/const/stdPath" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Palette Editing API\Create New Palette.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdPath" uid="389">
+<part kind="arrelem" key="arrelem/const/stdPath" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdPath" uid="9099">
                   <objFlags>327684</objFlags>
                   <howGrow>240</howGrow>
-                  <bounds>(40, 35, 59, 159)</bounds>
+                  <bounds>(3, 87, 20, 107)</bounds>
                   <partsList elements="4">
-                    <SL__arrayElement class="label" uid="391">
+                    <SL__arrayElement class="label" uid="9101">
                       <objFlags>1050930</objFlags>
                       <partID>11</partID>
                       <masterPart>9</masterPart>
                       <howGrow>240</howGrow>
-                      <bounds>(1, 9, 18, 123)</bounds>
+                      <bounds>(1, 9, 16, 19)</bounds>
                       <image class="Image">
                         <ImageResID>-11</ImageResID>
                         </image>
@@ -20,36 +20,36 @@
                         <bgColor>00FFFFFF</bgColor>
                         </textRec>
                       </SL__arrayElement>
-                    <SL__arrayElement class="cosm" uid="392">
+                    <SL__arrayElement class="cosm" uid="9102">
                       <objFlags>3378</objFlags>
                       <partID>43</partID>
                       <masterPart>9</masterPart>
                       <howGrow>4108</howGrow>
-                      <bounds>(4, 3, 14, 9)</bounds>
+                      <bounds>(3, 3, 13, 9)</bounds>
                       <image class="Image">
                         <ImageResID>-244</ImageResID>
                         </image>
                       <fgColor>00007F7F</fgColor>
                       <bgColor>00FFFFFF</bgColor>
                       </SL__arrayElement>
-                    <SL__arrayElement class="cosm" uid="393">
+                    <SL__arrayElement class="cosm" uid="9103">
                       <objFlags>2323</objFlags>
                       <partID>9</partID>
                       <howGrow>240</howGrow>
-                      <bounds>(0, 0, 19, 124)</bounds>
+                      <bounds>(0, 0, 17, 20)</bounds>
                       <image class="Image">
                         <ImageResID>-17</ImageResID>
                         </image>
                       <fgColor>00007F7F</fgColor>
                       <bgColor>00FFFFFF</bgColor>
                       </SL__arrayElement>
-                    <SL__arrayElement class="annex" uid="549">
+                    <SL__arrayElement class="annex" uid="9104">
                       <partID>66</partID>
                       <rsrcID>2009</rsrcID>
                       <annexDDOFlag>2</annexDDOFlag>
                       </SL__arrayElement>
                     </partsList>
-                  <typeDesc>TypeID(90)</typeDesc>
+                  <typeDesc>TypeID(579)</typeDesc>
                   <MouseWheelSupport>3</MouseWheelSupport>
                   <browseOptions class="BrowseOptions">
                     <pattern />

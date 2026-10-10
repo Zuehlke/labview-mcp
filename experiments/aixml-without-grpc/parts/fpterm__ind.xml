@@ -1,13 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpterm" key="fpterm/ind" source="AIXML-generated probe: ControlWithValue.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="4235">
+<part kind="fpterm" key="fpterm/ind" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="10527">
             <objFlags>163904</objFlags>
-            <dco uid="4233" />
-            <bounds>(273, 431, 289, 463)</bounds>
-            <label class="label" uid="4236">
+            <dco uid="10525" />
+            <bounds>(4361, 126, 4377, 158)</bounds>
+            <label class="label" uid="10528">
               <objFlags>1507650</objFlags>
               <partID>16</partID>
               <howGrow>4096</howGrow>
-              <bounds>(0, 32, 15, 42)</bounds>
+              <bounds>(0, 32, 15, 121)</bounds>
               <image class="Image">
                 <ImageResID>-619</ImageResID>
                 </image>

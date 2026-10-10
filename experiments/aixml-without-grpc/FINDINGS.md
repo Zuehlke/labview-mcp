@@ -458,6 +458,13 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t98` | a Global Variable of a `vi.lib` global VI, written then read in a flat sequence | `hello`, `second` |
 | `t99` | DAQmx terminal, DAQmx physical channel and old DAQ channel tags, a picture, dynamic data and an NI System Configuration session refnum, wired control → indicator | `OnboardClock`, `demo`, `Dev1/ai0` set from outside |
 | `t100` | In Place Element Structure with two In / Out Element pairs | x 2.5 → 3.5, y 7 → 14 |
+| `t101` | For Loop with two CONDITIONAL output tunnels (`cond="<net>"`) splitting an array | `[1,-2,3,0,-5]` → `[1,3]`, `[-2,0,-5]` |
+| `t102` | Feedback Node with NO initializer in a For Loop | n = 5 → 3, n = 3 → 1 |
+| `t103` | strictly typed Static VI Reference (`strict="true"`) read through a property node | `Clear Errors.vi` |
+| `t104` | Transpose 2D Array / Reverse 1D Array: sub-array wires | `[1,4,2,5,3,6]`, `[6,5,4,3,2,1]` |
+| `t105` | In Place structure with an in/out pair AND plain tunnels | x 2.5, k 4 → 10, 10 |
+| `t106` | control DEFAULT values: double, int32, string, boolean, array, cluster, enum | read back unset |
+| `t107` | `style`: latched boolean, text Ring with `items`, Table | ring 1 |
 
 **Global Variables** (`t98`) are the local variable's `gRef` plus `connectorTM` - the global
 VI's pane - and the SAME `VIVI`/`IUVI` link pair a subVI call has (read out of the binary link
@@ -509,6 +516,68 @@ pair is two `<Node _name="In Place In / Out Element">`, the right one naming the
 both terminals are called `value`. Array, cluster, variant and reference pairs are refused by
 name. The reader writes the same form; NI's own converter kept the left and right node uids, so
 the composer does too.
+
+**An In Place structure's plain tunnels** (`t105`) are `decomposeRecomposeTunnel` DCOs (2048 in,
+2049 out, `termList` [inner, outer]) in its `termList` and `tunnelList`; outer 0x8040 / inner
+0x20000 going in, outer 0x40 / inner 0x28000 going out (NI's *Buffered Stream to Tab-Delimited
+Text File.vi*). The first composition was broken, and the cause took a transplant to find:
+**pylabview writes as many list entries as the `elements` attribute says, not as many as there
+are children.** The part's `tunnelList elements="0"` survived two appended tunnels, the file
+held none, and LabVIEW answered `Going from good to bad after compiling` - while a side-by-side
+read of the two heaps showed the children identical. Two guesses went first and both were
+measured wrong: `dsw`/`dcoFiller` 512 (copied off a 2D-array tunnel; NI's scalar tunnels have
+none) and `firstNodeIdx`, which is NOT an index into the node list (LabVIEW wrote 3 with no
+pairs and two tunnels, 42 and 69 in NI's examples). What found it was swapping NI's whole
+structure element into the composed heap - it ran - and then narrowing. Over 25 207 lists in
+NI's heaps `elements` equals the child count everywhere except `cons` (the pane's slot count),
+which is why the composer recounts an explicit list of grown lists rather than every list.
+
+**Conditional output tunnels** (`t101`): NI exports `cond="<net>"` on a loop's indexing output
+tunnel - not `true`, which is a CASE tunnel's use-default flag. In the heap the `lpTun` and its
+`innerLpTunDCO` carry 0x1000000, the `lpTun` ends in `IsConditional True` and
+`LpTunConditionDCO`, and the condition is a terminal of its own: an `lpTunConditionDCO` on the
+loop border (`termList` [inner, outer], back-reference `lpTunDCO`, objFlags 256, NOT in the
+`tunnelList`) whose inner terminal (0x28141) takes the boolean. Read off NI's *Separate Array
+Values.vi*; the reader writes `cond` and matches NI's export exactly.
+
+**A Feedback Node with no initializer** (`t102`, 19 of NI's 37) waits for its `next value`
+instead of its initializer - 16 of the 19 take it from something that does not read the node's
+own output - and keeps `initFeedback` on itself, unwired, with no `iFeedbackLoop`: moved to the
+loop border like an initialized one's, it was a broken VI (NI's *Moving Histogram PtByPt.vi*
+shows the right form).
+
+**A strict Static VI Reference** (`t103`, NI exports `strict="true"`) is a VI refnum holding the
+callee's connector pane - the same Function type as `connectorTM` - with the node's objFlags
+bit 0x10000000 (NI's *ODE-PredatorPrey.vi*: 268435968 against 512). Fed into NI's polymorphic
+ODE solver it was accepted and the solver called the RHS VI through it (the error that came
+back was raised INSIDE the RHS VI, which is the proof); without `strict` the same VI is broken.
+
+**Sub-array wires** (`t104`): Transpose 2D Array, Reverse 1D Array and their kin return
+LabVIEW's `SubArray` type, shaped like an `Array`. A wire of it is safe; an indexing tunnel fed
+by one must treat it as the array it views - read as a scalar it silently dropped NI's
+`mode="index"`. **COM cannot set a 2D array** (`double[,]` and `object[,]` are both accepted
+and ignored), so `t104` builds its 2D data inside the VI; `lv-com.ps1` now prints one.
+
+**Control default values** (`t106`) were never composed - every control came out at its type's
+default, and a part cut from an NI VI could even bring its DONOR's default along. A default is
+the fPDCO's last child `<DefaultData>`, the flattened data as pylabview writes a heap string:
+MacRoman in quotes, control characters except `\n`/`\t` as the literal text `&#xNN;`
+(pylabview's `unescape_cdata_control_chars` reverses it). LabVIEW writes it only for a
+non-default value. Seven types measured, all read back unset.
+
+**`style`** (`t107`) was dropped without a word: NI exports `latched` 414 times, `Ring` 376
+(with `items="a,b,c"` on a PLAIN number - the items live in the stdRing's multiLabel `buf`, not
+in the type), graph and chart styles `graphNNNNN` about 420 times and `Table` 22. `latched` is
+the boolean ddo's objFlags 0x20000 as NI's converter writes it (NI's own Stop buttons carry
+0x60000; the reader reads either as latched). Graph styles are reported and composed as the
+plain array, which keeps the data and loses the display.
+
+**Parts cut from NI's VIs break VIs that the same parts from an AIXML-generated VI do not.**
+The text ring part from *Creating New VI From Template.vi* and the 2D string array parts from
+*Database Delete.vi* each made a VI non-executable with no log entry. Of 189 data parts 118
+were such cuts, `int32` and `path` controls among them. `probes/pclean.xml` - a control, an
+indicator and a constant of every scalar type, as 1D and 2D arrays, plus rings and enums,
+generated once through NI's converter - replaced them: 212 of 281 are clean now.
 
 ## 4. VI → AIXML, against NI's own exports
 

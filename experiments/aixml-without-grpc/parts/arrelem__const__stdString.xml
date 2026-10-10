@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="arrelem" key="arrelem/const/stdString" source="AIXML-generated probe: parr2.vi" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdString" uid="4373">
+<part kind="arrelem" key="arrelem/const/stdString" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdString" uid="8840">
                   <objFlags>4</objFlags>
                   <howGrow>240</howGrow>
-                  <bounds>(3, 70, 20, 84)</bounds>
+                  <bounds>(3, 93, 20, 107)</bounds>
                   <partsList elements="4">
-                    <SL__arrayElement class="label" uid="4375">
+                    <SL__arrayElement class="label" uid="8842">
                       <objFlags>1050930</objFlags>
                       <partID>11</partID>
                       <masterPart>9</masterPart>
@@ -20,7 +20,7 @@
                         <bgColor>00FFFFFF</bgColor>
                         </textRec>
                       </SL__arrayElement>
-                    <SL__arrayElement class="multiCosm" uid="4376">
+                    <SL__arrayElement class="multiCosm" uid="8843">
                       <objFlags>2362</objFlags>
                       <partID>15</partID>
                       <masterPart>9</masterPart>
@@ -43,7 +43,7 @@
                           </SL__arrayElement>
                         </table>
                       </SL__arrayElement>
-                    <SL__arrayElement class="cosm" uid="4377">
+                    <SL__arrayElement class="cosm" uid="8844">
                       <objFlags>2323</objFlags>
                       <partID>9</partID>
                       <howGrow>240</howGrow>
@@ -54,13 +54,13 @@
                       <fgColor>00FF00FF</fgColor>
                       <bgColor>00FF00FF</bgColor>
                       </SL__arrayElement>
-                    <SL__arrayElement class="annex" uid="4378">
+                    <SL__arrayElement class="annex" uid="8845">
                       <partID>66</partID>
                       <rsrcID>2007</rsrcID>
                       <annexDDOFlag>2</annexDDOFlag>
                       </SL__arrayElement>
                     </partsList>
-                  <typeDesc>TypeID(80)</typeDesc>
+                  <typeDesc>TypeID(568)</typeDesc>
                   <MouseWheelSupport>3</MouseWheelSupport>
                   </ddo>
                 </heap></part>

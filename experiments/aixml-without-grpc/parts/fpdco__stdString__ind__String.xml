@@ -1,17 +1,17 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdString/ind/String" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="i string" /></types><heap><SL__arrayElement class="fPDCO" uid="4410">
+<part kind="fpdco" key="fpdco/stdString/ind/String" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="string out" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="string out" /></types><heap><SL__arrayElement class="fPDCO" uid="8634">
           <objFlags>1</objFlags>
-          <typeDesc>TypeID(13)</typeDesc>
-          <ddo class="stdString" uid="4300">
+          <typeDesc>TypeID(191)</typeDesc>
+          <ddo class="stdString" uid="5200">
             <objFlags>5</objFlags>
-            <bounds>(16, 400, 54, 500)</bounds>
+            <bounds>(2078, 400, 2116, 500)</bounds>
             <partsList elements="6">
-              <SL__arrayElement class="label" uid="4404">
+              <SL__arrayElement class="label" uid="8628">
                 <objFlags>1507650</objFlags>
                 <partID>16</partID>
                 <masterPart>9</masterPart>
                 <howGrow>4096</howGrow>
-                <bounds>(0, 0, 15, 39)</bounds>
+                <bounds>(0, 0, 15, 54)</bounds>
                 <image class="Image">
                   <ImageResID>-9</ImageResID>
                   </image>
@@ -19,11 +19,11 @@
                 <bgColor>01000000</bgColor>
                 <textRec class="textHair">
                   <mode>1028</mode>
-                  <text>"i string"</text>
+                  <text>"string out"</text>
                   <bgColor>01000000</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="multiCosm" uid="4405">
+              <SL__arrayElement class="multiCosm" uid="8629">
                 <objFlags>2362</objFlags>
                 <partID>15</partID>
                 <masterPart>9</masterPart>
@@ -46,7 +46,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="multiCosm" uid="4406">
+              <SL__arrayElement class="multiCosm" uid="8630">
                 <objFlags>2362</objFlags>
                 <partID>118</partID>
                 <masterPart>9</masterPart>
@@ -69,7 +69,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="label" uid="4407">
+              <SL__arrayElement class="label" uid="8631">
                 <objFlags>2354</objFlags>
                 <partID>11</partID>
                 <masterPart>9</masterPart>
@@ -85,7 +85,7 @@
                   <bgColor>00D2D2D2</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4408">
+              <SL__arrayElement class="cosm" uid="8632">
                 <objFlags>2323</objFlags>
                 <partID>9</partID>
                 <howGrow>240</howGrow>
@@ -96,17 +96,17 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>01000000</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="annex" uid="4409">
+              <SL__arrayElement class="annex" uid="8633">
                 <partID>66</partID>
                 <rsrcID>21701</rsrcID>
                 </SL__arrayElement>
               </partsList>
-            <description class="cLStrObj" uid="4417">
+            <description class="cLStrObj" uid="8641">
               <strings elements="1">
                 <SL__arrayElement>[NULL]</SL__arrayElement>
                 </strings>
               </description>
-            <typeDesc>TypeID(14)</typeDesc>
+            <typeDesc>TypeID(192)</typeDesc>
             <MouseWheelSupport>3</MouseWheelSupport>
             </ddo>
           <conNum>-1</conNum>

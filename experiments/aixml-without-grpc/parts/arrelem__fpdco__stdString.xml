@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="arrelem" key="arrelem/fpdco/stdString" source="AIXML-generated probe: parr2.vi" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdString" uid="5137">
-              <objFlags>5</objFlags>
+<part kind="arrelem" key="arrelem/fpdco/stdString" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><ddo class="stdString" uid="8667">
+              <objFlags>4</objFlags>
               <howGrow>240</howGrow>
               <bounds>(19, 45, 42, 145)</bounds>
               <partsList elements="6">
-                <SL__arrayElement class="label" uid="5139">
+                <SL__arrayElement class="label" uid="8669">
                   <objFlags>1507658</objFlags>
                   <partID>16</partID>
                   <masterPart>9</masterPart>
@@ -21,7 +21,7 @@
                     <bgColor>01000000</bgColor>
                     </textRec>
                   </SL__arrayElement>
-                <SL__arrayElement class="multiCosm" uid="5140">
+                <SL__arrayElement class="multiCosm" uid="8670">
                   <objFlags>2362</objFlags>
                   <partID>15</partID>
                   <masterPart>9</masterPart>
@@ -44,7 +44,7 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="multiCosm" uid="5141">
+                <SL__arrayElement class="multiCosm" uid="8671">
                   <objFlags>2362</objFlags>
                   <partID>118</partID>
                   <masterPart>9</masterPart>
@@ -67,7 +67,7 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="label" uid="5142">
+                <SL__arrayElement class="label" uid="8672">
                   <objFlags>2354</objFlags>
                   <partID>11</partID>
                   <masterPart>9</masterPart>
@@ -77,13 +77,13 @@
                     <ImageResID>-239</ImageResID>
                     </image>
                   <fgColor>00FAFAFA</fgColor>
-                  <bgColor>00D2D2D2</bgColor>
+                  <bgColor>00FAFAFA</bgColor>
                   <textRec class="textHair">
                     <mode>8913924</mode>
-                    <bgColor>00D2D2D2</bgColor>
+                    <bgColor>00FAFAFA</bgColor>
                     </textRec>
                   </SL__arrayElement>
-                <SL__arrayElement class="cosm" uid="5143">
+                <SL__arrayElement class="cosm" uid="8673">
                   <objFlags>2323</objFlags>
                   <partID>9</partID>
                   <howGrow>240</howGrow>
@@ -94,12 +94,13 @@
                   <fgColor>00B3B3B3</fgColor>
                   <bgColor>01000000</bgColor>
                   </SL__arrayElement>
-                <SL__arrayElement class="annex" uid="5144">
+                <SL__arrayElement class="annex" uid="8674">
                   <partID>66</partID>
                   <rsrcID>21701</rsrcID>
+                  <annexDDOFlag>2</annexDDOFlag>
                   </SL__arrayElement>
                 </partsList>
-              <typeDesc>TypeID(4)</typeDesc>
+              <typeDesc>TypeID(190)</typeDesc>
               <MouseWheelSupport>3</MouseWheelSupport>
               </ddo>
             </heap></part>

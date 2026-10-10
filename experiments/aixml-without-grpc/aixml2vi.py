@@ -936,7 +936,7 @@ class Composer:
             return holder.find("dco/ddo")
         return holder
 
-    def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo", in_array=False):
+    def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo", in_array=False, force_class=None):
         """One data object for `tree` (labelled: the label is the object's name), composed from
         parts. A cluster is a stdClust whose paneHierarchy holds one object per field (ddoList
         oldest first, zPlaneList newest first); an array is an indArr whose inner <ddo> is the
@@ -948,7 +948,7 @@ class Composer:
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
         if prefix == "const":
             want = other = None
-        if t in self.DDO_CLASS:
+        if t in self.DDO_CLASS and not force_class:
             cls = self.DDO_CLASS[t]
             key = None
             if in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None:
@@ -1071,6 +1071,8 @@ class Composer:
         ddo_class = DDO_OF_KEY.get(tkey) or ("stdTag" if tkey.startswith("Tag.") else None)
         if is_enum(tree):
             ddo_class = "stdRing"
+        if force_class:
+            ddo_class = force_class     # a text ring, a table: the style picks the object
         if ddo_class is None:
             raise Unsupported("no data object for type %s" % t)
         key = None
@@ -1150,7 +1152,42 @@ class Composer:
         if ddo.find("StdNumInc") is not None:
             ddo.find("StdNumInc").text = "0"
 
+    @staticmethod
+    def _set_ring(ddo, tree, items):
+        """A TEXT RING (style="Ring", items="a,b,c"): a stdRing like an enum's, its multiLabel
+        `buf` listing the items, but the type stays a plain number - the items live in the
+        control, not in the type (read off an AIXML-generated probe, probes/pstyle.xml)."""
+        labels = [unescape(x) for x in split_top(items)] if items else []
+        if any('"' in x for x in labels):
+            raise Unsupported("ring item with a quote is not composable yet")
+        for part in ddo.iter("SL__arrayElement"):
+            if part.get("class") == "multiLabel" and part.find("buf") is not None:
+                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
+
     # ---- elements ------------------------------------------------------------------------
+    def _set_default(self, fpdco, tree, value, name):
+        """A control's DEFAULT VALUE: the fPDCO's last child <DefaultData>, the flattened data
+        as pylabview writes a heap string - MacRoman text in quotes, control characters other
+        than \n and \t as the literal text &#xNN;. LabVIEW writes it only for a value that is
+        not the type's default (3 of the many controls of NI's ODE-PredatorPrey.vi: an array
+        [300,50] is 00000002 4072C00000000000 4049000000000000). Until 2026-10-10 the composer
+        wrote none, so every control came out at its type's default; a part cut from an NI VI
+        could also bring its DONOR's default along, which is removed here."""
+        for old in fpdco.findall("DefaultData"):
+            fpdco.remove(old)
+        if value in (None, ""):
+            return
+        try:
+            hx = _flat(unlabel(tree), value)
+        except (Unsupported, ValueError, TypeError, KeyError, IndexError, struct.error) as ex:
+            self.report.append("default value of %r not composed (%s)" % (name, ex))
+            return
+        if not hx or set(hx) <= {"0"}:
+            return
+        txt = bytes.fromhex(hx).decode("mac_roman")
+        txt = "".join("&#x%02X;" % ord(c) if ord(c) < 32 and c not in "\n\t" else c for c in txt)
+        ET.SubElement(fpdco, "DefaultData").text = '"%s"' % txt
+
     def add_fp(self, el, row):
         name = unescape(el.get("_name"))
         is_ind = el.tag == "Indicator"
@@ -1158,13 +1195,42 @@ class Composer:
         diag = self.diag_of(el)
         tree = type_tree(aixml_type, label=name)
         want = "ind" if is_ind else "ctl"
-        fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None)
+        # style: NI's exports write latched (414), Ring (376, with items=), Table (22) and the
+        # graph and chart styles graphNNNNN (~420) - until 2026-10-10 all of them were dropped
+        # without a word, so a latched Stop came out a switch
+        style, items = el.get("style"), el.get("items")
+        force = None
+        if style == "Ring" or (items is not None and not is_enum(tree)):
+            if not tree.get("Type", "").startswith("Num") or tree.get("Type") in ("NumComplex64", "NumComplex128", "NumComplexExt"):
+                raise Unsupported("%s %r: a ring of %s is not composable yet" % (el.tag, name, tree.get("Type")))
+            force = "stdRing"
+        elif style == "Table":
+            if tree.get("Type") != "Array":
+                raise Unsupported("%s %r: style Table on %s" % (el.tag, name, tree.get("Type")))
+            force = "tableControl"
+        elif style == "latched" and (is_ind or tree.get("Type") != "Boolean"):
+            raise Unsupported("%s %r: style latched on a %s %s" % (el.tag, name, "indicator" if is_ind else "control", tree.get("Type")))
+        elif style not in (None, "", "latched"):
+            self.report.append("style %r of %r not composed - shown as a plain %s" % (style, name, tree.get("Type")))
+        fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None, force_class=force)
         ddo = fpdco.find("ddo")
+        if force == "stdRing":
+            self._set_ring(ddo, tree, items or "")
+        if style == "latched":
+            # mechanical action: bit 0x20000 of the boolean's ddo objFlags, as NI's converter
+            # writes "latched" (NI's own Stop buttons carry 0x60000, which the reader also
+            # reads as latched)
+            f = ddo.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                ddo.insert(0, f)
+            f.text = str(int(f.text or 0) | 0x20000)
         old = int(ddo.get("uid"))
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
         self._direction(fpdco, is_ind)
         self._direction(ddo, is_ind)
+        self._set_default(fpdco, tree, el.get("value"), name)
         con = el.get("conIdx")
         # conNum 0 is written by OMITTING the field, as LabVIEW's own files do; an explicit
         # <conNum>0</conNum> loads but LabVIEW logs the control as insane ({flags} 0x1000)
@@ -3635,6 +3701,12 @@ class Composer:
         if mode == "index" and d == "in":
             src = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
             st = self.net_type.get(src)
+            if st is not None and st.get("Type") == "SubArray":
+                # a sub-array (Transpose 2D Array, Reverse 1D Array ...) indexes like the array
+                # it is a view of - read as a scalar it lost NI's mode="index" in ODE-PredatorPrey
+                st = copy.deepcopy(st)
+                st.set("Type", "Array")
+                self.net_type[src] = st
             if st is not None and st.get("Type") != "Array":
                 # NI's exports mark some input tunnels `index` that a string or a scalar feeds -
                 # which LabVIEW cannot index (Database Delete.vi: a string constant); the

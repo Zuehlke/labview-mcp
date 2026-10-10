@@ -1,17 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdLvVariant/ctl/LVVariant" source="AIXML-generated probe: pbasic2.vi" clean="1"><types><TypeDesc Type="LVVariant" Format="inline" Label="v in" /><TypeDesc Type="LVVariant" Format="inline" Label="v in" /></types><heap><SL__arrayElement class="fPDCO" uid="4933">
-          <objFlags>66048</objFlags>
-          <typeDesc>TypeID(3)</typeDesc>
-          <ddo class="stdLvVariant" uid="4320">
+<part kind="fpdco" key="fpdco/stdLvVariant/ctl/LVVariant" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="LVVariant" Format="inline" Label="variant" /><TypeDesc Type="LVVariant" Format="inline" Label="variant" /></types><heap><SL__arrayElement class="fPDCO" uid="9837">
+          <typeDesc>TypeID(77)</typeDesc>
+          <ddo class="stdLvVariant" uid="5640">
             <objFlags>65540</objFlags>
-            <bounds>(277, 16, 367, 166)</bounds>
+            <bounds>(3048, 16, 3138, 166)</bounds>
             <partsList elements="4">
-              <SL__arrayElement class="label" uid="4929">
+              <SL__arrayElement class="label" uid="9833">
                 <objFlags>1507650</objFlags>
                 <partID>16</partID>
                 <masterPart>9</masterPart>
                 <howGrow>4096</howGrow>
-                <bounds>(0, 0, 15, 21)</bounds>
+                <bounds>(0, 0, 15, 38)</bounds>
                 <image class="Image">
                   <ImageResID>-9</ImageResID>
                   </image>
@@ -19,11 +18,11 @@
                 <bgColor>01000000</bgColor>
                 <textRec class="textHair">
                   <mode>1028</mode>
-                  <text>"v in"</text>
+                  <text>"variant"</text>
                   <bgColor>01000000</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="label" uid="4930">
+              <SL__arrayElement class="label" uid="9834">
                 <objFlags>2354</objFlags>
                 <partID>11</partID>
                 <masterPart>9</masterPart>
@@ -39,7 +38,7 @@
                   <bgColor>00B3B3B3</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4931">
+              <SL__arrayElement class="cosm" uid="9835">
                 <objFlags>2323</objFlags>
                 <partID>9</partID>
                 <howGrow>240</howGrow>
@@ -50,20 +49,20 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>00B3B3B3</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="annex" uid="4932">
+              <SL__arrayElement class="annex" uid="9836">
                 <partID>66</partID>
                 <rsrcID>3310</rsrcID>
                 </SL__arrayElement>
               </partsList>
-            <description class="cLStrObj" uid="4937">
+            <description class="cLStrObj" uid="9841">
               <strings elements="1">
                 <SL__arrayElement>[NULL]</SL__arrayElement>
                 </strings>
               </description>
-            <typeDesc>TypeID(4)</typeDesc>
+            <typeDesc>TypeID(78)</typeDesc>
             <MouseWheelSupport>3</MouseWheelSupport>
             </ddo>
-          <conNum>14</conNum>
+          <conNum>-1</conNum>
           <termListLength>1</termListLength>
           </SL__arrayElement>
         </heap></part>

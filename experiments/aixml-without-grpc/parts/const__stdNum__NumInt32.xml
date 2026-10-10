@@ -1,19 +1,19 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="const" key="const/stdNum/NumInt32" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="c int32" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="c int32" /></types><heap><SL__arrayElement class="term" uid="4387">
+<part kind="const" key="const/stdNum/NumInt32" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="int32 k" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="int32 k" /></types><heap><SL__arrayElement class="term" uid="6983">
             <objFlags>131136</objFlags>
-            <dco class="bDConstDCO" uid="4385">
-              <typeDesc>TypeID(21)</typeDesc>
+            <dco class="bDConstDCO" uid="6981">
+              <typeDesc>TypeID(481)</typeDesc>
               <dsw>4096</dsw>
-              <ddo class="stdNum" uid="4230">
+              <ddo class="stdNum" uid="4580">
                 <objFlags>393216</objFlags>
-                <bounds>(244, 192, 261, 242)</bounds>
+                <bounds>(1608, 2, 1625, 53)</bounds>
                 <partsList elements="5">
-                  <SL__arrayElement class="label" uid="4384">
+                  <SL__arrayElement class="label" uid="6980">
                     <objFlags>1507650</objFlags>
                     <partID>16</partID>
                     <masterPart>9</masterPart>
                     <howGrow>4096</howGrow>
-                    <bounds>(1, 0, 16, 37)</bounds>
+                    <bounds>(1, 0, 16, 38)</bounds>
                     <image class="Image">
                       <ImageResID>-619</ImageResID>
                       </image>
@@ -21,7 +21,7 @@
                     <bgColor>01000000</bgColor>
                     <textRec class="textHair">
                       <mode>82948</mode>
-                      <text>"c int32"</text>
+                      <text>"int32 k"</text>
                       <bgColor>01000000</bgColor>
                       <fr elements="1">
                         <SL__arrayElement class="fontRun">
@@ -30,12 +30,12 @@
                         </fr>
                       </textRec>
                     </SL__arrayElement>
-                  <SL__arrayElement class="numLabel" uid="4380">
+                  <SL__arrayElement class="numLabel" uid="6976">
                     <objFlags>1444146</objFlags>
                     <partID>10</partID>
                     <masterPart>9</masterPart>
                     <howGrow>240</howGrow>
-                    <bounds>(1, 38, 16, 49)</bounds>
+                    <bounds>(1, 39, 16, 50)</bounds>
                     <image class="Image">
                       <ImageResID>-11</ImageResID>
                       </image>
@@ -47,12 +47,12 @@
                       </textRec>
                     <format>"%.0f"</format>
                     </SL__arrayElement>
-                  <SL__arrayElement class="multiCosm" uid="4381">
+                  <SL__arrayElement class="multiCosm" uid="6977">
                     <objFlags>2362</objFlags>
                     <partID>15</partID>
                     <masterPart>9</masterPart>
                     <howGrow>4104</howGrow>
-                    <bounds>(2, 33, 14, 39)</bounds>
+                    <bounds>(2, 34, 14, 40)</bounds>
                     <fgColor>000000FF</fgColor>
                     <bgColor>00FFFFFF</bgColor>
                     <table elements="5">
@@ -73,26 +73,26 @@
                         </SL__arrayElement>
                       </table>
                     </SL__arrayElement>
-                  <SL__arrayElement class="cosm" uid="4382">
+                  <SL__arrayElement class="cosm" uid="6978">
                     <objFlags>2355</objFlags>
                     <partID>9</partID>
                     <howGrow>240</howGrow>
-                    <bounds>(0, 37, 17, 50)</bounds>
+                    <bounds>(0, 38, 17, 51)</bounds>
                     <image class="Image">
                       <ImageResID>-17</ImageResID>
                       </image>
                     <fgColor>000000FF</fgColor>
                     <bgColor>00FFFFFF</bgColor>
                     </SL__arrayElement>
-                  <SL__arrayElement class="annex" uid="4383">
+                  <SL__arrayElement class="annex" uid="6979">
                     <partID>66</partID>
                     <rsrcID>2005</rsrcID>
                     </SL__arrayElement>
                   </partsList>
-                <typeDesc>TypeID(22)</typeDesc>
+                <typeDesc>TypeID(482)</typeDesc>
                 <MouseWheelSupport>2</MouseWheelSupport>
                 </ddo>
-              <ConstValue>00000007</ConstValue>
+              <ConstValue>0000000000</ConstValue>
               </dco>
             </SL__arrayElement>
           </heap></part>

@@ -1,16 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdNum/ctl/NumFloat64" source="AIXML-generated probe: ControlWithValue.xml" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="a" /></types><heap><SL__arrayElement class="fPDCO" uid="4220">
-          <typeDesc>TypeID(3)</typeDesc>
+<part kind="fpdco" key="fpdco/stdNum/ctl/NumFloat64" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="double" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="double" /></types><heap><SL__arrayElement class="fPDCO" uid="5990">
+          <typeDesc>TypeID(435)</typeDesc>
           <ddo class="stdNum" uid="4200">
             <objFlags>393286</objFlags>
             <bounds>(16, 16, 54, 81)</bounds>
             <partsList elements="7">
-              <SL__arrayElement class="label" uid="4213">
+              <SL__arrayElement class="label" uid="5983">
                 <objFlags>1507650</objFlags>
                 <partID>16</partID>
                 <masterPart>9</masterPart>
                 <howGrow>4096</howGrow>
-                <bounds>(0, 11, 15, 20)</bounds>
+                <bounds>(0, 11, 15, 51)</bounds>
                 <image class="Image">
                   <ImageResID>-9</ImageResID>
                   </image>
@@ -18,11 +18,11 @@
                 <bgColor>01000000</bgColor>
                 <textRec class="textHair">
                   <mode>1028</mode>
-                  <text>"a"</text>
+                  <text>"double"</text>
                   <bgColor>01000000</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="numLabel" uid="4214">
+              <SL__arrayElement class="numLabel" uid="5984">
                 <objFlags>264498</objFlags>
                 <partID>10</partID>
                 <masterPart>9</masterPart>
@@ -39,7 +39,7 @@
                   </textRec>
                 <format>"%#_g"</format>
                 </SL__arrayElement>
-              <SL__arrayElement class="bigMultiCosm" uid="4215">
+              <SL__arrayElement class="bigMultiCosm" uid="5985">
                 <objFlags>2354</objFlags>
                 <partID>2</partID>
                 <masterPart>9</masterPart>
@@ -66,7 +66,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="bigMultiCosm" uid="4216">
+              <SL__arrayElement class="bigMultiCosm" uid="5986">
                 <objFlags>2354</objFlags>
                 <partID>3</partID>
                 <masterPart>9</masterPart>
@@ -93,7 +93,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="multiCosm" uid="4217">
+              <SL__arrayElement class="multiCosm" uid="5987">
                 <objFlags>2362</objFlags>
                 <partID>15</partID>
                 <masterPart>9</masterPart>
@@ -119,7 +119,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4218">
+              <SL__arrayElement class="cosm" uid="5988">
                 <objFlags>2323</objFlags>
                 <partID>9</partID>
                 <howGrow>240</howGrow>
@@ -130,17 +130,17 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>01000000</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="annex" uid="4219">
+              <SL__arrayElement class="annex" uid="5989">
                 <partID>66</partID>
                 <rsrcID>21003</rsrcID>
                 </SL__arrayElement>
               </partsList>
-            <description class="cLStrObj" uid="4224">
+            <description class="cLStrObj" uid="5994">
               <strings elements="1">
                 <SL__arrayElement>[NULL]</SL__arrayElement>
                 </strings>
               </description>
-            <typeDesc>TypeID(4)</typeDesc>
+            <typeDesc>TypeID(436)</typeDesc>
             <MouseWheelSupport>2</MouseWheelSupport>
             <StdNumMin>-inf (0xFFF0000000000000)</StdNumMin>
             <StdNumMax>inf (0x7FF0000000000000)</StdNumMax>

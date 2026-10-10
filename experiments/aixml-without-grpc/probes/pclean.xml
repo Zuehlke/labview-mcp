@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pclean.vi" description="Probe: a control, an indicator and a constant of every scalar type, as 1D and 2D arrays too, plus text rings and enums - the source of clean parts.">
+  <Control _name="double" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Indicator _name="double out" inputs="value:4200.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Constant _name="double k" outputs="value:" type="double" uid="4220" uid_parent="root" value="0"/>
+  <Control _name="double 1d" outputs="value:4230.value" type="array{double}" uid="4230" uid_parent="root" value="[]"/>
+  <Indicator _name="double 1d out" inputs="value:4230.value" type="array{double}" uid="4240" uid_parent="root" value="[]"/>
+  <Constant _name="double 1d k" outputs="value:" type="array{double}" uid="4250" uid_parent="root" value="[]"/>
+  <Control _name="double 2d" outputs="value:4260.value" type="array.2{double}" uid="4260" uid_parent="root" value="[]"/>
+  <Indicator _name="double 2d out" inputs="value:4260.value" type="array.2{double}" uid="4270" uid_parent="root" value="[]"/>
+  <Constant _name="double 2d k" outputs="value:" type="array.2{double}" uid="4280" uid_parent="root" value="[]"/>
+  <Control _name="single" outputs="value:4290.value" type="single" uid="4290" uid_parent="root" value="0"/>
+  <Indicator _name="single out" inputs="value:4290.value" type="single" uid="4300" uid_parent="root" value="0"/>
+  <Constant _name="single k" outputs="value:" type="single" uid="4310" uid_parent="root" value="0"/>
+  <Control _name="single 1d" outputs="value:4320.value" type="array{single}" uid="4320" uid_parent="root" value="[]"/>
+  <Indicator _name="single 1d out" inputs="value:4320.value" type="array{single}" uid="4330" uid_parent="root" value="[]"/>
+  <Constant _name="single 1d k" outputs="value:" type="array{single}" uid="4340" uid_parent="root" value="[]"/>
+  <Control _name="single 2d" outputs="value:4350.value" type="array.2{single}" uid="4350" uid_parent="root" value="[]"/>
+  <Indicator _name="single 2d out" inputs="value:4350.value" type="array.2{single}" uid="4360" uid_parent="root" value="[]"/>
+  <Constant _name="single 2d k" outputs="value:" type="array.2{single}" uid="4370" uid_parent="root" value="[]"/>
+  <Control _name="int8" outputs="value:4380.value" type="int8" uid="4380" uid_parent="root" value="0"/>
+  <Indicator _name="int8 out" inputs="value:4380.value" type="int8" uid="4390" uid_parent="root" value="0"/>
+  <Constant _name="int8 k" outputs="value:" type="int8" uid="4400" uid_parent="root" value="0"/>
+  <Control _name="int8 1d" outputs="value:4410.value" type="array{int8}" uid="4410" uid_parent="root" value="[]"/>
+  <Indicator _name="int8 1d out" inputs="value:4410.value" type="array{int8}" uid="4420" uid_parent="root" value="[]"/>
+  <Constant _name="int8 1d k" outputs="value:" type="array{int8}" uid="4430" uid_parent="root" value="[]"/>
+  <Control _name="int8 2d" outputs="value:4440.value" type="array.2{int8}" uid="4440" uid_parent="root" value="[]"/>
+  <Indicator _name="int8 2d out" inputs="value:4440.value" type="array.2{int8}" uid="4450" uid_parent="root" value="[]"/>
+  <Constant _name="int8 2d k" outputs="value:" type="array.2{int8}" uid="4460" uid_parent="root" value="[]"/>
+  <Control _name="int16" outputs="value:4470.value" type="int16" uid="4470" uid_parent="root" value="0"/>
+  <Indicator _name="int16 out" inputs="value:4470.value" type="int16" uid="4480" uid_parent="root" value="0"/>
+  <Constant _name="int16 k" outputs="value:" type="int16" uid="4490" uid_parent="root" value="0"/>
+  <Control _name="int16 1d" outputs="value:4500.value" type="array{int16}" uid="4500" uid_parent="root" value="[]"/>
+  <Indicator _name="int16 1d out" inputs="value:4500.value" type="array{int16}" uid="4510" uid_parent="root" value="[]"/>
+  <Constant _name="int16 1d k" outputs="value:" type="array{int16}" uid="4520" uid_parent="root" value="[]"/>
+  <Control _name="int16 2d" outputs="value:4530.value" type="array.2{int16}" uid="4530" uid_parent="root" value="[]"/>
+  <Indicator _name="int16 2d out" inputs="value:4530.value" type="array.2{int16}" uid="4540" uid_parent="root" value="[]"/>
+  <Constant _name="int16 2d k" outputs="value:" type="array.2{int16}" uid="4550" uid_parent="root" value="[]"/>
+  <Control _name="int32" outputs="value:4560.value" type="int32" uid="4560" uid_parent="root" value="0"/>
+  <Indicator _name="int32 out" inputs="value:4560.value" type="int32" uid="4570" uid_parent="root" value="0"/>
+  <Constant _name="int32 k" outputs="value:" type="int32" uid="4580" uid_parent="root" value="0"/>
+  <Control _name="int32 1d" outputs="value:4590.value" type="array{int32}" uid="4590" uid_parent="root" value="[]"/>
+  <Indicator _name="int32 1d out" inputs="value:4590.value" type="array{int32}" uid="4600" uid_parent="root" value="[]"/>
+  <Constant _name="int32 1d k" outputs="value:" type="array{int32}" uid="4610" uid_parent="root" value="[]"/>
+  <Control _name="int32 2d" outputs="value:4620.value" type="array.2{int32}" uid="4620" uid_parent="root" value="[]"/>
+  <Indicator _name="int32 2d out" inputs="value:4620.value" type="array.2{int32}" uid="4630" uid_parent="root" value="[]"/>
+  <Constant _name="int32 2d k" outputs="value:" type="array.2{int32}" uid="4640" uid_parent="root" value="[]"/>
+  <Control _name="int64" outputs="value:4650.value" type="int64" uid="4650" uid_parent="root" value="0"/>
+  <Indicator _name="int64 out" inputs="value:4650.value" type="int64" uid="4660" uid_parent="root" value="0"/>
+  <Constant _name="int64 k" outputs="value:" type="int64" uid="4670" uid_parent="root" value="0"/>
+  <Control _name="int64 1d" outputs="value:4680.value" type="array{int64}" uid="4680" uid_parent="root" value="[]"/>
+  <Indicator _name="int64 1d out" inputs="value:4680.value" type="array{int64}" uid="4690" uid_parent="root" value="[]"/>
+  <Constant _name="int64 1d k" outputs="value:" type="array{int64}" uid="4700" uid_parent="root" value="[]"/>
+  <Control _name="int64 2d" outputs="value:4710.value" type="array.2{int64}" uid="4710" uid_parent="root" value="[]"/>
+  <Indicator _name="int64 2d out" inputs="value:4710.value" type="array.2{int64}" uid="4720" uid_parent="root" value="[]"/>
+  <Constant _name="int64 2d k" outputs="value:" type="array.2{int64}" uid="4730" uid_parent="root" value="[]"/>
+  <Control _name="uint8" outputs="value:4740.value" type="uint8" uid="4740" uid_parent="root" value="0"/>
+  <Indicator _name="uint8 out" inputs="value:4740.value" type="uint8" uid="4750" uid_parent="root" value="0"/>
+  <Constant _name="uint8 k" outputs="value:" type="uint8" uid="4760" uid_parent="root" value="0"/>
+  <Control _name="uint8 1d" outputs="value:4770.value" type="array{uint8}" uid="4770" uid_parent="root" value="[]"/>
+  <Indicator _name="uint8 1d out" inputs="value:4770.value" type="array{uint8}" uid="4780" uid_parent="root" value="[]"/>
+  <Constant _name="uint8 1d k" outputs="value:" type="array{uint8}" uid="4790" uid_parent="root" value="[]"/>
+  <Control _name="uint8 2d" outputs="value:4800.value" type="array.2{uint8}" uid="4800" uid_parent="root" value="[]"/>
+  <Indicator _name="uint8 2d out" inputs="value:4800.value" type="array.2{uint8}" uid="4810" uid_parent="root" value="[]"/>
+  <Constant _name="uint8 2d k" outputs="value:" type="array.2{uint8}" uid="4820" uid_parent="root" value="[]"/>
+  <Control _name="uint16" outputs="value:4830.value" type="uint16" uid="4830" uid_parent="root" value="0"/>
+  <Indicator _name="uint16 out" inputs="value:4830.value" type="uint16" uid="4840" uid_parent="root" value="0"/>
+  <Constant _name="uint16 k" outputs="value:" type="uint16" uid="4850" uid_parent="root" value="0"/>
+  <Control _name="uint16 1d" outputs="value:4860.value" type="array{uint16}" uid="4860" uid_parent="root" value="[]"/>
+  <Indicator _name="uint16 1d out" inputs="value:4860.value" type="array{uint16}" uid="4870" uid_parent="root" value="[]"/>
+  <Constant _name="uint16 1d k" outputs="value:" type="array{uint16}" uid="4880" uid_parent="root" value="[]"/>
+  <Control _name="uint16 2d" outputs="value:4890.value" type="array.2{uint16}" uid="4890" uid_parent="root" value="[]"/>
+  <Indicator _name="uint16 2d out" inputs="value:4890.value" type="array.2{uint16}" uid="4900" uid_parent="root" value="[]"/>
+  <Constant _name="uint16 2d k" outputs="value:" type="array.2{uint16}" uid="4910" uid_parent="root" value="[]"/>
+  <Control _name="uint32" outputs="value:4920.value" type="uint32" uid="4920" uid_parent="root" value="0"/>
+  <Indicator _name="uint32 out" inputs="value:4920.value" type="uint32" uid="4930" uid_parent="root" value="0"/>
+  <Constant _name="uint32 k" outputs="value:" type="uint32" uid="4940" uid_parent="root" value="0"/>
+  <Control _name="uint32 1d" outputs="value:4950.value" type="array{uint32}" uid="4950" uid_parent="root" value="[]"/>
+  <Indicator _name="uint32 1d out" inputs="value:4950.value" type="array{uint32}" uid="4960" uid_parent="root" value="[]"/>
+  <Constant _name="uint32 1d k" outputs="value:" type="array{uint32}" uid="4970" uid_parent="root" value="[]"/>
+  <Control _name="uint32 2d" outputs="value:4980.value" type="array.2{uint32}" uid="4980" uid_parent="root" value="[]"/>
+  <Indicator _name="uint32 2d out" inputs="value:4980.value" type="array.2{uint32}" uid="4990" uid_parent="root" value="[]"/>
+  <Constant _name="uint32 2d k" outputs="value:" type="array.2{uint32}" uid="5000" uid_parent="root" value="[]"/>
+  <Control _name="uint64" outputs="value:5010.value" type="uint64" uid="5010" uid_parent="root" value="0"/>
+  <Indicator _name="uint64 out" inputs="value:5010.value" type="uint64" uid="5020" uid_parent="root" value="0"/>
+  <Constant _name="uint64 k" outputs="value:" type="uint64" uid="5030" uid_parent="root" value="0"/>
+  <Control _name="uint64 1d" outputs="value:5040.value" type="array{uint64}" uid="5040" uid_parent="root" value="[]"/>
+  <Indicator _name="uint64 1d out" inputs="value:5040.value" type="array{uint64}" uid="5050" uid_parent="root" value="[]"/>
+  <Constant _name="uint64 1d k" outputs="value:" type="array{uint64}" uid="5060" uid_parent="root" value="[]"/>
+  <Control _name="uint64 2d" outputs="value:5070.value" type="array.2{uint64}" uid="5070" uid_parent="root" value="[]"/>
+  <Indicator _name="uint64 2d out" inputs="value:5070.value" type="array.2{uint64}" uid="5080" uid_parent="root" value="[]"/>
+  <Constant _name="uint64 2d k" outputs="value:" type="array.2{uint64}" uid="5090" uid_parent="root" value="[]"/>
+  <Control _name="bool" outputs="value:5100.value" type="bool" uid="5100" uid_parent="root" value="false"/>
+  <Indicator _name="bool out" inputs="value:5100.value" type="bool" uid="5110" uid_parent="root" value="false"/>
+  <Constant _name="bool k" outputs="value:" type="bool" uid="5120" uid_parent="root" value="false"/>
+  <Control _name="bool 1d" outputs="value:5130.value" type="array{bool}" uid="5130" uid_parent="root" value="[]"/>
+  <Indicator _name="bool 1d out" inputs="value:5130.value" type="array{bool}" uid="5140" uid_parent="root" value="[]"/>
+  <Constant _name="bool 1d k" outputs="value:" type="array{bool}" uid="5150" uid_parent="root" value="[]"/>
+  <Control _name="bool 2d" outputs="value:5160.value" type="array.2{bool}" uid="5160" uid_parent="root" value="[]"/>
+  <Indicator _name="bool 2d out" inputs="value:5160.value" type="array.2{bool}" uid="5170" uid_parent="root" value="[]"/>
+  <Constant _name="bool 2d k" outputs="value:" type="array.2{bool}" uid="5180" uid_parent="root" value="[]"/>
+  <Control _name="string" outputs="value:5190.value" type="string" uid="5190" uid_parent="root" value=""/>
+  <Indicator _name="string out" inputs="value:5190.value" type="string" uid="5200" uid_parent="root" value=""/>
+  <Constant _name="string k" outputs="value:" type="string" uid="5210" uid_parent="root" value=""/>
+  <Control _name="string 1d" outputs="value:5220.value" type="array{string}" uid="5220" uid_parent="root" value="[]"/>
+  <Indicator _name="string 1d out" inputs="value:5220.value" type="array{string}" uid="5230" uid_parent="root" value="[]"/>
+  <Constant _name="string 1d k" outputs="value:" type="array{string}" uid="5240" uid_parent="root" value="[]"/>
+  <Control _name="string 2d" outputs="value:5250.value" type="array.2{string}" uid="5250" uid_parent="root" value="[]"/>
+  <Indicator _name="string 2d out" inputs="value:5250.value" type="array.2{string}" uid="5260" uid_parent="root" value="[]"/>
+  <Constant _name="string 2d k" outputs="value:" type="array.2{string}" uid="5270" uid_parent="root" value="[]"/>
+  <Control _name="path" outputs="value:5280.value" type="path" uid="5280" uid_parent="root" value=""/>
+  <Indicator _name="path out" inputs="value:5280.value" type="path" uid="5290" uid_parent="root" value=""/>
+  <Constant _name="path k" outputs="value:" type="path" uid="5300" uid_parent="root" value=""/>
+  <Control _name="path 1d" outputs="value:5310.value" type="array{path}" uid="5310" uid_parent="root" value="[]"/>
+  <Indicator _name="path 1d out" inputs="value:5310.value" type="array{path}" uid="5320" uid_parent="root" value="[]"/>
+  <Constant _name="path 1d k" outputs="value:" type="array{path}" uid="5330" uid_parent="root" value="[]"/>
+  <Control _name="path 2d" outputs="value:5340.value" type="array.2{path}" uid="5340" uid_parent="root" value="[]"/>
+  <Indicator _name="path 2d out" inputs="value:5340.value" type="array.2{path}" uid="5350" uid_parent="root" value="[]"/>
+  <Constant _name="path 2d k" outputs="value:" type="array.2{path}" uid="5360" uid_parent="root" value="[]"/>
+  <Control _name="extended" outputs="value:5370.value" type="extended" uid="5370" uid_parent="root" value="0"/>
+  <Indicator _name="extended out" inputs="value:5370.value" type="extended" uid="5380" uid_parent="root" value="0"/>
+  <Constant _name="extended k" outputs="value:" type="extended" uid="5390" uid_parent="root" value="0"/>
+  <Control _name="extended 1d" outputs="value:5400.value" type="array{extended}" uid="5400" uid_parent="root" value="[]"/>
+  <Indicator _name="extended 1d out" inputs="value:5400.value" type="array{extended}" uid="5410" uid_parent="root" value="[]"/>
+  <Constant _name="extended 1d k" outputs="value:" type="array{extended}" uid="5420" uid_parent="root" value="[]"/>
+  <Control _name="extended 2d" outputs="value:5430.value" type="array.2{extended}" uid="5430" uid_parent="root" value="[]"/>
+  <Indicator _name="extended 2d out" inputs="value:5430.value" type="array.2{extended}" uid="5440" uid_parent="root" value="[]"/>
+  <Constant _name="extended 2d k" outputs="value:" type="array.2{extended}" uid="5450" uid_parent="root" value="[]"/>
+  <Control _name="complexsingle" outputs="value:5460.value" type="complexsingle" uid="5460" uid_parent="root" value="0"/>
+  <Indicator _name="complexsingle out" inputs="value:5460.value" type="complexsingle" uid="5470" uid_parent="root" value="0"/>
+  <Constant _name="complexsingle k" outputs="value:" type="complexsingle" uid="5480" uid_parent="root" value="0"/>
+  <Control _name="complexsingle 1d" outputs="value:5490.value" type="array{complexsingle}" uid="5490" uid_parent="root" value="[]"/>
+  <Indicator _name="complexsingle 1d out" inputs="value:5490.value" type="array{complexsingle}" uid="5500" uid_parent="root" value="[]"/>
+  <Constant _name="complexsingle 1d k" outputs="value:" type="array{complexsingle}" uid="5510" uid_parent="root" value="[]"/>
+  <Control _name="complexsingle 2d" outputs="value:5520.value" type="array.2{complexsingle}" uid="5520" uid_parent="root" value="[]"/>
+  <Indicator _name="complexsingle 2d out" inputs="value:5520.value" type="array.2{complexsingle}" uid="5530" uid_parent="root" value="[]"/>
+  <Constant _name="complexsingle 2d k" outputs="value:" type="array.2{complexsingle}" uid="5540" uid_parent="root" value="[]"/>
+  <Control _name="complexdouble" outputs="value:5550.value" type="complexdouble" uid="5550" uid_parent="root" value="0"/>
+  <Indicator _name="complexdouble out" inputs="value:5550.value" type="complexdouble" uid="5560" uid_parent="root" value="0"/>
+  <Constant _name="complexdouble k" outputs="value:" type="complexdouble" uid="5570" uid_parent="root" value="0"/>
+  <Control _name="complexdouble 1d" outputs="value:5580.value" type="array{complexdouble}" uid="5580" uid_parent="root" value="[]"/>
+  <Indicator _name="complexdouble 1d out" inputs="value:5580.value" type="array{complexdouble}" uid="5590" uid_parent="root" value="[]"/>
+  <Constant _name="complexdouble 1d k" outputs="value:" type="array{complexdouble}" uid="5600" uid_parent="root" value="[]"/>
+  <Control _name="complexdouble 2d" outputs="value:5610.value" type="array.2{complexdouble}" uid="5610" uid_parent="root" value="[]"/>
+  <Indicator _name="complexdouble 2d out" inputs="value:5610.value" type="array.2{complexdouble}" uid="5620" uid_parent="root" value="[]"/>
+  <Constant _name="complexdouble 2d k" outputs="value:" type="array.2{complexdouble}" uid="5630" uid_parent="root" value="[]"/>
+  <Control _name="variant" outputs="value:5640.value" type="variant" uid="5640" uid_parent="root" value=""/>
+  <Indicator _name="variant out" inputs="value:5640.value" type="variant" uid="5650" uid_parent="root" value=""/>
+  <Constant _name="variant k" outputs="value:" type="variant" uid="5660" uid_parent="root" value=""/>
+  <Control _name="variant 1d" outputs="value:5670.value" type="array{variant}" uid="5670" uid_parent="root" value="[]"/>
+  <Indicator _name="variant 1d out" inputs="value:5670.value" type="array{variant}" uid="5680" uid_parent="root" value="[]"/>
+  <Constant _name="variant 1d k" outputs="value:" type="array{variant}" uid="5690" uid_parent="root" value="[]"/>
+  <Control _name="variant 2d" outputs="value:5700.value" type="array.2{variant}" uid="5700" uid_parent="root" value="[]"/>
+  <Indicator _name="variant 2d out" inputs="value:5700.value" type="array.2{variant}" uid="5710" uid_parent="root" value="[]"/>
+  <Constant _name="variant 2d k" outputs="value:" type="array.2{variant}" uid="5720" uid_parent="root" value="[]"/>
+  <Control _name="timestamp" outputs="value:5730.value" type="timestamp" uid="5730" uid_parent="root" value=""/>
+  <Indicator _name="timestamp out" inputs="value:5730.value" type="timestamp" uid="5740" uid_parent="root" value=""/>
+  <Constant _name="timestamp k" outputs="value:" type="timestamp" uid="5750" uid_parent="root" value=""/>
+  <Control _name="timestamp 1d" outputs="value:5760.value" type="array{timestamp}" uid="5760" uid_parent="root" value="[]"/>
+  <Indicator _name="timestamp 1d out" inputs="value:5760.value" type="array{timestamp}" uid="5770" uid_parent="root" value="[]"/>
+  <Constant _name="timestamp 1d k" outputs="value:" type="array{timestamp}" uid="5780" uid_parent="root" value="[]"/>
+  <Control _name="timestamp 2d" outputs="value:5790.value" type="array.2{timestamp}" uid="5790" uid_parent="root" value="[]"/>
+  <Indicator _name="timestamp 2d out" inputs="value:5790.value" type="array.2{timestamp}" uid="5800" uid_parent="root" value="[]"/>
+  <Constant _name="timestamp 2d k" outputs="value:" type="array.2{timestamp}" uid="5810" uid_parent="root" value="[]"/>
+  <Control _name="ring uint8" items="A,B,C" style="Ring" outputs="value:5820.value" type="uint8" uid="5820" uid_parent="root" value="0"/>
+  <Indicator _name="ring uint8 out" inputs="value:5820.value" type="uint8" uid="5830" uid_parent="root" value="0"/>
+  <Control _name="ring uint16" items="A,B,C" style="Ring" outputs="value:5840.value" type="uint16" uid="5840" uid_parent="root" value="0"/>
+  <Indicator _name="ring uint16 out" inputs="value:5840.value" type="uint16" uid="5850" uid_parent="root" value="0"/>
+  <Control _name="ring uint32" items="A,B,C" style="Ring" outputs="value:5860.value" type="uint32" uid="5860" uid_parent="root" value="0"/>
+  <Indicator _name="ring uint32 out" inputs="value:5860.value" type="uint32" uid="5870" uid_parent="root" value="0"/>
+  <Control _name="ring int32" items="A,B,C" style="Ring" outputs="value:5880.value" type="int32" uid="5880" uid_parent="root" value="0"/>
+  <Indicator _name="ring int32 out" inputs="value:5880.value" type="int32" uid="5890" uid_parent="root" value="0"/>
+  <Control _name="enum uint8" outputs="value:5900.value" type="uint8{A,B,C}" uid="5900" uid_parent="root" value="0"/>
+  <Indicator _name="enum uint8 out" inputs="value:5900.value" type="uint8{A,B,C}" uid="5910" uid_parent="root" value="0"/>
+  <Constant _name="enum uint8 k" outputs="value:" type="uint8{A,B,C}" uid="5920" uid_parent="root" value="0"/>
+  <Control _name="enum uint16" outputs="value:5930.value" type="uint16{A,B,C}" uid="5930" uid_parent="root" value="0"/>
+  <Indicator _name="enum uint16 out" inputs="value:5930.value" type="uint16{A,B,C}" uid="5940" uid_parent="root" value="0"/>
+  <Constant _name="enum uint16 k" outputs="value:" type="uint16{A,B,C}" uid="5950" uid_parent="root" value="0"/>
+  <Control _name="enum uint32" outputs="value:5960.value" type="uint32{A,B,C}" uid="5960" uid_parent="root" value="0"/>
+  <Indicator _name="enum uint32 out" inputs="value:5960.value" type="uint32{A,B,C}" uid="5970" uid_parent="root" value="0"/>
+  <Constant _name="enum uint32 k" outputs="value:" type="uint32{A,B,C}" uid="5980" uid_parent="root" value="0"/>
+</VI>

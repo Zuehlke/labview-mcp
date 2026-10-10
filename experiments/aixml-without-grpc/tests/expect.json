@@ -1042,5 +1042,33 @@
     }
    }
   ]
+ },
+ "t106_defaults": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "d out": 2.5,
+     "i out": -7,
+     "s out": "a*x1-b*x1*x2",
+     "b out": "true",
+     "a out": "[300,50]",
+     "c out": "[1.25,3,hi]",
+     "e out": 2
+    }
+   }
+  ]
+ },
+ "t107_styles": {
+  "cases": [
+   {
+    "inputs": "plain=true",
+    "outputs": {
+     "plain out": "true",
+     "ring out": 1,
+     "go out": "false"
+    }
+   }
+  ]
  }
 }

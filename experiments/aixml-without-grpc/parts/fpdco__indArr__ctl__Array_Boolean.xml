@@ -1,19 +1,18 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/indArr/ctl/Array.Boolean" source="AIXML-generated probe: parr2.vi" clean="1"><types><TypeDesc Type="Array" Format="inline" Label="flags"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="flags"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="fPDCO" uid="4439">
-          <objFlags>66048</objFlags>
-          <typeDesc>TypeID(55)</typeDesc>
-          <ddo class="indArr" uid="4220">
+<part kind="fpdco" key="fpdco/indArr/ctl/Array.Boolean" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="Array" Format="inline" Label="bool 1d"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="bool 1d"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="fPDCO" uid="8448">
+          <typeDesc>TypeID(209)</typeDesc>
+          <ddo class="indArr" uid="5130">
             <objFlags>4</objFlags>
-            <bounds>(74, 16, 128, 125)</bounds>
+            <bounds>(1959, 16, 2013, 125)</bounds>
             <partsList elements="9">
-              <SL__arrayElement class="label" uid="4416">
+              <SL__arrayElement class="label" uid="8425">
                 <objFlags>1507654</objFlags>
                 <partID>16</partID>
                 <masterPart>9</masterPart>
                 <howGrow>4096</howGrow>
-                <bounds>(0, 41, 15, 69)</bounds>
+                <bounds>(0, 41, 15, 84)</bounds>
                 <image class="Image">
                   <ImageResID>-9</ImageResID>
                   </image>
@@ -21,18 +20,18 @@
                 <bgColor>01000000</bgColor>
                 <textRec class="textHair">
                   <mode>1028</mode>
-                  <text>"flags"</text>
+                  <text>"bool 1d"</text>
                   <bgColor>01000000</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="stdNum" uid="4417">
+              <SL__arrayElement class="stdNum" uid="8426">
                 <objFlags>788854</objFlags>
                 <partID>8002</partID>
                 <masterPart>30</masterPart>
                 <howGrow>52</howGrow>
                 <bounds>(12, 0, 40, 41)</bounds>
                 <partsList elements="5">
-                  <SL__arrayElement class="numLabel" uid="4419">
+                  <SL__arrayElement class="numLabel" uid="8428">
                     <objFlags>264566</objFlags>
                     <partID>10</partID>
                     <masterPart>9</masterPart>
@@ -49,7 +48,7 @@
                       </textRec>
                     <format>"%.0f"</format>
                     </SL__arrayElement>
-                  <SL__arrayElement class="bigMultiCosm" uid="4420">
+                  <SL__arrayElement class="bigMultiCosm" uid="8429">
                     <objFlags>2354</objFlags>
                     <partID>3</partID>
                     <masterPart>9</masterPart>
@@ -76,7 +75,7 @@
                         </SL__arrayElement>
                       </table>
                     </SL__arrayElement>
-                  <SL__arrayElement class="bigMultiCosm" uid="4421">
+                  <SL__arrayElement class="bigMultiCosm" uid="8430">
                     <objFlags>2354</objFlags>
                     <partID>2</partID>
                     <masterPart>9</masterPart>
@@ -103,7 +102,7 @@
                         </SL__arrayElement>
                       </table>
                     </SL__arrayElement>
-                  <SL__arrayElement class="cosm" uid="4422">
+                  <SL__arrayElement class="cosm" uid="8431">
                     <objFlags>2423</objFlags>
                     <partID>9</partID>
                     <howGrow>240</howGrow>
@@ -114,15 +113,15 @@
                     <fgColor>00B3B3B3</fgColor>
                     <bgColor>01000000</bgColor>
                     </SL__arrayElement>
-                  <SL__arrayElement class="annex" uid="4423">
+                  <SL__arrayElement class="annex" uid="8432">
                     <partID>66</partID>
                     <rsrcID>21609</rsrcID>
                     </SL__arrayElement>
                   </partsList>
-                <typeDesc>TypeID(56)</typeDesc>
+                <typeDesc>TypeID(210)</typeDesc>
                 <MouseWheelSupport>2</MouseWheelSupport>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4424">
+              <SL__arrayElement class="cosm" uid="8433">
                 <objFlags>2391</objFlags>
                 <partID>30</partID>
                 <masterPart>9</masterPart>
@@ -134,7 +133,7 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>00B3B3B3</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4425">
+              <SL__arrayElement class="cosm" uid="8434">
                 <objFlags>2423</objFlags>
                 <partID>28</partID>
                 <masterPart>9</masterPart>
@@ -146,7 +145,7 @@
                 <fgColor>00A6A6A6</fgColor>
                 <bgColor>00A6A6A6</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4426">
+              <SL__arrayElement class="cosm" uid="8435">
                 <objFlags>3454</objFlags>
                 <partID>39</partID>
                 <masterPart>9</masterPart>
@@ -157,7 +156,7 @@
                   </image>
                 <bgColor>00B3B3B3</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4427">
+              <SL__arrayElement class="cosm" uid="8436">
                 <objFlags>3454</objFlags>
                 <partID>38</partID>
                 <masterPart>9</masterPart>
@@ -168,7 +167,7 @@
                   </image>
                 <bgColor>00B3B3B3</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4428">
+              <SL__arrayElement class="cosm" uid="8437">
                 <objFlags>3455</objFlags>
                 <partID>44</partID>
                 <masterPart>9</masterPart>
@@ -180,7 +179,7 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>00B3B3B3</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="cosm" uid="4429">
+              <SL__arrayElement class="cosm" uid="8438">
                 <objFlags>2389</objFlags>
                 <partID>9</partID>
                 <howGrow>240</howGrow>
@@ -191,24 +190,24 @@
                 <fgColor>00B3B3B3</fgColor>
                 <bgColor>01000000</bgColor>
                 </SL__arrayElement>
-              <SL__arrayElement class="annex" uid="4430">
+              <SL__arrayElement class="annex" uid="8439">
                 <partID>66</partID>
                 <rsrcID>21608</rsrcID>
                 </SL__arrayElement>
               </partsList>
-            <description class="cLStrObj" uid="4443">
+            <description class="cLStrObj" uid="8452">
               <strings elements="1">
                 <SL__arrayElement>[NULL]</SL__arrayElement>
                 </strings>
               </description>
-            <typeDesc>TypeID(57)</typeDesc>
+            <typeDesc>TypeID(211)</typeDesc>
             <MouseWheelSupport>3</MouseWheelSupport>
-            <ddo class="stdBool" uid="4431">
+            <ddo class="stdBool" uid="8440">
               <objFlags>4</objFlags>
               <howGrow>240</howGrow>
               <bounds>(19, 45, 50, 105)</bounds>
               <partsList elements="6">
-                <SL__arrayElement class="label" uid="4433">
+                <SL__arrayElement class="label" uid="8442">
                   <objFlags>1507659</objFlags>
                   <partID>16</partID>
                   <masterPart>21</masterPart>
@@ -225,7 +224,7 @@
                     <bgColor>01000000</bgColor>
                     </textRec>
                   </SL__arrayElement>
-                <SL__arrayElement class="bigMultiCosm" uid="4434">
+                <SL__arrayElement class="bigMultiCosm" uid="8443">
                   <objFlags>2354</objFlags>
                   <partID>86</partID>
                   <masterPart>21</masterPart>
@@ -268,7 +267,7 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="bigMultiCosm" uid="4435">
+                <SL__arrayElement class="bigMultiCosm" uid="8444">
                   <objFlags>2322</objFlags>
                   <partID>21</partID>
                   <howGrow>240</howGrow>
@@ -310,7 +309,7 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="bigMultiCosm" uid="4436">
+                <SL__arrayElement class="bigMultiCosm" uid="8445">
                   <objFlags>2355</objFlags>
                   <partID>89</partID>
                   <masterPart>21</masterPart>
@@ -353,7 +352,7 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="bigMultiCosm" uid="4437">
+                <SL__arrayElement class="bigMultiCosm" uid="8446">
                   <objFlags>2355</objFlags>
                   <partID>88</partID>
                   <masterPart>21</masterPart>
@@ -372,12 +371,12 @@
                       </SL__arrayElement>
                     </table>
                   </SL__arrayElement>
-                <SL__arrayElement class="annex" uid="4438">
+                <SL__arrayElement class="annex" uid="8447">
                   <partID>66</partID>
                   <rsrcID>21001</rsrcID>
                   </SL__arrayElement>
                 </partsList>
-              <typeDesc>TypeID(58)</typeDesc>
+              <typeDesc>TypeID(212)</typeDesc>
               <MouseWheelSupport>0</MouseWheelSupport>
               <MinButSize>(50, 21)</MinButSize>
               </ddo>
@@ -393,7 +392,7 @@
               <SL__arrayElement>0</SL__arrayElement>
               </arraySelectionEnd>
             </ddo>
-          <conNum>3</conNum>
+          <conNum>-1</conNum>
           <termListLength>1</termListLength>
           </SL__arrayElement>
         </heap></part>

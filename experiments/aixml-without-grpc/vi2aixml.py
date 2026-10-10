@@ -15,6 +15,7 @@ so nothing is dropped in silence.
 """
 import json
 import os
+import re
 import shutil
 import struct
 import sys
@@ -450,6 +451,20 @@ class Reader:
                 self.notes.append("front-panel %s %r: type %s not mapped" % (ddo.get("class"), label_text(ddo), lvheap.type_key(tree)))
             else:
                 el.set("type", t)
+            # style, as NI's exports write it: latched (a boolean's mechanical action, ddo
+            # objFlags 0x20000 - NI's Stop buttons carry 0x60000), Ring (a stdRing on a plain
+            # number, items from its multiLabel buf) and Table (a tableControl)
+            cls = ddo.get("class")
+            if cls == "stdBool" and not ind and int(ddo.findtext("objFlags") or 0) & 0x20000:
+                el.set("style", "latched")
+            elif cls == "stdRing" and t is not None and "{" not in t:
+                buf = next((p.findtext("buf") for p in ddo.iter("SL__arrayElement")
+                            if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
+                labels = re.findall(r'"([^"]*)"', buf or "")
+                el.set("items", ",".join(escape(x).replace(",", "\\2C") for x in labels))
+                el.set("style", "Ring")
+            elif cls == "tableControl":
+                el.set("style", "Table")
             el.set("uid", ddo.get("uid"))
             el.set("uid_parent", "?")
             dd = fpdco.findtext("DefaultData")

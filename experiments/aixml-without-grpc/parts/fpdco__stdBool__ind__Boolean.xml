@@ -1,17 +1,17 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/stdBool/ind/Boolean" source="AIXML-generated probe: probe.xml" clean="1"><types><TypeDesc Type="Boolean" Format="inline" Label="i bool" /><TypeDesc Type="Boolean" Format="inline" Label="i bool" /></types><heap><SL__arrayElement class="fPDCO" uid="4474">
+<part kind="fpdco" key="fpdco/stdBool/ind/Boolean" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types><TypeDesc Type="Boolean" Format="inline" Label="bool out" /><TypeDesc Type="Boolean" Format="inline" Label="bool out" /></types><heap><SL__arrayElement class="fPDCO" uid="8409">
           <objFlags>1</objFlags>
-          <typeDesc>TypeID(4)</typeDesc>
-          <ddo class="stdBool" uid="4340">
+          <typeDesc>TypeID(213)</typeDesc>
+          <ddo class="stdBool" uid="5110">
             <objFlags>5</objFlags>
-            <bounds>(216, 400, 250, 433)</bounds>
+            <bounds>(1896, 400, 1930, 448)</bounds>
             <partsList elements="4">
-              <SL__arrayElement class="label" uid="4470">
+              <SL__arrayElement class="label" uid="8405">
                 <objFlags>1507651</objFlags>
                 <partID>16</partID>
                 <masterPart>21</masterPart>
                 <howGrow>4096</howGrow>
-                <bounds>(0, 0, 15, 33)</bounds>
+                <bounds>(0, 0, 15, 48)</bounds>
                 <image class="Image">
                   <ImageResID>-9</ImageResID>
                   </image>
@@ -19,11 +19,11 @@
                 <bgColor>01000000</bgColor>
                 <textRec class="textHair">
                   <mode>1028</mode>
-                  <text>"i bool"</text>
+                  <text>"bool out"</text>
                   <bgColor>01000000</bgColor>
                   </textRec>
                 </SL__arrayElement>
-              <SL__arrayElement class="bigMultiCosm" uid="4471">
+              <SL__arrayElement class="bigMultiCosm" uid="8406">
                 <objFlags>2320</objFlags>
                 <partID>21</partID>
                 <howGrow>240</howGrow>
@@ -65,7 +65,7 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="bigMultiCosm" uid="4472">
+              <SL__arrayElement class="bigMultiCosm" uid="8407">
                 <objFlags>2355</objFlags>
                 <partID>87</partID>
                 <masterPart>21</masterPart>
@@ -108,17 +108,17 @@
                     </SL__arrayElement>
                   </table>
                 </SL__arrayElement>
-              <SL__arrayElement class="annex" uid="4473">
+              <SL__arrayElement class="annex" uid="8408">
                 <partID>66</partID>
                 <rsrcID>21012</rsrcID>
                 </SL__arrayElement>
               </partsList>
-            <description class="cLStrObj" uid="4481">
+            <description class="cLStrObj" uid="8416">
               <strings elements="1">
                 <SL__arrayElement>[NULL]</SL__arrayElement>
                 </strings>
               </description>
-            <typeDesc>TypeID(5)</typeDesc>
+            <typeDesc>TypeID(214)</typeDesc>
             <MouseWheelSupport>0</MouseWheelSupport>
             <MinButSize>(17, 17)</MinButSize>
             </ddo>
