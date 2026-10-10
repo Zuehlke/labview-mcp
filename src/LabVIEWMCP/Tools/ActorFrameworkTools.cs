@@ -74,6 +74,9 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         THE ACTOR MUST DESCEND FROM Actor.lvclass - checked by walking the class file's own parent
         links, which is also how the LabVIEW installation is located, so the template and the
         message parent always come from the same install as the actor.
+        PUT THE ACTOR IN ITS LIBRARY FIRST. An actor added to a .lvlib after its messages exist
+        leaves every Do.vi eBad (measured 2026-09-18) with every file-level check green; the
+        repair is rebuilding the messages. Order: class, methods, library, messages.
         """)]
     public async Task<string> CreateMessageClassAsync(
         [Description(@"Absolute path to the actor's .lvclass - it must descend from Actor.lvclass")]

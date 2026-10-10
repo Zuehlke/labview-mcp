@@ -68,6 +68,10 @@ internal sealed class LibraryTools(LvaiConnection connection)
         trip rather than five.
         VERIFIED FROM THE SAVED .lvlib, which is re-read afterwards - `verify.items` is what is on
         disk, not what the runs reported.
+        AN ACTOR JOINS ITS LIBRARY BEFORE ITS MESSAGES ARE BUILT. Adding an actor class whose
+        message classes already exist leaves every message's Do.vi eBad (measured 2026-09-18)
+        while this call answers ok; only lvai_exec_state sees it, and the repair is rebuilding
+        the messages. Order: class, methods, library, messages.
         """)]
     public async Task<string> AddToLibraryAsync(
         [Description("Absolute path to the .lvlib the items should belong to. It must already exist")]
