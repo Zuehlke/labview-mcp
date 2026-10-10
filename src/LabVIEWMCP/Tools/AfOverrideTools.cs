@@ -867,6 +867,10 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             ["hookInputs"] = new JsonArray([.. hook.Inputs.Select(t => (JsonNode)$"{t.Name} ({t.Connection ?? "?"})")]),
             ["hookOutputs"] = DqmhHeadless.Array(hook.Outputs.Select(t => t.Name)),
             ["panelTerminals"] = DqmhHeadless.Array(diagram.PanelNames),
+            // The wire ends the series checks decide on (2 = one plain wire, more = branched),
+            // reported so a refusal or a dry run can be checked against the diagram.
+            ["panelWireEnds"] = new JsonObject([.. diagram.WireEnds.Select(e =>
+                new KeyValuePair<string, JsonNode?>(e.Key, e.Value))]),
             ["subVisOnDiagram"] = DqmhHeadless.Array(diagram.SubVis),
             ["callParentSeen"] = diagram.NodeClasses.Contains("CallParentNode"),
             ["plan"] = plan.ToJson(),
