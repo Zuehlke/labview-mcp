@@ -700,6 +700,9 @@ class Reader:
                                  "uid": node.get("uid"), "uid_parent": parent_uid})
         if name is None:
             self.notes.append("primitive primResID %s has no name in the table" % rid)
+        for attr, bit in aixml2vi.Composer.PRIM_MODE_BITS.get(name, {}).items():
+            if int(node.findtext("objFlags") or 0) & bit:
+                el.set(attr, "true")
         for term in node.find("termList"):
             dco = term.find("dco")
             pidx = dco.findtext("parmIndex") or "out"

@@ -1399,7 +1399,11 @@ class Composer:
     # computes, and ignoring it composed a VI that loads and computes something else - measured
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
-    PRIM_MODES = {}     # primitive name -> the mode attributes add_node writes
+    PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow")}   # name -> mode attributes add_node writes
+    # a mode that is a bit of the prim's objFlags, read off probes/pmodes.xml through NI's own
+    # converter: includeLow 0x200000, includeHigh 0x100000, neither 0 (NI's exports write the
+    # attribute only when it is true, 21 of 27 In Range nodes with both)
+    PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000}}
 
     def check_attrs(self, el, extra=()):
         unknown = [a for a in el.attrib if a not in self.NODE_ATTRS and a not in extra]
@@ -1418,6 +1422,18 @@ class Composer:
         if got is None:
             raise Unsupported("Node %r (primResID %s) has no harvested part" % (name, rid))
         prim, donor_types, src = got
+        bits = self.PRIM_MODE_BITS.get(name)
+        if bits:
+            f = prim.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                prim.insert(0, f)
+            v = int(f.text or 0)
+            for attr, bit in bits.items():
+                v = (v | bit) if (el.get(attr) or "").lower() == "true" else (v & ~bit)
+            f.text = str(v)
+            if not v:
+                prim.remove(f)
         # `inplace` is a compiler hint from the DONOR's last compile: Add's output reusing an
         # input buffer. Carried into a node whose inputs now differ in type it is wrong, and a
         # source-only VI is recompiled anyway (FINDINGS 3.7), so it goes.

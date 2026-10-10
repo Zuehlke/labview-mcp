@@ -1095,5 +1095,37 @@
  },
  "t110_graphs": {
   "cases": []
+ },
+ "t111_in_range_modes": {
+  "cases": [
+   {
+    "inputs": "x=0",
+    "outputs": {
+     "none": "false",
+     "low": "true",
+     "high": "false",
+     "both": "true"
+    }
+   },
+   {
+    "inputs": "x=10",
+    "outputs": {
+     "none": "false",
+     "low": "false",
+     "high": "true",
+     "both": "true"
+    }
+   },
+   {
+    "inputs": "x=12",
+    "outputs": {
+     "none": "false",
+     "low": "false",
+     "high": "false",
+     "both": "false",
+     "coerced": 10
+    }
+   }
+  ]
  }
 }
