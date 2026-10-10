@@ -229,7 +229,6 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                 ownerIcon["pixelsDifferent"] = comparison.Differing;
                 ownerIcon["firstDifferences"] = new JsonArray([.. comparison.FirstDifferences.Select(d => (JsonNode)d!)]);
             }
-            var ownerAfter = IconOwners.Read(owner.Path);
             var ownerOk = ownerIcon["written"]?.GetValue<bool>() is true &&
                           (ownerIcon["pixelsDifferent"]?.GetValue<int>() == 0 || offCube.Count > 0);
 
@@ -284,7 +283,9 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                                  "unmeasured - check their files with git status.");
             }
 
-            if (ownerBefore.Version is { } vBefore && ownerAfter.LvVersion is { } vAfter && vBefore != vAfter)
+            // Read AFTER the apply stage: the apply helper saves the owner a second time.
+            var ownerAfter = TryRead(owner.Path);
+            if (ownerBefore.Version is { } vBefore && ownerAfter?.LvVersion is { } vAfter && vBefore != vAfter)
                 warnings.Add($"The owner was saved in a different LabVIEW version: LVVersion {vBefore} -> " +
                              $"{vAfter}. Every re-saved member is likely upgraded the same way. If the " +
                              "project is meant to stay in its older version, restore the files and ask " +
@@ -294,14 +295,14 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
-                ["failedAtStep"] = ok ? null : memberFailedAt ?? (ownerOk ? "verifyMembers" : "verifyOwnerIcon"),
+                ["failedAtStep"] = ok ? null : !ownerOk ? "verifyOwnerIcon" : memberFailedAt ?? "verifyMembers",
                 ["ownerPath"] = owner.Path,
                 ["ownerKind"] = owner.Kind,
                 ["pngPath"] = Path.GetFullPath(pngPath),
                 ["ownerIcon"] = ownerIcon,
-                ["ownerIconPropertyChanged"] = ownerBefore.IconProperty != ownerAfter.IconProperty,
+                ["ownerIconPropertyChanged"] = ownerAfter is null ? null : ownerBefore.IconProperty != ownerAfter.IconProperty,
                 ["ownerLvVersionBefore"] = ownerBefore.Version,
-                ["ownerLvVersionAfter"] = ownerAfter.LvVersion,
+                ["ownerLvVersionAfter"] = ownerAfter?.LvVersion,
                 ["applied"] = applyToMembers,
                 ["memberCount"] = applyToMembers ? members.Count : null,
                 ["members"] = memberResults,
@@ -410,7 +411,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             var ownerInfo = new Dictionary<int, IconOwners.Owner>();
             foreach (var i in owners)
             {
-                if (CheckOwner(items[i], out var o) is { } problem) return problem;
+                if (CheckOwner(items[i], out var o, forWriting: false) is { } problem) return problem;
                 ownerInfo[i] = o!;
             }
 
@@ -640,6 +641,10 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         var after = await ReadViIconsAsync(helpers[ReadViIconsHelper], [vi], [afterPng], afterStart,
                                            timeoutSeconds, steps, ct);
         var layersAfter = ViIconLayers.Read(vi);
+        var ownerVersionAfter = TryRead(owner.Path)?.LvVersion;
+        if (owner.LvVersion is { } vBefore && ownerVersionAfter is { } vAfter && vBefore != vAfter)
+            warnings.Add($"The apply helper re-saves the owner, and it was saved in a different LabVIEW " +
+                         $"version: LVVersion {vBefore} -> {vAfter}. The VI is likely upgraded the same way.");
 
         int? templateMissing = null, changed = null, outside = null;
         if (after.Written[0] && ownerIcon["written"]?.GetValue<bool>() is true &&
@@ -675,6 +680,8 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             ["openCode"] = At(apply.OpenCodes, 0),
             ["saveCode"] = At(apply.SaveCodes, 0),
             ["viResaved"] = Snapshot(vi) != viBefore,
+            ["ownerLvVersionBefore"] = owner.LvVersion,
+            ["ownerLvVersionAfter"] = ownerVersionAfter,
             ["iconLayersBefore"] = LayersJson(layersBefore),
             ["iconLayersAfter"] = LayersJson(layersAfter),
             ["templateMissing"] = templateMissing,
@@ -1056,7 +1063,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
 
     // ================================================================== file checks
 
-    private static string? CheckOwner(string ownerPath, out IconOwners.Owner? owner)
+    private static string? CheckOwner(string ownerPath, out IconOwners.Owner? owner, bool forWriting = true)
     {
         owner = null;
         var full = Path.GetFullPath(ownerPath);
@@ -1068,7 +1075,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         {
             return Json.Error("ownerUnreadable", e.Message, new { ownerPath = full });
         }
-        if (IsReadOnly(full))
+        if (forWriting && IsReadOnly(full))
             return Json.Error("ownerReadOnly", $"'{full}' is read-only, so LabVIEW could not save its icon.");
         return null;
     }
@@ -1266,6 +1273,16 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
     /// <summary>A file written during this call - two seconds of slack for file-system time resolution.</summary>
     private static bool WrittenSince(string path, DateTime startedUtc) =>
         File.Exists(path) && File.GetLastWriteTimeUtc(path) >= startedUtc.AddSeconds(-2);
+
+    private static IconOwners.Owner? TryRead(string path)
+    {
+        try { return IconOwners.Read(path); }
+        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException
+                                      or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     private static PngPixels.Image? TryDecode(string path)
     {
