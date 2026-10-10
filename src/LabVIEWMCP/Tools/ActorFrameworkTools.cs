@@ -384,7 +384,7 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
     /// <c>Actor.lvclass</c>. Null when the chain never reaches it - which is the same thing as
     /// "this is not an actor", so the caller gets one answer for two questions.
     /// </summary>
-    private static string? ActorInstallationRoot(string lvclassPath)
+    internal static string? ActorInstallationRoot(string lvclassPath)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var current = lvclassPath;

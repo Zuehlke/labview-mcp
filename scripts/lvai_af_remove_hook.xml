@@ -1,0 +1,43 @@
+<VI _name="lvai_af_remove_hook.vi" description="Deletes ONE top-level subVI node from an override (or any class member) in the ACTIVE PROJECT's application instance\2C then runs BD.Remove Bad Wires on it. The node is the Occurrence-th (from 0\2C in SubVIs[] order) whose VI Name equals Hook VI Name exactly\3B Matches says how many there were\2C so a caller that read the diagram first with lvai_af_hook_read can refuse an ambiguous name before this runs. WHY REMOVE BAD WIRES IS NOT OPTIONAL\3A deleting a node that sat on a branched wire leaves a loose end\2C and the VI - and a sibling override of the same class - then reads state 0 with an error of type 1000088\3B Remove Bad Wires on the edited VI cleared both (the kit's pa_delete_subvi plus pa_clean_member route\2C measured). The kit's own delete removed EVERY node with a given terminal name\3B this one removes exactly one. Execution state before and after is read in this instance. It does NOT save\3A the caller saves in a separate run. UNMEASURED as a whole.">
+  <Control _name="Override VI Path" conIdx="0" connection="recommended" outputs="value:5000.value" type="path" uid="5000" uid_parent="root" value=""/>
+  <Control _name="Hook VI Name" conIdx="1" connection="recommended" outputs="value:5001.value" type="string" uid="5001" uid_parent="root" value=""/>
+  <Control _name="Occurrence" conIdx="2" connection="recommended" outputs="value:5002.value" type="int32" uid="5002" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5003.value" type="cluster{bool.status,int32.code,string.source}" uid="5003" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Deletes one node - the caller saves" uid="5004" uid_parent="root"/>
+
+  <Constant _name="subVI class" outputs="value:5005.value" type="ref{LV.SubVI}" uid="5005" uid_parent="root" value=""/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):5003.value" outputs="Project\3AActive Project:5010.proj,reference out:,error out:5010.error out" uid="5010" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:5010.proj,error in (no error):5010.error out" outputs="Application:5011.app,reference out:,error out:5011.error out" uid="5011" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):5011.app,vi path:5000.value,error in (no error):5011.error out" outputs="vi reference:5012.vi,error out:5012.error out" uid="5012" uid_parent="root"/>
+  <Indicator _name="open vi error" inputs="value:5012.error out" type="cluster{bool.status,int32.code,string.source}" uid="5013" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Execution\3AState,read+Block Diagram" type="{LV.VI}" inputs="reference:5012.vi,error in (no error):5012.error out" outputs="Execution\3AState:5014.state,Block Diagram:5014.bd,reference out:,error out:5014.error out" uid="5014" uid_parent="root"/>
+  <Indicator _name="state before" inputs="value:5014.state" type="int32" uid="5015" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="read+SubVIs[]" type="{LV.Diagram}" inputs="reference:5014.bd,error in (no error):5014.error out" outputs="SubVIs[]:5016.subvis,reference out:,error out:5016.error out" uid="5016" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5016.subvis" mode="index" outputs="value:5101.node" uid="5101" uid_parent="5100"/>
+    <Tunnel _id="In2" inputs="value:5005.value" outputs="value:5102.cls" uid="5102" uid_parent="5100"/>
+    <Tunnel _id="In3" inputs="value:5001.value" outputs="value:5103.wanted" uid="5103" uid_parent="5100"/>
+    <Node _name="To More Specific Class" inputs="reference:5101.node,error in:,target class:5102.cls" outputs="specific class reference:5104.subvi,error out:5104.error out" uid="5104" uid_parent="5100"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:5104.subvi,error in (no error):5104.error out" outputs="VI Name:5105.name,reference out:,error out:5105.error out" uid="5105" uid_parent="5100"/>
+    <Call inputs="specific error code to clear (0\3A all):,error in (no error):5105.error out" outputs="specific error cleared?:,error out:" target="Clear Errors.vi" uid="5106" uid_parent="5100"/>
+    <Node _name="Equal?" inputs="x:5105.name,y:5103.wanted" outputs="x = y?:5107.hit" uid="5107" uid_parent="5100"/>
+    <Tunnel _id="Out1" cond="5107.hit" inputs="value:5101.node" mode="index" outputs="value:5108.matches" uid="5108" uid_parent="5100"/>
+  </Structure>
+  <Node _name="Array Size" inputs="array:5108.matches" outputs="size(s):5110.n" uid="5110" uid_parent="root"/>
+  <Indicator _name="Matches" inputs="value:5110.n" type="int32" uid="5111" uid_parent="root" value="0"/>
+  <Node _name="Index Array" inputs="array:5108.matches,index:5002.value" outputs="element:5112.node" uid="5112" uid_parent="root"/>
+
+  <Node _name="Invoke Node" target="Delete" type="{LV.Node}" inputs="reference:5112.node,error in (no error):5016.error out" outputs="reference out:,error out:5120.error out" uid="5120" uid_parent="root"/>
+  <Indicator _name="delete error" inputs="value:5120.error out" type="cluster{bool.status,int32.code,string.source}" uid="5121" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:5012.vi,error in (no error):5120.error out" outputs="reference out:,error out:5122.error out" uid="5122" uid_parent="root"/>
+  <Indicator _name="remove bad wires error" inputs="value:5122.error out" type="cluster{bool.status,int32.code,string.source}" uid="5123" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:5012.vi,error in (no error):5122.error out" outputs="Execution\3AState:5124.state,reference out:,error out:5124.error out" uid="5124" uid_parent="root"/>
+  <Indicator _name="state after" inputs="value:5124.state" type="int32" uid="5125" uid_parent="root" value="0"/>
+
+  <Node _name="Close Reference" inputs="reference:5012.vi,error in (no error):5124.error out" outputs="error out:5130.error out" uid="5130" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:5011.app,error in (no error):5130.error out" outputs="error out:5131.error out" uid="5131" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:5131.error out" type="cluster{bool.status,int32.code,string.source}" uid="5132" uid_parent="root" value="[false,0,]"/>
+</VI>

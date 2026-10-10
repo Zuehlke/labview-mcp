@@ -1,0 +1,50 @@
+<VI _name="lvai_af_hook_read.vi" description="READ-ONLY dry run for lvai_af_add_hook and lvai_af_remove_hook\3A opens an override (or any class member) in the ACTIVE PROJECT's application instance and lists what a hook placement needs to know\2C changing nothing. Panel Terminal Names is every front-panel object's block-diagram terminal name\2C and Panel Wire Ends the number of terminals on the wire leaving it (0 = unwired\2C 2 = one plain wire\2C more = a branched net\2C which a series insert must not cut). SubVI Names is the VI Name of every top-level subVI node\2C Node Classes the Class Name of every top-level node\2C so a caller can see whether a CallParentNode is there. A failed read inside a loop is cleared and reads as empty\2C because one terminal with no wire must not stop the listing. Nothing is saved. UNMEASURED as a whole\3A its calls are the ones the kit's measured hook helpers and lvbd_graft_rewire make.">
+  <Control _name="Override VI Path" conIdx="0" connection="recommended" outputs="value:5000.value" type="path" uid="5000" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5001.value" type="cluster{bool.status,int32.code,string.source}" uid="5001" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Reads only - nothing is changed" uid="5002" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):5001.value" outputs="Project\3AActive Project:5010.proj,reference out:,error out:5010.error out" uid="5010" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:5010.proj,error in (no error):5010.error out" outputs="Application:5011.app,reference out:,error out:5011.error out" uid="5011" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):5011.app,vi path:5000.value,error in (no error):5011.error out" outputs="vi reference:5012.vi,error out:5012.error out" uid="5012" uid_parent="root"/>
+  <Indicator _name="open vi error" inputs="value:5012.error out" type="cluster{bool.status,int32.code,string.source}" uid="5013" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Block Diagram,read+Front Panel" type="{LV.VI}" inputs="reference:5012.vi,error in (no error):5012.error out" outputs="Block Diagram:5014.bd,Front Panel:5014.panel,reference out:,error out:5014.error out" uid="5014" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:5014.panel,error in (no error):5014.error out" outputs="Controls[]:5015.controls,reference out:,error out:5015.error out" uid="5015" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+SubVIs[],read+Nodes[]" type="{LV.Diagram}" inputs="reference:5014.bd,error in (no error):5015.error out" outputs="SubVIs[]:5016.subvis,Nodes[]:5016.nodes,reference out:,error out:5016.error out" uid="5016" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5015.controls" mode="index" outputs="value:5101.control" uid="5101" uid_parent="5100"/>
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:5101.control" outputs="Terminal:5102.term,reference out:,error out:5102.error out" uid="5102" uid_parent="5100"/>
+    <Node _name="Property Node" fields="read+Name,read+Connected Wire" type="{LV.Terminal}" inputs="reference:5102.term,error in (no error):5102.error out" outputs="Name:5103.name,Connected Wire:5103.wire,reference out:,error out:5103.error out" uid="5103" uid_parent="5100"/>
+    <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:5103.wire,error in (no error):5103.error out" outputs="Terminals[]:5104.ends,reference out:,error out:5104.error out" uid="5104" uid_parent="5100"/>
+    <Call inputs="specific error code to clear (0\3A all):,error in (no error):5104.error out" outputs="specific error cleared?:,error out:" target="Clear Errors.vi" uid="5105" uid_parent="5100"/>
+    <Node _name="Array Size" inputs="array:5104.ends" outputs="size(s):5106.n" uid="5106" uid_parent="5100"/>
+    <Tunnel _id="Out1" inputs="value:5103.name" mode="index" outputs="value:5107.names" uid="5107" uid_parent="5100"/>
+    <Tunnel _id="Out2" inputs="value:5106.n" mode="index" outputs="value:5108.ends" uid="5108" uid_parent="5100"/>
+  </Structure>
+  <Indicator _name="Panel Terminal Names" inputs="value:5107.names" type="array{string}" uid="5109" uid_parent="root" value="[]"/>
+  <Indicator _name="Panel Wire Ends" inputs="value:5108.ends" type="array{int32}" uid="5110" uid_parent="root" value="[]"/>
+
+  <Constant _name="subVI class" outputs="value:5200.value" type="ref{LV.SubVI}" uid="5200" uid_parent="root" value=""/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5201" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5016.subvis" mode="index" outputs="value:5202.node" uid="5202" uid_parent="5201"/>
+    <Tunnel _id="In2" inputs="value:5200.value" outputs="value:5203.cls" uid="5203" uid_parent="5201"/>
+    <Node _name="To More Specific Class" inputs="reference:5202.node,error in:,target class:5203.cls" outputs="specific class reference:5204.subvi,error out:5204.error out" uid="5204" uid_parent="5201"/>
+    <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:5204.subvi,error in (no error):5204.error out" outputs="VI Name:5205.name,reference out:,error out:5205.error out" uid="5205" uid_parent="5201"/>
+    <Call inputs="specific error code to clear (0\3A all):,error in (no error):5205.error out" outputs="specific error cleared?:,error out:" target="Clear Errors.vi" uid="5206" uid_parent="5201"/>
+    <Tunnel _id="Out1" inputs="value:5205.name" mode="index" outputs="value:5207.names" uid="5207" uid_parent="5201"/>
+  </Structure>
+  <Indicator _name="SubVI Names" inputs="value:5207.names" type="array{string}" uid="5208" uid_parent="root" value="[]"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5016.nodes" mode="index" outputs="value:5301.node" uid="5301" uid_parent="5300"/>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.GObject}" inputs="reference:5301.node" outputs="Class Name:5302.cls,reference out:,error out:5302.error out" uid="5302" uid_parent="5300"/>
+    <Call inputs="specific error code to clear (0\3A all):,error in (no error):5302.error out" outputs="specific error cleared?:,error out:" target="Clear Errors.vi" uid="5303" uid_parent="5300"/>
+    <Tunnel _id="Out1" inputs="value:5302.cls" mode="index" outputs="value:5304.classes" uid="5304" uid_parent="5300"/>
+  </Structure>
+  <Indicator _name="Node Classes" inputs="value:5304.classes" type="array{string}" uid="5305" uid_parent="root" value="[]"/>
+
+  <Node _name="Close Reference" inputs="reference:5012.vi,error in (no error):5016.error out" outputs="error out:5400.error out" uid="5400" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:5011.app,error in (no error):5400.error out" outputs="error out:5401.error out" uid="5401" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:5401.error out" type="cluster{bool.status,int32.code,string.source}" uid="5402" uid_parent="root" value="[false,0,]"/>
+</VI>
