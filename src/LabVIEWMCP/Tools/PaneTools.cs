@@ -175,6 +175,64 @@ internal sealed class PaneTools(LvaiConnection connection)
         }
 
     /// <summary>
+    /// The pane read from the FILE by pylabview (scripts/pylv-conpane.py) - no LabVIEW, no NI
+    /// service, so the pylabview backend's verdict. Measured 2026-10-10 on a composed VI against
+    /// this tool's own probe: same pattern (4833), 0 violations and 1 warning on both, the same
+    /// corrected assignment. A failure is reported as not measured, never as a clean pane.
+    /// </summary>
+    internal static async Task<PaneVerdict> MeasureWithPylabviewAsync(string viPath, int timeoutSeconds,
+                                                                     CancellationToken ct)
+    {
+        static PaneVerdict NotMeasured(string why, string viPath) =>
+            new(Json.Error("paneNotMeasured", why, new { viPath, via = "pylabview" }), 0, -1, 0);
+
+        if (PyLabview.Locate() is not { } bundle) return NotMeasured(PyLabview.NotProvisionedMessage(), viPath);
+        if (StatusTools.ScriptsDirectory() is not { } scripts
+            || !File.Exists(Path.Combine(scripts, "pylv-conpane.py")))
+            return NotMeasured("scripts\\pylv-conpane.py was not found next to the server.", viPath);
+
+        var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "pane-read", Path.GetRandomFileName());
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            var main = Path.Combine(scratch, "m.xml");
+            var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
+                ["-x", "-i", Path.GetFullPath(viPath), "-m", main], timeoutSeconds, ct);
+            if (extract.ExitCode != 0 || !File.Exists(main))
+                return NotMeasured("pylabview could not read the VI: " + extract.StdErr.Trim(), viPath);
+
+            var show = await PyLabview.RunAsync(bundle, Path.Combine(scripts, "pylv-conpane.py"),
+                [scratch, "--show"], timeoutSeconds, ct);
+
+            // NO PANE AT ALL is a reading, not a failure: the composer writes a connector pane
+            // only when some terminal has a conIdx, where NI's converter stamps the station default
+            // with nothing assigned. Either way a caller can wire nothing. Measured 2026-10-10 on a
+            // test document with no conIdx: `no <cons> array in the front-panel heap`.
+            if (show.StdErr.Contains("no <cons> array", StringComparison.Ordinal))
+                return new PaneVerdict(
+                    "This VI has NO connector pane: no terminal in its AIXML has a conIdx, and the " +
+                    "pylabview composer writes a pane only for assigned terminals. A caller can wire " +
+                    "nothing to it - give the terminals conIdx values if it is meant to be a subVI.",
+                    0, 0, 0);
+
+            var text = show.StdOut;
+            var pattern = System.Text.RegularExpressions.Regex.Match(text, @"connector pane pattern (\d+)");
+            if (show.ExitCode != 0 || !pattern.Success)
+                return NotMeasured("pylv-conpane.py gave no verdict: " + (show.StdErr + show.StdOut).Trim(), viPath);
+
+            var lines = text.Split('\n').Select(l => l.Trim()).ToList();
+            return new PaneVerdict(text.TrimEnd(), int.Parse(pattern.Groups[1].Value),
+                                   lines.Count(l => l.StartsWith("[violation]", StringComparison.Ordinal)),
+                                   lines.Count(l => l.StartsWith("[warning]", StringComparison.Ordinal)));
+        }
+        finally
+        {
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>
     /// Does the probe's pane lack a slot the export assigns? Only then are the two readings of
     /// different VIs; an unparsable bounds payload is left to <see cref="RenderVerdict"/>, which
     /// names that failure itself.

@@ -1,0 +1,268 @@
+using System.Globalization;
+using System.Text;
+
+namespace LabVIEWMcp.Infra;
+
+/// <summary>
+/// Values across LabVIEW's ActiveX boundary, in the AIXML spelling on both sides: a control's
+/// type as the reader writes it (`double`, `uint16{Off,On}`, `array{int32}`,
+/// `cluster{double.x,int32.n}`) and a value as an AIXML literal (`3.5`, `[1,2,3]`, `[false,0,]`).
+///
+/// Pure functions, so every rule here is tested without LabVIEW. The two rules that cost runs in
+/// the experiment (experiments/aixml-without-grpc/lv-com.ps1):
+///   * a CLUSTER must cross as a variant array, object[] - a double[] is accepted with no error
+///     and silently ignored, the control stays 0;
+///   * a 2D array crosses as ONE rectangular array, and enumerating it flattens the rows.
+/// What is not covered is refused by name rather than guessed: a waveform, a timestamp, a
+/// refnum, a variant, an array of clusters.
+/// </summary>
+internal static class ComValues
+{
+    private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+
+    private static readonly HashSet<string> Floats = new(StringComparer.Ordinal)
+        { "double", "single", "extended" };
+
+    private static readonly Dictionary<string, (long Min, ulong Max)> Integers = new(StringComparer.Ordinal)
+    {
+        ["int8"] = (sbyte.MinValue, (ulong)sbyte.MaxValue),
+        ["int16"] = (short.MinValue, (ulong)short.MaxValue),
+        ["int32"] = (int.MinValue, int.MaxValue),
+        ["int64"] = (long.MinValue, long.MaxValue),
+        ["uint8"] = (0, byte.MaxValue),
+        ["uint16"] = (0, ushort.MaxValue),
+        ["uint32"] = (0, uint.MaxValue),
+        ["uint64"] = (0, ulong.MaxValue),
+    };
+
+    /// <summary>
+    /// Text -> the .NET value SetControlValue takes for a control of <paramref name="type"/>, or
+    /// null with <paramref name="problem"/> saying why not.
+    /// </summary>
+    public static object? FromText(string text, string type, out string? problem)
+    {
+        problem = null;
+        type = type.Trim();
+
+        if (type is "string" or "path") return text;
+
+        if (type == "bool")
+        {
+            if (text.Trim().Equals("true", StringComparison.OrdinalIgnoreCase)) return true;
+            if (text.Trim().Equals("false", StringComparison.OrdinalIgnoreCase)) return false;
+            problem = $"'{text}' is not a boolean - write true or false";
+            return null;
+        }
+
+        if (Floats.Contains(type))
+        {
+            if (double.TryParse(text.Trim(), NumberStyles.Float, Invariant, out var d)) return d;
+            problem = $"'{text}' is not a number (write it with a decimal point, not a comma)";
+            return null;
+        }
+
+        if (Integers.TryGetValue(type, out var range)) return Integer(text, type, range, out problem);
+
+        // An enum or ring: the base type with its item names, `uint16{Off,On,Auto}`. An item name
+        // is matched exactly, an index is taken as it is - and text that is neither is refused,
+        // because falling back to item 0 turns a typo into a valid-looking run.
+        if (Braces(type) is { } enumParts && Integers.ContainsKey(enumParts.Head))
+        {
+            var items = SplitTop(enumParts.Body);
+            var named = items.FindIndex(i => string.Equals(i, text, StringComparison.Ordinal));
+            if (named >= 0) return named;
+            if (int.TryParse(text.Trim(), NumberStyles.Integer, Invariant, out var index)
+                && index >= 0 && index < items.Count) return index;
+            problem = $"'{text}' is neither an item of {type} nor an index below {items.Count}";
+            return null;
+        }
+
+        if (Braces(type) is { Head: "array" } array)
+            return ArrayFromText(text, array.Body.Trim(), out problem);
+
+        if (Braces(type) is { Head: "cluster" } cluster)
+            return ClusterFromText(text, cluster.Body, out problem);
+
+        problem = $"a control of type {type} cannot be set over COM by this server";
+        return null;
+    }
+
+    private static object? Integer(string text, string type, (long Min, ulong Max) range, out string? problem)
+    {
+        problem = null;
+        if (!decimal.TryParse(text.Trim(), NumberStyles.Float, Invariant, out var value)
+            || value != decimal.Truncate(value))
+        {
+            problem = $"'{text}' is not a whole number, and the control is {type}";
+            return null;
+        }
+        if (value < range.Min || value > range.Max)
+        {
+            problem = $"{text} does not fit {type}";
+            return null;
+        }
+        // VT_I4 where it fits and VT_R8 above it: LabVIEW coerces a numeric variant into the
+        // control's own representation, so the variant only has to carry the value exactly.
+        return value is >= int.MinValue and <= int.MaxValue ? (object)(int)value : (double)value;
+    }
+
+    private static object? ArrayFromText(string text, string element, out string? problem)
+    {
+        problem = null;
+        if (Literal(text) is not { } items)
+        {
+            problem = $"'{text}' is not an array literal - write [1,2,3]";
+            return null;
+        }
+        if (element.StartsWith("array{", StringComparison.Ordinal))
+        {
+            problem = "a 2D array cannot be set over COM by this server yet";
+            return null;
+        }
+
+        var values = new List<object?>();
+        foreach (var item in items)
+        {
+            values.Add(FromText(item, element, out problem));
+            if (problem is not null)
+            {
+                problem = $"element '{item}': {problem}";
+                return null;
+            }
+        }
+
+        // A TYPED array for scalars, which is what LabVIEW's own ActiveX marshalling hands back.
+        return element switch
+        {
+            "string" or "path" => values.Cast<string>().ToArray(),
+            "bool" => values.Cast<bool>().ToArray(),
+            _ when Floats.Contains(element) => values.Select(v => Convert.ToDouble(v, Invariant)).ToArray(),
+            _ when Integers.ContainsKey(element) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
+            _ => Refuse(out problem, $"an array of {element} cannot be set over COM by this server yet"),
+        };
+    }
+
+    private static object? ClusterFromText(string text, string body, out string? problem)
+    {
+        problem = null;
+        if (Literal(text) is not { } items)
+        {
+            problem = $"'{text}' is not a cluster literal - write [1.5,2,text]";
+            return null;
+        }
+        var fields = SplitTop(body);
+        if (items.Count != fields.Count)
+        {
+            problem = $"the cluster has {fields.Count} elements and '{text}' gives {items.Count}";
+            return null;
+        }
+
+        var values = new object?[fields.Count];
+        for (var i = 0; i < fields.Count; i++)
+        {
+            var fieldType = FieldType(fields[i]);
+            values[i] = FromText(items[i], fieldType, out problem);
+            if (problem is not null)
+            {
+                problem = $"element {i} ({fields[i]}): {problem}";
+                return null;
+            }
+        }
+        return values;   // object[], never a typed array - see the class comment
+    }
+
+    private static object? Refuse(out string? problem, string why)
+    {
+        problem = why;
+        return null;
+    }
+
+    /// <summary>A .NET value from GetControlValue, written as an AIXML literal.</summary>
+    public static string Format(object? value) => value switch
+    {
+        null => "",
+        string s => s,
+        bool b => b ? "true" : "false",
+        double d => d.ToString("R", Invariant),
+        float f => f.ToString("R", Invariant),
+        Array { Rank: 2 } grid => FormatGrid(grid),
+        Array items => "[" + string.Join(",", items.Cast<object?>().Select(Format)) + "]",
+        IFormattable number => number.ToString(null, Invariant),
+        _ => value.ToString() ?? "",
+    };
+
+    private static string FormatGrid(Array grid)
+    {
+        var rows = new StringBuilder("[");
+        for (var i = 0; i < grid.GetLength(0); i++)
+        {
+            if (i > 0) rows.Append(',');
+            rows.Append('[');
+            for (var j = 0; j < grid.GetLength(1); j++)
+            {
+                if (j > 0) rows.Append(',');
+                rows.Append(Format(grid.GetValue(i, j)));
+            }
+            rows.Append(']');
+        }
+        return rows.Append(']').ToString();
+    }
+
+    // ------------------------------------------------------------ the AIXML spellings
+
+    /// <summary>`head{body}` split at the first brace, or null for a type without one.</summary>
+    internal static (string Head, string Body)? Braces(string type)
+    {
+        var open = type.IndexOf('{');
+        if (open <= 0 || !type.EndsWith('}')) return null;
+        return (type[..open], type[(open + 1)..^1]);
+    }
+
+    /// <summary>A cluster field `T.name` -> `T`, where T may itself hold dots inside braces.</summary>
+    internal static string FieldType(string field)
+    {
+        var depth = 0;
+        for (var i = field.Length - 1; i >= 0; i--)
+        {
+            if (field[i] == '}') depth++;
+            else if (field[i] == '{') depth--;
+            else if (field[i] == '.' && depth == 0) return field[..i];
+        }
+        return field;
+    }
+
+    /// <summary>Split at commas that are not inside braces or brackets.</summary>
+    internal static List<string> SplitTop(string text)
+    {
+        var parts = new List<string>();
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            switch (text[i])
+            {
+                case '{' or '[': depth++; break;
+                case '}' or ']': depth--; break;
+                case ',' when depth == 0:
+                    parts.Add(text[start..i]);
+                    start = i + 1;
+                    break;
+            }
+        }
+        parts.Add(text[start..]);
+        return parts;
+    }
+
+    /// <summary>`[a,b,[c,d]]` -> its top-level items; `[]` -> none; anything else -> null.</summary>
+    internal static List<string>? Literal(string text)
+    {
+        var t = text.Trim();
+        if (t.Length < 2 || t[0] != '[' || t[^1] != ']') return null;
+        var inner = t[1..^1];
+        return inner.Length == 0 ? [] : SplitTop(inner).Select(Unescape).ToList();
+    }
+
+    private static string Unescape(string text) =>
+        System.Text.RegularExpressions.Regex.Replace(text, @"\\([0-9A-Fa-f]{2})",
+            m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
+}

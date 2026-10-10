@@ -985,28 +985,21 @@ internal sealed class AixmlTools(LvaiConnection connection)
         // EXECUTABILITY NEEDS LabVIEW, and today the only road to it is NI's service. So it is
         // attempted, and when it cannot be read the answer says why instead of guessing: the
         // composer wrote a file, which is not the same as a working VI.
-        // Asked of the process table first: with no LabVIEW at all - the case this backend exists
-        // for - the gRPC attempt spent 6.5 s of a 7.3 s call discovering that, measured over stdio.
+        // OVER ActiveX, NOT NI's SERVICE - the whole point of this backend is not to need it. The
+        // COM route refuses to START LabVIEW (one started that way quits when the call ends and
+        // leaves a dialog behind), so with no LabVIEW running the state is reported unmeasured.
         int? execState = null;
         string? execNote = null;
         if (checkExecutable && result.Written)
         {
-            if (System.Diagnostics.Process.GetProcessesByName("LabVIEW").Length == 0)
+            try
             {
-                execNote = "Not measured: LabVIEW is not running, and reading the execution state " +
-                           "needs it. The VI is written; whether it runs is unknown.";
+                execState = await LabViewCom.ExecStateAsync(viPath, timeoutSeconds, ct);
             }
-            else
+            catch (LabViewCom.ComException e)
             {
-                var reading = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
-                    Path.GetFullPath(viPath), timeoutSeconds: timeoutSeconds, ct: ct));
-                execState = (int?)reading?["execState"];
-                if (execState is null)
-                    execNote = "Not measured: reading the execution state needs LabVIEW's gRPC " +
-                               "service, and it answered: " +
-                               (reading?["error"]?.ToString() ?? reading?["errorMessage"]?.ToString()
-                                ?? "nothing").TrimEnd('.') +
-                               ". The VI is written; whether it runs is unknown.";
+                execNote = $"Not measured ({e.Kind}): {e.Message.TrimEnd('.')}. The VI is written; " +
+                           "whether it runs is unknown.";
             }
         }
 

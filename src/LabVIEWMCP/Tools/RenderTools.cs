@@ -273,6 +273,29 @@ internal sealed class RenderTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// The same measurement over ActiveX, for the pylabview backend: LabVIEW's own documentation
+    /// print, called on the VI directly instead of from a helper NI's service runs. Unknown, never
+    /// an exception, for the same reason as above.
+    /// </summary>
+    internal static async Task<((int Width, int Height)? Size, string? Png)> TopLevelSizeOverComAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var htmlBase = SafeBaseName(Path.GetFileNameWithoutExtension(viPath));
+        var folder = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "diagramsize",
+                                  $"{htmlBase}-{Guid.NewGuid():N}"[..^24]);
+        try
+        {
+            Directory.CreateDirectory(folder);
+            var started = DateTime.UtcNow;
+            await LabViewCom.PrintToHtmlAsync(viPath, Path.Combine(folder, htmlBase + ".html"),
+                                              folder, timeoutSeconds, ct);
+            var png = DiagramImages(folder, htmlBase, started).FirstOrDefault();
+            return png is null ? (null, null) : (DiagramSize.PngSize(png), png);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) { return (null, null); }
+    }
+
+    /// <summary>
     /// Generate the helper VI from its AIXML. Validated first - the shipped file is known-good
     /// but it is a plain file a user can edit, and validation is the cheap failure path.
     /// </summary>

@@ -160,6 +160,40 @@ internal static class AixmlComposer
             : new Result(false, false, Tail(run.StdErr, run.StdOut), [], run.ElapsedMs, run.ExitCode);
     }
 
+    /// <summary>One front-panel object: its label, its AIXML type, and whether it is an indicator.</summary>
+    internal sealed record PanelItem(string Name, string Type, bool Indicator);
+
+    /// <summary>
+    /// A VI's controls and indicators, read from the FILE by vi2aixml.py - ActiveX can set and get
+    /// a control by name but cannot list them, so this is what the COM run route asks instead.
+    /// Null with <paramref name="problem"/> when the reader failed.
+    /// </summary>
+    public static async Task<(List<PanelItem>? Items, string? Problem)> ReadPanelAsync(
+        Setup setup, string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "panel-read",
+                                   Guid.NewGuid().ToString("N") + ".xml");
+        try
+        {
+            var read = await ReadAsync(setup, viPath, scratch, timeoutSeconds, ct);
+            if (!read.Written) return (null, read.Message);
+            var root = System.Xml.Linq.XDocument.Load(scratch).Root;
+            var items = root?.Descendants()
+                .Where(e => e.Name.LocalName is "Control" or "Indicator")
+                .Select(e => new PanelItem((string?)e.Attribute("_name") ?? "",
+                                           (string?)e.Attribute("type") ?? "",
+                                           e.Name.LocalName == "Indicator"))
+                .Where(i => i.Name.Length > 0)
+                .ToList() ?? [];
+            return (items, null);
+        }
+        finally
+        {
+            try { File.Delete(scratch); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
     private static IEnumerable<string> Lines(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

@@ -114,7 +114,9 @@ internal sealed class BulkTools(LvaiConnection connection)
         [Description(AixmlBackend.ParameterDescription + """
              On pylabview the validate step is skipped - the composer refuses by name instead - and
             the VI's executability is read in its place, because the composer does not type-check
-            wiring. The pane and size steps still reach LabVIEW through its gRPC service.
+            wiring. NO STEP touches NI's service: executability and the diagram size go over
+            LabVIEW's ActiveX server (which needs a RUNNING LabVIEW and never starts one), the pane
+            is read from the file by pylabview, and panePattern rebuilds without closing a project.
             """)]
         string? backend = null)
     {
@@ -426,7 +428,9 @@ internal sealed class BulkTools(LvaiConnection connection)
             {
                 var repair = await PyApplyAsync(
                     viPath, $$"""[{"op":"conpane","pattern":{{pattern}}}]""",
-                    closeProject: true, verify: false, bundleDirectory: null,
+                    // Not on pylabview: closing the project is a gRPC call, and the composed VI
+                    // is not held - ActiveX released it, measured re-read after every rewrite.
+                    closeProject: !composed, verify: false, bundleDirectory: null,
                     timeoutSeconds: timeoutSeconds, ct: ct);
                 steps.Add(Step("panePattern", repair));
                 if (Parsed(repair)?["ok"]?.GetValue<bool>() is not true)
@@ -442,7 +446,8 @@ internal sealed class BulkTools(LvaiConnection connection)
             JsonObject? size = null;
             if (measureDiagram)
             {
-                size = await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct);
+                size = await DiagramSizeStepAsync(sourceAixml, viPath, timeoutSeconds, ct,
+                                                  overCom: composed);
                 steps.Add(size);
             }
             var sizeNote = size?["note"]?.GetValue<string>() ?? "";
@@ -453,9 +458,13 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "false, so nothing here says the terminals are on the right edges." +
                     RouteNote(route) + sizeNote, route, size);
 
-            var verdict = await new PaneTools(connection).MeasureViAsync(
-                viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                timeoutSeconds, ct: ct);
+            // On pylabview the pane is read from the FILE - no LabVIEW at all, and measured to give
+            // the probe's own verdict.
+            var verdict = composed
+                ? await PaneTools.MeasureWithPylabviewAsync(viPath, timeoutSeconds, ct)
+                : await new PaneTools(connection).MeasureViAsync(
+                    viPath, helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                    timeoutSeconds, ct: ct);
             steps.Add(new JsonObject
             {
                 ["step"] = "connectorPane",
@@ -471,9 +480,14 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "confirm the terminals are placed correctly. Call lvai_connector_pane " +
                     "yourself to find out why." + RouteNote(route) + sizeNote, route, size);
 
+            // Pattern 0 is the pylabview reading of a VI with NO pane - nothing to breach, and
+            // nothing a caller can wire, which "follows the style guide" would hide.
             return verdict.Clean
                 ? Outcome(true, null, steps, total, viPath, verdict,
-                    "Generated, and the connector pane follows NI's style guide." +
+                    (verdict.Pattern == 0
+                        ? "Generated. It has NO connector pane - no terminal in the AIXML has a " +
+                          "conIdx - so a caller can wire nothing to it."
+                        : "Generated, and the connector pane follows NI's style guide.") +
                     RouteNote(route) + sizeNote, route, size)
                 : Outcome(false, "connectorPane", steps, total, viPath, verdict,
                     "THE VI WAS WRITTEN - generation succeeded. What failed is the connector " +
@@ -488,14 +502,17 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// Shared with lvai_generate_vi_with_events, which builds the main VIs that ran largest.
     /// </summary>
     internal async Task<JsonObject> DiagramSizeStepAsync(string aixmlPath, string viPath,
-                                                         int timeoutSeconds, CancellationToken ct)
+                                                         int timeoutSeconds, CancellationToken ct,
+                                                         bool overCom = false)
     {
         var watch = Stopwatch.StartNew();
         DiagramSize.ChainResult? chain = null;
         try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         var (measured, png) = await (MeasureDiagram?.Invoke(viPath, timeoutSeconds, ct)
-            ?? new RenderTools(connection).TopLevelSizeAsync(viPath, timeoutSeconds, ct));
+            ?? (overCom
+                ? RenderTools.TopLevelSizeOverComAsync(viPath, timeoutSeconds, ct)
+                : new RenderTools(connection).TopLevelSizeAsync(viPath, timeoutSeconds, ct)));
         var step = DiagramSize.Step(measured, chain);
         step["png"] = png;
         step["elapsedMs"] = watch.ElapsedMilliseconds;

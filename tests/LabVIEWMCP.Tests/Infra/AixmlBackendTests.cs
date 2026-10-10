@@ -213,6 +213,86 @@ public sealed class AixmlBackendTests
         Assert.False(File.Exists(vi));
     }
 
+    /// <summary>
+    /// The pane step of the pylabview backend reads the FILE. Measured live the same day against
+    /// NI's own probe on this VI: pattern 4833, 0 violations, 1 warning (b in a middle column) on
+    /// both, the same corrected assignment.
+    /// </summary>
+    [Fact]
+    public async Task The_pane_is_read_from_the_file_with_the_probe_verdict()
+    {
+        if (!ComposerHere()) return;
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = server.TempPath("add.xml");
+        var vi = server.TempPath("add.vi");
+        await File.WriteAllTextAsync(xml, Add);
+        await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+
+        var verdict = await PaneTools.MeasureWithPylabviewAsync(vi, 60, default);
+
+        Assert.Equal(4833, verdict.Pattern);
+        Assert.Equal(0, verdict.Violations);
+        Assert.Equal(1, verdict.Warnings);
+        Assert.Contains("move it to conIdx 5", verdict.Text);
+    }
+
+    /// <summary>The composer writes no pane when no terminal has a conIdx - a reading, not a failure.</summary>
+    [Fact]
+    public async Task A_VI_with_no_pane_is_measured_as_having_none()
+    {
+        if (!ComposerHere()) return;
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = server.TempPath("nopane.xml");
+        var vi = server.TempPath("nopane.vi");
+        await File.WriteAllTextAsync(xml, Add.Replace(" conIdx=\"0\"", "").Replace(" conIdx=\"1\"", "")
+                                             .Replace(" conIdx=\"4\"", ""));
+        await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+
+        var verdict = await PaneTools.MeasureWithPylabviewAsync(vi, 60, default);
+
+        Assert.True(verdict.Measured);
+        Assert.Equal(0, verdict.Pattern);
+        Assert.Contains("NO connector pane", verdict.Text);
+    }
+
+    /// <summary>ActiveX can set and get a control by name but not list them, so the reader does.</summary>
+    [Fact]
+    public async Task The_panel_is_listed_from_the_file_with_its_types()
+    {
+        if (AixmlComposer.Locate(out _) is not { } setup) return;
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = server.TempPath("add.xml");
+        var vi = server.TempPath("add.vi");
+        await File.WriteAllTextAsync(xml, Add);
+        await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+
+        var (panel, problem) = await AixmlComposer.ReadPanelAsync(setup, vi, 60, default);
+
+        Assert.Null(problem);
+        Assert.Equal(["a:double:False", "b:double:False", "sum:double:True"],
+                     panel!.Select(i => $"{i.Name}:{i.Type}:{i.Indicator}").OrderBy(s => s));
+    }
+
+    /// <summary>ActiveX has no Value (Signaling); refused before LabVIEW is asked anything.</summary>
+    [Fact]
+    public async Task Signals_are_refused_on_the_ActiveX_route()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        var vi = server.TempPath("any.vi");
+        await File.WriteAllBytesAsync(vi, [0]);
+
+        var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            vi, runForMs: 300, signalsJson: """[{"control":"Stop","value":"true"}]""",
+            backend: "pylabview");
+
+        Assert.Equal("notAvailableOnBackend", Res.Str(result, "errorKind"));
+        Assert.Equal("pylabview", Res.Str(result, "backend"));
+        Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
     [Fact]
     public async Task Generate_vi_on_pylabview_skips_NI_validation_and_names_the_backend()
     {

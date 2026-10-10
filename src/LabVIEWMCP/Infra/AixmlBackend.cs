@@ -115,10 +115,11 @@ internal static class AixmlBackend
 
     /// <summary>The parameter text, shared so the four tools describe it alike.</summary>
     public const string ParameterDescription = """
-        Which converter does the work: "grpc" (NI's service inside LabVIEW, the default) or
-        "pylabview" (our own composer, which needs no NI service and no LabVIEW to write or read a
-        VI). Omit it to use the server's default - --aixml-backend or LABVIEWMCP_AIXML_BACKEND,
-        else grpc. Every answer names the backend that ran under `backend` and why under
-        `backendSource`. docs/aixml-backends.md has what each one covers.
+        Which route does the work: "grpc" (NI's service inside LabVIEW, the default) or
+        "pylabview" (no NI service at all: our own composer and reader write and read a VI with no
+        LabVIEW, and what needs a running LabVIEW - executability, a run, a render - goes over
+        its ActiveX server). Omit it to use the server's default - --aixml-backend or
+        LABVIEWMCP_AIXML_BACKEND, else grpc. Every answer names the backend that ran under
+        `backend` and why under `backendSource`. docs/aixml-backends.md has what each covers.
         """;
 }

@@ -71,11 +71,22 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the state is read over LabVIEW's ActiveX server instead of NI's service:
+            no helper VI, no linker errors (ActiveX has no such property), and LabVIEW must already
+            be running - this never starts it.
+            """)]
+        string? backend = null,
         CancellationToken ct = default)
     {
         var full = Path.GetFullPath(viPath);
         if (!File.Exists(full))
             return Json.Error("viNotFound", $"No file at '{full}'.", new { viPath = full });
+
+        if (!AixmlBackend.TryResolve(backend, "lvai_exec_state", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        if (choice.Name == AixmlBackend.PyLabview)
+            return AixmlTools.WithBackend(await ExecStateOverComAsync(full, timeoutSeconds, ct), choice);
 
         var reading = await ReadAsync(full, helperAixmlPath, helperViPath, regenerateHelper,
             timeoutSeconds, ct: ct);
@@ -107,6 +118,38 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                       "AIXML export are both green in that state."
                     : "Executable. This says nothing about whether it does the right thing; it " +
                       "says LabVIEW can run it.",
+        });
+    }
+
+    /// <summary>
+    /// The state over ActiveX - the pylabview backend's road to a running LabVIEW. Same answer shape
+    /// as the helper route, minus what ActiveX does not expose: linker errors, and the open's own
+    /// error code (a failed open is a refusal here, never a state).
+    /// </summary>
+    internal static async Task<string> ExecStateOverComAsync(string viPath, int timeoutSeconds,
+                                                             CancellationToken ct)
+    {
+        int state;
+        try { state = await LabViewCom.ExecStateAsync(viPath, timeoutSeconds, ct); }
+        catch (LabViewCom.ComException e)
+        {
+            return Json.Error(e.Kind, e.Message, new { viPath, via = "ActiveX" });
+        }
+        return Json.Object(new
+        {
+            ok = true,
+            viPath,
+            execState = state,
+            broken = state == 0,
+            couldNotOpen = false,
+            meaning = Meaning(state),
+            via = "ActiveX",
+            linkerErrors = (string?)null,
+            note = state == 0
+                ? "eBad: the VI is NOT executable. Read over ActiveX, which has no linker-error " +
+                  "property - the grpc backend names the cause."
+                : "Executable, read over ActiveX. This says LabVIEW can run it, not that it does " +
+                  "the right thing.",
         });
     }
 

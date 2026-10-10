@@ -1,13 +1,24 @@
 # AIXML backends — NI's gRPC service or our pylabview composer
 
-Since 2026-10-10 the five AIXML tools can do their work through either of two converters, and both
-stay in the tree side by side — the user's request was to be able to choose, not to replace one
-with the other.
+Since 2026-10-10 the AIXML tools, and the two that RUN a VI, can do their work through either of
+two routes, and both stay in the tree side by side — the user's request was to be able to choose,
+not to replace one with the other.
 
 | backend | what does the work | needs |
 |---|---|---|
-| `grpc` (default) | NI's `ValidateAIXML`, `ConvertAIXMLToVI`, `ConvertVIToAIXML` inside LabVIEW | LabVIEW with its AI assistant (Nigel) running |
-| `pylabview` | `aixml2vi.py` / `vi2aixml.py` from `experiments/aixml-without-grpc`, run by the bundled interpreter | the pylabview bundle, the composer and its parts — **no LabVIEW, no NI service** |
+| `grpc` (default) | NI's `ValidateAIXML`, `ConvertAIXMLToVI`, `ConvertVIToAIXML`, and helper VIs run by `RunVIAsTopLevel` | LabVIEW with its AI assistant (Nigel) running |
+| `pylabview` | FILES: `aixml2vi.py` / `vi2aixml.py` from `experiments/aixml-without-grpc`, run by the bundled interpreter. A RUNNING LabVIEW, where a question needs one: LabVIEW's **ActiveX** server | the pylabview bundle, the composer and its parts — **no NI service**; LabVIEW only for executability, runs and renders |
+
+**Why ActiveX.** Writing and reading a VI needs no LabVIEW at all, but three questions only a
+running LabVIEW can answer: is the VI executable, what does it compute, how big does its diagram
+render. On `grpc` those go through helper VIs NI's service runs. ActiveX (COM) is LabVIEW's own
+automation interface on Windows, independent of Nigel, and the only other road into a running
+LabVIEW that needs nobody at the machine — the experiment verified its 88 tests that way
+(`lv-com.ps1`). `Infra/LabViewCom.cs` keeps its three rules: it attaches ONLY to a LabVIEW that is
+already running and never starts one (a LabVIEW started by COM quits when the call ends and leaves
+an invisible "Abort Running VIs" dialog behind), it never runs a broken VI (the error window is a
+modal), and it runs asynchronously with a deadline and an Abort. A call that hangs is reported with
+LabVIEW's visible window titles, because it is waiting behind a dialog.
 
 The composer's reach is measured in `experiments/aixml-without-grpc/FINDINGS.md` (source tree
 only): 88 composition tests load and run; 252 of NI's 792 exports compose and 216 of those are
@@ -56,10 +67,12 @@ the others.
 | tool | on `pylabview` |
 |---|---|
 | `lvai_validate_aixml` | composes into a scratch folder and deletes it; `validatedBy: composer`. errorCode 0 means the composer CAN build it — it does **not** type-check wiring the way NI's validation does |
-| `lvai_convert_aixml_to_vi` | composes the VI, source-only — `sourceOnly` is read from the written file, not assumed. `executable` is read through LabVIEW when LabVIEW is running, otherwise `executableNote` says it was not measured. `openVI` is not honoured (`openVINote`); overwriting a path LabVIEW may hold in memory gets a `memoryNote`, because the composer cannot see the case NI's converter refuses with Error 1357 |
+| `lvai_convert_aixml_to_vi` | composes the VI, source-only — `sourceOnly` is read from the written file, not assumed. `executable` is read over ActiveX when LabVIEW is running, otherwise `executableNote` says it was not measured. `openVI` is not honoured (`openVINote`); overwriting a path LabVIEW may hold in memory gets a `memoryNote` — though measured, a VI read over ActiveX is released and LabVIEW reads the rewritten file the next time |
 | `lvai_convert_vi_to_aixml` | `vi2aixml.py`; never cached (the export cache holds NI's output), `readerNote` carries the measured fidelity |
-| `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` in its place and stops on a broken VI. The pane, size and `panePattern` steps still reach LabVIEW through gRPC |
+| `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` over ActiveX in its place and stops on a broken VI. **No step touches NI's service**: the diagram size is LabVIEW's own `PrintVIToHTML` over ActiveX, the connector pane is read from the FILE by `pylv-conpane.py`, `panePattern` rebuilds without closing a project. A VI with no conIdx at all has no pane — the composer writes none — and says so |
 | `lvai_generate_vis` | each entry as `lvai_generate_vi`, with the batch's backend |
+| `lvai_exec_state` | `ExecState` over ActiveX — no helper VI; no linker errors, which ActiveX does not expose |
+| `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. Values come back as AIXML literals (`7.25`, `[1.5,2,3]`, `[false,0,]`) with the reader's type (`double`, not `DBL`) and `xml` null. `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
@@ -91,6 +104,18 @@ shipping the composer is a separate step from this switch. Until then `pylabview
   environment and failed cleanly for want of LabVIEW.
 - **That first convert spent 6.5 of its 7.3 s** trying to reach LabVIEW for the executability check
   with no LabVIEW process at all. It now asks the process table first: 0.52 s.
+- **ActiveX against NI's helper, LabVIEW running**: on a composed good VI and a deliberately
+  broken one (a string wired into `Add`) both answered 1 and 0 alike; ActiveX took 0.02-0.03 s,
+  the helper 0.74 s on its first call. Composing good, broken, good onto ONE path was read right
+  every time, so LabVIEW keeps no stale copy after an ActiveX read.
+- **Runs over ActiveX**: 11 of 11 cases of the composer's suite gave its expected outputs — double,
+  int32, boolean, a string with spaces, an array, a cluster in and out, an error cluster, an enum by
+  name and by index, a While Loop. The grpc route on the same VI read the same 7.25. An event loop
+  that never ends: `runForMs` 800 took a snapshot and aborted; without it a 5 s budget aborted at
+  3 s with `ok: false`; the VI read eIdle afterwards.
+- **The pane from the file matches NI's probe**: pattern 4833, 0 violations, 1 warning and the same
+  corrected assignment on both. `lvai_generate_vi` with every step on: about 1 s, NI's service never
+  touched.
 - **`lvai_generate_vi` answered `ok: true` with nothing vouching for the VI** — NI's validation
   skipped by design, executability unreadable without LabVIEW — and its note spoke only of the pane;
   the reason sat inside the convert step. The note now says `NOTHING VOUCHES FOR THIS VI'S WIRING`
@@ -99,11 +124,13 @@ shipping the composer is a separate step from this switch. Until then `pylabview
 
 ## Not covered, and not measured
 
-- **Everything that RUNS a VI still goes through gRPC**: the executability, pane, render and
-  run-and-read helpers are VIs run by `RunVIAsTopLevel`. Reaching them without NI's service means
-  driving LabVIEW over ActiveX, which the experiment does in `lv-com.ps1` and this server does not.
+- **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
+  the pylabview backend writes and reads VIs and reports executability as not measured.
+- **`lvai_render_diagrams` and `lvai_connector_pane` are not switched** — `lvai_generate_vi` uses
+  the pylabview routes internally, the standalone tools still run NI's helpers.
 - **The internal tools stay on gRPC** — class, accessor, test, DQMH, graft and swap tools — and so
   does the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output.
 - **Not measured yet**: the server default through a real Claude client (a new parameter is only
-  visible after the client restarts), and `lvai_generate_vi` on `pylabview` with LabVIEW running,
-  where the pane and size steps measure a composed VI.
+  visible after the client restarts); ActiveX on a VI that calls project-local subVIs; and whether
+  LabVIEW's ActiveX server is on by default on every installation — it answered here with no
+  configuration change.

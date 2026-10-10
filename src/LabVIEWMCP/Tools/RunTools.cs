@@ -163,8 +163,22 @@ internal sealed class RunTools(LvaiConnection connection)
             2026-10-02. Only a panel open in the instance the run used is touched.
             """)]
         bool closePanelAfterRun = true,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the VI is run over LabVIEW's ActiveX server instead of NI's service: no
+            helper VI, the panel's names and types read from the file by pylabview, inputs and
+            values in AIXML literals ("3.5", "[1,2,3]", "[false,0,]"), runForMs honoured, signalsJson
+            refused. LabVIEW must already be running - this never starts it.
+            """)]
+        string? backend = null,
+        CancellationToken ct = default)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_run_vi_and_read_values", out var choice,
+                                     out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        if (choice.Name == AixmlBackend.PyLabview)
+            return AixmlTools.WithBackend(await Rpc.GuardAsync(() =>
+                RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, timeoutSeconds, ct)), choice);
+        return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
@@ -435,7 +449,102 @@ internal sealed class RunTools(LvaiConnection connection)
                     : ""));
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        });
+        }), choice);
+    }
+
+    /// <summary>
+    /// lvai_run_vi_and_read_values on the pylabview backend: the panel's names and types come from
+    /// the FILE (pylabview's reader - ActiveX cannot list controls), the run goes over ActiveX
+    /// (<see cref="LabViewCom"/>), and NI's service is not touched. Everything that is refused here
+    /// is refused BEFORE the run, by name: a control the panel does not have, a value that does not
+    /// convert to its type, a broken VI, and signals, which ActiveX has no Value (Signaling) for.
+    /// </summary>
+    private static async Task<string> RunOverComAsync(string viPath, string? inputsJson, int runForMs,
+                                                      string? signalsJson, int timeoutSeconds,
+                                                      CancellationToken ct)
+    {
+        var full = Path.GetFullPath(viPath);
+        if (!File.Exists(full))
+            return Json.Error("viNotFound", $"No file at '{full}'.", new { viPath = full });
+        if (!string.IsNullOrWhiteSpace(signalsJson))
+            return Json.Error("notAvailableOnBackend",
+                "signalsJson fires Value (Signaling), which LabVIEW's ActiveX server does not offer. " +
+                "Use the grpc backend to drive events.", new { viPath = full });
+        if (AixmlComposer.Locate(out var missing) is not { } setup)
+            return Json.Error("backendNotAvailable", missing, new { viPath = full });
+        if (LabViewCom.NotReady() is { } notReady)
+            return Json.Error("labviewNotRunning", notReady, new { viPath = full });
+
+        var (panel, readProblem) = await AixmlComposer.ReadPanelAsync(setup, full, timeoutSeconds, ct);
+        if (panel is null)
+            return Json.Error("panelNotRead",
+                "pylabview's reader could not list the VI's controls, and ActiveX cannot: " +
+                readProblem, new { viPath = full });
+
+        var inputs = new List<LabViewCom.Input>();
+        foreach (var (name, text) in Rpc.ParseStringMap(inputsJson, nameof(inputsJson)))
+        {
+            var control = panel.FirstOrDefault(i => !i.Indicator && i.Name == name);
+            if (control is null)
+                return Json.Error("unknownControl",
+                    $"'{name}' is not a control on this VI's panel, so nothing ran.",
+                    new { viPath = full, controls = panel.Where(i => !i.Indicator).Select(i => i.Name) });
+            var value = ComValues.FromText(text, control.Type, out var problem);
+            if (value is null)
+                return Json.Error("inputNotConvertible",
+                    $"'{name}' ({control.Type}): {problem}. Nothing ran.", new { viPath = full });
+            inputs.Add(new LabViewCom.Input(name, value, text));
+        }
+
+        var names = panel.Select(i => i.Name).Distinct().ToList();
+        LabViewCom.RunResult run;
+        try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct); }
+        catch (LabViewCom.ComException e)
+        {
+            return Json.Error(e.Kind, e.Message, new { viPath = full, via = "ActiveX" });
+        }
+
+        if (run.ExecState == 0)
+            return Json.Error("viNotExecutable",
+                "The VI is broken (execState 0), so it was not run - over ActiveX a broken VI opens " +
+                "its error window, a modal nobody can see. lvai_exec_state with the grpc backend " +
+                "names the cause.", new { viPath = full, via = "ActiveX" });
+        if (run.SetProblems.Count > 0)
+            return Json.Error("inputNotSet",
+                "LabVIEW refused to set: " + string.Join("; ", run.SetProblems) + ". Nothing ran.",
+                new { viPath = full, via = "ActiveX" });
+
+        var types = panel.GroupBy(i => i.Name).ToDictionary(g => g.Key, g => g.First().Type);
+        var values = new JsonObject();
+        foreach (var reading in run.Values)
+            values[reading.Name] = new JsonObject
+            {
+                ["type"] = types.GetValueOrDefault(reading.Name),
+                ["value"] = reading.Value,
+                ["xml"] = null,
+                ["problem"] = reading.Problem,
+            };
+
+        return new JsonObject
+        {
+            ["ok"] = run.Finished || runForMs > 0,
+            ["viPath"] = full,
+            ["via"] = "ActiveX",
+            ["ran"] = run.Ran,
+            ["finished"] = run.Finished,
+            ["aborted"] = run.Aborted,
+            ["runMs"] = run.RunMs,
+            ["values"] = values,
+            ["note"] = runForMs > 0
+                ? "A SNAPSHOT taken runForMs after the start, then the VI was " +
+                  (run.Finished ? "already finished." : "aborted - no cleanup on its diagram ran.")
+                : run.Finished
+                    ? "Ran to the end over ActiveX. Values are AIXML literals: a cluster or array " +
+                      "is written [a,b,...], and `xml` is always null on this route."
+                    : $"DID NOT FINISH within the budget and was aborted; the values are what the " +
+                      "abort left. Raise timeoutSeconds, or use runForMs for a VI that never ends.",
+        }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
 
     /// <summary>
     /// Every front-panel control's <c>Disabled</c> at the snapshot, as <c>[{label, disabled}]</c> -

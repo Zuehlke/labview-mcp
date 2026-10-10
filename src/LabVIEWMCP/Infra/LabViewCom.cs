@@ -1,0 +1,272 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace LabVIEWMcp.Infra;
+
+/// <summary>
+/// LabVIEW's ActiveX VI Server - the road to a RUNNING LabVIEW that needs no NI service. The
+/// pylabview backend writes and reads VIs with no LabVIEW at all; whether a VI is executable, and
+/// what it computes, still needs LabVIEW, and this is how it is asked without Nigel.
+///
+/// THREE RULES, each from a hang or a broken run in the experiment
+/// (experiments/aixml-without-grpc/FINDINGS.md section 5):
+///   1. NEVER LET COM START LabVIEW. A LabVIEW started by COM (`LabVIEW.exe /Automation`) posts a
+///      quit when its last client lets go, and with a VI loaded it then raises an "Abort Running
+///      VIs" dialog nobody can see, behind which every later Run waits. So this attaches only to a
+///      LabVIEW that is already running and has a window - otherwise it refuses and says how to
+///      start one.
+///   2. NEVER RUN A BROKEN VI. Its error window is a modal. ExecState is read first.
+///   3. RUN ASYNCHRONOUSLY, with a deadline and an Abort - a synchronous Run was measured hanging
+///      behind that same dialog.
+/// Every operation also runs on its own thread under a deadline: a COM call waiting behind a modal
+/// does not return, so the answer then names LabVIEW's visible windows, which is where the dialog
+/// is.
+/// </summary>
+internal static class LabViewCom
+{
+    public const string ProgId = "LabVIEW.Application";
+
+    /// <summary>A refusal or failure with a kind a tool can put under errorKind.</summary>
+    internal sealed class ComException(string kind, string message) : Exception(message)
+    {
+        public string Kind { get; } = kind;
+    }
+
+    /// <summary>Why COM must not be used now, or null when a running LabVIEW can be attached.</summary>
+    public static string? NotReady()
+    {
+        var processes = Process.GetProcessesByName("LabVIEW");
+        try
+        {
+            if (processes.Length == 0)
+                return "LabVIEW is not running. This route never starts it over COM - a LabVIEW " +
+                       "started that way quits when the call ends and leaves a dialog behind. " +
+                       "Start LabVIEW (lvai_ensure_labview, or by hand) and call again.";
+            if (processes.All(p => p.MainWindowHandle == IntPtr.Zero))
+                return "LabVIEW is running but shows no window yet - it is still starting, and a " +
+                       "COM call now could launch a second instance. Call again in a few seconds.";
+            return null;
+        }
+        finally
+        {
+            foreach (var p in processes) p.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="body"/> against the Application object on a thread of its own, under a
+    /// deadline. Throws <see cref="ComException"/> for every failure, with a kind.
+    /// </summary>
+    public static async Task<T> WithLabViewAsync<T>(Func<object, T> body, int timeoutSeconds,
+                                                    CancellationToken ct)
+    {
+        if (NotReady() is { } why) throw new ComException("labviewNotRunning", why);
+
+        var work = Task.Factory.StartNew(() =>
+        {
+            var type = Type.GetTypeFromProgID(ProgId)
+                ?? throw new ComException("activeXNotRegistered",
+                    $"{ProgId} is not registered, so LabVIEW's ActiveX server cannot be reached. " +
+                    "It is registered by LabVIEW's installer; a repair install restores it.");
+            var app = Activator.CreateInstance(type)
+                ?? throw new ComException("activeXNotRegistered", $"{ProgId} gave no object.");
+            try { return body(app); }
+            finally { Release(app); }
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+        try
+        {
+            return await work.WaitAsync(TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 3600)), ct);
+        }
+        catch (TimeoutException)
+        {
+            // The worker cannot be stopped - it is blocked inside a COM call - so its eventual
+            // outcome is observed and dropped rather than left to crash the finaliser.
+            _ = work.ContinueWith(t => _ = t.Exception, TaskScheduler.Default);
+            var windows = VisibleWindowTitles();
+            throw new ComException("comCallTimedOut",
+                $"LabVIEW did not answer over COM within {timeoutSeconds} s. A COM call that does " +
+                "not return is almost always waiting behind a dialog; LabVIEW's visible windows: " +
+                (windows.Count == 0 ? "none" : string.Join(" | ", windows)) +
+                ". Close the dialog and call again.");
+        }
+        catch (TargetInvocationException e) when (e.InnerException is not null)
+        {
+            throw new ComException("comCallFailed", Inner(e));
+        }
+        catch (COMException e)
+        {
+            throw new ComException("comCallFailed", e.Message);
+        }
+    }
+
+    /// <summary>A VI's Execution State: 0 eBad, 1 eIdle, 2 eRunTopLevel, 3 eRunning.</summary>
+    public static Task<int> ExecStateAsync(string viPath, int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi => Convert.ToInt32(Get(vi, "ExecState"),
+                                                                          CultureInfo.InvariantCulture)),
+                         timeoutSeconds, ct);
+
+    /// <summary>
+    /// Print.VI To HTML over ActiveX - the same documentation print NI's render helper drives, so
+    /// the same `&lt;base&gt;d.png` for the top-level diagram lands in <paramref name="imageDirectory"/>.
+    /// Format 4 is Complete, image format 0 PNG, depth 24. Measured 2026-10-10: 44 ms on a small VI.
+    /// </summary>
+    public static Task<bool> PrintToHtmlAsync(string viPath, string htmlPath, string imageDirectory,
+                                              int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+        {
+            Call(vi, "PrintVIToHTML", htmlPath, false, 4, 0, 24, imageDirectory);
+            return true;
+        }), timeoutSeconds, ct);
+
+    /// <summary>One control to set: its name, the value already converted, and the text it came from.</summary>
+    internal sealed record Input(string Name, object Value, string Text);
+
+    /// <summary>One control read back, or the reason it could not be.</summary>
+    internal sealed record Reading(string Name, string? Value, string? Problem);
+
+    internal sealed record RunResult(int ExecState, bool Ran, bool Finished, bool Aborted,
+                                     long RunMs, IReadOnlyList<string> SetProblems,
+                                     IReadOnlyList<Reading> Values);
+
+    /// <summary>
+    /// Set <paramref name="inputs"/>, run the VI, read <paramref name="names"/> back. A broken VI
+    /// is not run; a set that fails stops the run, because running on a default the caller did not
+    /// ask for answers a different question. With <paramref name="runForMs"/> the values are a
+    /// SNAPSHOT taken that long after the start, and the VI is then aborted.
+    /// </summary>
+    public static Task<RunResult> RunAsync(string viPath, IReadOnlyList<Input> inputs,
+                                           IReadOnlyList<string> names, int runForMs,
+                                           int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+        {
+            var state = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            if (state == 0)
+                return new RunResult(0, false, false, false, 0, [], []);
+
+            var setProblems = new List<string>();
+            foreach (var input in inputs)
+            {
+                try { Call(vi, "SetControlValue", input.Name, input.Value); }
+                catch (Exception e) when (e is TargetInvocationException or COMException)
+                {
+                    setProblems.Add($"{input.Name} = '{input.Text}': {Inner(e)}");
+                }
+            }
+            if (setProblems.Count > 0)
+                return new RunResult(state, false, false, false, 0, setProblems, []);
+
+            // A deadline inside the overall budget, so the abort below gets to run.
+            var deadline = runForMs > 0 ? runForMs : Math.Max(1000, timeoutSeconds * 1000 - 2000);
+            var clock = Stopwatch.StartNew();
+            Call(vi, "Run", true);
+            var finished = false;
+            while (clock.ElapsedMilliseconds < deadline)
+            {
+                var now = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+                if (now is not (2 or 3)) { finished = true; break; }
+                Thread.Sleep(20);
+            }
+            var runMs = clock.ElapsedMilliseconds;
+
+            // A snapshot is read BEFORE the abort, so it shows the VI as it stood; a timed-out
+            // run is read after, and its values are whatever the abort left.
+            var values = finished || runForMs > 0 ? ReadAll(vi, names) : null;
+            var aborted = false;
+            if (!finished)
+            {
+                try { Call(vi, "Abort"); aborted = true; }
+                catch (Exception e) when (e is TargetInvocationException or COMException) { }
+            }
+            return new RunResult(state, true, finished, aborted, runMs, [], values ?? ReadAll(vi, names));
+        }), timeoutSeconds, ct);
+
+    private static List<Reading> ReadAll(object vi, IReadOnlyList<string> names)
+    {
+        var values = new List<Reading>();
+        foreach (var name in names)
+        {
+            try { values.Add(new Reading(name, ComValues.Format(Call(vi, "GetControlValue", name)), null)); }
+            catch (Exception e) when (e is TargetInvocationException or COMException)
+            {
+                values.Add(new Reading(name, null, Inner(e)));
+            }
+        }
+        return values;
+    }
+
+    // ------------------------------------------------------------ late binding
+
+    private static T WithVi<T>(object app, string viPath, Func<object, T> body)
+    {
+        object? vi;
+        try { vi = Call(app, "GetVIReference", Path.GetFullPath(viPath)); }
+        catch (Exception e) when (e is TargetInvocationException or COMException)
+        {
+            throw new ComException("viNotOpened", $"LabVIEW could not open '{viPath}': {Inner(e)}");
+        }
+        if (vi is null) throw new ComException("viNotOpened", $"LabVIEW returned no VI for '{viPath}'.");
+        try { return body(vi); }
+        finally { Release(vi); }
+    }
+
+    private static object? Get(object target, string name) =>
+        target.GetType().InvokeMember(name, BindingFlags.GetProperty, null, target, null,
+                                      CultureInfo.InvariantCulture);
+
+    private static object? Call(object target, string name, params object?[] args) =>
+        target.GetType().InvokeMember(name, BindingFlags.InvokeMethod, null, target, args,
+                                      CultureInfo.InvariantCulture);
+
+    private static void Release(object comObject)
+    {
+        try { Marshal.FinalReleaseComObject(comObject); }
+        catch (ArgumentException) { }
+    }
+
+    private static string Inner(Exception e)
+    {
+        while (e.InnerException is not null) e = e.InnerException;
+        return e.Message;
+    }
+
+    // ------------------------------------------------------------ what a hang is waiting behind
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr window, StringBuilder text, int capacity);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr window);
+
+    private delegate bool EnumWindowsProc(IntPtr window, IntPtr parameter);
+
+    /// <summary>Titles of LabVIEW's visible top-level windows - LabVIEW draws its own dialogs.</summary>
+    internal static List<string> VisibleWindowTitles()
+    {
+        var pids = Process.GetProcessesByName("LabVIEW").Select(p =>
+        {
+            using (p) return (uint)p.Id;
+        }).ToHashSet();
+        var titles = new List<string>();
+        EnumWindows((window, _) =>
+        {
+            GetWindowThreadProcessId(window, out var pid);
+            if (pids.Contains(pid) && IsWindowVisible(window))
+            {
+                var text = new StringBuilder(256);
+                if (GetWindowText(window, text, text.Capacity) > 0) titles.Add(text.ToString());
+            }
+            return true;
+        }, IntPtr.Zero);
+        return titles;
+    }
+}
