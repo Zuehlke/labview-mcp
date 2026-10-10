@@ -8,8 +8,8 @@ failures**: four ways to get `errorCode 0` and no change on disk.
 
 The route was measured in a pilot project before the tools existed. The tools carry its helpers over
 (`scripts\lvai_icon_*.xml`, each naming the run that measured it). What the tools themselves add,
-which is the file checks, the read-back verdicts and `keepOwnLayer`, is **not measured yet**. §6
-lists it.
+which is the file checks, the read-back verdicts and `keepOwnLayer`, was measured through the tools
+on 2026-10-10 (§6). Two cases are still open, and §6 lists them.
 
 ## 1. A class icon is not a VI icon
 
@@ -61,6 +61,9 @@ Two more traps in the list format, both measured:
   path and Error 7. The read-back helper loops on Match Pattern and expects one `;` per entry. The
   two joins are pinned by a unit test. A path that itself contains `;` is refused
   (`pathHasSemicolon`).
+- **The list files are Latin-1.** A path with a character above U+00FF reached LabVIEW changed and
+  answered Error 7 with no PNG (measured 2026-10-10, U+0141; U+00F8 worked), so such a path is
+  refused before LabVIEW (`pathNotLatin1`).
 
 **1562 with nothing visibly locked.** `Set Icon` answered 1562 on one class with no project open and
 nothing of it in memory, four times over two sessions. Run as the **first call after a LabVIEW
@@ -104,15 +107,17 @@ Then the stages, each with its own error indicator, so `failedAtStep` names the 
   is reported, not failed.
 - `members[].templateMissing` counts the owner's **non-white** pixels that the member's read-back
   does not show. 0 means the template landed. Both images are LabVIEW read-backs, so both went through
-  the same colour quantisation. *This check follows from the measured "white is transparent" rule,
-  but the check itself has not been run against LabVIEW yet.*
+  the same colour quantisation. Measured 2026-10-10: 0 of 378 template pixels missing on each of
+  nine class members and two library members.
 - `members[].iconLayersAfter` reads the member's `VITS` block from the file: `hasLayerData`,
   `layerObjects`, `hasTemplateLayer`. See §5.
 
-`memberPaths` exists so that a task touches only the VIs it added. **The other members are not
-saved, but `ApplyIconToVIs` is an owner-wide method**: whether LabVIEW keeps the change it made to
-them in memory, and offers to save it later, is unmeasured. The answer warns, and `git status` shows
-whether any of them changed.
+`memberPaths` exists so that a task touches only the VIs it added. The other members are not
+saved and keep their old template. Measured 2026-10-10 with one member of nine named: only the
+`.lvclass` (its `NI.Lib.Icon` line) and that member changed on disk, and right after the call
+`All VIs In Memory` listed none of the class's members and no modified VI, so LabVIEW holds no
+change to the others and has nothing to offer to save later. The answer still says how many
+members were left out.
 
 ## 4. `lvai_read_icons`
 
@@ -157,11 +162,15 @@ VI (and the owner, which the helper always saves). An image or `line1`..`line3` 
 Without `ownerPath`, the owner is the one `.lvclass`/`.lvlib` in the VI's folder or up to three above
 that **lists** the VI. `noOwner` and `ownerAmbiguous` refuse rather than guess.
 
-**What is known, and what is not.** Every step is a measured one. The case it exists for has **not
-been run**: `ApplyIconToVIs` on a VI that **already** has an `NI_Library` layer and an own layer. The
-expected result is that the old template layer is replaced and the own layer kept, so only template
-pixels change. That comes from the icon editor's layer model, not from a measurement. So the answer
-reports the evidence either way instead of assuming it:
+**Measured 2026-10-10** on the case it exists for: a class member with an `NI_Library` layer and
+an own pixel layer (two layer objects, `VITS` 6 780 bytes), after the class icon was changed with
+`applyToMembers` off. `ApplyIconToVIs` **replaced** the template layer and did not stack a second
+one: two layer objects and 6 780 bytes after, `templateMissing` 0, 304 pixels changed (exactly the
+recoloured banner), 0 pixels outside the template, codes 0, the VI executable, and no other member
+in memory afterwards. A flat VI (`VITS` 146 bytes after a plain `lvai_set_vi_icon`) gets the layers
+added, with a warning that there was no own layer to keep. An own layer of editable **text**, made
+by hand in the icon editor, has not been run, so the answer keeps reporting the evidence on every
+call:
 
 | field | read from | expected if the layer is kept |
 |---|---|---|
@@ -178,18 +187,28 @@ covered more pixels before than now uncovers own-layer pixels and changes them l
 which hold tagged data uncompressed, and looks for three ASCII markers: `NI_IconEditor` (the tag),
 one `Layer.lvclass` per flattened layer object, and `NI_Library` (the template layer's name). The
 markers come from an offline decoder run over some 4 000 VIs of a production application without
-decode errors; the 157-byte flat state comes from §1. It is a probe, not a parser, and it reports;
+decode errors; the flat state is 157 bytes in §1 and was 146 bytes on another VI on 2026-10-10,
+so the probe looks for the markers, not for a size. It is a probe, not a parser, and it reports;
 it does not decide.
 
-## 6. Unmeasured, to run before relying on it
+## 6. Measured through the tools, and what is still open
 
-1. `lvai_set_owner_icon` end to end on a class (the helpers are measured, the tool is not): codes,
-   `ownerIcon.pixelsDifferent` 0, `templateMissing` 0 on every member, `iconLayersAfter.hasTemplateLayer`.
-2. The same on a plain `.lvlib` with members: the open-first rule through the tool.
-3. `lvai_read_icons` over a batch with an `expectedDir`, and the missing-folder and MAX_PATH guards.
-4. `keepOwnLayer` on a VI that has an `NI_Library` layer plus an own text layer, after changing the
-   class icon: does the layer data survive, and do only template pixels change?
-5. Whether `ApplyIconToVIs` leaves the members it was not asked to save modified in memory (a save
-   prompt later, or a change written by a later save).
-6. The apply list-file twin (`lvai_icon_apply_and_save_n_file.xml`) above 100 members.
-7. Paths with characters outside Latin-1 in a list file.
+Measured 2026-10-10 on LabVIEW 2026 Q3 (32-bit), every helper generated by the tools on first use
+and run through `lvai_run_and_read_typed`, project closed:
+
+| what | reading |
+|---|---|
+| `lvai_set_owner_icon` on a class, nine members, `applyToMembers` | `ok`, every open and save code 0, owner read-back 0 px, `templateMissing` 0 of 378 on every member, two layer objects and `hasTemplateLayer` on each, all members executable, 6.9 s; `git status` = the class and its members. In the `.lvclass` this first run also rewrote the `NI.LVClass.FlattenedPrivateDataCTL` line; the later runs changed only `NI.Lib.Icon` |
+| the same with the project open | `projectOpen`, nothing changed |
+| the same with `memberPaths` = one member | only the `.lvclass` and that member changed on disk; the others not in memory afterwards (§3) |
+| a plain `.lvlib`, two member VIs | `ok`, codes 0, owner 0 px, `templateMissing` 0; only the `NI.Lib.Icon` line of the `.lvlib` changed, its nested classes and `.ctl` files untouched, 4.7 s |
+| `lvai_read_icons`, nine VIs + a VI + a class + a library | 12 of 12 written, codes 0, 2.7 s; again with `expectedDir` = that output: 12 `OK`; with one expected PNG altered in 3 pixels: `DIFF` 3 px naming exactly those pixels |
+| `lvai_read_icons`, 114 VIs | two helper calls (100 + 14), 114 PNGs, 20.9 s |
+| missing nested `outDir` / a 292-character PNG path | created and written / `pngPathTooLong` with no LabVIEW call and no folder made |
+| `keepOwnLayer` | §5 |
+| a list-file path with U+00F8 / with U+0141 | read back / Error 7 and no PNG, the report line naming another path: now refused up front as `pathNotLatin1` |
+
+Still open:
+
+1. The apply list-file twin (`lvai_icon_apply_and_save_n_file.xml`), used above 100 members.
+2. `keepOwnLayer` on an own layer of editable text made in the icon editor.

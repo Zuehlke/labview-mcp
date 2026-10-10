@@ -51,7 +51,7 @@ internal sealed class IconTools(LvaiConnection connection)
         every icon and lost the editable text. To refresh only the class or library TEMPLATE of a VI
         whose own layer must survive, pass keepOwnLayer instead of an image: no pixels are set, the
         owner's icon is re-applied (ApplyIconToVIs) and the VI saved, and the answer reports the
-        layer data before and after. keepOwnLayer is UNMEASURED as a whole - see its parameter.
+        layer data before and after. keepOwnLayer was measured 2026-10-10 - see its parameter.
         """)]
     public async Task<string> SetViIconAsync(
         [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
@@ -108,9 +108,11 @@ internal sealed class IconTools(LvaiConnection connection)
             icon is laid over the VI with ApplyIconToVIs (white is transparent) and the VI saved; the
             project must be closed. The answer reports the VI's icon layer data before and after
             (read from the file), whether every template pixel landed, and how many pixels outside the
-            template changed. UNMEASURED AS A WHOLE: each step is the measured class-icon route, but
-            re-applying onto a VI that already has a template layer has not been run yet - judge it by
-            iconLayersAfter, templateMissing and pixelsChangedOutsideTemplate.
+            template changed. Measured 2026-10-10 on LabVIEW 2026 Q3 on a VI that already had a
+            template layer and an own pixel layer, after the class icon changed: the template layer
+            was replaced (not stacked), every template pixel landed and no pixel outside it moved. An
+            own layer of editable text (made in the icon editor) has not been run - judge each call
+            by iconLayersAfter, templateMissing and pixelsChangedOutsideTemplate.
             """)]
         bool keepOwnLayer = false,
         [Description("""
