@@ -4091,6 +4091,14 @@ class Composer:
                 # (NI's Monitoring Keyboard and Mouse Activity.vi): a wire may only carry a type
                 # this composer has carried on a measured wire
                 raise Unsupported("net %r carries a %s, which no composed wire has carried yet" % (net, bad))
+            missing = [key for _, key in [ends["src"]] + ends["sinks"] if key not in self.ends]
+            if missing:
+                # an end nothing composed - a For Loop's conditional terminal (a <Condition> in a
+                # For Loop; the part has no stop terminal) crashed seven of NI's VIs as a KeyError
+                el0 = self._by_uid.get(missing[0][0])
+                raise Unsupported("net %r ends at %s %s of %s, which is not composable yet"
+                                  % (net, missing[0][1], missing[0][0],
+                                     (el0.get("_name") or el0.tag) if el0 is not None else "an element"))
             resolved = [self.ends[key] for _, key in [ends["src"]] + ends["sinks"]]
             diags = {id(d) for _, d in resolved}
             if len(diags) != 1:
@@ -4330,6 +4338,16 @@ class Composer:
         return right, bottom
 
     def connector_pane(self):
+        top = max([con for con, _, _, _ in self.pane_terms] or [-1])
+        if top >= self.pane_codes.get(self.con_id, (0x108, 16))[1]:
+            # a conIdx past the default pattern's slots: NI's converter then picks a larger
+            # pattern by itself (4834, 20 slots, for conIdx up to 19 - CLAUDE.md); the same
+            # family up to 4835's 28, refused beyond. Indexed past the list it was an IndexError.
+            bigger = [p for p in (4834, 4835) if self.pane_codes.get(p, (0, 0))[1] > top]
+            if not bigger:
+                raise Unsupported("conIdx %d needs a connector pane of more than 28 terminals" % top)
+            self.con_id = bigger[0]
+            self.fp.find("root/conPane/conId").text = str(self.con_id)
         code, slots = self.pane_codes.get(self.con_id, (0x108, 16))
         void = 0
         for func_flags, idx in ((0x200, 0), (0x0, 1)):
@@ -4356,7 +4374,10 @@ class Composer:
             if el.tag in ("Structure", "CaseFrame", "Diagram") or                     (el.tag == "Node" and any(isinstance(c.tag, str) and c.tag == "Diagram" for c in el)):
                 out.append(el)
                 for c in self.flatten(el):
-                    if c.tag == "Condition":
+                    if c.tag == "Condition" and not c.get("_loop"):
+                        # the INNERMOST structure is the loop; every enclosing one used to
+                        # overwrite it, and a While Loop inside a Case Structure lost its stop
+                        # terminal's wire (seven of NI's VIs: KeyError ('<case uid>', 'stop'))
                         c.set("_loop", el.get("uid"))
                     out.append(c)
             elif el.tag == "ShiftReg":
