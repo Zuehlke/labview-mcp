@@ -84,6 +84,9 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
                 ["terminalNamesTable"] = bundle.TerminalNamesTsv,
                 ["canAnnotate"] = bundle.AnnotatePy is not null &&
                                   bundle.PrimitiveNamesTsv is not null,
+                // Which converter the AIXML tools use when a call names none, and whether the
+                // pylabview one can run here. docs/aixml-backends.md.
+                ["aixmlBackend"] = AixmlComposer.Describe(),
             }.ToJsonString(Indented));
         });
 

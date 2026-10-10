@@ -448,7 +448,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var sockets = await new BulkTools(connection).GenerateVisAsync(
                 pairs.ToJsonString(), openVI: false, measurePane: false, keepAixml, timeoutSeconds,
-                ct);
+                ct: ct);
             steps.Add(new JsonObject { ["step"] = "sockets", ["answer"] = Read(sockets) });
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
                 return Outcome(false, "sockets", steps, total, testViPath, null,

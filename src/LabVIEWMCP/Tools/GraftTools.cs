@@ -947,7 +947,7 @@ internal sealed class GraftTools(LvaiConnection connection)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
-            vi, target, returnContent: true, maxContentChars: 0, timeoutSeconds, refresh: true, ct);
+            vi, target, returnContent: true, maxContentChars: 0, timeoutSeconds, refresh: true, ct: ct);
         try
         {
             var xml = (JsonNode.Parse(answer) as JsonObject)?["xml"]?.GetValue<string>();

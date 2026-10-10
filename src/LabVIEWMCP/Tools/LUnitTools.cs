@@ -425,7 +425,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     Directory.CreateDirectory(Path.GetDirectoryName(exportPath)!);
                     var exported = await new AixmlTools(connection).ConvertViToAixmlAsync(
                         viPath, exportPath, returnContent: true, maxContentChars: 0, timeoutSeconds,
-                        refresh: true, ct);
+                        refresh: true, ct: ct);
                     perMethod.Add(new JsonObject
                     {
                         ["step"] = "verify",

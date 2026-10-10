@@ -704,7 +704,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var sockets = await new BulkTools(connection).GenerateVisAsync(
                 pairs.ToJsonString(), openVI: false, measurePane: false, keepAixml, timeoutSeconds,
-                ct);
+                ct: ct);
             steps.Add(new JsonObject
             { ["step"] = "sockets", ["answer"] = Json.Slim(Read(sockets), verbose) });
             if ((Read(sockets) as JsonObject)?["ok"]?.GetValue<bool>() is not true)
@@ -1765,7 +1765,7 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
                 writeAccessor, export, returnContent: true, maxContentChars: 0, timeoutSeconds,
-                refresh: true, ct);
+                refresh: true, ct: ct);
             if (Read(answer) is not JsonObject o || o["xml"]?.GetValue<string>() is not { } xml)
                 return (null, "The accessor could not be exported.");
 

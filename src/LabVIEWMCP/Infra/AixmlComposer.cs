@@ -1,0 +1,174 @@
+namespace LabVIEWMcp.Infra;
+
+/// <summary>
+/// The pylabview backend: AIXML -> VI through <c>aixml2vi.py</c> and VI -> AIXML through
+/// <c>vi2aixml.py</c>, both run by the bundled interpreter, with no LabVIEW and no NI service.
+///
+/// What it is measured to do lives with the code it describes, in
+/// experiments/aixml-without-grpc/FINDINGS.md: on 2026-10-10, 88 composition tests loaded and ran
+/// clean, 252 of NI's 792 exports composed and 216 of those were executable, with no LabVIEW crash;
+/// the reader matched NI's own export in every fact for 133 of 760 VIs. So it is a SECOND converter
+/// with a known, smaller reach - never a stand-in that answers for the first.
+///
+/// THE COMPOSER REFUSES BY NAME what it cannot build (exit 2, `UNSUPPORTED: ...`), and that is what
+/// makes it safe to put behind a switch: it does not write a VI that is silently different.
+///
+/// Three things are located, and each answers "not available" with the places searched rather than
+/// throwing - the same contract as <see cref="PyLabview.Locate"/>:
+///   the interpreter   the pylabview bundle (PyLabview.Locate)
+///   the composer      LABVIEWMCP_AIXML_COMPOSER, else experiments\aixml-without-grpc in a checkout
+///   the parts         LABVIEWMCP_AIXML_PARTS, else &lt;composer&gt;\parts, else the cache's aixml-parts
+/// A binary install has no composer yet: where its parts come from is an open decision
+/// (FINDINGS §6a), so shipping it is a separate step from this switch.
+/// </summary>
+internal static class AixmlComposer
+{
+    public const string ComposerVariable = "LABVIEWMCP_AIXML_COMPOSER";
+    public const string PartsVariable = "LABVIEWMCP_AIXML_PARTS";
+
+    internal sealed record Setup(PyLabview.Bundle Bundle, string ComposerDirectory, string PartsDirectory);
+
+    /// <summary>Everything the backend needs, or null with <paramref name="missing"/> naming what is not there.</summary>
+    public static Setup? Locate(out string missing)
+    {
+        var bundle = PyLabview.Locate();
+        if (bundle is null)
+        {
+            missing = PyLabview.NotProvisionedMessage();
+            return null;
+        }
+
+        var composer = ComposerCandidates().FirstOrDefault(IsComposer);
+        if (composer is null)
+        {
+            missing = "The pylabview AIXML composer was not found. Searched: " +
+                      string.Join("; ", ComposerCandidates().Where(c => c.Length > 0)) +
+                      $". Set {ComposerVariable} to the folder holding aixml2vi.py. It lives in " +
+                      "experiments\\aixml-without-grpc of a source checkout and is not part of a " +
+                      "binary install yet.";
+            return null;
+        }
+
+        var parts = PartsCandidates(composer).FirstOrDefault(IsParts);
+        if (parts is null)
+        {
+            missing = "The composer's parts were not found - a folder holding skeleton\\skeleton.xml. " +
+                      "Searched: " + string.Join("; ", PartsCandidates(composer).Where(c => c.Length > 0)) +
+                      $". Set {PartsVariable} to it.";
+            return null;
+        }
+
+        missing = "";
+        return new Setup(bundle, composer, parts);
+    }
+
+    /// <summary>The backend picture for a status tool: the server default and whether pylabview can run.</summary>
+    public static System.Text.Json.Nodes.JsonObject Describe()
+    {
+        var serverDefault = AixmlBackend.ServerDefault();
+        var setup = Locate(out var missing);
+        return new System.Text.Json.Nodes.JsonObject
+        {
+            ["serverDefault"] = serverDefault.Name,
+            ["serverDefaultSource"] = serverDefault.Source,
+            ["pylabviewAvailable"] = setup is not null,
+            ["composerDirectory"] = setup?.ComposerDirectory,
+            ["partsDirectory"] = setup?.PartsDirectory,
+            ["missing"] = setup is null ? missing : null,
+        };
+    }
+
+    private static bool IsComposer(string dir) =>
+        dir.Length > 0 &&
+        File.Exists(Path.Combine(dir, "aixml2vi.py")) &&
+        File.Exists(Path.Combine(dir, "vi2aixml.py")) &&
+        File.Exists(Path.Combine(dir, "lvheap.py"));
+
+    private static bool IsParts(string dir) =>
+        dir.Length > 0 && File.Exists(Path.Combine(dir, "skeleton", "skeleton.xml"));
+
+    private static IEnumerable<string> ComposerCandidates()
+    {
+        yield return Environment.GetEnvironmentVariable(ComposerVariable) ?? "";
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+            yield return Path.Combine(dir.FullName, "experiments", "aixml-without-grpc");
+    }
+
+    private static IEnumerable<string> PartsCandidates(string composer)
+    {
+        yield return Environment.GetEnvironmentVariable(PartsVariable) ?? "";
+        yield return Path.Combine(composer, "parts");
+        yield return Path.Combine(CacheDirectory.Root, "aixml-parts");
+    }
+
+    /// <summary>
+    /// What one composer run did. <see cref="Refused"/> is the composer's own named refusal;
+    /// a run that neither wrote nor refused crashed, and <see cref="Message"/> is the end of its
+    /// traceback.
+    /// </summary>
+    internal sealed record Result(bool Written, bool Refused, string Message, string[] Report,
+                                  long ElapsedMs, int ExitCode)
+    {
+        public int ErrorCode => Written ? 0 : Refused ? 2 : 1;
+        public string Kind => Written ? "" : Refused ? "composerRefused" : "composerFailed";
+    }
+
+    /// <summary>
+    /// AIXML -> VI. The VI is written source-only; the bundle is a temporary folder. A Call target
+    /// is resolved in the VI's own folder first, then in <paramref name="searchFolders"/>.
+    /// </summary>
+    public static async Task<Result> ComposeAsync(Setup setup, string aixmlPath, string viPath,
+                                                  IReadOnlyList<string> searchFolders,
+                                                  int timeoutSeconds, CancellationToken ct)
+    {
+        var target = Path.GetFullPath(viPath);
+        if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
+
+        var args = new List<string> { "--parts", setup.PartsDirectory };
+        foreach (var search in searchFolders) { args.Add("--search"); args.Add(search); }
+        args.Add(Path.GetFullPath(aixmlPath));
+        args.Add(target);
+
+        var run = await PyLabview.RunAsync(setup.Bundle,
+            Path.Combine(setup.ComposerDirectory, "aixml2vi.py"), args, timeoutSeconds, ct);
+
+        var report = Lines(run.StdOut).Where(l => !l.StartsWith("wrote ", StringComparison.Ordinal)).ToArray();
+        if (run.ExitCode == 0 && File.Exists(target))
+            return new Result(true, false, "No Error", report, run.ElapsedMs, 0);
+
+        var refusal = Lines(run.StdErr).FirstOrDefault(l => l.StartsWith("UNSUPPORTED:", StringComparison.Ordinal));
+        return refusal is not null
+            ? new Result(false, true, refusal["UNSUPPORTED:".Length..].Trim(), report, run.ElapsedMs, run.ExitCode)
+            : new Result(false, false, Tail(run.StdErr, run.StdOut), report, run.ElapsedMs, run.ExitCode);
+    }
+
+    /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>
+    public static async Task<Result> ReadAsync(Setup setup, string viPath, string aixmlPath,
+                                               int timeoutSeconds, CancellationToken ct)
+    {
+        var target = Path.GetFullPath(aixmlPath);
+        if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
+        if (File.Exists(target)) File.Delete(target);   // so a stale file cannot read as success
+
+        var run = await PyLabview.RunAsync(setup.Bundle,
+            Path.Combine(setup.ComposerDirectory, "vi2aixml.py"),
+            [Path.GetFullPath(viPath), target], timeoutSeconds, ct);
+
+        return run.ExitCode == 0 && File.Exists(target)
+            ? new Result(true, false, "No Error", [], run.ElapsedMs, 0)
+            : new Result(false, false, Tail(run.StdErr, run.StdOut), [], run.ElapsedMs, run.ExitCode);
+    }
+
+    private static IEnumerable<string> Lines(string text) =>
+        text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>The last lines of a failed run - a Python traceback ends with the line that matters.</summary>
+    private static string Tail(string stderr, string stdout)
+    {
+        var lines = Lines(stderr).ToArray();
+        if (lines.Length == 0) lines = Lines(stdout).ToArray();
+        return lines.Length == 0 ? "the composer exited without a message"
+                                 : string.Join(" | ", lines.TakeLast(4));
+    }
+}

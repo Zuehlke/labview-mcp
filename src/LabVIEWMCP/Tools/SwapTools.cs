@@ -369,7 +369,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 Directory.CreateDirectory(Path.GetDirectoryName(beforePath)!);
                 var beforeExport = await new AixmlTools(connection).ConvertViToAixmlAsync(
                     viPath, beforePath, returnContent: true, maxContentChars: 0, timeoutSeconds,
-                    refresh: true, ct);
+                    refresh: true, ct: ct);
                 if ((Parse(beforeExport) as JsonObject)?["xml"]?.GetValue<string>() is { } beforeXml)
                     wiringBefore = WiringByUid(beforeXml);
 
@@ -435,7 +435,7 @@ internal sealed class SwapTools(LvaiConnection connection)
                 var verifyWall = Stopwatch.StartNew();
                 var exported = await new AixmlTools(connection).ConvertViToAixmlAsync(
                     viPath, exportPath, returnContent: true, maxContentChars: 0, timeoutSeconds,
-                    refresh: true, ct);
+                    refresh: true, ct: ct);
                 steps.Add(new JsonObject
                 {
                     ["step"] = "verify",

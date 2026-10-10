@@ -18,6 +18,11 @@ The server also exposes its five embedded documents as **MCP resources** —
 `labview://lvlib-lvclass-structure` and `labview://vi-server-reference` — for clients that read
 resources rather than call tools.
 
+`lvai_validate_aixml`, `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`
+and `lvai_generate_vis` take a `backend`: `grpc` — NI's RPCs named in the tables below, the
+default — or `pylabview`, our own composer, which writes and reads a VI with no NI service and no
+LabVIEW. [AIXML backends](../aixml-backends.md) has the switch and what each one covers.
+
 ### Read — safe
 
 | Tool | RPC |

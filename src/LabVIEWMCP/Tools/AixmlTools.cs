@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
@@ -46,9 +47,18 @@ internal sealed class AixmlTools(LvaiConnection connection)
         int maxContentChars = 60000,
         [Description("Local budget in seconds")] int timeoutSeconds = 180,
         [Description("Ignore any cached export and ask LabVIEW again")] bool refresh = false,
-        CancellationToken ct = default) =>
-        await ConvertViToAixmlCoreAsync(viPath, aiXmlFilePath, returnContent, maxContentChars,
-                                        timeoutSeconds, refresh, roots: null, ct);
+        [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        CancellationToken ct = default)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_convert_vi_to_aixml", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return choice.Name == AixmlBackend.PyLabview
+            ? await ReadWithComposerAsync(viPath, aiXmlFilePath, returnContent, maxContentChars,
+                                          timeoutSeconds, choice, ct)
+            : WithBackend(await ConvertViToAixmlCoreAsync(viPath, aiXmlFilePath, returnContent,
+                                                          maxContentChars, timeoutSeconds, refresh,
+                                                          roots: null, ct), choice);
+    }
 
     /// <summary>
     /// The body of <see cref="ConvertViToAixmlAsync"/>, with the installation roots left open.
@@ -640,10 +650,18 @@ internal sealed class AixmlTools(LvaiConnection connection)
             refused before any RPC. Turn it on only to measure that.
             """)]
         bool allowUnknownPropertyNames = false,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        CancellationToken ct = default)
+    {
+        // Resolved OUTSIDE the guard, so an answer the guard writes - LabVIEW not
+        // reachable, say - still names the backend it was trying.
+        if (!AixmlBackend.TryResolve(backend, "lvai_validate_aixml", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (CrashGuard(aiXmlFilePath, allowUnknownPropertyNames) is { } refusal) return refusal;
+            if (choice.Name == AixmlBackend.PyLabview)
+                return await ValidateWithComposerAsync(aiXmlFilePath, timeoutSeconds, choice, ct);
 
             // Timed for the same reason the batch export is: without it the only way to find out
             // what a step costs is to bracket the call from outside, which in an agent loop
@@ -682,7 +700,8 @@ internal sealed class AixmlTools(LvaiConnection connection)
                          + "LabVIEW's exit dialog. They are safe to discard there.")
                      : null),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
-        });
+        }), choice);
+    }
 
     [McpServerTool(Name = "lvai_convert_aixml_to_vi", Destructive = true, OpenWorld = true,
                    Title = "Create a VI from AIXML (writes a .vi)")]
@@ -724,8 +743,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
             before anything reaches LabVIEW. lvai_check_aixml with fix repairs it.
             """)]
         bool allowUnknownPropertyNames = false,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        CancellationToken ct = default)
+    {
+        // Resolved OUTSIDE the guard, so an answer the guard writes - LabVIEW not
+        // reachable, say - still names the backend it was trying.
+        if (!AixmlBackend.TryResolve(backend, "lvai_convert_aixml_to_vi", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return WithBackend(await Rpc.GuardAsync(async () =>
         {
             // BEFORE THE RPC, because after it there may be no LabVIEW left to answer: the preCheck
             // further down is reported in the answer, which a crashed LabVIEW never produces.
@@ -738,6 +763,10 @@ internal sealed class AixmlTools(LvaiConnection connection)
             if (MalleableVi.IsMalleableTarget(viPath))
                 return Json.Error("malleableTarget", MalleableVi.Refusal,
                                   new { viPath = Path.GetFullPath(viPath) });
+
+            if (choice.Name == AixmlBackend.PyLabview)
+                return await ConvertWithComposerAsync(aiXmlFilePath, viPath, openVI, timeoutSeconds,
+                                                      checkExecutable, choice, ct);
 
             var existedBefore = File.Exists(viPath);
 
@@ -789,7 +818,8 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ("preCheck", PreCheckIfInteresting(aiXmlFilePath)),
                  ("schemaHint", SchemaHint(response.ErrorCode)),
                  ("elapsedMs", JsonValue.Create(stopwatch.ElapsedMilliseconds))]);
-        });
+        }), choice);
+    }
 
     [McpServerTool(Name = "lvai_apply_aixml_to_vi", Destructive = true, OpenWorld = true,
                    Title = "Apply AIXML to an existing VI (CLOSED - does nothing from here)")]
@@ -860,6 +890,189 @@ internal sealed class AixmlTools(LvaiConnection connection)
                      "the VI with lvai_convert_vi_to_aixml and compare, or you have measured " +
                      "nothing."))]);
         });
+    }
+
+    // ------------------------------------------------------------ the pylabview backend
+    //
+    // The same three tools, answered by our own composer and reader instead of NI's service. The
+    // answers keep the RPC shape - errorCode and errorMessage first - so lvai_generate_vi and every
+    // caller that reads them stays unchanged; what differs is said in the answer, never implied.
+
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+
+    /// <summary>An answer from the gRPC route, with the backend that produced it added.</summary>
+    internal static string WithBackend(string answer, AixmlBackend.Choice choice)
+    {
+        if (JsonNode.Parse(answer) is not JsonObject o) return answer;
+        o["backend"] = choice.Name;
+        o["backendSource"] = choice.Source;
+        return o.ToJsonString(Indented);
+    }
+
+    private static string BackendNotAvailable(string missing, AixmlBackend.Choice choice) =>
+        Json.Error("backendNotAvailable", missing,
+                   new { backend = choice.Name, backendSource = choice.Source });
+
+    private static string ComposerAnswer(AixmlComposer.Result result, AixmlBackend.Choice choice,
+                                         IEnumerable<(string Key, JsonNode? Value)> facts)
+    {
+        var o = new JsonObject
+        {
+            ["errorCode"] = result.ErrorCode,
+            ["errorMessage"] = result.Message,
+        };
+        if (!result.Written) o["errorKind"] = result.Kind;
+        o["backend"] = choice.Name;
+        o["backendSource"] = choice.Source;
+        foreach (var (key, value) in facts) o[key] = value;
+        if (result.Report.Length > 0)
+            o["composerReport"] = new JsonArray([.. result.Report.Select(r => (JsonNode)r)]);
+        o["elapsedMs"] = result.ElapsedMs;
+        return o.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// The folder the AIXML sits in, searched for Call targets after the VI's own folder - the
+    /// composer resolves a sibling by file, where NI's converter resolves one by being loaded.
+    /// </summary>
+    private static string[] SearchFolders(string aixmlPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(aixmlPath)) is { Length: > 0 } folder ? [folder] : [];
+
+    private static async Task<string> ValidateWithComposerAsync(
+        string aixmlPath, int timeoutSeconds, AixmlBackend.Choice choice, CancellationToken ct)
+    {
+        if (AixmlComposer.Locate(out var missing) is not { } setup)
+            return BackendNotAvailable(missing, choice);
+
+        var symbolic = SymbolicUids.Prepare(aixmlPath);
+        var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "compose-validate",
+                                   Guid.NewGuid().ToString("N"));
+        try
+        {
+            var result = await AixmlComposer.ComposeAsync(setup, symbolic.PathForLabview,
+                Path.Combine(scratch, Path.GetFileNameWithoutExtension(aixmlPath) + ".vi"),
+                SearchFolders(aixmlPath), timeoutSeconds, ct);
+            return ComposerAnswer(result, choice,
+                [.. SymbolicFacts(symbolic),
+                 ("validatedBy", JsonValue.Create("composer")),
+                 ("validateNote", JsonValue.Create(
+                     "The pylabview backend has no separate validation: this COMPOSED the VI into a " +
+                     "scratch folder and deleted it. errorCode 0 means the composer can build the " +
+                     "document; it refuses by name what it cannot (errorKind composerRefused). It " +
+                     "does NOT type-check wiring the way NI's ValidateAIXML does, so a document that " +
+                     "composes can still load broken - convert it and read executable.")),
+                 ("preCheck", PreCheckIfInteresting(aixmlPath))]);
+        }
+        finally
+        {
+            try { Directory.Delete(scratch, recursive: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    private async Task<string> ConvertWithComposerAsync(
+        string aixmlPath, string viPath, bool openVI, int timeoutSeconds, bool checkExecutable,
+        AixmlBackend.Choice choice, CancellationToken ct)
+    {
+        if (AixmlComposer.Locate(out var missing) is not { } setup)
+            return BackendNotAvailable(missing, choice);
+
+        var existedBefore = File.Exists(viPath);
+        var symbolic = SymbolicUids.Prepare(aixmlPath);
+        var result = await AixmlComposer.ComposeAsync(setup, symbolic.PathForLabview, viPath,
+                                                      SearchFolders(aixmlPath), timeoutSeconds, ct);
+
+        // EXECUTABILITY NEEDS LabVIEW, and today the only road to it is NI's service. So it is
+        // attempted, and when it cannot be read the answer says why instead of guessing: the
+        // composer wrote a file, which is not the same as a working VI.
+        // Asked of the process table first: with no LabVIEW at all - the case this backend exists
+        // for - the gRPC attempt spent 6.5 s of a 7.3 s call discovering that, measured over stdio.
+        int? execState = null;
+        string? execNote = null;
+        if (checkExecutable && result.Written)
+        {
+            if (System.Diagnostics.Process.GetProcessesByName("LabVIEW").Length == 0)
+            {
+                execNote = "Not measured: LabVIEW is not running, and reading the execution state " +
+                           "needs it. The VI is written; whether it runs is unknown.";
+            }
+            else
+            {
+                var reading = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
+                    Path.GetFullPath(viPath), timeoutSeconds: timeoutSeconds, ct: ct));
+                execState = (int?)reading?["execState"];
+                if (execState is null)
+                    execNote = "Not measured: reading the execution state needs LabVIEW's gRPC " +
+                               "service, and it answered: " +
+                               (reading?["error"]?.ToString() ?? reading?["errorMessage"]?.ToString()
+                                ?? "nothing").TrimEnd('.') +
+                               ". The VI is written; whether it runs is unknown.";
+            }
+        }
+
+        var broken = execState == 0;
+        var compiled = result.Written && File.Exists(viPath) && ContainsCompiledCode(viPath);
+        return ComposerAnswer(result, choice,
+            [.. SymbolicFacts(symbolic),
+             ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
+             ("viExisted", JsonValue.Create(existedBefore)),
+             ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
+             ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
+             ("sourceOnly", result.Written ? JsonValue.Create(!compiled) : null),
+             ("execState", execState is null ? null : JsonValue.Create(execState.Value)),
+             ("executable", execState is null or < 0 ? null : JsonValue.Create(execState.Value != 0)),
+             ("ok", checkExecutable && result.Written && execState is >= 0
+                 ? JsonValue.Create(!broken) : null),
+             ("executableNote", execNote is null ? null : JsonValue.Create(execNote)),
+             ("warning", broken
+                 ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). The composer " +
+                     "does not type-check wiring; compare with the grpc backend on the same " +
+                     "document, whose validation names the node.")
+                 : null),
+             ("openVINote", openVI
+                 ? JsonValue.Create("Not opened: the pylabview backend writes the file and has no " +
+                                    "road into the IDE. Open it with lvai_open_file.")
+                 : null),
+             ("memoryNote", existedBefore && result.Written
+                 ? JsonValue.Create("A VI already at this path was overwritten ON DISK. If LabVIEW " +
+                     "has it loaded it keeps serving its in-memory copy - NI's converter refuses " +
+                     "that case with Error 1357, the composer cannot see it. Close the project " +
+                     "(lvai_close_active_project) before trusting a run.")
+                 : null),
+             ("preCheck", PreCheckIfInteresting(aixmlPath))]);
+    }
+
+    private static async Task<string> ReadWithComposerAsync(
+        string viPath, string aixmlPath, bool returnContent, int maxContentChars, int timeoutSeconds,
+        AixmlBackend.Choice choice, CancellationToken ct)
+    {
+        if (AixmlComposer.Locate(out var missing) is not { } setup)
+            return BackendNotAvailable(missing, choice);
+
+        var result = await AixmlComposer.ReadAsync(setup, viPath, aixmlPath, timeoutSeconds, ct);
+        return ComposerAnswer(result, choice,
+            [.. await FileFactsAsync(aixmlPath, returnContent, maxContentChars, ct),
+             ("fromCache", JsonValue.Create(false)),
+             ("cacheNote", JsonValue.Create(
+                 "not cached: the export cache holds NI's converter output, and a reader's output " +
+                 "stored there would later be served as NI's")),
+             ("readerNote", JsonValue.Create(
+                 "Read by vi2aixml.py, NOT by NI's converter. Measured 2026-10-10 against NI's own " +
+                 "exports of 760 VIs: 133 identical in every fact; elements 92.7 %, constant values " +
+                 "92.0 %, wires 85.6 %, attributes 78.6 %. Treat a difference from an NI export as " +
+                 "the reader's until shown otherwise."))]);
+    }
+
+    /// <summary>
+    /// Whether a VI carries compiled code - the `VICD` block. Ours are written source-only, and a
+    /// stale compiled block was measured running the OLD diagram (docs/pylabview-stale-compiled-code.md),
+    /// so this is asked of the file rather than assumed.
+    /// </summary>
+    internal static bool ContainsCompiledCode(string viPath)
+    {
+        var bytes = File.ReadAllBytes(viPath);
+        ReadOnlySpan<byte> tag = "VICD"u8;
+        return bytes.AsSpan().IndexOf(tag) >= 0;
     }
 
     /// <summary>

@@ -1095,6 +1095,17 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 | a class, its private data, an accessor | **neither — call NI's OWN provider VIs**, see below |
 | a DQMH module, or anything a vendor toolkit under `project\` scripts | **neither — VI Server BY PATH**, see below |
 
+**THE AIXML TOOLS HAVE TWO BACKENDS SINCE 2026-10-10 - NI's gRPC service and our own pylabview
+composer - and the user's choice was to keep BOTH and switch, not replace.** `lvai_validate_aixml`,
+`lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi` and `lvai_generate_vis`
+take `backend`; without it the server default applies (`--aixml-backend`, then
+`LABVIEWMCP_AIXML_BACKEND`, then `grpc`), and **only to a tool the client itself called** - the
+forty-odd internal callers (class tools, test generators, graft) depend on what only NI's
+converter does, so they stay on `grpc`. Every answer names `backend` and `backendSource`. On
+`pylabview` a validation is a scratch COMPOSE, not NI's wiring check, and everything that RUNS a
+VI - executability, pane, render - still goes through gRPC. A binary install has no composer yet:
+where its NI-derived parts come from is the user's open decision. `docs/aixml-backends.md`.
+
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of
 2026-09-16, and it is a rule about *not spending turns*, not a claim anybody still needs to
@@ -2657,6 +2668,7 @@ literally it argued away 600 usable palette VIs.
 | How do I read or write AIXML? | `docs/aixml-reference.md` | `lvai_aixml_reference` |
 | What does `ValidateAIXML` NOT catch? | `docs/aixml-reference.md` | `lvai_check_aixml` |
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
+| How do I convert AIXML WITHOUT NI's gRPC service, or choose which converter runs? | `docs/aixml-backends.md` | `backend` on the five AIXML tools; `LABVIEWMCP_AIXML_BACKEND` / `--aixml-backend` for the server default; `pylv_status` shows it |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module? | `docs/dqmh-scripting.md` §9f | `lvai_dqmh_new_module` - the type by NAME from the station's catalogue (every answer lists it), files into `<project>\Libraries\<Name>`, verified from the files |
 | How do I create a DQMH EVENT with no dialog, and what does it leave unfinished? | `docs/dqmh-scripting.md` §9c | `lvai_dqmh_new_event` - wires the tester's new inputs and saves what the scripting touched; a Broadcast with arguments leaves Main.vi broken until its `#CodeNeeded` call is placed |

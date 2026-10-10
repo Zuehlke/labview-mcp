@@ -103,6 +103,11 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
         if (missing.Count > 0)
             return Failure(ToolArguments.MissingArguments(name, schema, missing, received));
 
+        // Which tool the CLIENT asked for, for the rest of this async flow. The server's AIXML
+        // backend default reaches only that tool - not the lvai_generate_vi a class tool calls from
+        // C# on its way. AixmlBackend has the reason.
+        AixmlBackend.ClientTool.Value = name;
+
         try
         {
             return await base.InvokeAsync(request, cancellationToken);

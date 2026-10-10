@@ -110,7 +110,43 @@ internal sealed class BulkTools(LvaiConnection connection)
             VI is written - but the answer says so and names the chain to fold into a subVI.
             Costs one render, 90-320 ms measured.
             """)]
-        bool measureDiagram = true) =>
+        bool measureDiagram = true,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the validate step is skipped - the composer refuses by name instead - and
+            the VI's executability is read in its place, because the composer does not type-check
+            wiring. The pane and size steps still reach LabVIEW through its gRPC service.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
+            aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
+            choice, ct), choice);
+        return choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
+    }
+
+    /// <summary>
+    /// On pylabview NEITHER of the two things that vouch for a VI ran when LabVIEW was absent: NI's
+    /// validation is skipped by design and the execution state could not be read. Measured over
+    /// stdio 2026-10-10: the answer was `ok: true` with a note about the pane alone, and the reason
+    /// sat inside the convert step. So it is lifted into the note a reader actually reads.
+    /// </summary>
+    private static string WithUnmeasuredExecutability(string answer)
+    {
+        if (Parsed(answer) is not JsonObject o || o["ok"]?.GetValue<bool>() != true) return answer;
+        var convert = o["steps"]?.AsArray()
+            .FirstOrDefault(s => s?["step"]?.GetValue<string>() == "convert");
+        if (convert?["answer"]?["executableNote"]?.GetValue<string>() is not { } unmeasured) return answer;
+        o["note"] = (o["note"]?.GetValue<string>() ?? "") + " NOTHING VOUCHES FOR THIS VI'S WIRING: " +
+                    "the pylabview backend skips NI's validation, and executability was not read - " +
+                    unmeasured;
+        return o.ToJsonString(Indented);
+    }
+
+    private async Task<string> GenerateViCoreAsync(
+        string aiXmlFilePath, string viPath, bool openVI, bool measurePane, int? panePattern,
+        int timeoutSeconds, bool measureDiagram, AixmlBackend.Choice choice, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
@@ -176,8 +212,29 @@ internal sealed class BulkTools(LvaiConnection connection)
                 }
             }
 
-            var validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds, ct: ct);
-            steps.Add(Step("validate", validate));
+            // THE COMPOSER HAS NO SEPARATE VALIDATION: composing twice would double the cost and
+            // answer the same question. Its refusal comes from the convert step, by name, and the
+            // execution state stands in for NI's type check further down.
+            string validate;
+            if (choice.Name == AixmlBackend.PyLabview)
+            {
+                validate = """{ "errorCode": 0 }""";
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "validate",
+                    ["skipped"] = true,
+                    ["backend"] = choice.Name,
+                    ["note"] = "Not run on the pylabview backend: the composer refuses by name " +
+                               "what it cannot build, at the convert step, and the VI's execution " +
+                               "state is read afterwards in place of NI's wiring check.",
+                });
+            }
+            else
+            {
+                validate = await aixml.ValidateAixmlAsync(aiXmlFilePath, timeoutSeconds,
+                                                          backend: choice.Name, ct: ct);
+                steps.Add(Step("validate", validate));
+            }
 
             // THE LOADED-SUBVI ROUTE. ValidateAIXML refuses a Call to project-local code in EVERY
             // state, while ConvertAIXMLToVI resolves it by name once the target is OPEN in
@@ -227,9 +284,25 @@ internal sealed class BulkTools(LvaiConnection connection)
                 });
             }
 
+            var composed = choice.Name == AixmlBackend.PyLabview;
             var convert = await aixml.ConvertAixmlToViAsync(throwaway?.Path ?? aiXmlFilePath,
-                                                            viPath, openVI, timeoutSeconds, checkExecutable: false, ct: ct);
+                                                            viPath, openVI, timeoutSeconds,
+                                                            checkExecutable: composed,
+                                                            backend: choice.Name, ct: ct);
             steps.Add(Step("convert", convert));
+            if (composed && Failed(convert))
+                return Outcome(false, "convert", steps, total, viPath, null,
+                    (Field(convert, "errorKind") == "composerRefused"
+                        ? "The pylabview composer REFUSED the document, by name, and wrote nothing: "
+                        : "The pylabview composer failed and wrote nothing: ") +
+                    Field(convert, "errorMessage") + ". The composer covers a subset of what NI's " +
+                    "converter does (docs/aixml-backends.md); generate the same document with " +
+                    "backend grpc to compare.");
+            if (composed && Parsed(convert)?["executable"]?.GetValue<bool>() == false)
+                return Outcome(false, "convert", steps, total, viPath, null,
+                    "THE VI WAS WRITTEN by the pylabview composer and LabVIEW reports it NOT " +
+                    "executable. The composer does not type-check wiring the way NI's validation " +
+                    "does; generate the same document with backend grpc to have the node named.");
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
@@ -691,7 +764,19 @@ internal sealed class BulkTools(LvaiConnection connection)
         [Description("Keep the AIXML sources instead of deleting the ones that succeeded")]
         bool keepAixml = false,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        CancellationToken ct = default)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_generate_vis", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlTools.WithBackend(
+            await GenerateVisCoreAsync(pairsJson, openVI, measurePane, keepAixml, timeoutSeconds,
+                                       choice, ct), choice);
+    }
+
+    private async Task<string> GenerateVisCoreAsync(
+        string pairsJson, bool openVI, bool measurePane, bool keepAixml, int timeoutSeconds,
+        AixmlBackend.Choice choice, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             List<GenerationRequest> requests;
@@ -735,7 +820,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                 }
 
                 var answer = await GenerateViAsync(request.Aixml, request.Vi, openVI, measurePane,
-                                                   request.PanePattern, timeoutSeconds, ct: ct);
+                                                   request.PanePattern, timeoutSeconds, ct: ct,
+                                                   backend: choice.Name);
                 var parsed = Parse(answer);
                 // THE SUB-ANSWER'S OWN VERDICT, NOT `viExistsNow`. That field is true for a file
                 // some EARLIER run left behind, so a batch over targets that already existed
@@ -1134,7 +1220,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
         var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
             viPath, exportPath, returnContent: false, maxContentChars: 0, timeoutSeconds,
-            refresh: true, ct);
+            refresh: true, ct: ct);
 
         var targets = new JsonArray();
         if (File.Exists(exportPath))
