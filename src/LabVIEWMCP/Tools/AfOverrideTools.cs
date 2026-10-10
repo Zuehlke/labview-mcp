@@ -403,9 +403,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         actors: branch, series and branchFromNode on Actor Core, seriesAfter on Pre Launch Init (its
         error 5000 came out of Launch), Stop Core and Handle Error (both hooks ran after their Call
         Parent at the stop), dryRun and the refusals; every override state 1 cold. THE UNSAVED-EDIT
-        CHECK reads the FP/BD Mods Bitsets, and those read 0 after edits made by VI Server scripting
-        (a moved object, a new node, inside an undo transaction too - measured 2026-10-10), so such
-        edits are NOT seen; whether an edit made by hand in the IDE is seen is unmeasured.
+        CHECK reads the FP/BD Mods Bitsets: a hand edit in the IDE sets them, but edits made by VI
+        Server scripting leave them at 0 (a moved object, a new node, inside an undo transaction too -
+        both measured 2026-10-10), so scripted unsaved edits are NOT seen.
         """)]
     public async Task<string> AddHookAsync(
         [Description(@"Absolute path to the override .vi (a member of classPath)")] string overridePath,
@@ -613,9 +613,10 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         instead. NEEDS THE PROJECT OPEN AND ACTIVE. The kit's delete + clean route is measured;
         Measured 2026-10-10: one hook removed (matches 1, state 1 cold for the override and every
         sibling), `hookNodeAmbiguous` and `occurrence`. NOT RELIABLE: the unsaved-edit check and the
-        sibling re-save both read the FP/BD Mods Bitsets, which read 0 after edits made by VI Server
-        scripting (measured), so a scripted unsaved edit on a sibling was NOT refused and no sibling
-        is ever re-saved on their word; an edit made by hand in the IDE is unmeasured.
+        sibling re-save both read the FP/BD Mods Bitsets. A hand edit in the IDE sets them - a sibling
+        with one was refused (`siblingHasUnsavedEdits`), nothing changed - but edits made by VI Server
+        scripting leave them at 0 (both measured), so a scripted unsaved edit is NOT refused and a
+        sibling this call's own scripting touched is not re-saved on their word.
         """)]
     public async Task<string> RemoveHookAsync(
         [Description(@"Absolute path to the override .vi")] string overridePath,

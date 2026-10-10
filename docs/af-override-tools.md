@@ -7,9 +7,9 @@ The Actor Framework itself (messages, libraries, the scope rules) is in `labview
 **Status, 2026-10-10:** the routes these tools automate were measured by hand with helper VIs on a
 pilot project and on throwaway actors (dates are given per row). **The tools were then run in
 LabVIEW 2026 Q3 (32-bit) on 2026-10-10**, on two throwaway actors (one in no library, one in a
-`.lvlib`) and a plain child class; §7 says per item what passed. Two things did not: the unsaved-edit
-check reads 0 for edits made by scripting (§4), and a `vi`-only re-run of `lvai_add_class_method`
-dropped a member (now refused, §5).
+`.lvlib`) and a plain child class; §7 says per item what passed. Two limits showed: the unsaved-edit
+check sees edits made by hand in the IDE but not edits made by scripting (§4), and a `vi`-only re-run
+of `lvai_add_class_method` dropped a member (now refused, §5).
 
 "The kit" below means the hand-run helper VIs of a companion LabVIEW skill whose measured routes
 these tools automate; its shape letters (A, B, B-after, C, D) are kept so the two can be compared.
@@ -127,7 +127,7 @@ Everything below is decided before the diagram is touched. The refusals:
 | `wireIsBranched` / `panelTerminalNotWired` | A series insert deletes the whole net at the panel terminal and reconnects one far end. So the net must be exactly one plain wire: place series hooks first, then branches. |
 | `hookTerminalMissing`, `hookTerminalWrongDirection`, `overrideTerminalMissing`, `noErrorTerminal` | a name or a direction that does not fit |
 | `sourceHookNotFound` / `sourceHookAmbiguous`, `hookAlreadyPlaced` | a re-run would place the hook twice |
-| `overrideHasUnsavedEdits` | the override already carries edits this call did not make; the save would write them. **Blind to scripted edits, measured** (§4) |
+| `overrideHasUnsavedEdits` | the override already carries edits this call did not make; the save would write them. Sees hand edits, **blind to scripted edits**, both measured (§4) |
 | `overrideNotAMember`, `noActiveProject`, `projectDidNotBecomeActive` | the override or the project is not ready |
 
 The warnings:
@@ -201,14 +201,14 @@ siblings unsaved.
 **Measured 2026-10-10.** The remove itself works: a branch hook on Actor Core removed with `matches:
 1`, `execStateAfter: 1`, the override and all four siblings state 1 cold (the 1000088 loose end did
 not occur on this actor); two nodes of one name gave `hookNodeAmbiguous`, `occurrence: 1` removed
-one. **The unsaved-edit check does not work for scripted edits:** the FP and BD Mods Bitsets read 0
-after a moved panel control, a moved diagram node and a new node dropped by `New VI Object`, inside an
-undo transaction too, on a class member reached through the project's instance (`{LV.Diagram}
-Modified` read TRUE on a clean VI as well, so it is no signal either). A sibling carrying such an
-edit was NOT refused, and because the sibling re-save reads the same bits, every sibling was
-`skippedUnmodified`. Whether an edit made by hand in the IDE sets the bits is unmeasured (it needs
-a person). Until it is, treat `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` as unproven and
-check for unsaved work yourself before a remove.
+one. **The unsaved-edit check sees hand edits, not scripted ones.** A node dragged by hand on a
+sibling's diagram in the IDE (window open, not saved) set its BD Mods Bitset (3254784000; an untouched
+sibling read 0), and a dry run refused with `siblingHasUnsavedEdits` naming it, nothing changed. Edits
+made by VI Server scripting left both bitsets at 0 - a moved panel control, a moved diagram node, a
+new node dropped by `New VI Object`, inside an undo transaction too - so a sibling carrying such an
+edit was NOT refused, and the sibling re-save, which reads the same bits, skipped every sibling
+(`{LV.Diagram} Modified` read TRUE on a clean VI as well, so it is no signal either). Unsaved work
+left by another scripting tool is therefore not caught: save or discard it before a remove.
 
 A **series** hook cannot be removed this way: the wire through it goes with it. Restore the bare
 override from version control (project closed) and re-hook every shape in order (B, C, A).
@@ -268,7 +268,7 @@ WITHOUT the member (measured 2026-10-10). Such a call is now refused before anyt
 | `lvai_af_hook_read.xml` | lists panel terminals with wire ends, subVI names, node classes | no | measured 2026-10-10 |
 | `lvai_af_add_hook.xml` | places one hook; series cut, branch tap, node pairs | no | measured 2026-10-10, all four shapes |
 | `lvai_af_remove_hook.xml` | deletes one hook node, Remove Bad Wires | no | measured 2026-10-10 |
-| `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | runs; **reads 0 for scripted edits** (2026-10-10), IDE edits unmeasured |
+| `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | measured 2026-10-10: sees a hand edit in the IDE, **reads 0 for scripted edits** |
 | `lvai_af_save_members.xml` | saves listed VIs (optionally only modified ones), then the class | yes | measured as a list 2026-10-10; `Only If Modified` skips everything (same bits) |
 | `lvai_member_callers.xml` | loaded members and their callers | no | measured 2026-10-10 |
 
@@ -316,6 +316,6 @@ project closed.
 | 2 refusals `hookInputUnfed`, `wireIsBranched`, `handleErrorHookBeforeCallParent` | pass, nothing changed (file times identical) |
 | 2 `CallParentNode` in Node Classes | yes; Call Parent is also in `SubVIs[]` (§3d) |
 | 3 remove a branch hook; `hookNodeAmbiguous` | pass; override and siblings state 1 cold |
-| 3 `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` | **fail** for scripted edits (bits read 0, §4); IDE edits unmeasured |
+| 3 `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` | pass for a hand edit in the IDE (sibling named, nothing changed); **blind** to scripted edits (bits read 0, §4) |
 | 4 re-run over a hooked member | pass: `memberHasLoadedCallers`, class unchanged; re-run after unhooking ok |
 | 4 re-run over a protected member in a folder | scope: pass; folder: unmeasured; `vi`-only re-run: failed, now refused (`rerunNeedsAixml`) |
