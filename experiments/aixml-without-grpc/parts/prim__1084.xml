@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1084" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Data Communication\DataSocket\DataSocket OPC\Monitor OPC Items with DataSocket.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="DataSocket" Format="inline" Label="connection id" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="ms timeout (10000)" /><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="mode"><EnumLabel>Read</EnumLabel>
+        <EnumLabel>Write</EnumLabel>
+        <EnumLabel>ReadWrite</EnumLabel>
+        <EnumLabel>BufferedRead</EnumLabel>
+        <EnumLabel>BufferedReadWrite</EnumLabel>
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="URL" /></types><heap><SL__arrayElement class="prim" uid="566">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="1003">
+            <dco class="parm" uid="1000">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(57)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>381</primIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1006">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="1004">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(58)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>381</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1016">
+            <objFlags>32769</objFlags>
+            <dco class="parm" uid="1007">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(59)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>381</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1022">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="1019">
+              <typeDesc>TypeID(60)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>381</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1026">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1023">
+              <typeDesc>TypeID(61)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>381</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1030">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1027">
+              <typeDesc>TypeID(62)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>381</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(78, 130, 110, 162)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1084</primResID>
+        <primIndex>381</primIndex>
+        </SL__arrayElement>
+      </heap></part>

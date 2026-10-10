@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Clipboard%2EWrite" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\addons\_JKI Toolkits\Caraya\classes\Basic Test Manager\Process.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Write Clipbrd" /><TypeDesc Type="Void" Format="inline" Label="Write Clipbrd" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Param 0" /><TypeDesc Type="Void" Format="inline" Label="Param 0" /></types><heap><SL__arrayElement class="invokeNode" uid="17868">
+                                                <objFlags>33555072</objFlags>
+                                                <termList elements="8">
+                                                  <SL__arrayElement class="term" uid="17881">
+                                                    <dco class="hGrowCItem" uid="17882">
+                                                      <objFlags>65536</objFlags>
+                                                      <typeDesc>TypeID(443)</typeDesc>
+                                                      <termBounds>(0, 0, 9, 13)</termBounds>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17886">
+                                                    <dco class="hGrowCItem" uid="17889">
+                                                      <objFlags>262145</objFlags>
+                                                      <typeDesc>TypeID(444)</typeDesc>
+                                                      <termBounds>(0, 81, 9, 94)</termBounds>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17895">
+                                                    <dco class="hGrowCItem" uid="17898">
+                                                      <objFlags>131072</objFlags>
+                                                      <typeDesc>TypeID(445)</typeDesc>
+                                                      <termBounds>(9, 0, 18, 13)</termBounds>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17904">
+                                                    <dco class="hGrowCItem" uid="17907">
+                                                      <objFlags>524289</objFlags>
+                                                      <typeDesc>TypeID(446)</typeDesc>
+                                                      <termBounds>(9, 81, 18, 94)</termBounds>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17913">
+                                                    <dco class="invokeItem" uid="17916">
+                                                      <objFlags>196608</objFlags>
+                                                      <typeDesc>TypeID(447)</typeDesc>
+                                                      <termBounds>(18, 0, 34, 47)</termBounds>
+                                                      <privDataList elements="0" />
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17925">
+                                                    <dco class="invokeItem" uid="17930">
+                                                      <objFlags>196609</objFlags>
+                                                      <typeDesc>TypeID(448)</typeDesc>
+                                                      <termBounds>(18, 47, 34, 94)</termBounds>
+                                                      <privDataList elements="0" />
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17935">
+                                                    <objFlags>32768</objFlags>
+                                                    <dco class="invokeItem" uid="17936">
+                                                      <typeDesc>TypeID(449)</typeDesc>
+                                                      <termBounds>(34, 0, 50, 47)</termBounds>
+                                                      <privDataList elements="0" />
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="17943">
+                                                    <dco class="invokeItem" uid="17944">
+                                                      <objFlags>131073</objFlags>
+                                                      <typeDesc>TypeID(450)</typeDesc>
+                                                      <termBounds>(34, 47, 50, 94)</termBounds>
+                                                      <privDataList elements="0" />
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  </termList>
+                                                <bounds>(38, 34, 89, 128)</bounds>
+                                                <shortCount>2</shortCount>
+                                                <clumpNum>8978435</clumpNum>
+                                                <dcoList elements="4">
+                                                  <SL__arrayElement uid="17916" />
+                                                  <SL__arrayElement uid="17930" />
+                                                  <SL__arrayElement uid="17936" />
+                                                  <SL__arrayElement uid="17944" />
+                                                  </dcoList>
+                                                <permDCOList elements="4">
+                                                  <SL__arrayElement uid="17882" />
+                                                  <SL__arrayElement uid="17889" />
+                                                  <SL__arrayElement uid="17898" />
+                                                  <SL__arrayElement uid="17907" />
+                                                  </permDCOList>
+                                                <nodeName>"App"</nodeName>
+                                                <oMId>05DD</oMId>
+                                                <methName>"Clipboard.Write"</methName>
+                                                <methCode>2130</methCode>
+                                                <invokeFlags>08</invokeFlags>
+                                                <propList elements="0" />
+                                                <privDataList elements="0" />
+                                                </SL__arrayElement>
+                                              </heap></part>

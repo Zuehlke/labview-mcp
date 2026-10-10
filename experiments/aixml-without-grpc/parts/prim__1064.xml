@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1064" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Arrays\Separate Array Values.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="529">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="535">
+                    <dco class="parm" uid="536">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(22)</typeDesc>
+                      <termBounds>(0, 10, 17, 21)</termBounds>
+                      <primIndex>29</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="538">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="539">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(23)</typeDesc>
+                      <termBounds>(0, 0, 17, 10)</termBounds>
+                      <primIndex>29</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(123, 144, 155, 176)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>393219</clumpNum>
+                <primResID>1064</primResID>
+                <primIndex>29</primIndex>
+                </SL__arrayElement>
+              </heap></part>

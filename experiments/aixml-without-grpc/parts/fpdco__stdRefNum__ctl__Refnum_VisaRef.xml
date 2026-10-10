@@ -1,0 +1,251 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.VisaRef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Instrument IO\GPIB\GPIB with VISA functions.vi"><types><TypeDesc Type="Refnum" RefType="VisaRef" Ident="Instr" FirstClient="1" Format="inline" Label="VISA GPIB Resource"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Refnum" RefType="VisaRef" Ident="Instr" FirstClient="1" Format="inline" Label="VISA GPIB Resource"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="213">
+          <typeDesc>TypeID(26)</typeDesc>
+          <ddo class="stdRefNum" uid="555">
+            <objFlags>8192</objFlags>
+            <bounds>(120, 12, 171, 240)</bounds>
+            <partsList elements="3">
+              <SL__arrayElement class="label" uid="565">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 107)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>1536</flags>
+                  <mode>17412</mode>
+                  <text>"VISA GPIB Resource"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="stdTag" uid="566">
+                <objFlags>67604</objFlags>
+                <partID>8017</partID>
+                <howGrow>240</howGrow>
+                <bounds>(15, 0, 51, 228)</bounds>
+                <partsList elements="10">
+                  <SL__arrayElement class="multiCosm" uid="569">
+                    <objFlags>2354</objFlags>
+                    <partID>79</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>2</howGrow>
+                    <bounds>(8, 204, 24, 219)</bounds>
+                    <bgColor>00B3B3B3</bgColor>
+                    <table elements="2">
+                      <SL__arrayElement class="Image">
+                        <ImageResID>18</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>19</ImageResID>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="selLabel" uid="570">
+                    <objFlags>2099506</objFlags>
+                    <partID>11</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(8, 20, 25, 199)</bounds>
+                    <image class="Image">
+                      <ImageResID>-239</ImageResID>
+                      </image>
+                    <fgColor>00FFFFFF</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <textRec class="textHair">
+                      <mode>8389636</mode>
+                      <bgColor>00FFFFFF</bgColor>
+                      </textRec>
+                    <nVisItems>10</nVisItems>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="bigMultiCosm" uid="571">
+                    <objFlags>3378</objFlags>
+                    <partID>43</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4108</howGrow>
+                    <bounds>(6, 11, 29, 18)</bounds>
+                    <fgColor>007F7F7F</fgColor>
+                    <bgColor>007F7F7F</bgColor>
+                    <table elements="2">
+                      <SL__arrayElement class="SubCosm">
+                        <Bounds>(0, 0, 23, 7)</Bounds>
+                        <FGColor>007F7F7F</FGColor>
+                        <BGColor>007F7F7F</BGColor>
+                        <Image class="Image">
+                          <ImageResID>-395</ImageResID>
+                          </Image>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="SubCosm">
+                        <Bounds>(0, 0, 23, 7)</Bounds>
+                        <FGColor>00000000</FGColor>
+                        <BGColor>00FFFFFF</BGColor>
+                        <Image class="Image">
+                          <ImageResID>-395</ImageResID>
+                          </Image>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="576">
+                    <objFlags>1335</objFlags>
+                    <partID>1</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4288</howGrow>
+                    <bounds>(7, 10, 25, 19)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>00B3B3B3</fgColor>
+                    <bgColor>00B3B3B3</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="581">
+                    <objFlags>2103</objFlags>
+                    <partID>119</partID>
+                    <partOrder>2</partOrder>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(7, 10, 26, 200)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>00CCCCCC</fgColor>
+                    <bgColor>00CCCCCC</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="583">
+                    <objFlags>2103</objFlags>
+                    <partID>119</partID>
+                    <partOrder>1</partOrder>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(6, 9, 26, 201)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>007A7A7A</fgColor>
+                    <bgColor>007A7A7A</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="587">
+                    <objFlags>2103</objFlags>
+                    <partID>119</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(6, 9, 27, 201)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>00FFFFFF</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="590">
+                    <objFlags>2327</objFlags>
+                    <partID>9</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(0, 0, 36, 228)</bounds>
+                    <image class="Image">
+                      <ImageResID>-766</ImageResID>
+                      </image>
+                    <fgColor>00646464</fgColor>
+                    <bgColor>00CCCCCC</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="multiCosm" uid="602">
+                    <objFlags>2362</objFlags>
+                    <partID>15</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4104</howGrow>
+                    <bounds>(11, 2, 23, 8)</bounds>
+                    <fgColor>00D9DADC</fgColor>
+                    <bgColor>007586A0</bgColor>
+                    <table elements="4">
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2104</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2105</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2106</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2107</ImageResID>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="211">
+                    <partID>66</partID>
+                    <rsrcID>21735</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(27)</typeDesc>
+                <MouseWheelSupport>3</MouseWheelSupport>
+                <selLabFlags>8279</selLabFlags>
+                <selLabData>4</selLabData>
+                <tagType>4</tagType>
+                <variantIndex>20</variantIndex>
+                <tagDLLPath />
+                <tagDLLName>[NULL]</tagDLLName>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="212">
+                <partID>66</partID>
+                <rsrcID>21737</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <description class="cLStrObj" uid="613">
+              <strings elements="2">
+                <SL__arrayElement>"Use this control to select an Instrument that is connected to your computer via GPIB.  The string form for the control is GPIBX::Y::INSTR.                                     X = the GPIB Board Interface Number                                                                                  Y = the Primary Address of the GPIB Instrument"</SL__arrayElement>
+                <SL__arrayElement>"GPIB Instrument String"</SL__arrayElement>
+                </strings>
+              </description>
+            <typeDesc>TypeID(28)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          <DefaultData>"&amp;#x00;&amp;#x00;&amp;#x00;&amp;#x0F;GPIB0::2::INSTR"</DefaultData>
+          </SL__arrayElement>
+        </heap><strs><Section Index="20" Format="inline">
+      <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+        <DataType Index="0" Type="Void" Format="inline" />
+        <Attributes>
+          <LVVariant Name="classString" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>?*::(INSTR|SOCKET)</String>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="displayFilter" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+            <DataFill>
+              <U32>73728</U32>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="typeClass" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>Instr</String>
+              </DataFill>
+            </LVVariant>
+          </Attributes>
+        <DataFill>
+          <Void />
+          </DataFill>
+        </LVVariant>
+      </Section>
+    </strs></part>

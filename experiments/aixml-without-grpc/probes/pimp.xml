@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pimp.vi" description="Probe: implicit property nodes linked to a boolean and a string control.">
+  <Control _name="Flag" outputs="value:" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Control _name="Text" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Constant _name="show" outputs="value:4300.value" type="bool" uid="4300" uid_parent="root" value="true"/>
+  <Node _name="Property Node" fields="write+Visible" inputs="error in (no error):,Visible:4300.value" link="Flag" outputs="error out:4400.err" type="{LV.Boolean}" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Visible" inputs="error in (no error):4400.err,Visible:4300.value" link="Text" outputs="error out:4500.err" type="{LV.String}" uid="4500" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4500.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,14 @@
+<VI _name="T91 Property Nodes.vi" description="Property nodes reading an opened application reference and the VI itself, and an invoke node on the VI.">
+  <Node _name="Open Application Reference" outputs="application reference:4200.app,error out:4200.err" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3ADirectory Path,read+Application\3AName" inputs="reference:4200.app,error in (no error):4200.err" outputs="Application\3ADirectory Path:4300.dir,Application\3AName:4300.name,reference out:4300.ref,error out:4300.err" type="{LV.Application}" uid="4300" uid_parent="root"/>
+  <Indicator _name="app dir" inputs="value:4300.dir" type="path" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="app name" inputs="value:4300.name" type="string" uid="4320" uid_parent="root" value=""/>
+  <Node _name="Close Reference" inputs="reference:4300.ref,error in (no error):4300.err" outputs="error out:4400.err" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="error in (no error):4400.err" outputs="VI Name:4500.name,reference out:4500.ref,error out:4500.err" type="{LV.VI}" uid="4500" uid_parent="root"/>
+  <Node _name="String Length" inputs="string:4500.name" outputs="length:4550.length" uid="4550" uid_parent="root"/>
+  <Indicator _name="name length" inputs="value:4550.length" type="int32" uid="4560" uid_parent="root" value="0"/>
+  <Constant _name="which" outputs="value:4600.value" type="string" uid="4600" uid_parent="root" value="app name"/>
+  <Node _name="Invoke Node" inputs="reference:4500.ref,error in (no error):4500.err,name:4600.value" outputs="error out:4700.err,GetControlIndexByName:4700.index" target="GetControlIndexByName" type="{LV.VI}" uid="4700" uid_parent="root"/>
+  <Indicator _name="index" inputs="value:4700.index" type="int32" uid="4710" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4700.err" type="cluster{bool.status,int32.code,string.source}" uid="4800" uid_parent="root" value="[false,0,]"/>
+</VI>

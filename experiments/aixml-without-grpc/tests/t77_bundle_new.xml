@@ -1,0 +1,8 @@
+<VI _name="T77 Bundle New.vi" description="Bundle with no cluster wired builds a new cluster from its elements; Unbundle By Name reads the fields back.">
+  <Control _name="a" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="b" type="int32" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Bundle" inputs="a:4200.value,b:4210.value,cluster:" outputs="output cluster:4220.output cluster" uid="4220" uid_parent="root"/>
+  <Indicator _name="ab" type="cluster{double.a,int32.b}" uid="4230" uid_parent="root" value="[0,0]" inputs="value:4220.output cluster"/>
+  <Node _name="Unbundle By Name" fields="b" inputs="input cluster:4220.output cluster" outputs="b:4240.b" uid="4240" uid_parent="root"/>
+  <Indicator _name="b out" type="int32" uid="4250" uid_parent="root" value="0" inputs="value:4240.b"/>
+</VI>

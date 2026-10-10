@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1054" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="336">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="1393">
+                    <dco class="parm" uid="1264">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(23)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>37</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1561">
+                    <objFlags>32769</objFlags>
+                    <dco class="parm" uid="1559">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(24)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>37</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(428, 117, 460, 149)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1054</primResID>
+                <primIndex>37</primIndex>
+                </SL__arrayElement>
+              </heap></part>

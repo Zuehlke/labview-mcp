@@ -1,0 +1,5 @@
+<VI _name="T56 Error Chain.vi" description="Two calls chained through their error clusters - a cluster wire typed from the callee's pane alone.">
+  <Call inputs="" outputs="error out:4210.error out" target="Clear Errors.vi" uid="4210" uid_parent="root"/>
+  <Call inputs="error in (no error):4210.error out" outputs="specific error cleared?:4220.cleared" target="Clear Errors.vi" uid="4220" uid_parent="root"/>
+  <Indicator _name="cleared" type="bool" uid="4230" uid_parent="root" value="false" inputs="value:4220.cleared"/>
+</VI>

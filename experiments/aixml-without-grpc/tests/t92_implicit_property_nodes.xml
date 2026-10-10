@@ -1,0 +1,11 @@
+<VI _name="T92 Implicit Property Nodes.vi" description="Property nodes linked to front-panel controls: hide a boolean and read the flag back, read a string control's value.">
+  <Control _name="Flag" outputs="value:" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Control _name="Text" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Constant _name="hide" outputs="value:4300.value" type="bool" uid="4300" uid_parent="root" value="false"/>
+  <Node _name="Property Node" fields="write+Visible" inputs="Visible:4300.value" link="Flag" outputs="error out:4400.err" type="{LV.Boolean}" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="error in (no error):4400.err" link="Flag" outputs="Visible:4500.visible,error out:4500.err" type="{LV.Boolean}" uid="4500" uid_parent="root"/>
+  <Indicator _name="flag visible" inputs="value:4500.visible" type="bool" uid="4510" uid_parent="root" value="true"/>
+  <Node _name="Property Node" fields="read+Value" inputs="error in (no error):4500.err" link="Text" outputs="Value:4600.value,error out:4600.err" type="{LV.String}" uid="4600" uid_parent="root"/>
+  <Indicator _name="text value" inputs="value:4600.value" type="string" uid="4610" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4600.err" type="cluster{bool.status,int32.code,string.source}" uid="4700" uid_parent="root" value="[false,0,]"/>
+</VI>

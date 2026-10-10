@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Merge_Errors/1f8db04a00" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\ActorMessageMaker\Support\Create Message Classes for Actor.vi" node="Merge Errors" ins="error in" outs="error out" mode="" nodeFlags="0"><types><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="mergeErrors" uid="329">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="351" aixml="error out">
+                    <objFlags>64</objFlags>
+                    <dco class="mergeErrorsDCO" uid="345">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(54)</typeDesc>
+                      <termBounds>(0, 16, 10, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="342" aixml="error in">
+                    <objFlags>32832</objFlags>
+                    <dco class="mergeErrorsDCO" uid="336">
+                      <typeDesc>TypeID(55)</typeDesc>
+                      <termBounds>(1, 0, 9, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(120, 461, 130, 493)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>983043</clumpNum>
+                <dcoList elements="1">
+                  <SL__arrayElement uid="336" />
+                  </dcoList>
+                <dcoAgg uid="345" />
+                </SL__arrayElement>
+              </heap></part>

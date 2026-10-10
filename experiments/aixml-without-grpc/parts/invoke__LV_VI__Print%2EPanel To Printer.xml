@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Print%2EPanel To Printer" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\Math Plots\3D Math Plots\3D Plot\3D Plot\Public\Menu\Image to Printer.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Print Panel To Printer" /><TypeDesc Type="Void" Format="inline" Label="Print Panel To Printer" /><TypeDesc Type="Boolean" Format="inline" Label="Entire Panel?" /><TypeDesc Type="Void" Format="inline" Label="Entire Panel?" /></types><heap><SL__arrayElement class="invokeNode" uid="669">
+        <objFlags>33620608</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="671">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="672">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(163)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="674">
+            <dco class="hGrowCItem" uid="675">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(164)</typeDesc>
+              <termBounds>(0, 107, 9, 120)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="677">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="678">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(165)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="680">
+            <dco class="hGrowCItem" uid="681">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(166)</typeDesc>
+              <termBounds>(9, 107, 18, 120)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="683">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="684">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(167)</typeDesc>
+              <termBounds>(18, 0, 34, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="687">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="688">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(168)</typeDesc>
+              <termBounds>(18, 60, 34, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="691">
+            <objFlags>32769</objFlags>
+            <dco class="invokeItem" uid="692">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(169)</typeDesc>
+              <termBounds>(34, 0, 50, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="695">
+            <dco class="invokeItem" uid="696">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(170)</typeDesc>
+              <termBounds>(34, 60, 50, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(169, 1634, 220, 1754)</bounds>
+        <shortCount>40</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="684" />
+          <SL__arrayElement uid="688" />
+          <SL__arrayElement uid="692" />
+          <SL__arrayElement uid="696" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="672" />
+          <SL__arrayElement uid="675" />
+          <SL__arrayElement uid="678" />
+          <SL__arrayElement uid="681" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>000B</oMId>
+        <methName>"Print.Panel To Printer"</methName>
+        <methCode>1019</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

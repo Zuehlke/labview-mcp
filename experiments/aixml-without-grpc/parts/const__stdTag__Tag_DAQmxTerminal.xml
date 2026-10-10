@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdTag/Tag.DAQmxTerminal" source="C:\temp\aixml-no-grpc\probes\ptypes.bundle\ptypes.xml" clean="1"><types><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="DAQmxTerminal" Format="inline" Label="clock"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="DAQmxTerminal" Format="inline" Label="clock"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="term" uid="4351">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="4349">
+              <typeDesc>TypeID(65)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdTag" uid="4200">
+                <objFlags>4</objFlags>
+                <bounds>(504, 209, 522, 342)</bounds>
+                <partsList elements="6">
+                  <SL__arrayElement class="label" uid="4343">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(1, 0, 16, 29)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>17412</mode>
+                      <text>"clock"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>3</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="multiCosm" uid="4344">
+                    <objFlags>2354</objFlags>
+                    <partID>79</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>194</howGrow>
+                    <bounds>(1, 121, 17, 132)</bounds>
+                    <fgColor>007F007F</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <table elements="2">
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-377</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-378</ImageResID>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="selLabel" uid="4345">
+                    <objFlags>3541298</objFlags>
+                    <partID>11</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(1, 40, 16, 120)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <textRec class="textHair">
+                      <mode>8406020</mode>
+                      <bgColor>00FFFFFF</bgColor>
+                      </textRec>
+                    <nVisItems>10</nVisItems>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="4346">
+                    <objFlags>3378</objFlags>
+                    <partID>43</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4108</howGrow>
+                    <bounds>(2, 32, 16, 39)</bounds>
+                    <image class="Image">
+                      <ImageResID>-396</ImageResID>
+                      </image>
+                    <fgColor>007F007F</fgColor>
+                    <bgColor>007F007F</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="4347">
+                    <objFlags>2323</objFlags>
+                    <partID>9</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(0, 29, 18, 133)</bounds>
+                    <image class="Image">
+                      <ImageResID>-17</ImageResID>
+                      </image>
+                    <fgColor>007F007F</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="4348">
+                    <partID>66</partID>
+                    <rsrcID>2117</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(66)</typeDesc>
+                <MouseWheelSupport>3</MouseWheelSupport>
+                <selLabFlags>535</selLabFlags>
+                <selLabData>13</selLabData>
+                <tagType>13</tagType>
+                <variantIndex>10</variantIndex>
+                <tagDLLPath />
+                <tagDLLName>[NULL]</tagDLLName>
+                </ddo>
+              <ConstValue>0000000C4F6E626F617264436C6F636B</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap><strs><Section Index="10" Format="inline">
+      <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+        <DataType Index="0" Type="Void" Format="inline" />
+        <Attributes>
+          <LVVariant Name="displayFilter" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+            <DataFill>
+              <U32>4096</U32>
+              </DataFill>
+            </LVVariant>
+          </Attributes>
+        <DataFill>
+          <Void />
+          </DataFill>
+        </LVVariant>
+      </Section>
+    </strs></part>

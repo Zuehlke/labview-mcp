@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/nMux/bundle" source="AIXML-generated probe: pclu2.vi" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="pt"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="y" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></types><heap><SL__arrayElement class="nMux" uid="4240">
+        <objFlags>262144</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4407">
+            <objFlags>64</objFlags>
+            <dco class="nmxDCO" uid="4405">
+              <objFlags>1</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="4407" />
+                <SL__arrayElement uid="4408" />
+                </termList>
+              <typeDesc>TypeID(35)</typeDesc>
+              <termBounds>(0, 21, 17, 29)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4408">
+            <objFlags>163904</objFlags>
+            <dco uid="4405" />
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4404">
+            <objFlags>32832</objFlags>
+            <dco class="nmxDCO" uid="4402">
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(0, 0, 16, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(401, 282, 418, 311)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4402" />
+          </dcoList>
+        <dcoAgg uid="4405" />
+        </SL__arrayElement>
+      </heap></part>

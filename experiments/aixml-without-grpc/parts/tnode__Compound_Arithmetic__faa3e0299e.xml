@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/faa3e0299e" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\AddActor\Support\Add Actor.vi" node="Compound Arithmetic" ins="value|value#1|value#2" outs="result" mode="inversions= , , ,i;operation=AND" nodeFlags="655360"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="file or folder exists?" /><TypeDesc Type="Boolean" Format="inline" Label="Is Path and Not Empty?" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="cpdArith" uid="4646">
+                                <objFlags>655360</objFlags>
+                                <termList elements="4">
+                                  <SL__arrayElement class="term" uid="4652" aixml="result">
+                                    <objFlags>64</objFlags>
+                                    <dco class="cpdArithDCO" uid="4653">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(629)</typeDesc>
+                                      <termBounds>(0, 12, 25, 24)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="3670" aixml="value">
+                                    <objFlags>32832</objFlags>
+                                    <dco class="cpdArithDCO" uid="3668">
+                                      <objFlags>262144</objFlags>
+                                      <typeDesc>TypeID(630)</typeDesc>
+                                      <termBounds>(0, 0, 8, 12)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="4655" aixml="value#1">
+                                    <objFlags>32832</objFlags>
+                                    <dco class="cpdArithDCO" uid="4656">
+                                      <objFlags>262144</objFlags>
+                                      <typeDesc>TypeID(631)</typeDesc>
+                                      <termBounds>(8, 0, 16, 12)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="4658" aixml="value#2">
+                                    <objFlags>32832</objFlags>
+                                    <dco class="cpdArithDCO" uid="4659">
+                                      <objFlags>327680</objFlags>
+                                      <typeDesc>TypeID(632)</typeDesc>
+                                      <termBounds>(16, 0, 24, 12)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(220, 148, 245, 172)</bounds>
+                                <shortCount>14</shortCount>
+                                <clumpNum>2228230</clumpNum>
+                                <dcoList elements="3">
+                                  <SL__arrayElement uid="3668" />
+                                  <SL__arrayElement uid="4656" />
+                                  <SL__arrayElement uid="4659" />
+                                  </dcoList>
+                                <dcoAgg uid="4653" />
+                                </SL__arrayElement>
+                              </heap></part>

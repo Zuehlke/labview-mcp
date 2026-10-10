@@ -1,0 +1,7 @@
+<VI _name="T68 For Build i.vi" description="A For Loop runs N times and collects i into an int32 array through an indexing output tunnel.">
+  <Control _name="n" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Structure _name="For Loop" count="4400.value" maxin="4200.value" maxout="" uid="4400" uid_parent="root">
+    <Tunnel _id="Out1" inputs="value:4400.value" mode="index" outputs="value:4440.value" uid="4440" uid_parent="4400"/>
+  </Structure>
+  <Indicator _name="indices" type="array{int32}" uid="4445" uid_parent="root" value="[]" inputs="value:4440.value"/>
+</VI>

@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/aIndx" source="AIXML-generated probe: parr.vi" clean="1"><types><TypeDesc Type="Array" Format="inline" Label="values"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aIndx" uid="4230">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4522">
+            <objFlags>32832</objFlags>
+            <dco class="aIDCO" uid="4520">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(35)</typeDesc>
+              <termBounds>(0, 0, 18, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4519">
+            <objFlags>64</objFlags>
+            <dco class="aIDCO" uid="4517">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(0, 16, 27, 32)</termBounds>
+              <termHotPoint>(0, 9)</termHotPoint>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4516">
+            <objFlags>32832</objFlags>
+            <dco class="aIDCO" uid="4514">
+              <objFlags>6291456</objFlags>
+              <typeDesc>TypeID(37)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(18, 0, 26, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(362, 323, 389, 355)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="1">
+          <SL__arrayElement uid="4514" />
+          </dcoList>
+        <dcoAgg uid="4517" />
+        <srcDCO uid="4520" />
+        </SL__arrayElement>
+      </heap></part>

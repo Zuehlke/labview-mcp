@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Project%2ENew" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Server\Manipulating Projects\Add Files to Project.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Project:New" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project:New" /></types><heap><SL__arrayElement class="invokeNode" uid="111">
+        <objFlags>33620608</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="117">
+            <objFlags>1</objFlags>
+            <dco class="hGrowCItem" uid="118">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(114)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="120">
+            <dco class="hGrowCItem" uid="121">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(115)</typeDesc>
+              <termBounds>(0, 61, 9, 74)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="123">
+            <objFlags>1</objFlags>
+            <dco class="hGrowCItem" uid="124">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(116)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="126">
+            <dco class="hGrowCItem" uid="127">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(117)</typeDesc>
+              <termBounds>(9, 61, 18, 74)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="129">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="130">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(118)</typeDesc>
+              <termBounds>(18, 0, 34, 37)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="133">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="134">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(119)</typeDesc>
+              <termBounds>(18, 37, 34, 74)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(370, 64, 405, 138)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="130" />
+          <SL__arrayElement uid="134" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="118" />
+          <SL__arrayElement uid="121" />
+          <SL__arrayElement uid="124" />
+          <SL__arrayElement uid="127" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"Project.New"</methName>
+        <methCode>2068</methCode>
+        <invokeFlags>1008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

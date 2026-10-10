@@ -1,0 +1,6 @@
+<VI _name="T07 Less.vi" description="Less? alone, into a boolean indicator.">
+  <Control _name="x" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="y" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Less?" inputs="x:4200.value,y:4210.value" outputs="x &lt; y?:4220.lt" uid="4220" uid_parent="root"/>
+  <Indicator _name="lt" type="bool" uid="4240" uid_parent="root" value="false" inputs="value:4220.lt"/>
+</VI>

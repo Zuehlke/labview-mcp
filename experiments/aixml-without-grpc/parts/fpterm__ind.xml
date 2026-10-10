@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpterm" key="fpterm/ind" source="C:\temp\aixml-no-grpc\probes\pgraph.bundle\pgraph.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="5854">
+            <objFlags>131136</objFlags>
+            <dco uid="5852" />
+            <bounds>(408, 217, 424, 249)</bounds>
+            <label class="label" uid="5855">
+              <objFlags>1507650</objFlags>
+              <partID>16</partID>
+              <howGrow>4096</howGrow>
+              <bounds>(0, 32, 15, 79)</bounds>
+              <image class="Image">
+                <ImageResID>-619</ImageResID>
+                </image>
+              <fgColor>01000000</fgColor>
+              <bgColor>01000000</bgColor>
+              <textRec class="textHair">
+                <flags>32768</flags>
+                <mode>17412</mode>
+                <bgColor>01000000</bgColor>
+                <fr elements="1">
+                  <SL__arrayElement class="fontRun">
+                    <fontid>3</fontid>
+                    </SL__arrayElement>
+                  </fr>
+                </textRec>
+              </label>
+            </SL__arrayElement>
+          </heap></part>

@@ -1,0 +1,11 @@
+<VI _name="T76 For 2D Rows.vi" description="A For Loop indexes a 2D array row by row and collects each row's sum; a second loop collects rows back into a 2D array.">
+  <Constant _name="m" type="array.2{int32}" uid="4200" uid_parent="root" value="[[1,2,3],[4,5,6]]" outputs="value:4200.value"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4410.value" uid="4410" uid_parent="4400"/>
+    <Node _name="Add Array Elements" inputs="numeric array:4410.value" outputs="sum:4420.sum" uid="4420" uid_parent="4400"/>
+    <Tunnel _id="Out1" inputs="value:4420.sum" mode="index" outputs="value:4430.value" uid="4430" uid_parent="4400"/>
+    <Tunnel _id="Out2" inputs="value:4410.value" mode="index" outputs="value:4440.value" uid="4440" uid_parent="4400"/>
+  </Structure>
+  <Indicator _name="row sums" type="array{int32}" uid="4450" uid_parent="root" value="[]" inputs="value:4430.value"/>
+  <Indicator _name="rows" type="array.2{int32}" uid="4460" uid_parent="root" value="[]" inputs="value:4440.value"/>
+</VI>

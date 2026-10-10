@@ -1,0 +1,10 @@
+<VI _name="T108 Variant.vi" description="An empty variant constant shown in an indicator, and a double that goes into a variant and back out through Variant To Data.">
+  <Constant _name="empty" outputs="value:4200.value" type="variant" uid="4200" uid_parent="root" value=""/>
+  <Indicator _name="v out" inputs="value:4200.value" type="variant" uid="4205" uid_parent="root" value=""/>
+  <Control _name="x" outputs="value:4210.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Node _name="To Variant" inputs="anything:4210.value" outputs="Variant:4220.Variant" uid="4220" uid_parent="root"/>
+  <Constant _name="type" outputs="value:4230.value" type="double" uid="4230" uid_parent="root" value="0"/>
+  <Node _name="Variant To Data" inputs="Variant:4220.Variant,error in:,type:4230.value" outputs="data:4240.data,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Indicator _name="x back" inputs="value:4240.data" type="double" uid="4250" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4260" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,6 @@
+<VI _name="T60 Cluster Pass.vi" description="Cluster constant and cluster control wired straight to cluster indicators.">
+  <Constant _name="pt const" type="cluster{double.x,double.y}" uid="4200" uid_parent="root" value="[1.5,2.5]" outputs="value:4200.value"/>
+  <Indicator _name="pt out" type="cluster{double.x,double.y}" uid="4210" uid_parent="root" value="[0,0]" inputs="value:4200.value"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4220" uid_parent="root" value="[false,0,]" outputs="value:4220.value"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4230" uid_parent="root" value="[false,0,]" inputs="value:4220.value"/>
+</VI>

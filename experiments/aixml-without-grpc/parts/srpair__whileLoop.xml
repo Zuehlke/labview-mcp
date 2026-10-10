@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="srpair" key="srpair/whileLoop" source="C:\temp\aixml-no-grpc\ex\GetID\GetID.xml"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><wrap><SL__arrayElement class="term" uid="645">
+            <objFlags>64</objFlags>
+            <dco class="rSR" uid="631">
+              <objFlags>1</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="641" />
+                <SL__arrayElement uid="645" />
+                </termList>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(49, 273, 61, 289)</termBounds>
+              <termHotPoint>(-4, 0)</termHotPoint>
+              <termBMPs>4</termBMPs>
+              <lsrDCOList elements="1">
+                <SL__arrayElement uid="638" />
+                </lsrDCOList>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="648">
+            <objFlags>32832</objFlags>
+            <dco class="lSR" uid="638">
+              <termList elements="2">
+                <SL__arrayElement uid="647" />
+                <SL__arrayElement uid="648" />
+                </termList>
+              <typeDesc>TypeID(13)</typeDesc>
+              <termBounds>(49, 0, 61, 16)</termBounds>
+              <termHotPoint>(4, 0)</termHotPoint>
+              <termBMPs>3</termBMPs>
+              <rsrDCO uid="631" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="641">
+                    <objFlags>163840</objFlags>
+                    <dco uid="631" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="647">
+                    <objFlags>131072</objFlags>
+                    <dco uid="638" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

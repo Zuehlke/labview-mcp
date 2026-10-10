@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1700" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Synchronization\Occurrence\Simple Occurrence.vi"><types><TypeDesc Type="Refnum" RefType="Occurrence" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="1139">
+                    <objFlags>512</objFlags>
+                    <termList elements="1">
+                      <SL__arrayElement class="term" uid="1159">
+                        <dco class="parm" uid="1160">
+                          <objFlags>131073</objFlags>
+                          <typeDesc>TypeID(11)</typeDesc>
+                          <termBounds>(0, 0, 16, 16)</termBounds>
+                          <primIndex>217</primIndex>
+                          </dco>
+                        </SL__arrayElement>
+                      </termList>
+                    <label class="label" uid="1154">
+                      <objFlags>1507658</objFlags>
+                      <partID>16</partID>
+                      <howGrow>4096</howGrow>
+                      <bounds>(-17, 0, 0, 114)</bounds>
+                      <image class="Image">
+                        <ImageResID>-619</ImageResID>
+                        </image>
+                      <fgColor>01000000</fgColor>
+                      <bgColor>01000000</bgColor>
+                      <textRec class="textHair">
+                        <mode>82948</mode>
+                        <text>"Generate Occurrence"</text>
+                        <bgColor>01000000</bgColor>
+                        </textRec>
+                      </label>
+                    <bounds>(336, 10, 368, 42)</bounds>
+                    <shortCount>6</shortCount>
+                    <clumpNum>196611</clumpNum>
+                    <primResID>1700</primResID>
+                    <primIndex>217</primIndex>
+                    </SL__arrayElement>
+                  </heap></part>

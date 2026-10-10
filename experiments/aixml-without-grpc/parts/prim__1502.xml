@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1502" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="3010">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="3026">
+            <dco class="parm" uid="3027">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(65)</typeDesc>
+              <termBounds>(0, 16, 17, 32)</termBounds>
+              <primIndex>26</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3029">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="3030">
+              <typeDesc>TypeID(66)</typeDesc>
+              <termBounds>(0, 0, 17, 16)</termBounds>
+              <primIndex>26</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(415, 1213, 447, 1245)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1502</primResID>
+        <primIndex>26</primIndex>
+        </SL__arrayElement>
+      </heap></part>

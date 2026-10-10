@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2031" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\File IO\TDMS\Advanced Read and Write\Asynchronous Read and Write\TDMS Advanced Ring Buffer.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="number of pending writes" /><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="tdms file out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="tdms file" /></types><heap><SL__arrayElement class="prim" uid="2203">
+                        <objFlags>640</objFlags>
+                        <termList elements="5">
+                          <SL__arrayElement class="term" uid="2216">
+                            <dco class="parm" uid="2217">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(189)</typeDesc>
+                              <termBounds>(24, 24, 32, 32)</termBounds>
+                              <primIndex>437</primIndex>
+                              <inplace>4</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2219">
+                            <dco class="parm" uid="2220">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(190)</typeDesc>
+                              <termBounds>(8, 24, 16, 32)</termBounds>
+                              <primIndex>437</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2222">
+                            <dco class="parm" uid="2223">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(191)</typeDesc>
+                              <termBounds>(0, 24, 8, 32)</termBounds>
+                              <primIndex>437</primIndex>
+                              <parmIndex>3</parmIndex>
+                              <inplace>5</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2226">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="2227">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(192)</typeDesc>
+                              <termBounds>(24, 0, 32, 8)</termBounds>
+                              <primIndex>437</primIndex>
+                              <parmIndex>8</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2230">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="2231">
+                              <typeDesc>TypeID(193)</typeDesc>
+                              <termBounds>(0, 0, 8, 8)</termBounds>
+                              <primIndex>437</primIndex>
+                              <parmIndex>11</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(71, 303, 103, 335)</bounds>
+                        <shortCount>20</shortCount>
+                        <clumpNum>917509</clumpNum>
+                        <primResID>2031</primResID>
+                        <primIndex>437</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

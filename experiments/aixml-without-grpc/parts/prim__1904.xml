@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1904" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Interpolation\Scattered 2D Interpolation.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1642">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="1648">
+                    <dco class="parm" uid="1649">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(136)</typeDesc>
+                      <termBounds>(0, 12, 25, 25)</termBounds>
+                      <primIndex>211</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1651">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1652">
+                      <typeDesc>TypeID(137)</typeDesc>
+                      <termBounds>(0, 0, 25, 12)</termBounds>
+                      <primIndex>211</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(128, 223, 160, 255)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>327684</clumpNum>
+                <primResID>1904</primResID>
+                <primIndex>211</primIndex>
+                </SL__arrayElement>
+              </heap></part>

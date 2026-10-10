@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Transformation%2ESet Scale" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\picture\3D Picture Control\Transformations\Set Scale.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Transformation.Set Scale" /><TypeDesc Type="Void" Format="inline" Label="Transformation.Set Scale" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Axis">
+          <TypeDesc TypeID="7" />
+          <TypeDesc TypeID="8" />
+          <TypeDesc TypeID="9" />
+          </TypeDesc>
+        <Label Text="LV3DPointTypeDef.ctl" />
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="Axis" /></types><heap><SL__arrayElement class="invokeNode" uid="207">
+        <objFlags>640</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="212">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="210">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="216">
+            <dco class="hGrowCItem" uid="214">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(0, 125, 9, 138)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="224">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="217">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="234">
+            <dco class="hGrowCItem" uid="225">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(9, 125, 18, 138)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="256">
+            <dco class="invokeItem" uid="244">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(18, 0, 34, 69)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="272">
+            <dco class="invokeItem" uid="257">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(25)</typeDesc>
+              <termBounds>(18, 69, 34, 138)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="279">
+            <objFlags>294912</objFlags>
+            <dco class="invokeItem" uid="277">
+              <typeDesc>TypeID(26)</typeDesc>
+              <dsw>1024</dsw>
+              <termBounds>(34, 0, 50, 69)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="284">
+            <dco class="invokeItem" uid="282">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(34, 69, 50, 138)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(317, 197, 368, 335)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="244" />
+          <SL__arrayElement uid="257" />
+          <SL__arrayElement uid="277" />
+          <SL__arrayElement uid="282" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="210" />
+          <SL__arrayElement uid="214" />
+          <SL__arrayElement uid="217" />
+          <SL__arrayElement uid="225" />
+          </permDCOList>
+        <nodeName>"SceneObject"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Transformation.Set Scale"</methName>
+        <methCode>763851803</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

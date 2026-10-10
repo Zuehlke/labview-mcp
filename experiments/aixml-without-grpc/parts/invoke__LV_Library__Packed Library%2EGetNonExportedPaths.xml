@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Library/Packed Library%2EGetNonExportedPaths" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\AppBuilder\AB_Classes\Build\Fetch_Project_Files.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Open Library" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Open Library" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Packed Library.GetNonExportedPaths" /><TypeDesc Type="Array" Format="inline" Label="Packed Library.GetNonExportedPaths"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="invokeNode" uid="265">
+                                <objFlags>640</objFlags>
+                                <termList elements="6">
+                                  <SL__arrayElement class="term" uid="267">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="hGrowCItem" uid="268">
+                                      <objFlags>65536</objFlags>
+                                      <typeDesc>TypeID(107)</typeDesc>
+                                      <termBounds>(0, 0, 9, 13)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="270">
+                                    <dco class="hGrowCItem" uid="271">
+                                      <objFlags>262145</objFlags>
+                                      <typeDesc>TypeID(108)</typeDesc>
+                                      <termBounds>(0, 189, 9, 202)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="273">
+                                    <dco class="hGrowCItem" uid="274">
+                                      <objFlags>131072</objFlags>
+                                      <typeDesc>TypeID(109)</typeDesc>
+                                      <termBounds>(9, 0, 18, 13)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="276">
+                                    <dco class="hGrowCItem" uid="277">
+                                      <objFlags>524289</objFlags>
+                                      <typeDesc>TypeID(110)</typeDesc>
+                                      <termBounds>(9, 189, 18, 202)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="279">
+                                    <dco class="invokeItem" uid="280">
+                                      <objFlags>196608</objFlags>
+                                      <typeDesc>TypeID(111)</typeDesc>
+                                      <termBounds>(18, 0, 34, 101)</termBounds>
+                                      <privDataList elements="0" />
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="283">
+                                    <dco class="invokeItem" uid="284">
+                                      <objFlags>65537</objFlags>
+                                      <typeDesc>TypeID(112)</typeDesc>
+                                      <termBounds>(18, 101, 34, 202)</termBounds>
+                                      <privDataList elements="0" />
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(61, 162, 96, 364)</bounds>
+                                <shortCount>4</shortCount>
+                                <clumpNum>1114117</clumpNum>
+                                <dcoList elements="2">
+                                  <SL__arrayElement uid="280" />
+                                  <SL__arrayElement uid="284" />
+                                  </dcoList>
+                                <permDCOList elements="4">
+                                  <SL__arrayElement uid="268" />
+                                  <SL__arrayElement uid="271" />
+                                  <SL__arrayElement uid="274" />
+                                  <SL__arrayElement uid="277" />
+                                  </permDCOList>
+                                <nodeName>"Library"</nodeName>
+                                <oMId>0008</oMId>
+                                <methName>"Packed Library.GetNonExportedPaths"</methName>
+                                <methCode>1292952612</methCode>
+                                <invokeFlags>1408</invokeFlags>
+                                <propList elements="0" />
+                                <privDataList elements="0" />
+                                </SL__arrayElement>
+                              </heap></part>

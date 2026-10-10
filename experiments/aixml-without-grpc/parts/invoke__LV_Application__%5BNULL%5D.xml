@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/%5BNULL%5D" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\Platform\mergeActiveXInvokeNode.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Method" /><TypeDesc Type="Void" Format="inline" Label="Method" /></types><heap><SL__arrayElement class="invokeNode" uid="43">
+        <objFlags>34603648</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="51">
+            <dco class="hGrowCItem" uid="52">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(1)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="54">
+            <dco class="hGrowCItem" uid="55">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(2)</typeDesc>
+              <termBounds>(0, 91, 9, 104)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="57">
+            <dco class="hGrowCItem" uid="58">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(3)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="60">
+            <dco class="hGrowCItem" uid="61">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(4)</typeDesc>
+              <termBounds>(9, 91, 18, 104)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="63">
+            <dco class="invokeItem" uid="64">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(18, 0, 34, 52)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="67">
+            <dco class="invokeItem" uid="68">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(18, 52, 34, 104)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(191, 202, 226, 306)</bounds>
+        <shortCount>2</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="64" />
+          <SL__arrayElement uid="68" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="52" />
+          <SL__arrayElement uid="55" />
+          <SL__arrayElement uid="58" />
+          <SL__arrayElement uid="61" />
+          </permDCOList>
+        <nodeName>"Automation"</nodeName>
+        <oMId>0003</oMId>
+        <methName>[NULL]</methName>
+        <methCode>-1</methCode>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

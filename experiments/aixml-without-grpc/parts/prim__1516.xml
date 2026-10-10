@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1516" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi"><types><TypeDesc Type="UnitUInt8" Prop1="0" Format="inline" Label="Test Result"><EnumLabel>False</EnumLabel>
+        <EnumLabel>True</EnumLabel>
+        <EnumLabel>Mixed</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt8" Prop1="0" Format="inline" Label="Test Result"><EnumLabel>False</EnumLabel>
+        <EnumLabel>True</EnumLabel>
+        <EnumLabel>Mixed</EnumLabel>
+        </TypeDesc><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="UnitUInt8" Prop1="0" Format="inline" Label="Test Result"><EnumLabel>False</EnumLabel>
+        <EnumLabel>True</EnumLabel>
+        <EnumLabel>Mixed</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="97">
+                                <termList elements="4">
+                                  <SL__arrayElement class="term" uid="647">
+                                    <dco class="parm" uid="648">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(38)</typeDesc>
+                                      <termBounds>(0, 14, 27, 27)</termBounds>
+                                      <primIndex>136</primIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="653">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="654">
+                                      <typeDesc>TypeID(39)</typeDesc>
+                                      <dsw>4096</dsw>
+                                      <termBounds>(19, 0, 27, 14)</termBounds>
+                                      <primIndex>136</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="661">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="662">
+                                      <typeDesc>TypeID(40)</typeDesc>
+                                      <termBounds>(9, 0, 19, 14)</termBounds>
+                                      <primIndex>136</primIndex>
+                                      <parmIndex>2</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="665">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="678">
+                                      <typeDesc>TypeID(41)</typeDesc>
+                                      <dsw>4096</dsw>
+                                      <termBounds>(0, 0, 9, 14)</termBounds>
+                                      <primIndex>136</primIndex>
+                                      <parmIndex>3</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(103, 125, 135, 157)</bounds>
+                                <shortCount>4</shortCount>
+                                <primResID>1516</primResID>
+                                <primIndex>136</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

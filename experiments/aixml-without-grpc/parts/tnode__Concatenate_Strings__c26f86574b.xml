@@ -1,0 +1,115 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Concatenate_Strings/c26f86574b" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Fitting\General Least Squares Fitting.vi" node="Concatenate Strings" ins="string|string#1|string#2|string#3|string#4|string#5|string#6|string#7|string#8|string#9|string#10" outs="concatenated string" mode="" nodeFlags="0"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="concat" uid="90">
+        <termList elements="12">
+          <SL__arrayElement class="term" uid="271" aixml="concatenated string">
+            <objFlags>64</objFlags>
+            <dco class="concatDCO" uid="272">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(50)</typeDesc>
+              <dcoFiller>2</dcoFiller>
+              <termBounds>(0, 16, 89, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="290" aixml="string">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="292">
+              <typeDesc>TypeID(51)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="297" aixml="string#1">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="298">
+              <typeDesc>TypeID(52)</typeDesc>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="307" aixml="string#2">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="309">
+              <typeDesc>TypeID(53)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="313" aixml="string#3">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="317">
+              <typeDesc>TypeID(54)</typeDesc>
+              <termBounds>(24, 0, 32, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="386" aixml="string#4">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="474">
+              <typeDesc>TypeID(55)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(32, 0, 40, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="644" aixml="string#5">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="1017">
+              <typeDesc>TypeID(56)</typeDesc>
+              <termBounds>(40, 0, 48, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1019" aixml="string#6">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="1030">
+              <typeDesc>TypeID(57)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(48, 0, 56, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43" aixml="string#7">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="42">
+              <typeDesc>TypeID(58)</typeDesc>
+              <termBounds>(56, 0, 64, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="88" aixml="string#8">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="86">
+              <typeDesc>TypeID(59)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(64, 0, 72, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="525" aixml="string#9">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="524">
+              <typeDesc>TypeID(60)</typeDesc>
+              <termBounds>(72, 0, 80, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="531" aixml="string#10">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="530">
+              <typeDesc>TypeID(61)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(80, 0, 88, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(158, 562, 247, 594)</bounds>
+        <shortCount>22</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="11">
+          <SL__arrayElement uid="292" />
+          <SL__arrayElement uid="298" />
+          <SL__arrayElement uid="309" />
+          <SL__arrayElement uid="317" />
+          <SL__arrayElement uid="474" />
+          <SL__arrayElement uid="1017" />
+          <SL__arrayElement uid="1030" />
+          <SL__arrayElement uid="42" />
+          <SL__arrayElement uid="86" />
+          <SL__arrayElement uid="524" />
+          <SL__arrayElement uid="530" />
+          </dcoList>
+        <dcoAgg uid="272" />
+        </SL__arrayElement>
+      </heap></part>

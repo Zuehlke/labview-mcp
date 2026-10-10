@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1127" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Transforms\FFT and Power Spectrum Units.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="upper limit" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="y" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Row" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="upper limit" /></types><heap><SL__arrayElement class="prim" uid="2420">
+                <objFlags>3145728</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="2427">
+                    <dco class="parm" uid="2428">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(334)</typeDesc>
+                      <termBounds>(12, 16, 24, 32)</termBounds>
+                      <primIndex>118</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2430">
+                    <dco class="parm" uid="2431">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(335)</typeDesc>
+                      <termBounds>(0, 16, 12, 32)</termBounds>
+                      <primIndex>118</primIndex>
+                      <parmIndex>1</parmIndex>
+                      <inplace>4</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2433">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2434">
+                      <typeDesc>TypeID(336)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(17, 0, 24, 16)</termBounds>
+                      <primIndex>118</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2436">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2437">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(337)</typeDesc>
+                      <termBounds>(7, 0, 17, 16)</termBounds>
+                      <primIndex>118</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2439">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2440">
+                      <typeDesc>TypeID(338)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(0, 0, 7, 16)</termBounds>
+                      <primIndex>118</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(139, 190, 171, 222)</bounds>
+                <shortCount>34</shortCount>
+                <clumpNum>589828</clumpNum>
+                <primResID>1127</primResID>
+                <primIndex>118</primIndex>
+                </SL__arrayElement>
+              </heap></part>

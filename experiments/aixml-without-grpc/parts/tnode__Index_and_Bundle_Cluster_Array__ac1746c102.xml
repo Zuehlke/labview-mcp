@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Index_and_Bundle_Cluster_Array/ac1746c102" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\control\fuzzy\Tanks with PI control\FuzzyEx Tanks with PI control.vi" node="Index &amp; Bundle Cluster Array" ins="component array|component array#1" outs="array of clusters" mode="" nodeFlags="0"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Color" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Color" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="rules as text"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="cABuild" uid="1800">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1806" aixml="array of clusters">
+                    <objFlags>64</objFlags>
+                    <dco class="cABuildDCO" uid="1807">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(246)</typeDesc>
+                      <termBounds>(0, 16, 17, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1845" aixml="component array">
+                    <objFlags>32832</objFlags>
+                    <dco class="cABuildDCO" uid="1844">
+                      <typeDesc>TypeID(247)</typeDesc>
+                      <termBounds>(0, 0, 8, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1809" aixml="component array#1">
+                    <objFlags>32832</objFlags>
+                    <dco class="cABuildDCO" uid="1810">
+                      <typeDesc>TypeID(248)</typeDesc>
+                      <dsw>512</dsw>
+                      <termBounds>(8, 0, 16, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(71, 529, 88, 561)</bounds>
+                <shortCount>46</shortCount>
+                <clumpNum>393219</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="1844" />
+                  <SL__arrayElement uid="1810" />
+                  </dcoList>
+                <dcoAgg uid="1807" />
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Interleave_1D_Arrays/79e10915ba" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Point by Point\Spline Interpolation PtbyPt.vi" node="Interleave 1D Arrays" ins="array|array#1" outs="interleaved array" mode="" nodeFlags="0"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Current Queue"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Current Queue"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="interLeave" uid="919">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="935" aixml="interleaved array">
+                    <objFlags>64</objFlags>
+                    <dco class="interLeaveDCO" uid="933">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(38)</typeDesc>
+                      <termBounds>(0, 16, 17, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="955" aixml="array">
+                    <objFlags>32832</objFlags>
+                    <dco class="interLeaveDCO" uid="954">
+                      <typeDesc>TypeID(39)</typeDesc>
+                      <termBounds>(0, 0, 8, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="932" aixml="array#1">
+                    <objFlags>32832</objFlags>
+                    <dco class="interLeaveDCO" uid="930">
+                      <typeDesc>TypeID(40)</typeDesc>
+                      <termBounds>(8, 0, 16, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(146, 512, 163, 544)</bounds>
+                <shortCount>26</shortCount>
+                <clumpNum>786441</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="954" />
+                  <SL__arrayElement uid="930" />
+                  </dcoList>
+                <dcoAgg uid="933" />
+                </SL__arrayElement>
+              </heap></part>

@@ -2396,10 +2396,16 @@ A conditional output tunnel adds an element only on the iterations where the con
 is how a loop filters while it collects — the idiom otherwise written with a Case structure inside
 the loop.
 
-**What `cond="true"` means is NOT established here.** It is consistent with a flag that marks the
-tunnel conditional while the condition arrives on a wire named elsewhere, and it is also consistent
-with a literal always-true. 443 against 7 is too lopsided to guess from, and nothing was authored to
-test it. Do not write either reading down as fact.
+**On the OUTPUT tunnel of a Case or Event Structure, `cond="true"` is "Use Default If Unwired" -
+measured 2026-10-10.** This paragraph said "NOT established" until then, and both readings it
+offered were wrong for that case. Three facts settle it: LabVIEW exports a case output tunnel whose
+`selTun` carries objFlags `0x300801` with `cond="true"`, and one written by `ConvertAIXMLToVI` from
+AIXML without `cond` as `0x801` with none; an integer case whose output tunnel is wired in ONE frame
+only ran with `cond="true"` (`sel=1` gave the wired `3.5`, `sel=7` the default `0`); and the same
+document without `cond` was broken - `Going from good to bad after compiling`. So a case output
+tunnel left unwired in some frame needs `cond="true"`, and one wired in every frame may carry it or
+not. On a LOOP tunnel the attribute is the conditional-tunnel filter above, which was not measured.
+`experiments/aixml-without-grpc/tests/t89_case_default.xml` is the probe.
 
 **How both of these were found.** A user brought an outside summary of the format and it named
 constructs this file did not. Checking it cost one grep of the export cache per claim, and it found

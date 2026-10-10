@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1926" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Instrument IO\GPIB\GPIB with VISA functions.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="return count" /><TypeDesc Type="Refnum" RefType="VisaRef" Ident="Instr" FirstClient="1" Format="inline" Label="VISA GPIB Resource"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="write buffer" /><TypeDesc Type="Refnum" RefType="VisaRef" Ident="Instr" FirstClient="1" Format="inline" Label="VISA GPIB Resource"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="332">
+        <objFlags>8389248</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="338">
+            <dco class="parm" uid="339">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(35)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>266</primIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="341">
+            <dco class="parm" uid="342">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(8, 24, 16, 32)</termBounds>
+              <primIndex>266</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="344">
+            <dco class="parm" uid="521">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(37)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>266</primIndex>
+              <parmIndex>3</parmIndex>
+              <inplace>6</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="523">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="524">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>266</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="685">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="689">
+              <typeDesc>TypeID(39)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>266</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="695">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="696">
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>266</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(163, 131, 195, 163)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1926</primResID>
+        <primIndex>266</primIndex>
+        </SL__arrayElement>
+      </heap></part>

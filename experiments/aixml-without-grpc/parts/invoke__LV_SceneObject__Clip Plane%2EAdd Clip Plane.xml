@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Clip Plane%2EAdd Clip Plane" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\picture\3D Picture Control\Helpers\Set Clip Plane (no reference).vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object In" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object In" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Add Clip Plane" /><TypeDesc Type="Void" Format="inline" Label="Add Clip Plane" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x006E" HasItem="0" Format="inline" Label="Clip Plane" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x006E" HasItem="0" Format="inline" Label="Clip Plane" /></types><heap><SL__arrayElement class="invokeNode" uid="43">
+        <objFlags>640</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="45">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="46">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(39)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="48">
+            <dco class="hGrowCItem" uid="49">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(0, 129, 9, 142)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="51">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="52">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(41)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="54">
+            <dco class="hGrowCItem" uid="55">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(42)</typeDesc>
+              <termBounds>(9, 129, 18, 142)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="57">
+            <dco class="invokeItem" uid="58">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(43)</typeDesc>
+              <termBounds>(18, 0, 34, 71)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="61">
+            <dco class="invokeItem" uid="62">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(44)</typeDesc>
+              <termBounds>(18, 71, 34, 142)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="65">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="66">
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(34, 0, 50, 71)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="69">
+            <dco class="invokeItem" uid="70">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(46)</typeDesc>
+              <termBounds>(34, 71, 50, 142)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(200, 350, 251, 492)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="58" />
+          <SL__arrayElement uid="62" />
+          <SL__arrayElement uid="66" />
+          <SL__arrayElement uid="70" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="46" />
+          <SL__arrayElement uid="49" />
+          <SL__arrayElement uid="52" />
+          <SL__arrayElement uid="55" />
+          </permDCOList>
+        <nodeName>"SceneObject"</nodeName>
+        <oMId>0004</oMId>
+        <methName>"Clip Plane.Add Clip Plane"</methName>
+        <methCode>763851814</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

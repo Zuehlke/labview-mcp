@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fixed" key="fixed/17" source="AIXML-generated probe: pfix.vi" clean="1"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="4210.value" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="4210.value" /></types><heap><SL__arrayElement class="term" uid="4319">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="4317">
+              <typeDesc>TypeID(22)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="bDFixed" uid="4210">
+                <objFlags>32</objFlags>
+                <bounds>(537, 284, 553, 356)</bounds>
+                <partsList elements="3">
+                  <SL__arrayElement class="label" uid="4320">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(0, 0, 15, 57)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>82948</mode>
+                      <text>"4210.value"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>1</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="4315">
+                    <objFlags>2355</objFlags>
+                    <partID>9</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(-8, 49, 24, 81)</bounds>
+                    <image class="Image">
+                      <ImageResID>-8023</ImageResID>
+                      </image>
+                    <fgColor>00007F7F</fgColor>
+                    <bgColor>00FFFFCC</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="4316">
+                    <partID>66</partID>
+                    <rsrcID>23523</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(23)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                <cnst>17</cnst>
+                </ddo>
+              <ConstValue>505448300000000400000000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

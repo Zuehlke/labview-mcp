@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.GObject/Delete" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\project\Delacor\DQMH\_DQMH Remove Do Something\Script Tester.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0024" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0024" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Delete" /><TypeDesc Type="Void" Format="inline" Label="Delete" /></types><heap><SL__arrayElement class="invokeNode" uid="1959">
+                        <objFlags>640</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1987">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="1988">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(118)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1990">
+                            <dco class="hGrowCItem" uid="1991">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(119)</typeDesc>
+                              <termBounds>(0, 57, 9, 70)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2379">
+                            <dco class="hGrowCItem" uid="2432">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(120)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2644">
+                            <dco class="hGrowCItem" uid="2706">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(121)</typeDesc>
+                              <termBounds>(9, 57, 18, 70)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2830">
+                            <dco class="invokeItem" uid="2834">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(122)</typeDesc>
+                              <termBounds>(18, 0, 34, 35)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2841">
+                            <dco class="invokeItem" uid="2842">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(123)</typeDesc>
+                              <termBounds>(18, 35, 34, 70)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(23, 15, 58, 85)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>1245187</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="2834" />
+                          <SL__arrayElement uid="2842" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="1988" />
+                          <SL__arrayElement uid="1991" />
+                          <SL__arrayElement uid="2432" />
+                          <SL__arrayElement uid="2706" />
+                          </permDCOList>
+                        <nodeName>"GObj"</nodeName>
+                        <oMId>000D</oMId>
+                        <methName>"Delete"</methName>
+                        <methCode>103969792</methCode>
+                        <invokeFlags>200008</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

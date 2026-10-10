@@ -1,0 +1,4 @@
+<VI _name="T06 Bool Pass.vi" description="A boolean control straight into a boolean indicator.">
+  <Control _name="in" type="bool" uid="4200" uid_parent="root" value="false" outputs="value:4200.value"/>
+  <Indicator _name="out" type="bool" uid="4210" uid_parent="root" value="false" inputs="value:4200.value"/>
+</VI>

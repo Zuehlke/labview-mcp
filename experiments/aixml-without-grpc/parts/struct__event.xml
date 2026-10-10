@@ -1,0 +1,656 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="struct" key="struct/event" source="C:/temp/aixml-no-grpc/ref/rb/rb.xml"><types><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="Event Registration Refnum" /><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="Event Registration Refnum" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="Stop" /><TypeDesc Type="Cluster" Format="inline" Label="Event Data"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="NumUInt32" Nested="True" Prop1="0" Format="inline" Label="Source" />
+        <Label Text="eventsource.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="Type">
+          <EnumLabel>Null</EnumLabel>
+          <EnumLabel>Timeout</EnumLabel>
+          <EnumLabel>Annotation Menu Selection</EnumLabel>
+          <EnumLabel>Annotation Menu Selection?</EnumLabel>
+          <EnumLabel>App Instance Close</EnumLabel>
+          <EnumLabel>App Instance Close?</EnumLabel>
+          <EnumLabel>Autoscale Range Change</EnumLabel>
+          <EnumLabel>Bookmark Info Change</EnumLabel>
+          <EnumLabel>Cell Edit</EnumLabel>
+          <EnumLabel>Cell Edit?</EnumLabel>
+          <EnumLabel>Cursor Grab</EnumLabel>
+          <EnumLabel>Cursor Grab?</EnumLabel>
+          <EnumLabel>Cursor Menu Selection</EnumLabel>
+          <EnumLabel>Cursor Menu Selection?</EnumLabel>
+          <EnumLabel>Cursor Move</EnumLabel>
+          <EnumLabel>Cursor Release</EnumLabel>
+          <EnumLabel>Data Change</EnumLabel>
+          <EnumLabel>Direction Change</EnumLabel>
+          <EnumLabel>Display State Change</EnumLabel>
+          <EnumLabel>Drag Ended</EnumLabel>
+          <EnumLabel>Drag Enter</EnumLabel>
+          <EnumLabel>Drag Leave</EnumLabel>
+          <EnumLabel>Drag Over</EnumLabel>
+          <EnumLabel>Drag Source Update</EnumLabel>
+          <EnumLabel>Drag Starting</EnumLabel>
+          <EnumLabel>Drag Starting?</EnumLabel>
+          <EnumLabel>Drop</EnumLabel>
+          <EnumLabel>Exec State Change</EnumLabel>
+          <EnumLabel>Key Down</EnumLabel>
+          <EnumLabel>Key Down?</EnumLabel>
+          <EnumLabel>Key Repeat</EnumLabel>
+          <EnumLabel>Key Repeat?</EnumLabel>
+          <EnumLabel>Key Up</EnumLabel>
+          <EnumLabel>Listbox Double Click</EnumLabel>
+          <EnumLabel>Menu Activation?</EnumLabel>
+          <EnumLabel>Menu Selection (App)</EnumLabel>
+          <EnumLabel>Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Menu Selection (User)</EnumLabel>
+          <EnumLabel>Mouse Down</EnumLabel>
+          <EnumLabel>Mouse Down?</EnumLabel>
+          <EnumLabel>Mouse Enter</EnumLabel>
+          <EnumLabel>Mouse Leave</EnumLabel>
+          <EnumLabel>Mouse Move</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Mouse Wheel</EnumLabel>
+          <EnumLabel>NI Security User Change (App)</EnumLabel>
+          <EnumLabel>Pane Size</EnumLabel>
+          <EnumLabel>Panel Close</EnumLabel>
+          <EnumLabel>Panel Close?</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Plot Attribute Change</EnumLabel>
+          <EnumLabel>Scale Range Change</EnumLabel>
+          <EnumLabel>Shortcut Menu Activation?</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (User)</EnumLabel>
+          <EnumLabel>Tree Double Click</EnumLabel>
+          <EnumLabel>Tree Drag</EnumLabel>
+          <EnumLabel>Tree Drag?</EnumLabel>
+          <EnumLabel>Tree Drop</EnumLabel>
+          <EnumLabel>Tree Drop?</EnumLabel>
+          <EnumLabel>Tree Item Close</EnumLabel>
+          <EnumLabel>Tree Item Close?</EnumLabel>
+          <EnumLabel>Tree Item Open</EnumLabel>
+          <EnumLabel>Tree Item Open?</EnumLabel>
+          <EnumLabel>URL Change?</EnumLabel>
+          <EnumLabel>User Event</EnumLabel>
+          <EnumLabel>Value Change</EnumLabel>
+          </TypeDesc>
+        <Label Text="lveventtype.ctl" />
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Time" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0008" HasItem="0" Format="inline" Label="CtlRef" /><TypeDesc Type="Boolean" Format="inline" Label="OldVal" /><TypeDesc Type="Boolean" Format="inline" Label="NewVal" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="NewVal" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="String" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Radio Buttons"><EnumLabel>Option 1</EnumLabel>
+        <EnumLabel>Option 2</EnumLabel>
+        <EnumLabel>Option 3</EnumLabel>
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Event Data"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="NumUInt32" Nested="True" Prop1="0" Format="inline" Label="Source" />
+        <Label Text="eventsource.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="Type">
+          <EnumLabel>Null</EnumLabel>
+          <EnumLabel>Timeout</EnumLabel>
+          <EnumLabel>Annotation Menu Selection</EnumLabel>
+          <EnumLabel>Annotation Menu Selection?</EnumLabel>
+          <EnumLabel>App Instance Close</EnumLabel>
+          <EnumLabel>App Instance Close?</EnumLabel>
+          <EnumLabel>Autoscale Range Change</EnumLabel>
+          <EnumLabel>Bookmark Info Change</EnumLabel>
+          <EnumLabel>Cell Edit</EnumLabel>
+          <EnumLabel>Cell Edit?</EnumLabel>
+          <EnumLabel>Cursor Grab</EnumLabel>
+          <EnumLabel>Cursor Grab?</EnumLabel>
+          <EnumLabel>Cursor Menu Selection</EnumLabel>
+          <EnumLabel>Cursor Menu Selection?</EnumLabel>
+          <EnumLabel>Cursor Move</EnumLabel>
+          <EnumLabel>Cursor Release</EnumLabel>
+          <EnumLabel>Data Change</EnumLabel>
+          <EnumLabel>Direction Change</EnumLabel>
+          <EnumLabel>Display State Change</EnumLabel>
+          <EnumLabel>Drag Ended</EnumLabel>
+          <EnumLabel>Drag Enter</EnumLabel>
+          <EnumLabel>Drag Leave</EnumLabel>
+          <EnumLabel>Drag Over</EnumLabel>
+          <EnumLabel>Drag Source Update</EnumLabel>
+          <EnumLabel>Drag Starting</EnumLabel>
+          <EnumLabel>Drag Starting?</EnumLabel>
+          <EnumLabel>Drop</EnumLabel>
+          <EnumLabel>Exec State Change</EnumLabel>
+          <EnumLabel>Key Down</EnumLabel>
+          <EnumLabel>Key Down?</EnumLabel>
+          <EnumLabel>Key Repeat</EnumLabel>
+          <EnumLabel>Key Repeat?</EnumLabel>
+          <EnumLabel>Key Up</EnumLabel>
+          <EnumLabel>Listbox Double Click</EnumLabel>
+          <EnumLabel>Menu Activation?</EnumLabel>
+          <EnumLabel>Menu Selection (App)</EnumLabel>
+          <EnumLabel>Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Menu Selection (User)</EnumLabel>
+          <EnumLabel>Mouse Down</EnumLabel>
+          <EnumLabel>Mouse Down?</EnumLabel>
+          <EnumLabel>Mouse Enter</EnumLabel>
+          <EnumLabel>Mouse Leave</EnumLabel>
+          <EnumLabel>Mouse Move</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Mouse Wheel</EnumLabel>
+          <EnumLabel>NI Security User Change (App)</EnumLabel>
+          <EnumLabel>Pane Size</EnumLabel>
+          <EnumLabel>Panel Close</EnumLabel>
+          <EnumLabel>Panel Close?</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Plot Attribute Change</EnumLabel>
+          <EnumLabel>Scale Range Change</EnumLabel>
+          <EnumLabel>Shortcut Menu Activation?</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection? (App)</EnumLabel>
+          <EnumLabel>Shortcut Menu Selection (User)</EnumLabel>
+          <EnumLabel>Tree Double Click</EnumLabel>
+          <EnumLabel>Tree Drag</EnumLabel>
+          <EnumLabel>Tree Drag?</EnumLabel>
+          <EnumLabel>Tree Drop</EnumLabel>
+          <EnumLabel>Tree Drop?</EnumLabel>
+          <EnumLabel>Tree Item Close</EnumLabel>
+          <EnumLabel>Tree Item Close?</EnumLabel>
+          <EnumLabel>Tree Item Open</EnumLabel>
+          <EnumLabel>Tree Item Open?</EnumLabel>
+          <EnumLabel>URL Change?</EnumLabel>
+          <EnumLabel>User Event</EnumLabel>
+          <EnumLabel>Value Change</EnumLabel>
+          </TypeDesc>
+        <Label Text="lveventtype.ctl" />
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Time" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0048" HasItem="0" Format="inline" Label="CtlRef"><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline"><EnumLabel>Option 1</EnumLabel>
+        <EnumLabel>Option 2</EnumLabel>
+        <EnumLabel>Option 3</EnumLabel>
+        </TypeDesc></TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="OldVal"><EnumLabel>Option 1</EnumLabel>
+        <EnumLabel>Option 2</EnumLabel>
+        <EnumLabel>Option 3</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="NewVal"><EnumLabel>Option 1</EnumLabel>
+        <EnumLabel>Option 2</EnumLabel>
+        <EnumLabel>Option 3</EnumLabel>
+        </TypeDesc></TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="NewVal"><EnumLabel>Option 1</EnumLabel>
+        <EnumLabel>Option 2</EnumLabel>
+        <EnumLabel>Option 3</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="eventStruct" uid="1054">
+                <objFlags>84608</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="1073">
+                    <objFlags>8388672</objFlags>
+                    <dco class="eventDynDCO" uid="1068">
+                      <objFlags>65536</objFlags>
+                      <termList elements="3">
+                        <SL__arrayElement uid="1072" />
+                        <SL__arrayElement uid="1221" />
+                        <SL__arrayElement uid="1073" />
+                        </termList>
+                      <typeDesc>TypeID(12)</typeDesc>
+                      <termBounds>(20, 0, 32, 14)</termBounds>
+                      <termBMPs>214</termBMPs>
+                      <otherSide uid="1070" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1075">
+                    <objFlags>8388672</objFlags>
+                    <dco class="eventDynDCO" uid="1070">
+                      <objFlags>1</objFlags>
+                      <termList elements="3">
+                        <SL__arrayElement uid="1074" />
+                        <SL__arrayElement uid="1227" />
+                        <SL__arrayElement uid="1075" />
+                        </termList>
+                      <typeDesc>TypeID(13)</typeDesc>
+                      <termBounds>(20, 529, 32, 543)</termBounds>
+                      <termBMPs>214</termBMPs>
+                      <otherSide uid="1068" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1079">
+                    <objFlags>64</objFlags>
+                    <dco class="eventTimeOut" uid="1076">
+                      <termList elements="3">
+                        <SL__arrayElement uid="1078" />
+                        <SL__arrayElement uid="1224" />
+                        <SL__arrayElement uid="1079" />
+                        </termList>
+                      <typeDesc>TypeID(14)</typeDesc>
+                      <termBounds>(0, 0, 15, 14)</termBounds>
+                      <termBMPs>215</termBMPs>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1160">
+                    <objFlags>64</objFlags>
+                    <dco class="selTun" uid="1155">
+                      <objFlags>3147777</objFlags>
+                      <termList elements="3">
+                        <SL__arrayElement uid="1157" />
+                        <SL__arrayElement uid="1218" />
+                        <SL__arrayElement uid="1160" />
+                        </termList>
+                      <typeDesc>TypeID(15)</typeDesc>
+                      <termBounds>(203, 534, 212, 543)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(40, 29, 271, 572)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <contRect>(48, 37, 263, 564)</contRect>
+                <tunnelList elements="1">
+                  <SL__arrayElement uid="1155" />
+                  </tunnelList>
+                <dIdx>1</dIdx>
+                <diagramList elements="2">
+                  <SL__arrayElement class="diag" uid="1062">
+                    <objFlags>18432</objFlags>
+                    <zPlaneList elements="3">
+                      <SL__arrayElement uid="797" />
+                      <SL__arrayElement class="eventDataNode" uid="1083">
+                        <objFlags>1376256</objFlags>
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="1091">
+                            <objFlags>8388672</objFlags>
+                            <dco class="nmxDCO" uid="1089">
+                              <typeDesc>TypeID(16)</typeDesc>
+                              <termBounds>(-196, -95, -197, -95)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1121">
+                            <objFlags>64</objFlags>
+                            <dco class="nmxDCO" uid="1120">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(17)</typeDesc>
+                              <termBounds>(0, 8, 16, 55)</termBounds>
+                              <i>5</i>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(205, 8, 222, 63)</bounds>
+                        <shortCount>2</shortCount>
+                        <dcoList elements="1">
+                          <SL__arrayElement uid="1120" />
+                          </dcoList>
+                        <dcoAgg uid="1089" />
+                        </SL__arrayElement>
+                      <SL__arrayElement class="label" uid="1198">
+                        <objFlags>1048914</objFlags>
+                        <partID>8024</partID>
+                        <howGrow>4096</howGrow>
+                        <bounds>(8, 8, 75, 535)</bounds>
+                        <image class="Image">
+                          <ImageResID>-619</ImageResID>
+                          </image>
+                        <bgColor>00FFFFD7</bgColor>
+                        <textRec class="textHair">
+                          <mode>82948</mode>
+                          <text>"Stop the VI."</text>
+                          <view>(8, 0, 0, 0)</view>
+                          <bgColor>01000000</bgColor>
+                          </textRec>
+                        </SL__arrayElement>
+                      </zPlaneList>
+                    <nodeList elements="2">
+                      <SL__arrayElement class="sRN" uid="1066">
+                        <objFlags>16384</objFlags>
+                        <termList elements="5">
+                          <SL__arrayElement class="term" uid="1072">
+                            <objFlags>8519680</objFlags>
+                            <dco uid="1068" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1074">
+                            <objFlags>8519680</objFlags>
+                            <dco uid="1070" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1078">
+                            <objFlags>131072</objFlags>
+                            <dco uid="1076" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="fPTerm" uid="797">
+                            <objFlags>131136</objFlags>
+                            <dco uid="795" />
+                            <bounds>(199, 469, 215, 501)</bounds>
+                            <label class="label" uid="798">
+                              <objFlags>1507650</objFlags>
+                              <partID>16</partID>
+                              <howGrow>4096</howGrow>
+                              <bounds>(-17, 0, 0, 27)</bounds>
+                              <image class="Image">
+                                <ImageResID>-619</ImageResID>
+                                </image>
+                              <fgColor>01000000</fgColor>
+                              <bgColor>01000000</bgColor>
+                              <textRec class="textHair">
+                                <flags>33280</flags>
+                                <mode>17412</mode>
+                                <bgColor>01000000</bgColor>
+                                </textRec>
+                              </label>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1157">
+                            <objFlags>163840</objFlags>
+                            <dco uid="1155" />
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(-107, -34, -107, -34)</bounds>
+                        <shortCount>1</shortCount>
+                        <clumpNum>262147</clumpNum>
+                        </SL__arrayElement>
+                      <SL__arrayElement uid="1083" />
+                      </nodeList>
+                    <signalList elements="1">
+                      <SL__arrayElement class="signal" uid="1144">
+                        <termList elements="2">
+                          <SL__arrayElement uid="797" />
+                          <SL__arrayElement uid="1157" />
+                          </termList>
+                        <state>1</state>
+                        <compressedWireTable>0208</compressedWireTable>
+                        <lastSignalKind>289</lastSignalKind>
+                        </SL__arrayElement>
+                      </signalList>
+                    <bgColor>00FFFFFF</bgColor>
+                    <firstNodeIdx>5</firstNodeIdx>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="diag" uid="1210">
+                    <objFlags>18432</objFlags>
+                    <zPlaneList elements="6">
+                      <SL__arrayElement uid="1660" />
+                      <SL__arrayElement class="printf" uid="1301">
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1307">
+                            <objFlags>32768</objFlags>
+                            <dco class="printfArg" uid="1308">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(18)</typeDesc>
+                              <termBounds>(0, 10, 12, 22)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1310">
+                            <dco class="printfArg" uid="1311">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(19)</typeDesc>
+                              <termBounds>(0, 0, 12, 10)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1313">
+                            <dco class="printfArg" uid="1314">
+                              <objFlags>65537</objFlags>
+                              <typeDesc>TypeID(20)</typeDesc>
+                              <termBounds>(0, 22, 12, 32)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1316">
+                            <dco class="printfArg" uid="1317">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(21)</typeDesc>
+                              <termBounds>(12, 0, 20, 16)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1319">
+                            <dco class="printfArg" uid="1320">
+                              <objFlags>65537</objFlags>
+                              <typeDesc>TypeID(22)</typeDesc>
+                              <termBounds>(12, 16, 20, 32)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1322">
+                            <objFlags>32768</objFlags>
+                            <dco class="printfArg" uid="1323">
+                              <typeDesc>TypeID(23)</typeDesc>
+                              <termBounds>(20, 0, 28, 16)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(127, 273, 156, 305)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>327683</clumpNum>
+                        <dcoList elements="1">
+                          <SL__arrayElement uid="1323" />
+                          </dcoList>
+                        <permDCOList elements="5">
+                          <SL__arrayElement uid="1308" />
+                          <SL__arrayElement uid="1311" />
+                          <SL__arrayElement uid="1314" />
+                          <SL__arrayElement uid="1317" />
+                          <SL__arrayElement uid="1320" />
+                          </permDCOList>
+                        </SL__arrayElement>
+                      <SL__arrayElement uid="739" />
+                      <SL__arrayElement uid="88" />
+                      <SL__arrayElement class="eventDataNode" uid="1230">
+                        <objFlags>1376256</objFlags>
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="1232">
+                            <objFlags>8388672</objFlags>
+                            <dco class="nmxDCO" uid="1233">
+                              <typeDesc>TypeID(24)</typeDesc>
+                              <termBounds>(-196, -95, -197, -95)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1235">
+                            <objFlags>64</objFlags>
+                            <dco class="nmxDCO" uid="1236">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(25)</typeDesc>
+                              <termBounds>(0, 8, 16, 55)</termBounds>
+                              <i>5</i>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(205, 8, 222, 63)</bounds>
+                        <shortCount>4</shortCount>
+                        <dcoList elements="1">
+                          <SL__arrayElement uid="1236" />
+                          </dcoList>
+                        <dcoAgg uid="1233" />
+                        </SL__arrayElement>
+                      <SL__arrayElement class="label" uid="1216">
+                        <objFlags>1048914</objFlags>
+                        <partID>8024</partID>
+                        <howGrow>4096</howGrow>
+                        <bounds>(8, 8, 75, 535)</bounds>
+                        <image class="Image">
+                          <ImageResID>-619</ImageResID>
+                          </image>
+                        <bgColor>00FFFFD7</bgColor>
+                        <textRec class="textHair">
+                          <flags>512</flags>
+                          <mode>82948</mode>
+                          <text>"Display the selected option to the user in the Message string when the Radio Buttons control fires a Value Change event."</text>
+                          <view>(8, 0, 0, 0)</view>
+                          <bgColor>01000000</bgColor>
+                          <fr elements="5">
+                            <SL__arrayElement class="fontRun" ScopeInfo="0" />
+                            <SL__arrayElement class="fontRun">
+                              <fontofst>2F</fontofst>
+                              <fontid>1</fontid>
+                              </SL__arrayElement>
+                            <SL__arrayElement class="fontRun">
+                              <fontofst>36</fontofst>
+                              </SL__arrayElement>
+                            <SL__arrayElement class="fontRun">
+                              <fontofst>65</fontofst>
+                              <fontid>1</fontid>
+                              </SL__arrayElement>
+                            <SL__arrayElement class="fontRun">
+                              <fontofst>71</fontofst>
+                              </SL__arrayElement>
+                            </fr>
+                          </textRec>
+                        </SL__arrayElement>
+                      </zPlaneList>
+                    <nodeList elements="3">
+                      <SL__arrayElement class="sRN" uid="1214">
+                        <objFlags>16384</objFlags>
+                        <termList elements="7">
+                          <SL__arrayElement class="term" uid="1218">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="1155" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1221">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="1068" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1224">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="1076" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1227">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="1070" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="fPTerm" uid="88">
+                            <objFlags>131136</objFlags>
+                            <dco uid="86" />
+                            <bounds>(143, 136, 159, 168)</bounds>
+                            <label class="label" uid="89">
+                              <objFlags>1507650</objFlags>
+                              <partID>16</partID>
+                              <howGrow>4096</howGrow>
+                              <bounds>(-17, 0, 0, 77)</bounds>
+                              <image class="Image">
+                                <ImageResID>-619</ImageResID>
+                                </image>
+                              <fgColor>01000000</fgColor>
+                              <bgColor>01000000</bgColor>
+                              <textRec class="textHair">
+                                <flags>33280</flags>
+                                <mode>17412</mode>
+                                <bgColor>01000000</bgColor>
+                                </textRec>
+                              </label>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="fPTerm" uid="739">
+                            <objFlags>163904</objFlags>
+                            <dco uid="737" />
+                            <bounds>(125, 414, 141, 446)</bounds>
+                            <label class="label" uid="740">
+                              <objFlags>1507650</objFlags>
+                              <partID>16</partID>
+                              <howGrow>4096</howGrow>
+                              <bounds>(-17, 0, 0, 49)</bounds>
+                              <image class="Image">
+                                <ImageResID>-619</ImageResID>
+                                </image>
+                              <fgColor>01000000</fgColor>
+                              <bgColor>01000000</bgColor>
+                              <textRec class="textHair">
+                                <flags>33280</flags>
+                                <mode>17412</mode>
+                                <bgColor>01000000</bgColor>
+                                </textRec>
+                              </label>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="fPTerm" uid="1660">
+                            <objFlags>131136</objFlags>
+                            <dco uid="1658" />
+                            <bounds>(98, 135, 114, 167)</bounds>
+                            <label class="label" uid="1661">
+                              <objFlags>1507650</objFlags>
+                              <partID>16</partID>
+                              <howGrow>4096</howGrow>
+                              <bounds>(-17, 0, 0, 34)</bounds>
+                              <image class="Image">
+                                <ImageResID>-619</ImageResID>
+                                </image>
+                              <fgColor>01000000</fgColor>
+                              <bgColor>01000000</bgColor>
+                              <textRec class="textHair">
+                                <flags>34304</flags>
+                                <mode>17412</mode>
+                                <bgColor>01000000</bgColor>
+                                </textRec>
+                              </label>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(-107, -34, -107, -34)</bounds>
+                        <shortCount>1</shortCount>
+                        <clumpNum>327683</clumpNum>
+                        </SL__arrayElement>
+                      <SL__arrayElement uid="1230" />
+                      <SL__arrayElement uid="1301" />
+                      </nodeList>
+                    <signalList elements="3">
+                      <SL__arrayElement class="signal" uid="1716">
+                        <termList elements="2">
+                          <SL__arrayElement uid="1660" />
+                          <SL__arrayElement uid="1307" />
+                          </termList>
+                        <state>1</state>
+                        <compressedWireTable>0308008A</compressedWireTable>
+                        <lastSignalKind>-32208</lastSignalKind>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="signal" uid="1341">
+                        <termList elements="2">
+                          <SL__arrayElement uid="1313" />
+                          <SL__arrayElement uid="739" />
+                          </termList>
+                        <state>1</state>
+                        <compressedWireTable>0208</compressedWireTable>
+                        <lastSignalKind>-32208</lastSignalKind>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="signal" uid="1330">
+                        <termList elements="2">
+                          <SL__arrayElement uid="88" />
+                          <SL__arrayElement uid="1322" />
+                          </termList>
+                        <state>1</state>
+                        <compressedWireTable>0208</compressedWireTable>
+                        <lastSignalKind>263</lastSignalKind>
+                        </SL__arrayElement>
+                      </signalList>
+                    <bgColor>00FFFFFF</bgColor>
+                    <firstNodeIdx>7</firstNodeIdx>
+                    </SL__arrayElement>
+                  </diagramList>
+                <structColor>00FFFFEB</structColor>
+                <caseSelDCO uid="1068" />
+                <selString class="selLabel" uid="1080">
+                  <objFlags>2359601</objFlags>
+                  <partID>80</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>52</howGrow>
+                  <bounds>(0, 171, 17, 361)</bounds>
+                  <image class="Image">
+                    <ImageResID>-11</ImageResID>
+                    </image>
+                  <bgColor>00FFFFFF</bgColor>
+                  <textRec class="textHair">
+                    <mode>17665</mode>
+                    <text>" [1] "Radio Buttons": Value Change "</text>
+                    <bgColor>00FFFFFF</bgColor>
+                    <fr elements="2">
+                      <SL__arrayElement class="fontRun">
+                        <fontcolor>007F7F7F</fontcolor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="fontRun">
+                        <fontofst>05</fontofst>
+                        </SL__arrayElement>
+                      </fr>
+                    </textRec>
+                  <nVisItems>10</nVisItems>
+                  </selString>
+                <timeOutDCO uid="1076" />
+                <dataNodeList elements="2">
+                  <SL__arrayElement uid="1083" />
+                  <SL__arrayElement uid="1230" />
+                  </dataNodeList>
+                <filterNodeList elements="2">
+                  <SL__arrayElement uid="0" />
+                  <SL__arrayElement uid="0" />
+                  </filterNodeList>
+                <EventNodeEvents elements="2">
+                  <SL__arrayElement class="EventSpec">
+                    <diagramIdx>0</diagramIdx>
+                    <source>3</source>
+                    <regFlags>1</regFlags>
+                    <eSource>0</eSource>
+                    <type>1073741826</type>
+                    <eFlags>4</eFlags>
+                    <ddoUID>781</ddoUID>
+                    <menuTag />
+                    <dynIndex>0</dynIndex>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="EventSpec">
+                    <diagramIdx>1</diagramIdx>
+                    <source>3</source>
+                    <regFlags>-2147483647</regFlags>
+                    <eSource>0</eSource>
+                    <type>1073741826</type>
+                    <eFlags>4</eFlags>
+                    <ddoUID>43</ddoUID>
+                    <menuTag />
+                    <dynIndex>0</dynIndex>
+                    </SL__arrayElement>
+                  </EventNodeEvents>
+                <EventSelLabFlags>009C</EventSelLabFlags>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,601 @@
+# (primResID, parmIndex) -> terminal name, harvested by following wires.
+# parmIndex 'out' means the terminal carries no parmIndex, which is how the
+# heap marks an output. Numbering is geometric, bottom-to-top; see FINDINGS 3.8.
+primResID	node	parmIndex	terminal	seen	competing
+1044	?	1	x	3	
+1044	?	out	x + iy	4	
+1045	?	1	r	3	
+1045	?	out	r * e^(i*theta)	5	
+1046	?	1	y	3	
+1046	?	2	x	4	
+1046	?	out	x + iy	4	
+1047	?	1	theta	2	
+1047	?	2	r	2	
+1047	?	out	r * e^(i*theta)	2	
+1048	?	1	x + iy	1	
+1048	?	out	x - iy	1	
+1049	?	1	number	1	
+1049	?	out	-1, 0, 1	1	
+1050	?	1	y	79	
+1050	?	2	x	93	
+1050	?	out	x+y	82	
+1051	?	1	y	40	
+1051	?	2	x	54	
+1051	?	out	x-y	58	
+1052	?	1	y	85	
+1052	?	2	x	157	
+1052	?	out	x*y	162	
+1053	?	1	y	42	
+1053	?	2	x	61	
+1053	?	out	x/y	78	
+1054	?	1	x	17	
+1054	?	out	abs(x)	13	
+1055	?	1	number	1	
+1055	?	out	nearest integer value	1	
+1056	?	1	x-y*floor(x/y)	8	
+1056	?	2	y	14	
+1056	?	3	x	28	
+1056	?	out	floor(x/y)	11	
+1057	?	1	x	41	
+1057	?	out	x+1	43	
+1058	?	1	x	26	
+1058	?	out	x-1	24	
+1059	?	1	x	15	
+1059	?	out	1/x	15	
+1060	?	1	x	6	
+1060	?	out	sqrt(x)	4	
+1061	?	1	y	24	
+1061	?	2	x	20	
+1061	?	out	x .and. y?	12	
+1062	?	1	y	98	
+1062	?	2	x	105	
+1062	?	out	x .or. y?	14	
+1063	?	2	x	1	
+1064	?	1	x	31	
+1064	?	out	.not. x?	24	
+1069	?	1	x	7	
+1069	?	out	-x	5	
+1070	?	out	number: 0 to 1	42	
+1071	?	1	y	2	
+1071	?	2	x	2	
+1071	?	out	.not. (x .and. y)?	2	
+1075	?	1	x	2	
+1075	?	out	floor(x): largest int &lt;= x	2	
+1077	?	1	path	8	
+1077	?	out	string	7	
+1078	?	1	string	3	
+1078	?	out	path	2	
+1079	?	out	x	1	
+1083	?	out	First Call?: T/F	3	
+1084	?	11	URL	1	
+1085	?	out	error out	1	
+1086	?	2	data	1	
+1086	?	11	connection in	1	
+1086	?	out	error out	1	
+1102	?	1	y	42	
+1102	?	2	x	65	
+1102	?	out	x = y?	62	
+1104	?	1	y	8	
+1104	?	2	x	7	
+1104	?	out	x &lt;= y?	8	
+1105	?	1	y	11	
+1105	?	2	x	10	
+1105	?	out	x != y?	7	
+1108	?	1	max(x,y)	7	
+1108	?	2	y	7	
+1108	?	3	x	7	
+1108	?	out	min(x,y)	6	
+1111	?	1	y	3	
+1111	?	2	x	9	
+1111	?	out	x &lt; y?	6	
+1112	?	1	string/path	24	
+1112	?	out	empty?	8	
+1113	?	1	x	14	
+1113	?	out	x = 0?	10	
+1116	?	1	x	10	
+1116	?	out	x != 0?	12	
+1118	?	1	x	14	
+1118	?	out	x &lt; 0?	3	
+1119	?	1	char	1	
+1119	?	out	digit?	1	
+1120	?	1	array	1	
+1120	?	out	sorted array	3	
+1123	?	1	char	1	
+1123	?	out	hex?	1	
+1124	?	1	char	1	
+1124	?	out	printable ASCII?	1	
+1125	?	1	char	1	
+1125	?	out	space, h/v tab, cr, lf, ff?	1	
+1126	?	1	char	1	
+1126	?	out	class number	1	
+1127	?	1	coerced(x)	18	
+1127	?	2	lower limit	7	
+1127	?	3	x	20	
+1127	?	4	upper limit	9	
+1127	?	out	In Range?	10	
+1128	?	1	number/path/refnum	18	
+1128	?	out	NaN/Path/Refnum?	4	
+1129	?	1	char	1	
+1129	?	out	octal?	1	
+1142	?	1	number	4	
+1142	?	out	32bit integer	3	
+1143	?	1	number	5	
+1143	?	out	unsigned 8bit integer	5	
+1144	?	1	number	5	
+1144	?	out	unsigned 16bit integer	7	
+1145	?	1	number	4	
+1145	?	out	unsigned 32bit integer	7	
+1147	?	1	number	11	
+1147	?	out	double precision float	9	
+1156	?	1	number	1	
+1156	?	out	unsigned 64bit integer	1	
+1165	?	2	value	1	
+1165	?	11	binary string	1	
+1165	?	out	error out	1	
+1166	?	1	type	1	
+1166	?	2	*(type *) &amp;x	9	
+1166	?	out	x	7	
+1167	?	1	Boolean	5	
+1167	?	out	0, 1	6	
+1168	?	1	array	3	
+1168	?	out	cluster	3	
+1169	?	1	cluster	1	
+1169	?	out	array	1	
+1170	?	out	x	1	
+1180	?	2	number	3	
+1180	?	out	decimal integer string	14	
+1184	?	4	string	3	
+1184	?	out	number	2	
+1187	?	5	string	7	
+1187	?	out	number	10	
+1188	?	1	string	1	
+1188	?	out	all upper case string	1	
+1189	?	1	string	18	
+1189	?	out	all lower case string	24	
+1200	?	1	x	28	
+1200	?	out	sin(x)	21	
+1201	?	1	x	6	
+1201	?	out	cos(x)	3	
+1209	?	1	x	2	
+1209	?	out	ln(x)	3	
+1210	?	1	x	2	
+1210	?	out	log(x)	2	
+1211	?	1	x	10	
+1211	?	out	exp(x)	9	
+1213	?	1	x	2	
+1213	?	out	x^y	2	
+1220	?	1	sin(x)	3	
+1220	?	2	cos(x)	3	
+1220	?	out	x	4	
+1223	?	1	x	3	
+1223	?	out	2^x	5	
+1224	?	1	x	3	
+1224	?	2	y	3	
+1224	?	out	logx(y)	3	
+1300	?	out	millisecond timer value	8	
+1302	?	1	milliseconds to wait	15	
+1302	?	out	millisecond timer value	1	
+1303	?	out	seconds since 1Jan1904	18	
+1327	?	1	millisecond multiple	26	
+1340	?	2	message	43	
+1341	?	1	F button name (&quot;Cancel&quot;)	1	
+1341	?	2	T button name (&quot;OK&quot;)	1	
+1341	?	3	message	2	
+1341	?	out	T button?	2	
+1419	?	1	name or relative path	20	
+1419	?	2	base path	133	
+1419	?	out	appended path	138	
+1420	?	1	stripped path	16	
+1420	?	2	name	9	
+1420	?	out	path	25	
+1423	?	1	relative	1	
+1423	?	2	array of strings	1	
+1423	?	out	path	1	
+1425	?	out	path	7	
+1426	?	out	path	37	
+1427	?	out	path	1	
+1435	?	out	path	4	
+1502	?	1	string	9	
+1502	?	out	length	8	
+1503	?	1	length (rest)	1	
+1503	?	3	string	5	
+1503	?	out	substring	5	
+1505	?	4	number	1	
+1506	?	4	number	14	
+1506	?	out	F-format string	13	
+1516	?	1	f	35	
+1516	?	2	s	75	
+1516	?	3	t	26	
+1516	?	out	s? t:f	65	
+1535	?	1	regular expression	2	
+1535	?	2	offset (0)	1	
+1535	?	3	before substring	6	
+1535	?	4	match substring	4	
+1535	?	5	after substring	5	
+1535	?	6	offset past match	1	
+1535	?	out	string	13	
+1538	?	1	match + rest of string	2	
+1538	?	2	substring before match	1	
+1538	?	3	offset (0)	1	
+1538	?	4	search string/char (-)	1	
+1538	?	5	string	3	
+1539	?	2	array type (2D Dbl)	1	
+1539	?	3	spreadsheet string	2	
+1539	?	out	array	1	
+1540	?	1	delimiter (Tab)	1	
+1540	?	2	array	2	
+1540	?	3	format string	1	
+1540	?	out	spreadsheet string	6	
+1600	?	1	date string	2	
+1600	?	3	seconds (now)	1	
+1600	?	out	time string	2	
+1609	?	1	unsigned byte array	5	
+1609	?	out	string	5	
+1710	?	2	net address	1	
+1710	?	out	name	1	
+1711	?	1	name	1	
+1711	?	out	net address	2	
+1712	?	8	error in (no error)	1	
+1713	?	8	error in (no error)	2	
+1713	?	11	connection ID	1	
+1713	?	out	error out	1	
+1714	?	10	data in	1	
+1714	?	out	error out	1	
+1715	?	8	error in (no error)	2	
+1715	?	10	remote port or service name	2	
+1715	?	11	address	2	
+1716	?	2	data out	1	
+1716	?	10	bytes to read	1	
+1717	?	2	port	1	
+1717	?	7	net address	1	
+1717	?	10	port	1	
+1717	?	out	error out	1	
+1730	?	8	error in (no error)	2	
+1731	?	3	TLS connection	1	
+1731	?	9	server hostname	1	
+1731	?	10	immutable TLS configuration	1	
+1733	?	3	private key	1	
+1733	?	8	error in (no error)	1	
+1733	?	11	path to private key	1	
+1733	?	out	error out	1	
+1734	?	3	certificates	1	
+1734	?	11	path to certificates	1	
+1734	?	out	error out	1	
+1735	?	9	certificate chain	1	
+1735	?	10	private key	1	
+1736	?	10	certificate	1	
+1737	?	3	immutable TLS configuration	1	
+1737	?	out	error out	1	
+1741	?	11	TLS configuration	1	
+1741	?	out	error out	1	
+1809	?	1	array	45	
+1809	?	out	size(s)	39	
+1815	?	1	Boolean array	1	
+1815	?	out	number	1	
+1900	?	1	array	4	
+1900	?	out	reversed array	3	
+1901	?	2	element	16	
+1901	?	3	1D array	25	
+1901	?	out	index of element	7	
+1902	?	1	2D array	28	
+1902	?	out	transposed array	20	
+1903	?	1	numeric array	10	
+1903	?	out	sum	9	
+1904	?	1	numeric array	1	
+1904	?	out	product	2	
+1905	?	1	fractional index or x	1	
+1905	?	out	y value	1	
+1906	?	1	array	2	
+1906	?	2	n	1	
+1906	?	out	array (last n elements first)	1	
+1907	?	1	max value	6	
+1907	?	2	max index (indices)	1	
+1907	?	3	min value	8	
+1907	?	4	min index (indices)	1	
+1907	?	out	array	14	
+1909	?	2	threshold y	1	
+1909	?	3	array of numbers or points	1	
+1909	?	out	fractional index or x	1	
+1910	?	1	Boolean array	1	
+1910	?	out	logical OR	1	
+1922	?	8	error in (no error)	2	
+1922	?	11	VISA resource name	2	
+1922	?	out	error out	16	
+1925	?	1	return count	1	
+1925	?	2	read buffer	9	
+1925	?	3	VISA resource name out	1	
+1925	?	8	error in (no error)	1	
+1925	?	10	byte count	4	
+1925	?	11	VISA resource name	1	
+1925	?	out	error out	1	
+1926	?	2	return count	1	
+1926	?	3	VISA resource name out	1	
+1926	?	8	error in (no error)	1	
+1926	?	10	write buffer	7	
+1926	?	11	VISA resource name	1	
+1926	?	out	error out	1	
+1940	?	10	event type (all enabled)	1	
+1942	?	10	event type	1	
+1943	?	7	timeout (0)	1	
+1943	?	11	VISA resource name	1	
+1943	?	out	error out	1	
+1950	?	out	address string	1	
+1951	?	5	data	1	
+1951	?	7	error out	1	
+1951	?	out	address string	1	
+1999	?	out	call chain	2	
+2010	?	5	group name in (Untitled)	1	
+2010	?	9	data	10	
+2010	?	11	error in (no error)	4	
+2010	?	15	error out	2	
+2010	?	out	tdms file	4	
+2011	?	5	group name in	1	
+2011	?	10	data	6	
+2011	?	11	error in (no error)	1	
+2011	?	15	error out	1	
+2011	?	out	tdms file	1	
+2012	?	3	tdms file out	1	
+2012	?	8	error in (no error)	2	
+2012	?	11	file path	13	
+2012	?	out	error out	1	
+2013	?	3	file path out	3	
+2013	?	out	error out	10	
+2014	?	5	property values	1	
+2015	?	4	property value	4	
+2015	?	6	found	1	
+2015	?	8	error in (no error)	4	
+2015	?	11	tdms file	4	
+2015	?	out	error out	1	
+2016	?	1	group/channel names	2	channel names
+2016	?	2	group names	1	
+2016	?	3	tdms file out	2	
+2016	?	out	error out	2	
+2019	?	4	error in (no error)	1	
+2019	?	7	file path	1	
+2019	?	out	error out	1	
+2021	?	3	tdms file out	1	
+2021	?	11	file path	14	
+2021	?	out	error out	1	
+2022	?	4	samples per channel	4	
+2022	?	6	data type	3	
+2022	?	9	channel name(s)	4	
+2022	?	10	group name (Untitled)	1	
+2023	?	6	data type	1	
+2023	?	10	reserve size	4	
+2024	?	5	max write size	4	
+2024	?	6	data type	4	
+2025	?	out	error out	1	
+2026	?	8	error in (no error)	1	
+2026	?	10	data	1	
+2026	?	11	tdms file	1	
+2027	?	6	data type	2	
+2027	?	9	buffer size	1	
+2028	?	6	data type	2	
+2029	?	2	data	1	
+2029	?	8	error in (no error)	1	
+2031	?	2	number of pending writes	1	
+2031	?	out	error out	1	
+2032	?	8	error in (no error)	1	
+2032	?	11	tdms file	1	
+2032	?	out	error out	9	
+2034	?	8	error in (no error)	2	
+2034	?	11	tdms file	2	
+2035	?	8	error in (no error)	3	
+2035	?	10	data	2	
+2035	?	11	tdms file	3	
+2036	?	8	error in (no error)	4	
+2036	?	11	tdms file	3	
+2073	?	8	user event	11	
+2073	?	11	error out	1	
+2073	?	out	user event datatype	1	
+2074	?	1	event data cluster	2	
+2074	?	3	error in	1	
+2074	?	8	user event out	2	
+2074	?	11	error out	1	
+2074	?	out	user event	9	
+2075	?	3	error in	3	
+2075	?	7	error out	1	
+2075	?	out	user event	5	
+2076	?	3	error in	2	
+2076	?	7	error out	10	
+2076	?	out	event registration refnum	4	
+2086	?	1	value (0)	1	
+2086	?	2	index (0)	1	
+2086	?	5	request type	1	
+2086	?	6	read buffer	1	
+2086	?	7	request	1	
+2086	?	9	length (0)	1	
+2087	?	1	value (0)	1	
+2087	?	2	index (0)	1	
+2087	?	5	request type	1	
+2087	?	7	request	1	
+2087	?	9	length (0)	1	
+2156	?	8	error in (no error)	1	
+2156	?	11	byte array or file path	1	
+2157	?	7	file path	1	
+2157	?	out	error out	2	
+2158	?	2	data	1	
+2308	?	8	error in (no error)	1	
+2308	?	11	VISA resource name	9	
+2452	?	10	element	2	
+2452	?	11	set in	2	
+2457	?	11	map in	1	
+2458	?	1	value	2	
+2458	?	10	key	1	
+2458	?	11	map	3	
+3913	?	4	substring	1	
+3913	?	5	string	2	
+3914	?	4	result string	1	
+3914	?	out	input string	1	
+3915	?	1	y	7	
+3915	?	2	x	2	
+3915	?	3	error out	6	
+3915	?	out	x+y	9	
+5560	?	1	number	2	
+5560	?	out	Time Stamp	4	
+5566	?	out	integer	2	
+5567	?	out	integer	3	
+8000	?	3	Automation Refnum	1	
+8003	?	3	error out	5	
+8003	?	8	Variant	7	
+8003	?	9	type	2	
+8003	?	11	data	10	
+8003	?	out	error in	1	
+8010	?	3	vi reference	1	
+8010	?	8	error in (no error)	13	
+8010	?	9	options	5	
+8010	?	10	vi path	22	
+8010	?	11	application reference (local)	11	
+8011	?	8	error in (no error)	66	
+8011	?	11	reference	99	
+8011	?	out	error out	131	
+8012	?	3	application reference	1	
+8012	?	8	error in (no error)	1	
+8012	?	11	machine name (&quot;&quot;:  open local reference)	1	
+8013	?	3	object refnum	6	
+8013	?	10	name/order	9	
+8013	?	11	owner refnum	3	
+8013	?	out	error out	4	
+8014	?	8	error in (no error)	1	
+8014	?	10	template	1	
+8015	?	3	object refnum	11	
+8015	?	6	path	1	
+8015	?	7	vi object class	1	
+8015	?	8	error in (no error)	2	
+8015	?	9	position/next to	3	
+8015	?	11	owner refnum	17	
+8015	?	out	error out	3	
+8016	?	1	error out	6	
+8016	?	2	target class	2	
+8016	?	3	reference	24	
+8016	?	4	error in	33	
+8016	?	out	specific class reference	8	
+8017	?	2	generic class reference	1	
+8017	?	out	reference	1	
+8050	?	11	file path (use dialog)	2	
+8051	?	2	data	5	
+8051	?	10	count	5	
+8051	?	out	error out	4	
+8052	?	7	refnum	1	
+8052	?	out	error out	4	
+8053	?	10	target path (use dialog)	1	
+8053	?	11	source path	1	
+8055	?	3	created path	1	
+8055	?	11	path (use dialog)	3	
+8055	?	out	error out	2	
+8056	?	3	deleted path	2	
+8056	?	8	error in	4	
+8056	?	11	path (use dialog)	8	
+8056	?	out	error out	1	
+8058	?	out	error out	1	
+8063	?	2	size (in bytes)	6	
+8063	?	3	refnum out	1	
+8063	?	7	file	4	
+8063	?	out	error out	1	
+8070	?	2	text	4	
+8070	?	8	error in	1	
+8070	?	10	count	1	
+8070	?	11	file (use dialog)	2	
+8070	?	out	error out	2	
+8078	?	10	data	2	
+8078	?	11	file (use dialog)	1	
+8080	?	10	text	2	
+8080	?	11	file (use dialog)	1	
+8080	?	out	error out	1	
+8083	?	1	folder names	1	
+8083	?	11	path	1	
+8100	?	2	seconds (now)	1	
+8100	?	out	date/time string	2	
+8101	?	1	token string	3	
+8101	?	2	offset past token	3	
+8101	?	4	use cached delim/oper data? (F)	4	
+8101	?	8	offset	4	
+8101	?	out	token index	1	
+8201	?	1	anything	15	
+8201	?	out	Variant	5	
+8202	?	6	data string	1	
+8202	?	7	type string	1	
+8203	?	1	type string	1	
+8203	?	2	data string	2	
+8203	?	out	Variant	2	
+8204	?	6	name	1	
+8205	?	1	values	2	value
+8205	?	2	names	3	
+8205	?	7	Variant	3	
+8205	?	out	error out	1	
+8207	?	3	waveform out	3	
+8207	?	4	error in	1	
+8207	?	5	value	2	
+8207	?	7	waveform	2	
+8207	?	out	error out	2	
+8507	?	1	number of columns	5	
+8507	?	2	matrix	1	
+8507	?	out	number of rows	6	
+9000	?	out	menu reference	1	
+9003	?	1	item tags out	3	
+9003	?	3	menu reference out	1	
+9003	?	5	menu tag	2	
+9003	?	9	menu reference	2	
+9003	?	out	error out	1	
+9004	?	6	error in (no error)	1	
+9004	?	9	menu reference	2	
+9101	?	3	error in (no error)	1	
+9101	?	8	notifier out	5	
+9101	?	11	error out	2	
+9102	?	3	error in (no error)	4	
+9102	?	11	error out	6	
+9104	?	1	notification	6	
+9104	?	3	error in (no error)	1	
+9104	?	11	error out	3	
+9104	?	out	notifier	1	
+9105	?	3	error in (no error)	1	
+9105	?	9	notification	2	
+9105	?	11	error out	3	
+9106	?	9	notifiers out	1	
+9108	?	3	error in (no error)	1	
+9108	?	8	queue out	2	
+9108	?	11	error out	1	
+9109	?	3	error in (no error)	2	
+9109	?	11	error out	12	
+9109	?	out	queue	3	
+9110	?	7	# elements in queue	3	
+9110	?	11	error out	3	
+9111	?	1	element	9	
+9111	?	3	error in (no error)	1	
+9111	?	11	error out	2	
+9113	?	2	timeout in ms (-1)	1	
+9113	?	3	error in (no error)	3	
+9113	?	9	element	7	
+9113	?	11	error out	3	
+9113	?	out	queue	1	
+9129	?	1	element	5	
+9154	?	3	data	3	
+9154	?	out	error out	2	
+23059	?	1	x	9	
+23059	?	out	x^2	10	
+23060	?	1	r	1	
+23060	?	3	x	1	
+23063	?	1	array	18	
+23063	?	out	empty?	14	
+24201	?	8	JSON string	3	
+24201	?	out	anything	3	
+24202	?	8	value	5	
+24202	?	11	error out	6	
+24202	?	out	JSON string	5	
+24206	?	out	python version	5	
+24207	?	11	error out	2	
+24208	?	3	error in (no error)	1	
+24209	?	3	error in	1	
+24209	?	11	error out	1	
+24209	?	out	session in	1	
+1110	Greater?	1	y	0	
+1110	Greater?	2	x	0	
+1110	Greater?	out	x &gt; y?	0	
+1103	Greater Or Equal?	2	x	0	
+1103	Greater Or Equal?	out	x &gt;= y?	0	
+1114	Greater Or Equal To 0?	1	x	0	
+1114	Greater Or Equal To 0?	out	x &gt;= 0?	0	
+1117	Greater Than 0?	1	x	0	
+1117	Greater Than 0?	out	x &gt; 0?	0	
+8012	?	out	error out	1
+8012	?	9	timeout ms	1

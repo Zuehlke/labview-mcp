@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pfix.vi" description="Probe: the fixed constants of the palette, each into an indicator.">
+  <FixedConst _name="0STR" outputs="value:4200.value" uid="4200" uid_parent="root"/>
+  <Indicator _name="empty string" conIdx="0" connection="recommended" inputs="value:4200.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <FixedConst _name="0PTH" outputs="value:4210.value" uid="4210" uid_parent="root"/>
+  <Indicator _name="empty path" conIdx="1" connection="recommended" inputs="value:4210.value" type="path" uid="4215" uid_parent="root" value=""/>
+  <FixedConst _name="2PI" outputs="value:4220.value" uid="4220" uid_parent="root"/>
+  <Indicator _name="two pi" conIdx="2" connection="recommended" inputs="value:4220.value" type="double" uid="4225" uid_parent="root" value="0"/>
+  <FixedConst _name="PI" outputs="value:4230.value" uid="4230" uid_parent="root"/>
+  <Indicator _name="pi" conIdx="3" connection="recommended" inputs="value:4230.value" type="double" uid="4235" uid_parent="root" value="0"/>
+  <FixedConst _name="EOL" outputs="value:4240.value" uid="4240" uid_parent="root"/>
+  <Indicator _name="eol" conIdx="4" connection="recommended" inputs="value:4240.value" type="string" uid="4245" uid_parent="root" value=""/>
+  <FixedConst _name="CRTN" outputs="value:4250.value" uid="4250" uid_parent="root"/>
+  <Indicator _name="cr" conIdx="5" connection="recommended" inputs="value:4250.value" type="string" uid="4255" uid_parent="root" value=""/>
+  <FixedConst _name="TAB" outputs="value:4260.value" uid="4260" uid_parent="root"/>
+  <Indicator _name="tab" conIdx="6" connection="recommended" inputs="value:4260.value" type="string" uid="4265" uid_parent="root" value=""/>
+  <FixedConst _name="+INF" outputs="value:4270.value" uid="4270" uid_parent="root"/>
+  <Indicator _name="inf" conIdx="7" connection="recommended" inputs="value:4270.value" type="double" uid="4275" uid_parent="root" value="0"/>
+  <FixedConst _name="MEPS" outputs="value:4280.value" uid="4280" uid_parent="root"/>
+  <Indicator _name="eps" conIdx="8" connection="recommended" inputs="value:4280.value" type="double" uid="4285" uid_parent="root" value="0"/>
+  <FixedConst _name="NREF" outputs="value:" uid="4290" uid_parent="root"/>
+</VI>

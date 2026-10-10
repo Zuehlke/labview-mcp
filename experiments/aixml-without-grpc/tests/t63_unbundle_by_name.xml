@@ -1,0 +1,6 @@
+<VI _name="T63 Unbundle By Name.vi" description="Unbundle By Name on a cluster control, the two fields added.">
+  <Control _name="pt" type="cluster{double.x,double.y}" uid="4200" uid_parent="root" value="[0,0]" outputs="value:4200.value"/>
+  <Node _name="Unbundle By Name" fields="x,y" inputs="input cluster:4200.value" outputs="x:4210.x,y:4210.y" uid="4210" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4210.x,y:4210.y" outputs="x+y:4220.x+y" uid="4220" uid_parent="root"/>
+  <Indicator _name="sum" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4220.x+y"/>
+</VI>

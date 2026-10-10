@@ -1,0 +1,16 @@
+<VI _name="T90 Refnums.vi" description="VI Server and VISA refnum controls, indicators and a constant; a local application reference opened, tested and closed.">
+  <Control _name="app" outputs="value:4200.value" type="ref{LV.Application}" uid="4200" uid_parent="root" value=""/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4200.value" outputs="NaN/Path/Refnum?:4210.NaN/Path/Refnum?" uid="4210" uid_parent="root"/>
+  <Indicator _name="app is null" inputs="value:4210.NaN/Path/Refnum?" type="bool" uid="4215" uid_parent="root" value="false"/>
+  <Node _name="Open Application Reference" outputs="application reference:4220.application reference,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4220.application reference" outputs="NaN/Path/Refnum?:4230.NaN/Path/Refnum?" uid="4230" uid_parent="root"/>
+  <Indicator _name="local is null" inputs="value:4230.NaN/Path/Refnum?" type="bool" uid="4235" uid_parent="root" value="false"/>
+  <Node _name="Close Reference" inputs="reference:4220.application reference,error in (no error):4220.error out" outputs="error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Indicator _name="close error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4245" uid_parent="root" value="[false,0,]"/>
+  <Control _name="vi" outputs="value:4250.value" type="ref{LV.VI}" uid="4250" uid_parent="root" value=""/>
+  <Indicator _name="vi out" inputs="value:4250.value" type="ref{LV.VI}" uid="4255" uid_parent="root" value=""/>
+  <Control _name="visa" outputs="value:4260.value" type="ref{Visa.Instr}" uid="4260" uid_parent="root" value=""/>
+  <Indicator _name="visa out" inputs="value:4260.value" type="ref{Visa.Instr}" uid="4265" uid_parent="root" value=""/>
+  <Constant _name="no project" outputs="value:4270.value" type="ref{LV.Project}" uid="4270" uid_parent="root" value=""/>
+  <Indicator _name="project out" inputs="value:4270.value" type="ref{LV.Project}" uid="4275" uid_parent="root" value=""/>
+</VI>

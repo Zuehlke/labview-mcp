@@ -1,0 +1,5 @@
+<VI _name="T54 Call Coerce.vi" description="An int32 into a double subVI input: coercion at a call terminal.">
+  <Control _name="deg" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Call inputs="angle (deg):4200.value" outputs="angle (rad):4220.rad" target="NI_AngleManipulation.lvlib\3ADegrees to Radians (Scalar DBL).vi" uid="4220" uid_parent="root"/>
+  <Indicator _name="rad" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4220.rad"/>
+</VI>

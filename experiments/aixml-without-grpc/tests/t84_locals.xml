@@ -1,0 +1,7 @@
+<VI _name="T84 Locals.vi" description="A local variable writes an indicator, another reads a control.">
+  <Control _name="n" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Indicator _name="copy" inputs="value:" type="int32" uid="4400" uid_parent="root" value="0"/>
+  <Node _name="Local Variable" element="copy" inputs="copy:4200.value" uid="4410" uid_parent="root"/>
+  <Node _name="Local Variable" element="n" outputs="n:4420.n" uid="4420" uid_parent="root"/>
+  <Indicator _name="n again" inputs="value:4420.n" type="int32" uid="4425" uid_parent="root" value="0"/>
+</VI>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="T93 References.vi" description="A control reference, a This VI reference and a static VI reference, each read through a property node.">
+  <Control _name="Flag" outputs="value:" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" element="Flag" outputs="Flag:4300.Flag" uid="4300" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="reference:4300.Flag,error in (no error):" outputs="Visible:4310.visible,reference out:,error out:4310.err" type="{LV.Boolean}" uid="4310" uid_parent="root"/>
+  <Indicator _name="flag visible" inputs="value:4310.visible" type="bool" uid="4320" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" outputs="This VI:4400.This VI" type="{LV.VI}" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:4400.This VI,error in (no error):4310.err" outputs="VI Name:4410.name,reference out:,error out:4410.err" type="{LV.VI}" uid="4410" uid_parent="root"/>
+  <Indicator _name="this name" inputs="value:4410.name" type="string" uid="4420" uid_parent="root" value=""/>
+  <Node _name="Static VI Reference" outputs="value:4500.value" target="Clear Errors.vi" uid="4500" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:4500.value,error in (no error):4410.err" outputs="VI Name:4510.name,reference out:,error out:4510.err" type="{LV.VI}" uid="4510" uid_parent="root"/>
+  <Indicator _name="static name" inputs="value:4510.name" type="string" uid="4520" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4510.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+</VI>

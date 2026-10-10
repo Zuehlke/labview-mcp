@@ -1,0 +1,6 @@
+<VI _name="T61 Array Pass.vi" description="Array constant and array control wired straight to array indicators.">
+  <Constant _name="ints" type="array{int32}" uid="4200" uid_parent="root" value="[1,2,3]" outputs="value:4200.value"/>
+  <Indicator _name="consts" type="array{int32}" uid="4210" uid_parent="root" value="[]" inputs="value:4200.value"/>
+  <Control _name="values" type="array{double}" uid="4220" uid_parent="root" value="[]" outputs="value:4220.value"/>
+  <Indicator _name="values out" type="array{double}" uid="4230" uid_parent="root" value="[]" inputs="value:4220.value"/>
+</VI>

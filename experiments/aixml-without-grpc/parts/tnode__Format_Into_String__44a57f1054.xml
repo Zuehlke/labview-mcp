@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Format_Into_String/44a57f1054" source="AIXML-generated probe: pnodes2.vi" node="Format Into String" ins="initial string|error in|input 1|input 2|format string" outs="resulting string|error out" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="fmt" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="init" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="n" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></types><heap><SL__arrayElement class="printf" uid="4250">
+        <termList elements="7">
+          <SL__arrayElement class="term" uid="4453" aixml="format string">
+            <objFlags>32768</objFlags>
+            <dco class="printfArg" uid="4451">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(87)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 10, 12, 22)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4456" aixml="initial string">
+            <objFlags>32768</objFlags>
+            <dco class="printfArg" uid="4454">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(88)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 12, 10)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4459" aixml="resulting string">
+            <dco class="printfArg" uid="4457">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(89)</typeDesc>
+              <termBounds>(0, 22, 12, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4462" aixml="error in">
+            <objFlags>32768</objFlags>
+            <dco class="printfArg" uid="4460">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(90)</typeDesc>
+              <termBounds>(12, 0, 20, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4465" aixml="error out">
+            <dco class="printfArg" uid="4463">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(91)</typeDesc>
+              <termBounds>(12, 16, 20, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4468" aixml="input 1">
+            <objFlags>32768</objFlags>
+            <dco class="printfArg" uid="4466">
+              <typeDesc>TypeID(92)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(20, 0, 28, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4471" aixml="input 2">
+            <objFlags>32768</objFlags>
+            <dco class="printfArg" uid="4470">
+              <typeDesc>TypeID(93)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(28, 0, 36, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(383, 421, 420, 453)</bounds>
+        <shortCount>18</shortCount>
+        <clumpNum>393219</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4466" />
+          <SL__arrayElement uid="4470" />
+          </dcoList>
+        <permDCOList elements="5">
+          <SL__arrayElement uid="4451" />
+          <SL__arrayElement uid="4454" />
+          <SL__arrayElement uid="4457" />
+          <SL__arrayElement uid="4460" />
+          <SL__arrayElement uid="4463" />
+          </permDCOList>
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1710" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\VI Server\Exporting VIs\Exporting VIs.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="dot notation? (F)" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="net address" /></types><heap><SL__arrayElement class="prim" uid="2700">
+        <objFlags>640</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="2702">
+            <dco class="parm" uid="2703">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(105)</typeDesc>
+              <termBounds>(0, 16, 18, 32)</termBounds>
+              <primIndex>311</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2705">
+            <dco class="parm" uid="2706">
+              <typeDesc>TypeID(106)</typeDesc>
+              <termBounds>(9, 0, 18, 16)</termBounds>
+              <primIndex>311</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2708">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="2709">
+              <typeDesc>TypeID(107)</typeDesc>
+              <termBounds>(0, 0, 9, 16)</termBounds>
+              <primIndex>311</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(184, 179, 216, 211)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>1710</primResID>
+        <primIndex>311</primIndex>
+        </SL__arrayElement>
+      </heap></part>

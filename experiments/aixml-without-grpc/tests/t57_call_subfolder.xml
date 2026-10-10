@@ -1,0 +1,6 @@
+<VI _name="T57 Call Sub.vi" description="Calls a composed VI kept in a subfolder - a relative link [&quot;&quot;, sub, X.vi].">
+  <Control _name="p" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="q" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Call inputs="a:4200.value,b:4210.value" outputs="sum:4220.sum" target="SubCallee {stamp}.vi" uid="4220" uid_parent="root"/>
+  <Indicator _name="r" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4220.sum"/>
+</VI>

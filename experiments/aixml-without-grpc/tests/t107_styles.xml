@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="T107 Styles.vi" description="A latched boolean, a plain boolean, a text ring and a table control, each wired to an indicator.">
+  <Control _name="go" outputs="value:4200.value" style="latched" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Indicator _name="go out" inputs="value:4200.value" type="bool" uid="4205" uid_parent="root" value="false"/>
+  <Control _name="plain" outputs="value:4210.value" type="bool" uid="4210" uid_parent="root" value="false"/>
+  <Indicator _name="plain out" inputs="value:4210.value" type="bool" uid="4215" uid_parent="root" value="false"/>
+  <Control _name="ring" items="Low,Mid,High" outputs="value:4220.value" style="Ring" type="uint16" uid="4220" uid_parent="root" value="1"/>
+  <Indicator _name="ring out" inputs="value:4220.value" type="uint16" uid="4225" uid_parent="root" value="0"/>
+  <Control _name="tab" outputs="value:4230.value" style="Table" type="array.2{string}" uid="4230" uid_parent="root" value="[[a,b],[c,d]]"/>
+  <Indicator _name="tab out" inputs="value:4230.value" type="array.2{string}" uid="4235" uid_parent="root" value="[]"/>
+</VI>

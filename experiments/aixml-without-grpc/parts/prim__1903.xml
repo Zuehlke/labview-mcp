@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1903" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Transforms\Generalized Fourier Spectrum.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="Power Spectrum FFT {X}"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="596">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="598">
+                    <dco class="parm" uid="950">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(100)</typeDesc>
+                      <termBounds>(0, 12, 25, 25)</termBounds>
+                      <primIndex>210</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="952">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="953">
+                      <typeDesc>TypeID(101)</typeDesc>
+                      <termBounds>(0, 0, 25, 12)</termBounds>
+                      <primIndex>210</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(253, 667, 285, 699)</bounds>
+                <shortCount>42</shortCount>
+                <clumpNum>524293</clumpNum>
+                <primResID>1903</primResID>
+                <primIndex>210</primIndex>
+                </SL__arrayElement>
+              </heap></part>

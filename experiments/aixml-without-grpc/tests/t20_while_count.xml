@@ -1,0 +1,10 @@
+<VI _name="T20 While.vi" description="Count up to a limit in a While Loop.">
+  <Control _name="limit" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Structure _name="While Loop" count="5000.value" uid="5000" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" outputs="value:5010.value" uid="5010" uid_parent="5000"/>
+    <Node _name="Equal?" inputs="x:5000.value,y:5010.value" outputs="x = y?:5020.eq" uid="5020" uid_parent="5000"/>
+    <Condition inputs="value:5020.eq" uid="5030" uid_parent="5000" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:5000.value" outputs="value:5040.value" uid="5040" uid_parent="5000"/>
+  </Structure>
+  <Indicator _name="last i" type="int32" uid="4300" uid_parent="root" value="0" inputs="value:5040.value"/>
+</VI>

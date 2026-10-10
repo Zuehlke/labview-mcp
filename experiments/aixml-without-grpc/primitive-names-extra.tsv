@@ -1,0 +1,20 @@
+# Primitives primitive-names.tsv lacks, found by find_prim_ids.py (a uid join of NI cached exports
+# with pylabview extractions) and by a re-run of harvest_prim_names.py on 2026-10-10. Same columns.
+primResID	name	seen	primIndex
+1113	Equal To 0?	16	
+1114	Greater Or Equal To 0?	17	
+1103	Greater Or Equal?	14	
+1117	Greater Than 0?	12	
+1110	Greater?	13	
+1224	Logarithm Base X	3	
+1505	Number To Exponential String	1	
+1423	Path to Array of Strings	2	
+1078	String To Path	4	
+1188	To Upper Case	2	
+8202	Flattened String To Variant	1	
+8203	Variant To Flattened String	1	
+8053	Copy	1	
+8068	Move	1	
+8083	List Folder	3	
+1610	Request Deallocation	1	
+8017	To More Generic Class	1	

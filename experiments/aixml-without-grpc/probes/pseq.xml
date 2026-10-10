@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pseq.vi" description="Probe: feedback node, local variables, flat sequence with two frames, diagram disable and conditional disable structures.">
+  <Control _name="n" conIdx="0" connection="recommended" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Constant _name="zero" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Structure _name="For Loop" count="4300.value" maxin="4200.value" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.value" outputs="value:4310.value" uid="4310" uid_parent="4300"/>
+    <Node _name="Feedback Node" inputs="initializer:4310.value,next value:4330.x+y" outputs="previous value:4320.previous value" uid="4320" uid_parent="4300"/>
+    <Node _name="Add" inputs="x:4320.previous value,y:4300.value" outputs="x+y:4330.x+y" uid="4330" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4330.x+y" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="sum" conIdx="1" connection="recommended" inputs="value:4340.value" type="int32" uid="4345" uid_parent="root" value="0"/>
+  <Indicator _name="copy" conIdx="2" connection="recommended" inputs="value:" type="int32" uid="4400" uid_parent="root" value="0"/>
+  <Node _name="Local Variable" element="copy" inputs="copy:4200.value" uid="4410" uid_parent="root"/>
+  <Node _name="Local Variable" element="n" outputs="n:4420.n" uid="4420" uid_parent="root"/>
+  <Indicator _name="n again" conIdx="3" connection="recommended" inputs="value:4420.n" type="int32" uid="4425" uid_parent="root" value="0"/>
+  <Structure _name="Flat Sequence Frame" uid="4500" uid_parent="root">
+    <Diagram label="first" uid="4510" uid_parent="4500">
+      <Constant _name="one" outputs="value:4511.value" type="double" uid="4511" uid_parent="4510" value="1"/>
+      <Tunnel _id="Out1" inputs="value:4511.value" outputs="value:4512.value" uid="4512" uid_parent="4510"/>
+    </Diagram>
+    <Diagram label="second" uid="4520" uid_parent="4500">
+      <Tunnel _id="In1" inputs="value:4512.value" outputs="value:4521.value" uid="4521" uid_parent="4520"/>
+      <Constant _name="ten" outputs="value:4522.value" type="double" uid="4522" uid_parent="4520" value="10"/>
+      <Node _name="Add" inputs="x:4521.value,y:4522.value" outputs="x+y:4523.x+y" uid="4523" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4523.x+y" outputs="value:4530.value" uid="4524" uid_parent="4520"/>
+    </Diagram>
+  </Structure>
+  <Indicator _name="seq" conIdx="4" connection="recommended" inputs="value:4530.value" type="double" uid="4535" uid_parent="root" value="0"/>
+  <Constant _name="five" outputs="value:4600.value" type="double" uid="4600" uid_parent="root" value="5"/>
+  <Node _name="Diagram Disable Structure" uid="4610" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4600.value" uid="4611" uid_parent="4610"/>
+    <Diagram selector=" Enabled " uid="4620" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:4621.value" uid="4621" uid_parent="4620"/>
+      <Tunnel _id="Out1" inputs="value:4621.value" uid="4622" uid_parent="4620"/>
+    </Diagram>
+    <Diagram selector=" Disabled " uid="4630" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:" uid="4631" uid_parent="4630"/>
+      <Constant _name="minus" outputs="value:4632.value" type="double" uid="4632" uid_parent="4630" value="-1"/>
+      <Tunnel _id="Out1" inputs="value:4632.value" uid="4633" uid_parent="4630"/>
+    </Diagram>
+    <Tunnel _id="Out1" outputs="value:4640.value" uid="4640" uid_parent="4610"/>
+  </Node>
+  <Indicator _name="enabled" conIdx="5" connection="recommended" inputs="value:4640.value" type="double" uid="4645" uid_parent="root" value="0"/>
+  <Node _name="Conditional Disable Structure" uid="4710" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4600.value" uid="4711" uid_parent="4710"/>
+    <Diagram selector=" Default " uid="4720" uid_parent="4710">
+      <Tunnel _id="In1" outputs="value:4721.value" uid="4721" uid_parent="4720"/>
+      <Tunnel _id="Out1" inputs="value:4721.value" uid="4722" uid_parent="4720"/>
+    </Diagram>
+    <Diagram selector=" RUN_TIME_ENGINE==True " uid="4730" uid_parent="4710">
+      <Tunnel _id="In1" outputs="value:" uid="4731" uid_parent="4730"/>
+      <Constant _name="rte" outputs="value:4732.value" type="double" uid="4732" uid_parent="4730" value="7"/>
+      <Tunnel _id="Out1" inputs="value:4732.value" uid="4733" uid_parent="4730"/>
+    </Diagram>
+    <Tunnel _id="Out1" outputs="value:4740.value" uid="4740" uid_parent="4710"/>
+  </Node>
+  <Indicator _name="conditional" conIdx="6" connection="recommended" inputs="value:4740.value" type="double" uid="4745" uid_parent="root" value="0"/>
+</VI>

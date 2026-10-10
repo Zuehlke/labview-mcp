@@ -1,0 +1,23 @@
+<VI _name="T70 Case Int.vi" description="An integer case: 0, a range 1..3, an open range ..-1 and Default, each frame giving a different number.">
+  <Control _name="sel" type="int32" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <CaseFrame selector="0" uid="4310" uid_parent="4300">
+      <Constant type="double" uid="4311" uid_parent="4310" value="10" outputs="value:4311.value"/>
+      <Tunnel _id="Out1" inputs="value:4311.value" uid="4312" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="1..3" uid="4320" uid_parent="4300">
+      <Constant type="double" uid="4321" uid_parent="4320" value="20" outputs="value:4321.value"/>
+      <Tunnel _id="Out1" inputs="value:4321.value" uid="4322" uid_parent="4320"/>
+    </CaseFrame>
+    <CaseFrame selector="..-1" uid="4325" uid_parent="4300">
+      <Constant type="double" uid="4326" uid_parent="4325" value="-1" outputs="value:4326.value"/>
+      <Tunnel _id="Out1" inputs="value:4326.value" uid="4327" uid_parent="4325"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" uid="4330" uid_parent="4300">
+      <Constant type="double" uid="4331" uid_parent="4330" value="99" outputs="value:4331.value"/>
+      <Tunnel _id="Out1" inputs="value:4331.value" uid="4332" uid_parent="4330"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="out" type="double" uid="4345" uid_parent="root" value="0" inputs="value:4340.value"/>
+</VI>

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Concatenate_Strings/9dd786a2ce" source="AIXML-generated probe: pnodes2.vi" node="Concatenate Strings" ins="string|string#1" outs="concatenated string" mode="" nodeFlags="0" clean="1"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="d1" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="d2" /></types><heap><SL__arrayElement class="concat" uid="4310">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4892" aixml="concatenated string">
+            <objFlags>64</objFlags>
+            <dco class="concatDCO" uid="4890">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(72)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 17, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4886" aixml="string">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="4884">
+              <typeDesc>TypeID(73)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4889" aixml="string#1">
+            <objFlags>32832</objFlags>
+            <dco class="concatDCO" uid="4887">
+              <typeDesc>TypeID(74)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(588, 286, 605, 318)</bounds>
+        <shortCount>12</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4884" />
+          <SL__arrayElement uid="4887" />
+          </dcoList>
+        <dcoAgg uid="4890" />
+        </SL__arrayElement>
+      </heap></part>

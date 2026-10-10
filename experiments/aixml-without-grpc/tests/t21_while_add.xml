@@ -1,0 +1,13 @@
+<VI _name="T21 While Add.vi" description="One iteration of a While Loop adding two tunnelled inputs.">
+  <Control _name="a" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="b" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Structure _name="While Loop" count="" uid="6000" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" outputs="value:6010.value" uid="6010" uid_parent="6000"/>
+    <Tunnel _id="In2" inputs="value:4210.value" outputs="value:6020.value" uid="6020" uid_parent="6000"/>
+    <Node _name="Add" inputs="x:6010.value,y:6020.value" outputs="x+y:6030.x+y" uid="6030" uid_parent="6000"/>
+    <Constant _name="once" type="bool" uid="6040" uid_parent="6000" value="true" outputs="value:6040.value"/>
+    <Condition inputs="value:6040.value" uid="6045" uid_parent="6000" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:6030.x+y" outputs="value:6050.value" uid="6050" uid_parent="6000"/>
+  </Structure>
+  <Indicator _name="sum" type="double" uid="4300" uid_parent="root" value="0" inputs="value:6050.value"/>
+</VI>

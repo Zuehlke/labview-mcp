@@ -1,0 +1,31 @@
+<VI _name="T87 Disable Structures.vi" description="A diagram disable structure (the Enabled frame passes 5 through) and a conditional disable (the Default frame passes 5, RUN_TIME_ENGINE==True would give 7).">
+  <Constant _name="five" outputs="value:4600.value" type="double" uid="4600" uid_parent="root" value="5"/>
+  <Node _name="Diagram Disable Structure" uid="4610" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4600.value" uid="4611" uid_parent="4610"/>
+    <Diagram selector=" Enabled " uid="4620" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:4621.value" uid="4621" uid_parent="4620"/>
+      <Tunnel _id="Out1" inputs="value:4621.value" uid="4622" uid_parent="4620"/>
+    </Diagram>
+    <Diagram selector=" Disabled " uid="4630" uid_parent="4610">
+      <Tunnel _id="In1" outputs="value:" uid="4631" uid_parent="4630"/>
+      <Constant _name="minus" outputs="value:4632.value" type="double" uid="4632" uid_parent="4630" value="-1"/>
+      <Tunnel _id="Out1" inputs="value:4632.value" uid="4633" uid_parent="4630"/>
+    </Diagram>
+    <Tunnel _id="Out1" outputs="value:4640.value" uid="4640" uid_parent="4610"/>
+  </Node>
+  <Indicator _name="enabled" inputs="value:4640.value" type="double" uid="4645" uid_parent="root" value="0"/>
+  <Node _name="Conditional Disable Structure" uid="4710" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4600.value" uid="4711" uid_parent="4710"/>
+    <Diagram selector=" Default " uid="4720" uid_parent="4710">
+      <Tunnel _id="In1" outputs="value:4721.value" uid="4721" uid_parent="4720"/>
+      <Tunnel _id="Out1" inputs="value:4721.value" uid="4722" uid_parent="4720"/>
+    </Diagram>
+    <Diagram selector=" RUN_TIME_ENGINE==True " uid="4730" uid_parent="4710">
+      <Tunnel _id="In1" outputs="value:" uid="4731" uid_parent="4730"/>
+      <Constant _name="rte" outputs="value:4732.value" type="double" uid="4732" uid_parent="4730" value="7"/>
+      <Tunnel _id="Out1" inputs="value:4732.value" uid="4733" uid_parent="4730"/>
+    </Diagram>
+    <Tunnel _id="Out1" outputs="value:4740.value" uid="4740" uid_parent="4710"/>
+  </Node>
+  <Indicator _name="conditional" inputs="value:4740.value" type="double" uid="4745" uid_parent="root" value="0"/>
+</VI>

@@ -1,0 +1,12 @@
+<VI _name="T112 Array Subset 2D.vi" description="A 1D array reshaped to 2 x 3, a 2D Array Subset of row 1 and columns 1 to 2, reshaped back to 1D.">
+  <Control _name="v" outputs="value:4400.value" type="array{double}" uid="4400" uid_parent="root" value="[]"/>
+  <Constant _name="rows" outputs="value:4401.value" type="int32" uid="4401" uid_parent="root" value="2"/>
+  <Constant _name="cols" outputs="value:4402.value" type="int32" uid="4402" uid_parent="root" value="3"/>
+  <Node _name="Reshape Array" inputs="array:4400.value,dimension size:4401.value,dimension size:4402.value" outputs="output array:4410.output array" uid="4410" uid_parent="root"/>
+  <Constant _name="one" outputs="value:4403.value" type="int32" uid="4403" uid_parent="root" value="1"/>
+  <Constant _name="two" outputs="value:4404.value" type="int32" uid="4404" uid_parent="root" value="2"/>
+  <Node _name="Array Subset" dimensions="2" inputs="array:4410.output array,index:4403.value,length:4403.value,index:4403.value,length:4404.value" outputs="subarray:4420.subarray" uid="4420" uid_parent="root"/>
+  <Constant _name="flat" outputs="value:4405.value" type="int32" uid="4405" uid_parent="root" value="2"/>
+  <Node _name="Reshape Array" inputs="array:4420.subarray,dimension size:4405.value" outputs="output array:4430.output array" uid="4430" uid_parent="root"/>
+  <Indicator _name="sub" inputs="value:4430.output array" type="array{double}" uid="4435" uid_parent="root" value="[]"/>
+</VI>

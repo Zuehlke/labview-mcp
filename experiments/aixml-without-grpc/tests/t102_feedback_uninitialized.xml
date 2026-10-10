@@ -1,0 +1,8 @@
+<VI _name="T102 Feedback Uninitialized.vi" description="A feedback node with no initializer inside a For Loop delays the loop index by one iteration; the last value out is n-2.">
+  <Control _name="n" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Structure _name="For Loop" count="5000.value" maxin="4200.value" maxout="" uid="5000" uid_parent="root">
+    <Node _name="Feedback Node" inputs="initializer:,next value:5000.value" outputs="previous value:5050.previous value" uid="5050" uid_parent="5000"/>
+    <Tunnel _id="Out1" inputs="value:5050.previous value" outputs="value:5200.value" uid="5200" uid_parent="5000"/>
+  </Structure>
+  <Indicator _name="delayed" inputs="value:5200.value" type="int32" uid="5300" uid_parent="root" value="0"/>
+</VI>

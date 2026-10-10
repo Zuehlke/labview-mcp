@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Texture%2ESet Texture" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\Native 3D Graph\draw_point_sprite.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Add Texture" /><TypeDesc Type="Void" Format="inline" Label="Add Texture" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x006F" HasItem="0" Format="inline" Label="Texture" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x006F" HasItem="0" Format="inline" Label="Texture" /></types><heap><SL__arrayElement class="invokeNode" uid="805">
+                <objFlags>66176</objFlags>
+                <termList elements="8">
+                  <SL__arrayElement class="term" uid="807">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="808">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(311)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="810">
+                    <dco class="hGrowCItem" uid="811">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(312)</typeDesc>
+                      <termBounds>(0, 95, 9, 108)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="813">
+                    <objFlags>1</objFlags>
+                    <dco class="hGrowCItem" uid="814">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(313)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="816">
+                    <dco class="hGrowCItem" uid="817">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(314)</typeDesc>
+                      <termBounds>(9, 95, 18, 108)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="819">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="820">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(315)</typeDesc>
+                      <termBounds>(18, 0, 34, 54)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="823">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="824">
+                      <objFlags>196609</objFlags>
+                      <typeDesc>TypeID(316)</typeDesc>
+                      <termBounds>(18, 54, 34, 108)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="827">
+                    <objFlags>32768</objFlags>
+                    <dco class="invokeItem" uid="828">
+                      <typeDesc>TypeID(317)</typeDesc>
+                      <termBounds>(34, 0, 50, 54)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="831">
+                    <dco class="invokeItem" uid="832">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(318)</typeDesc>
+                      <termBounds>(34, 54, 50, 108)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(34, 521, 85, 629)</bounds>
+                <shortCount>14</shortCount>
+                <clumpNum>851971</clumpNum>
+                <dcoList elements="4">
+                  <SL__arrayElement uid="820" />
+                  <SL__arrayElement uid="824" />
+                  <SL__arrayElement uid="828" />
+                  <SL__arrayElement uid="832" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="808" />
+                  <SL__arrayElement uid="811" />
+                  <SL__arrayElement uid="814" />
+                  <SL__arrayElement uid="817" />
+                  </permDCOList>
+                <nodeName>"SceneObject"</nodeName>
+                <oMId>000C</oMId>
+                <methName>"Texture.Set Texture"</methName>
+                <methCode>763851811</methCode>
+                <invokeFlags>08</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>

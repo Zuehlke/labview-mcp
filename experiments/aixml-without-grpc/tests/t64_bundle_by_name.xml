@@ -1,0 +1,6 @@
+<VI _name="T64 Bundle By Name.vi" description="Bundle By Name replaces y in a cluster constant with a control's value.">
+  <Constant _name="origin" type="cluster{double.x,double.y}" uid="4200" uid_parent="root" value="[1.5,2.5]" outputs="value:4200.value"/>
+  <Control _name="new y" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Bundle By Name" fields="y" inputs="y:4210.value,input cluster:4200.value" outputs="output cluster:4220.output cluster" uid="4220" uid_parent="root"/>
+  <Indicator _name="pt" type="cluster{double.x,double.y}" uid="4230" uid_parent="root" value="[0,0]" inputs="value:4220.output cluster"/>
+</VI>

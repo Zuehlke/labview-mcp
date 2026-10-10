@@ -1,0 +1,14 @@
+<VI _name="T83 More Prims.vi" description="Primitives the original name table lacked: comparisons, String To Path, To Upper Case, Boolean To (0,1).">
+  <Control _name="a" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="b" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Greater?" inputs="x:4200.value,y:4210.value" outputs="x &gt; y?:4220.gt" uid="4220" uid_parent="root"/>
+  <Indicator _name="a > b" type="bool" uid="4225" uid_parent="root" value="false" inputs="value:4220.gt"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4200.value" outputs="x &gt;= 0?:4230.ge0" uid="4230" uid_parent="root"/>
+  <Node _name="Boolean To (0\2C1)" inputs="Boolean:4230.ge0" outputs="0\2C 1:4240.n" uid="4240" uid_parent="root"/>
+  <Indicator _name="a >= 0 as int" type="int16" uid="4245" uid_parent="root" value="0" inputs="value:4240.n"/>
+  <Control _name="s" type="string" uid="4250" uid_parent="root" value="" outputs="value:4250.value"/>
+  <Node _name="To Upper Case" inputs="string:4250.value" outputs="all upper case string:4260.up" uid="4260" uid_parent="root"/>
+  <Indicator _name="upper" type="string" uid="4265" uid_parent="root" value="" inputs="value:4260.up"/>
+  <Node _name="String To Path" inputs="string:4250.value" outputs="path:4270.p" uid="4270" uid_parent="root"/>
+  <Indicator _name="as path" type="path" uid="4275" uid_parent="root" value="" inputs="value:4270.p"/>
+</VI>

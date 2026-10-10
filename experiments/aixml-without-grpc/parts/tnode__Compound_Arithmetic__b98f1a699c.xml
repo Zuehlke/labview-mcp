@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/b98f1a699c" source="AIXML-generated probe: pnodes2.vi" node="Compound Arithmetic" ins="value|value#1|value#2|value#3" outs="result" mode="inversions= , , , ;operation=Add" nodeFlags="0" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></types><heap><SL__arrayElement class="cpdArith" uid="4340">
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="5150" aixml="result">
+            <objFlags>64</objFlags>
+            <dco class="cpdArithDCO" uid="5148">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(58)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 12, 33, 24)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5144" aixml="value">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5142">
+              <typeDesc>TypeID(59)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5147" aixml="value#1">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5145">
+              <typeDesc>TypeID(60)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5153" aixml="value#2">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5152">
+              <typeDesc>TypeID(61)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 0, 24, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="5156" aixml="value#3">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="5155">
+              <typeDesc>TypeID(62)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(24, 0, 32, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(218, 415, 251, 439)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="5142" />
+          <SL__arrayElement uid="5145" />
+          <SL__arrayElement uid="5152" />
+          <SL__arrayElement uid="5155" />
+          </dcoList>
+        <dcoAgg uid="5148" />
+        </SL__arrayElement>
+      </heap></part>

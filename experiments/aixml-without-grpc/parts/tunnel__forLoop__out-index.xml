@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tunnel" key="tunnel/forLoop/out-index" source="AIXML-generated probe: parr.vi" clean="1"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><wrap><SL__arrayElement class="term" uid="4440">
+            <objFlags>2097216</objFlags>
+            <dco class="lpTun" uid="4716">
+              <objFlags>16779265</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="4718" />
+                <SL__arrayElement uid="4440" />
+                </termList>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(75, 147, 84, 156)</termBounds>
+              <innerLpTunDCO class="innerLpTun" uid="4720">
+                <objFlags>16777217</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement uid="4718" />
+                  <SL__arrayElement uid="4440" />
+                  </termList>
+                <typeDesc>TypeID(25)</typeDesc>
+                <lpTunDCO uid="4716" />
+                </innerLpTunDCO>
+              <TunnelType>01</TunnelType>
+              <DefaultTunnelType>01</DefaultTunnelType>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4718">
+                    <objFlags>2260992</objFlags>
+                    <dco uid="4716" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

@@ -1,0 +1,22 @@
+<VI _name="T73 Case Error.vi" description="The error case: No Error passes the cluster through and reports ok, Error reports not ok.">
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]" outputs="value:4200.value"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" uid="4301" uid_parent="4300"/>
+    <CaseFrame selector="No Error" uid="4310" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4313.value" uid="4313" uid_parent="4310"/>
+      <Constant type="bool" uid="4311" uid_parent="4310" value="true" outputs="value:4311.value"/>
+      <Tunnel _id="Out1" inputs="value:4311.value" uid="4312" uid_parent="4310"/>
+      <Tunnel _id="Out2" inputs="value:4313.value" uid="4314" uid_parent="4310"/>
+    </CaseFrame>
+    <CaseFrame selector="Error" uid="4320" uid_parent="4300">
+      <Tunnel _id="In1" outputs="value:4323.value" uid="4323" uid_parent="4320"/>
+      <Constant type="bool" uid="4321" uid_parent="4320" value="false" outputs="value:4321.value"/>
+      <Tunnel _id="Out1" inputs="value:4321.value" uid="4322" uid_parent="4320"/>
+      <Tunnel _id="Out2" inputs="value:4323.value" uid="4324" uid_parent="4320"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+    <Tunnel _id="Out2" outputs="value:4350.value" uid="4350" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="ok" type="bool" uid="4345" uid_parent="root" value="false" inputs="value:4340.value"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4355" uid_parent="root" value="[false,0,]" inputs="value:4350.value"/>
+</VI>

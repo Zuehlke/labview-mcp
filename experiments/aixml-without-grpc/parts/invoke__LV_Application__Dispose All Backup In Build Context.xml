@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Dispose All Backup In Build Context" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\AppBuilder\AB_Classes\Build\Copy_Files_Core.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="buildContext" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="buildContext" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Dispose All Backup In Build Context" /><TypeDesc Type="Void" Format="inline" Label="Dispose All Backup In Build Context" /></types><heap><SL__arrayElement class="invokeNode" uid="7780">
+                        <objFlags>33555072</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="7782">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="7783">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(447)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="7785">
+                            <dco class="hGrowCItem" uid="7786">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(448)</typeDesc>
+                              <termBounds>(0, 183, 9, 196)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="7788">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="7789">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(449)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="7791">
+                            <dco class="hGrowCItem" uid="7792">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(450)</typeDesc>
+                              <termBounds>(9, 183, 18, 196)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="7794">
+                            <dco class="invokeItem" uid="7795">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(451)</typeDesc>
+                              <termBounds>(18, 0, 34, 98)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="7798">
+                            <dco class="invokeItem" uid="7799">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(452)</typeDesc>
+                              <termBounds>(18, 98, 34, 196)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(39, 26, 74, 222)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>2359302</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="7795" />
+                          <SL__arrayElement uid="7799" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="7783" />
+                          <SL__arrayElement uid="7786" />
+                          <SL__arrayElement uid="7789" />
+                          <SL__arrayElement uid="7792" />
+                          </permDCOList>
+                        <nodeName>"App"</nodeName>
+                        <oMId>0026</oMId>
+                        <methName>"Dispose All Backup In Build Context"</methName>
+                        <methCode>2466</methCode>
+                        <invokeFlags>0408</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/24209" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\MATLAB Node\Lorenz Diff Eq\MATLAB - Lorenz Diff Eq.vi"><types><TypeDesc Type="Refnum" RefType="37" Format="inline" Label="session in" /><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="379">
+        <objFlags>512</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="381">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="382">
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>602</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="384">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="385">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(46)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>602</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="387">
+            <dco class="parm" uid="388">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(47)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>602</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="369">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 124)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Close MATLAB Session"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(144, 685, 176, 717)</bounds>
+        <shortCount>24</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>24209</primResID>
+        <primIndex>602</primIndex>
+        </SL__arrayElement>
+      </heap></part>

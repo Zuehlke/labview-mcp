@@ -1,0 +1,14 @@
+<VI _name="T111 In Range Modes.vi" description="In Range and Coerce with each include setting; x on the lower limit and on the upper limit shows which limits count as in range.">
+  <Control _name="x" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Constant _name="lo" outputs="value:4201.value" type="double" uid="4201" uid_parent="root" value="0"/>
+  <Constant _name="hi" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="10"/>
+  <Node _name="In Range and Coerce" inputs="upper limit:4202.value,x:4200.value,lower limit:4201.value" outputs="coerced(x):,In Range?:4300.In Range?" uid="4300" uid_parent="root"/>
+  <Indicator _name="none" inputs="value:4300.In Range?" type="bool" uid="4305" uid_parent="root" value="false"/>
+  <Node _name="In Range and Coerce" includeLow="true" inputs="upper limit:4202.value,x:4200.value,lower limit:4201.value" outputs="coerced(x):,In Range?:4310.In Range?" uid="4310" uid_parent="root"/>
+  <Indicator _name="low" inputs="value:4310.In Range?" type="bool" uid="4315" uid_parent="root" value="false"/>
+  <Node _name="In Range and Coerce" includeHigh="true" inputs="upper limit:4202.value,x:4200.value,lower limit:4201.value" outputs="coerced(x):,In Range?:4320.In Range?" uid="4320" uid_parent="root"/>
+  <Indicator _name="high" inputs="value:4320.In Range?" type="bool" uid="4325" uid_parent="root" value="false"/>
+  <Node _name="In Range and Coerce" includeHigh="true" includeLow="true" inputs="upper limit:4202.value,x:4200.value,lower limit:4201.value" outputs="coerced(x):4330.coerced(x),In Range?:4330.In Range?" uid="4330" uid_parent="root"/>
+  <Indicator _name="both" inputs="value:4330.In Range?" type="bool" uid="4335" uid_parent="root" value="false"/>
+  <Indicator _name="coerced" inputs="value:4330.coerced(x)" type="double" uid="4336" uid_parent="root" value="0"/>
+</VI>

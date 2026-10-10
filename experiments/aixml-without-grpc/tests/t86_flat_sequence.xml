@@ -1,0 +1,15 @@
+<VI _name="T86 Flat Sequence.vi" description="A flat sequence of two frames: 1 out of the first, 1 + 10 in the second.">
+  <Structure _name="Flat Sequence Frame" uid="4500" uid_parent="root">
+    <Diagram label="first" uid="4510" uid_parent="4500">
+      <Constant _name="one" outputs="value:4511.value" type="double" uid="4511" uid_parent="4510" value="1"/>
+      <Tunnel _id="Out1" inputs="value:4511.value" outputs="value:4512.value" uid="4512" uid_parent="4510"/>
+    </Diagram>
+    <Diagram label="second" uid="4520" uid_parent="4500">
+      <Tunnel _id="In1" inputs="value:4512.value" outputs="value:4521.value" uid="4521" uid_parent="4520"/>
+      <Constant _name="ten" outputs="value:4522.value" type="double" uid="4522" uid_parent="4520" value="10"/>
+      <Node _name="Add" inputs="x:4521.value,y:4522.value" outputs="x+y:4523.x+y" uid="4523" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4523.x+y" outputs="value:4530.value" uid="4524" uid_parent="4520"/>
+    </Diagram>
+  </Structure>
+  <Indicator _name="seq" inputs="value:4530.value" type="double" uid="4535" uid_parent="root" value="0"/>
+</VI>

@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1600" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\File IO\XML\Parse XML\Generate XML String with Parser API.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="want seconds? (F)" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" /><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="date format (0)"><EnumLabel>short</EnumLabel>
+        <EnumLabel>long</EnumLabel>
+        <EnumLabel>abbreviated</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="183">
+        <objFlags>512</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="221">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="224">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(160)</typeDesc>
+              <termBounds>(16, 16, 32, 32)</termBounds>
+              <primIndex>140</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="222">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="227">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(161)</typeDesc>
+              <termBounds>(0, 16, 16, 32)</termBounds>
+              <primIndex>140</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="225">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="231">
+              <typeDesc>TypeID(162)</typeDesc>
+              <termBounds>(21, 0, 32, 16)</termBounds>
+              <primIndex>140</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="226">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="228">
+              <typeDesc>TypeID(163)</typeDesc>
+              <termBounds>(11, 0, 21, 16)</termBounds>
+              <primIndex>140</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="230">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="233">
+              <typeDesc>TypeID(164)</typeDesc>
+              <termBounds>(0, 0, 11, 16)</termBounds>
+              <primIndex>140</primIndex>
+              <parmIndex>4</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(416, -42, 448, -10)</bounds>
+        <shortCount>22</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1600</primResID>
+        <primIndex>140</primIndex>
+        </SL__arrayElement>
+      </heap></part>

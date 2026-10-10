@@ -1,0 +1,1161 @@
+{
+ "t00_passthrough": {
+  "cases": [
+   {
+    "inputs": "a=3.25",
+    "outputs": {
+     "b": 3.25
+    }
+   }
+  ]
+ },
+ "t01_add": {
+  "cases": [
+   {
+    "inputs": "a=3.25;b=4",
+    "outputs": {
+     "sum": 7.25
+    }
+   },
+   {
+    "inputs": "a=-10;b=2.5",
+    "outputs": {
+     "sum": -7.5
+    }
+   }
+  ]
+ },
+ "t02_const_strlen": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "len": 5
+    }
+   }
+  ]
+ },
+ "t03_select": {
+  "cases": [
+   {
+    "inputs": "flag=true",
+    "outputs": {
+     "out": 1.5
+    }
+   },
+   {
+    "inputs": "flag=false",
+    "outputs": {
+     "out": -2
+    }
+   }
+  ]
+ },
+ "t04_compare_fanout": {
+  "cases": [
+   {
+    "inputs": "x=1;y=2",
+    "outputs": {
+     "lt": "True",
+     "ge": "False"
+    }
+   },
+   {
+    "inputs": "x=3;y=2",
+    "outputs": {
+     "lt": "False",
+     "ge": "True"
+    }
+   }
+  ]
+ },
+ "t05_mixed_types": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "r": 10
+    }
+   }
+  ]
+ },
+ "t06_bool_pass": {
+  "cases": [
+   {
+    "inputs": "in=true",
+    "outputs": {
+     "out": "True"
+    }
+   }
+  ]
+ },
+ "t07_less": {
+  "cases": [
+   {
+    "inputs": "x=1;y=2",
+    "outputs": {
+     "lt": "True"
+    }
+   }
+  ]
+ },
+ "t08_select_const": {
+  "cases": [
+   {
+    "inputs": "t=1.5;f=-2",
+    "outputs": {
+     "out": 1.5
+    }
+   }
+  ]
+ },
+ "t09_not_chain": {
+  "cases": [
+   {
+    "inputs": "x=3;y=2",
+    "outputs": {
+     "ge": "True"
+    }
+   }
+  ]
+ },
+ "t10_fanout": {
+  "cases": [
+   {
+    "inputs": "a=4.5",
+    "outputs": {
+     "b": 4.5,
+     "c": 4.5
+    }
+   }
+  ]
+ },
+ "t11_mul_same": {
+  "cases": [
+   {
+    "inputs": "x=3;y=2.5",
+    "outputs": {
+     "r": 7.5
+    }
+   }
+  ]
+ },
+ "t12_add_mixed": {
+  "cases": [
+   {
+    "inputs": "n=4;d=0.5",
+    "outputs": {
+     "r": 4.5
+    }
+   }
+  ]
+ },
+ "t13_int_pass": {
+  "cases": [
+   {
+    "inputs": "n=42",
+    "outputs": {
+     "m": 42
+    }
+   }
+  ]
+ },
+ "t20_while_count": {
+  "cases": [
+   {
+    "inputs": "limit=5",
+    "outputs": {
+     "last i": 5
+    }
+   },
+   {
+    "inputs": "limit=0",
+    "outputs": {
+     "last i": 0
+    }
+   }
+  ]
+ },
+ "t21_while_add": {
+  "cases": [
+   {
+    "inputs": "a=1.25;b=2",
+    "outputs": {
+     "sum": 3.25
+    }
+   }
+  ]
+ },
+ "t22_while_sum": {
+  "cases": [
+   {
+    "inputs": "limit=4",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "limit=100",
+    "outputs": {
+     "sum": 5050
+    }
+   }
+  ]
+ },
+ "t23_sr_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 7
+    }
+   }
+  ]
+ },
+ "t24_sr_inc": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 8
+    }
+   }
+  ]
+ },
+ "t25_while_i_add": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 10
+    }
+   }
+  ]
+ },
+ "t26_sr_i": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sum": 0
+    }
+   }
+  ]
+ },
+ "t27_sr_i_seven": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sum": 7
+    }
+   }
+  ]
+ },
+ "t28_zero_const": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "out": 0
+    }
+   }
+  ]
+ },
+ "t30_for_sum": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "n=101",
+    "outputs": {
+     "sum": 5050
+    }
+   }
+  ]
+ },
+ "t31_for_scale": {
+  "cases": [
+   {
+    "inputs": "n=4;k=2.5",
+    "outputs": {
+     "last": 7.5
+    }
+   }
+  ]
+ },
+ "t40_case_bool": {
+  "cases": [
+   {
+    "inputs": "flag=true;x=3.5",
+    "outputs": {
+     "y": 7
+    }
+   },
+   {
+    "inputs": "flag=false;x=3.5",
+    "outputs": {
+     "y": 3.5
+    }
+   }
+  ]
+ },
+ "t41_nested": {
+  "cases": [
+   {
+    "inputs": "n=10;k=4",
+    "outputs": {
+     "sum": 6
+    }
+   },
+   {
+    "inputs": "n=3;k=100",
+    "outputs": {
+     "sum": 3
+    }
+   }
+  ]
+ },
+ "t50_call": {
+  "callees": {
+   "Callee Add {stamp}.vi": "t01_add"
+  },
+  "cases": [
+   {
+    "inputs": "p=1.5;q=2",
+    "outputs": {
+     "r": 3.5
+    }
+   }
+  ]
+ },
+ "t51_call_lib_deg2rad": {
+  "cases": [
+   {
+    "inputs": "deg=180",
+    "outputs": {
+     "rad": 3.141592653589793
+    }
+   }
+  ]
+ },
+ "t52_call_lib_erf": {
+  "cases": [
+   {
+    "inputs": "x=0.5",
+    "outputs": {
+     "erf": 0.5204998778130465
+    }
+   }
+  ]
+ },
+ "t53_call_vilib_trim": {
+  "cases": [
+   {
+    "inputs": "s=  hi there  ",
+    "outputs": {
+     "t": "hi there"
+    }
+   }
+  ]
+ },
+ "t54_call_coerce": {
+  "cases": [
+   {
+    "inputs": "deg=90",
+    "outputs": {
+     "rad": 1.5707963267948966
+    }
+   }
+  ]
+ },
+ "t55_call_in_loop": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "sum": 0.10471975511965977
+    }
+   }
+  ]
+ },
+ "t56_call_error_chain": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "cleared": "False"
+    }
+   }
+  ]
+ },
+ "t57_call_subfolder": {
+  "callees": {
+   "sub/SubCallee {stamp}.vi": "t01_add"
+  },
+  "cases": [
+   {
+    "inputs": "p=-3;q=0.5",
+    "outputs": {
+     "r": -2.5
+    }
+   }
+  ]
+ },
+ "t60_cluster_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "pt out": "[1.5,2.5]",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t61_array_pass": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,2,3]",
+    "outputs": {
+     "consts": "[1,2,3]",
+     "values out": "[1.5,2,3]"
+    }
+   }
+  ]
+ },
+ "t62_enum_pass": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "mode out": 2,
+     "mode echo": 0
+    }
+   }
+  ]
+ },
+ "t63_unbundle_by_name": {
+  "cases": [
+   {
+    "inputs": "pt={1.5,2.25}",
+    "outputs": {
+     "sum": 3.75
+    }
+   }
+  ]
+ },
+ "t64_bundle_by_name": {
+  "cases": [
+   {
+    "inputs": "new y=-4",
+    "outputs": {
+     "pt": "[1.5,-4]"
+    }
+   }
+  ]
+ },
+ "t65_bundle_unbundle": {
+  "cases": [
+   {
+    "inputs": "n=42",
+    "outputs": {
+     "p": 42,
+     "q": "True"
+    }
+   }
+  ]
+ },
+ "t66_array_nodes": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,2.5,3.5]",
+    "outputs": {
+     "n": 3,
+     "second": 2.5,
+     "built": "[7,2.5]"
+    }
+   }
+  ]
+ },
+ "t67_for_indexing": {
+  "cases": [
+   {
+    "inputs": "values=[1.5,-2,4]",
+    "outputs": {
+     "doubled": "[3,-4,8]"
+    }
+   }
+  ]
+ },
+ "t68_for_build_i": {
+  "cases": [
+   {
+    "inputs": "n=4",
+    "outputs": {
+     "indices": "[0,1,2,3]"
+    }
+   }
+  ]
+ },
+ "t70_case_int": {
+  "cases": [
+   {
+    "inputs": "sel=0",
+    "outputs": {
+     "out": 10
+    }
+   },
+   {
+    "inputs": "sel=2",
+    "outputs": {
+     "out": 20
+    }
+   },
+   {
+    "inputs": "sel=-7",
+    "outputs": {
+     "out": -1
+    }
+   },
+   {
+    "inputs": "sel=4",
+    "outputs": {
+     "out": 99
+    }
+   }
+  ]
+ },
+ "t71_case_enum": {
+  "cases": [
+   {
+    "inputs": "mode=0;x=8",
+    "outputs": {
+     "level": 0
+    }
+   },
+   {
+    "inputs": "mode=1;x=8",
+    "outputs": {
+     "level": 8
+    }
+   },
+   {
+    "inputs": "mode=2;x=8",
+    "outputs": {
+     "level": 4
+    }
+   }
+  ]
+ },
+ "t72_case_string": {
+  "cases": [
+   {
+    "inputs": "cmd=start",
+    "outputs": {
+     "code": 1
+    }
+   },
+   {
+    "inputs": "cmd=stop",
+    "outputs": {
+     "code": 2
+    }
+   },
+   {
+    "inputs": "cmd=idle",
+    "outputs": {
+     "code": 0
+    }
+   },
+   {
+    "inputs": "cmd=other",
+    "outputs": {
+     "code": 0
+    }
+   }
+  ]
+ },
+ "t73_case_error": {
+  "cases": [
+   {
+    "inputs": "error in={false,0,}",
+    "outputs": {
+     "ok": "True",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "error in={true,42,boom}",
+    "outputs": {
+     "ok": "False",
+     "error out": "[True,42,boom]"
+    }
+   }
+  ]
+ },
+ "t74_arrays_of": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "joined": "[alpha,beta]",
+     "bits out": "[True,False,True]",
+     "x": 3.5,
+     "n": 4
+    }
+   }
+  ]
+ },
+ "t75_array2d_nested": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "g out": "[1,2,3,4]",
+     "sizes": "[0,0]",
+     "name": "probe",
+     "pos": "[1,2]",
+     "ids": "[7,8]"
+    }
+   }
+  ]
+ },
+ "t76_for_2d_rows": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "row sums": "[6,15]",
+     "rows": "[1,2,3,4,5,6]"
+    }
+   }
+  ]
+ },
+ "t77_bundle_new": {
+  "cases": [
+   {
+    "inputs": "a=2.5;b=7",
+    "outputs": {
+     "ab": "[2.5,7]",
+     "b out": 7
+    }
+   }
+  ]
+ },
+ "t78_index_shapes": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "first": 1.5,
+     "third": 3.5,
+     "m12": 6,
+     "row1": "[4,5,6]",
+     "col2": "[3,6]"
+    }
+   }
+  ]
+ },
+ "t79_fixed_consts": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "empty string": "",
+     "two pi": 6.283185307179586,
+     "pi": 3.141592653589793,
+     "tab": "\t",
+     "inf": "Infinity",
+     "eps": 2.220446049250313e-16
+    }
+   }
+  ]
+ },
+ "t80_template_nodes2": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "formatted": ">7-1.50",
+     "fmt error": "[False,0,]",
+     "remaining": " rest",
+     "offset": 2,
+     "scanned": 42,
+     "grid": "[1.5,1.5]",
+     "ab": "ab",
+     "abcd": "abcd",
+     "merged": "[False,0,]",
+     "sum4": 6,
+     "xor": "False"
+    }
+   }
+  ]
+ },
+ "t81_template_nodes": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "joined": "abcdef",
+     "formatted": "7-1.50",
+     "product": 6,
+     "any": "True",
+     "filled": "[1.5,1.5,1.5]",
+     "kept": "[1,4,5]",
+     "deleted": "[2,3]",
+     "sub": "[2,3]",
+     "replaced": "[1,1.5,3,4,5]",
+     "inserted": "[1,2,1.5,3,4,5]"
+    }
+   }
+  ]
+ },
+ "t82_basic_types": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Y": "",
+     "big out": 100,
+     "back": 2.5,
+     "c out": "[3,0]"
+    }
+   }
+  ]
+ },
+ "t83_more_prims": {
+  "cases": [
+   {
+    "inputs": "a=2;b=1;s=abc",
+    "outputs": {
+     "a > b": "True",
+     "a >= 0 as int": 1,
+     "upper": "ABC",
+     "as path": "abc"
+    }
+   },
+   {
+    "inputs": "a=-1;b=1;s=x",
+    "outputs": {
+     "a > b": "False",
+     "a >= 0 as int": 0,
+     "upper": "X"
+    }
+   }
+  ]
+ },
+ "t84_locals": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "copy": 5,
+     "n again": 5
+    }
+   }
+  ]
+ },
+ "t85_feedback_root": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "count": 1
+    }
+   }
+  ]
+ },
+ "t86_flat_sequence": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "seq": 11
+    }
+   }
+  ]
+ },
+ "t87_disable": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "enabled": 5,
+     "conditional": 5
+    }
+   }
+  ]
+ },
+ "t88_event": {
+  "cases": []
+ },
+ "t89_case_default": {
+  "cases": [
+   {
+    "inputs": "sel=1;x=3.5",
+    "outputs": {
+     "out": 3.5
+    }
+   },
+   {
+    "inputs": "sel=7;x=3.5",
+    "outputs": {
+     "out": 0
+    }
+   }
+  ]
+ },
+ "t90_refnums": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "app is null": "True",
+     "local is null": "False",
+     "close error": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t91_property_nodes": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "app dir": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026",
+     "app name": "LabVIEW.exe",
+     "name length": 28,
+     "index": 1,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t92_implicit_property_nodes": {
+  "cases": [
+   {
+    "inputs": "Text=hello",
+    "outputs": {
+     "flag visible": "False",
+     "text value": "hello",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t93_references": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "flag visible": "True",
+     "static name": "Clear Errors.vi",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t94_expression_node": {
+  "cases": [
+   {
+    "inputs": "x=3;n=7",
+    "outputs": {
+     "y": 7,
+     "m": 49
+    }
+   }
+  ]
+ },
+ "t95_feedback_loop": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "n=0",
+    "outputs": {
+     "sum": 0
+    }
+   }
+  ]
+ },
+ "t96_stacked_shift_register": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "last three": 6
+    }
+   },
+   {
+    "inputs": "n=3",
+    "outputs": {
+     "last three": 1
+    }
+   }
+  ]
+ },
+ "t97_case_enum_quoted": {
+  "cases": [
+   {
+    "inputs": "mode=0;x=8",
+    "outputs": {
+     "level": 0
+    }
+   },
+   {
+    "inputs": "mode=1;x=8",
+    "outputs": {
+     "level": 8
+    }
+   },
+   {
+    "inputs": "mode=2;x=8",
+    "outputs": {
+     "level": 4
+    }
+   }
+  ]
+ },
+ "t98_global_variable": {
+  "cases": [
+   {
+    "inputs": "text=hello",
+    "outputs": {
+     "read back": "hello"
+    }
+   },
+   {
+    "inputs": "text=second",
+    "outputs": {
+     "read back": "second"
+    }
+   }
+  ]
+ },
+ "t99_io_types": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "clock out": "OnboardClock",
+     "named out": "demo"
+    }
+   },
+   {
+    "inputs": "channel=Dev1/ai0",
+    "outputs": {
+     "channel out": "Dev1/ai0"
+    }
+   }
+  ]
+ },
+ "t100_inplace": {
+  "cases": [
+   {
+    "inputs": "x=2.5;y=7",
+    "outputs": {
+     "x out": 3.5,
+     "y out": 14
+    }
+   },
+   {
+    "inputs": "x=-1;y=0",
+    "outputs": {
+     "x out": 0,
+     "y out": 0
+    }
+   }
+  ]
+ },
+ "t101_conditional_tunnel": {
+  "cases": [
+   {
+    "inputs": "values=[1,-2,3,0,-5]",
+    "outputs": {
+     "positive": "[1,3]",
+     "other": "[-2,0,-5]"
+    }
+   }
+  ]
+ },
+ "t102_feedback_uninitialized": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "delayed": 3
+    }
+   },
+   {
+    "inputs": "n=3",
+    "outputs": {
+     "delayed": 1
+    }
+   }
+  ]
+ },
+ "t103_strict_static_ref": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "static name": "Clear Errors.vi",
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t104_subarray": {
+  "cases": [
+   {
+    "inputs": "v=[1,2,3,4,5,6]",
+    "outputs": {
+     "t": "[1,4,2,5,3,6]",
+     "r": "[6,5,4,3,2,1]"
+    }
+   }
+  ]
+ },
+ "t105_inplace_tunnels": {
+  "cases": [
+   {
+    "inputs": "x=2.5;k=4",
+    "outputs": {
+     "x out": 10,
+     "product": 10
+    }
+   },
+   {
+    "inputs": "x=-3;k=0.5",
+    "outputs": {
+     "x out": -1.5,
+     "product": -1.5
+    }
+   }
+  ]
+ },
+ "t106_defaults": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "d out": 2.5,
+     "i out": -7,
+     "s out": "a*x1-b*x1*x2",
+     "b out": "true",
+     "a out": "[300,50]",
+     "c out": "[1.25,3,hi]",
+     "e out": 2
+    }
+   }
+  ]
+ },
+ "t107_styles": {
+  "cases": [
+   {
+    "inputs": "plain=true",
+    "outputs": {
+     "plain out": "true",
+     "ring out": 1,
+     "go out": "false"
+    }
+   }
+  ]
+ },
+ "t108_variant": {
+  "cases": [
+   {
+    "inputs": "x=4.5",
+    "outputs": {
+     "x back": 4.5,
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t109_tdms_refnum": {
+  "cases": [
+   {
+    "inputs": "path=C:\\temp\\aixml-no-grpc\\out\\t109_data.tdms",
+    "outputs": {
+     "path out": "C:\\temp\\aixml-no-grpc\\out\\t109_data.tdms",
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t110_graphs": {
+  "cases": []
+ },
+ "t111_in_range_modes": {
+  "cases": [
+   {
+    "inputs": "x=0",
+    "outputs": {
+     "none": "false",
+     "low": "true",
+     "high": "false",
+     "both": "true"
+    }
+   },
+   {
+    "inputs": "x=10",
+    "outputs": {
+     "none": "false",
+     "low": "false",
+     "high": "true",
+     "both": "true"
+    }
+   },
+   {
+    "inputs": "x=12",
+    "outputs": {
+     "none": "false",
+     "low": "false",
+     "high": "false",
+     "both": "false",
+     "coerced": 10
+    }
+   }
+  ]
+ },
+ "t112_array_subset_2d": {
+  "cases": [
+   {
+    "inputs": "v=[1,2,3,4,5,6]",
+    "outputs": {
+     "sub": "[5,6]"
+    }
+   }
+  ]
+ },
+ "t113_large_pane": {
+  "cases": [
+   {
+    "inputs": "a=1.5;b=2",
+    "outputs": {
+     "sum": 3.5
+    }
+   }
+  ]
+ },
+ "t114_format_into_string": {
+  "cases": [
+   {
+    "inputs": "a=1;b=2;c=3.14;d=end",
+    "outputs": {
+     "text": "1-2-3.1-end"
+    }
+   }
+  ]
+ }
+}

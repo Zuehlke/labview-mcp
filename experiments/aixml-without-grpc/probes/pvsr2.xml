@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="pvsr2.vi" description="Probe: control references to numeric, enum, string, path, cluster and array controls.">
+  <Control _name="Num" outputs="value:" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="Int" outputs="value:" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Control _name="Mode" outputs="value:" type="uint16{Off,On}" uid="4220" uid_parent="root" value="0"/>
+  <Control _name="Str" outputs="value:" type="string" uid="4230" uid_parent="root" value=""/>
+  <Control _name="Pth" outputs="value:" type="path" uid="4240" uid_parent="root" value=""/>
+  <Control _name="Clu" outputs="value:" type="cluster{bool.a,int32.b}" uid="4250" uid_parent="root" value="[false,0]"/>
+  <Control _name="Arr" outputs="value:" type="array{double}" uid="4260" uid_parent="root" value="[]"/>
+  <Node _name="VI Server Reference" element="Num" outputs="Num:4300.Num" uid="4300" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Int" outputs="Int:4310.Int" uid="4310" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Mode" outputs="Mode:4320.Mode" uid="4320" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Str" outputs="Str:4330.Str" uid="4330" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Pth" outputs="Pth:4340.Pth" uid="4340" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Clu" outputs="Clu:4350.Clu" uid="4350" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Arr" outputs="Arr:4360.Arr" uid="4360" uid_parent="root"/>
+</VI>

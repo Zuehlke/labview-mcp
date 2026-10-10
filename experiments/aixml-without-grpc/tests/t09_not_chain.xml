@@ -1,0 +1,7 @@
+<VI _name="T09 Not Chain.vi" description="Less? into Not into an indicator - no fan-out.">
+  <Control _name="x" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="y" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Less?" inputs="x:4200.value,y:4210.value" outputs="x &lt; y?:4220.lt" uid="4220" uid_parent="root"/>
+  <Node _name="Not" inputs="x:4220.lt" outputs=".not. x?:4230.ge" uid="4230" uid_parent="root"/>
+  <Indicator _name="ge" type="bool" uid="4250" uid_parent="root" value="false" inputs="value:4230.ge"/>
+</VI>

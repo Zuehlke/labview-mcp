@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Build_Waveform/b8571385d7" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Waveform Conditioning\Resampling a Waveform (single-shot).vi" node="Build Waveform" ins="waveform|t0" outs="output waveform" mode="fields=t0" nodeFlags="786432"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" Label="demo waveform" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="t0" /></types><heap><SL__arrayElement class="nMux" uid="539">
+                <objFlags>786432</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="540" aixml="output waveform">
+                    <objFlags>65</objFlags>
+                    <dco class="nmxDCO" uid="535">
+                      <objFlags>1</objFlags>
+                      <termList elements="2">
+                        <SL__arrayElement uid="540" />
+                        <SL__arrayElement uid="547" />
+                        </termList>
+                      <typeDesc>TypeID(86)</typeDesc>
+                      <termBounds>(0, 18, 29, 34)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="547" aixml="waveform">
+                    <objFlags>163905</objFlags>
+                    <dco uid="535" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="548" aixml="t0">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="545">
+                      <typeDesc>TypeID(87)</typeDesc>
+                      <termBounds>(12, 0, 28, 18)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(52, 231, 81, 265)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>458755</clumpNum>
+                <dcoList elements="1">
+                  <SL__arrayElement uid="545" />
+                  </dcoList>
+                <dcoAgg uid="535" />
+                </SL__arrayElement>
+              </heap></part>

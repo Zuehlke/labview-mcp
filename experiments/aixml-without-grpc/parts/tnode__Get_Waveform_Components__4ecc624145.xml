@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Get_Waveform_Components/4ecc624145" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Signal Processing\Waveform Measurements\Limit Testing Measurement.vi" node="Get Waveform Components" ins="waveform" outs="t0|dt" mode="fields=t0,dt" nodeFlags="851968"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="t0" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="dt" /></types><heap><SL__arrayElement class="nMux" uid="325">
+                <objFlags>851968</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="329" aixml="waveform">
+                    <objFlags>32832</objFlags>
+                    <dco class="nmxDCO" uid="333">
+                      <typeDesc>TypeID(125)</typeDesc>
+                      <termBounds>(0, 0, 33, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="328" aixml="t0">
+                    <objFlags>64</objFlags>
+                    <dco class="nmxDCO" uid="332">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(126)</typeDesc>
+                      <termBounds>(0, 16, 16, 35)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="743" aixml="dt">
+                    <objFlags>64</objFlags>
+                    <dco class="nmxDCO" uid="742">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(127)</typeDesc>
+                      <termBounds>(16, 16, 32, 35)</termBounds>
+                      <i>1</i>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(168, 342, 201, 377)</bounds>
+                <shortCount>8</shortCount>
+                <clumpNum>327685</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="332" />
+                  <SL__arrayElement uid="742" />
+                  </dcoList>
+                <dcoAgg uid="333" />
+                </SL__arrayElement>
+              </heap></part>

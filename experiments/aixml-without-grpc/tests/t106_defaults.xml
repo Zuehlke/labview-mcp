@@ -1,0 +1,16 @@
+<VI _name="T106 Defaults.vi" description="Front-panel controls with non-default default values, each wired straight to an indicator; run with no inputs set, the indicators show the defaults.">
+  <Control _name="d" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="2.5"/>
+  <Indicator _name="d out" inputs="value:4200.value" type="double" uid="4205" uid_parent="root" value="0"/>
+  <Control _name="i" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="-7"/>
+  <Indicator _name="i out" inputs="value:4210.value" type="int32" uid="4215" uid_parent="root" value="0"/>
+  <Control _name="s" outputs="value:4220.value" type="string" uid="4220" uid_parent="root" value="a*x1-b*x1*x2"/>
+  <Indicator _name="s out" inputs="value:4220.value" type="string" uid="4225" uid_parent="root" value=""/>
+  <Control _name="b" outputs="value:4230.value" type="bool" uid="4230" uid_parent="root" value="true"/>
+  <Indicator _name="b out" inputs="value:4230.value" type="bool" uid="4235" uid_parent="root" value="false"/>
+  <Control _name="a" outputs="value:4240.value" type="array{double}" uid="4240" uid_parent="root" value="[300,50]"/>
+  <Indicator _name="a out" inputs="value:4240.value" type="array{double}" uid="4245" uid_parent="root" value="[]"/>
+  <Control _name="c" outputs="value:4250.value" type="cluster{double.x,int32.n,string.t}" uid="4250" uid_parent="root" value="[1.25,3,hi]"/>
+  <Indicator _name="c out" inputs="value:4250.value" type="cluster{double.x,int32.n,string.t}" uid="4255" uid_parent="root" value="[0,0,]"/>
+  <Control _name="e" outputs="value:4260.value" type="uint16{Off,On,Auto}" uid="4260" uid_parent="root" value="2"/>
+  <Indicator _name="e out" inputs="value:4260.value" type="uint16{Off,On,Auto}" uid="4265" uid_parent="root" value="0"/>
+</VI>

@@ -1,0 +1,15 @@
+<VI _name="T100 In Place.vi" description="An In Place Element Structure with two in/out element pairs: x is incremented in place, y is doubled in place.">
+  <Control _name="x" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="y" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Structure _name="In Place Element Structure" uid="4300" uid_parent="root">
+    <Node _name="In Place In / Out Element" inputs="value:4200.value" outputs="value:4310.value" uid="4310" uid_parent="4300"/>
+    <Node _name="Increment" inputs="x:4310.value" outputs="x+1:4320.x+1" uid="4320" uid_parent="4300"/>
+    <Node _id="4310" _name="In Place In / Out Element" inputs="value:4320.x+1" outputs="value:4330.value" uid="4330" uid_parent="4300"/>
+    <Node _name="In Place In / Out Element" inputs="value:4210.value" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+    <Constant type="int32" uid="4345" uid_parent="4300" value="2" outputs="value:4345.value"/>
+    <Node _name="Multiply" inputs="x:4340.value,y:4345.value" outputs="x*y:4350.x*y" uid="4350" uid_parent="4300"/>
+    <Node _id="4340" _name="In Place In / Out Element" inputs="value:4350.x*y" outputs="value:4360.value" uid="4360" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="x out" inputs="value:4330.value" type="double" uid="4400" uid_parent="root" value="0"/>
+  <Indicator _name="y out" inputs="value:4360.value" type="int32" uid="4410" uid_parent="root" value="0"/>
+</VI>

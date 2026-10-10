@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Array/Reinit To Default" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Design Patterns\Actor Framework\Classes\Customer\Actor Core.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x000E" HasItem="0" Format="inline"><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Item"><TypeDesc Type="TypeDef" Flag1="0xCCF8FAA6" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Drink type">
+          <EnumLabel>Dark Roast</EnumLabel>
+          <EnumLabel>Decaf</EnumLabel>
+          <EnumLabel>Espresso</EnumLabel>
+          <EnumLabel>House Blend</EnumLabel>
+          </TypeDesc>
+        <Label Text="Drink Type.ctl" />
+        </TypeDesc><TypeDesc Type="Array" Format="inline" Label="Options"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="TypeDef" Flag1="0xCCF8FB38" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Option">
+          <EnumLabel>&lt;None&gt;</EnumLabel>
+          <EnumLabel>Milk</EnumLabel>
+          <EnumLabel>Mocha</EnumLabel>
+          <EnumLabel>Soy</EnumLabel>
+          <EnumLabel>Whip</EnumLabel>
+          </TypeDesc>
+        <Label Text="Options.ctl" />
+        </TypeDesc></TypeDesc></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x000E" HasItem="0" Format="inline"><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Item"><TypeDesc Type="TypeDef" Flag1="0xCCF8FAA6" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Drink type">
+          <EnumLabel>Dark Roast</EnumLabel>
+          <EnumLabel>Decaf</EnumLabel>
+          <EnumLabel>Espresso</EnumLabel>
+          <EnumLabel>House Blend</EnumLabel>
+          </TypeDesc>
+        <Label Text="Drink Type.ctl" />
+        </TypeDesc><TypeDesc Type="Array" Format="inline" Label="Options"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="TypeDef" Flag1="0xCCF8FB38" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Option">
+          <EnumLabel>&lt;None&gt;</EnumLabel>
+          <EnumLabel>Milk</EnumLabel>
+          <EnumLabel>Mocha</EnumLabel>
+          <EnumLabel>Soy</EnumLabel>
+          <EnumLabel>Whip</EnumLabel>
+          </TypeDesc>
+        <Label Text="Options.ctl" />
+        </TypeDesc></TypeDesc></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /></types><heap><SL__arrayElement class="invokeNode" uid="1498">
+                        <objFlags>167772800</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1505">
+                            <objFlags>8388608</objFlags>
+                            <dco class="hGrowCItem" uid="1506">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(141)</typeDesc>
+                              <termBounds>(-9, 0, 0, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1508">
+                            <objFlags>8388608</objFlags>
+                            <dco class="hGrowCItem" uid="1509">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(142)</typeDesc>
+                              <termBounds>(-9, 85, 0, 98)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1511">
+                            <dco class="hGrowCItem" uid="1512">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(143)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1514">
+                            <dco class="hGrowCItem" uid="1515">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(144)</typeDesc>
+                              <termBounds>(0, 85, 9, 98)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1517">
+                            <dco class="invokeItem" uid="1518">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(145)</typeDesc>
+                              <termBounds>(9, 0, 25, 49)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1521">
+                            <dco class="invokeItem" uid="1522">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(146)</typeDesc>
+                              <termBounds>(9, 49, 25, 98)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <label class="label" uid="1503">
+                          <objFlags>1507650</objFlags>
+                          <partID>16</partID>
+                          <howGrow>4096</howGrow>
+                          <bounds>(-17, 0, 0, 33)</bounds>
+                          <image class="Image">
+                            <ImageResID>-619</ImageResID>
+                            </image>
+                          <fgColor>01000000</fgColor>
+                          <bgColor>01000000</bgColor>
+                          <textRec class="textHair">
+                            <mode>82948</mode>
+                            <text>"Order"</text>
+                            <bgColor>01000000</bgColor>
+                            <fr elements="1">
+                              <SL__arrayElement class="fontRun">
+                                <fontid>1</fontid>
+                                </SL__arrayElement>
+                              </fr>
+                            </textRec>
+                          </label>
+                        <bounds>(67, 282, 93, 380)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>393221</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="1518" />
+                          <SL__arrayElement uid="1522" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="1506" />
+                          <SL__arrayElement uid="1509" />
+                          <SL__arrayElement uid="1512" />
+                          <SL__arrayElement uid="1515" />
+                          </permDCOList>
+                        <nodeName>"Arr (strict)"</nodeName>
+                        <oMId>001A</oMId>
+                        <ddo uid="585" />
+                        <methName>"Reinit To Default"</methName>
+                        <methCode>104012800</methCode>
+                        <invokeFlags>08</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

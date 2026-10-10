@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1061" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\control\PID\Autotuning PID Offline.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="Automatic" /></types><heap><SL__arrayElement class="prim" uid="1781">
+                        <objFlags>65536</objFlags>
+                        <termList elements="3">
+                          <SL__arrayElement class="term" uid="1808">
+                            <dco class="parm" uid="1803">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(292)</typeDesc>
+                              <dcoFiller>515</dcoFiller>
+                              <termBounds>(0, 12, 16, 24)</termBounds>
+                              <primIndex>94</primIndex>
+                              <inplace>3</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1835">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1827">
+                              <typeDesc>TypeID(293)</typeDesc>
+                              <termBounds>(8, 0, 16, 12)</termBounds>
+                              <primIndex>94</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1851">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1836">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(294)</typeDesc>
+                              <termBounds>(0, 0, 8, 12)</termBounds>
+                              <primIndex>94</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(69, 136, 101, 168)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>1245191</clumpNum>
+                        <primResID>1061</primResID>
+                        <primIndex>94</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

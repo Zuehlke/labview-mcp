@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="T103 Strict Static Ref.vi" description="A strictly typed static VI reference to Clear Errors.vi, read through a property node.">
+  <Node _name="Static VI Reference" outputs="value:4500.value" strict="true" target="Clear Errors.vi" uid="4500" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" inputs="reference:4500.value,error in (no error):" outputs="VI Name:4510.name,reference out:,error out:4510.err" type="{LV.VI}" uid="4510" uid_parent="root"/>
+  <Indicator _name="static name" inputs="value:4510.name" type="string" uid="4520" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4510.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+</VI>

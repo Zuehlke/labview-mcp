@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/9000" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Dialog and User Interface\Menu\Customizing the Menubar\Customizing the Menubar.vi"><types><TypeDesc Type="Refnum" RefType="Menu" Format="inline" Label="menu" /></types><heap><SL__arrayElement class="prim" uid="46">
+        <objFlags>128</objFlags>
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="49">
+            <dco class="parm" uid="47">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(165)</typeDesc>
+              <termBounds>(0, 0, 18, 18)</termBounds>
+              <primIndex>356</primIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(108, 178, 140, 210)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>524292</clumpNum>
+        <primResID>9000</primResID>
+        <primIndex>356</primIndex>
+        </SL__arrayElement>
+      </heap></part>

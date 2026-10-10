@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TopLevelDiagram/DistributeSelection" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\functionblocks\FB Support\FB Align Distribute.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="DistributeSelection" /><TypeDesc Type="Void" Format="inline" Label="DistributeSelection" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="DistributeType"><EnumLabel>Top Edges</EnumLabel>
+        <EnumLabel>Vertical Centers</EnumLabel>
+        <EnumLabel>Bottom Edges</EnumLabel>
+        <EnumLabel>Vertical Gap</EnumLabel>
+        <EnumLabel>Vertical Compress</EnumLabel>
+        <EnumLabel>Left Edges</EnumLabel>
+        <EnumLabel>Horizontal Centers</EnumLabel>
+        <EnumLabel>Right Edges</EnumLabel>
+        <EnumLabel>Horizontal Gap</EnumLabel>
+        <EnumLabel>Horizontal Compress</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="DistributeType" /></types><heap><SL__arrayElement class="invokeNode" uid="111">
+        <objFlags>66176</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="113">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="114">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(25)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="116">
+            <dco class="hGrowCItem" uid="117">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(0, 97, 9, 110)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="119">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="120">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="122">
+            <dco class="hGrowCItem" uid="123">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(28)</typeDesc>
+              <termBounds>(9, 97, 18, 110)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="125">
+            <dco class="invokeItem" uid="126">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(18, 0, 34, 55)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="129">
+            <dco class="invokeItem" uid="130">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(18, 55, 34, 110)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="133">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="134">
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(34, 0, 50, 55)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="137">
+            <dco class="invokeItem" uid="138">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(34, 55, 50, 110)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(391, 3215, 442, 3325)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="126" />
+          <SL__arrayElement uid="130" />
+          <SL__arrayElement uid="134" />
+          <SL__arrayElement uid="138" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="114" />
+          <SL__arrayElement uid="117" />
+          <SL__arrayElement uid="120" />
+          <SL__arrayElement uid="123" />
+          </permDCOList>
+        <nodeName>"TopLvlDiag"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"DistributeSelection"</methName>
+        <methCode>104108039</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

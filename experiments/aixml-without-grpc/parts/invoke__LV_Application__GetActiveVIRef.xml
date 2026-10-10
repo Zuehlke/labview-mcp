@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/GetActiveVIRef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\Builds\EXE\EBUIP_Global_OnUpdateCommand.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="App.DefaultApplication" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="App.DefaultApplication" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="GetActiveVIRef" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="GetActiveVIRef" /></types><heap><SL__arrayElement class="invokeNode" uid="1242">
+                        <objFlags>33555072</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1709">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="1710">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(70)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1712">
+                            <dco class="hGrowCItem" uid="1713">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(71)</typeDesc>
+                              <termBounds>(0, 75, 9, 88)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1715">
+                            <dco class="hGrowCItem" uid="1716">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(72)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1718">
+                            <dco class="hGrowCItem" uid="1719">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(73)</typeDesc>
+                              <termBounds>(9, 75, 18, 88)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1721">
+                            <dco class="invokeItem" uid="1722">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(74)</typeDesc>
+                              <termBounds>(18, 0, 34, 44)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1725">
+                            <dco class="invokeItem" uid="1726">
+                              <objFlags>65537</objFlags>
+                              <typeDesc>TypeID(75)</typeDesc>
+                              <termBounds>(18, 44, 34, 88)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(48, 154, 83, 242)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>327683</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="1722" />
+                          <SL__arrayElement uid="1726" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="1710" />
+                          <SL__arrayElement uid="1713" />
+                          <SL__arrayElement uid="1716" />
+                          <SL__arrayElement uid="1719" />
+                          </permDCOList>
+                        <nodeName>"App"</nodeName>
+                        <oMId>0009</oMId>
+                        <methName>"GetActiveVIRef"</methName>
+                        <methCode>2331</methCode>
+                        <invokeFlags>201008</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1220" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Geometry\Simulation of Tomography.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="526">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="547">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="545">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(151)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>88</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="550">
+                    <dco class="parm" uid="548">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(152)</typeDesc>
+                      <termBounds>(0, 16, 16, 32)</termBounds>
+                      <primIndex>88</primIndex>
+                      <parmIndex>1</parmIndex>
+                      <inplace>1</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="553">
+                    <dco class="parm" uid="551">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(153)</typeDesc>
+                      <termBounds>(16, 16, 32, 32)</termBounds>
+                      <primIndex>88</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(90, 65, 122, 97)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>917507</clumpNum>
+                <primResID>1220</primResID>
+                <primIndex>88</primIndex>
+                </SL__arrayElement>
+              </heap></part>

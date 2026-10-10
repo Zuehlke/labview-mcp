@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VI _name="parr2.vi" description="Probe: arrays of strings, booleans and clusters, a 2D array, nested clusters.">
+  <Control _name="names" conIdx="0" connection="recommended" outputs="value:4200.value" type="array{string}" uid="4200" uid_parent="root" value="[]"/>
+  <Indicator _name="names out" conIdx="1" connection="recommended" inputs="value:4200.value" type="array{string}" uid="4205" uid_parent="root" value="[]"/>
+  <Constant _name="words" outputs="value:4210.value" type="array{string}" uid="4210" uid_parent="root" value="[alpha,beta]"/>
+  <Indicator _name="words out" conIdx="2" connection="recommended" inputs="value:4210.value" type="array{string}" uid="4215" uid_parent="root" value="[]"/>
+  <Control _name="flags" conIdx="3" connection="recommended" outputs="value:4220.value" type="array{bool}" uid="4220" uid_parent="root" value="[]"/>
+  <Indicator _name="flags out" conIdx="4" connection="recommended" inputs="value:4220.value" type="array{bool}" uid="4225" uid_parent="root" value="[]"/>
+  <Constant _name="bits" outputs="value:4230.value" type="array{bool}" uid="4230" uid_parent="root" value="[true,false,true]"/>
+  <Indicator _name="bits out" conIdx="5" connection="recommended" inputs="value:4230.value" type="array{bool}" uid="4235" uid_parent="root" value="[]"/>
+  <Control _name="points" conIdx="6" connection="recommended" outputs="value:4240.value" type="array{cluster{double.x,int32.n}}" uid="4240" uid_parent="root" value="[]"/>
+  <Indicator _name="points out" conIdx="7" connection="recommended" inputs="value:4240.value" type="array{cluster{double.x,int32.n}}" uid="4245" uid_parent="root" value="[]"/>
+  <Constant _name="pts" outputs="value:4250.value" type="array{cluster{double.x,int32.n}}" uid="4250" uid_parent="root" value="[[1.5,2],[3.5,4]]"/>
+  <Indicator _name="pts out" conIdx="9" connection="recommended" inputs="value:4250.value" type="array{cluster{double.x,int32.n}}" uid="4255" uid_parent="root" value="[]"/>
+  <Control _name="grid" conIdx="10" connection="recommended" outputs="value:4260.value" type="array.2{double}" uid="4260" uid_parent="root" value="[]"/>
+  <Indicator _name="grid out" conIdx="12" connection="recommended" inputs="value:4260.value" type="array.2{double}" uid="4265" uid_parent="root" value="[]"/>
+  <Constant _name="g" outputs="value:4270.value" type="array.2{int32}" uid="4270" uid_parent="root" value="[[1,2],[3,4]]"/>
+  <Indicator _name="g out" conIdx="13" connection="recommended" inputs="value:4270.value" type="array.2{int32}" uid="4275" uid_parent="root" value="[]"/>
+  <Constant _name="nested" outputs="value:4280.value" type="cluster{string.name,cluster{double.x,double.y}.pos,array{int32}.ids}" uid="4280" uid_parent="root" value="[probe,[1,2],[7,8]]"/>
+  <Indicator _name="nested out" conIdx="14" connection="recommended" inputs="value:4280.value" type="cluster{string.name,cluster{double.x,double.y}.pos,array{int32}.ids}" uid="4285" uid_parent="root" value="[,[0,0],[]]"/>
+  <Constant _name="e1" outputs="value:4290.value" type="string" uid="4290" uid_parent="root" value="a"/>
+  <Constant _name="e2" outputs="value:4291.value" type="string" uid="4291" uid_parent="root" value="b"/>
+  <Node _name="Build Array" inputs="element:4290.value,element:4291.value" outputs="appended array:4292.appended array" uid="4292" uid_parent="root"/>
+  <Node _name="Build Array" concat="true" inputs="array:4292.appended array,array:4210.value" outputs="appended array:4293.appended array" uid="4293" uid_parent="root"/>
+  <Indicator _name="joined" conIdx="15" connection="recommended" inputs="value:4293.appended array" type="array{string}" uid="4295" uid_parent="root" value="[]"/>
+</VI>

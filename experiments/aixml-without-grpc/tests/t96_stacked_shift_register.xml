@@ -1,0 +1,13 @@
+<VI _name="T96 Stacked Shift Register.vi" description="A stacked shift register with three elements: the sum of the three previous values of i, taken in the last iteration.">
+  <Control _name="n" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Constant _name="zero" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Structure _name="For Loop" count="5000.value" maxin="4200.value" maxout="" uid="5000" uid_parent="root">
+    <Node _name="Compound Arithmetic" inputs="value:5100.value,value:5100.value2,value:5100.value3" inversions=" , , , " operation="Add" outputs="result:5200.result" uid="5200" uid_parent="5000"/>
+    <Tunnel _id="Out1" inputs="value:5200.result" outputs="value:5300.value" uid="5300" uid_parent="5000"/>
+    <ShiftReg uid="5050" uid_parent="5000">
+      <Left inputs="value:4210.value,value:4210.value,value:4210.value" outputs="value:5100.value,value:5100.value2,value:5100.value3" uid="5100" uid_parent="5050"/>
+      <Right inputs="value:5000.value" outputs="value:" uid="5150" uid_parent="5050"/>
+    </ShiftReg>
+  </Structure>
+  <Indicator _name="last three" inputs="value:5300.value" type="int32" uid="5400" uid_parent="root" value="0"/>
+</VI>

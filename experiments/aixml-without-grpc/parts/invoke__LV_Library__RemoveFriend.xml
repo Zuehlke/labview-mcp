@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Library/RemoveFriend" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\VILibrary\friendship\LIBUIP_Apply_Friendship.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Library Ref In" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Library Ref In" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="RemoveFriend" /><TypeDesc Type="Void" Format="inline" Label="RemoveFriend" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="ItemToRemove" /><TypeDesc Type="Void" Format="inline" Label="ItemToRemove" /></types><heap><SL__arrayElement class="invokeNode" uid="463">
+                        <objFlags>66176</objFlags>
+                        <termList elements="8">
+                          <SL__arrayElement class="term" uid="468">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="466">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(73)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="471">
+                            <dco class="hGrowCItem" uid="469">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(74)</typeDesc>
+                              <termBounds>(0, 73, 9, 86)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="475">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="472">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(75)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="481">
+                            <dco class="hGrowCItem" uid="476">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(76)</typeDesc>
+                              <termBounds>(9, 73, 18, 86)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="493">
+                            <objFlags>1</objFlags>
+                            <dco class="invokeItem" uid="490">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(77)</typeDesc>
+                              <termBounds>(18, 0, 34, 43)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="498">
+                            <objFlags>1</objFlags>
+                            <dco class="invokeItem" uid="494">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(78)</typeDesc>
+                              <termBounds>(18, 43, 34, 86)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="515">
+                            <objFlags>32768</objFlags>
+                            <dco class="invokeItem" uid="511">
+                              <typeDesc>TypeID(79)</typeDesc>
+                              <termBounds>(34, 0, 50, 43)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="525">
+                            <dco class="invokeItem" uid="519">
+                              <objFlags>131073</objFlags>
+                              <typeDesc>TypeID(80)</typeDesc>
+                              <termBounds>(34, 43, 50, 86)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(20, 27, 71, 113)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>393219</clumpNum>
+                        <dcoList elements="4">
+                          <SL__arrayElement uid="490" />
+                          <SL__arrayElement uid="494" />
+                          <SL__arrayElement uid="511" />
+                          <SL__arrayElement uid="519" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="466" />
+                          <SL__arrayElement uid="469" />
+                          <SL__arrayElement uid="472" />
+                          <SL__arrayElement uid="476" />
+                          </permDCOList>
+                        <nodeName>"Library"</nodeName>
+                        <oMId>0003</oMId>
+                        <methName>"RemoveFriend"</methName>
+                        <methCode>1292952605</methCode>
+                        <invokeFlags>1008</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

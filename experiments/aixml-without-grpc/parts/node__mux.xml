@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/mux" source="AIXML-generated probe: pclu2.vi" clean="1"><types><TypeDesc Type="Cluster" Format="inline" Label="pq"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="p" /><TypeDesc Type="Boolean" Format="inline" Label="q" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="p" /><TypeDesc Type="Boolean" Format="inline" Label="q" /></types><heap><SL__arrayElement class="mux" uid="4270">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="4472">
+            <objFlags>64</objFlags>
+            <dco class="mxDCO" uid="4470">
+              <objFlags>1</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="4472" />
+                <SL__arrayElement uid="4473" />
+                </termList>
+              <typeDesc>TypeID(32)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 24, 17, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4473">
+            <objFlags>163904</objFlags>
+            <dco uid="4470" />
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4466">
+            <objFlags>32832</objFlags>
+            <dco class="mxDCO" uid="4464">
+              <typeDesc>TypeID(33)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="76">
+            <objFlags>64</objFlags>
+            <dco class="mxDCO" uid="75">
+              <typeDesc>TypeID(34)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(285, 307, 302, 339)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>262147</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4464" />
+          <SL__arrayElement uid="75" />
+          </dcoList>
+        <dcoAgg uid="4470" />
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,8 @@
+<VI _name="T65 Bundle Unbundle.vi" description="Bundle a control into an int32/bool cluster constant, then Unbundle it again.">
+  <Constant _name="pq" type="cluster{int32.p,bool.q}" uid="4200" uid_parent="root" value="[7,true]" outputs="value:4200.value"/>
+  <Control _name="n" type="int32" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Node _name="Bundle" inputs="p:4210.value,cluster:4200.value" outputs="output cluster:4220.output cluster" uid="4220" uid_parent="root"/>
+  <Node _name="Unbundle" inputs="cluster:4220.output cluster" outputs="p:4230.p,q:4230.q" uid="4230" uid_parent="root"/>
+  <Indicator _name="p" type="int32" uid="4240" uid_parent="root" value="0" inputs="value:4230.p"/>
+  <Indicator _name="q" type="bool" uid="4250" uid_parent="root" value="false" inputs="value:4230.q"/>
+</VI>

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1070" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Application Builder API\Build Specification Project\Sample Main.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="number: 0 to 1" /></types><heap><SL__arrayElement class="prim" uid="85">
+                <objFlags>512</objFlags>
+                <termList elements="1">
+                  <SL__arrayElement class="term" uid="91">
+                    <dco class="parm" uid="92">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(28)</typeDesc>
+                      <termBounds>(0, 0, 21, 19)</termBounds>
+                      <primIndex>135</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(67, 23, 99, 55)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1070</primResID>
+                <primIndex>135</primIndex>
+                </SL__arrayElement>
+              </heap></part>

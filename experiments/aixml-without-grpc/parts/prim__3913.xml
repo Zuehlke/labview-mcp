@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/3913" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\File IO\Spreadsheet\Tab-Delimited Data\Buffered Stream to Tab-Delimited Text File.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="string" /></types><heap><SL__arrayElement class="prim" uid="291">
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="300">
+            <dco class="parm" uid="301">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(41)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(16, 16, 32, 32)</termBounds>
+              <primIndex>453</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="306">
+            <dco class="parm" uid="311">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(42)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 16, 32)</termBounds>
+              <primIndex>453</primIndex>
+              <parmIndex>1</parmIndex>
+              <inplace>6</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="313">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="314">
+              <typeDesc>TypeID(43)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(24, 0, 32, 16)</termBounds>
+              <primIndex>453</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="322">
+            <dco class="parm" uid="324">
+              <typeDesc>TypeID(44)</typeDesc>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              <primIndex>453</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="328">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="329">
+              <typeDesc>TypeID(45)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              <primIndex>453</primIndex>
+              <parmIndex>4</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="331">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="332">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(46)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              <primIndex>453</primIndex>
+              <parmIndex>5</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="447">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 97)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Replace Substring"</text>
+            <bgColor>01000000</bgColor>
+            <fr elements="1">
+              <SL__arrayElement class="fontRun">
+                <fontid>2</fontid>
+                </SL__arrayElement>
+              </fr>
+            </textRec>
+          </label>
+        <bounds>(28, 328, 60, 360)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>262147</clumpNum>
+        <primResID>3913</primResID>
+        <primIndex>453</primIndex>
+        </SL__arrayElement>
+      </heap></part>
