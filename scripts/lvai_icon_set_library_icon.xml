@@ -1,0 +1,21 @@
+<VI _name="lvai_icon_set_library_icon.vi" description="Set a plain .lvlib icon from a 32x32 PNG and save the library - the class helper's twin through {LV.Application} Library.Open and {LV.Library} Set Icon and Save. Only the NI.Lib.Icon line of the library changes. Run with the project CLOSED. Measured 2026-09-25 on LabVIEW 2026 Q3 with labview-mcp 1.7.2 in a pilot project (4 of 4 class members, 41 of 41 members over classes and plain libraries).">
+  <Control _name="carrier vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="png path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="library path" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:15.path" uid="15" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path" outputs="vi reference:20.vi,error out:20.err" uid="20" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Set VI Icon from File" type="{LV.VI}" inputs="reference:20.vi,error in (no error):20.err,Image File:14.path" outputs="reference out:,error out:30.err" uid="30" uid_parent="root"/>
+  <Node _name="Invoke Node" target="VI Icon.Get as Image Data" type="{LV.VI}" inputs="reference:20.vi,error in (no error):30.err" outputs="reference out:,error out:35.err,ImageData:35.img,16Color:,Monochrome:35.mono" uid="35" uid_parent="root"/>
+  <Indicator _name="carrier error" type="cluster{bool.status,int32.code,string.source}" uid="36" uid_parent="root" value="[false,0,]" inputs="value:35.err"/>
+  <Node _name="Invoke Node" target="Library.Open" type="{LV.Application}" inputs="Path:15.path,error in (no error):35.err" outputs="reference out:,error out:40.err,Library.Open:40.lib" uid="40" uid_parent="root"/>
+  <Indicator _name="open library error" type="cluster{bool.status,int32.code,string.source}" uid="41" uid_parent="root" value="[false,0,]" inputs="value:40.err"/>
+  <Node _name="Invoke Node" target="Set Icon" type="{LV.Library}" inputs="reference:40.lib,error in (no error):40.err,color:35.img,monochrome:35.mono" outputs="reference out:,error out:45.err" uid="45" uid_parent="root"/>
+  <Indicator _name="set icon error" type="cluster{bool.status,int32.code,string.source}" uid="46" uid_parent="root" value="[false,0,]" inputs="value:45.err"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.Library}" inputs="reference:40.lib,error in (no error):45.err" outputs="reference out:,error out:50.err" uid="50" uid_parent="root"/>
+  <Indicator _name="save library error" type="cluster{bool.status,int32.code,string.source}" uid="51" uid_parent="root" value="[false,0,]" inputs="value:50.err"/>
+  <Node _name="Close Reference" inputs="reference:40.lib,error in (no error):50.err" outputs="error out:55.err" uid="55" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.vi,error in (no error):55.err" outputs="error out:56.err" uid="56" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="60" uid_parent="root" value="[false,0,]" inputs="value:56.err"/>
+</VI>

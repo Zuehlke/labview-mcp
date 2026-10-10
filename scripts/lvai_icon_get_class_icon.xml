@@ -1,0 +1,18 @@
+<VI _name="lvai_icon_get_class_icon.vi" description="Read a .lvclass icon out to a PNG without changing the class. {LV.Application} LVClass.Open then {LV.LVClassLibrary} Get Icon, the image data put into the carrier VI in memory (Set VI Icon from Image Data, never saved) and written with Save VI Icon to File. The output folder must exist - a missing folder or a path past MAX_PATH writes nothing and reports no error. Measured 2026-10-08 on LabVIEW 2026 Q3 32-bit with labview-mcp 1.8.5 in a pilot project (a class with six members, project closed).">
+  <Control _name="carrier vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
+  <Control _name="png out path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
+  <Control _name="class path" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
+  <Node _name="String To Path" inputs="string:10.value" outputs="path:13.path" uid="13" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:11.value" outputs="path:14.path" uid="14" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:12.value" outputs="path:15.path" uid="15" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="Path:15.path" outputs="reference out:,error out:40.err,LVClass.Open:40.cls" uid="40" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Get Icon" type="{LV.LVClassLibrary}" inputs="reference:40.cls,error in (no error):40.err" outputs="reference out:,error out:45.err,color:45.color,monochrome:45.mono" uid="45" uid_parent="root"/>
+  <Indicator _name="get icon error" type="cluster{bool.status,int32.code,string.source}" uid="46" uid_parent="root" value="[false,0,]" inputs="value:45.err"/>
+  <Node _name="Open VI Reference" inputs="vi path:13.path,error in (no error):45.err" outputs="vi reference:20.vi,error out:20.err" uid="20" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Set VI Icon from Image Data" type="{LV.VI}" inputs="reference:20.vi,error in (no error):20.err,ImageData:45.color,Monochrome:45.mono" outputs="reference out:,error out:30.err" uid="30" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save VI Icon to File" type="{LV.VI}" inputs="reference:20.vi,error in (no error):30.err,Image File:14.path" outputs="reference out:,error out:35.err" uid="35" uid_parent="root"/>
+  <Indicator _name="write png error" type="cluster{bool.status,int32.code,string.source}" uid="36" uid_parent="root" value="[false,0,]" inputs="value:35.err"/>
+  <Node _name="Close Reference" inputs="reference:40.cls,error in (no error):35.err" outputs="error out:55.err" uid="55" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:20.vi,error in (no error):55.err" outputs="error out:56.err" uid="56" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="60" uid_parent="root" value="[false,0,]" inputs="value:56.err"/>
+</VI>

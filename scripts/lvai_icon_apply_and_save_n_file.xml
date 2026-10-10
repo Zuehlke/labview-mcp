@@ -1,0 +1,59 @@
+<VI _name="lvai_icon_apply_and_save_n_file.vi" description="FILE TWIN of lvai_icon_apply_and_save_n, for long member lists - UNMEASURED, built offline 2026-10-10 from the measured string helper and the measured read-back file twin. Identical except that vi list is the PATH of a text file holding the semicolon-separated member paths (NO trailing semicolon), read with Read from Text File - because the runner cannot set an array and a long string input passes the answer size limit from about 100 paths. read list error is the extra stage. Push a .lvclass or plain .lvlib icon onto members as their NI_Library template layer and SAVE each member - opens the owner, opens every listed VI, ApplyIconToVIs, Save.Instrument and Close Reference per VI, then saves the owner. Per-member codes in open codes and save codes, in list order. Run with the project CLOSED.">
+  <Control _name="class path" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
+  <Constant _name="all" type="int32" uid="4091" uid_parent="root" value="-1" outputs="value:4091.value"/>
+  <Control _name="vi list" type="path" uid="4090" uid_parent="root" value="" outputs="value:4090.value"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4090.value,count:4091.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4092.text,cancelled:,error out:4092.err" uid="4092" uid_parent="root"/>
+  <Indicator _name="read list error" type="cluster{bool.status,int32.code,string.source}" uid="4093" uid_parent="root" value="[false,0,]" inputs="value:4092.err"/>
+  <Control _name="is library" type="bool" uid="4102" uid_parent="root" value="false" outputs="value:4102.value"/>
+  <Constant _name="delimiter" type="string" uid="4103" uid_parent="root" value=";" outputs="value:4103.value"/>
+  <Constant _name="format" type="string" uid="4104" uid_parent="root" value="%s" outputs="value:4104.value"/>
+  <Constant _name="string array type" type="array{string}" uid="4105" uid_parent="root" value="[]" outputs="value:4105.value"/>
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4106.path" uid="4106" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4104.value,spreadsheet string:4092.text,array type (2D Dbl):4105.value,delimiter (Tab):4103.value" outputs="array:4107.paths" uid="4107" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4107.paths" outputs="size(s):4108.n" uid="4108" uid_parent="root"/>
+  <Indicator _name="vi count" type="int32" uid="4109" uid_parent="root" value="0" inputs="value:4108.n"/>
+  <Structure _name="Case Structure" selectin="4102.value" uid="4110" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4106.path" uid="4111" uid_parent="4110"/>
+    <CaseFrame selector="True" selectout="" uid="4112" uid_parent="4110">
+      <Tunnel _id="In1" outputs="value:4113.path" uid="4113" uid_parent="4112"/>
+      <Node _name="Invoke Node" target="Library.Open" type="{LV.Application}" inputs="Path:4113.path" outputs="reference out:,error out:4114.err,Library.Open:4114.lib" uid="4114" uid_parent="4112"/>
+      <Tunnel _id="Out1" inputs="value:4114.lib" uid="4116" uid_parent="4112"/>
+      <Tunnel _id="Out2" inputs="value:4114.err" uid="4117" uid_parent="4112"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4118" uid_parent="4110">
+      <Tunnel _id="In1" outputs="value:4119.path" uid="4119" uid_parent="4118"/>
+      <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="Path:4119.path" outputs="reference out:,error out:4120.err,LVClass.Open:4120.cls" uid="4120" uid_parent="4118"/>
+      <Tunnel _id="Out1" inputs="value:4120.cls" uid="4122" uid_parent="4118"/>
+      <Tunnel _id="Out2" inputs="value:4120.err" uid="4123" uid_parent="4118"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4124.lib" uid="4124" uid_parent="4110"/>
+    <Tunnel _id="Out2" outputs="value:4125.err" uid="4125" uid_parent="4110"/>
+  </Structure>
+  <Indicator _name="open library error" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" uid="4126" uid_parent="root" inputs="value:4125.err"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4200" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4107.paths" mode="index" outputs="value:4201.p" uid="4201" uid_parent="4200"/>
+    <Tunnel _id="In2" inputs="value:4125.err" outputs="value:4202.err" uid="4202" uid_parent="4200"/>
+    <Node _name="String To Path" inputs="string:4201.p" outputs="path:4210.path" uid="4210" uid_parent="4200"/>
+    <Node _name="Open VI Reference" inputs="vi path:4210.path,error in (no error):4202.err" outputs="vi reference:4220.vi,error out:4220.err" uid="4220" uid_parent="4200"/>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4220.err" outputs="code:4225.code" uid="4225" uid_parent="4200"/>
+    <Tunnel _id="Out1" inputs="value:4220.vi" mode="index" outputs="value:4230.vis" uid="4230" uid_parent="4200"/>
+    <Tunnel _id="Out2" inputs="value:4225.code" mode="index" outputs="value:4231.codes" uid="4231" uid_parent="4200"/>
+    <Tunnel _id="Out3" inputs="value:4202.err" outputs="value:4232.after" uid="4232" uid_parent="4200"/>
+  </Structure>
+  <Indicator _name="open codes" type="array{int32}" value="[]" uid="4240" uid_parent="root" inputs="value:4231.codes"/>
+  <Node _name="Invoke Node" target="ApplyIconToVIs" type="{LV.Library}" inputs="reference:4124.lib,error in (no error):4232.after" outputs="reference out:,error out:4263.err" uid="4263" uid_parent="root"/>
+  <Indicator _name="apply error" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" uid="4264" uid_parent="root" inputs="value:4263.err"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4230.vis" mode="index" outputs="value:4301.vi" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4263.err" outputs="value:4302.err" uid="4302" uid_parent="4300"/>
+    <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4301.vi,error in (no error):4302.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4330.err" uid="4330" uid_parent="4300"/>
+    <Node _name="Close Reference" inputs="reference:4301.vi,error in (no error):4330.err" outputs="error out:4340.err" uid="4340" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4340.err" outputs="code:4345.code" uid="4345" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4345.code" mode="index" outputs="value:4351.codes" uid="4351" uid_parent="4300"/>
+    <Tunnel _id="Out3" inputs="value:4302.err" outputs="value:4352.after" uid="4352" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="save codes" type="array{int32}" value="[]" uid="4361" uid_parent="root" inputs="value:4351.codes"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.Library}" inputs="reference:4124.lib,error in (no error):4352.after" outputs="reference out:,error out:4900.err" uid="4900" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4124.lib,error in (no error):4900.err" outputs="error out:4910.err" uid="4910" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" uid="4920" uid_parent="root" inputs="value:4910.err"/>
+</VI>

@@ -1,0 +1,4 @@
+<VI _name="lvai_icon_carrier.vi" description="Image carrier for the class and library icon helpers of lvai_set_owner_icon and lvai_read_icons. It holds an icon IN MEMORY only so that its image data can be read and moved to a .lvclass or .lvlib - no helper ever saves it. Measured 2026-10-08 on LabVIEW 2026 Q3 32-bit with labview-mcp 1.8.5 in a pilot project (a class with six members, project closed).">
+  <Control _name="x" type="int32" uid="10" uid_parent="root" value="0" outputs="value:10.value"/>
+  <Indicator _name="y" type="int32" uid="11" uid_parent="root" value="0" inputs="value:10.value"/>
+</VI>

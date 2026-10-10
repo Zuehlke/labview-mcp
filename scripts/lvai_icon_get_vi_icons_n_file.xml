@@ -1,0 +1,52 @@
+<VI _name="lvai_icon_get_vi_icons_n_file.vi" description="Batch read-back of VI icons to PNGs in ONE LabVIEW call, without changing the VIs. vi list and png list are the paths of two text files holding absolute paths, each entry followed by a semicolon, paired by position - files because the runner cannot set an array and a long string input passes the answer size limit from about 100 paths. Per pair - Open VI Reference, Save VI Icon to File, Close Reference - one line of error code TAB png path into report, and ok count = entries with code 0. The output folders must exist and every PNG path must stay under MAX_PATH - otherwise NOTHING is written and the code is still 0, so count the files. Run with the project CLOSED. Measured in a pilot project on LabVIEW 2026 Q3 with labview-mcp 1.8.5 (146 VIs in one call).">
+  <Constant _name="all" type="int32" uid="4091" uid_parent="root" value="-1" outputs="value:4091.value"/>
+  <Control _name="vi list" type="path" uid="4090" uid_parent="root" value="" outputs="value:4090.value"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4090.value,count:4091.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4092.text,cancelled:,error out:4092.err" uid="4092" uid_parent="root"/>
+  <Control _name="png list" type="path" uid="4093" uid_parent="root" value="" outputs="value:4093.value"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4093.value,count:4091.value,error in:4092.err,prompt (Open existing file):" outputs="refnum out:,text:4094.text,cancelled:,error out:4094.err" uid="4094" uid_parent="root"/>
+  <Constant _name="sep" type="string" uid="4110" uid_parent="root" value="\3B" outputs="value:4110.value"/>
+  <Constant _name="tab" type="string" uid="4111" uid_parent="root" value="\09" outputs="value:4111.value"/>
+  <Constant _name="lf" type="string" uid="4112" uid_parent="root" value="\0A" outputs="value:4112.value"/>
+  <Constant _name="empty" type="string" uid="4113" uid_parent="root" value="" outputs="value:4113.value"/>
+  <Constant _name="zero" type="int32" uid="4114" uid_parent="root" value="0" outputs="value:4114.value"/>
+  <Constant _name="zero code" type="int32" uid="4115" uid_parent="root" value="0" outputs="value:4115.value"/>
+  <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4092.text" outputs="value:4311.rest" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4320.after" outputs="value:4312.restout" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <ShiftReg uid="4305" uid_parent="4300">
+      <Left inputs="value:4094.text" outputs="value:4306.prest" uid="4306" uid_parent="4305"/>
+      <Right inputs="value:4326.after" outputs="value:4307.prestout" uid="4307" uid_parent="4305"/>
+    </ShiftReg>
+    <ShiftReg uid="4313" uid_parent="4300">
+      <Left inputs="value:4113.value" outputs="value:4314.rep" uid="4314" uid_parent="4313"/>
+      <Right inputs="value:4340.rep" outputs="value:4315.report" uid="4315" uid_parent="4313"/>
+    </ShiftReg>
+    <ShiftReg uid="4316" uid_parent="4300">
+      <Left inputs="value:4114.value" outputs="value:4317.ok" uid="4317" uid_parent="4316"/>
+      <Right inputs="value:4351.ok" outputs="value:4318.okcount" uid="4318" uid_parent="4316"/>
+    </ShiftReg>
+    <Tunnel _id="In1" inputs="value:4110.value" outputs="value:4301.sep" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4111.value" outputs="value:4302.tab" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4112.value" outputs="value:4303.lf" uid="4303" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4115.value" outputs="value:4304.zc" uid="4304" uid_parent="4300"/>
+    <Node _name="Match Pattern" inputs="string:4311.rest,regular expression:4301.sep,offset (0):" outputs="before substring:4320.path,match substring:,after substring:4320.after,offset past match:" uid="4320" uid_parent="4300"/>
+    <Node _name="Match Pattern" inputs="string:4306.prest,regular expression:4301.sep,offset (0):" outputs="before substring:4326.png,match substring:,after substring:4326.after,offset past match:" uid="4326" uid_parent="4300"/>
+    <Node _name="String To Path" inputs="string:4320.path" outputs="path:4321.p" uid="4321" uid_parent="4300"/>
+    <Node _name="String To Path" inputs="string:4326.png" outputs="path:4327.pp" uid="4327" uid_parent="4300"/>
+    <Node _name="Open VI Reference" inputs="application reference (local):,vi path:4321.p,error in (no error):" outputs="vi reference:4322.vi,error out:4322.err" uid="4322" uid_parent="4300"/>
+    <Node _name="Invoke Node" target="Save VI Icon to File" type="{LV.VI}" inputs="reference:4322.vi,error in (no error):4322.err,Image File:4327.pp" outputs="reference out:,error out:4323.err" uid="4323" uid_parent="4300"/>
+    <Node _name="Close Reference" inputs="reference:4322.vi,error in (no error):4323.err" outputs="error out:4324.err" uid="4324" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4324.err" outputs="code:4325.code" uid="4325" uid_parent="4300"/>
+    <Node _name="Number To Decimal String" inputs="number:4325.code" outputs="decimal integer string:4331.c" uid="4331" uid_parent="4300"/>
+    <Node _name="Concatenate Strings" inputs="string:4314.rep,string:4331.c,string:4302.tab,string:4326.png,string:4303.lf" outputs="concatenated string:4340.rep" uid="4340" uid_parent="4300"/>
+    <Node _name="Equal?" inputs="x:4325.code,y:4304.zc" outputs="x = y?:4350.eq" uid="4350" uid_parent="4300"/>
+    <Node _name="Boolean To (0\2C1)" inputs="Boolean:4350.eq" outputs="0\2C 1:4352.n" uid="4352" uid_parent="4300"/>
+    <Node _name="Add" inputs="x:4317.ok,y:4352.n" outputs="x+y:4351.ok" uid="4351" uid_parent="4300"/>
+    <Node _name="Empty String/Path?" inputs="string/path:4320.after" outputs="empty?:4360.e" uid="4360" uid_parent="4300"/>
+    <Condition inputs="value:4360.e" uid="4361" uid_parent="4300" value="stop"/>
+  </Structure>
+  <Indicator _name="report" type="string" uid="4800" uid_parent="root" value="" inputs="value:4315.report"/>
+  <Indicator _name="ok count" type="int32" uid="4801" uid_parent="root" value="0" inputs="value:4318.okcount"/>
+</VI>
