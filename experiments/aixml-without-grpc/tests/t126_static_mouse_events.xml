@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T126 Static Mouse Events.vi" description="Static mouse events on composed controls: Mouse Down on a numeric reading Coords and Button, Mouse Up and Mouse Move on a string, Mouse Wheel on a numeric reading Delta. They need a hand on the mouse, so the run fires a Value Change on the File path control with Value (Signaling) instead; that frame stops the loop and says which frame ran. The VI opens its own front panel first and closes it at the end.">
+  <Control _name="Number" outputs="value:" type="double" uid="4201" uid_parent="root" value="0" />
+  <Control _name="Text" outputs="value:" type="string" uid="4202" uid_parent="root" value="" />
+  <Control _name="Wheel" outputs="value:" type="double" uid="4203" uid_parent="root" value="0" />
+  <Control _name="File" outputs="value:" type="path" uid="4204" uid_parent="root" value="" />
+  <Constant _name="Signal" outputs="value:4205.value" type="path" uid="4205" uid_parent="root" value="C:\5Cprobe\5Cmouse.txt"/>
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4207.value" type="bool" uid="4207" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="File" outputs="File:4211.File" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:4211.File,error in (no error):4212.error out,Value (Signaling):4205.value" outputs="reference out:,error out:4213.error out" type="{LV.Path}" uid="4213" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" &quot;Number&quot;\3A Mouse Down " uid="4240" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Coords,Button" outputs="Coords:4241.Coords,Button:4241.Button" uid="4241" uid_parent="4240"/>
+        <Indicator _name="Down At" inputs="value:4241.Coords" type="cluster{int32.Horizontal,int32.Vertical}" uid="4242" uid_parent="4240" value="[0,0]"/>
+        <Indicator _name="Button" inputs="value:4241.Button" type="uint16" uid="4243" uid_parent="4240" value="0"/>
+        <Constant outputs="value:4244.value" type="int32" uid="4244" uid_parent="4240" value="1"/>
+        <Constant outputs="value:4245.value" type="bool" uid="4245" uid_parent="4240" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4245.value" uid="4246" uid_parent="4240"/>
+        <Tunnel _id="Out2" inputs="value:4244.value" uid="4247" uid_parent="4240"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Text&quot;\3A Mouse Up;  &quot;Text&quot;\3A Mouse Move " uid="4250" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Coords" outputs="Coords:4251.Coords" uid="4251" uid_parent="4250"/>
+        <Indicator _name="Text At" inputs="value:4251.Coords" type="cluster{int32.Horizontal,int32.Vertical}" uid="4252" uid_parent="4250" value="[0,0]"/>
+        <Constant outputs="value:4254.value" type="int32" uid="4254" uid_parent="4250" value="2"/>
+        <Constant outputs="value:4255.value" type="bool" uid="4255" uid_parent="4250" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4255.value" uid="4256" uid_parent="4250"/>
+        <Tunnel _id="Out2" inputs="value:4254.value" uid="4257" uid_parent="4250"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Wheel&quot;\3A Mouse Wheel " uid="4260" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Delta" outputs="Delta:4261.Delta" uid="4261" uid_parent="4260"/>
+        <Indicator _name="Wheel Delta" inputs="value:4261.Delta" type="int32" uid="4262" uid_parent="4260" value="0"/>
+        <Constant outputs="value:4264.value" type="int32" uid="4264" uid_parent="4260" value="3"/>
+        <Constant outputs="value:4265.value" type="bool" uid="4265" uid_parent="4260" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4265.value" uid="4266" uid_parent="4260"/>
+        <Tunnel _id="Out2" inputs="value:4264.value" uid="4267" uid_parent="4260"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;File&quot;\3A Value Change " uid="4270" uid_parent="4230">
+        <Node _name="Event Data Node" fields="NewVal" outputs="NewVal:4271.NewVal" uid="4271" uid_parent="4270"/>
+        <Indicator _name="Received" inputs="value:4271.NewVal" type="path" uid="4272" uid_parent="4270" value=""/>
+        <Constant outputs="value:4274.value" type="int32" uid="4274" uid_parent="4270" value="4"/>
+        <Constant outputs="value:4275.value" type="bool" uid="4275" uid_parent="4270" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4275.value" uid="4276" uid_parent="4270"/>
+        <Tunnel _id="Out2" inputs="value:4274.value" uid="4277" uid_parent="4270"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4281.value" outputs="value:4283.value" uid="4283" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Last Frame" inputs="value:4283.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):4213.error out,Front Panel Window\3AOpen:4207.value" outputs="reference out:,error out:4291.error out" type="{LV.VI}" uid="4291" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4291.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>

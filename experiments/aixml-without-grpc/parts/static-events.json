@@ -1,0 +1,533 @@
+{
+ "Double Click": {
+  "classes": {
+   "listbox": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741837"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Libraries and Executables\\External Code (DLL) Execution.vi"
+ },
+ "Drag Enter": {
+  "classes": {
+   "stdGraph": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit7=\"1\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-1610612679"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi"
+ },
+ "Drag Starting?": {
+  "classes": {
+   "listbox": 2
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Data\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"data name\" /><TypeDesc Type=\"LVVariant\" Format=\"inline\" Label=\"drag data\" /></TypeDesc></TypeDesc>",
+   "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Drag Mode\"><EnumLabel>copy or move</EnumLabel>\n        <EnumLabel>copy only</EnumLabel>\n        <EnumLabel>move only</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1,
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "-2147483604"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Manager\\Actor Core.vi"
+ },
+ "Drop": {
+  "classes": {
+   "stdGraph": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit7=\"1\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-1610612674"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi"
+ },
+ "Key Down?": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "5",
+   "type": "-2147483638"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\NewProjectDialog.vi"
+ },
+ "Load Finished": {
+  "classes": {
+   "htmlControl": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"URL\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Status\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Error\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741912"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Web Browser\\Notify and Filter Events.vi"
+ },
+ "Menu Selection (App)": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "5",
+   "type": "1073741851"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Event Structure\\Handling Common User Interface Events.vi"
+ },
+ "Menu Selection (User)": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "5",
+   "type": "1073741829"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing the Menubar\\Customizing the Menubar.vi"
+ },
+ "Mouse Down": {
+  "classes": {
+   "listbox": 1,
+   "scenegraphdisplay": 1,
+   "stdGraph": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 4
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741842"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+ },
+ "Mouse Enter": {
+  "classes": {
+   "stdGraph": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741839"
+  },
+  "vi": "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\vi.lib\\addons\\Time Frequency Analysis\\_express\\_TimeFrequencySpectrogramConfig.llb\\Configure TimeFrequencySpectrogram.vi"
+ },
+ "Mouse Leave": {
+  "classes": {
+   "stdGraph": 2,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741838"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Event Structure\\Drag and Drop - Initiating a Custom Drag.vi"
+ },
+ "Mouse Move": {
+  "classes": {
+   "LV.Picture": 0
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "dynamic",
+  "refLabel": "CtlRef",
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741833"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\plugins\\NIIconEditor\\Miscellaneous\\Buffer for lossless tracking.vi"
+ },
+ "Mouse Up": {
+  "classes": {
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741832"
+  },
+  "vi": "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\vi.lib\\addons\\Time Frequency Analysis\\_express\\_TimeFrequencySpectrogramConfig.llb\\Configure TimeFrequencySpectrogram.vi"
+ },
+ "Mouse Wheel": {
+  "classes": {
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Delta\" />",
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Orientation\"><EnumLabel>Horizontal</EnumLabel>\n        <EnumLabel>Vertical</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"ButtonMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Left button pressed\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Middle button pressed\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Right button pressed\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483648": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483648",
+   "source": "3",
+   "type": "1073741905"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Event Structure\\Handling Mouse Wheel Events.vi"
+ },
+ "Panel Close?": {
+  "classes": {
+   "null": 18
+  },
+  "eFlagsSeen": {
+   "2": 18
+  },
+  "fields": [
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 2,
+   "1": 16
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "5",
+   "type": "-2147483645"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Basic Demo\\Basic Demo\\Actor Core.vi"
+ },
+ "Shortcut Menu Activation?": {
+  "classes": {
+   "listbox": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Label=\"SubObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-2147483597"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+ },
+ "Shortcut Menu Selection (User)": {
+  "classes": {
+   "indArr": 1,
+   "listbox": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Bit7=\"1\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Label=\"SubObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 2,
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "1073741876"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+ },
+ "URL Navigation?": {
+  "classes": {
+   "htmlControl": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"URL\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-2147483561"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Web Browser\\Notify and Filter Events.vi"
+ },
+ "VI Activation": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "1": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"VIName\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"VIWindow\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" Label=\"VIAppRef\" />"
+  ],
+  "from": "static",
+  "refLabel": "AppRef",
+  "regFlagsSeen": {
+   "0": 1
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "regFlags": "0",
+   "source": "4",
+   "type": "1073741857"
+  },
+  "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Using the VI Activation Event for VI Scripting.vi"
+ }
+}

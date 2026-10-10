@@ -1288,5 +1288,17 @@
     }
    }
   ]
+ },
+ "t126_static_mouse_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 4,
+     "Received": "C:\\probe\\mouse.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

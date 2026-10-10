@@ -1115,8 +1115,8 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 126 of 126 - control references as event sources and frames handling several events
-included. **No `.ctl` link is needed for a
+own suite at 127 of 127 - control references as event sources, frames handling several events and
+static mouse events included. **No `.ctl` link is needed for a
 typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **`lvai_create_class`

@@ -245,6 +245,20 @@ def control_events():
     return _CONTROL_EVENTS.get("kinds", {})
 
 
+_STATIC_EVENTS = None
+
+
+def static_event(event):
+    """parts/static-events.json's row for a STATIC event beyond EVENT_SPECS - its EventSpec and the
+    data fields after the reference, read off NI's own VIs by static_event_survey.py
+    (build_static_events.py). None when the survey never saw it."""
+    global _STATIC_EVENTS
+    if _STATIC_EVENTS is None:
+        p = os.path.join(HERE, "parts", "static-events.json")
+        _STATIC_EVENTS = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
+    return _STATIC_EVENTS.get(event)
+
+
 def control_event_row(cls, event):
     """The measured row for `event` registered on a reference of class `cls`: its own, or one read
     on ANOTHER class when the code's family (its CField2) is declared by `cls` or an ancestor of
@@ -3945,6 +3959,25 @@ class Composer:
             return None
         return m.group(1), m.group(2).strip()
 
+    def _static_row(self, uid, ctl, kind):
+        """The static-events.json row for a control's NOTIFY event, or a refusal naming why not:
+        a filter event (`Mouse Down?`, type with the 0x80000000 bit) needs an Event Filter Node, a
+        VI or application event has no control, and a class-dependent one was not generalised."""
+        r = static_event(kind)
+        if r is None:
+            raise Unsupported("Event Structure %s: event %r is not composable yet" % (uid, kind))
+        if int(r["spec"]["type"]) < 0:
+            raise Unsupported("Event Structure %s: the filter event %r is not composable yet" % (uid, kind))
+        if r["sourceKind"] != "control" or ctl is None:
+            raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
+        if r.get("classDependent"):
+            raise Unsupported("Event Structure %s: %r carries class-dependent data - not composable yet" % (uid, kind))
+        return r
+
+    def _static_spec(self, uid, ctl, kind):
+        s = self._static_row(uid, ctl, kind)["spec"]
+        return (s["source"], s["regFlags"], s["eSource"], s["type"], s["eFlags"], True)
+
     def _is_dyn_frame(self, frame):
         return any(self._dyn_source(p) for p in event_items(unescape(frame.get("selector") or "")))
 
@@ -4021,9 +4054,7 @@ class Composer:
                         ctl, kind, dyn_index = dyn[0], dyn[1], str(pos)
                     else:
                         ctl, kind = self._event_of(part)
-                        row = self.EVENT_SPECS.get(kind)
-                        if row is None:
-                            raise Unsupported("Event Structure %s: event %r is not composable yet" % (el.get("uid"), kind))
+                        row = self.EVENT_SPECS.get(kind) or self._static_spec(el.get("uid"), ctl, kind)
                         # a user event's dynIndex is its 1-based POSITION in the registration - 1
                         # and 2 for the two events of MGI's Special Monitor Actor Core.vi; static 0
                         dyn_index = str(self._user_event_position(el, ctl)) if kind == "User Event" else "0"
@@ -4354,7 +4385,10 @@ class Composer:
                         fs[i] = lvheap.strip_label(copy.deepcopy(vt))
                         fs[i].set("Label", f.get("Label"))
             return fs
-        if kind in ("Value Change", "Mouse Enter", "Mouse Leave"):
+        static = None
+        if kind not in ("Value Change", "Mouse Enter", "Mouse Leave", "Timeout", "User Event"):
+            static = self._static_row(el.get("uid"), ctl, kind)
+        if kind in ("Value Change", "Mouse Enter", "Mouse Leave") or static is not None:
             ctl_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
                            and unescape(e.get("_name") or "") == ctl), None)
             if ctl_el is None:
@@ -4370,6 +4404,10 @@ class Composer:
                 for c in fields(ref):
                     ref.remove(c)
             ref.set("Label", "CtlRef")
+            if static is not None:
+                # a surveyed static event: its own fields after the reference, as NI's VIs carry
+                # them (Mouse Down: Coords, Button, Mods, PlatMods)
+                return fs[:3] + [ref] + [ET.fromstring(x) for x in static["fields"]]
             if kind != "Value Change":
                 # Mouse Enter / Mouse Leave: Source, Type, Time, CtlRef and nothing else - LabVIEW's
                 # save of a single one, and NI's Handling Mouse Events.vi with six in one frame

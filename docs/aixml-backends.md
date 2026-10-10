@@ -229,6 +229,15 @@ run: one frame took Value Change from two controls, another two user events. A s
 CtlRef is the control's STRICT refnum, a latched Boolean's plain. FINDINGS §7a, "Frames that
 handle several events".
 
+**STATIC MOUSE EVENTS compose** - Mouse Down, Up, Move and Wheel on any control the composer builds -
+from `parts/static-events.json`, a survey of every static event NI's cached VIs handle (298 frames,
+19 kinds) read out of the VIs themselves. `experiments/aixml-without-grpc/probe_events.py` is the
+check every event kind passes before it is trusted: compose, load, compare with LabVIEW's own save
+(LabVIEW recomputes event data on load) and have NI's exporter NAME each frame's events from that
+save - a wrong type number comes back as another event's name, shown with a negative control.
+Filter events (`Panel Close?`), VI and application events are still refused by name. FINDINGS §7a,
+"Static events".
+
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over
 ActiveX so far, `lvai_create_class`** (with `lvai_open_file` and `lvai_close_active_project`), and

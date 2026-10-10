@@ -1192,6 +1192,43 @@ strings, a ring item with a quote) or on SINGLE events whose data is not compose
 Down, Graph events. Reading `CtlRef` stays refused off an enum, a cluster or an array - not
 measured.
 
+### Static events beyond Value Change - and a loop that proves an event without running it
+
+`EVENT_SPECS` held four hand-measured static events (Value Change, Mouse Enter, Mouse Leave,
+Timeout). The rest come from a survey now: `static_event_survey.py` took every cached NI export
+with an Event Structure, kept the frames handling exactly ONE static event, and read each one's
+EventSpec, source control and event data out of the VI itself - **298 frames of 19 event kinds in
+84 VIs**. `build_static_events.py` makes `parts/static-events.json` of it: per event the spec (the
+commonest variant; regFlags and eFlags are per-frame options and every variant is listed), the
+source kind the spec names (3 a control, 5 the VI, 4 the application), the reference field's label
+and the fields after it. An event the survey never saw STATIC but the dynamic table holds for
+`LV.Control`'s family is taken from there - Mouse Move - and marked so.
+
+What the survey settled: the static type numbers are the DYNAMIC ones (Mouse Down `0x40000012`, Mouse
+Up `0x40000008`, as the dynamic table has them); a FILTER event carries the `0x80000000` bit in its
+type (`Panel Close?` `0x80000003`, `Key Down?` `0x8000000A`), a drag-and-drop one `0xA0000000`
+(`Drop`); the fields after the reference are the same whatever the control class for the
+control-wide events (Mouse Down reads Coords, Button, Mods, PlatMods on a listbox, a graph, a
+picture and a 3D scene alike), while a class's own event carries its own (a listbox's Double Click
+adds `Row`).
+
+**`probe_events.py` closes the loop on any composed event, with LabVIEW's answers only**: compose
+the probe, load it (ExecState must be 1), have LabVIEW save a copy - it recomputes every frame's
+event data on load, so the copy is LabVIEW's own data - compare cluster and specs frame by frame,
+then have NI's EXPORTER read the saved copy and name each frame's events. **The type number is right
+exactly when the name comes back**: a negative control composed Mouse Up with Mouse Move's number
+and the exporter answered `"N2": Mouse Move`. Static Mouse Down, Mouse Up, Mouse Move and Mouse
+Wheel on doubles, an I32, switch and latched Booleans, strings and a path, alone and in multi-event
+frames - nine frames, every one executable, identical to LabVIEW's save and named back as written,
+Mouse Move included. `t126_static_mouse_events` builds them with their data wired and RUNS: a mouse
+event needs a hand on the mouse, so the run fires a Value Change instead, and that frame ran.
+
+**Not composed yet, refused by name**: a filter event (`Panel Close?`, `Mouse Down?`, the drag
+events) - it needs the Event Filter Node, an `eventDataNode` of its own flags whose cluster ("Event
+Filter Data") carries per-field type flags (`Bit7` on the notify fields, `Bit0` on `Discard?`);
+VI and application events (`Panel Close`, `VI Activation`); and an event whose data the survey
+found class-dependent.
+
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
 existed and may be the same shared-terminal bug. Each harvested part set from before today needs
@@ -1219,6 +1256,8 @@ through `Project:Active Project` should not care, and that is untested.
 | `harvest_event_reg.py` | cuts `Register For Events` (`eventRegNode`, which the harvester does not know) out of a VI into a part (§7a, "User events") |
 | `scan_event_regs.py`, `build_event_kinds.py`, `parts/control-events.json` | every event registration of the installation, heap only; joined with NI's exports into the (class, event) table control-reference sources are composed from (§7a, "Control references") |
 | `lv-fp.ps1` | open or close a VI's front panel over COM - registering for a control's events needs it open |
+| `static_event_survey.py`, `build_static_events.py`, `parts/static-events.json` | every static event NI's cached VIs handle, read out of the VIs; the table static events are composed from (§7a, "Static events") |
+| `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
