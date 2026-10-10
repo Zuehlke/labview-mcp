@@ -1157,5 +1157,43 @@
     }
    }
   ]
+ },
+ "t115_build_path_string": {
+  "cases": [
+   {
+    "inputs": "class path=C:\\a\\Dir\\b.lvclass;out name=x.ctl",
+    "outputs": {
+     "result": "C:\\a\\Dir\\x.ctl"
+    }
+   }
+  ]
+ },
+ "t116_concat_five": {
+  "cases": [
+   {
+    "inputs": "a=a",
+    "outputs": {
+     "result": "abcde"
+    }
+   }
+  ]
+ },
+ "t117_concat_tunnel": {
+  "cases": [
+   {
+    "inputs": "N=3",
+    "outputs": {
+     "n": 6,
+     "all": "[1,2,1,2,1,2]"
+    }
+   },
+   {
+    "inputs": "N=0",
+    "outputs": {
+     "n": 0,
+     "all": "[]"
+    }
+   }
+  ]
  }
 }

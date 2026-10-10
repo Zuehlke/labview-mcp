@@ -3043,7 +3043,7 @@
     "declaredBy": "LV.Application",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\2D Plot\\2D Plot\\Public\\Palette Menu\\Check Quick Editor.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"Disp.AllMonitors\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"77\" />\n          </TypeDesc>\n        <Label Text=\"LVAllMonitorsDisplayTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"Disp.AllMonitors\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Depth\" /></TypeDesc></TypeDesc><Label Text=\"LVAllMonitorsDisplayTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Disp.WkSpace": {
     "access": "r",
@@ -3051,7 +3051,7 @@
     "declaredBy": "LV.Application",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\JDP Science\\Flatline Controls\\Three Button Dialog CORE Flatline.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Disp.WkSpace\">\n          <TypeDesc TypeID=\"70\" />\n          <TypeDesc TypeID=\"71\" />\n          <TypeDesc TypeID=\"72\" />\n          <TypeDesc TypeID=\"73\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Disp.WkSpace\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "OS.Name": {
     "access": "r",
@@ -3492,7 +3492,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\libpropPage_5Friends.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"157\" />\n          <TypeDesc TypeID=\"158\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds Rect": {
     "access": "r",
@@ -3500,7 +3500,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\libpropPage_Inheritance.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"207\" />\n          <TypeDesc TypeID=\"205\" />\n          <TypeDesc TypeID=\"208\" />\n          <TypeDesc TypeID=\"206\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds:Height": {
     "access": "r",
@@ -3524,7 +3524,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\JDP Science\\Flatline Controls\\Three Button Dialog CORE Flatline.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Button Size\">\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Button Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Colors [4]": {
     "access": "w",
@@ -3596,7 +3596,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\SCC\\manager\\SCCMgr Dialog_InitControls.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"32\" />\n          <TypeDesc TypeID=\"29\" />\n          <TypeDesc TypeID=\"33\" />\n          <TypeDesc TypeID=\"30\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "MasterRect": {
     "access": "r",
@@ -3604,7 +3604,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_FitCheckbox.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          <TypeDesc TypeID=\"24\" />\n          <TypeDesc TypeID=\"25\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "MechAction": {
     "access": "r",
@@ -3620,7 +3620,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\AppBuilder\\AB_Classes\\Application\\Page_Exclusions_Initialize.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"34\" />\n          <TypeDesc TypeID=\"35\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position:Left": {
     "access": "rw",
@@ -3668,7 +3668,7 @@
     "declaredBy": "LV.Boolean",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\JDP Science\\Flatline Controls\\Three Button Dialog CORE Flatline.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ToggleKeyBind\">\n          <TypeDesc TypeID=\"98\" />\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          </TypeDesc>\n        <Label Text=\"LVKeyTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ToggleKeyBind\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Focus\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Control\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Key\" /></TypeDesc><Label Text=\"LVKeyTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Top": {
     "access": "rw",
@@ -3906,7 +3906,7 @@
     "heapName": "AllTypes[]",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Utility\\traverseref.llb\\Get Class Hierarchy from Class Name.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AllTypes[]\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"20\" />\n          </TypeDesc>\n        <Label Text=\"ASC_ArrayOfUniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AllTypes[]\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"VI Server Class Info\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Unique ID string\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Parent ID string\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Class Name (unlocalized)\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Class Name (localized)\" /></TypeDesc><Label Text=\"ASC_UniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc></TypeDesc><Label Text=\"ASC_ArrayOfUniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc>"
    },
    "AllTypes[]": {
     "access": "r",
@@ -3914,7 +3914,7 @@
     "declaredBy": "LV.ClassSpecifierConstant",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Utility\\traverseref.llb\\Get Class Hierarchy from Class Name.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AllTypes[]\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"20\" />\n          </TypeDesc>\n        <Label Text=\"ASC_ArrayOfUniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AllTypes[]\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"VI Server Class Info\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Unique ID string\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Parent ID string\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Class Name (unlocalized)\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Class Name (localized)\" /></TypeDesc><Label Text=\"ASC_UniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc></TypeDesc><Label Text=\"ASC_ArrayOfUniqueIDStringParentIDStringName.ctl\" />\n        </TypeDesc>"
    }
   },
   "LV.Cluster": {
@@ -3958,7 +3958,7 @@
     "declaredBy": "LV.Cluster",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\Package\\Common\\Pages\\Dependencies\\Change Filter Visibility.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"70\" />\n          <TypeDesc TypeID=\"71\" />\n          <TypeDesc TypeID=\"72\" />\n          <TypeDesc TypeID=\"69\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Controls[]": {
     "access": "r",
@@ -4142,7 +4142,7 @@
     "declaredBy": "LV.ComboBox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_ShowOrHideAdvancedOpts.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "CaseSensitive": {
     "access": "w",
@@ -4307,7 +4307,7 @@
     "declaredBy": "LV.ConnectorPane",
     "label": "TermBnds[]",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
-    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Rectangle\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc></TypeDesc>"
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Rectangle\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc></TypeDesc>"
    },
    "Terminal Bounds[]": {
     "access": "r",
@@ -4316,7 +4316,7 @@
     "heapName": "TermBnds[]",
     "label": "TermBnds[]",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Member Data from Target.vi",
-    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Rectangle\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc></TypeDesc>"
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Rectangle\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc></TypeDesc>"
    },
    "WiringRules[]": {
     "access": "rw",
@@ -4358,7 +4358,7 @@
     "declaredBy": "LV.Constant",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\functionblocks\\FB Support\\FB Change Constant Datetype.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"23\" />\n          <TypeDesc TypeID=\"24\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Terminal": {
     "access": "r",
@@ -4384,7 +4384,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\functionblocks\\FB Property\\FB Property Main.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"407\" />\n          <TypeDesc TypeID=\"342\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds Rect": {
     "access": "r",
@@ -4392,7 +4392,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Utility\\vertDist\\subVIs\\Place radio button and distrubute elements.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          <TypeDesc TypeID=\"24\" />\n          <TypeDesc TypeID=\"25\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds:Height": {
     "access": "r",
@@ -4448,7 +4448,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\2D Plot\\2D Plot\\Protected\\Palette\\Adjust Bounds.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Container Bounds\">\n          <TypeDesc TypeID=\"59\" />\n          <TypeDesc TypeID=\"60\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Container Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Cursors:Active Cursor": {
     "access": "w",
@@ -4641,7 +4641,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\Plot Private Lib\\Get Control Master Rect.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Modes.Visible": {
     "access": "w",
@@ -4738,7 +4738,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Interpolation\\2D Interpolation.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Specific:Surface Color Ramp\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"3D Plot.lvclass\" />\n        <Label Text=\"Color Ramp Cluster.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Specific:Surface Color Ramp\"><TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Color Ramp Style\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Shaded</EnumLabel>\n        <EnumLabel>Color spectrum</EnumLabel>\n        <EnumLabel>Grey scale</EnumLabel>\n        <EnumLabel>Custom</EnumLabel>\n        </TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Color Ramp Array\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color Box\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Color Ramp Index\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric 4\" /></TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Interpolate?\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Logarithm?\" /></TypeDesc><Label Text=\"3D Plot.lvclass\" />\n        <Label Text=\"Color Ramp Cluster.ctl\" />\n        </TypeDesc>"
    },
    "Plot Specific:Surface:Surface Color Ramp": {
     "access": "w",
@@ -4747,7 +4747,7 @@
     "heapName": "Plot Specific:Surface Color Ramp",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Interpolation\\2D Interpolation.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Specific:Surface Color Ramp\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"3D Plot.lvclass\" />\n        <Label Text=\"Color Ramp Cluster.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Specific:Surface Color Ramp\"><TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Color Ramp Style\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Shaded</EnumLabel>\n        <EnumLabel>Color spectrum</EnumLabel>\n        <EnumLabel>Grey scale</EnumLabel>\n        <EnumLabel>Custom</EnumLabel>\n        </TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Color Ramp Array\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color Box\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Color Ramp Index\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric 4\" /></TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Interpolate?\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Logarithm?\" /></TypeDesc><Label Text=\"3D Plot.lvclass\" />\n        <Label Text=\"Color Ramp Cluster.ctl\" />\n        </TypeDesc>"
    },
    "Position": {
     "access": "rw",
@@ -4755,7 +4755,7 @@
     "declaredBy": "LV.Control",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\functionblocks\\FB Property\\FB Property Main.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"381\" />\n          <TypeDesc TypeID=\"382\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position:Top": {
     "access": "r",
@@ -4902,7 +4902,7 @@
     "declaredBy": "LV.ControlTerminal",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_CenterOnPoint.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"17\" />\n          <TypeDesc TypeID=\"15\" />\n          <TypeDesc TypeID=\"18\" />\n          <TypeDesc TypeID=\"16\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position": {
     "access": "w",
@@ -4910,7 +4910,7 @@
     "declaredBy": "LV.ControlTerminal",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_CenterOnPoint.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Wire": {
     "access": "r",
@@ -4928,7 +4928,7 @@
     "declaredBy": "LV.Decoration",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\2D Plot\\2D Plot\\Protected\\Palette\\Adjust Bounds.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"59\" />\n          <TypeDesc TypeID=\"60\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds Rect": {
     "access": "r",
@@ -4936,7 +4936,7 @@
     "declaredBy": "LV.Decoration",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\MGI\\Panel Manager\\Panel\\Window Position\\Reference Position\\Size\\Auto-Stretch\\Calculate.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"8\" />\n          <TypeDesc TypeID=\"9\" />\n          <TypeDesc TypeID=\"10\" />\n          <TypeDesc TypeID=\"11\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "FG Color": {
     "access": "rw",
@@ -4968,7 +4968,7 @@
     "declaredBy": "LV.Decoration",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"37\" />\n          <TypeDesc TypeID=\"38\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Size": {
     "access": "w",
@@ -4976,7 +4976,7 @@
     "declaredBy": "LV.Decoration",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\">\n          <TypeDesc TypeID=\"63\" />\n          <TypeDesc TypeID=\"64\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Top": {
     "access": "rw",
@@ -5050,7 +5050,7 @@
     "declaredBy": "LV.Diagram",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\TargetSupport\\NI_TargetHelper\\FPGATarget\\Script Channel Cnx.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"14\" />\n          <TypeDesc TypeID=\"15\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "SubDiag Label": {
     "access": "r",
@@ -5148,7 +5148,7 @@
     "declaredBy": "LV.Digital",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_hanldeValueCellMouseDown.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"47\" />\n          <TypeDesc TypeID=\"48\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Rep": {
     "access": "r",
@@ -5602,7 +5602,7 @@
     "declaredBy": "LV.GObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express shared\\XNodes\\ExpressAbilitySub_ReplaceSelf.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"172\" />\n          <TypeDesc TypeID=\"171\" />\n          <TypeDesc TypeID=\"170\" />\n          <TypeDesc TypeID=\"173\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Class Name": {
     "access": "r",
@@ -5643,7 +5643,7 @@
     "declaredBy": "LV.GObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\codeGenAPI\\mxwScript_API_Option_SetStartDiagram(Reference).vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position:Top": {
     "access": "w",
@@ -5714,7 +5714,7 @@
     "declaredBy": "LV.GrowableFunction",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_GetNonGrowableHeight.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"18\" />\n          <TypeDesc TypeID=\"16\" />\n          <TypeDesc TypeID=\"19\" />\n          <TypeDesc TypeID=\"17\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Style": {
     "access": "r",
@@ -5840,7 +5840,7 @@
     "declaredBy": "LV.IntensityGraph",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Public\\Environment\\Legend Initialize.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Bounds\">\n          <TypeDesc TypeID=\"251\" />\n          <TypeDesc TypeID=\"252\" />\n          <TypeDesc TypeID=\"253\" />\n          <TypeDesc TypeID=\"254\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position": {
     "access": "w",
@@ -5848,7 +5848,7 @@
     "declaredBy": "LV.IntensityGraph",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Public\\Environment\\Legend Initialize.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"246\" />\n          <TypeDesc TypeID=\"247\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Width": {
     "access": "w",
@@ -6089,7 +6089,7 @@
     "declaredBy": "LV.LVClassLibrary",
     "label": "Parent Libraries",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\CLSUIP_BuildClassInheritanceChain.vi",
-    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"parent library information\">\n          <TypeDesc TypeID=\"53\" />\n          <TypeDesc TypeID=\"101\" />\n          <TypeDesc TypeID=\"102\" />\n          <TypeDesc TypeID=\"17\" />\n          </TypeDesc>\n        <Label Text=\"NI.Parent Library Information.ctl\" />\n        </TypeDesc></TypeDesc>"
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"parent library information\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"qualified name\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"localized name\" /><TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"path\" /><TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"parent library kind\"><EnumLabel>unknown</EnumLabel>\n          <EnumLabel>class</EnumLabel>\n          <EnumLabel>interface</EnumLabel>\n          </TypeDesc><Label Text=\"NI.Parent Library Kind.ctl\" />\n        </TypeDesc></TypeDesc><Label Text=\"NI.Parent Library Information.ctl\" />\n        </TypeDesc></TypeDesc>"
    },
    "Path": {
     "access": "r",
@@ -6569,7 +6569,7 @@
     "declaredBy": "LV.ListBox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\libpropPage_5Friends.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"157\" />\n          <TypeDesc TypeID=\"158\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "CellBG": {
     "access": "w",
@@ -6665,7 +6665,7 @@
     "declaredBy": "LV.ListBox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\libpropPage_5Friends.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"154\" />\n          <TypeDesc TypeID=\"155\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Scrollbar Visible": {
     "access": "w",
@@ -6812,7 +6812,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\SourceControl\\support\\SCCSup Dialog_GenMCLB_SizeColumns.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCell\">\n          <TypeDesc TypeID=\"57\" />\n          <TypeDesc TypeID=\"58\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCell\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ActiveCell": {
     "access": "rw",
@@ -6820,7 +6820,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\DotNET\\AssemblyVisualizationTool\\AssemblyVisualizationWindow.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCell\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCell\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ActiveCellPos": {
     "access": "r",
@@ -6828,7 +6828,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_handleMouseMoveOnTable.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCellPos\">\n          <TypeDesc TypeID=\"80\" />\n          <TypeDesc TypeID=\"81\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCellPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ActiveCellPosLeft": {
     "access": "r",
@@ -6924,7 +6924,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_handleMouseMoveOnTable.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\">\n          <TypeDesc TypeID=\"59\" />\n          <TypeDesc TypeID=\"60\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ColHdrString": {
     "access": "rw",
@@ -7004,7 +7004,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_hanldeValueCellMouseDown.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"EditPos\">\n          <TypeDesc TypeID=\"31\" />\n          <TypeDesc TypeID=\"50\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"EditPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "FocusRow": {
     "access": "rw",
@@ -7116,7 +7116,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\functionblocks\\FB Property\\FB Overlay Show.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"SelectedCell\">\n          <TypeDesc TypeID=\"68\" />\n          <TypeDesc TypeID=\"67\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"SelectedCell\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Symbols Vis": {
     "access": "w",
@@ -7148,7 +7148,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\SourceControl\\support\\SCCSup Dialog_GenMCLB_SizeColumns.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\">\n          <TypeDesc TypeID=\"66\" />\n          <TypeDesc TypeID=\"67\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnUnsignedTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnUnsignedTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "TopLeft": {
     "access": "rw",
@@ -7156,7 +7156,7 @@
     "declaredBy": "LV.MulticolumnListbox",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\Handle Tree value change.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\">\n          <TypeDesc TypeID=\"37\" />\n          <TypeDesc TypeID=\"38\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnUnsignedTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnUnsignedTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Val(Sgnl)": {
     "access": "w",
@@ -7338,7 +7338,7 @@
     "declaredBy": "LV.Node",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_ArrangeFPTerms.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"12\" />\n          <TypeDesc TypeID=\"13\" />\n          <TypeDesc TypeID=\"14\" />\n          <TypeDesc TypeID=\"15\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Style": {
     "access": "r",
@@ -7424,7 +7424,7 @@
     "declaredBy": "LV.OuterTerminal",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_GetFPTermPosition.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"27\" />\n          <TypeDesc TypeID=\"25\" />\n          <TypeDesc TypeID=\"28\" />\n          <TypeDesc TypeID=\"26\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Connected Wire": {
     "access": "r",
@@ -7784,7 +7784,7 @@
     "declaredBy": "LV.Picture",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\_probes\\default\\PictureCtrlDefault.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"57\" />\n          <TypeDesc TypeID=\"58\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Draw Area Size": {
     "access": "rw",
@@ -7792,7 +7792,7 @@
     "declaredBy": "LV.Picture",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\variable\\SetDataTypePicCtl.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Draw Area Size\">\n          <TypeDesc TypeID=\"56\" />\n          <TypeDesc TypeID=\"55\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Draw Area Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "HorizScroll": {
     "access": "w",
@@ -7816,7 +7816,7 @@
     "declaredBy": "LV.Picture",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\2D Picture Control\\Using Mask with Picture.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Mouse\">\n          <TypeDesc TypeID=\"49\" />\n          <TypeDesc TypeID=\"54\" />\n          </TypeDesc>\n        <Label Text=\"LVMouseTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Mouse\"><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mouse Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mouse Modifiers\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Button Down\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift Mod\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Mod\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Option Mod\" /></TypeDesc></TypeDesc><Label Text=\"LVMouseTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Origin": {
     "access": "w",
@@ -7824,7 +7824,7 @@
     "declaredBy": "LV.Picture",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\_probes\\default\\PictureCtrlDefault.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Origin\">\n          <TypeDesc TypeID=\"49\" />\n          <TypeDesc TypeID=\"50\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Origin\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position": {
     "access": "w",
@@ -7832,7 +7832,7 @@
     "declaredBy": "LV.Picture",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Events\\Dynamic Event Generation.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"47\" />\n          <TypeDesc TypeID=\"48\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position:Left": {
     "access": "r",
@@ -7899,7 +7899,7 @@
     "declaredBy": "LV.PolymorphicSubVI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\printing\\PrintingMutation\\AppendFrontPanelImageToReport_Mutation.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "SelectedType": {
     "access": "rw",
@@ -8119,7 +8119,7 @@
     "declaredBy": "LV.ProjectItem",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\Installer\\CDK_ImportScript_AddNonGenFiles.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Icon\">\n          <TypeDesc TypeID=\"77\" />\n          <TypeDesc TypeID=\"78\" />\n          <TypeDesc TypeID=\"80\" />\n          <TypeDesc TypeID=\"81\" />\n          <TypeDesc TypeID=\"83\" />\n          <TypeDesc TypeID=\"88\" />\n          </TypeDesc>\n        <Label Text=\"imagedata.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Icon\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"image type\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"image depth\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"image\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"mask\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"colors\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Rectangle\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc></TypeDesc><Label Text=\"imagedata.ctl\" />\n        </TypeDesc>"
    },
    "IsInPackedLibrary": {
     "access": "r",
@@ -8491,7 +8491,7 @@
     "declaredBy": "LV.RadioButtonsControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Utility\\vertDist\\subVIs\\Place radio button and distrubute elements.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          <TypeDesc TypeID=\"24\" />\n          <TypeDesc TypeID=\"25\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Top": {
     "access": "w",
@@ -8607,7 +8607,7 @@
     "declaredBy": "LV.Ring",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_handleMouseMoveOnTable.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NmdNumSize\">\n          <TypeDesc TypeID=\"59\" />\n          <TypeDesc TypeID=\"60\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NmdNumSize\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position": {
     "access": "w",
@@ -8615,7 +8615,7 @@
     "declaredBy": "LV.Ring",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_handleMouseMoveOnTable.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"80\" />\n          <TypeDesc TypeID=\"81\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Strings []": {
     "access": "rw",
@@ -8803,7 +8803,7 @@
     "declaredBy": "LV.SceneObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\picture\\3D Picture Control\\Object\\Set Material.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Ambient\">\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          <TypeDesc TypeID=\"9\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Ambient\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Material.Color Mode": {
     "access": "w",
@@ -8819,7 +8819,7 @@
     "declaredBy": "LV.SceneObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\picture\\3D Picture Control\\Object\\Set Material.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Diffuse\">\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          <TypeDesc TypeID=\"9\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Diffuse\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Material.Emission": {
     "access": "w",
@@ -8827,7 +8827,7 @@
     "declaredBy": "LV.SceneObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\picture\\3D Picture Control\\Object\\Set Material.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Emission\">\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          <TypeDesc TypeID=\"9\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Emission\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Material.Shininess": {
     "access": "w",
@@ -8843,7 +8843,7 @@
     "declaredBy": "LV.SceneObject",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Specular\">\n          <TypeDesc TypeID=\"66\" />\n          <TypeDesc TypeID=\"67\" />\n          <TypeDesc TypeID=\"68\" />\n          <TypeDesc TypeID=\"69\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Material.Specular\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Name": {
     "access": "rw",
@@ -8941,7 +8941,7 @@
     "declaredBy": "LV.SceneSphere",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\Sphere Fit.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Color\">\n          <TypeDesc TypeID=\"20\" />\n          <TypeDesc TypeID=\"21\" />\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Detail": {
     "access": "w",
@@ -9075,7 +9075,7 @@
     "declaredBy": "LV.String",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\SourceControl\\Providers\\P4CMD\\P4CMD Dialog_HistDispChangelist.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"96\" />\n          <TypeDesc TypeID=\"97\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds Rect": {
     "access": "r",
@@ -9083,7 +9083,7 @@
     "declaredBy": "LV.String",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\AppBuilder\\AB_Classes\\Deployment\\Page_Info_Initialize.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"431\" />\n          <TypeDesc TypeID=\"432\" />\n          <TypeDesc TypeID=\"433\" />\n          <TypeDesc TypeID=\"434\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds:Height": {
     "access": "r",
@@ -9171,7 +9171,7 @@
     "declaredBy": "LV.String",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\SCC\\manager\\SCCMgr Dialog_InitControls.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"32\" />\n          <TypeDesc TypeID=\"29\" />\n          <TypeDesc TypeID=\"33\" />\n          <TypeDesc TypeID=\"30\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "OwningVI": {
     "access": "r",
@@ -9187,7 +9187,7 @@
     "declaredBy": "LV.String",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\UI.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"73\" />\n          <TypeDesc TypeID=\"74\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Position:Left": {
     "access": "w",
@@ -9211,7 +9211,7 @@
     "declaredBy": "LV.String",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\UI.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\">\n          <TypeDesc TypeID=\"70\" />\n          <TypeDesc TypeID=\"71\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Size:Width": {
     "access": "w",
@@ -9353,7 +9353,7 @@
     "declaredBy": "LV.SubPanel",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\ws_project_provider\\properties\\WSPreferenceDialog.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"66\" />\n          <TypeDesc TypeID=\"67\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Container Bounds": {
     "access": "rw",
@@ -9361,7 +9361,7 @@
     "declaredBy": "LV.SubPanel",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Container Bounds\">\n          <TypeDesc TypeID=\"63\" />\n          <TypeDesc TypeID=\"64\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Container Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Disabled": {
     "access": "w",
@@ -9419,7 +9419,7 @@
     "declaredBy": "LV.SubVI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"43\" />\n          <TypeDesc TypeID=\"44\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ClassName": {
     "access": "r",
@@ -9467,7 +9467,7 @@
     "declaredBy": "LV.SubVI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Special Replace of SubVI Node.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"54\" />\n          <TypeDesc TypeID=\"55\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Terminals[]": {
     "access": "r",
@@ -9549,7 +9549,7 @@
     "declaredBy": "LV.TabControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\libpropPage_4Item_Settings.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\">\n          <TypeDesc TypeID=\"361\" />\n          <TypeDesc TypeID=\"362\" />\n          <TypeDesc TypeID=\"363\" />\n          <TypeDesc TypeID=\"359\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Pages": {
     "access": "r",
@@ -9591,7 +9591,7 @@
     "declaredBy": "LV.Table",
     "label": "",
     "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Calibration Audit.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Active Cell\">\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Active Cell\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Active Cell:Active Cell": {
     "access": "w",
@@ -9600,7 +9600,7 @@
     "heapName": "Active Cell",
     "label": "",
     "source": "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Calibration Audit.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Active Cell\">\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Active Cell\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Active Cell:Cell Font:Color": {
     "access": "w",
@@ -9641,7 +9641,7 @@
     "declaredBy": "LV.Table",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express shared\\ex_TableInputs.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Old Edit Position\">\n          <TypeDesc TypeID=\"94\" />\n          <TypeDesc TypeID=\"199\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Old Edit Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Key Focus": {
     "access": "w",
@@ -9682,7 +9682,7 @@
     "declaredBy": "LV.Table",
     "label": "",
     "source": "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_Pass_Fail_Analysis.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Size\">\n          <TypeDesc TypeID=\"109\" />\n          <TypeDesc TypeID=\"110\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Size\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Selection Start": {
     "access": "rw",
@@ -9690,7 +9690,7 @@
     "declaredBy": "LV.Table",
     "label": "",
     "source": "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_Pass_Fail_Analysis.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Start\">\n          <TypeDesc TypeID=\"109\" />\n          <TypeDesc TypeID=\"110\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Selection Start\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Value": {
     "access": "w",
@@ -9773,7 +9773,7 @@
     "declaredBy": "LV.TargetItem",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\Installer\\SRdB_Icon\\SRdB_Icon.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Icon\">\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"9\" />\n          <TypeDesc TypeID=\"10\" />\n          <TypeDesc TypeID=\"12\" />\n          <TypeDesc TypeID=\"17\" />\n          </TypeDesc>\n        <Label Text=\"imagedata.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Icon\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"image type\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"image depth\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"image\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"mask\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"colors\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Rectangle\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc></TypeDesc><Label Text=\"imagedata.ctl\" />\n        </TypeDesc>"
    },
    "IsProjectItemDebuggable": {
     "access": "rw",
@@ -9976,7 +9976,7 @@
     "declaredBy": "LV.Terminal",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\WebService\\Backend\\NET Ref Handler\\CleanUp Memory.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\">\n          <TypeDesc TypeID=\"19\" />\n          <TypeDesc TypeID=\"20\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Top": {
     "access": "r",
@@ -9992,7 +9992,7 @@
     "declaredBy": "LV.Terminal",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\VIRetooler\\CLSUIP_ArrangeFPTerms.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"12\" />\n          <TypeDesc TypeID=\"13\" />\n          <TypeDesc TypeID=\"14\" />\n          <TypeDesc TypeID=\"15\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Wire": {
     "access": "r",
@@ -10010,7 +10010,7 @@
     "declaredBy": "LV.Text",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_FitBooleanTextToWidth.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Doc Bounds\">\n          <TypeDesc TypeID=\"10\" />\n          <TypeDesc TypeID=\"11\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Doc Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "FontSize": {
     "access": "r",
@@ -10026,7 +10026,7 @@
     "declaredBy": "LV.Text",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_FitBooleanTextToWidth.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\">\n          <TypeDesc TypeID=\"10\" />\n          <TypeDesc TypeID=\"11\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Text": {
     "access": "rw",
@@ -10121,7 +10121,7 @@
     "declaredBy": "LV.TopLevelDiagram",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_ResizeBDWin.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\">\n          <TypeDesc TypeID=\"27\" />\n          <TypeDesc TypeID=\"28\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Bounds Rect": {
     "access": "r",
@@ -10129,7 +10129,7 @@
     "declaredBy": "LV.TopLevelDiagram",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_ResizeBDWin.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"12\" />\n          <TypeDesc TypeID=\"13\" />\n          <TypeDesc TypeID=\"14\" />\n          <TypeDesc TypeID=\"15\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Highlight?": {
     "access": "rw",
@@ -10185,7 +10185,7 @@
     "declaredBy": "LV.TopLevelDiagram",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\LVClassLibrary\\NewAccessors\\CLSUIP_ResizeBDWin.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"VisBounds\">\n          <TypeDesc TypeID=\"27\" />\n          <TypeDesc TypeID=\"28\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"VisBounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Wires[]": {
     "access": "r",
@@ -10283,7 +10283,7 @@
     "declaredBy": "LV.TreeControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\Handle ReName.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCellPos\">\n          <TypeDesc TypeID=\"34\" />\n          <TypeDesc TypeID=\"35\" />\n          </TypeDesc>\n        <Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCellPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ActiveCellPosTop": {
     "access": "r",
@@ -10355,7 +10355,7 @@
     "declaredBy": "LV.TreeControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_mouseDownPreEventHandler.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\">\n          <TypeDesc TypeID=\"199\" />\n          <TypeDesc TypeID=\"200\" />\n          <TypeDesc TypeID=\"201\" />\n          <TypeDesc TypeID=\"202\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Cell String": {
     "access": "rw",
@@ -10395,7 +10395,7 @@
     "declaredBy": "LV.TreeControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\Handle ReName.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\">\n          <TypeDesc TypeID=\"22\" />\n          <TypeDesc TypeID=\"23\" />\n          </TypeDesc>\n        <Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Child-Only?": {
     "access": "r",
@@ -10467,7 +10467,7 @@
     "declaredBy": "LV.TreeControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\Installer\\Pages\\IB_UI_Page_Registry_ProcessButton.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"EditPos\">\n          <TypeDesc TypeID=\"34\" />\n          <TypeDesc TypeID=\"35\" />\n          </TypeDesc>\n        <Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"EditPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Glyph": {
     "access": "rw",
@@ -10619,7 +10619,7 @@
     "declaredBy": "LV.TreeControl",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\Handle Tree value change.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\">\n          <TypeDesc TypeID=\"44\" />\n          <TypeDesc TypeID=\"45\" />\n          </TypeDesc>\n        <Label Text=\"LVNodeAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"TopLeft\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Node\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVNodeAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "VScrollVis": {
     "access": "rw",
@@ -10739,7 +10739,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BD Win.Origin\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BD Win.Origin\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "BDWin.Bounds": {
     "access": "rw",
@@ -10747,7 +10747,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "BDWin.Open": {
     "access": "w",
@@ -10781,7 +10781,7 @@
     "heapName": "BD Win.Origin",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BD Win.Origin\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BD Win.Origin\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Block Diagram Window:Window Bounds": {
     "access": "w",
@@ -10789,7 +10789,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Add Function Inside While Loop.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"5\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"BDWin.Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Callees": {
     "access": "r",
@@ -11079,7 +11079,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\variable\\pspconfig\\Internal\\ResizeVI.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.Origin\">\n          <TypeDesc TypeID=\"25\" />\n          <TypeDesc TypeID=\"26\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.Origin\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Front Panel Window:Panel Bounds": {
     "access": "rw",
@@ -11087,7 +11087,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\_probes\\default\\PictureCtrlDefault.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.PanelBounds\">\n          <TypeDesc TypeID=\"11\" />\n          <TypeDesc TypeID=\"12\" />\n          <TypeDesc TypeID=\"13\" />\n          <TypeDesc TypeID=\"14\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.PanelBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Front Panel Window:State": {
     "access": "w",
@@ -11111,7 +11111,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Drop Add Function Inside While Loop.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\">\n          <TypeDesc TypeID=\"2\" />\n          <TypeDesc TypeID=\"3\" />\n          <TypeDesc TypeID=\"4\" />\n          <TypeDesc TypeID=\"5\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Front Panel.AutoCenter": {
     "access": "w",
@@ -11167,7 +11167,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\InstrumentDriver\\IDVICreator\\CreateModifyIDVI.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.Origin\">\n          <TypeDesc TypeID=\"388\" />\n          <TypeDesc TypeID=\"389\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.Origin\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Front Panel.PanelBounds": {
     "access": "rw",
@@ -11175,7 +11175,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\ProjectFindDlg\\subInitPanel.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.PanelBounds\">\n          <TypeDesc TypeID=\"36\" />\n          <TypeDesc TypeID=\"35\" />\n          <TypeDesc TypeID=\"38\" />\n          <TypeDesc TypeID=\"39\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.PanelBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Front Panel.Resizeable": {
     "access": "w",
@@ -11215,7 +11215,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Creating Objects\\Adding Objects.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\">\n          <TypeDesc TypeID=\"5\" />\n          <TypeDesc TypeID=\"6\" />\n          <TypeDesc TypeID=\"7\" />\n          <TypeDesc TypeID=\"8\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Front Panel.WinBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Help.Path": {
     "access": "r",
@@ -11343,7 +11343,7 @@
     "declaredBy": "LV.VI",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Common\\provcom_ProgressBar_ProgressBar.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Minimum Panel Size\">\n          <TypeDesc TypeID=\"485\" />\n          <TypeDesc TypeID=\"514\" />\n          </TypeDesc>\n        <Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Minimum Panel Size\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPointTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Modifications:Block Diagram Mods Bitset": {
     "access": "r",
@@ -11659,7 +11659,7 @@
     "heapName": "AnntList",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Graph Annotations.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AnntList\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"49\" />\n          </TypeDesc>\n        <Label Text=\"LVAnnotationListTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AnntList\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Name\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Style\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Point Style\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Name Visible\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Allow Drag\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Annotation Mode\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"X Scale\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Y Scale\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Show Arrow\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Lock Name\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot Area\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Label Offset\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc></TypeDesc></TypeDesc><Label Text=\"LVAnnotationListTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "AnntList": {
     "access": "rw",
@@ -11667,7 +11667,7 @@
     "declaredBy": "LV.WaveformGraph",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Graph Annotations.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AnntList\">\n          <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc TypeID=\"49\" />\n          </TypeDesc>\n        <Label Text=\"LVAnnotationListTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"AnntList\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Name\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Style\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Point Style\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Name Visible\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Allow Drag\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Annotation Mode\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"X Scale\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Y Scale\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Show Arrow\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Lock Name\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot Area\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Label Offset\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc></TypeDesc></TypeDesc><Label Text=\"LVAnnotationListTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Height": {
     "access": "r",
@@ -11733,7 +11733,7 @@
     "declaredBy": "LV.WaveformGraph",
     "label": "",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Utility\\TDMS File Viewer\\Set Waveform Graph LegNumRows.vi",
-    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Bounds\">\n          <TypeDesc TypeID=\"28\" />\n          <TypeDesc TypeID=\"29\" />\n          <TypeDesc TypeID=\"30\" />\n          <TypeDesc TypeID=\"31\" />\n          </TypeDesc>\n        <Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Plot Images:Back": {
     "access": "w",

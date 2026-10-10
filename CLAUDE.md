@@ -1112,9 +1112,9 @@ helpers: the same states, 11 of 11 runs right, 0.02 s per state read. The pane i
 FILE by `pylv-conpane.py`, matching NI's probe. **The server's own HELPER VIs are NOT yet on this
 route**: measured over the `scripts` documents, the composer builds 9 with the parts as committed and
 31 with parts harvested from the NI-built helpers - one property, `Application` on `{LV.Project}`,
-blocked 28 - 39 of 82 after the repairs, and **70 of 82 (69 executable, 11 of 11 output-identical
-to NI's, the run helpers among them) after the typedef and control-reference work**, recorded in
-FINDINGS §7a, with the composer's own suite still 114 of 114. **No `.ctl` link is needed for a
+blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
+**77 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs - after the
+remaining blockers**, recorded in FINDINGS §7a, with the composer's own suite at 118 of 118. **No `.ctl` link is needed for a
 typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **`lvai_create_class`

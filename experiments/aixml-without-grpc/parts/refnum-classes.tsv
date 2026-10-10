@@ -169,3 +169,7 @@ LV.FlatSequenceOuterTunnel	0x4061
 LV.DisableStructure	0x4067	
 LV.TimedSequence	0x4070	
 LV.LabVIEWClassConstant	0x4075	
+# LV.WebBrowser: AIXML has no Web Browser control, so the probe above could not carry one; its
+# refnum is PLAIN in NI's converter's build of aixml-skeletons/web-browser-read-page-title.xml
+# (a ref{LV.WebBrowser} control: CtlFlags 0x008B, a stdRefNum, nothing nested - 2026-10-10)
+LV.WebBrowser	0x008B	

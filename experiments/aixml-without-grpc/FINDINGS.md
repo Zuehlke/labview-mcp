@@ -1007,6 +1007,32 @@ and a `ref{LV.String}` front-panel control (skeletons), and the three `{{TYPE}}`
 **No regression**: `regression_via_server.py` answered 114 of 114 cases, every test built, with the
 committed parts and with the harvested copy.
 
+### The remaining helper blockers, the same night
+
+Each settled against NI's converter's build of the same or a minimal document:
+
+| blocker | finding | change |
+|---|---|---|
+| `lvai_create_accessors`: a `SubString` wire | an IDE-saved donor (MGI's `Update Label.vi`) carries LabVIEW's internal `SubString` on Match Pattern's outputs; NI's build types them `String` | `plain()` maps it |
+| (found on the way) the PROPERTY TABLE | `vi-server-props.json` was written by the same one-level reader: **109 of 1130** typed rows (`Bounds`, `Position` ...) named donor type ids inside a typedef. `repair_nested_types.py` repairs a row only when its donor holds that property with exactly the repaired type - the heap stores the bare data type, the table the typedef around it - so **106** were repaired and **3** left; the composer refuses those three by name | table repaired |
+| `lvai_class_names`: an indexing tunnel on a TYPEDEF'd array | it was demoted to a plain tunnel; NI's build keeps the typedef OUTSIDE (`TypeDef{Array{TypeDef{Cluster}}}`) and hands out the element - itself a typedef - inside | looks inside the typedef; identical tunnel types to NI's |
+| two DQMH helpers: a CONCATENATING tunnel | NI's own TDMS example: a plain `lpTun`, no inner DCO, the array on both sides, `TunnelType`/`DefaultTunnelType 02` - the For Loop output part already was one | `mode="concat"` on an output |
+| `lvdqmh_new_module`: a class wire (`Refnum.UDClassInst`) | a class object from a subVI, through a case tunnel into the next call, loaded executable with no insanity in the log (loaded, not run: it creates a module) | admitted to the wire gate |
+| `lvai_inventory`, composed BROKEN since Phase 3 | `Concatenate Strings` with five inputs took the SIX-input template and left one input unwired: broken. Six wired on that template: executable; four: executable; clearing the leftover's wired flag: still broken. A larger growable template is not a safe stand-in | cloning from a smaller template is preferred, the larger one is the fallback; the probe answers `abcde` |
+| `lvpane_sweep`: `readLines` | NI's build of a probe pair differing only in the attribute: prim objFlags `640` -> `67109504` (bit `0x4000000`), and `text` becomes `Array{String}` with `count` wired | a mode bit; the composed probe reads a three-line file as `[one,two,three]` |
+| (found by parity) `lvai_class_names` composed EXECUTABLE and answered `Error 1054` | it finds its own `csc` constant through `Open VI Object Reference` by class - and a refnum CONSTANT of a VI Server class is a CLASS SPECIFIER CONSTANT in NI's builds (control resource 2094, showing its class name): 18 of 18 classes in `probes/prefcls.xml`, only VI and Application are plain refnum constants (3412). Ours were all plain; one ddo flag (8192/8196) was not it, measured | a class specifier part harvested from that probe; the helper now answers `code 0` and NI's class list |
+| the Web Browser skeleton | `ref{LV.WebBrowser}` is a PLAIN refnum in NI's build (CtlFlags `0x008B`, nothing nested - AIXML has no Web Browser control); its uids are NAMES (`wb`), which NI numbers itself | the class row in `refnum-classes.tsv`, a uid that is not a number gets one of its own, `ExecuteJavaScript` harvested; loads executable |
+
+Three suite tests carry the new constructs, each checked against NI's build of the same document
+first: `t115_build_path_string`, `t116_concat_five`, `t117_concat_tunnel`.
+
+**Results**, LabVIEW restarted, same harvested parts: **77 of 82 compose, all 77 executable, 0
+crashes; parity 12 of 12** (`lvai_class_names` added); the suite **118 of 118** cases with the
+committed parts and with the harvested copy. **Every helper a tool runs now composes.** The five
+left are not helpers: `user-event-two-loops` (NI's own conversion of it is not executable either -
+two follow-up tools finish it), `web-browser-title-poll` (a `ref{LV.String}` front-panel control;
+NI's converter answers `Error 53` on the document), and the three `{{TYPE}}` LUnit templates.
+
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
 existed and may be the same shared-terminal bug. Each harvested part set from before today needs
@@ -1032,7 +1058,7 @@ through `Project:Active Project` should not care, and that is untested.
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
 | `repair_nested_types.py` | resolves a part's typedef type ids against its donor VI - parts harvested before 2026-10-10 carried the donor's numbers (§7a, "Option 1") |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
-| `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, ... |
+| `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
 | `compare_with_nigel.py`, `compare_full.py`, `uid_survey.py` | the reader against NI's exports: top-level subset, whole VI, uid conventions |
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |

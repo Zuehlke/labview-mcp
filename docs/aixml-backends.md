@@ -140,10 +140,10 @@ from `scripts/*.xml`, today by NI's converter and `RunVIAsTopLevel`. Over all 81
 the built server, with NI's converter as the control (`experiments/aixml-without-grpc/helper_coverage.py`,
 0 crashes):
 
-| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers | after the repairs | after option 1 (typedefs, control references) |
-|---|---|---|---|---|---|
-| builds | 63 | 9 | 31 | 39 of 82 | **70** of 82 |
-| executable over ActiveX | 63 | 7 | 29 | 35 | **69** |
+| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers | after the repairs | after option 1 (typedefs, control references) | after the remaining blockers |
+|---|---|---|---|---|---|---|
+| builds | 63 | 9 | 31 | 39 of 82 | 70 of 82 | **77** of 82 |
+| executable over ActiveX | 63 | 7 | 29 | 35 | 69 | **77** |
 
 One property was most of the gap: `Application` on `{LV.Project}` - the hop into the IDE's
 instance - blocked 28 helpers, and harvesting the NI-built helpers supplied it. **Composed helpers
@@ -176,10 +176,20 @@ the same document: an invoke output named after nothing is the method's return v
 name (`Discon Typedef`), a property node typed by the more specific class wired into it, nested
 properties (`Label.Text`), refnum constants of a control class, `Build Path` with a string name, and
 `Flatten To XML`, which takes its input whole and writes the source's label into its result.
-The composer's own suite still passed 114 of 114 with both sets of parts. Still blocking: a concat tunnel (2), Unbundle By Name on an array, a
-`SubString` wire, a class wire (`lvdqmh_new_module`), `readLines`, user-event data, Web Browser and
-`ref{LV.String}` controls in two skeletons, and the `{{TYPE}}` templates; `lvai_inventory` composes
-broken. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Option 1".
+The composer's own suite still passed 114 of 114 with both sets of parts.
+
+**The remaining blockers, the same night - 77 of 82, all executable, parity 12 of 12, suite 118
+of 118.** Every helper a tool runs now composes. On the way: the PROPERTY TABLE carried the same
+stale typedef ids as the parts (109 rows; 106 repaired, each verified against its donor, 3 refused
+by name), a larger growable template with a surplus input left unwired was what had kept
+`lvai_inventory` broken since Phase 3, and a refnum CONSTANT of a VI Server class is a CLASS
+SPECIFIER CONSTANT in NI's builds (18 of 18 classes; only VI and Application are plain) - composed
+plain, `lvai_class_names` loaded executable and could not find its own constant. The rest was
+concatenating tunnels, an indexing tunnel on a typedef'd array, `readLines` (prim bit `0x4000000`),
+a class wire, `SubString` outputs and the Web Browser class. Left: the user-event skeleton (NI's own
+conversion is not executable either), a skeleton NI's converter refuses (`Error 53`), and the
+`{{TYPE}}` templates. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Option 1" and the section
+after it.
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

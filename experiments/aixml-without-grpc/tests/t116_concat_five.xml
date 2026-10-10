@@ -1,0 +1,9 @@
+<VI _name="T116 Concat Five.vi" description="Concatenate Strings with FIVE inputs: no five-input template exists, and the six-input one with a surplus input left unwired loaded broken - built by cloning.">
+  <Control _name="a" type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Constant _name="b" type="string" uid="4201" uid_parent="root" value="b" outputs="value:4201.value"/>
+  <Constant _name="c" type="string" uid="4202" uid_parent="root" value="c" outputs="value:4202.value"/>
+  <Constant _name="d" type="string" uid="4203" uid_parent="root" value="d" outputs="value:4203.value"/>
+  <Constant _name="e" type="string" uid="4204" uid_parent="root" value="e" outputs="value:4204.value"/>
+  <Node _name="Concatenate Strings" inputs="string:4200.value,string:4201.value,string:4202.value,string:4203.value,string:4204.value" outputs="concatenated string:4210.concatenated string" uid="4210" uid_parent="root"/>
+  <Indicator _name="result" type="string" uid="4220" uid_parent="root" value="" inputs="value:4210.concatenated string"/>
+</VI>

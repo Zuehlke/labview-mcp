@@ -71,11 +71,100 @@ def repair(path, dry):
     return "repaired %d" % len(hits)
 
 
+def unlabelled(tree):
+    t = ET.fromstring(ET.tostring(tree))
+    for e in t.iter():
+        e.attrib.pop("Label", None)
+        for k in [k for k in e.attrib if k.startswith("ref.")]:
+            del e.attrib[k]
+    return ET.tostring(t)
+
+
+def donor_has_property(b, name, tree):
+    """Does the donor's diagram hold a property item `name` whose data type is `tree`? The item
+    stores its data type BARE - LVBoundsTypeDef.ctl's cluster, without the typedef - while the
+    table records the terminal's type, the typedef around it; either matches."""
+    want = {unlabelled(tree)}
+    if tree.get("Type") == "TypeDef":
+        inner = next((c for c in tree if c.tag == "TypeDesc"), None)
+        if inner is not None:
+            inner = ET.fromstring(ET.tostring(inner))
+            inner.attrib.pop("Nested", None)
+            want.add(unlabelled(inner))
+    for heap in (b.bd, b.fp):
+        if heap is None:
+            continue
+        for info in heap.iter("SL__arrayElement"):
+            if info.get("class") != "propItemInfo" or (info.findtext("PropItemName") or "").strip('"') != name:
+                continue
+            m = lvheap.TYPEID_RE.fullmatch((info.findtext("dataTypeDesc") or "").strip())
+            if m and unlabelled(b.heap_type_tree(int(m.group(1)))) in want:
+                return True
+    return False
+
+
+def repair_props(path, dry):
+    """vi-server-props.json: every row's `type` string was written by the same reader, so a
+    typedef in it carries its donor's ids as well - 109 of 1130 typed rows in the committed table
+    (Bounds, Position ...). Resolved against the row's own donor (`source`), like a part."""
+    import json
+    table = json.load(open(path, encoding="utf-8"))
+    counts = {}
+    for section in ("props", "methods"):
+        for cls, rows in table.get(section, {}).items():
+            for name, row in rows.items():
+                v = row.get("type")
+                if not isinstance(v, str) or 'Nested="True"' not in v:
+                    continue
+                tree = ET.fromstring(v)
+                parent = {c: p for p in tree.iter() for c in p}
+                hits = [n for n in tree.iter("TypeDesc") if stale(n)]
+                if not hits:
+                    continue
+                source = row.get("source") or ""
+                if not os.path.exists(source):
+                    counts["donor missing"] = counts.get("donor missing", 0) + 1
+                    print("%-50s donor missing: %s" % ("%s %s" % (cls, name), source))
+                    continue
+                b = donor(source)
+                for n in hits:
+                    fixed = b._inline(n)
+                    if n is tree:
+                        tree = fixed
+                    else:
+                        p = parent[n]
+                        i = list(p).index(n)
+                        p.remove(n)
+                        p.insert(i, fixed)
+                # Verified, not trusted: the donor must hold this property with exactly this type,
+                # or the row's `source` is not the VI its type was read from and the ids would
+                # resolve against the wrong list. Such a row is left as it is and reported.
+                if section == "props" and not donor_has_property(b, row.get("heapName") or name, tree):
+                    counts["unverified"] = counts.get("unverified", 0) + 1
+                    print("%-50s left: %s holds no %r of that type" % ("%s %s" % (cls, name),
+                                                                     os.path.basename(source), name))
+                    continue
+                counts["repaired"] = counts.get("repaired", 0) + 1
+                if not dry:
+                    row["type"] = ET.tostring(tree, encoding="unicode")
+    if counts.get("repaired") and not dry:
+        # the format harvest_parts.py writes it in
+        json.dump(table, open(path, "w", encoding="utf-8", newline="\n"), indent=1, sort_keys=True,
+                  ensure_ascii=False)
+    print("%s: %s" % (path, counts or "clean"))
+
+
 def main(argv):
     dry = "--dry-run" in argv
     dirs = [a for a in argv if not a.startswith("--")]
     totals = {}
     for d in dirs:
+        props = os.path.join(d, "vi-server-props.json")
+        if os.path.exists(props):
+            try:
+                repair_props(props, dry)
+            except Exception as ex:  # report and go on with the parts
+                print("%s: error %s" % (props, str(ex).splitlines()[0][:200]))
         for name in sorted(os.listdir(d)):
             if not name.endswith(".xml"):
                 continue

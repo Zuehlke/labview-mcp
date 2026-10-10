@@ -1,0 +1,20 @@
+<VI _name="prefcls.vi" description="One refnum constant per class.">
+  <Constant _name="Generic const" type="ref{LV.Generic}" uid="4200" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Project const" type="ref{LV.Project}" uid="4201" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="ProjectItem const" type="ref{LV.ProjectItem}" uid="4202" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Control const" type="ref{LV.Control}" uid="4203" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Diagram const" type="ref{LV.Diagram}" uid="4204" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Library const" type="ref{LV.Library}" uid="4205" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="LVClassLibrary const" type="ref{LV.LVClassLibrary}" uid="4206" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Panel const" type="ref{LV.Panel}" uid="4207" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="String const" type="ref{LV.String}" uid="4208" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Boolean const" type="ref{LV.Boolean}" uid="4209" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Node const" type="ref{LV.Node}" uid="4210" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="SubVI const" type="ref{LV.SubVI}" uid="4211" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="TopLevelDiagram const" type="ref{LV.TopLevelDiagram}" uid="4212" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Terminal const" type="ref{LV.Terminal}" uid="4213" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Wire const" type="ref{LV.Wire}" uid="4214" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="ConnectorPane const" type="ref{LV.ConnectorPane}" uid="4215" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Text const" type="ref{LV.Text}" uid="4216" uid_parent="root" value="" outputs="value:"/>
+  <Constant _name="Decoration const" type="ref{LV.Decoration}" uid="4217" uid_parent="root" value="" outputs="value:"/>
+</VI>

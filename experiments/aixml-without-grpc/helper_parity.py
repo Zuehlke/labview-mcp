@@ -41,6 +41,8 @@ CASES = [
                            "Input Values": r"C:\a\Dir\b.lvclass"}),
     ("lvai_run_and_read_typed", {"VI Path": PATHS, "Input Names": "class path",
                                  "Input Values": r"C:\a\Dir\b.lvclass"}),
+    # an indexing tunnel on a TYPEDEF'd array (All Types[]), composed after the table repair
+    ("lvai_class_names", {}),
 ]
 
 

@@ -347,7 +347,10 @@ def unverified_wire_type(tree):
         return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata") else "MeasureData." + (tree.get("Flavor") or "")
     if t == "Refnum":
         # TDMSFile: t109, TDMS Open -> TDMS Close, file written and path back (2026-10-10)
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile"):
+        # UDClassInst: a class object out of a subVI (DQMH's Default Module Icon.vi), through a
+        # case tunnel into the next call - lvdqmh_new_module.xml loaded executable with no
+        # insanity in LabVIEW's log (2026-10-10); loaded, not run - it creates a module
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -429,6 +432,11 @@ def plain(tree):
         for c in list(t):
             if c.tag in ("PhysUnit", "EnumLabel"):
                 t.remove(c)
+    if t.get("Type") == "SubString":
+        # LabVIEW's internal view of part of a string, saved on Match Pattern's outputs in an
+        # IDE-saved donor (MGI's Update Label.vi); NI's converter types the same outputs String
+        # (its build of lvai_create_accessors.xml, 2026-10-10), and no wire may carry it
+        t.set("Type", "String")
     return t
 
 
@@ -874,7 +882,12 @@ class Composer:
         return self.next_uid
 
     def claim(self, uid):
-        uid = int(uid)
+        try:
+            uid = int(uid)
+        except (TypeError, ValueError):
+            # a uid may be a NAME - `wb`, `lbl` in aixml-skeletons/web-browser-read-page-title.xml,
+            # which NI's converter builds executable - and the heap then gets a number of its own
+            return self.alloc()
         if uid in self.used_uids:
             return self.alloc()
         self.used_uids.add(uid)
@@ -1001,6 +1014,29 @@ class Composer:
                 e.text = "TypeID(%d)" % self.heap_tid(tree)
         for e in holder.iter("typeDesc"):
             e.attrib.pop("_t", None)
+
+    # A refnum CONSTANT of a VI Server class is a CLASS SPECIFIER CONSTANT (control resource 2094,
+    # showing its class) in NI's converter's builds - 18 of 18 classes in probes/prefcls.xml, and
+    # Cluster, Array and ClassSpecifierConstant in the helpers - except VI and Application, which
+    # are plain refnum constants (3412, probes/pref). Composed from the generic part, lvai_class_
+    # names.xml could not find its own `csc` through Open VI Object Reference: Error 1054,
+    # measured 2026-10-10; LabVIEW loaded it executable all the same.
+    CSC_KEY = "const/stdRefNum/Refnum.LVObjCtl.ClassSpecifier"
+
+    @staticmethod
+    def _is_class_specifier(tree, prefix):
+        if prefix != "const" or tree.get("Type") != "Refnum" or tree.get("RefType") != "LVObjCtl" or fields(tree):
+            return False
+        try:
+            return int(tree.get("CtlFlags") or "0", 16) not in (0x0001, 0x0002)
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _class_of_refnum(tree):
+        refnum_type("LV.VI", plain_class=True)          # loads _REF_CLASSES
+        flags = (tree.get("CtlFlags") or "").upper()
+        return next((c for c, (f, _) in _REF_CLASSES.items() if f.upper() == flags), "LV.Generic")
 
     @staticmethod
     def _ddo_of(holder):
@@ -1154,6 +1190,8 @@ class Composer:
         key = None
         if in_array and self.parts.get("arrelem/%s/%s" % (prefix, ddo_class)) is not None:
             key = "arrelem/%s/%s" % (prefix, ddo_class)
+        if key is None and self._is_class_specifier(tree, prefix) and self.parts.get(self.CSC_KEY) is not None:
+            key = self.CSC_KEY
         if key is None:
             key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, tkey)
         if key is None and is_enum(tree):
@@ -1161,6 +1199,12 @@ class Composer:
         if key is None:
             raise Unsupported("no %s part for %s (%s)" % (prefix, ddo_class, t))
         holder, donor_types, src = self.instantiate(key)
+        if key == self.CSC_KEY:
+            # the constant SHOWS its class - the label part 84 reads `Cluster`, `Generic`...
+            for part in self._ddo_of(holder).iter("SL__arrayElement"):
+                if part.get("class") == "label" and part.findtext("partID") == "84" \
+                        and part.find("textRec/text") is not None:
+                    part.find("textRec/text").text = '"%s"' % self._class_of_refnum(tree)[3:]
         if tkey == "Refnum.UsrDefndTag":
             # a user-defined tag refnum is CLASS-specific inside: its tag ddo names the class's
             # DLL (tagDLLName "nisyscfg.*") and its STR section the class (typeClass) - a part
@@ -1453,11 +1497,15 @@ class Composer:
     # computes, and ignoring it composed a VI that loads and computes something else - measured
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
-    PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow")}   # name -> mode attributes add_node writes
+    PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow"),   # name -> mode attributes add_node writes
+                  "Read from Text File": ("readLines",)}
     # a mode that is a bit of the prim's objFlags, read off probes/pmodes.xml through NI's own
     # converter: includeLow 0x200000, includeHigh 0x100000, neither 0 (NI's exports write the
     # attribute only when it is true, 21 of 27 In Range nodes with both)
-    PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000}}
+    PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000},
+                      # Read Lines: 640 -> 67109504 on NI's converter's build of a probe pair
+                      # differing only in readLines="true", 2026-10-10 (lvpane_sweep.xml uses it)
+                      "Read from Text File": {"readLines": 0x4000000}}
 
     def check_attrs(self, el, extra=()):
         if el.get("comment"):
@@ -1615,6 +1663,15 @@ class Composer:
                     r = reshape(new_types[j], k)
                     if r is not None:
                         new_types[j] = r
+        if name == "Read from Text File" and (el.get("readLines") or "").lower() == "true" \
+                and dict(ins).get("count") and "text" in by_name:
+            # reading LINES with `count` wired answers an ARRAY of strings - NI's build of the
+            # same probe types `text` Array{String}. With count unwired it stays one string
+            # (CLAUDE.md, "A mode attribute can change a node's output type")
+            a = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+            ET.SubElement(a, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+            ET.SubElement(a, "TypeDesc", {"Type": "String", "Prop1": "0xFFFFFFFF", "Format": "inline"})
+            new_types[idx_of[id(by_name["text"])]] = a
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
@@ -1858,6 +1915,13 @@ class Composer:
                     row = self._nested_property_row(c, name)
                 if row is None:
                     return None, name
+                if 'Nested="True"' in (row.get("type") or "") and any(
+                        n.get("Nested") == "True" and any(x.tag == "TypeDesc" and x.get("TypeID") is not None for x in n)
+                        for n in ET.fromstring(row["type"]).iter("TypeDesc")):
+                    # the table's type still names its DONOR's type ids inside a typedef (three
+                    # rows repair_nested_types.py could not verify against their donor)
+                    raise Unsupported("Property Node %s: the table's type for %r of %s carries its "
+                                      "donor's type ids - not composable" % (el.get("uid"), name, c))
                 out.append((mode, name, row))
             return out, None
 
@@ -2764,6 +2828,12 @@ class Composer:
                 continue
             if set(want_in) <= set(t_in):
                 score = len(t_in) - len(want_in)
+                if name in self.GROWABLE and score:
+                    # a LARGER growable template leaves its surplus inputs unwired, and that broke
+                    # Concatenate Strings: five inputs on the six-input template loaded broken,
+                    # all six wired loaded executable (2026-10-10, lvai_inventory.xml). Cloning
+                    # from a smaller one is preferred; this stays the fallback.
+                    score += 200
             elif name in self.GROWABLE and all(grow_base(k) in {grow_base(x) for x in t_in} for k in want_in):
                 score = 100 + len(want_in) - len(t_in)        # clone inputs
             else:
@@ -4140,7 +4210,7 @@ class Composer:
     def add_tunnel(self, el, loop_el):
         d = "in" if el.get("_id", "").startswith("In") else "out"
         mode = el.get("mode")
-        if mode not in (None, "", "index"):
+        if mode not in (None, "", "index", "concat") or (mode == "concat" and d != "out"):
             raise Unsupported("Tunnel %s: mode=%r is not composable yet" % (el.get("uid"), mode))
         cond_net = el.get("cond")
         if cond_net and (d != "out" or mode != "index"):
@@ -4156,7 +4226,9 @@ class Composer:
                 st = copy.deepcopy(st)
                 st.set("Type", "Array")
                 self.net_type[src] = st
-            if st is not None and st.get("Type") != "Array":
+            if st is not None and typedef_inner(st).get("Type") != "Array":
+                # (an array inside a TYPEDEF indexes like any array - All Types[] is
+                # ASC_ArrayOfUniqueIDStringParentIDStringName.ctl, lvai_class_names.xml)
                 # NI's exports mark some input tunnels `index` that a string or a scalar feeds -
                 # which LabVIEW cannot index (Database Delete.vi: a string constant); the
                 # tunnel in the VI is a plain one
@@ -4174,7 +4246,26 @@ class Composer:
         wrap = got[0]
         outer, innert = list(wrap)
         dco = outer.find("dco")
-        if mode != "index":
+        if mode == "concat":
+            # A CONCATENATING output: a plain lpTun - no innerLpTunDCO - typed with the array on
+            # both sides, TunnelType and DefaultTunnelType 02. Exactly the For Loop part's donor,
+            # NI's TDMS Advanced Finite Asynchronous Read.vi (a 1D U32 array, 2026-10-10).
+            for tag in ("TunnelType", "DefaultTunnelType"):
+                tt = dco.find(tag)
+                if tt is None:
+                    tt = ET.Element(tag)
+                    tb_ = dco.find("termBounds")
+                    dco.insert(list(dco).index(tb_) + 1 if tb_ is not None else len(dco), tt)
+                tt.text = "02"
+            # (the order typeDesc, termBounds, TunnelType, DefaultTunnelType is the donor's)
+            tts = [dco.find("TunnelType"), dco.find("DefaultTunnelType")]
+            for tt in tts:
+                dco.remove(tt)
+            tb_ = dco.find("termBounds")
+            at = list(dco).index(tb_) + 1 if tb_ is not None else len(dco)
+            for i, tt in enumerate(tts):
+                dco.insert(at + i, tt)
+        elif mode != "index":
             # a PLAIN tunnel carries no TunnelType: the For Loop part (cut from an NI TDMS
             # example) had TunnelType 02, a CONCATENATING tunnel, and every plain For Loop
             # output composed from it was broken (t31, measured 2026-10-10)
@@ -4185,21 +4276,27 @@ class Composer:
         tree = self.net_type.get(src_net)
         if tree is None:
             raise Unsupported("Tunnel %s: the type of %r is not known" % (el.get("uid"), src_net))
+        if mode == "concat" and typedef_inner(tree).get("Type") != "Array":
+            raise Unsupported("Tunnel %s: a concatenating output needs an array inside" % el.get("uid"))
         if mode == "index":
             # An INDEXING tunnel is the lpTun typed with the ARRAY plus an innerLpTunDCO typed
             # with the ELEMENT (measured on an AIXML-generated For Loop): going in, the wire
             # outside is the array; going out, the wire inside is the element.
             if d == "in":
-                if tree.get("Type") != "Array":
+                # A typedef'd array keeps its typedef OUTSIDE and hands out its element inside -
+                # itself a typedef there: NI's converter's build of lvai_class_names.xml types the
+                # lpTun TypeDef{Array{TypeDef{Cluster}}} and the inner DCO TypeDef{Cluster}.
+                base = typedef_inner(tree)
+                if base.get("Type") != "Array":
                     raise Unsupported("Tunnel %s: an indexing input needs an array" % el.get("uid"))
-                arr, elem = tree, unlabel(elem_of(tree))
-                n = len(tree.findall("Dimension"))
+                arr, elem = tree, unlabel(elem_of(base))
+                n = len(base.findall("Dimension"))
                 if n > 1:
                     # indexing an N-D array yields its (N-1)-D rows
                     elem = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
                     for _ in range(n - 1):
                         ET.SubElement(elem, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
-                    elem.append(copy.deepcopy(unlabel(elem_of(tree))))
+                    elem.append(copy.deepcopy(unlabel(elem_of(base))))
             else:
                 elem = tree
                 # collecting arrays builds ONE array of one more dimension, never an array of
