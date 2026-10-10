@@ -1,10 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="prim" key="prim/8507" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="Real Matrix A">
+<part kind="prim" key="prim/8507" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="Real Matrix A"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
           <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <TypeDesc TypeID="2" />
-          </TypeDesc>
-        <Label Text="NI_Matrix.lvlib" />
+          <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><Label Text="NI_Matrix.lvlib" />
         <Label Text="RealMatrix.ctl" />
         </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="number of columns" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="matrix" /></types><heap><SL__arrayElement class="prim" uid="2890">
                 <termList elements="3">

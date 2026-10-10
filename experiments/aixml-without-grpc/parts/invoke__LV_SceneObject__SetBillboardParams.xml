@@ -3,24 +3,9 @@
         <EnumLabel>Axial</EnumLabel>
         <EnumLabel>Full</EnumLabel>
         </TypeDesc><TypeDesc Type="Void" Format="inline" Label="mode" /><TypeDesc Type="Array" Format="inline" Label="normal"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="3D Point">
-          <TypeDesc TypeID="12" />
-          <TypeDesc TypeID="13" />
-          <TypeDesc TypeID="14" />
-          </TypeDesc>
-        <Label Text="LV3DPointTypeDef.ctl" />
-        </TypeDesc></TypeDesc><TypeDesc Type="Void" Format="inline" Label="normal" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="axis">
-          <TypeDesc TypeID="12" />
-          <TypeDesc TypeID="13" />
-          <TypeDesc TypeID="14" />
-          </TypeDesc>
-        <Label Text="LV3DPointTypeDef.ctl" />
-        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="axis" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="axis">
-          <TypeDesc TypeID="12" />
-          <TypeDesc TypeID="13" />
-          <TypeDesc TypeID="14" />
-          </TypeDesc>
-        <Label Text="LV3DPointTypeDef.ctl" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="3D Point"><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="X" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Y" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Z" /></TypeDesc><Label Text="LV3DPointTypeDef.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Void" Format="inline" Label="normal" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="axis"><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="X" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Y" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Z" /></TypeDesc><Label Text="LV3DPointTypeDef.ctl" />
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="axis" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="axis"><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="X" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Y" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Z" /></TypeDesc><Label Text="LV3DPointTypeDef.ctl" />
         </TypeDesc><TypeDesc Type="Void" Format="inline" Label="axis" /></types><heap><SL__arrayElement class="invokeNode" uid="865">
                 <objFlags>66176</objFlags>
                 <termList elements="14">

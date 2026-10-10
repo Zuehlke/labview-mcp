@@ -1,24 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <part kind="const" key="const/indArr/Array.TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Dialog and User Interface\Menu\Customizing the Menubar\Customizing the Menubar.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          </TypeDesc>
-        <Label Text="LVMenuShortCut.ctl" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><Label Text="LVMenuShortCut.ctl" />
         </TypeDesc></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          </TypeDesc>
-        <Label Text="LVMenuShortCut.ctl" />
-        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          </TypeDesc>
-        <Label Text="LVMenuShortCut.ctl" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><Label Text="LVMenuShortCut.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><Label Text="LVMenuShortCut.ctl" />
         </TypeDesc></types><heap><SL__arrayElement class="term" uid="970">
             <objFlags>131136</objFlags>
             <dco class="bDConstDCO" uid="964">

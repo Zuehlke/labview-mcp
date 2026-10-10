@@ -20,6 +20,7 @@ BUILT = os.path.join(os.environ["TEMP"], "LabVIEWMCP", "phase3")
 WORK = os.path.join(os.environ["TEMP"], "LabVIEWMCP", "phase3-parity")
 LV = r"C:\Program Files (x86)\National Instruments\LabVIEW 2026"
 BROKEN = os.path.join(WORK, "broken add.vi")
+PATHS = os.path.join(WORK, "probe paths.vi")    # composed from probes/ppaths.xml in main()
 
 CASES = [
     ("lvai_active_project", {}),
@@ -35,6 +36,11 @@ CASES = [
     ("lvai_exec_state", {"vi path": LV + r"\vi.lib\Utility\AggHandler\Bounds.vi"}),
     ("lvdoc_get_icon", {"VI Path": LV + r"\vi.lib\Utility\AggHandler\Bounds.vi",
                         "Read Back Path": os.path.join(WORK, "{arm}", "icon.png")}),
+    # composed only after option 1 (2026-10-10): the invoke return value by the document's name
+    ("lvai_run_and_read", {"VI Path": PATHS, "Input Names": "class path",
+                           "Input Values": r"C:\a\Dir\b.lvclass"}),
+    ("lvai_run_and_read_typed", {"VI Path": PATHS, "Input Names": "class path",
+                                 "Input Values": r"C:\a\Dir\b.lvclass"}),
 ]
 
 
@@ -83,6 +89,9 @@ def main():
                               "3e50f8b9-0a6c-4e11-a9fd-4411f1a52c05", "scratchpad", "broken_add.xml")
     print("broken VI:", server.tool("lvai_convert_aixml_to_vi", {
         "aiXmlFilePath": broken_src, "viPath": BROKEN, "backend": "pylabview"}).get("executable"))
+    print("run target:", server.tool("lvai_convert_aixml_to_vi", {
+        "aiXmlFilePath": os.path.join(HERE, "probes", "ppaths.xml"), "viPath": PATHS,
+        "backend": "pylabview"}).get("executable"))
     same = 0
     for helper, inputs in CASES:
         results = {}

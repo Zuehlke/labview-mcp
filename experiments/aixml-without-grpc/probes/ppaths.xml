@@ -1,0 +1,8 @@
+<VI _name="ppaths.vi" description="Strip Path then Build Path with a STRING name - a probe for the composer: Build Path's three terminals share the donor's path type, and joining them as one polymorphic group made all three String and the VI broken (2026-10-10).">
+  <Control _name="class path" type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Control _name="out name" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Node _name="String To Path" inputs="string:4200.value" outputs="path:4202.path" uid="4202" uid_parent="root"/>
+  <Node _name="Strip Path" inputs="path:4202.path" outputs="stripped path:4203.stripped path,name:4203.name" uid="4203" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:4203.stripped path,name or relative path:4201.value" outputs="appended path:4204.appended path" uid="4204" uid_parent="root"/>
+  <Indicator _name="result" type="path" uid="4205" uid_parent="root" value="" inputs="value:4204.appended path"/>
+</VI>

@@ -1,83 +1,83 @@
 helper	tools	ni_convert	ni_exec_grpc	ni_exec_com	ni_reason	py_compose	py_exec_com	py_reason	ni_s	py_s
-lmock_generate_mock.xml	MockTools					composed	1			2.03
-lvai_active_project.xml	ActionTools					composed	1			0.52
-lvai_add_class_field.xml	ClassFieldTools ClassTools					composed	1			1.5
-lvai_add_class_method.xml	AixmlCheck AixmlTools ClassMethodTools ClassTools ConnectorPane HelperCache LUnitTools MethodTestTools TypedefTools					composed	1			1.16
-lvai_add_one_to_library.xml	LibraryTools					composerRefused		Invoke Node 4220: LV.Application.Library.Open has no input 'Path'		0.2
-lvai_bind_pane_typedef.xml	TypedefTools					composed	1			0.97
-lvai_build_message_do.xml						composed	1			4.02
-lvai_class_names.xml						composerRefused		Unbundle By Name 72: input is Array, not a cluster		0.17
-lvai_close_active_project.xml	AixmlTools BulkTools ClassTools CloseTools Corpus DqmhHeadless GraftTools MalleableTools MockTools TestTools					composed	1			0.54
-lvai_close_own_panel.xml	RunTools					composed	1			0.58
-lvai_close_vi.xml	ClassTools Classes CloseTools ProjectMembership PyLabviewTools					composed	1			0.54
-lvai_create_accessors.xml	ClassBindTools ClassFieldTools ClassTools Classes CloseTools CtlTools LUnitTools LvClass TestTools TypedefTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.22
-lvai_create_actor_library.xml	LibraryTools					composed	1			1.59
-lvai_create_class.xml	ActorFrameworkTools ClassBindTools ClassFieldTools ClassTools Classes CloseTools DqmhTools HelperCache LUnitTools LvClass LvaiConnection MockTools StatusTools					composed	1			2.02
-lvai_create_interface.xml	ClassTools MockTools					composed	1			1.6
-lvai_create_message_class.xml	ActorFrameworkTools					composed	0			6.81
-lvai_create_override.xml						composed	1			1.84
-lvai_discuss.xml	DiscussTools MonitorTools					composerRefused		Invoke Node 4272: LV.VI.Ctrl Val.Get All has no output 'Controls'		0.2
-lvai_exec_state.xml	ActorFrameworkTools AixmlTools BulkTools ClassFieldTools DqmhEventEditTools DqmhNewModuleTools EventDataFieldTools ExecStateTools LibraryTools MalleableTools MalleableVi RunTools WireEventTools					composed	1			0.57
-lvai_inventory.xml						composed	0			0.58
-lvai_open_project.xml	ActionTools					composed	1			0.55
-lvai_resave_ctl.xml	CtlTools TypedefCreateTools TypedefTools					composed	1			0.6
-lvai_run_and_read.xml	ClassTools Classes DqmhHeadless DqmhTools DqmhUnitTestTools RunTools					composerRefused		Invoke Node 160: LV.VI.Ctrl Val.Get All has no output 'Controls'		0.18
-lvai_run_and_read_typed.xml	DqmhTools RunTools					composerRefused		type 'ref{LV.Enum}' is a control refnum (it carries a stdRing), not composable yet		0.19
-lvai_run_for_ms.xml	RunTools					composerRefused		Invoke Node 5500: LV.VI.Ctrl Val.Get All has no output 'Controls'		0.22
-lvai_swap_subvis.xml	BulkTools CloseTools Json LUnitTools MalleableTools MethodTestTools MockTools PlaceholderTools SwapTools TestTools ToolArguments					composed	1			1.8
-lvai_typedef_bind.xml	TypedefFlattenTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.19
-lvai_typedef_discon.xml	TypedefFlattenTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.19
-lvai_typedef_tree.xml	TypedefFlattenTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.2
-lvai_vis_in_memory.xml						composed	1			0.6
-lvai_wire_dyn_events.xml	CloseTools WireEventTools					composed	1			1.44
-lvbd_bind_constant.xml	TypedefTools					composed	1			0.79
-lvbd_bind_control_refs.xml	BindReferenceTools					composerRefused		Property Node 4232: property 'Label.Text' of LV.Control is not in the harvested table		0.23
-lvbd_broken_reason.xml						composed	1			1.49
-lvbd_broken_wires.xml						composed	1			1.58
-lvbd_coercion_dots.xml	TypedefTools					composed	1			0.67
-lvbd_connect_by_names.xml	DqmhFrameTools					composed	1			0.86
-lvbd_fill_unwired_inputs.xml	DqmhHeadless					composed	1			0.71
-lvbd_graft_clear.xml	GraftTools					composerRefused		Invoke Node 4238: LV.Terminal.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.2
-lvbd_graft_paste.xml	GraftTools					composerRefused		Property Node 4232: property 'Label.Text' of LV.Control is not in the harvested table		0.19
-lvbd_graft_rewire.xml	GraftTools					composerRefused		type 'ref{LV.Boolean}' is a control refnum (it carries a stdBool), not composable yet		0.21
-lvbd_pane_typedefs.xml	TypedefTools					composed	1			0.7
-lvbd_set_constant.xml	ConstantTools					composed	1			0.72
-lvctl_kind.xml	CtlTools					composed	1			0.53
-lvdoc_get_icon.xml						composed	1			0.53
-lvdoc_print.xml	RenderTools					composed	1			0.56
-lvdoc_set_icon.xml	IconTools					composed	1			0.56
-lvdqmh_close_modules.xml	DqmhEventEditTools DqmhHeadless					composed	0			1.49
-lvdqmh_convert_event.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.76
-lvdqmh_create_rt_tester.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.77
-lvdqmh_dirty_members.xml	DqmhHeadless					composed	1			1.45
-lvdqmh_find_testers.xml	DqmhEventEditTools					composed	0			1.77
-lvdqmh_module_types.xml	DqmhTemplateTools					composerRefused		Invoke Node 4251: LV.VI.Ctrl Val.Get has no output 'Value'		0.19
-lvdqmh_new_module.xml	DqmhNewModuleTools					composerRefused		net '4300.External Modules' carries the typedef DQMH New Module.lvlib; typedef links are not composed yet		2.14
-lvdqmh_new_unit_test.xml	DqmhUnitTestTools					composerRefused		Unbundle By Name 4312: no field 'Name' (has element, element, element, element, element, element, element, element, element, element, element, element, eleme...		1.21
-lvdqmh_pick_event.xml	DqmhEventEditTools DqmhHeadless					composerRefused		Unbundle By Name 4312: no field 'Name' (has element, element, element, element, element, element, element, element, element, element, element, element, eleme...		1.29
-lvdqmh_place_frame_handler.xml	DqmhFrameTools					composerRefused		Tunnel 4316: mode='concat' is not composable yet		1.15
-lvdqmh_remove_do_something.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.75
-lvdqmh_remove_event.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.77
-lvdqmh_rename_event.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.76
-lvdqmh_rename_module.xml	DqmhEventEditTools					composerRefused		Call 4300: 'lvdqmh_pick_event.vi' is neither near the caller nor in the installation		0.76
-lvdqmh_save_library.xml	DqmhEventEditTools					composerRefused		Invoke Node 4220: LV.Application.Library.Open has no input 'Path'		0.19
-lvdqmh_script_new_event.xml	DqmhHeadless					composerRefused		Unbundle By Name 4312: no field 'Name' (has element, element, element, element, element, element, element, element, element, element, element, element, eleme...		1.25
-lvdqmh_wire_tester_event.xml	DqmhHeadless					composerRefused		Tunnel 4315: mode='concat' is not composable yet		1.43
-lvlu_add_test_method.xml	LUnitTools					composed	1			1.0
-lvlu_run_tests.xml	LUnitTools					composed	1			2.11
-lvpane_probe.xml	PaneTools					composerRefused		net '24.Bounds' carries the typedef LVRectTypeDef.ctl; typedef links are not composed yet		0.18
-lvpane_sweep.xml	CommandLine ConnectorPanePatterns Panes					composerRefused		Node 'Read from Text File': mode readLines=true is not composable yet		0.18
-lvpdc_bind_typedef.xml	ClassBindTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.18
-lvpdc_export.xml	ClassBindTools					composerRefused		Invoke Node 187: LV.Control.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.2
-lvpdc_export_original_lv2025.xml						composerRefused		Invoke Node 187: LV.Control.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.24
-lvpdc_import.xml	ClassBindTools					composerRefused		Invoke Node 187: LV.Control.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.2
-lvpdc_import_original_lv2025.xml						composerRefused		Invoke Node 187: LV.Control.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.2
-lvtd_bind_elements.xml	TypedefCreateTools					composerRefused		type 'ref{LV.Cluster}' is a control refnum (it carries a stdClust), not composable yet		0.18
-lvtd_make_typedef.xml	TypedefCreateTools					composerRefused		Invoke Node 4232: LV.Control.Move parameter 'position' is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet		0.2
-aixml-skeletons/accumulate-across-a-loop.xml						composed	1			1.55
+lmock_generate_mock.xml	MockTools					composed	1			2.62
+lvai_active_project.xml	ActionTools					composed	1			0.61
+lvai_add_class_field.xml	ClassFieldTools ClassTools					composed	1			1.65
+lvai_add_class_method.xml	AixmlCheck AixmlTools ClassMethodTools ClassTools ConnectorPane HelperCache LUnitTools MethodTestTools TypedefTools					composed	1			1.5
+lvai_add_one_to_library.xml	LibraryTools					composed	1			1.69
+lvai_bind_pane_typedef.xml	TypedefTools					composed	1			1.17
+lvai_build_message_do.xml						composed	1			4.29
+lvai_class_names.xml						composerRefused		Unbundle By Name 72: input is Array, not a cluster		0.2
+lvai_close_active_project.xml	AixmlTools BulkTools ClassTools CloseTools Corpus DqmhHeadless GraftTools MalleableTools MockTools TestTools					composed	1			0.62
+lvai_close_own_panel.xml	RunTools					composed	1			0.73
+lvai_close_vi.xml	ClassTools Classes CloseTools ProjectMembership PyLabviewTools					composed	1			0.68
+lvai_create_accessors.xml	ClassBindTools ClassFieldTools ClassTools Classes CloseTools CtlTools LUnitTools LvClass TestTools TypedefTools					composerRefused		net '1012.name' carries a SubString, which no composed wire has carried yet		1.92
+lvai_create_actor_library.xml	LibraryTools					composed	1			1.69
+lvai_create_class.xml	ActorFrameworkTools ClassBindTools ClassFieldTools ClassTools Classes CloseTools DqmhTools HelperCache LUnitTools LvClass LvaiConnection MockTools StatusTools					composed	1			2.33
+lvai_create_interface.xml	ClassTools MockTools					composed	1			1.72
+lvai_create_message_class.xml	ActorFrameworkTools					composed	1			7.41
+lvai_create_override.xml						composed	1			2.02
+lvai_discuss.xml	DiscussTools MonitorTools					composed	1			0.8
+lvai_exec_state.xml	ActorFrameworkTools AixmlTools BulkTools ClassFieldTools DqmhEventEditTools DqmhNewModuleTools EventDataFieldTools ExecStateTools LibraryTools MalleableTools MalleableVi RunTools WireEventTools					composed	1			0.81
+lvai_inventory.xml						composed	0			0.7
+lvai_open_project.xml	ActionTools					composed	1			0.74
+lvai_resave_ctl.xml	CtlTools TypedefCreateTools TypedefTools					composed	1			0.65
+lvai_run_and_read.xml	ClassTools Classes DqmhHeadless DqmhTools DqmhUnitTestTools RunTools					composed	1			0.66
+lvai_run_and_read_typed.xml	DqmhTools RunTools					composed	1			1.11
+lvai_run_for_ms.xml	RunTools					composed	1			1.02
+lvai_swap_subvis.xml	BulkTools CloseTools Json LUnitTools MalleableTools MethodTestTools MockTools PlaceholderTools SwapTools TestTools ToolArguments					composed	1			2.36
+lvai_typedef_bind.xml	TypedefFlattenTools					composed	1			0.79
+lvai_typedef_discon.xml	TypedefFlattenTools					composed	1			0.84
+lvai_typedef_tree.xml	TypedefFlattenTools					composed	1			0.93
+lvai_vis_in_memory.xml						composed	1			0.72
+lvai_wire_dyn_events.xml	CloseTools WireEventTools					composed	1			1.51
+lvbd_bind_constant.xml	TypedefTools					composed	1			0.92
+lvbd_bind_control_refs.xml	BindReferenceTools					composed	1			1.36
+lvbd_broken_reason.xml						composed	1			1.61
+lvbd_broken_wires.xml						composed	1			1.71
+lvbd_coercion_dots.xml	TypedefTools					composed	1			0.71
+lvbd_connect_by_names.xml	DqmhFrameTools					composed	1			0.92
+lvbd_fill_unwired_inputs.xml	DqmhHeadless					composed	1			0.72
+lvbd_graft_clear.xml	GraftTools					composed	1			0.8
+lvbd_graft_paste.xml	GraftTools					composed	1			0.73
+lvbd_graft_rewire.xml	GraftTools					composed	1			1.19
+lvbd_pane_typedefs.xml	TypedefTools					composed	1			0.64
+lvbd_set_constant.xml	ConstantTools					composed	1			0.75
+lvctl_kind.xml	CtlTools					composed	1			0.54
+lvdoc_get_icon.xml						composed	1			0.56
+lvdoc_print.xml	RenderTools					composed	1			0.57
+lvdoc_set_icon.xml	IconTools					composed	1			0.59
+lvdqmh_close_modules.xml	DqmhEventEditTools DqmhHeadless					composed	1			1.61
+lvdqmh_convert_event.xml	DqmhEventEditTools					composed	1			3.12
+lvdqmh_create_rt_tester.xml	DqmhEventEditTools					composed	1			3.5
+lvdqmh_dirty_members.xml	DqmhHeadless					composed	1			1.54
+lvdqmh_find_testers.xml	DqmhEventEditTools					composed	1			2.13
+lvdqmh_module_types.xml	DqmhTemplateTools					composed	1			0.83
+lvdqmh_new_module.xml	DqmhNewModuleTools					composerRefused		net '4421.Icon out' carries a Refnum.UDClassInst, which no composed wire has carried yet		2.43
+lvdqmh_new_unit_test.xml	DqmhUnitTestTools					composed	1			3.3
+lvdqmh_pick_event.xml	DqmhEventEditTools DqmhHeadless					composed	1			3.14
+lvdqmh_place_frame_handler.xml	DqmhFrameTools					composerRefused		Tunnel 4316: mode='concat' is not composable yet		1.14
+lvdqmh_remove_do_something.xml	DqmhEventEditTools					composed	1			3.36
+lvdqmh_remove_event.xml	DqmhEventEditTools					composed	1			3.41
+lvdqmh_rename_event.xml	DqmhEventEditTools					composed	1			3.1
+lvdqmh_rename_module.xml	DqmhEventEditTools					composed	1			3.69
+lvdqmh_save_library.xml	DqmhEventEditTools					composed	1			0.65
+lvdqmh_script_new_event.xml	DqmhHeadless					composed	1			4.34
+lvdqmh_wire_tester_event.xml	DqmhHeadless					composerRefused		Tunnel 4315: mode='concat' is not composable yet		1.64
+lvlu_add_test_method.xml	LUnitTools					composed	1			1.15
+lvlu_run_tests.xml	LUnitTools					composed	1			2.23
+lvpane_probe.xml	PaneTools					composed	1			0.56
+lvpane_sweep.xml	CommandLine ConnectorPanePatterns Panes					composerRefused		Node 'Read from Text File': mode readLines=true is not composable yet		0.17
+lvpdc_bind_typedef.xml	ClassBindTools					composed	1			0.67
+lvpdc_export.xml	ClassBindTools					composed	1			0.66
+lvpdc_export_original_lv2025.xml						composed	1			0.68
+lvpdc_import.xml	ClassBindTools					composed	1			0.67
+lvpdc_import_original_lv2025.xml						composed	1			0.72
+lvtd_bind_elements.xml	TypedefCreateTools					composed	1			0.76
+lvtd_make_typedef.xml	TypedefCreateTools					composed	1			0.67
+aixml-skeletons/accumulate-across-a-loop.xml						composed	1			1.57
 aixml-skeletons/user-event-two-loops.xml						composerRefused		Event Data Node 4244: '<Tick>: User Event' events are not composable yet		0.19
 aixml-skeletons/web-browser-read-page-title.xml						composerRefused		type 'ref{LV.WebBrowser}' is not composable yet		0.15
-aixml-skeletons/web-browser-title-poll.xml						composerRefused		type 'ref{LV.String}' is a control refnum (it carries a stdString), not composable yet		0.16
+aixml-skeletons/web-browser-title-poll.xml						composerRefused		type 'ref{LV.String}' is a control refnum (it carries a stdString), not composable yet		0.15
 templates/lunit/defaults.xml	ActorFrameworkTools BulkTools ClassBindTools ClassFieldTools ClassMethodTools ClassTools CommandLine DiagnosingTool DqmhHeadless FlatDefaults LUnitScaffold LUnitTools LibraryTools LvClass MockTools RunTools SwapTools TestTools TypedefTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.18
 templates/lunit/independence.xml	LUnitScaffold LUnitTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.18
-templates/lunit/round-trip.xml	AixmlCheck AixmlTools CommandLine Corpus LUnitScaffold LUnitTools PyLabviewTools TestTools					composerRefused		type '{{TYPE}}' is not composable yet		0.19
+templates/lunit/round-trip.xml	AixmlCheck AixmlTools CommandLine Corpus LUnitScaffold LUnitTools PyLabviewTools TestTools					composerRefused		type '{{TYPE}}' is not composable yet		0.18

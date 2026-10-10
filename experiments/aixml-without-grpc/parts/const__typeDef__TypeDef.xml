@@ -1,27 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="const" key="const/typeDef/TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Palette Editing API\Create New Palette.vi"><types><TypeDesc Type="TypeDef" Flag1="0xD83EEF14" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Items">
-          <TypeDesc TypeID="6" />
-          <TypeDesc TypeID="7" />
-          <TypeDesc TypeID="8" />
-          <TypeDesc TypeID="9" />
-          <TypeDesc TypeID="10" />
-          <TypeDesc TypeID="11" />
-          <TypeDesc TypeID="12" />
-          <TypeDesc TypeID="13" />
-          </TypeDesc>
-        <Label Text="Palette Menu.lvlib" />
+<part kind="const" key="const/typeDef/TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Application Control\Palette Editing API\Create New Palette.vi"><types><TypeDesc Type="TypeDef" Flag1="0xD83EEF14" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Items"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /></TypeDesc><Label Text="Palette Menu.lvlib" />
         <Label Text="Item.ctl" />
-        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="item"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /></TypeDesc><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /><TypeDesc Type="TypeDef" Flag1="0xD83EEF14" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Items">
-          <TypeDesc TypeID="6" />
-          <TypeDesc TypeID="7" />
-          <TypeDesc TypeID="8" />
-          <TypeDesc TypeID="9" />
-          <TypeDesc TypeID="10" />
-          <TypeDesc TypeID="11" />
-          <TypeDesc TypeID="12" />
-          <TypeDesc TypeID="13" />
-          </TypeDesc>
-        <Label Text="Palette Menu.lvlib" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="item"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /></TypeDesc><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /><TypeDesc Type="TypeDef" Flag1="0xD83EEF14" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Items"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="item path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="library path" /><TypeDesc Type="Boolean" Format="inline" Label="use default lvlib palette" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="short name" /><TypeDesc Type="Boolean" Format="inline" Label="place VI contents" /><TypeDesc Type="Boolean" Format="inline" Label="hide synchronized item" /><TypeDesc Type="Boolean" Format="inline" Label="reserve spot for synch item" /><TypeDesc Type="Boolean" Format="inline" Label="configure when placing VI contents" /></TypeDesc><Label Text="Palette Menu.lvlib" />
         <Label Text="Item.ctl" />
         </TypeDesc></types><heap><SL__arrayElement class="term" uid="776">
                     <objFlags>131137</objFlags>

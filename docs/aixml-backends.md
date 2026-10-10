@@ -140,10 +140,10 @@ from `scripts/*.xml`, today by NI's converter and `RunVIAsTopLevel`. Over all 81
 the built server, with NI's converter as the control (`experiments/aixml-without-grpc/helper_coverage.py`,
 0 crashes):
 
-| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers | after the repairs |
-|---|---|---|---|---|
-| builds | 63 | 9 | 31 | **39** of 82 |
-| executable over ActiveX | 63 | 7 | 29 | **35** |
+| | NI's converter | composer, parts as shipped in the experiment | composer, plus parts harvested from the NI-built helpers | after the repairs | after option 1 (typedefs, control references) |
+|---|---|---|---|---|---|
+| builds | 63 | 9 | 31 | 39 of 82 | **70** of 82 |
+| executable over ActiveX | 63 | 7 | 29 | 35 | **69** |
 
 One property was most of the gap: `Application` on `{LV.Project}` - the hop into the IDE's
 instance - blocked 28 helpers, and harvesting the NI-built helpers supplied it. **Composed helpers
@@ -158,12 +158,28 @@ which live under `project\` where the composer did not search.
 terminal names learned from NI's exports of the NI-built helpers (`anything` on Flatten To XML among
 them), a method found by its CATALOGUE name (`Save VI Icon to File` is the one harvested method with
 the same words as `VI Icon.Save to File`), LabVIEW's `project\` folder searched last, and a typedef
-parameter named from the type inside it. That last one made five helpers COMPOSE BROKEN - the
-composer writes no link to the `.ctl` - so a WIRED typedef parameter is refused by name now instead.
-**No regression**: the composer's own suite, run through the built server, passed 114 of 114 cases
-with every test built, with both sets of parts; parity rose to 9 of 9 helpers. Still blocking:
-control-refnum types (9), wired typedef parameters (6), DQMH helpers waiting on
-`lvdqmh_pick_event` (9), a few invoke terminals (6) and single constructs; 4 compose broken.
+parameter named from the type inside it. That last one made five helpers COMPOSE BROKEN, and this
+paragraph blamed it on "the composer writes no link to the `.ctl`" and refused such a parameter by
+name - **wrong, see below.** The composer's own suite, run through the built server, passed 114 of
+114 cases with both sets of parts; parity rose to 9 of 9 helpers.
+
+**Option 1, the same evening - 70 of 82 build, 69 executable, parity 11 of 11.** No typedef link is
+composed, because none is needed: NI's converter writes none either, and its builds load. The five
+broken helpers carried a typedef whose wrapped type still pointed at the DONOR VI's type list (the
+reader inlined one level deep), so LVPositionTypeDef.ctl's `Left` and `Top` became two strings;
+72 of the 1167 committed parts had such ids and were repaired against their donors
+(`repair_nested_types.py`). The three FATAL LabVIEW aborts that had been blamed on typedefs were
+ordinary composer bugs: a subVI input and output with ONE label landing on one terminal, and two
+terminals claiming one `conIdx`. The rest was NI's own naming, each settled against NI's build of
+the same document: an invoke output named after nothing is the method's return value
+(`Controls` on `Ctrl Val.Get All`, which unblocked the run helpers), a method by its catalogue short
+name (`Discon Typedef`), a property node typed by the more specific class wired into it, nested
+properties (`Label.Text`), refnum constants of a control class, `Build Path` with a string name, and
+`Flatten To XML`, which takes its input whole and writes the source's label into its result.
+The composer's own suite still passed 114 of 114 with both sets of parts. Still blocking: a concat tunnel (2), Unbundle By Name on an array, a
+`SubString` wire, a class wire (`lvdqmh_new_module`), `readLines`, user-event data, Web Browser and
+`ref{LV.String}` controls in two skeletons, and the `{{TYPE}}` templates; `lvai_inventory` composes
+broken. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Option 1".
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

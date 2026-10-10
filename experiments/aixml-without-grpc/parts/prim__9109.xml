@@ -1,15 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="prim" key="prim/9109" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Design Patterns\Queued Message Handler\Queued Message Handler Fundamentals.vi"><types><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          </TypeDesc>
-        <Label Text="QMH Fundamentals - Message Cluster.ctl" />
+<part kind="prim" key="prim/9109" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Design Patterns\Queued Message Handler\Queued Message Handler Fundamentals.vi"><types><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="QMH Fundamentals - Message Cluster.ctl" />
         </TypeDesc></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="force destroy? (F)" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="remaining elements"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          </TypeDesc>
-        <Label Text="QMH Fundamentals - Message Cluster.ctl" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="QMH Fundamentals - Message Cluster.ctl" />
         </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="783">
                         <objFlags>512</objFlags>
                         <termList elements="6">

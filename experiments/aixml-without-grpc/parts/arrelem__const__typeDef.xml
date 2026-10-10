@@ -1,10 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="arrelem" key="arrelem/const/typeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Dialog and User Interface\Menu\Customizing the Menubar\Customizing the Menubar.vi"><types><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut">
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          </TypeDesc>
-        <Label Text="LVMenuShortCut.ctl" />
+<part kind="arrelem" key="arrelem/const/typeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Dialog and User Interface\Menu\Customizing the Menubar\Customizing the Menubar.vi"><types><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="short cut"><TypeDesc Type="Boolean" Format="inline" Label="Include Shift Key?" /><TypeDesc Type="Boolean" Format="inline" Label="Include Ctrl Key?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Shortcut Key" /></TypeDesc><Label Text="LVMenuShortCut.ctl" />
         </TypeDesc></types><heap><ddo class="typeDef" uid="976">
                   <objFlags>36</objFlags>
                   <bounds>(3, 35, 107, 137)</bounds>

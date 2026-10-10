@@ -153,7 +153,7 @@ def split_field(s):
 ENUM_BASE = {"uint8": "UnitUInt8", "uint16": "UnitUInt16", "uint32": "UnitUInt32"}
 
 
-def type_tree(aixml_type, label=None):
+def type_tree(aixml_type, label=None, constant=False):
     """AIXML's type grammar -> an inlined TypeDesc tree as VCTP writes it:
     scalars, cluster{T.name,...}, array{T} / array.N{T}, enums uintN{a,b,c}."""
     aixml_type = aixml_type.strip()
@@ -176,7 +176,11 @@ def type_tree(aixml_type, label=None):
         for item in split_top(m.group(3)):
             ET.SubElement(el, "EnumLabel").text = unescape(item)
     elif m and m.group(1) == "ref" and m.group(2) is None:
-        el = refnum_type(m.group(3))
+        # A CONSTANT of a control class (ref{LV.Cluster} as To More Specific Class' target) is a
+        # PLAIN refnum: measured on NI's converter's own build of lvai_typedef_bind.xml, the type is
+        # Refnum LVObjCtl CtlFlags 0x001E with nothing nested and the heap object an ordinary
+        # stdRefNum - the nested object refnum-classes.tsv records belongs to front-panel CONTROLS.
+        el = refnum_type(m.group(3), plain_class=constant)
     elif m and m.group(1) == "tag" and m.group(2) is None:
         # tag{N}: an I/O name control - N is pylabview's TAG_TYPE (13 a DAQmx terminal, 14 a
         # DAQmx physical channel, 2 the old DAQ channel), read off an AIXML-generated probe
@@ -326,6 +330,13 @@ def unverified_wire_type(tree):
     if tree is None:
         return None
     t = tree.get("Type") or ""
+    if t == "TypeDef":
+        # judged by the type it wraps. Measured 2026-10-10: an LVPositionTypeDef.ctl cluster
+        # (lvbd_graft_clear.xml), an array of LVRectTypeDef.ctl (lvpane_probe.xml) and an
+        # ItemRef.ctl uint64 between three subVI calls (NI's Get Item Info.vi) all load
+        # executable. That last VI's FATAL "Insane Wire" had been blamed on the typedef and was
+        # out_key's shared terminal; no .ctl link is written, and NI's converter writes none.
+        return unverified_wire_type(typedef_inner(tree))
     if t in ("Cluster", "Array"):
         for f in fields(tree):
             bad = unverified_wire_type(f)
@@ -553,6 +564,19 @@ def keyed(ps):
     return out
 
 
+def out_key(el, tname):
+    """The endpoint key of an OUTPUT terminal: its name, or name + NUL + "out" when an input of
+    the same element has that name too. A subVI's pane may carry an input and an output with one
+    label - mxLvGetProjectPath.vi's `Item` in and `Item` out - and keyed by name alone both ends
+    landed on ONE terminal: a wire into it and a wire out of it, three "Insane Wire {sub}" and a
+    FATAL DAbort (NI's Get Item Info.vi, 2026-10-10). Only subVI calls and invoke nodes, which
+    name terminals after the callee's labels; a primitive keeps its own naming rules."""
+    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") == "Invoke Node"):
+        if tname in {t for t, _ in pairs(el.get("inputs"))}:
+            return tname + "\x00out"
+    return tname
+
+
 def const_value(tree, value):
     """A constant's ConstValue as LabVIEW writes it in the heap: big-endian flattened data,
     and ONE EXTRA ZERO BYTE when the data is all zero. Measured over 120 NI VIs, every
@@ -758,6 +782,14 @@ class Parts:
             return None
         root = ET.parse(p).getroot()
         types = list(root.find("types"))
+        # A part harvested before 2026-10-10 may carry its DONOR's type ids inside a typedef's
+        # inline type (lvheap.Bundle._inline); composed from, it yields a VI whose typedef points
+        # at unrelated types and loads broken. Refused by name - repair_nested_types.py fixes it.
+        for t in types:
+            for n in t.iter("TypeDesc"):
+                if n.get("Nested") == "True" and any(c.tag == "TypeDesc" and c.get("TypeID") is not None for c in n):
+                    raise Unsupported("part %s carries its donor's type ids inside a typedef - run "
+                                      "repair_nested_types.py on %s" % (key, self.d))
         heap = copy.deepcopy(list(root.find("heap"))[0])
         images = {int(i.get("index")): i.text for i in root.find("images")} if root.find("images") is not None else {}
         if images:
@@ -1297,6 +1329,21 @@ class Composer:
         self._direction(ddo, is_ind)
         self._set_default(fpdco, tree, el.get("value"), name)
         con = el.get("conIdx")
+        # A conIdx a terminal EARLIER in the document already took leaves this one OFF the pane:
+        # lvpane_probe.xml gives `VI Path` and `terminals` both conIdx 1, NI's converter's build
+        # assigns VI Path and not terminals (measured 2026-10-10), and two terminals on one slot
+        # was a FATAL insanity - "FrontPanelDataController ... {id } (0x4)", DAbort in fpsane.cpp,
+        # LabVIEW gone. Not separated: whether NI keeps the earlier one or the CONTROL - here the
+        # control came first.
+        taken = getattr(self, "con_taken", None)
+        if taken is None:
+            taken = self.con_taken = {}
+        if con is not None and con in taken:
+            self.report.append("WARNING: %r claims conIdx %s, which %r already has - left off the pane, "
+                               "as NI's converter does" % (name, con, taken[con]))
+            con = None
+        elif con is not None:
+            taken[con] = name
         # conNum 0 is written by OMITTING the field, as LabVIEW's own files do; an explicit
         # <conNum>0</conNum> loads but LabVIEW logs the control as insane ({flags} 0x1000)
         conn = fpdco.find("conNum")
@@ -1351,7 +1398,7 @@ class Composer:
         aixml_type = el.get("type")
         diag = self.diag_of(el)
         name = unescape(el.get("_name") or "")
-        tree = type_tree(aixml_type, label=name or None)
+        tree = type_tree(aixml_type, label=name or None, constant=True)
         term, src, _, _ = self.build_ddo(tree, None, "const", None)
         dco = term.find("dco")
         ddo = dco.find("ddo")
@@ -1365,7 +1412,7 @@ class Composer:
         diag.placed.append((ddo, el))
         for _, net in pairs(el.get("outputs")):
             if net:
-                self.net_type[net] = type_tree(aixml_type)
+                self.net_type[net] = type_tree(aixml_type, constant=True)
         self.report.append("Constant %r <- %s" % (name, src))
 
     # palette FIXED constants: AIXML's name -> the bDFixed ddo's `cnst` code (absent for 0),
@@ -1503,6 +1550,15 @@ class Composer:
         for i in range(len(terms)):
             group = [j for j in range(len(terms)) if canon[j] == canon[i]]
             wired = [new_types[j] for j in group if j in wired_in]
+            kinds = {w.get("Type") for w in wired}
+            if len(kinds) > 1 and not kinds <= set(NUM_RANK):
+                # Not one polymorphic group but terminals that merely SHARED a donor type: Build
+                # Path cut from Create New Palette.vi has a path on all three, and with a STRING
+                # wired into `name or relative path` NI's converter types that terminal String,
+                # leaves `base path` and the output Path, and draws no coercion dot (measured
+                # 2026-10-10 on its build of lvpdc_export.xml). Joining made all three String and
+                # the VI loaded broken.
+                continue
             if wired:
                 joined[i] = numeric_join(wired)
         for i, t in enumerate(terms):
@@ -1549,7 +1605,7 @@ class Composer:
             a.append(copy.deepcopy(x))
             return a
         deltas = {depth(new_types[i]) - depth(donor[i]) for i in wired_in}
-        if len(deltas) == 1 and 0 not in deltas:
+        if len(deltas) == 1 and 0 not in deltas and name not in self.WHOLE_VALUE:
             k = deltas.pop()
             donor_in_depth = {depth(donor[i]) for i in wired_in}
             for j, t in enumerate(terms):
@@ -1562,13 +1618,81 @@ class Composer:
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
-        lvheap.set_typeids(prim, [self.heap_tid(new_types[i]) for i in range(len(terms))])
+        term_types = list(new_types)
+        if name in self.WHOLE_VALUE:
+            # the wired input carries its SOURCE's label, which these write into their result:
+            # NI's converter's build of lvai_run_and_read.xml flattens `error out` as
+            # <Cluster><Name>error out</Name>..., the composed one as <Name></Name> (2026-10-10).
+            # LabVIEW reads the name off the wire's SOURCE end - a fresh copy with only this
+            # input labelled still wrote <Name></Name> - so a primitive output feeding one is
+            # labelled too, as NI's build labels every primitive terminal.
+            for i, net in wired_in.items():
+                lab = self._source_label(net)
+                if lab:
+                    term_types[i] = copy.deepcopy(new_types[i])
+                    term_types[i].set("Label", lab)
+                    self._label_primitive_source(net, lab)
+        lvheap.set_typeids(prim, [self.heap_tid(term_types[i]) for i in range(len(terms))])
+        for i, t in enumerate(terms):
+            if int(t.find("dco").findtext("objFlags") or 0) & 1 and donor_types[i].get("Label"):
+                # an output's label is the terminal's own (`error out`), read by _source_label
+                self.term_label[t.get("uid")] = donor_types[i].get("Label")
         for tname, t in by_name.items():
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         diag.nodes.append(prim)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    # A primitive that takes its input WHOLE: its output does not follow the input's array shape
+    # (Flatten To XML's `xml string` stays one string for an array in - the shape rule above made
+    # it an array, measured 2026-10-10 on lvai_run_and_read.xml), and the input's LABEL is data
+    # it writes out. Flatten To XML is the measured one; the other two flatten the same way.
+    WHOLE_VALUE = {"Flatten To XML", "Flatten To String", "To Variant"}
+
+    def _label_primitive_source(self, net, label):
+        """Give the PRIMITIVE output driving `net` its own label on its type (see WHOLE_VALUE)."""
+        for e in self._by_uid.values():
+            for n, key in self.endpoints(e)[0]:
+                if n != net or e.tag == "Control":
+                    continue
+                end = self.ends.get(key)
+                if end is None or end[0] not in self.term_label or net not in self.net_type:
+                    return
+                term = next((x for x in end[1].el.iter() if x.get("uid") == end[0]), None)
+                td = term.find("dco/typeDesc") if term is not None else None
+                if td is not None:
+                    labelled = copy.deepcopy(self.net_type[net])
+                    labelled.set("Label", label)
+                    td.text = "TypeID(%d)" % self.heap_tid(labelled)
+                return
+
+    def _source_label(self, net):
+        """The label of the terminal that drives `net`: a control's name, a primitive output's own
+        label, or the label on the source terminal's type. None when there is none."""
+        for e in self._by_uid.values():
+            srcs, _ = self.endpoints(e)
+            for n, key in srcs:
+                if n != net:
+                    continue
+                if e.tag == "Control":
+                    return unescape(e.get("_name") or "") or None
+                end = self.ends.get(key)
+                if end is None:
+                    return None
+                tuid, diag = end
+                if tuid in self.term_label:
+                    return self.term_label[tuid]
+                term = next((x for x in diag.el.iter() if x.get("uid") == tuid), None)
+                td = term.find("dco/typeDesc") if term is not None else None
+                m = lvheap.TYPEID_RE.fullmatch((td.text or "").strip()) if td is not None else None
+                if m is None:
+                    return None
+                cons = int(m.group(1)) + INDEX_SHIFT - 1
+                if not 0 < cons <= len(self.types.toplevel) or self.types.toplevel[cons - 1] is None:
+                    return None
+                return self.types.flat[self.types.toplevel[cons - 1]].get("Label")
+        return None
 
     # ---- VI Server: property and invoke nodes ------------------------------------------------
     def _vi_server_table(self):
@@ -1585,6 +1709,33 @@ class Composer:
         if not m:
             raise Unsupported("%s %s: class %r is not composable yet" % (el.get("_name"), el.get("uid"), el.get("type")))
         return m.group(1)
+
+    def _nested_property_row(self, cls, name):
+        """`Label.Text`: the row for each level, the next level's class read off the previous
+        level's data type - Label returns a refnum with CtlFlags 0x0005, which refnum-classes.tsv
+        names LV.Text. None when any level is unknown or does not return an object."""
+        refnum_type("LV.VI", plain_class=True)          # loads _REF_CLASSES
+        by_flags = {}
+        for c, (flags, _) in _REF_CLASSES.items():
+            by_flags.setdefault(flags.upper(), c)
+        owner, levels = cls, []
+        parts_ = name.split(".")
+        for i, part in enumerate(parts_):
+            row = self._property_row(owner, part)
+            if row is None:
+                return None
+            levels.append(dict(row, _name=part))
+            if i < len(parts_) - 1:
+                t = ET.fromstring(row["type"])
+                if t.get("Type") != "Refnum" or t.get("RefType") != "LVObjCtl":
+                    return None
+                owner = by_flags.get((t.get("CtlFlags") or "").upper())
+                if owner is None:
+                    return None
+        # the terminal's type is labelled with the WHOLE path, "Label.Text" - as NI's build of the
+        # same node labels it - not with the last level's name alone
+        return dict(levels[-1], levels=levels,
+                    label=".".join(lvl.get("label") or lvl["_name"] for lvl in levels))
 
     def _property_row(self, cls, name):
         """The table row for property `name` on class `cls` - harvested off NI's VIs and probes
@@ -1604,6 +1755,48 @@ class Composer:
         if (cls, name) not in self._catalogue():
             return None
         return dict(seen[0], declaredBy=cls)
+
+    def _method_by_row_label(self, cls, label):
+        """The harvested method of `cls` whose part labels its FIRST row `label`, when exactly one
+        does. Reads the part files only; nothing is instantiated."""
+        import harvest_parts
+        hits = []
+        for k in self._vi_server_table().get("methods", {}).get(cls, {}):
+            try:
+                got = self.parts.get("invoke/%s/%s" % (cls, harvest_parts.meth_key(k)))
+            except Unsupported:
+                continue
+            if got is None:
+                continue
+            heap, types, _ = got
+            tel = lvheap.typeid_elements(heap)
+            for t in heap.find("termList"):
+                d = t.find("dco")
+                if d is not None and d.get("class") == "invokeItem":
+                    e = d.find("typeDesc")
+                    i = next((n for n, x in enumerate(tel) if x is e), None)
+                    if i is not None and types[i].get("Label") == label:
+                        hits.append(k)
+                    break
+        return hits[0] if len(hits) == 1 else None
+
+    def _wired_subclass(self, cls, el):
+        """The class of the plain class refnum wired into `reference`, when it is a SUBCLASS of
+        `cls` - judged from the catalogue, where a subclass lists every property of its parent
+        (inherited ones included). None otherwise."""
+        net = dict(pairs(el.get("inputs"))).get("reference")
+        wired = self.net_type.get(net) if net else None
+        if wired is None or wired.get("Type") != "Refnum" or wired.get("RefType") != "LVObjCtl" or fields(wired):
+            return None
+        refnum_type("LV.VI", plain_class=True)          # loads _REF_CLASSES
+        flags = (wired.get("CtlFlags") or "").upper()
+        sub = next((c for c, (f, _) in _REF_CLASSES.items() if f.upper() == flags), None)
+        if sub is None or sub == cls:
+            return None
+        cat = self._catalogue()
+        mine = {p for c, p in cat if c == cls}
+        theirs = {p for c, p in cat if c == sub}
+        return sub if mine and mine <= theirs else None
 
     def _catalogue(self):
         cat = getattr(self, "_cat", None)
@@ -1653,15 +1846,35 @@ class Composer:
             if linked is None:
                 raise Unsupported("Property Node %s: no control %r to link to" % (el.get("uid"), link))
         fields_ = [unescape(f) for f in split_top(el.get("fields") or "") if f]
-        items = []
-        for f in fields_:
-            mode, _, name = f.partition("+")
-            if mode not in ("read", "write") or not name:
-                raise Unsupported("Property Node %s: field %r is not read+/write+" % (el.get("uid"), f))
-            row = self._property_row(cls, name)
-            if row is None:
-                raise Unsupported("Property Node %s: property %r of %s is not in the harvested table" % (el.get("uid"), name, cls))
-            items.append((mode, name, row))
+
+        def rows_for(c):
+            out = []
+            for f in fields_:
+                mode, _, name = f.partition("+")
+                if mode not in ("read", "write") or not name:
+                    raise Unsupported("Property Node %s: field %r is not read+/write+" % (el.get("uid"), f))
+                row = self._property_row(c, name)
+                if row is None and "." in name:
+                    row = self._nested_property_row(c, name)
+                if row is None:
+                    return None, name
+                out.append((mode, name, row))
+            return out, None
+
+        items, missing = rows_for(cls)
+        if items is None:
+            # NI's converter types the node by the MORE SPECIFIC class wired into it: lvbd_graft_
+            # rewire.xml asks {LV.Terminal} for `Diagram` on what Control.Terminal returned, and
+            # NI's build is a CtrlTerm node (LV.ControlTerminal, 0x400B) whose `Diagram` is
+            # 104112130 - measured 2026-10-10. Taken only where the declared class would be
+            # refused, so nothing that composed before changes.
+            sub = self._wired_subclass(cls, el)
+            if sub is not None and table["classes"].get(sub) is not None:
+                items_sub, _ = rows_for(sub)
+                if items_sub is not None:
+                    cls, items, crow = sub, items_sub, table["classes"][sub]
+        if items is None:
+            raise Unsupported("Property Node %s: property %r of %s is not in the harvested table" % (el.get("uid"), missing, cls))
         diag = self.diag_of(el)
         got = self.instantiate("node/propNode/implicit" if linked else "node/propNode", own_uid=el.get("uid"))
         if got is None:
@@ -1730,22 +1943,35 @@ class Composer:
             elif f is not None:
                 d.remove(f)
             d.find("termBounds").text = lvheap.fmt_bounds((18 + 16 * k, 0, 34 + 16 * k, width))
-            info = d.find("propList/SL__arrayElement")
-            decl = refnum_type(row.get("declaredBy") or cls, plain_class=True)
-            vb = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
-            vb.append(decl)
-            info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
-            info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(dt)
-            # an ALIAS row (alias_props.py) maps NI's export name onto the one LabVIEW stores:
-            # "Block Diagram Window:Open" is "BDWin.Open" in the heap
-            info.find("PropItemName").text = '"%s"' % (row.get("heapName") or name)
-            pc = info.find("PropItemCode")
-            if row["code"]:
-                if pc is None:
-                    pc = ET.SubElement(info, "PropItemCode")
-                pc.text = str(row["code"])
-            elif pc is not None:
-                info.remove(pc)
+            plist = d.find("propList")
+            template = plist.find("SL__arrayElement")
+            # A NESTED property (Label.Text) is ONE terminal carrying one propItemInfo PER LEVEL -
+            # Label on the control, then Text on the text object Label returns - measured on NI's
+            # converter's own build of lvbd_graft_paste.xml. A plain property has one level.
+            levels = row.get("levels") or [dict(row, _name=name)]
+            for c in list(plist):
+                plist.remove(c)
+            for lvl in levels:
+                info = copy.deepcopy(template)
+                if len(levels) > 1:
+                    lvheap.renumber(info, self.alloc)
+                decl = refnum_type(lvl.get("declaredBy") or cls, plain_class=True)
+                vb = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
+                vb.append(decl)
+                info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
+                info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(ET.fromstring(lvl["type"]))
+                # an ALIAS row (alias_props.py) maps NI's export name onto the one LabVIEW stores:
+                # "Block Diagram Window:Open" is "BDWin.Open" in the heap
+                info.find("PropItemName").text = '"%s"' % (lvl.get("heapName") or lvl.get("_name") or name)
+                pc = info.find("PropItemCode")
+                if lvl["code"]:
+                    if pc is None:
+                        pc = ET.SubElement(info, "PropItemCode")
+                    pc.text = str(lvl["code"])
+                elif pc is not None:
+                    info.remove(pc)
+                plist.append(info)
+            plist.set("elements", str(len(levels)))
             tf = t.find("objFlags")
             if mode == "write":
                 if tf is None:
@@ -1825,6 +2051,14 @@ class Composer:
             if len(same) == 1:
                 got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(same[0])), own_uid=el.get("uid"))
         if got is None:
+            # The catalogue's SHORT name - `Discon Typedef` - is the label LabVIEW gives the
+            # method's first row; the heap stores `Disconnect From Typedef`. Measured 2026-10-10
+            # on NI's converter's build of lvai_typedef_discon.xml. The one harvested method of
+            # the class whose first row carries that label is the method; two stay a refusal.
+            hit = self._method_by_row_label(cls, meth)
+            if hit is not None:
+                got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(hit)), own_uid=el.get("uid"))
+        if got is None:
             raise Unsupported("Invoke Node %s: no invoke node %s.%s harvested yet" % (el.get("uid"), cls, meth))
         node, donor_types, src = got
         diag = self.diag_of(el)
@@ -1854,45 +2088,84 @@ class Composer:
                 inner = next((c for c in ty if c.tag == "TypeDesc"), None)
                 label = (inner.get("Label") or "") if inner is not None else ""
             names[label + ("\x00out" if out else "\x00in")] = t
-        # (an Element with no children is FALSE in a boolean context - never `a or b` on them)
+        # The RETURN value is the output side of the method's first row, labelled with the
+        # method's DISPLAY name (`Open Library`, `Get Control Value Variant`). An AIXML output
+        # name that matches no output terminal is that return value: NI's converter's builds
+        # wire `Library.Open` (lvai_add_one_to_library.xml), `Controls` on Ctrl Val.Get All -
+        # the name of its boolean INPUT - (lvai_run_and_read.xml) and `Value` on Ctrl Val.Get
+        # (lvdqmh_module_types.xml) to it, measured 2026-10-10. Two such names on one node stay
+        # a refusal: which one is the return would be a guess.
+        ret = None
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is not None and d.get("class") == "invokeItem" and int(d.findtext("objFlags") or 0) & 1:
+                ty = self.parts_type_of(t, donor_types, tel)
+                ret = t if ty is not None and ty.get("Type") != "Void" else None
+                break
+
+        def find(tname, side):
+            # (an Element with no children is FALSE in a boolean context - never `a or b` on them)
+            t = names.get(tname)
+            if t is None:
+                t = names.get(tname + "\x00" + side)
+            if t is None:
+                # NI's converter takes a parameter in any case: `Path` for Library.Open's `path`
+                want = (tname.lower(), (tname + "\x00" + side).lower())
+                hit = {id(v): v for k, v in names.items() if k.lower() in want}
+                if len(hit) == 1:
+                    t = next(iter(hit.values()))
+            return t
+
+        unresolved = [n for n, net in outs.items() if net and find(n, "out") is None]
+
         for tname, net in ins.items():
-            t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00in")
+            t = find(tname, "in")
             if t is None and net is None:
                 continue    # listed and unwired, as NI's exports list every parameter
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no input %r" % (el.get("uid"), cls, meth, tname))
-            self._refuse_wired_typedef(el, cls, meth, tname, t, donor_types, tel)
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         for tname, net in outs.items():
-            t = names.get(tname) if names.get(tname) is not None else names.get(tname + "\x00out")
+            t = find(tname, "out")
             if t is None and net is None:
                 continue
+            if t is None and ret is not None and unresolved == [tname]:
+                t = ret         # the return value, by whatever name the document gives it
             if t is None:
                 raise Unsupported("Invoke Node %s: %s.%s has no output %r" % (el.get("uid"), cls, meth, tname))
-            if net:
-                self._refuse_wired_typedef(el, cls, meth, tname, t, donor_types, tel)
-            self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+            self.ends[(el.get("uid"), out_key(el, tname))] = (t.get("uid"), diag)
             if net:
                 ty = self.parts_type_of(t, donor_types, tel)
                 self.net_type[net] = lvheap.strip_label(ty) if ty is not None else None
+        # Term objFlags 0x8000 marks an INPUT as wired, and a harvested part keeps its DONOR's
+        # wiring: Paste From Clipboard.vi wires TopLevelDiagram.Paste's `Pos`, which NI's own
+        # build of lvbd_graft_paste.xml leaves unwired with the flag clear. So the flag follows
+        # this document's wiring, as add_property_node already does it. Not a repair: measured
+        # 2026-10-10 as an A/B, the donor's flag left on the unwired Pos still loads executable
+        # (that VI's break was its typedef's type ids - lvheap.Bundle._inline).
+        wired = set()
+        for tname, net in ins.items():
+            t = find(tname, "in")
+            if t is not None and net:
+                wired.add(t.get("uid"))
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is None or int(d.findtext("objFlags") or 0) & 1:
+                continue        # an output
+            tf = t.find("objFlags")
+            on = t.get("uid") in wired
+            if on and tf is None:
+                tf = ET.Element("objFlags")
+                t.insert(0, tf)
+            if tf is not None:
+                tf.text = str((int(tf.text or 0) | 0x8000) if on else (int(tf.text or 0) & ~0x8000))
+                if tf.text == "0":
+                    t.remove(tf)
         node.find("oMId").text = self._om_id(cls)
         diag.nodes.append(node)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Invoke Node %s.%s <- %s" % (cls, meth, src))
-
-    def _refuse_wired_typedef(self, el, cls, meth, tname, t, donor_types, tel):
-        """A WIRED invoke parameter whose type is a TYPEDEF is refused: the part carries the TypeDef
-        descriptor but the composer writes no link to its .ctl, and LabVIEW then loads the VI
-        BROKEN. Measured 2026-10-10 on Control.Move's `position` (LVPositionTypeDef.ctl): five
-        helpers composed and all five were eBad. A named refusal keeps "the composer writes nothing
-        silently different" true."""
-        ty = self.parts_type_of(t, donor_types, tel)
-        if ty is not None and ty.get("Type") == "TypeDef":
-            link = ty.find("Label")
-            raise Unsupported("Invoke Node %s: %s.%s parameter %r is a typedef (%s); typedef links are "
-                              "not composed yet" % (el.get("uid"), cls, meth, tname,
-                                                    link.get("Text") if link is not None else "?"))
 
     def _om_id_of(self, tree):
         """oMId for an arbitrary class refnum type (a strictly typed control refnum included):
@@ -2720,12 +2993,15 @@ class Composer:
         con_id = int(callee.fp.findtext("root/conPane/conId"))
         geo = self.pane_geometry.get(con_id, {})
         name_at = {}
+        required_at = set()
         for fpdco in callee.fp.iter("SL__arrayElement"):
             if fpdco.get("class") == "fPDCO":
                 con = fpdco.findtext("conNum")
                 con = 0 if con is None else int(con)
                 if con >= 0:
                     name_at[con] = vi_label(fpdco.find("ddo"))
+                    if int(fpdco.findtext("objFlags") or 0) & 0x80:
+                        required_at.add(con)
         got = self.instantiate("iuse/node", own_uid=el.get("uid"))
         if got is None:
             raise Unsupported("no call-node part harvested")
@@ -2742,7 +3018,8 @@ class Composer:
                 raise Unsupported("call-node part lacks a %s terminal" % kind)
         for c in list(tl):
             tl.remove(c)
-        by_name = {}
+        # inputs and outputs apart: a pane may label an input and an output alike (out_key)
+        by_dir = {"in": {}, "out": {}}
         for i, slot in enumerate(slots):
             flags = int(slot.get("ref.Flags") or "0", 16)
             kind = "none" if slot.get("Type") == "Void" else "out" if flags & 0x100 else "in"
@@ -2758,13 +3035,18 @@ class Composer:
                 pi.text = str(i)
             if i in geo and dco.find("termBounds") is not None:
                 dco.find("termBounds").text = lvheap.fmt_bounds(geo[i])
+            if kind == "in" and i in required_at and dco.find("objFlags") is not None:
+                # an input the CALLEE marks required: DCO objFlags 0x80 where a recommended one
+                # has 0x200 - NI's converter's build of Get Item Info.vi's export, 2026-10-10.
+                # Matches NI's file; the A/B with 0x200 there loads executable too.
+                dco.find("objFlags").text = str((int(dco.findtext("objFlags")) & ~0x280) | 0x80)
             slot_type = copy.deepcopy(slot)
             for k in [k for k in slot_type.attrib if k.startswith("ref.")]:
                 del slot_type.attrib[k]
             dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(slot_type)
             tl.append(t)
             if kind != "none" and i in name_at:
-                by_name[name_at[i]] = (t, lvheap.strip_label(slot_type))
+                by_dir[kind][name_at[i]] = (t, lvheap.strip_label(slot_type))
         # one terminal per slot of the CALLEE'S pattern: 16 on 4833 - the count must follow, or
         # the node keeps the donor's 12 and LabVIEW calls the caller broken (measured)
         tl.set("elements", str(len(tl)))
@@ -2776,15 +3058,46 @@ class Composer:
             if part.find("textRec/text") is not None:
                 part.find("textRec/text").text = '"%s"' % target.split(":")[-1]
                 break
-        for tname, net in pairs(el.get("inputs")) + pairs(el.get("outputs")):
-            if tname not in by_name:
-                raise Unsupported("Call %r has no terminal %r on its pane (has: %s)"
-                                  % (target, tname, ", ".join(sorted(by_name))))
-        for tname, net in pairs(el.get("outputs")):
+        listed = {"in": [], "out": []}
+        for direction, attr in (("in", "inputs"), ("out", "outputs")):
+            other = by_dir["out" if direction == "in" else "in"]
+            for tname, net in pairs(el.get(attr)):
+                if tname in by_dir[direction]:
+                    listed[direction].append((tname, net))
+                elif net is None and tname in other:
+                    continue        # listed on the wrong side and unwired: nothing to place
+                else:
+                    raise Unsupported("Call %r has no %s %r on its pane (has: %s)"
+                                      % (target, "input" if direction == "in" else "output", tname,
+                                         ", ".join(sorted(set(by_dir["in"]) | set(by_dir["out"])))))
+        for tname, net in listed["in"]:
+            src = self.net_type.get(net) if net else None
+            t, want = by_dir["in"][tname]
+            if src is not None and want.get("Type") == "TypeDef" and src.get("Type") != "TypeDef":
+                # a PLAIN value into a TYPEDEF terminal is a coercion: term objFlags 0x40000 (the
+                # dot) and dsw 1024, as NI's converter wrote a uint64 control into
+                # mxLvGetProjectPath.vi's `Item` (ItemRef.ctl); a typedef into a plain sink - the
+                # same Item into the uint64 indicator - carries no dot there. Matches NI's file,
+                # repairs nothing: measured 2026-10-10 as an A/B, the VI loads executable without
+                # it (that VI's FATAL "Insane Wire" was out_key's shared terminal).
+                f = t.find("objFlags")
+                if f is None:
+                    f = ET.Element("objFlags")
+                    t.insert(0, f)
+                f.text = str(int(f.text or 0) | 0x40000)
+                dco = t.find("dco")
+                dsw = dco.find("dsw")
+                if dsw is None:
+                    dsw = ET.Element("dsw")
+                    dco.insert(list(dco).index(dco.find("typeDesc")) + 1, dsw)
+                dsw.text = "1024"
+        for tname, net in listed["out"]:
             if net:
-                self.net_type[net] = by_name[tname][1]
-        for tname, (t, _) in by_name.items():
+                self.net_type[net] = by_dir["out"][tname][1]
+        for tname, (t, _) in by_dir["in"].items():
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
+        for tname, (t, _) in by_dir["out"].items():
+            self.ends[(el.get("uid"), out_key(el, tname))] = (t.get("uid"), diag)
         link = self.links.setdefault(path, dict(res, pane=pane, offsets=[]))
         link["offsets"].append(int(node.get("uid")))
         diag.nodes.append(node)
@@ -4088,7 +4401,7 @@ class Composer:
                     [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag in ("Node", "Call"):
             # a name used twice (Build Array's `element`) is numbered: element, element#1, ...
-            return ([(n, (uid, t)) for t, n in keyed(pairs(el.get("outputs"))) if n],
+            return ([(n, (uid, out_key(el, t))) for t, n in keyed(pairs(el.get("outputs"))) if n],
                     [(n, (uid, t)) for t, n in keyed(pairs(el.get("inputs"))) if n])
         if el.tag == "Left":
             # a stacked register's elements in order: out, out#1, out#2 / in, in#1, in#2
@@ -4130,17 +4443,11 @@ class Composer:
             if not ends["sinks"]:
                 continue
             kind0 = self.net_type.get(net)
-            if kind0 is not None and any(t.get("Type") == "TypeDef" for t in kind0.iter("TypeDesc")):
-                # a wire carrying a TYPEDEF needs the caller to link the .ctl; without that link
-                # LabVIEW logged "Insane Wire {sub}" and a FATAL DAbort (NI's Get Item Info.vi,
-                # ItemRef.ctl between two subVI calls). Refused until typedef links are composed.
-                lab = next((x.get("Text") for x in kind0.iter("Label")), "?")
-                raise Unsupported("net %r carries the typedef %s; typedef links are not composed yet" % (net, lab))
             bad = unverified_wire_type(kind0)
             if bad and bad not in os.environ.get("AIXML2VI_TRY_WIRES", "").split(","):
                 # AIXML2VI_TRY_WIRES=Tag.DAQmxTerminal,... lets ONE measurement carry a type
                 # before it joins the verified set
-                # the same FATAL "Insane Wire {sub}" with a DataLog refnum from a subVI's pane
+                # a FATAL "Insane Wire {sub}" with a DataLog refnum from a subVI's pane
                 # (NI's Monitoring Keyboard and Mouse Activity.vi): a wire may only carry a type
                 # this composer has carried on a measured wire
                 raise Unsupported("net %r carries a %s, which no composed wire has carried yet" % (net, bad))
@@ -4171,6 +4478,11 @@ class Composer:
                                   % (net, len(uids)))
             ET.SubElement(sig, "compressedWireTable").text = table
             kind = self.net_type.get(net)
+            if kind is not None and kind.get("Type") == "TypeDef":
+                # the kind of the type a typedef wraps: 0x108 on an ItemRef.ctl (uint64) wire in
+                # NI's converter's build of Get Item Info.vi's export, where this wrote 266 -
+                # LabVIEW recomputes the kind (signal_kind's note), but the file now says what NI's does
+                kind = typedef_inner(kind)
             code = TYPE_CODE.get(kind.get("Type")) if kind is not None else None
             ET.SubElement(sig, "lastSignalKind").text = str(0x100 | code) if code else "266"
         return nets
@@ -4447,6 +4759,8 @@ class Composer:
         vi = ET.parse(aixml_path).getroot()
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
         self.pane_terms = []
+        self.con_taken = {}
+        self.term_label = {}
         elements = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",

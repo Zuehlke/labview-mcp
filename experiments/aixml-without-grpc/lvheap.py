@@ -91,7 +91,9 @@ class Bundle:
         an Unknown type, which the reader reports, instead of ending the whole read."""
         if not 0 <= flat_id < len(self.flat):
             return ET.Element("TypeDesc", {"Type": "Unknown", "Format": "inline", "ref.TypeID": str(flat_id)})
-        src = self.flat[flat_id]
+        return self._inline(self.flat[flat_id])
+
+    def _inline(self, src):
         out = ET.Element("TypeDesc", {k: v for k, v in src.attrib.items()})
         for child in src:
             if child.tag != "TypeDesc":
@@ -104,7 +106,12 @@ class Bundle:
                         sub.set("ref." + k, v)
                 out.append(sub)
             else:
-                out.append(copy.deepcopy(child))
+                # An INLINE child - a typedef's wrapped type, Nested="True" - has TypeID children
+                # of its own, and they index THIS file's flat list too. Copied as they stood, a
+                # harvested LVPositionTypeDef.ctl carried its donor's ids for Left and Top into
+                # the composed VI, where 2 and 3 were two strings, and the VI loaded broken
+                # (2026-10-10, lvbd_graft_paste.xml; 72 of 1167 parts were affected).
+                out.append(self._inline(child))
         return out
 
     def heap_type_tree(self, heap_tid):
@@ -131,13 +138,14 @@ class TypeTable:
 
     def register(self, tree):
         """Inlined type tree -> flat id."""
+        return self.add_flat(self._flat_form(tree))
+
+    def _flat_form(self, tree):
         el = ET.Element("TypeDesc", {k: v for k, v in tree.attrib.items()
                                      if not k.startswith("ref.")})
         if "Format" not in el.attrib:
             el.set("Format", "inline")
         for child in tree:
-            # A typedef's wrapped type is written INLINE (Nested="True"), never as a reference -
-            # pylabview's TypeDef reader requires a Type on it and refuses a TypeID.
             if child.tag == "TypeDesc" and child.get("Type") is not None and child.get("Nested") != "True":
                 fid = self.register(child)
                 ref = ET.Element("TypeDesc", {"TypeID": str(fid)})
@@ -145,9 +153,14 @@ class TypeTable:
                     if k.startswith("ref."):
                         ref.set(k[4:], v)
                 el.append(ref)
+            elif child.tag == "TypeDesc" and child.get("Nested") == "True":
+                # A typedef's wrapped type is written INLINE, never as a reference - pylabview's
+                # TypeDef reader requires a Type on it and refuses a TypeID - but ITS children are
+                # references into this VI's list like any other, so they are registered here.
+                el.append(self._flat_form(child))
             else:
                 el.append(copy.deepcopy(child))
-        return self.add_flat(el)
+        return el
 
     def use(self, flat_id):
         """A new consolidated index pointing at flat_id; returns the consolidated index."""

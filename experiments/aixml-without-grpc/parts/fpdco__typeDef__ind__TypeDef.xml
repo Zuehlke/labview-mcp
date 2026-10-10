@@ -1,19 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpdco" key="fpdco/typeDef/ind/TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="A^n">
+<part kind="fpdco" key="fpdco/typeDef/ind/TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="A^n"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
           <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <TypeDesc TypeID="2" />
-          </TypeDesc>
-        <Label Text="NI_Matrix.lvlib" />
+          <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><Label Text="NI_Matrix.lvlib" />
         <Label Text="RealMatrix.ctl" />
         </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
         <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="A^n">
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="A^n"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
           <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-          <TypeDesc TypeID="2" />
-          </TypeDesc>
-        <Label Text="NI_Matrix.lvlib" />
+          <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><Label Text="NI_Matrix.lvlib" />
         <Label Text="RealMatrix.ctl" />
         </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="1054">
           <objFlags>1</objFlags>

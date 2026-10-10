@@ -1,35 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <part kind="fpdco" key="fpdco/indArr/ind/Array.TypeDef" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\project\Delacor\DQMH\_DQMH New Module\Get External Module Info.vi"><types><TypeDesc Type="Array" Format="inline" Label="External Modules"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info">
-          <TypeDesc TypeID="1" />
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          <TypeDesc TypeID="5" />
-          <TypeDesc TypeID="6" />
-          </TypeDesc>
-        <Label Text="DQMH New Module.lvlib" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /></TypeDesc><Label Text="DQMH New Module.lvlib" />
         <Label Text="External Module Info.ctl" />
         </TypeDesc></TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="External Modules"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
-        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info">
-          <TypeDesc TypeID="1" />
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          <TypeDesc TypeID="5" />
-          <TypeDesc TypeID="6" />
-          </TypeDesc>
-        <Label Text="DQMH New Module.lvlib" />
+        <TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /></TypeDesc><Label Text="DQMH New Module.lvlib" />
         <Label Text="External Module Info.ctl" />
-        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info">
-          <TypeDesc TypeID="1" />
-          <TypeDesc TypeID="2" />
-          <TypeDesc TypeID="3" />
-          <TypeDesc TypeID="4" />
-          <TypeDesc TypeID="5" />
-          <TypeDesc TypeID="6" />
-          </TypeDesc>
-        <Label Text="DQMH New Module.lvlib" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="External Module Info"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Location Path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Library" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Tester" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Custom Scripting VI" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Description" /></TypeDesc><Label Text="DQMH New Module.lvlib" />
         <Label Text="External Module Info.ctl" />
         </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="1923">
           <objFlags>66049</objFlags>

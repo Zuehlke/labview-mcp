@@ -948,7 +948,7 @@ it fixed:
 | terminal names | `helper_pairs.py` exports the 63 NI-built helpers with NI's exporter as learning pairs; `learn_names_full.py --cache` learned 7 slots - `anything` on Flatten To XML, `xml string` on Unflatten From XML, `vi type (standard vi)` on New VI | `lvai_exec_state`, `lvbd_set_constant`, `lvai_wire_dyn_events` |
 | a method by its catalogue name | the catalogue says `Save VI Icon to File`, NI's export and the heap `VI Icon.Save to File`, and NI's converter takes both: the composer now takes the ONE harvested method of the class with the same words (split at space, dot and colon); two such stay a refusal. `alias_props.py` also learns method aliases now, from export/heap pairs - here it found none, because NI's export already writes the heap spelling | `lvdoc_get_icon` |
 | Delacor's DQMH libraries | the server passes LabVIEW's `project\` folder as the last search folder - they sit three levels down | `lvdqmh_close_modules`, `lvdqmh_find_testers` (both COMPOSE and are BROKEN; cause not found) |
-| a typedef parameter's name | a TypeDef parameter carries its name on the type INSIDE it (`position` on Control.Move is a TypeDef of LVPositionTypeDef.ctl around a cluster labelled `position`); the composer read the wrapper | five helpers then COMPOSED - and all five were BROKEN: the composer writes no link to the .ctl. So a WIRED typedef parameter is now REFUSED by name (`... is a typedef (LVPositionTypeDef.ctl); typedef links are not composed yet`), which keeps "writes nothing silently different" true |
+| a typedef parameter's name | a TypeDef parameter carries its name on the type INSIDE it (`position` on Control.Move is a TypeDef of LVPositionTypeDef.ctl around a cluster labelled `position`); the composer read the wrapper | five helpers then COMPOSED - and all five were BROKEN. This row said the cause was "the composer writes no link to the .ctl" and the parameter was refused by name for it. **That was wrong** - see "Option 1" below: NI's converter writes no such link either, and the cause was the typedef's own type ids, copied from the donor VI unresolved. The refusal is gone |
 | invoke parts with the wrong labels | five invoke parts re-harvested from the NI-built helpers into the copy - the first sighting, off NI's shipped VIs, carried other labels | nothing by itself; each helper met its next blocker |
 
 **No regression**: `regression_via_server.py` runs this experiment's own suite through the built
@@ -962,6 +962,55 @@ which itself fails on an Unbundle By Name whose cluster arrives with unnamed ele
 WIRED typedef parameter (6 - Terminal.Move's `position` is one too), `Ctrl Val.Get All`'s `Controls`, `Library.Open`'s `Path` and
 `Ctrl Val.Get`'s `Value` (6 - the label is not the problem there), `Label.Text` (2), a concat tunnel
 (2), typedefs on nets (2), templates (3) and four singles - Unbundle on an array, `readLines`, user-event data, a Web Browser refnum; built but broken: 4.
+
+### Option 1, the same evening: typedefs and control references
+
+Started as "compose typedef links and control-refnum types". It ended with **no typedef link
+composed at all** - because none is needed - and with the three FATAL crashes that had been
+blamed on typedefs traced to three ordinary composer bugs. Every finding below was settled against
+NI's converter's build of the same document, most of them as an A/B on one file.
+
+| finding | measured on | what changed |
+|---|---|---|
+| **a typedef's wrapped type kept its DONOR's type ids.** `lvheap.Bundle.tree()` inlined children one level deep; a typedef writes its wrapped type INLINE (`Nested="True"`), so that type's own children stayed `TypeID="n"` into the donor's list. LVPositionTypeDef.ctl's `Left`/`Top` came out as two STRINGS in the composed VI | `lvbd_graft_paste.xml` (Paste's `Pos`), then the five Control.Move helpers | the reader and `TypeTable.register` recurse; **72 of 1167 committed parts** carried such ids and are repaired by `repair_nested_types.py` against their donor VIs; a stale part is refused by name |
+| **no `.ctl` link is written by NI's converter either** - its builds of the paste helper and of `Get Item Info.vi`'s export have no VICC/TDCC record for LVPositionTypeDef.ctl or ItemRef.ctl, and load executable | NI's builds | both typedef refusals removed (a wired typedef parameter; a wire carrying a typedef). The wire gate judges the type INSIDE a typedef |
+| **an input and an output with ONE label landed on one terminal.** `mxLvGetProjectPath.vi` has `Item` in and `Item` out; keyed by name alone, the wire into the call and the wire out of it shared a terminal: three "Insane Wire {sub}" and a FATAL DAbort. This was THE crash the typedef-wire refusal was written for | NI's `Get Item Info.vi` | `out_key`: an output named like an input gets its own endpoint key, for subVI calls and invoke nodes |
+| **two terminals claiming one `conIdx`** - `lvpane_probe.xml` gives `VI Path` and `terminals` both slot 1 - was a FATAL front-panel insanity (`{id }`, DAbort in fpsane.cpp). NI's build assigns the first and leaves the second off the pane | `lvpane_probe.xml` | the same; a warning in the composer's report |
+| **Build Path's terminals are not one polymorphic group.** The donor has a path on all three; joining String with Path typed all three String and drew a coercion dot on `base path`. NI types only the wired terminal String | `lvpdc_export.xml`, `probes/ppaths.xml` | groups of different non-numeric kinds are not joined |
+| **an invoke output named after nothing is the RETURN value** - `Library.Open`, `Controls` (Ctrl Val.Get All, the name of its boolean INPUT) and `Value` (Ctrl Val.Get) are all wired to the return value in NI's builds; parameter names match in any case (`Path`/`path`) | `lvai_add_one_to_library`, `lvai_run_and_read`, `lvdqmh_module_types` | so; two such names on one node stay a refusal |
+| **a method by its catalogue short name** - `Discon Typedef` is the label of the first row of `Disconnect From Typedef` | `lvai_typedef_discon.xml` | the one harvested method of the class with that first-row label |
+| **a property node is typed by the MORE SPECIFIC class wired into it** - `{LV.Terminal}` read `Diagram` on what Control.Terminal returned is a CtrlTerm node (ControlTerminal, 0x400B) in NI's build | `lvbd_graft_rewire.xml` | taken only where the declared class would be refused |
+| **a nested property** (`Label.Text`) is one terminal with one propItemInfo per level, labelled with the whole path | `lvbd_graft_paste.xml` | so |
+| **a refnum CONSTANT of a control class** (`ref{LV.Cluster}`) is a plain refnum; only front-panel controls nest an object | `lvai_typedef_bind.xml` | so - unblocked the typedef binders |
+| **`Flatten To XML` takes its input WHOLE** - the "an output follows the input's array shape" rule (right for `Not A Number/Path/Refnum?`) typed its `xml string` an ARRAY when an array came in; LabVIEW repaired it on load, so nothing failed | parity on `lvai_run_and_read` | `Flatten To XML`, `Flatten To String`, `To Variant` are exempt |
+| **a label is DATA there**: NI's build flattens the error cluster as `<Name>error out</Name>`, ours wrote `<Name></Name>` - and LabVIEW reads the name off the wire's SOURCE end: labelling only the flatten's input changed nothing on a fresh copy | parity on `lvai_run_and_read` | the input and the primitive output feeding it carry the source's label. NI labels EVERY primitive terminal; the composer still does not, which LabVIEW re-derives on load everywhere this was measured |
+
+**Matched to NI, not repairs** - each measured as an A/B with the VI loading executable either way,
+so each is written down as a difference from NI's file and nothing more: the wired flag (0x8000) on
+an invoke input follows the document instead of the donor; a plain value into a typedef subVI input
+carries the coercion dot; a subVI input the callee marks required carries DCO 0x80; a typedef wire's
+kind is its wrapped type's.
+
+**Results**, same harvested parts, LabVIEW restarted for a fresh log:
+
+| | after the repairs | after option 1 |
+|---|---|---|
+| helpers that compose | 39 of 82 | **70** |
+| of those executable over ActiveX | 35 | **69** |
+| crashes | 0 | 0 |
+| parity with NI's builds | 9 of 9 | **11 of 11** - now including `lvai_run_and_read` and `lvai_run_and_read_typed`, the run helpers every run tool depends on |
+
+Composed BROKEN is now only `lvai_inventory` (cause still not found). Refused, by kind: a concat
+tunnel (2), Unbundle By Name on an array, a `SubString` wire (`lvai_create_accessors`), a class
+wire `Refnum.UDClassInst` (`lvdqmh_new_module`), `readLines`, user-event data, a Web Browser refnum
+and a `ref{LV.String}` front-panel control (skeletons), and the three `{{TYPE}}` templates.
+**No regression**: `regression_via_server.py` answered 114 of 114 cases, every test built, with the
+committed parts and with the harvested copy.
+
+**Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
+subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
+existed and may be the same shared-terminal bug. Each harvested part set from before today needs
+`repair_nested_types.py` once; the composer refuses an unrepaired one by name.
 
 **What this does NOT show.** A composed, executable, output-identical helper is not yet a tool that
 runs without Nigel: the tools call `RunVIAsTopLevel`, and over ActiveX the helper runs in LabVIEW's
@@ -981,6 +1030,7 @@ through `Project:Active Project` should not care, and that is untested.
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
+| `repair_nested_types.py` | resolves a part's typedef type ids against its donor VI - parts harvested before 2026-10-10 carried the donor's numbers (§7a, "Option 1") |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
