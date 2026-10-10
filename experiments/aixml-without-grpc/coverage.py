@@ -11,6 +11,7 @@ import collections
 import glob
 import os
 import re
+import shutil
 import sys
 import tempfile
 
@@ -71,11 +72,14 @@ def main(argv):
         paths = []
         for i, (f, c) in enumerate(ok[:limit]):
             vi = os.path.join(build, "cov_%04d.vi" % i)
+            tmp = tempfile.mkdtemp(prefix="cov_")
             try:
-                lvheap.rebuild(c.write(tempfile.mkdtemp(prefix="cov_"), "cov_%04d" % i), vi)
+                lvheap.rebuild(c.write(tmp, "cov_%04d" % i), vi)
                 paths.append(vi + "\t" + f)
             except Exception as ex:
                 print("REBUILD FAILED %s: %s" % (f, str(ex)[:100]))
+            finally:
+                shutil.rmtree(tmp, ignore_errors=True)
         open(os.path.join(build, "composed.txt"), "w", encoding="utf-8").write("\n".join(paths) + "\n")
         print("\nwrote %d VIs into %s" % (len(paths), build))
 

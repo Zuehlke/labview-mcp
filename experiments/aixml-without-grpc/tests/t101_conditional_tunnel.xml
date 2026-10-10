@@ -1,0 +1,12 @@
+<VI _name="T101 Conditional Tunnel.vi" description="A For Loop splits an array into its positive and its other elements through two conditional indexing tunnels.">
+  <Control _name="values" outputs="value:4200.value" type="array{double}" uid="4200" uid_parent="root" value="[]"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Node _name="Greater Than 0?" inputs="x:4301.value" outputs="x &gt; 0?:4310.x &gt; 0?" uid="4310" uid_parent="4300"/>
+    <Node _name="Not" inputs="x:4310.x &gt; 0?" outputs=".not. x?:4320..not. x?" uid="4320" uid_parent="4300"/>
+    <Tunnel _id="Out1" cond="4310.x &gt; 0?" inputs="value:4301.value" mode="index" outputs="value:4330.value" uid="4330" uid_parent="4300"/>
+    <Tunnel _id="Out2" cond="4320..not. x?" inputs="value:4301.value" mode="index" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="positive" inputs="value:4330.value" type="array{double}" uid="4400" uid_parent="root" value="[]"/>
+  <Indicator _name="other" inputs="value:4340.value" type="array{double}" uid="4410" uid_parent="root" value="[]"/>
+</VI>

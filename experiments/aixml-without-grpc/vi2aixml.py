@@ -13,7 +13,9 @@ Constant (name, type, value), Node for every primitive the name tables know, and
 between them. What it does not read yet is written as an XML comment naming the heap class,
 so nothing is dropped in silence.
 """
+import json
 import os
+import shutil
 import struct
 import sys
 import tempfile
@@ -699,6 +701,12 @@ class Reader:
                 if inner_dco is not None:
                     for t in inner_terms.get(inner_dco.get("uid"), []):
                         self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+                cdco = d.find("LpTunConditionDCO")
+                if cdco is not None:
+                    # a CONDITIONAL tunnel: the net wired into its condition terminal (inside)
+                    # becomes cond="<net>"
+                    for t in inner_terms.get(cdco.get("uid"), []):
+                        self.term_owner[t.get("uid")] = (tun, "#cond", True)
                 children.append(tun)
             elif dc == "lMax":
                 self.term_owner[term.get("uid")] = (el, "#maxin", True)
@@ -1155,6 +1163,36 @@ class Reader:
                     return "UDClassInst"
         return None
 
+    _PROP_NAMES = None
+
+    @classmethod
+    def catalogue_name(cls, klass, name, code):
+        """The property name as NI's export writes it. The heap keeps the name the node was
+        saved with - "Diagram", "Panel", "FP.Open" - while LabVIEW's export writes the long
+        catalogue name: 18 "Block Diagram" against 0 "Diagram" on {LV.VI} in the cache, the
+        heap of NI's Using Traverse.vi saying "Diagram". A name the catalogue does not list for
+        the class is replaced by the one catalogued name harvested with the same code."""
+        if cls._PROP_NAMES is None:
+            cat = set()
+            with open(os.path.join(aixml2vi.DOCS, "vi-server-properties.tsv"), encoding="utf-8") as f:
+                for line in f:
+                    row = line.rstrip("\r\n").split("\t")
+                    if len(row) > 1 and row[0].startswith("{LV."):
+                        cat.add((row[0][1:-1], row[1]))
+            path = os.path.join(aixml2vi.HERE, "parts", "vi-server-props.json")
+            props = json.load(open(path, encoding="utf-8"))["props"] if os.path.exists(path) else {}
+            by_code = {}
+            for k, rows in props.items():
+                for n, r in rows.items():
+                    if (k, n) in cat:
+                        by_code.setdefault((k, r.get("code")), set()).add(n)
+            cls._PROP_NAMES = (cat, by_code)
+        cat, by_code = cls._PROP_NAMES
+        if (klass, name) in cat or code is None:
+            return name
+        names = by_code.get((klass, code), set())
+        return next(iter(names)) if len(names) == 1 else name
+
     def propnode(self, node, parent_uid):
         cls = self._vi_server_class(node) or "?"
         el = self._node_el(node, parent_uid, "Property Node")
@@ -1170,6 +1208,8 @@ class Reader:
             elif d.get("class") == "propItem":
                 infos = d.findall("propList/SL__arrayElement")
                 name = ".".join(unquote(i.findtext("PropItemName") or "") for i in infos)
+                code = infos[-1].findtext("PropItemCode") if infos else None
+                name = self.catalogue_name(cls, name, int(code) if code and code.lstrip("-").isdigit() else 0)
                 out = bool(int(d.findtext("objFlags") or 0) & 1)
                 fields.append(("read+" if out else "write+") + escape(name))
                 self.term_owner[t.get("uid")] = (el, name, not out)
@@ -1317,6 +1357,8 @@ class Reader:
                         el.set("maxin", net)
                     elif term == "#selectin":
                         el.set("selectin", net)
+                    elif term == "#cond":
+                        el.set("cond", net)
                     else:
                         self._add(el, "inputs", term, net)
         return None
@@ -1341,11 +1383,17 @@ class Reader:
 
 def main(argv):
     src = argv[0]
+    tmp = None
     if src.lower().endswith(".xml"):
         main_xml = src
     else:
-        main_xml = lvheap.extract(src, tempfile.mkdtemp(prefix="vi2aixml_"))
-    root = Reader(main_xml).read()
+        tmp = tempfile.mkdtemp(prefix="vi2aixml_")
+        main_xml = lvheap.extract(src, tmp)
+    try:
+        root = Reader(main_xml).read()
+    finally:
+        if tmp:
+            shutil.rmtree(tmp, ignore_errors=True)
     ET.indent(root, "  ")
     text = ET.tostring(root, encoding="unicode")
     if len(argv) > 1:

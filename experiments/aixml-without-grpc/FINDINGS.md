@@ -456,6 +456,8 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t96` | stacked shift register, three elements | n = 5 → 6, n = 3 → 1 |
 | `t97` | an enum case with QUOTED selectors, as NI exports them (`"Auto"`) | 0, 8, 4 |
 | `t98` | a Global Variable of a `vi.lib` global VI, written then read in a flat sequence | `hello`, `second` |
+| `t99` | DAQmx terminal, DAQmx physical channel and old DAQ channel tags, a picture, dynamic data and an NI System Configuration session refnum, wired control → indicator | `OnboardClock`, `demo`, `Dev1/ai0` set from outside |
+| `t100` | In Place Element Structure with two In / Out Element pairs | x 2.5 → 3.5, y 7 → 14 |
 
 **Global Variables** (`t98`) are the local variable's `gRef` plus `connectorTM` - the global
 VI's pane - and the SAME `VIVI`/`IUVI` link pair a subVI call has (read out of the binary link
@@ -467,6 +469,46 @@ and outputs at 0x200801 and 0x300801 all as `cond="true"`; 0x100000 is something
 A Conditional Disable's `!=` is the root `TreeElt`'s `activePlot` `FE` (`==` is `FD`), read off
 NI's *Scale TDMS Data.vi* (` TARGET_TYPE!=RT `); NI's export writes the error case's error
 frame `Error ..`, which the composer now accepts beside `Error`.
+
+**I/O name tags, pictures, dynamic data** (`t99`, read off an AIXML-generated probe,
+`probes/ptypes.xml`): `tag{N}` is `Tag Prop1=0xFFFFFFFF TagType=<name>` with a Void `LVVariant`
+child, N being pylabview's `TAG_TYPE` (2 `DAQChannelOld`, 13 `DAQmxTerminal`, 14
+`DAQmxPhysChannel`, ...); a tag constant is flattened like a string (`0000000C` +
+`OnboardClock`). `picture` is `Picture Prop1=0xFFFFFFFF`, `dynamicdata` is
+`MeasureData Flavor=Dynamicdata`, and `ref{GenClassTag.<Ident>.<TypeName>}` is a `UsrDefndTag`
+refnum holding a `UserDefined` tag that names the class.
+
+**A tag control or refnum NAMES A SECTION OF THE VI's `STR` BLOCK** (`<variantIndex>`), holding
+its I/O-name attributes - `displayFilter` everywhere, `typeClass` for the old DAQ channel
+(`Analog Input`) and the refnum (`nisyscfgSession`). The composer wrote no `STR` block, and the
+VI still loaded and ran with the right values - while LabVIEW logged **`GetTagVariant: variant
+has value of null` 16 times**, against **0 for LabVIEW's own VI of the same objects**. The VISA
+refnum parts of `t90`/`t93` carried the same silent defect. Parts now take their donor's `STR`
+sections along (`<strs>`, `backfill_strs.py` for parts harvested earlier) and the composer gives
+each object a section of its own. A user-defined refnum is class-specific inside (its tag names
+the class's DLL, `tagDLLName "nisyscfg.*"`), so a part is only used for its own `TypeName`.
+
+**The skeleton's font table was two fonts short**: a dynamic data control (a waveform inside)
+logged `indexing font out of range 2<=2` eight times with the skeleton's five fonts and none
+with the seven an AIXML-generated VI carries - an A/B on one file, nothing else changed. Every
+part's `fontid` is 1 to 3, so the larger table changes no existing part.
+
+**`selftest.py` counts `Insane` lines and nothing else** - both defects above passed it. The
+gate that found them was the DWarn DELTA against LabVIEW's own VI of the same objects, which
+`selftest.py` does not compute. The ordinary residue of a composed VI is two
+`Wiring insanity found and fixed` per wire (geometry, repaired on load); anything else in the
+delta is a finding.
+
+**In Place Element Structure** (`t100`): a `decomposeRecomposeStructure` with ONE diagram. An
+In / Out Element pair is two `decomposeMatchNode`s defined in that diagram's `nodeList`, right
+behind the `sRN` (`firstNodeIdx` = 1 + 2 × pairs), the left one on the left border (outer input
+→ inner output), the right one on the right border, joined by a `matchPoserInterface` in the
+structure's `multiSegPipeFlange2Size`. The structure's own `termList` holds only the OUTER
+terminals, each named by its `decomposeDCO`'s `termList` [own term, outer term]. In AIXML a
+pair is two `<Node _name="In Place In / Out Element">`, the right one naming the left in `_id`;
+both terminals are called `value`. Array, cluster, variant and reference pairs are refused by
+name. The reader writes the same form; NI's own converter kept the left and right node uids, so
+the composer does too.
 
 ## 4. VI → AIXML, against NI's own exports
 

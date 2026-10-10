@@ -1078,6 +1078,19 @@ class Composer:
         if key is None:
             raise Unsupported("no %s part for %s (%s)" % (prefix, ddo_class, t))
         holder, donor_types, src = self.instantiate(key)
+        if tkey == "Refnum.UsrDefndTag":
+            # a user-defined tag refnum is CLASS-specific inside: its tag ddo names the class's
+            # DLL (tagDLLName "nisyscfg.*") and its STR section the class (typeClass) - a part
+            # of another class would be a refnum to the wrong library
+            have = next((x.get("TypeName") for d in donor_types for x in d.iter("TypeDesc")
+                         if x.get("RefType") == "UsrDefndTag"), None)
+            if have != tree.get("TypeName"):
+                raise Unsupported("no part for a %s refnum (the harvested one is %s)" % (tree.get("TypeName"), have))
+            for vi_ in holder.iter("variantIndex"):
+                sec = getattr(self, "strs", {}).get(int(vi_.text))
+                tc = sec.find(".//LVVariant[@Name='typeClass']/DataFill/String") if sec is not None else None
+                if tc is not None:
+                    tc.text = tree.get("Ident")
         ddo = self._ddo_of(holder)
         adapt_numeric(ddo, t)
         if is_enum(tree):
@@ -2126,7 +2139,10 @@ class Composer:
         if not ins.get("initializer"):
             t = terms["initFeedback"]
             t.find("objFlags").text = str(int(t.findtext("objFlags") or 0) & ~0x8000)
-        if in_loop is not None:
+        if in_loop is not None and ins.get("initializer"):
+            # (an UNINITIALIZED node keeps initFeedback on itself, unwired, with no
+            # iFeedbackLoop - NI's Moving Histogram PtByPt.vi; moved to the border it was
+            # a broken VI, t102)
             loop, inner, outer = in_loop
             it = terms["initFeedback"]
             hidden.find("termList").remove(it)
@@ -3246,7 +3262,11 @@ class Composer:
         for f in fs:
             cl.append(f)
         cl.set("Label", "Event Data")
-        labels = [f.get("Label") for f in fs]
+        # Source and Type are TYPEDEFS (eventsource.ctl, eventtype.ctl) whose label sits on the
+        # wrapped type, not on the TypeDef: read as None they were "no field 'Source'" in 18
+        # of NI's VIs
+        labels = [f.get("Label") or (fields(f)[0].get("Label") if f.get("Type") == "TypeDef" and fields(f) else None)
+                  for f in fs]
         for c in terms[1:]:
             node.find("termList").remove(c)
         dl = node.find("dcoList")
@@ -3550,9 +3570,11 @@ class Composer:
         mode = el.get("mode")
         if mode not in (None, "", "index"):
             raise Unsupported("Tunnel %s: mode=%r is not composable yet" % (el.get("uid"), mode))
-        if el.get("cond"):
-            # a conditional (filtering) loop tunnel - not composed, and never silently dropped
-            raise Unsupported("Tunnel %s: cond=%r is not composable yet" % (el.get("uid"), el.get("cond")))
+        cond_net = el.get("cond")
+        if cond_net and (d != "out" or mode != "index"):
+            # only a collecting OUTPUT tunnel filters - never silently dropped otherwise
+            raise Unsupported("Tunnel %s: cond=%r on a %s%s tunnel is not composable yet"
+                              % (el.get("uid"), cond_net, d, " indexing" if mode else ""))
         if mode == "index" and d == "in":
             src = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
             st = self.net_type.get(src)
@@ -3629,10 +3651,46 @@ class Composer:
         loop.find("termList").append(outer)
         ET.SubElement(loop.find("tunnelList"), "SL__arrayElement", {"uid": dco.get("uid")})
         inner.srn_terms.append(innert)
+        if cond_net:
+            self._add_tunnel_condition(el, loop, inner, dco)
         outer_end, inner_end = (outer.get("uid"), parent), (innert.get("uid"), inner)
         self.ends[(el.get("uid"), "in")] = outer_end if d == "in" else inner_end
         self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
         self.report.append("Tunnel %s (%s)" % (el.get("_id"), d))
+
+    def _add_tunnel_condition(self, el, loop, inner, dco):
+        """A CONDITIONAL output tunnel (AIXML cond="<net>"): the lpTun and its innerLpTunDCO
+        carry 0x1000000, the lpTun ends in IsConditional True and LpTunConditionDCO, and the
+        condition is a terminal of its own - an lpTunConditionDCO on the loop border (termList
+        [inner, outer], back-reference lpTunDCO, NOT in the tunnelList) with its boolean input
+        inside, in the inner sRN. Read off NI's Separate Array Values.vi."""
+        for d_ in (dco, dco.find("innerLpTunDCO")):
+            f = d_.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                d_.insert(0, f)
+            f.text = str(int(f.text or 0) | 0x1000000)
+        cd_uid, ot_uid, it_uid = self.alloc(), self.alloc(), self.alloc()
+        ET.SubElement(dco, "IsConditional").text = "True"
+        ET.SubElement(dco, "LpTunConditionDCO", {"uid": str(cd_uid)})
+        ot = ET.SubElement(loop.find("termList"), "SL__arrayElement", {"class": "term", "uid": str(ot_uid)})
+        ET.SubElement(ot, "objFlags").text = "256"
+        cd = ET.SubElement(ot, "dco", {"class": "lpTunConditionDCO", "uid": str(cd_uid)})
+        ET.SubElement(cd, "objFlags").text = "1"
+        tl = ET.SubElement(cd, "termList", {"elements": "2"})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(it_uid)})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(ot_uid)})
+        ET.SubElement(cd, "typeDesc").text = "TypeID(%d)" % self.heap_tid(type_tree("bool"))
+        tb = dco.find("termBounds")
+        t, l, b, r = lvheap.parse_bounds(tb.text) if tb is not None else (20, 0, 29, 9)
+        ET.SubElement(cd, "termBounds").text = lvheap.fmt_bounds((b, l, b + 9, r))
+        ET.SubElement(cd, "lpTunDCO", {"uid": dco.get("uid")})
+        it = ET.SubElement(inner.srn_terms, "SL__arrayElement", {"class": "term", "uid": str(it_uid)})
+        ET.SubElement(it, "objFlags").text = "164161"
+        ET.SubElement(it, "dco", {"uid": str(cd_uid)})
+        self.ends[(el.get("uid"), "cond")] = (str(it_uid), inner)
+        self.cond_tunnels = getattr(self, "cond_tunnels", [])
+        self.cond_tunnels.append((dco, cd))
 
     def add_shiftreg(self, el, loop_el):
         """AIXML <ShiftReg><Left/><Right/></ShiftReg> onto the harvested four-terminal group:
@@ -3773,8 +3831,12 @@ class Composer:
             return ([(n, (uid, k("out", i))) for i, (_, n) in enumerate(pairs(el.get("outputs"))) if n],
                     [(n, (uid, k("in", i))) for i, (_, n) in enumerate(pairs(el.get("inputs"))) if n])
         if el.tag in ("Tunnel", "Right"):
+            # cond="true" is a CASE tunnel's use-default flag; on a loop tunnel cond names the
+            # net that decides which elements are collected
+            cond = el.get("cond")
             return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
-                    [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
+                    [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n]
+                    + ([(cond, (uid, "cond"))] if cond and cond not in ("true", "false") else []))
         if el.tag == "Condition":
             return [], [(n, (el.get("_loop"), "stop")) for _, n in pairs(el.get("inputs")) if n]
         if el.tag == "CaseFrame":
@@ -3991,6 +4053,10 @@ class Composer:
                 y = 30 + 24 * slot[0] + 6
                 stb.text = lvheap.fmt_bounds((y, 0, y + (tbb - tt), tr - tl))
         for loop, inner, parent in self.loops:
+            for c in loop.find("termList"):
+                if c.find("dco") is not None and c.find("dco").get("class") == "lpTunConditionDCO":
+                    loop.find("termList").remove(c)
+                    loop.find("termList").append(c)    # out of the border slots below
             t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
             cr = loop.find("contRect")
             if cr is not None:
@@ -4013,7 +4079,7 @@ class Composer:
             slot = {0: 1 if loop.find("loopLimitDCO") is not None else 0, 1: 0}
             for c in loop.find("termList"):
                 tb = c.find("dco/termBounds")
-                if tb is None or c.find("dco").get("class") == "lMax":
+                if tb is None or c.find("dco").get("class") in ("lMax", "lpTunConditionDCO"):
                     continue
                 out = int(c.find("dco").findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
@@ -4021,6 +4087,10 @@ class Composer:
                 slot[out] += 1
                 x = w - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
+                for tdco, cdco in getattr(self, "cond_tunnels", []):
+                    if tdco is c.find("dco"):
+                        # the condition sits right below its tunnel, as LabVIEW draws it
+                        cdco.find("termBounds").text = lvheap.fmt_bounds((y + (tbb - tt), x, y + (tbb - tt) + 9, x + (tr - tl)))
 
     def _place(self, diag, lv, sizes, top0, left0):
         rows, right, bottom = {}, 0, 0
@@ -4144,8 +4214,13 @@ class Composer:
 
         def inputs_of(e):
             if e.tag == "Node" and unescape(e.get("_name") or "") == "Feedback Node":
-                # its next value comes from downstream - only the initializer orders it
-                return [(k, n) for k, n in pairs(e.get("inputs")) if k == "initializer"]
+                # its next value comes from downstream - only the initializer orders it; with
+                # NO initializer the node waits for its next value instead, which 16 of the 19
+                # such nodes in NI's exports take from something that does not read the node's
+                # own output (a control, a constant, a call) - the rest stay refused
+                ins = pairs(e.get("inputs"))
+                init = [(k, n) for k, n in ins if k == "initializer"]
+                return init if any(n for _, n in init) else [(k, n) for k, n in ins if k == "next value"]
             if e.tag == "ShiftReg":   # a register's type comes from its initializer
                 left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
                 return pairs(left.get("inputs"))
@@ -4336,12 +4411,18 @@ def main(argv):
         print("UNSUPPORTED: %s" % ex, file=sys.stderr)
         return 2
     base = os.path.splitext(os.path.basename(out_vi))[0]
+    # the bundle is an implementation detail unless --keep names a place for it: 719 left
+    # behind in %TEMP% (50 MB) before this was cleaned up, 2026-10-10
     bdir = keep or tempfile.mkdtemp(prefix="aixml2vi_")
-    main_xml = c.write(bdir, base)
-    lvheap.rebuild(main_xml, out_vi)
+    try:
+        main_xml = c.write(bdir, base)
+        lvheap.rebuild(main_xml, out_vi)
+    finally:
+        if not keep:
+            shutil.rmtree(bdir, ignore_errors=True)
     for r in c.report:
         print(r)
-    print("wrote %s (%d bytes), bundle %s" % (out_vi, os.path.getsize(out_vi), bdir))
+    print("wrote %s (%d bytes)%s" % (out_vi, os.path.getsize(out_vi), ", bundle %s" % bdir if keep else ""))
     return 0
 
 

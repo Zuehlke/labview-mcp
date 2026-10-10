@@ -70,6 +70,26 @@ def log_saturated():
     return None
 
 
+# A composed VI's ordinary residue: LabVIEW repairs the composer's wire geometry on load and logs
+# it, about two events per wire. Anything ELSE a test adds to the log is a finding - the STR
+# block (GetTagVariant: variant has value of null) and the font table (indexing font out of
+# range) both passed the Insane-only gate with right values, measured against LabVIEW's own VI
+# of the same objects, which logged nothing.
+EXPECTED_DWARNS = ("Wiring insanity found and fixed",)
+
+
+def dwarn_lines():
+    """The bare DWarn lines of the current log, in order."""
+    import glob
+    out = []
+    for log in glob.glob(os.path.join(os.environ.get("TEMP", ""), "LabVIEW_*_cur.txt")):
+        with open(log, encoding="utf-8", errors="replace") as f:
+            lines = [l.rstrip() for l in f if l.startswith("DWarn")]
+        if len(lines) > len(out):
+            out = lines
+    return out
+
+
 # LabVIEW writes 100 DWarn events to its log and then nothing; a composed VI costs about two per
 # wire, so a test is started on a fresh LabVIEW once the log is past this many
 RESTART_AT = 40
@@ -167,6 +187,7 @@ def run_test(name, expect, out_dir, stamp):
         src = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
         open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
     vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
+    log_before = len(dwarn_lines())
     code, log = compose(src, vi)
     if code != 0:
         results.append((name, "COMPOSE FAILED", log.splitlines()[-1] if log else ""))
@@ -186,6 +207,11 @@ def run_test(name, expect, out_dir, stamp):
             verdicts[-1] += " (TIMEOUT)"
     status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
     bad = insanities(vi)
+    extra = [re.sub(r"0x[0-9A-F]{8}", "", l) for l in dwarn_lines()[log_before:]
+             if not any(x in l for x in EXPECTED_DWARNS)]
+    if extra:
+        status += " dwarn:%d" % len(extra)
+        verdicts.append("first unexpected DWarn: %s" % extra[0][:120])
     if bad:
         status += " insane:%d" % bad
     elif log_saturated():
