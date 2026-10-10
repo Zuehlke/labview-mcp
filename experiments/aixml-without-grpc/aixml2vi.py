@@ -3419,6 +3419,103 @@ class Composer:
         self.seqs.append((seq, frames, parent))
         self.report.append("Structure 'Flat Sequence' (%d frames) <- %s" % (len(frames), src))
 
+    INPLACE_PAIRS = ("In Place In / Out Element",)
+
+    def add_inplace(self, el):
+        """An In Place Element Structure: a decomposeRecomposeStructure with ONE diagram. Each
+        in/out element pair is two decomposeMatchNodes defined in that diagram's nodeList, the
+        left one on the left border (outer input -> inner output), the right one on the right
+        border (inner input -> outer output), joined by a matchPoserInterface in the
+        structure's multiSegPipeFlange2Size; the structure's own termList holds only the two
+        OUTER terminals, each named by the matching decomposeDCO's termList [own, outer].
+        Read off an AIXML-generated VI (probes/ptypes.xml). Only the In / Out Element pair is
+        composed; array, cluster, variant and reference pairs are refused by name."""
+        parent = self.diag_of(el)
+        got = self.instantiate("struct/inplace", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no In Place Element Structure part harvested")
+        node, _, src = got
+        d = Diagram(node.find("diagramList")[0], owner=el)
+        match = sorted([n for n in d.nodes if n.get("class") == "decomposeMatchNode"],
+                       key=lambda n: lvheap.parse_bounds(n.find("bounds").text)[1])
+        mspf = node.find("multiSegPipeFlange2Size")
+        if len(match) != 2 or mspf is None or len(mspf) != 1 or len(node.find("termList")) != 2:
+            raise Unsupported("the In Place part does not hold exactly one in/out pair")
+        proto = ET.Element("proto")
+        for x in match + [mspf[0]] + list(node.find("termList")):
+            proto.append(copy.deepcopy(x))
+        for c in list(d.nodes):
+            if c.get("class") != "sRN":
+                d.nodes.remove(c)
+        for lst in (d.z, d.signals, d.srn_terms, node.find("termList"), mspf):
+            for c in list(lst):
+                lst.remove(c)
+        self.diagrams[el.get("uid")] = d
+        parent.z.insert(0, node)
+        ET.SubElement(parent.nodes, "SL__arrayElement", {"uid": node.get("uid")})
+        parent.placed.append((node, el))
+        self.inplaces = getattr(self, "inplaces", [])
+        self.inplaces.append({"node": node, "diag": d, "parent": parent, "proto": proto, "pairs": []})
+        self.report.append("Structure 'In Place Element Structure' <- %s" % src)
+
+    def _claim_into(self, obj, aixml_uid, *refs):
+        """Give a heap object the AIXML uid (claim() falls back to a fresh one when it is
+        taken or reserved) and point the bare references to it at the new number."""
+        old = obj.get("uid")
+        new = str(self.claim(aixml_uid))
+        obj.set("uid", new)
+        for r in refs:
+            if r is not None and r.get("uid") == old:
+                r.set("uid", new)
+        if new != old:
+            self.used_uids.discard(int(old))
+
+    def add_inplace_node(self, el):
+        """One half of an In Place pair. The LEFT half is the element without _id - it creates
+        the pair, typed by its outer input; the RIGHT half names the left one in _id."""
+        st_el = self._by_uid.get(el.get("uid_parent"))
+        ip = next((x for x in getattr(self, "inplaces", []) if x["diag"].owner is st_el), None)
+        if ip is None:
+            raise Unsupported("Node %s: %r sits outside an In Place Element Structure"
+                              % (el.get("uid"), el.get("_name")))
+        node, d, parent = ip["node"], ip["diag"], ip["parent"]
+        self.inplace_pair = getattr(self, "inplace_pair", {})
+        if not el.get("_id"):
+            src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
+            tree = self.net_type.get(src_net)
+            if tree is None:
+                raise Unsupported("Node %s: the type of %r is not known" % (el.get("uid"), src_net))
+            pair = copy.deepcopy(ip["proto"])
+            lvheap.renumber(pair, self.alloc)
+            left, right, poser, outer_in, outer_out = list(pair)
+            # the left match node keeps the AIXML uid, as LabVIEW's converter keeps it
+            self._claim_into(left, el.get("uid"), poser.find("multiSegPipeFlange1Depth"))
+            tid = self.heap_tid(unlabel(tree))
+            lvheap.set_typeids(left, [tid] * len(lvheap.typeid_elements(left)))
+            lvheap.set_typeids(right, [tid] * len(lvheap.typeid_elements(right)))
+            # match nodes sit right behind the sRN, before every ordinary node (firstNodeIdx)
+            k = 1 + 2 * len(ip["pairs"])
+            d.nodes.insert(k, left)
+            d.nodes.insert(k + 1, right)
+            node.find("termList").extend([outer_in, outer_out])
+            node.find("multiSegPipeFlange2Size").append(poser)
+            ip["pairs"].append((left, right))
+            self.inplace_pair[el.get("uid")] = (left, right, outer_out, tree, poser)
+            self.ends[(el.get("uid"), "in")] = (outer_in.get("uid"), parent)
+            self.ends[(el.get("uid"), "out")] = (left.find("termList")[1].get("uid"), d)
+        else:
+            got = self.inplace_pair.get(el.get("_id"))
+            if got is None:
+                raise Unsupported("Node %s: no left In Place element %s" % (el.get("uid"), el.get("_id")))
+            left, right, outer_out, tree, poser = got
+            self._claim_into(right, el.get("uid"), poser.find("multiSegPipeFlange2Depth"))
+            self.ends[(el.get("uid"), "in")] = (right.find("termList")[0].get("uid"), d)
+            self.ends[(el.get("uid"), "out")] = (outer_out.get("uid"), parent)
+        for _, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = tree
+        self.report.append("In Place element %s (%s)" % (el.get("uid"), "out" if el.get("_id") else "in"))
+
     def add_seq_tunnel(self, el, frame_el):
         """A Flat Sequence frame's tunnel: one AIXML <Tunnel> with both sides, outer half on the
         frame (in the parent diagram), inner half in the frame's diagram."""
@@ -3662,6 +3759,10 @@ class Composer:
         if el.tag in ("Control", "Indicator", "Constant", "FixedConst"):
             return ([(n, (uid, "value")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "value")) for _, n in pairs(el.get("inputs")) if n])
+        if el.tag == "Node" and unescape(el.get("_name") or "") in self.INPLACE_PAIRS:
+            # both of its terminals are called `value`; one is outside, one inside
+            return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
+                    [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag in ("Node", "Call"):
             # a name used twice (Build Array's `element`) is numbered: element, element#1, ...
             return ([(n, (uid, t)) for t, n in keyed(pairs(el.get("outputs"))) if n],
@@ -3771,6 +3872,10 @@ class Composer:
             n = max(1, len(case.find("tunnelList")))
             # room for every tunnel slot plus the selector terminal below them
             sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
+        for ip in reversed(getattr(self, "inplaces", [])):
+            w, h = self._place(ip["diag"], lv, sizes, 30, 30)
+            n = max(1, len(ip["pairs"]))
+            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + 24 * n + 20, 90), max(w + 40, 100))
         frame_dims = {}       # (an Element takes no Python attributes)
         for seq, frames, parent in reversed(getattr(self, "seqs", [])):
             dims = []
@@ -3821,6 +3926,27 @@ class Composer:
                         xx = w - tw if out else 0
                     tb.text = lvheap.fmt_bounds((y, xx, y + th, xx + tw))
                 x += w - 5
+        for ip in getattr(self, "inplaces", []):
+            # contRect 4 px inside, the pairs down the borders from y 23 - as LabVIEW wrote a
+            # 101 px structure: left node (23, 0, 35, 16), right node (23, 85, 35, 101)
+            node, d = ip["node"], ip["diag"]
+            t, l, b, r = lvheap.parse_bounds(node.find("bounds").text)
+            cr = node.find("contRect")
+            if cr is not None:
+                cr.text = lvheap.fmt_bounds((t + 4, l + 4, b - 4, r - 4))
+            sb = d.srn.find("bounds")
+            if sb is not None:
+                sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            for k, (left, right) in enumerate(ip["pairs"]):
+                y = 23 + 24 * k
+                left.find("bounds").text = lvheap.fmt_bounds((y, 0, y + 12, 16))
+                right.find("bounds").text = lvheap.fmt_bounds((y, r - l - 16, y + 12, r - l))
+            fni = d.el.find("firstNodeIdx")
+            if fni is not None:
+                fni.text = str(1 + 2 * len(ip["pairs"]))
+            node.find("termList").set("elements", str(len(node.find("termList"))))
+            mspf = node.find("multiSegPipeFlange2Size")
+            mspf.set("elements", str(len(mspf)))
         for case, frame_diags, parent in getattr(self, "cases", []):
             t, l, b, r = lvheap.parse_bounds(case.find("bounds").text)
             cr = case.find("contRect")
@@ -3975,6 +4101,8 @@ class Composer:
                 self.add_event(el)
             elif el.get("_name") == "Flat Sequence Frame":
                 self.add_flatseq(el)
+            elif el.get("_name") == "In Place Element Structure":
+                self.add_inplace(el)
             else:
                 self.add_loop(el)
         for el in [e for e in elements if e.tag == "Node" and unescape(e.get("_name") or "") in self.DISABLES]:
@@ -4059,6 +4187,10 @@ class Composer:
                     self.add_expr_node(e)
                 elif e.tag == "Node" and nm == "Global Variable":
                     self.add_global(e)
+                elif e.tag == "Node" and nm in self.INPLACE_PAIRS:
+                    self.add_inplace_node(e)
+                elif e.tag == "Node" and nm.startswith("In Place "):
+                    raise Unsupported("Node %s: %r is not composable yet" % (e.get("uid"), nm))
                 elif e.tag == "Node" and nm == "Invoke Node":
                     self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):

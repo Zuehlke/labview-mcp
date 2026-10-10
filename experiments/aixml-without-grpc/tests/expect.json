@@ -957,5 +957,23 @@
     }
    }
   ]
+ },
+ "t100_inplace": {
+  "cases": [
+   {
+    "inputs": "x=2.5;y=7",
+    "outputs": {
+     "x out": 3.5,
+     "y out": 14
+    }
+   },
+   {
+    "inputs": "x=-1;y=0",
+    "outputs": {
+     "x out": 0,
+     "y out": 0
+    }
+   }
+  ]
  }
 }

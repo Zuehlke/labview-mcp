@@ -454,6 +454,11 @@ class Harvester:
             elif cls == "eventDataNode":
                 # the left-hand node of an event frame: an Unbundle By Name over "Event Data"
                 self.save("node", "node/eventData", source, e, resolve_types(b, e))
+            elif cls == "decomposeRecomposeStructure":
+                # an In Place Element Structure: one diagram whose border pairs are
+                # decomposeMatchNodes INSIDE it, joined by a matchPoserInterface; the
+                # structure's own termList holds only the outer terminals
+                self.save("struct", "struct/inplace", source, e, resolve_types(b, e))
             elif cls == "flatSequence":
                 # a Flat Sequence: sequenceFrame structures side by side, each with seqTun
                 # tunnels whose DCO termList is [inner, outer] - as a loop's

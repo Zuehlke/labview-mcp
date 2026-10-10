@@ -265,7 +265,8 @@ def label_text(ddo):
             t = part.findtext("textRec/text")
             if t and t.startswith('"') and t.endswith('"'):
                 return t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
-            return t or ""
+            # pylabview writes an unquoted [NULL] for a label with no text at all
+            return "" if t in (None, "[NULL]") else t
     return ""
 
 
@@ -546,6 +547,10 @@ class Reader:
                 el = self.case(node, parent_uid, event=True)
             elif cls == "flatSequence":
                 el = self.flatseq(node, parent_uid)
+            elif cls == "decomposeRecomposeStructure":
+                el = self.inplace(node, parent_uid)
+            elif cls == "decomposeMatchNode":
+                continue        # read with its In Place Element Structure
             elif cls == "commentNode":
                 el = self.disable(node, parent_uid)
             elif cls in ("iUse", "polyIUse"):
@@ -888,6 +893,50 @@ class Reader:
             self.walk(diag, diag.get("uid"), d_el)
             for t in tunnels:
                 d_el.append(t)
+        return el
+
+    def inplace(self, node, parent_uid):
+        """An In Place Element Structure: one Structure; each in/out pair is two Nodes named
+        "In Place In / Out Element", the right one naming the left one in _id. A pair is the
+        matchPoserInterface joining two decomposeMatchNodes; a match node's decomposeDCO names
+        the structure's OUTER terminal in its termList, its own term is the inner end."""
+        el = ET.Element("Structure", {"_name": "In Place Element Structure", "uid": node.get("uid"),
+                                      "uid_parent": parent_uid})
+        diag = node.find("diagramList/SL__arrayElement")
+        outer = {}
+        for t in (node.find("termList") if node.find("termList") is not None else []):
+            d = t.find("dco")
+            if d is not None:
+                outer[d.get("uid")] = t
+        match = {n.get("uid"): n for n in self.node_defs(diag)
+                 if n.get("class") == "decomposeMatchNode"} if diag is not None else {}
+        rights = []
+        posers = node.find("multiSegPipeFlange2Size")
+        for poser in (posers if posers is not None else []):
+            ld, rd = poser.find("multiSegPipeFlange1Depth"), poser.find("multiSegPipeFlange2Depth")
+            l = match.get(ld.get("uid")) if ld is not None else None
+            r = match.get(rd.get("uid")) if rd is not None else None
+            if l is None or r is None:
+                self.notes.append("In Place pair %s not read" % poser.get("uid"))
+                continue
+            lt, rt = list(l.find("termList")), list(r.find("termList"))
+            left = ET.SubElement(el, "Node", {"_name": "In Place In / Out Element", "uid": l.get("uid"),
+                                              "uid_parent": node.get("uid")})
+            right = ET.Element("Node", {"_id": l.get("uid"), "_name": "In Place In / Out Element",
+                                        "uid": r.get("uid"), "uid_parent": node.get("uid")})
+            o = outer.get(lt[0].find("dco").get("uid"))
+            if o is not None:
+                self.term_owner[o.get("uid")] = (left, "value", True)
+            self.term_owner[lt[1].get("uid")] = (left, "value", False)
+            self.term_owner[rt[0].get("uid")] = (right, "value", True)
+            o = outer.get(rt[1].find("dco").get("uid"))
+            if o is not None:
+                self.term_owner[o.get("uid")] = (right, "value", False)
+            rights.append(right)
+        if diag is not None:
+            self.walk(diag, node.get("uid"), el)
+        for r in rights:
+            el.append(r)
         return el
 
     def disable(self, node, parent_uid):
