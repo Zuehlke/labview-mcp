@@ -34,6 +34,9 @@ def source_name(src):
 def main(argv):
     d = argv[0]
     rows = [l.rstrip("\n").split("\t") for l in open(os.path.join(d, "composed.txt"), encoding="utf-8") if l.strip()]
+    # a build dir given from Git Bash arrives as C:/temp/...; LabVIEW's COM answers a path with
+    # mixed separators "File not found" (all 249 of one sweep), so every path is normalised
+    rows = [[os.path.normpath(r[0])] + r[1:] for r in rows]
     ok, bad, crashed = 0, [], []
     i, retried = 0, False
     while i < len(rows):

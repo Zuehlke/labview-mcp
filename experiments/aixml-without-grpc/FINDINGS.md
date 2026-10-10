@@ -14,9 +14,9 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 | direction | tool | result |
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
-| AIXML → VI, NI's code | `coverage.py`, `parity.py` | **249 of 792** of NI's own exports compose (31.4 %; 159 in the morning, 19 on 2026-10-09). 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.4 %** |
+| AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **249 of 792** of NI's own exports compose (31.4 %; 159 in the morning, 19 on 2026-10-09), **148 of them executable** in LabVIEW, none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.4 %** |
 | VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **133 identical in every fact**, elements 92.7 %, constant values 92.0 %, wires 85.6 %, attributes 78.6 % |
-| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: see §6 for the last run |
+| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
 TOP-LEVEL subset only (415 of 552 identical); 2026-10-10 morning, 70 tests, 159 of 792, the
@@ -775,23 +775,29 @@ computing exact tables needs a per-primitive calibration of hot points. Until th
 
 ## 6. How far it reaches on real code
 
-**State of 2026-10-10 morning** (`coverage.py`, then `cov_load.py` with crash recovery):
+**State of 2026-10-10, 05:00** (`coverage.py --tsv`, `parity.py`, then `cov_load.py` with
+crash recovery):
 
-| | 2026-10-09 evening | 2026-10-10 morning |
-|---|---|---|
-| NI exports that compose | 84 of 792 | **159 of 792 (20.1 %)** |
-| of those, executable in LabVIEW | 72 | **99** |
-| of those, crash LabVIEW on load | not measured | **0** (3 before the refusals in §4d) |
+| | 2026-10-09 evening | 2026-10-10 morning | 2026-10-10, 05:00 |
+|---|---|---|---|
+| NI exports that compose | 84 of 792 | 159 of 792 (20.1 %) | **249 of 792 (31.4 %)** |
+| of those, executable in LabVIEW | 72 | 99 | **148** |
+| of those, crash LabVIEW on load | not measured | 0 | **0** |
 
-The first blockers now, by count: class objects `ref{UDClassInst}` (84 - AIXML does not even
-say WHICH class, see below), `tag{…}` (19), Global Variables (19), `nisyscfg` and DataFinder
-refnums (24), In Place Element Structures (16), picture (14), dynamic data (12), strictly typed
-Static VI References (11). Several of these are outside what NI's own converter composes too:
-it refuses a class-typed terminal and writes every class object as a bare `ref{UDClassInst}`,
-which names no class at all.
+**Measured against what NI's own converter could do** (`parity.py`): 176 of the 543 refused
+VIs stop at something ConvertAIXMLToVI cannot build either - class data (105: AIXML writes a
+class object as a bare `ref{UDClassInst}` that names no class), Express VIs and XNodes (29),
+subVIs that do not resolve (19), exports NI wrote incomplete (14), Timed Loops (5), Stacked
+Sequences NI exported without frames (4). **Of the 616 exports NI's converter could at best
+rebuild, this composer rebuilds 249 - 40.4 %.** What stops the rest is a long tail: the
+largest single blocker is nine VIs (a typedef wire), then seven each for an NI System
+Configuration filter property node, `Panel Close?` events, and controls inside a construct
+that is not composable; .NET constructor and Call Library Function nodes, the Python node,
+control refnums of a specific type, and For Loops with a conditional terminal follow with
+three to six each.
 
-The 60 composed but broken VIs are the next work item; `bisect_vi.py` splits one into its
-independent pieces and loads each. Many are waveform examples calling waveform library VIs.
+The composed but broken VIs are the next work item; `bisect_vi.py` splits one into its
+independent pieces and loads each.
 
 **The history**, measured as the work went on:
 
@@ -841,9 +847,19 @@ user first.
    cannot build safely, so a fallback never writes a VI that is silently different.
 
 What makes the route trustworthy today is the test discipline, not the code: every construct
-has a test that LOADS and RUNS (`selftest.py`, 73 tests), the reader is measured against NI's
-own exports (`compare_full.py`), both directions together by `roundtrip.py`, and a crash of
-LabVIEW is a recorded outcome (`cov_load.py`) rather than a lost run.
+has a test that LOADS and RUNS (`selftest.py`, 88 tests, gated on every LabVIEW log event that
+is not the known wire repair), the reader is measured against NI's own exports
+(`compare_full.py`), both directions together by `roundtrip.py`, a crash of LabVIEW is a
+recorded outcome (`cov_load.py`) rather than a lost run, and `parity.py` keeps the distance to
+NI's converter honest by separating what it cannot do either.
+
+**What the night of 2026-10-10 adds to the two decisions.** On (1): a part cut from NI's
+SHIPPED VIs broke VIs that the same part from an AIXML-generated VI did not (§4d, "Parts cut
+from NI's VIs"); generated probes (`probes/pclean.xml` and kin, converted once) are the better
+source, which also makes the harvest smaller and reproducible - but it needs NI's converter
+once per LabVIEW version. On (2): the composer is now refusal-safe in the sense that matters
+for a fallback - every refusal names its cause, and the coverage run's crashes became named
+refusals.
 
 ## 7. Limits and caveats
 
