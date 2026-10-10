@@ -30,6 +30,7 @@ public sealed class AfOverrideHelperScriptTests
     {
         AfOverrideTools.ReadHelper, AfOverrideTools.AddHelper, AfOverrideTools.RemoveHelper,
         AfOverrideTools.SaveHelper, AfOverrideTools.CreateHelper, ClassMethodTools.CallersHelper,
+        AfOverrideTools.ModifiedHelper,
     };
 
     [Theory]
@@ -72,6 +73,7 @@ public sealed class AfOverrideHelperScriptTests
     [InlineData("lvai_af_remove_hook", "Override VI Path,Hook VI Name,Occurrence", "state before,state after,Matches")]
     [InlineData("lvai_af_save_members", "VI Paths,Class Path,Only If Modified", "Saved,Skipped")]
     [InlineData("lvai_member_callers", "Member Names", "Loaded Members,Callers")]
+    [InlineData("lvai_af_modified_members", "VI Paths", "Modified")]
     public void Every_control_and_indicator_the_tools_name_exists(string helper, string controls, string indicators)
     {
         var vi = Script(helper);
@@ -96,7 +98,8 @@ public sealed class AfOverrideHelperScriptTests
     {
         // The kit's measured routes save in a SEPARATE run; a helper that saves its half-done
         // work would leave a broken override on disk when a later wire fails.
-        foreach (var helper in new[] { AfOverrideTools.AddHelper, AfOverrideTools.RemoveHelper })
+        foreach (var helper in new[] { AfOverrideTools.AddHelper, AfOverrideTools.RemoveHelper,
+                     AfOverrideTools.ModifiedHelper, AfOverrideTools.ReadHelper })
             Assert.DoesNotContain(Script(helper).Descendants("Node"),
                 n => ((string?)n.Attribute("target"))?.StartsWith("Save", StringComparison.Ordinal) == true);
     }
@@ -105,7 +108,8 @@ public sealed class AfOverrideHelperScriptTests
     public void Every_helper_reaches_LabVIEW_through_the_active_project()
     {
         foreach (var helper in new[] { AfOverrideTools.ReadHelper, AfOverrideTools.AddHelper,
-                     AfOverrideTools.RemoveHelper, AfOverrideTools.SaveHelper, ClassMethodTools.CallersHelper })
+                     AfOverrideTools.RemoveHelper, AfOverrideTools.SaveHelper, ClassMethodTools.CallersHelper,
+                     AfOverrideTools.ModifiedHelper })
             Assert.Contains(Script(helper).Descendants("Node"),
                 n => ((string?)n.Attribute("fields"))?.Contains("Active Project", StringComparison.Ordinal) == true);
     }

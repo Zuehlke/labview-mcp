@@ -388,7 +388,8 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         Handle Error hook before Call Parent (error 43 arrives there at every normal stop, and the
         parent returns stop actor? TRUE whatever the hook did) unless
         allowHandleErrorBeforeCallParent; a series insert into a wire that already branches; a name
-        that matches no terminal; the same hook already on the diagram. dryRun reads the diagram
+        that matches no terminal; the same hook already on the diagram; an override that already
+        carries unsaved edits (`overrideHasUnsavedEdits` - the save would write them). dryRun reads the diagram
         and returns the planned wires without changing anything.
         Wiring is by NAME: series and branch wires use the kit's measured panel-terminal route
         (Control.Terminal + Connect Wire; series cuts the wire and reconnects its far end), a
@@ -487,6 +488,16 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                     "twice. Remove it with lvai_af_remove_hook first, or pass allowSecondInstance."));
             var detail = Detail(plan, request, hookTerms, diagram, target, hook);
             if (plan.Problems.Count > 0) return Refuse(plan, request, detail);
+
+            // The save after placing writes the whole override, so edits already pending on it
+            // would be saved too - the same rule lvai_af_remove_hook applies to its siblings.
+            var (modifiedBefore, modifiedError) = await ModifiedAsync(headless, dqmh, scripts, project, steps,
+                [target.OverridePath], timeoutSeconds, ct);
+            if (modifiedBefore is null)
+                return Json.Error("helperFailed", "The override's unsaved state could not be read, so " +
+                    "nothing was changed.", DqmhHeadless.Merge(detail, new JsonObject { ["helperError"] = modifiedError }));
+            if (UnsavedEditsRefusal(modifiedBefore, target.OverridePath) is { } unsaved)
+                return Json.Error(unsaved.Kind, unsaved.Message, detail);
             if (dryRun)
                 return Json.Document(DqmhHeadless.Merge(new JsonObject
                 {
@@ -578,7 +589,11 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     [Description("""
         MUTATING: deletes ONE hook subVI node from an override's diagram, runs Remove Bad Wires on
         the override, and saves - the override always, its SIBLING overrides only where the edit
-        left them modified, then the class. WHY THE SIBLINGS: deleting a node that sat on a branched
+        left them modified, then the class. BEFORE ANYTHING CHANGES it reads the unsaved state of the
+        override and every sibling lifecycle override: one that already carries unsaved edits -
+        someone else's work - is refused (`overrideHasUnsavedEdits` / `siblingHasUnsavedEdits`,
+        naming it), so the only siblings ever saved are the ones this call made modified.
+        WHY THE SIBLINGS: deleting a node that sat on a branched
         wire leaves a loose end, and both the override and a sibling override of the same class then
         read state 0 ("error of type 1000088"); Remove Bad Wires on the edited VI cleared both
         (measured). The node is chosen by the hook's VI name; with two of the same name pass
@@ -593,7 +608,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         [Description(@"Absolute path to the class's .lvclass")] string classPath,
         [Description("The hook to remove: its path, file name or VI name")] string hookName,
         [Description("Which of several nodes with that name, from 0 in diagram order")] int? occurrence = null,
-        [Description("Re-save sibling overrides the edit marked modified (default true)")]
+        [Description("Save the sibling overrides the remove made modified (default true)")]
         bool resaveSiblings = true,
         [Description("List what would be removed; change nothing")] bool dryRun = false,
         [Description("The .lvproj to open first; omit when it is already open and active")]
@@ -646,8 +661,22 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                     count > 1 && occurrence is null
                         ? $"{count} nodes on the override are '{exact}'. Pass occurrence (0 to {count - 1})."
                         : $"occurrence {occurrence} is out of range: there are {count}.", detail);
-            var siblings = resaveSiblings ? SiblingOverrides(target) : [];
+            var siblings = SiblingOverrides(target);
             detail["siblingOverrides"] = DqmhHeadless.Array(siblings);
+
+            // UNSAVED EDITS THIS CALL DID NOT MAKE ARE NOT ITS TO SAVE. The sibling re-save below
+            // exists for the 1000088 loose end the delete leaves, so a sibling that is ALREADY
+            // modified before anything changes carries someone else's work - refused, named, and
+            // asked about rather than written to disk with the cleanup. The override itself too.
+            var (modifiedBefore, modifiedError) = await ModifiedAsync(headless, dqmh, scripts, project, steps,
+                [target.OverridePath, .. siblings], timeoutSeconds, ct);
+            if (modifiedBefore is null)
+                return Json.Error("helperFailed", "The unsaved state of the override and its siblings " +
+                    "could not be read, so nothing was changed.",
+                    DqmhHeadless.Merge(detail, new JsonObject { ["helperError"] = modifiedError, ["steps"] = steps }));
+            if (UnsavedEditsRefusal(modifiedBefore, target.OverridePath) is { } unsaved)
+                return Json.Error(unsaved.Kind, unsaved.Message,
+                    DqmhHeadless.Merge(detail, new JsonObject { ["modifiedBefore"] = DqmhHeadless.Array(modifiedBefore) }));
             if (dryRun)
                 return Json.Document(DqmhHeadless.Merge(new JsonObject { ["ok"] = true, ["dryRun"] = true }, detail));
 
@@ -671,7 +700,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             {
                 save = await SaveAsync(headless, dqmh, scripts, project, steps,
                     [target.OverridePath], target.ClassPath, onlyIfModified: false, timeoutSeconds, ct);
-                if (siblings.Count > 0)
+                // Every sibling was clean before the remove, so a modified one now is one this
+                // call made modified - exactly the set the save may touch.
+                if (resaveSiblings && siblings.Count > 0)
                     siblingSave = await SaveAsync(headless, dqmh, scripts, project, steps,
                         siblings, target.ClassPath, onlyIfModified: true, timeoutSeconds, ct);
             }
@@ -697,6 +728,42 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                       "the project WITHOUT saving to discard it.",
             }, detail));
         });
+
+    internal const string ModifiedHelper = "lvai_af_modified_members";
+
+    /// <summary>
+    /// The refusal for VIs that carry unsaved edits before this call has changed anything: the
+    /// override first, then siblings by name. Null when everything is clean.
+    /// </summary>
+    internal static (string Kind, string Message)? UnsavedEditsRefusal(
+        IReadOnlyCollection<string> modified, string overridePath)
+    {
+        if (modified.Count == 0) return null;
+        const string tail = " They are not this call's edits, so they are not its to save. Save or " +
+                            "discard them in the IDE, then call again. Nothing was changed.";
+        if (modified.Contains(overridePath, StringComparer.OrdinalIgnoreCase))
+            return ("overrideHasUnsavedEdits",
+                $"'{Path.GetFileName(overridePath)}' already has unsaved edits." + tail);
+        return ("siblingHasUnsavedEdits",
+            "Sibling override(s) already have unsaved edits: " +
+            string.Join(", ", modified.Select(Path.GetFileName)) + "." + tail);
+    }
+
+    /// <summary>Which of <paramref name="vis"/> carry unsaved edits now, or null when it could not be read.</summary>
+    private static async Task<(List<string>? Modified, string? Error)> ModifiedAsync(DqmhHeadless headless,
+        DqmhTools dqmh, string scripts, string? project, JsonArray steps, IReadOnlyCollection<string> vis,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        if (await headless.EnsureWrapperAsync(scripts, ModifiedHelper, [], project, steps, timeoutSeconds, ct)
+            is { } wrapperError)
+            return (null, wrapperError);
+        var inputs = new Dictionary<string, string>();
+        AddArray(inputs, "VI Paths", vis);
+        var (values, helperError) = await dqmh.RunDetailedAsync(scripts, ModifiedHelper, inputs, timeoutSeconds, ct);
+        if (values is null || helperError is not null || DqmhTools.Failed(values) is { Length: > 0 } )
+            return (null, helperError ?? (values is null ? "the helper did not run" : DqmhTools.Failed(values)));
+        return (DqmhHeadless.Listed(values, "Modified"), null);
+    }
 
     internal static readonly (string Indicator, string Label)[] RemoveStages =
     [

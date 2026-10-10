@@ -116,6 +116,7 @@ Everything below is decided before the diagram is touched. The refusals:
 | `wireIsBranched` / `panelTerminalNotWired` | A series insert deletes the whole net at the panel terminal and reconnects one far end. So the net must be exactly one plain wire: place series hooks first, then branches. |
 | `hookTerminalMissing`, `hookTerminalWrongDirection`, `overrideTerminalMissing`, `noErrorTerminal` | a name or a direction that does not fit |
 | `sourceHookNotFound` / `sourceHookAmbiguous`, `hookAlreadyPlaced` | a re-run would place the hook twice |
+| `overrideHasUnsavedEdits` | the override already carries edits this call did not make; the save would write them |
 | `overrideNotAMember`, `noActiveProject`, `projectDidNotBecomeActive` | the override or the project is not ready |
 
 The warnings:
@@ -134,7 +135,9 @@ The warnings:
    - the node classes (does a `CallParentNode` show?).
 3. Plan by name in C# (`Infra/AfOverrides.cs`) and check the plan. `dryRun` stops here and returns
    the plan.
-4. Read the exec state before.
+4. Refuse an override that already has unsaved edits (`overrideHasUnsavedEdits`,
+   `lvai_af_modified_members.xml`): the save in step 6 writes the whole VI. Read the exec state
+   before.
 5. Place and wire with `scripts/lvai_af_add_hook.xml`, generated with `lvbd_connect_by_names`
    loaded. It does not save. Series and branch wires use the kit's measured panel-terminal
    calls (`{LV.Control} Terminal`, `{LV.Wire} Delete`, `{LV.Terminal} Connect Wire`). The node
@@ -166,15 +169,20 @@ Inputs: `overridePath`, `classPath`, `hookName` (path, file name or VI name), `o
    - none matches: `hookNotOnDiagram`;
    - several and no `occurrence`: `hookNodeAmbiguous`;
    - an `occurrence` out of range: `badArguments`.
-2. `scripts/lvai_af_remove_hook.xml` deletes exactly that node (the kit's delete removed every node
+2. **Before anything changes**, `scripts/lvai_af_modified_members.xml` reads the FP and BD
+   modification bitsets of the override and of every sibling lifecycle override. One that already
+   has unsaved edits is refused, by name: `overrideHasUnsavedEdits` or `siblingHasUnsavedEdits`.
+   Those edits are someone else's work, and the rule is that unsaved files this call did not make
+   are asked about, never saved along with the cleanup. A dry run reports this refusal too.
+3. `scripts/lvai_af_remove_hook.xml` deletes exactly that node (the kit's delete removed every node
    with a terminal name) and runs `BD.Remove Bad Wires`. It reports the exec state before and after.
-3. Save the override. Then save the class's other lifecycle overrides **only where they are
-   modified** (FP or BD modification bitset non-zero), and then the class.
+4. Save the override. Then save the sibling overrides that **became** modified (every sibling was
+   clean in step 2, so a modified one now was made so by this call), and then the class.
 
 **Why the siblings.** A node deleted from a branched wire leaves a loose end. The override and a
 sibling override of the same class then read state 0, "error of type 1000088". Remove Bad Wires on
-the edited VI cleared both (measured, pilot project). A sibling that carries someone's own unsaved
-edits is saved too: pass `resaveSiblings: false` when that matters.
+the edited VI cleared both (measured, pilot project). `resaveSiblings: false` leaves even those
+siblings unsaved.
 
 A **series** hook cannot be removed this way: the wire through it goes with it. Restore the bare
 override from version control (project closed) and re-hook every shape in order (B, C, A).
@@ -223,6 +231,7 @@ The edit (`Infra/ClassMemberPlacement.cs`):
 | `lvai_af_hook_read.xml` | lists panel terminals with wire ends, subVI names, node classes | no | unmeasured |
 | `lvai_af_add_hook.xml` | places one hook; series cut, branch tap, node pairs | no | unmeasured; its calls are the kit's measured ones |
 | `lvai_af_remove_hook.xml` | deletes one hook node, Remove Bad Wires | no | unmeasured |
+| `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | unmeasured; the bitset read is `lvdqmh_dirty_members`' |
 | `lvai_af_save_members.xml` | saves listed VIs (optionally only modified ones), then the class | yes | unmeasured as a list; single VI measured |
 | `lvai_member_callers.xml` | loaded members and their callers | no | unmeasured |
 
@@ -249,8 +258,13 @@ project closed.
    - the refusals `hookInputUnfed`, `wireIsBranched` and `handleErrorHookBeforeCallParent`.
 
    Also check whether `lvai_af_hook_read` lists a `CallParentNode`.
-3. **`lvai_af_remove_hook`** on a branch hook whose wire branches. The override and its sibling
-   overrides must read state 1 cold afterwards.
+3. **`lvai_af_remove_hook`**:
+   - on a branch hook whose wire branches: the override and its sibling overrides must read state
+     1 cold afterwards, and `siblingSave.saved` lists only siblings the remove made modified;
+   - with a sibling override that has a pre-existing unsaved edit (change it in the IDE, do not
+     save): expect `siblingHasUnsavedEdits` naming it, and nothing changed - the hook still on the
+     diagram, no file written (compare timestamps), the sibling still unsaved;
+   - the same with the override itself edited: expect `overrideHasUnsavedEdits`.
 4. **`lvai_add_class_method`** re-run:
    - over a hook an override calls: expect `memberHasLoadedCallers` and an unchanged class file;
    - over a protected member in a folder: expect scope and folder back, `lvai_describe_class`,

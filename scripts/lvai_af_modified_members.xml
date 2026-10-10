@@ -1,0 +1,29 @@
+<VI _name="lvai_af_modified_members.vi" description="READ-ONLY\3A for each path in VI Paths\2C opened in the ACTIVE PROJECT's application instance\2C says whether the VI carries unsaved modifications (front-panel or block-diagram modification bitset non-zero - the test lvdqmh_dirty_members makes). lvai_af_remove_hook asks this about the sibling overrides BEFORE it changes anything\2C so a sibling that already holds someone's unsaved edits is refused rather than saved along with the cleanup. Nothing is saved. UNMEASURED.">
+  <Control _name="VI Paths" conIdx="0" connection="recommended" outputs="value:5000.value" type="array{string}" uid="5000" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5001.value" type="cluster{bool.status,int32.code,string.source}" uid="5001" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Reads only - nothing is saved" uid="5002" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):5001.value" outputs="Project\3AActive Project:5010.proj,reference out:,error out:5010.error out" uid="5010" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:5010.proj,error in (no error):5010.error out" outputs="Application:5011.app,reference out:,error out:5011.error out" uid="5011" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5000.value" mode="index" outputs="value:5101.path" uid="5101" uid_parent="5100"/>
+    <Tunnel _id="In2" inputs="value:5011.app" outputs="value:5102.app" uid="5102" uid_parent="5100"/>
+    <ShiftReg uid="5104" uid_parent="5100">
+      <Left inputs="value:5011.error out" outputs="value:5105.err" uid="5105" uid_parent="5104"/>
+      <Right inputs="value:5120.err" outputs="value:5106.err" uid="5106" uid_parent="5104"/>
+    </ShiftReg>
+    <Node _name="String To Path" inputs="string:5101.path" outputs="path:5110.path" uid="5110" uid_parent="5100"/>
+    <Node _name="Open VI Reference" inputs="application reference (local):5102.app,vi path:5110.path,error in (no error):5105.err" outputs="vi reference:5111.vi,error out:5111.error out" uid="5111" uid_parent="5100"/>
+    <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset" type="{LV.VI}" inputs="reference:5111.vi,error in (no error):5111.error out" outputs="Modifications\3AFront Panel Mods Bitset:5112.fp,Modifications\3ABlock Diagram Mods Bitset:5112.bd,reference out:,error out:5112.error out" uid="5112" uid_parent="5100"/>
+    <Node _name="Or" inputs="x:5112.fp,y:5112.bd" outputs="x .or. y?:5113.bits" uid="5113" uid_parent="5100"/>
+    <Node _name="Not Equal To 0?" inputs="x:5113.bits" outputs="x != 0?:5114.dirty" uid="5114" uid_parent="5100"/>
+    <Node _name="Close Reference" inputs="reference:5111.vi,error in (no error):5112.error out" outputs="error out:5120.err" uid="5120" uid_parent="5100"/>
+    <Tunnel _id="Out1" cond="5114.dirty" inputs="value:5101.path" mode="index" outputs="value:5130.modified" uid="5130" uid_parent="5100"/>
+  </Structure>
+  <Indicator _name="Modified" inputs="value:5130.modified" type="array{string}" uid="5131" uid_parent="root" value="[]"/>
+
+  <Node _name="Close Reference" inputs="reference:5011.app,error in (no error):5106.err" outputs="error out:5140.error out" uid="5140" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:5140.error out" type="cluster{bool.status,int32.code,string.source}" uid="5141" uid_parent="root" value="[false,0,]"/>
+</VI>

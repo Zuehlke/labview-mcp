@@ -355,6 +355,27 @@ public sealed class AfOverrideToolsTests
     }
 
     [Fact]
+    public void Nothing_modified_before_the_call_is_no_refusal() =>
+        Assert.Null(AfOverrideTools.UnsavedEditsRefusal([], @"C:\c\Actor Core.vi"));
+
+    [Fact]
+    public void A_sibling_with_unsaved_edits_is_refused_by_name()
+    {
+        var refusal = AfOverrideTools.UnsavedEditsRefusal([@"C:\c\Stop Core.vi"], @"C:\c\Actor Core.vi");
+        Assert.Equal("siblingHasUnsavedEdits", refusal!.Value.Kind);
+        Assert.Contains("Stop Core.vi", refusal.Value.Message);
+        Assert.Contains("Nothing was changed", refusal.Value.Message);
+    }
+
+    [Fact]
+    public void Unsaved_edits_on_the_override_itself_are_named_first()
+    {
+        var refusal = AfOverrideTools.UnsavedEditsRefusal(
+            [@"C:\c\Stop Core.vi", @"c:\C\ACTOR CORE.vi"], @"C:\c\Actor Core.vi");
+        Assert.Equal("overrideHasUnsavedEdits", refusal!.Value.Kind);
+    }
+
+    [Fact]
     public async Task Remove_refuses_an_empty_name_or_a_negative_occurrence_before_LabVIEW()
     {
         using var tree = new Tree(actorMembers: ["Actor Core.vi"]);
