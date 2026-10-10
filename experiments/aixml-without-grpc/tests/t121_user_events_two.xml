@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T121 User Events Two.vi" description="TWO user events, Tick (bool) and Count (int32), in ONE Register For Events: the producer fires Count then Tick each iteration, the handler stores Count's payload and stops on Tick's. The registration's shape - one item per source, both code 03E8, dynIndex 1 and 2 - is MGI's Special Monitor Actor Core.vi; NI's route does not finish two user events, so no NI build exists.">
+  <Control _name="Ticks To Send" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="3" />
+  <Constant _name="Tick" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <Constant _name="Count" outputs="value:4301.value" type="int32" uid="4301" uid_parent="root" value="0"/>
+  <Node _name="Create User Event" inputs="user event datatype:4201.value,error in:" outputs="user event:4202.user event,error out:4202.error out" uid="4202" uid_parent="root"/>
+  <Node _name="Create User Event" inputs="user event datatype:4301.value,error in:4202.error out" outputs="user event:4302.user event,error out:4302.error out" uid="4302" uid_parent="root"/>
+  <Node _name="Register For Events" inputs="event registration refnum:,error in (no error):4302.error out,event source:4202.user event,event source:4302.user event" outputs="event registration refnum:4203.event registration refnum,error out:4203.error out" uid="4203" uid_parent="root"/>
+  <Structure _name="For Loop" count="4210.value" maxin="4205.value" maxout="" uid="4210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4202.user event" outputs="value:4211.value" uid="4211" uid_parent="4210"/>
+    <Tunnel _id="In2" inputs="value:4205.value" outputs="value:4216.value" uid="4216" uid_parent="4210"/>
+    <Tunnel _id="In3" inputs="value:4302.user event" outputs="value:4311.value" uid="4311" uid_parent="4210"/>
+    <Constant outputs="value:4212.value" type="int32" uid="4212" uid_parent="4210" value="100"/>
+    <Node _name="Wait (ms)" inputs="milliseconds to wait:4212.value" outputs="millisecond timer value:" uid="4213" uid_parent="4210"/>
+    <Node _name="Increment" inputs="x:4210.value" outputs="x+1:4217.x+1" uid="4217" uid_parent="4210"/>
+    <Node _name="Greater Or Equal?" inputs="x:4217.x+1,y:4216.value" outputs="x &gt;= y?:4218.x &gt;= y?" uid="4218" uid_parent="4210"/>
+    <Node _name="Generate User Event" inputs="user event:4311.value,event data cluster:4210.value,error in:,priority (normal):" outputs="user event out:,error out:4315.error out" uid="4315" uid_parent="4210"/>
+    <Node _name="Generate User Event" inputs="user event:4211.value,event data cluster:4218.x &gt;= y?,error in:4315.error out,priority (normal):" outputs="user event out:,error out:" uid="4215" uid_parent="4210"/>
+  </Structure>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4203.event registration refnum" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" inputs="value:4221.value" uid="4231" uid_parent="4230"/>
+      <CaseFrame selector=" &lt;Tick&gt;\3A User Event " uid="4240" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4241" uid_parent="4240"/>
+        <Node _name="Event Data Node" fields="Tick" outputs="Tick:4244.Tick" uid="4244" uid_parent="4240"/>
+        <Constant _name="Never" outputs="value:4281.value" type="bool" uid="4281" uid_parent="4240" value="false"/>
+                <Node _name="Or" inputs="x:4281.value,y:4244.Tick" outputs="x .or. y?:4290.x .or. y?" uid="4290" uid_parent="4240"/>
+        <Tunnel _id="Out1" inputs="value:4290.x .or. y?" uid="4248" uid_parent="4240"/>
+      </CaseFrame>
+      <CaseFrame selector=" &lt;Count&gt;\3A User Event " uid="4340" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4341" uid_parent="4340"/>
+        <Node _name="Event Data Node" fields="Count" outputs="Count:4344.Count" uid="4344" uid_parent="4340"/>
+                <Constant _name="Zero" outputs="value:4381.value" type="int32" uid="4381" uid_parent="4340" value="0"/>
+        <Node _name="Add" inputs="x:4344.Count,y:4381.value" outputs="x+y:4390.x+y" uid="4390" uid_parent="4340"/>
+        <Indicator _name="Last Count" inputs="value:4390.x+y" type="int32" uid="4391" uid_parent="4340" value="0"/>
+        <Constant _name="Keep Going" outputs="value:4356.value" type="bool" uid="4356" uid_parent="4340" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4356.value" uid="4348" uid_parent="4340"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="4250" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4251" uid_parent="4250"/>
+        <Control _name="Stop" outputs="value:" style="latched" type="bool" uid="4254" uid_parent="4250" value="false" />
+        <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="4255" uid_parent="4250"/>
+        <Constant outputs="value:4256.value" type="bool" uid="4256" uid_parent="4250" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4256.value" uid="4257" uid_parent="4250"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4260.value" uid="4260" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4260.value" uid="4261" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4221.value" outputs="value:4262.value" uid="4262" uid_parent="4220"/>
+  </Structure>
+  <Node _name="Unregister For Events" inputs="event registration refnum:4262.value,error in:4203.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Destroy User Event" inputs="user event:4202.user event,error in:4270.error out" outputs="error out:4271.error out" uid="4271" uid_parent="root"/>
+  <Node _name="Destroy User Event" inputs="user event:4302.user event,error in:4271.error out" outputs="error out:4272.error out" uid="4272" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4272.error out" type="cluster{bool.status,int32.code,string.source}" uid="4273" uid_parent="root" value="[false,0,]" />
+</VI>

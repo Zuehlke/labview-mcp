@@ -199,8 +199,11 @@ node class, the registration refnum becomes a four-ended wire onto the dynamic t
 EventSpec has `dynIndex 1`, and the payload is field 4 of the data cluster. Measured: the skeleton
 runs `Ticks Received = 5`, LabVIEW's export of the finished VI (which names the payload) does too,
 and a variant that only the payload can stop stopped on it. A cluster payload is flattened into the
-data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. One user
-event per registration; more is refused by name. `scripts/aixml-skeletons/user-event-two-loops.md`.
+data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. Several
+user events may share one registration (each frame's `dynIndex` is its event's position there, as in
+MGI's shipped `Actor Core.vi`) - which the gRPC route does not finish yet: `pylv-finish-user-events.py`
+refuses more than one user-event frame until that mapping is measured, and it now is.
+Event sources other than user events are refused by name. `scripts/aixml-skeletons/user-event-two-loops.md`.
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

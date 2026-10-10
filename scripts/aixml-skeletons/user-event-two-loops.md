@@ -40,8 +40,10 @@ the payload in the Event Data Node (`fields="Source,Tick,Time"`, `outputs="...,T
 wire it where it is used, as LabVIEW's own export of the finished VI does; a variant in which only
 the payload can stop the handler stopped on it. A CLUSTER payload works the same way, its elements
 named one by one (`fields="Source,Last,N,Time"`) - fields 4 and 5 for a two-element cluster, as the
-section on the field index below says. Limits: one user event per `Register For Events`, and the
-registration routed into the structure through a tunnel as below.
+section on the field index below says. SEVERAL user events in one `Register For Events` work too -
+repeat the input, `event source:<a>,event source:<b>`, and give each its own frame. Limits: only
+user events as event sources, and the registration routed into the structure through a tunnel as
+below.
 `experiments/aixml-without-grpc/FINDINGS.md` §7a, "User events" (source tree only).
 
 **Step 3 IS a shipped tool: `lvai_set_event_data_fields`.** This paragraph said it was not, and

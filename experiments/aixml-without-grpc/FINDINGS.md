@@ -1066,9 +1066,22 @@ with `UsrEvtRef` around the whole cluster, and NI's export names the element in 
 stop the handler: `Ticks Received = 3`, `Last N = 2` for three ticks - suite test
 `t120_user_event_cluster_payload`.
 
-**Not measured, and refused by name**: more than one event source on one `Register For Events`
-(what a second source's code and `CField4` are), and a user-event frame without the registration
-routed in through a tunnel.
+**SEVERAL user events in ONE registration** follow MGI's Special Monitor `Actor Core.vi`, a shipped
+VI registering two (`New Monitor Data`, a cluster, and `Exit`): one `eventRegItem` per source, all
+code `03E8`; the registration carrying them in source order, every child with the same `CField0
+0x0001`, `CField2 0x0000`, `CField4 0x03E8`; and each frame's `dynIndex` is its event's 1-based
+POSITION in the registration (1 and 2 there - not a dynamic-terminal pair, of which there is one).
+The AIXML repeats the input name, `event source:…,event source:…`. Composed, two events `Tick` and
+`Count` in one node ran: the handler stored `Count` 0, 1, 2 and stopped on `Tick` - suite test
+`t121_user_events_two`. **The gRPC route did not finish that document**: `lvai_wire_dynamic_events`
+answered `userEventsNotFinished`, because `scripts/pylv-finish-user-events.py` REFUSES more than one
+user-event frame on purpose - "dynIndex is the registration item's position and only the value 1
+has been measured". That mapping is what MGI's VI and this run settle, so the refusal can be lifted
+there; it has not been.
+
+**Not measured, and refused by name**: an event source that is not a user event (a control
+reference - NI's `Dynamic Event Generation.vi` registers five), and a user-event frame without the
+registration routed in through a tunnel.
 
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`

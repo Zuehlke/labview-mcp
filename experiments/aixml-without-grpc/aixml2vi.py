@@ -3829,6 +3829,12 @@ class Composer:
                     return n, tree
         return None, None
 
+    def _user_event_position(self, struct_el, name):
+        _, reg = self._registration_of(struct_el)
+        order = [(c.get("Label") or (fields(c)[0].get("Label") if fields(c) else ""))
+                 for c in fields(reg) if c.get("Type") == "Refnum" and c.get("RefType") == "UserEvent"]
+        return order.index(name) + 1
+
     @staticmethod
     def _user_events_of(reg):
         """The UserEvent refnums a registration type carries, by name."""
@@ -3860,7 +3866,9 @@ class Composer:
                                    ("ddoUID", ddo)):
                         ET.SubElement(sp, tag).text = v
                     ET.SubElement(sp, "menuTag")
-                    ET.SubElement(sp, "dynIndex").text = "1" if kind == "User Event" else "0"
+                    # a user event's dynIndex is its 1-based POSITION in the registration - 1 and 2
+                    # for the two events of MGI's Special Monitor Actor Core.vi; a static event 0
+                    ET.SubElement(sp, "dynIndex").text = str(self._user_event_position(el, ctl)) if kind == "User Event" else "0"
             specs.set("elements", str(len(specs)))
             dn = getattr(self, "event_data_nodes", {})
             for lst_tag in ("dataNodeList", "filterNodeList"):
@@ -3916,16 +3924,23 @@ class Composer:
         source, code 03E8 for a user event. The registration type is the source's UserEvent refnum
         inside an EventReg refnum, the child carrying CField0 0x0001, CField2 0x0000, CField4
         0x03E8 - all read off LabVIEW's own save of the finished user-event skeleton (2026-10-10).
-        ONE user-event source: what a second one's CField4 and code are is not measured."""
+        SEVERAL user events: one eventRegItem each, all code 03E8, the registration carrying them in
+        source order with the same three fields - read off MGI's Special Monitor Actor Core.vi, two
+        user events in one node. Event sources that are not user events are not composed."""
         uid = el.get("uid")
         ins = keyed(pairs(el.get("inputs")))
         srcs = [(k, n) for k, n in ins if grow_base(k) == "event source" and n]
-        if len(srcs) != 1:
-            raise Unsupported("Register For Events %s: %d event sources - one user event is composable" % (uid, len(srcs)))
-        u = self.net_type.get(srcs[0][1])
-        if u is None or u.get("Type") != "Refnum" or u.get("RefType") != "UserEvent" or not fields(u):
-            raise Unsupported("Register For Events %s: the event source is not a user event refnum" % uid)
-        name = fields(u)[0].get("Label") or ""
+        if not srcs:
+            raise Unsupported("Register For Events %s: no event source wired" % uid)
+        evs = []
+        for k, n in srcs:
+            u = self.net_type.get(n)
+            if u is None or u.get("Type") != "Refnum" or u.get("RefType") != "UserEvent" or not fields(u):
+                raise Unsupported("Register For Events %s: event source %r is not a user event refnum" % (uid, k))
+            evs.append((k, u, fields(u)[0].get("Label") or ""))
+        names = [nm for _, _, nm in evs]
+        if len(set(names)) != len(names):
+            raise Unsupported("Register For Events %s: two user events named alike (%s)" % (uid, ", ".join(names)))
         got = self.instantiate("node/eventReg", own_uid=uid)
         if got is None:
             raise Unsupported("Register For Events %s: no eventRegNode part harvested" % uid)
@@ -3944,13 +3959,34 @@ class Composer:
                 item = t
         if len(by) != 4 or item is None:
             raise Unsupported("Register For Events %s: the harvested part is not the measured shape" % uid)
-        uev = copy.deepcopy(u)
-        uev.set("Label", name)
-        child = copy.deepcopy(uev)
-        for k, v in (("ref.CField0", "0x0001"), ("ref.CField2", "0x0000"), ("ref.CField4", "0x03E8")):
-            child.set(k, v)
+        # one item per source: the part's own, then clones below it, a 16 px row each
+        tl = node.find("termList")
+        items = [item]
+        for _ in evs[1:]:
+            t = copy.deepcopy(items[-1])
+            lvheap.renumber(t, self.alloc)
+            tb = t.find("dco/termBounds")
+            if tb is not None:
+                a, l_, b_, r_ = lvheap.parse_bounds(tb.text)
+                tb.text = lvheap.fmt_bounds((a + 16, l_, b_ + 16, r_))
+            tl.insert(list(tl).index(items[-1]) + 1, t)
+            ET.SubElement(node.find("dcoList"), "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+            items.append(t)
+        tl.set("elements", str(len(tl)))
+        node.find("dcoList").set("elements", str(len(node.find("dcoList"))))
+        if len(evs) > 1:
+            nb = lvheap.parse_bounds(node.find("bounds").text)
+            node.find("bounds").text = lvheap.fmt_bounds((nb[0], nb[1], nb[2] + 16 * (len(evs) - 1), nb[3]))
         reg = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "EventReg", "Field0": "0x0000", "Format": "inline"})
-        reg.append(child)
+        uevs = []
+        for _, u, nm in evs:
+            uev = copy.deepcopy(u)
+            uev.set("Label", nm)
+            uevs.append(uev)
+            child = copy.deepcopy(uev)
+            for k, v in (("ref.CField0", "0x0001"), ("ref.CField2", "0x0000"), ("ref.CField4", "0x03E8")):
+                child.set(k, v)
+            reg.append(child)
         err = type_tree("cluster{bool.status,int32.code,string.source}")
         for role, label, tree in (("event registration refnum", "event registration refnum", reg),
                                   ("event registration refnum out", "Event Registration Refnum", reg),
@@ -3959,10 +3995,11 @@ class Composer:
             tt = copy.deepcopy(tree)
             tt.set("Label", label)
             by[role].find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(tt)
-        item.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(uev)
+        for it, uev in zip(items, uevs):
+            it.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(uev)
         wired = {k for k, n in ins if n}
-        for t, on in ((by["event registration refnum"], "event registration refnum" in wired),
-                      (by["error in (no error)"], "error in (no error)" in wired), (item, True)):
+        for t, on in [(by["event registration refnum"], "event registration refnum" in wired),
+                      (by["error in (no error)"], "error in (no error)" in wired)] + [(it, True) for it in items]:
             f = t.find("objFlags")
             if on and f is None:
                 f = ET.Element("objFlags")
@@ -3978,7 +4015,8 @@ class Composer:
         self.ends[(uid, out_key(el, "event registration refnum"))] = (by["event registration refnum out"].get("uid"), diag)
         self.ends[(uid, "error in (no error)")] = (by["error in (no error)"].get("uid"), diag)
         self.ends[(uid, "error out")] = (by["error out"].get("uid"), diag)
-        self.ends[(uid, srcs[0][0])] = (item.get("uid"), diag)
+        for (k, _, _), it in zip(evs, items):
+            self.ends[(uid, k)] = (it.get("uid"), diag)
         for k, n in pairs(el.get("outputs")):
             if n and k == "event registration refnum":
                 self.net_type[n] = reg
@@ -3987,7 +4025,7 @@ class Composer:
         diag.nodes.append(node)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
-        self.report.append("Register For Events (user event %r) <- %s" % (name, src))
+        self.report.append("Register For Events (user events %s) <- %s" % (", ".join(names), src))
 
     def add_event_data(self, el):
         """An Event Data Node: Unbundle By Name over the frame's "Event Data" cluster - for a

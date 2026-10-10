@@ -1229,5 +1229,16 @@
     }
    }
   ]
+ },
+ "t121_user_events_two": {
+  "cases": [
+   {
+    "inputs": "Ticks To Send=3",
+    "outputs": {
+     "Last Count": 2,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }
