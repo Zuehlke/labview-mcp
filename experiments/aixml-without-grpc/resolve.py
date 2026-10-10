@@ -185,8 +185,10 @@ class Resolver:
             if s:
                 return {"path": p, "qual": [target], "path_ref": ("0", [s[0]] + s[1]), "lib_ref": None,
                         "kind": "bare name", "ambiguous": len(hits) > 1}
-        if caller_dir:
-            near = self._near_index(caller_dir)[0].get(target.lower(), [])
+        for d in (caller_dirs or []):
+            # every search folder, not only the first: a VI composed elsewhere from an NI
+            # export finds its callees beside the ORIGINAL (bisect_vi.py --near)
+            near = self._near_index(d)[0].get(target.lower(), [])
             if near:
                 return {"path": near[0], "qual": [target], "path_ref": ("1", relative_ref(caller_file, near[0])),
                         "lib_ref": None, "kind": "near the caller", "ambiguous": len(near) > 1}

@@ -56,7 +56,11 @@ def main(argv):
             vp = json.load(open(meta, encoding="utf-8")).get("ViPath") or ""
             if vp:
                 c.search_dirs = [os.path.dirname(vp)]
-                c.caller_file = vp
+                # relative links are computed from the caller FILE: with --build that is the VI
+                # written into the build folder, not the original - linked from the original's
+                # place, every callee found beside it was missing on load (measured: NI's
+                # Waveform - Min Max.vi broken in the build, executable composed by bisect_vi)
+                c.caller_file = os.path.join(build, "cov_%04d.vi" % len(ok)) if build else vp
         try:
             c.compose(f)
             ok.append((f, c))

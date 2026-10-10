@@ -4675,6 +4675,7 @@ class Composer:
 def main(argv):
     parts = os.path.join(HERE, "parts")
     keep = None
+    search = []
     args = []
     i = 0
     while i < len(argv):
@@ -4682,11 +4683,15 @@ def main(argv):
             parts = argv[i + 1]; i += 2
         elif argv[i] == "--keep":
             keep = argv[i + 1]; i += 2
+        elif argv[i] == "--search":
+            # more folders to resolve a Call in, after the output VI's own (an NI export is
+            # composed with its callees beside the ORIGINAL VI)
+            search.append(argv[i + 1]); i += 2
         else:
             args.append(argv[i]); i += 1
     src, out_vi = args
     c = Composer(parts)
-    c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))]
+    c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))] + search
     c.caller_file = os.path.abspath(out_vi)   # relative links are computed from the caller FILE
     try:
         c.compose(src)

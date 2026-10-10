@@ -3,7 +3,9 @@
 (elements joined by nets; a structure with everything inside it is one unit), compose each piece
 as a VI of its own, load it over COM and report the pieces that are broken.
 
-    bisect_vi.py <export.xml> [--out DIR]
+    bisect_vi.py <export.xml> [--out DIR] [--near ORIGINAL.vi]
+
+--near resolves the pieces' calls beside the original VI, as coverage.py composes it.
 """
 import os
 import sys
@@ -32,6 +34,7 @@ def nets_of(el):
 def main(argv):
     src = argv[0]
     out = argv[argv.index("--out") + 1] if "--out" in argv else r"C:\temp\aixml-no-grpc\bisect"
+    near = argv[argv.index("--near") + 1] if "--near" in argv else None
     os.makedirs(out, exist_ok=True)
     root = ET.parse(src).getroot()
     units = [e for e in root if isinstance(e.tag, str) and e.tag != "FreeLabel"]
@@ -59,7 +62,13 @@ def main(argv):
         x = os.path.join(out, "bisect_%s_%d.xml" % (stamp, k))
         ET.ElementTree(vi_el).write(x, encoding="utf-8")
         vi = x[:-4] + ".vi"
-        code, log = selftest.compose(x, vi)
+        if near:
+            import subprocess
+            r = subprocess.run([selftest.PY, os.path.join(HERE, "aixml2vi.py"), x, vi, "--search", os.path.dirname(near)],
+                               capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            code, log = r.returncode, (r.stdout + r.stderr).strip()
+        else:
+            code, log = selftest.compose(x, vi)
         names = ", ".join(sorted({(m.get("_name") or m.get("target") or m.tag)[:30] for m in members}))[:150]
         if code != 0:
             print("piece %d  REFUSED  %s  [%s]" % (k, log.splitlines()[-1][:120] if log else "", names))
