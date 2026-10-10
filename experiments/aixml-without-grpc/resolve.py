@@ -176,7 +176,13 @@ class Resolver:
         for d in caller_dirs:
             p = os.path.join(d, target)
             if os.path.exists(p):
-                return {"path": p, "qual": [target], "path_ref": ("1", ["", target]),
+                # a sibling of the caller FILE is linked as ("", name); one found in another
+                # search folder needs a real relative path, or LabVIEW looks beside the caller
+                # and the VI is broken (a static reference to NI's "Test - Selection List
+                # Target.vi", composed into another folder)
+                same = caller_file and os.path.normcase(os.path.dirname(os.path.abspath(caller_file))) == os.path.normcase(os.path.abspath(d))
+                ref = ("1", ["", target]) if same or not caller_file else ("1", relative_ref(caller_file, p))
+                return {"path": p, "qual": [target], "path_ref": ref,
                         "lib_ref": None, "kind": "sibling"}
         self._index()
         hits = self._files.get(target.lower(), [])
