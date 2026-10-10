@@ -5,10 +5,11 @@
 The Actor Framework itself (messages, libraries, the scope rules) is in `labview-actor-framework.md`.
 
 **Status, 2026-10-10:** the routes these tools automate were measured by hand with helper VIs on a
-pilot project and on throwaway actors (dates are given per row). The tools and their new helpers are
-**not yet run in LabVIEW**. They are linted offline (`scripts/aixml_lint.py`, `AixmlCheck`) and unit
-tested without LabVIEW. Treat every answer as unverified until the measurement list in §7 has been
-run.
+pilot project and on throwaway actors (dates are given per row). **The tools were then run in
+LabVIEW 2026 Q3 (32-bit) on 2026-10-10**, on two throwaway actors (one in no library, one in a
+`.lvlib`) and a plain child class; §7 says per item what passed. Two things did not: the unsaved-edit
+check reads 0 for edits made by scripting (§4), and a `vi`-only re-run of `lvai_add_class_method`
+dropped a member (now refused, §5).
 
 "The kit" below means the hand-run helper VIs of a companion LabVIEW skill whose measured routes
 these tools automate; its shape letters (A, B, B-after, C, D) are kept so the two can be compared.
@@ -65,7 +66,10 @@ Checked from the files before LabVIEW, each with a named error:
   says to read `lvai_vi_terminals`.
 
 Measured: the helper route on `Message.lvclass:Do.vi` (2026-09-17, `labview-actor-framework.md`
-§4) and on four AF overrides of a throwaway actor (2026-10-09). The tool: **unmeasured**.
+§4) and on four AF overrides of a throwaway actor (2026-10-09). The tool, 2026-10-10: all five
+lifecycle overrides on an actor in no library and on one in a `.lvlib` (library-qualified name),
+and one plain override of a protected parent method (scope kept). Every answer `ok`, every override
+state 1 cold. `overrideAlreadyExists` answered in 0.1 s with no LabVIEW call.
 
 ## 3. `lvai_af_add_hook`
 
@@ -90,6 +94,13 @@ Inputs:
   do not.
 - Not built here: the flat-sequence stop hook after Actor Core's Call Parent (kit shape D) and its
   `close` join (D-close).
+- **The tool, measured 2026-10-10:** `branch` on Actor Core (the hook ran while the actor ran);
+  `series` on Actor Core with error (export: panel -> hook -> Call Parent on both wires);
+  `branchFromNode` off that series hook (`sourceHookMatched` names the qualified node; the branch
+  logged 1 ms after the series body); `seriesAfter` on Pre Launch Init with error (the hook's error
+  5000 came out of Launch, Actor Core never ran), on Stop Core (class only) and on Handle Error (class
+  and `error out`): at a Normal Stop the Handle Error hook logged code 0 (the parent had cleared 43)
+  and the Stop Core hook ran 7 ms later. Every override state 1 cold.
 
 ### 3b. Panes built in
 
@@ -99,7 +110,7 @@ Inputs:
 | Actor Core | `error in` 8, `<C> in` 11 | `Actor out` 3, `error out` 0 | measured; `Actor out` is typed Actor |
 | Stop Core | `<C> in` 11, `final error code` 10 | `<C> out` 3 | measured; no error terminals |
 | Handle Error | `error in (no error)` 8, `<C> in` 11 | `<C> out` 3, `error out` 0, `stop actor?` 2 | measured |
-| Handle Last Ack Core | `error in (no error)` 4, `Last Ack` 6, `<C> in` 7 | `<C> out` 3, `error out` 0 | **unmeasured**, read offline from production code |
+| Handle Last Ack Core | `error in (no error)` 4, `Last Ack` 6, `<C> in` 7 | `<C> out` 3, `error out` 0 | measured 2026-10-10 (`lvai_connector_pane`, pattern 4812); no hook shape on it is measured |
 
 A plain override is assumed to have `<C> in`, `error in`, `<C> out` and `error out`. The panel
 read-back confirms this or refuses it.
@@ -116,7 +127,7 @@ Everything below is decided before the diagram is touched. The refusals:
 | `wireIsBranched` / `panelTerminalNotWired` | A series insert deletes the whole net at the panel terminal and reconnects one far end. So the net must be exactly one plain wire: place series hooks first, then branches. |
 | `hookTerminalMissing`, `hookTerminalWrongDirection`, `overrideTerminalMissing`, `noErrorTerminal` | a name or a direction that does not fit |
 | `sourceHookNotFound` / `sourceHookAmbiguous`, `hookAlreadyPlaced` | a re-run would place the hook twice |
-| `overrideHasUnsavedEdits` | the override already carries edits this call did not make; the save would write them |
+| `overrideHasUnsavedEdits` | the override already carries edits this call did not make; the save would write them. **Blind to scripted edits, measured** (§4) |
 | `overrideNotAMember`, `noActiveProject`, `projectDidNotBecomeActive` | the override or the project is not ready |
 
 The warnings:
@@ -124,15 +135,18 @@ The warnings:
 - A Pre Launch Init hook whose error cannot fail the launch.
 - An Actor Core series hook with an error wire: the error skips Handle Error and the actor ends
   silently; Launch reports 0 and the next `Send` gets 1556 (measured).
-- The unmeasured combinations: `seriesAfter` on Stop Core, Handle Error and Handle Last Ack Core.
+- The unmeasured combination: any shape on Handle Last Ack Core.
 
 ### 3d. Route
 
 1. Read the hook's terminals and their `connection` from its AIXML export.
 2. Run `scripts/lvai_af_hook_read.xml`, which is read-only. It lists:
-   - the panel terminal names, and per terminal the number of ends on its wire;
+   - the panel terminal names, and per terminal the number of ends on its wire (`panelWireEnds`);
    - the top-level subVI names;
-   - the node classes (does a `CallParentNode` show?).
+   - the node classes. Measured 2026-10-10: Call Parent shows as `CallParentNode` (`callParentSeen`
+     true), **and** it is also in `SubVIs[]` under the PARENT's VI Name
+     (`Actor Framework.lvlib:Actor.lvclass:Actor Core.vi`). Hook, source and remove matching leave
+     that node out, so a hook name such as "Actor Core" cannot select Call Parent.
 3. Plan by name in C# (`Infra/AfOverrides.cs`) and check the plan. `dryRun` stops here and returns
    the plan.
 4. Refuse an override that already has unsaved edits (`overrideHasUnsavedEdits`,
@@ -184,6 +198,18 @@ sibling override of the same class then read state 0, "error of type 1000088". R
 the edited VI cleared both (measured, pilot project). `resaveSiblings: false` leaves even those
 siblings unsaved.
 
+**Measured 2026-10-10.** The remove itself works: a branch hook on Actor Core removed with `matches:
+1`, `execStateAfter: 1`, the override and all four siblings state 1 cold (the 1000088 loose end did
+not occur on this actor); two nodes of one name gave `hookNodeAmbiguous`, `occurrence: 1` removed
+one. **The unsaved-edit check does not work for scripted edits:** the FP and BD Mods Bitsets read 0
+after a moved panel control, a moved diagram node and a new node dropped by `New VI Object`, inside an
+undo transaction too, on a class member reached through the project's instance (`{LV.Diagram}
+Modified` read TRUE on a clean VI as well, so it is no signal either). A sibling carrying such an
+edit was NOT refused, and because the sibling re-save reads the same bits, every sibling was
+`skippedUnmodified`. Whether an edit made by hand in the IDE sets the bits is unmeasured (it needs
+a person). Until it is, treat `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` as unproven and
+check for unsaved work yourself before a remove.
+
 A **series** hook cannot be removed this way: the wire through it goes with it. Restore the bare
 override from version control (project closed) and re-hook every shape in order (B, C, A).
 
@@ -220,20 +246,31 @@ The edit (`Infra/ClassMemberPlacement.cs`):
 - is text, byte-preserving;
 - abandons the file on any shape it does not know;
 - puts back **both** scope lines. LabVIEW's next save resets a MethodScope changed alone; that
-  route is measured by hand.
-- moves the block into its folder. **Unmeasured.**
+  route is measured by hand, and on this tool 2026-10-10: a protected member came back protected,
+  kept both lines through LabVIEW's next save, state 1 cold.
+- moves the block into its folder. **Unmeasured** (no clean way to put an AIXML member into a class
+  folder for the test).
+
+**Measured 2026-10-10:** `memberHasLoadedCallers` refused a re-run over an override's series hook
+before anything changed, naming the override (class file and VIs byte-identical); after the hook was
+swapped onto a same-pane member the re-run went through, and the hook was swapped back.
+
+**A re-run needs the member's AIXML.** A `vi`-only re-run over a listed wizard accessor dropped the
+entry, the re-add of the unchanged file answered `AddItemFromMemory` 1004, and the class was saved
+WITHOUT the member (measured 2026-10-10). Such a call is now refused before anything changes:
+`rerunNeedsAixml`.
 
 ## 6. Helpers
 
 | script | does | saves | state |
 |---|---|---|---|
 | `lvai_create_override.xml` | NI's `CLSUIP_CreateOverride`, then saves VI and class | yes | measured 2026-09-17 / 2026-10-09 |
-| `lvai_af_hook_read.xml` | lists panel terminals with wire ends, subVI names, node classes | no | unmeasured |
-| `lvai_af_add_hook.xml` | places one hook; series cut, branch tap, node pairs | no | unmeasured; its calls are the kit's measured ones |
-| `lvai_af_remove_hook.xml` | deletes one hook node, Remove Bad Wires | no | unmeasured |
-| `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | unmeasured; the bitset read is `lvdqmh_dirty_members`' |
-| `lvai_af_save_members.xml` | saves listed VIs (optionally only modified ones), then the class | yes | unmeasured as a list; single VI measured |
-| `lvai_member_callers.xml` | loaded members and their callers | no | unmeasured |
+| `lvai_af_hook_read.xml` | lists panel terminals with wire ends, subVI names, node classes | no | measured 2026-10-10 |
+| `lvai_af_add_hook.xml` | places one hook; series cut, branch tap, node pairs | no | measured 2026-10-10, all four shapes |
+| `lvai_af_remove_hook.xml` | deletes one hook node, Remove Bad Wires | no | measured 2026-10-10 |
+| `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | runs; **reads 0 for scripted edits** (2026-10-10), IDE edits unmeasured |
+| `lvai_af_save_members.xml` | saves listed VIs (optionally only modified ones), then the class | yes | measured as a list 2026-10-10; `Only If Modified` skips everything (same bits) |
+| `lvai_member_callers.xml` | loaded members and their callers | no | measured 2026-10-10 |
 
 All of them are generated under a throwaway name and run through the typed run helper, as
 `lvai_dqmh_place_handler`'s helpers are.
@@ -269,3 +306,16 @@ project closed.
    - over a hook an override calls: expect `memberHasLoadedCallers` and an unchanged class file;
    - over a protected member in a folder: expect scope and folder back, `lvai_describe_class`,
      state 1 cold.
+
+**Results, 2026-10-10** (LabVIEW 2026 Q3 32-bit, throwaway actors and project):
+
+| item | result |
+|---|---|
+| 1 `lvai_create_override` | pass: 5 + 5 lifecycle overrides (no library / `.lvlib`), one plain override (protected kept), `overrideAlreadyExists`; all state 1 cold |
+| 2 `branch`, `series`, `branchFromNode`, `seriesAfter` (PLI, Stop Core, Handle Error), `dryRun` | pass; runs logged the hooks in AF order, PLI's 5000 reached Launch |
+| 2 refusals `hookInputUnfed`, `wireIsBranched`, `handleErrorHookBeforeCallParent` | pass, nothing changed (file times identical) |
+| 2 `CallParentNode` in Node Classes | yes; Call Parent is also in `SubVIs[]` (§3d) |
+| 3 remove a branch hook; `hookNodeAmbiguous` | pass; override and siblings state 1 cold |
+| 3 `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` | **fail** for scripted edits (bits read 0, §4); IDE edits unmeasured |
+| 4 re-run over a hooked member | pass: `memberHasLoadedCallers`, class unchanged; re-run after unhooking ok |
+| 4 re-run over a protected member in a folder | scope: pass; folder: unmeasured; `vi`-only re-run: failed, now refused (`rerunNeedsAixml`) |
