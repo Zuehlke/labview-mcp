@@ -56,6 +56,7 @@ so an assistant gets the same text you do.
 | [`typedef-constants.md`](typedef-constants.md) and [`typedef-disconnect.md`](typedef-disconnect.md) | coercion dots, and the typedef whose loss nothing in the chain reports |
 | [`connector-pane-repair.md`](connector-pane-repair.md) | fixing a pane without regenerating, and the capability that got removed instead of shipped |
 | [`diagram-comments.md`](diagram-comments.md) | putting a comment where you meant it to go |
+| [`class-icons.md`](class-icons.md) | class and library icons, the template layer, and reading icons back without trusting a code 0 |
 | [`control-reference-binding.md`](control-reference-binding.md) | why a generated diagram cannot hold a bound control reference |
 | [`pylabview-controls.md`](pylabview-controls.md) and [`pylabview-comments.md`](pylabview-comments.md) | the no-LabVIEW route into `.ctl` files and labels |
 | [`bulk-operations.md`](bulk-operations.md) | one call instead of six |

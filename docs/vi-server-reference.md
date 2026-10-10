@@ -265,6 +265,9 @@ in `CLAUDE.md` warns about in general terms — here is a concrete instance of i
 
 ## Writing back: setting a VI's icon
 
+*A class or library icon, pushing it onto the members as a template layer, and the read-back that
+checks icons by pixel: [`class-icons.md`](class-icons.md).*
+
 **Set the icon LAST. Regenerating the VI destroys it.** `ConvertAIXMLToVI` over an existing path
 leaves LabVIEW's default icon behind — measured twice, on two different VIs, by reading the icon
 back out with `Save VI Icon to File` and looking at it. So in any generate-edit-regenerate loop the

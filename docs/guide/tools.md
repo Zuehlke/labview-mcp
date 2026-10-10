@@ -6,12 +6,12 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**108 tools over 23 RPCs.** Sixty-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**110 tools over 23 RPCs.** Seventy-one map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams`, `lvai_layout_diagram` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
 tools. 38 carry `readOnlyHint`,
-66 carry `destructiveHint`, so a client can gate the writes.
+67 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
 `labview://aixml-reference`, `labview://dqmh-patterns`, `labview://lvproj-structure`,
@@ -65,7 +65,9 @@ reaches a running LabVIEW over its ActiveX server where a question needs one.
 | `lvai_convert_aixml_to_vi` | `ConvertAIXMLToVI` | **creates/overwrites a `.vi`** |
 | `lvai_apply_aixml_to_vi` | `ApplyAIXMLToVI` | **CLOSED** — refuses unless `userAskedForThisByName`. It has never patched a VI from a third-party client, and since 2026-09-16 it says so with a silent `errorCode 0` instead of `Error 42`. Edit by regenerating |
 | `lvai_run_vi_as_top_level` | `RunVIAsTopLevel` | **executes code** (hardware, files, …) |
-| `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place |
+| `lvai_set_vi_icon` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **replaces a `.vi`'s icon** and saves it in place. It flattens the icon's layers; `keepOwnLayer` re-applies only the class or library template instead and keeps the VI's own layer (unmeasured as a whole). [Class and library icons](../class-icons.md) |
+| `lvai_set_owner_icon` | — (same composition, project closed) | **sets a `.lvclass` or plain `.lvlib` icon** from a 32x32 PNG and saves the owner; with `applyToMembers` lays it onto member VIs as their template layer (`ApplyIconToVIs`) and **saves each member**, codes per member. Verified by reading the owner and every member back. [Class and library icons](../class-icons.md) |
+| `lvai_read_icons` | — (same composition, project closed) | **writes PNGs only**: VI, class and library icons read back in one call, folders created and MAX_PATH checked first (LabVIEW writes nothing there and answers 0), each PNG checked on disk; with `expectedDir`, a pixel compare per icon. Changes no LabVIEW file. [Class and library icons](../class-icons.md) |
 | `lvai_render_diagrams` | — (same composition) | **renders block diagrams to PNG**, several VIs in one call, and reports the images per VI - top-level diagram first, then one per Case frame. Creates the image directory, which LabVIEW does not (`Error 118`). The only check that sees a clipped or occluded diagram comment; measured saving about 100 s of a 1000 s run against driving the print helper by hand |
 | `lvai_layout_diagram` | — (two composed helpers, `lvbd_layout_dump.xml` and `lvbd_layout_apply.xml`, run over ActiveX or gRPC) | **rearranges a VI's whole block diagram and saves it in place** - our replacement for LabVIEW's Clean Up Diagram, for a large existing VI as much as a generated one. A helper reads every diagram's geometry over VI Server, a C# engine plans the layout with no LabVIEW, a second helper moves objects, sizes structures by `Frame Size`, levels tunnels and shift registers and runs `CleanUpWire` on every wire. Columns follow data flow, the error chain runs as one straight rail along the bottom, controls start the top level and indicators end it, a constant hangs on its consumer and a comment moves with its anchor. Structures of a kind not yet measured (sequences, timed loops) move as a whole and are named. Measured on a DQMH Main.vi: NI's clean-up spread it to 3805 x 1692 px, the Delacor original was 1344 x 805. Keeps a backup, strips compiled code, `dryRun` plans only, `verify` re-dumps and compares, `render` draws the result. Since 2026-10-16 the same pipeline is the `cleanUpDiagram` step of every VI the server writes. [Block diagram layout](../diagram-layout.md) |
 | `lvai_close_vi` | — (same composition) | closes a VI in the IDE, **releasing it from memory** |
