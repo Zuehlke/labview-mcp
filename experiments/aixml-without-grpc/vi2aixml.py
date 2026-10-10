@@ -573,6 +573,8 @@ class Reader:
         if dd is None:
             # NI's exports write nothing for a type with no literal: 261 refnums, 34 waveforms,
             # 30 dynamic data, 27 timestamps, 9 variants, 7 pictures in the cache, all value=""
+            if tree.get("Type") == "Array":
+                return "[]"         # NI's exports: 356 array value=[] in the cache
             return {"Boolean": "false"}.get(tree.get("Type"), "" if tree.get("Type") in (
                 "String", "Path", "Refnum", "Picture", "MeasureData", "LVVariant", "Tag") else "0")
         # pylabview renders DefaultData as MacRoman text with &#x..; escapes for unprintables
@@ -941,9 +943,28 @@ class Reader:
             if o is not None:
                 self.term_owner[o.get("uid")] = (right, "value", False)
             rights.append(right)
+        # plain tunnels: one <Tunnel> with both sides, uid = the outer terminal (NI's export)
+        srn = next((n for n in self.node_defs(diag) if n.get("class") == "sRN"), None) if diag is not None else None
+        inner_terms = {}
+        for t in (srn.find("termList") if srn is not None else []):
+            if t.find("dco") is not None:
+                inner_terms.setdefault(t.find("dco").get("uid"), []).append(t)
+        tunnels, n_in, n_out = [], 0, 0
+        for term in (node.find("termList") if node.find("termList") is not None else []):
+            dd = term.find("dco")
+            if dd is None or dd.get("class") != "decomposeRecomposeTunnel":
+                continue
+            out = int(dd.findtext("objFlags") or 0) & 1
+            n_out, n_in = n_out + out, n_in + (1 - out)
+            tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
+                                        "uid": term.get("uid"), "uid_parent": node.get("uid")})
+            self.term_owner[term.get("uid")] = (tun, "value", not out)
+            for t in inner_terms.get(dd.get("uid"), []):
+                self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+            tunnels.append(tun)
         if diag is not None:
             self.walk(diag, node.get("uid"), el)
-        for r in rights:
+        for r in rights + tunnels:
             el.append(r)
         return el
 
@@ -1255,6 +1276,9 @@ class Reader:
         el = self._node_el(node, parent_uid, "Static VI Reference")
         recs = self.call_targets.get(node.get("uid"), {})
         el.set("target", recs.get("SVVI") or next(iter(recs.values()), "?"))
+        if int(node.findtext("objFlags") or 0) & 0x10000000:
+            # strictly typed: the refnum carries the callee's pane (NI exports strict="true")
+            el.set("strict", "true")
         for t in node.find("termList"):
             self.term_owner[t.get("uid")] = (el, "value", False)
         return el

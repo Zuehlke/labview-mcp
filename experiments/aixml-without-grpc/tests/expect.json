@@ -1002,5 +1002,45 @@
     }
    }
   ]
+ },
+ "t103_strict_static_ref": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "static name": "Clear Errors.vi",
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t104_subarray": {
+  "cases": [
+   {
+    "inputs": "v=[1,2,3,4,5,6]",
+    "outputs": {
+     "t": "[1,4,2,5,3,6]",
+     "r": "[6,5,4,3,2,1]"
+    }
+   }
+  ]
+ },
+ "t105_inplace_tunnels": {
+  "cases": [
+   {
+    "inputs": "x=2.5;k=4",
+    "outputs": {
+     "x out": 10,
+     "product": 10
+    }
+   },
+   {
+    "inputs": "x=-3;k=0.5",
+    "outputs": {
+     "x out": -1.5,
+     "product": -1.5
+    }
+   }
+  ]
  }
 }

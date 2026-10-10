@@ -1,0 +1,12 @@
+<VI _name="T104 Sub Array.vi" description="Reshape a 1D array into 2 x 3, transpose it and reshape it back - Transpose 2D Array and Reverse 1D Array return LabVIEW sub-arrays on their wires.">
+  <Control _name="v" outputs="value:4200.value" type="array{double}" uid="4200" uid_parent="root" value="[]"/>
+  <Constant _name="rows" outputs="value:4201.value" type="int32" uid="4201" uid_parent="root" value="2"/>
+  <Constant _name="cols" outputs="value:4202.value" type="int32" uid="4202" uid_parent="root" value="3"/>
+  <Constant _name="all" outputs="value:4203.value" type="int32" uid="4203" uid_parent="root" value="6"/>
+  <Node _name="Reshape Array" inputs="array:4200.value,dimension size:4201.value,dimension size:4202.value" outputs="output array:4210.output array" uid="4210" uid_parent="root"/>
+  <Node _name="Transpose 2D Array" inputs="2D array:4210.output array" outputs="transposed array:4220.transposed array" uid="4220" uid_parent="root"/>
+  <Node _name="Reshape Array" inputs="array:4220.transposed array,dimension size:4203.value" outputs="output array:4230.output array" uid="4230" uid_parent="root"/>
+  <Indicator _name="t" inputs="value:4230.output array" type="array{double}" uid="4240" uid_parent="root" value="[]"/>
+  <Node _name="Reverse 1D Array" inputs="array:4200.value" outputs="reversed array:4310.reversed array" uid="4310" uid_parent="root"/>
+  <Indicator _name="r" inputs="value:4310.reversed array" type="array{double}" uid="4320" uid_parent="root" value="[]"/>
+</VI>

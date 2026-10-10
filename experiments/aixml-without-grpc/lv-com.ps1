@@ -32,6 +32,16 @@ function Call-M($o, $n, [object[]]$a) {
 # An array or a cluster comes back over COM as a SAFEARRAY of variants; print it as AIXML writes
 # a literal, [a,b,[c,d]], so a test can compare it as text.
 function Format-V($v) {
+    if ($v -is [Array] -and $v.Rank -eq 2) {
+        # a 2D array arrives as ONE rectangular array; enumerating it would flatten the rows
+        $rows = @()
+        for ($i = 0; $i -lt $v.GetLength(0); $i++) {
+            $cols = @()
+            for ($j = 0; $j -lt $v.GetLength(1); $j++) { $cols += (Format-V $v[$i, $j]) }
+            $rows += ('[' + ($cols -join ',') + ']')
+        }
+        return '[' + ($rows -join ',') + ']'
+    }
     if ($v -is [Array]) { return '[' + (($v | ForEach-Object { Format-V $_ }) -join ',') + ']' }
     if ($v -is [double]) { return $v.ToString('R', [Globalization.CultureInfo]::InvariantCulture) }
     return [string]$v
@@ -63,6 +73,17 @@ foreach ($p in $ViPath) {
                     if ($_ -eq 'true') { $true } elseif ($_ -eq 'false') { $false }
                     elseif ([double]::TryParse($_, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$x)) { $x }
                     else { [string]$_ } })
+            }
+            elseif ($v.StartsWith('[[') -and $v.EndsWith(']]')) {
+                # a 2D numeric array, [[1,2,3],[4,5,6]]: COM wants a rectangular double[,]
+                $rowsTxt = @($v.Substring(2, $v.Length - 4) -split '\],\[')
+                $nr = $rowsTxt.Count
+                $nc = @($rowsTxt[0].Split(',') | Where-Object { $_ -ne '' }).Count
+                $val = New-Object 'double[,]' $nr, $nc
+                for ($i = 0; $i -lt $nr; $i++) {
+                    $cells = @($rowsTxt[$i].Split(',') | Where-Object { $_ -ne '' })
+                    for ($j = 0; $j -lt $nc; $j++) { $val[$i, $j] = [double]::Parse($cells[$j], [Globalization.CultureInfo]::InvariantCulture) }
+                }
             }
             elseif ($v.StartsWith('[') -and $v.EndsWith(']')) {
                 # a 1D numeric array, [1.5,2,3]; [] is the empty one

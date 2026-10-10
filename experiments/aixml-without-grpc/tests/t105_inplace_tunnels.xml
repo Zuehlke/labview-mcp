@@ -1,0 +1,13 @@
+<VI _name="T105 In Place Tunnels.vi" description="An In Place Element Structure with one in/out pair and two plain tunnels: x is scaled in place by k, which comes in through a tunnel; x times k also leaves through a tunnel.">
+  <Control _name="x" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="k" outputs="value:4210.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Structure _name="In Place Element Structure" uid="4300" uid_parent="root">
+    <Node _name="In Place In / Out Element" inputs="value:4200.value" outputs="value:4310.value" uid="4310" uid_parent="4300"/>
+    <Tunnel _id="In1" inputs="value:4210.value" outputs="value:4305.value" uid="4305" uid_parent="4300"/>
+    <Node _name="Multiply" inputs="x:4310.value,y:4305.value" outputs="x*y:4320.x*y" uid="4320" uid_parent="4300"/>
+    <Node _id="4310" _name="In Place In / Out Element" inputs="value:4320.x*y" outputs="value:4330.value" uid="4330" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4320.x*y" outputs="value:4340.value" uid="4340" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="x out" inputs="value:4330.value" type="double" uid="4400" uid_parent="root" value="0"/>
+  <Indicator _name="product" inputs="value:4340.value" type="double" uid="4410" uid_parent="root" value="0"/>
+</VI>

@@ -313,7 +313,9 @@ WIRE_SAFE = {"Boolean", "String", "Path", "LVVariant", "Void", "NumInt8", "NumIn
              "UnitFloat64", "UnitFloat32", "UnitInt32", "UnitInt16",
              # t99, 2026-10-10: DAQmx terminal / physical channel / old DAQ channel tags and a
              # picture wired control -> indicator, no insanity, values through
-             "Tag", "Picture"}
+             "Tag", "Picture",
+             # t104: Transpose 2D Array's sub-array between two Reshape Arrays, values through
+             "SubArray"}
 
 
 def unverified_wire_type(tree):
@@ -335,6 +337,9 @@ def unverified_wire_type(tree):
     if t == "Refnum":
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag"):
             return "Refnum." + (tree.get("RefType") or "?")
+        if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
+            # a strictly typed VI reference: its pane is the callee's own (t103)
+            return None if os.environ.get("AIXML2VI_STRICT_VI_REF_OK", "1") == "1" else "Refnum.StrictVI"
         for f in fields(tree):
             bad = unverified_wire_type(f)
             if bad:
@@ -2674,8 +2679,9 @@ class Composer:
         """Static VI Reference: a statVIRef node (label = the VI's name, connectorTM = its pane,
         one VI-refnum output) and a link pair - BSVR in the VI's block typed with the VI refnum,
         SVVI in the diagram's naming the node by uid - as LabVIEW wrote them for Clear Errors.vi."""
-        self.check_attrs(el, ("target",))
+        self.check_attrs(el, ("target", "strict"))
         target = unescape(el.get("target") or "")
+        strict = (el.get("strict") or "").lower() == "true"
         if self.resolver is None:
             self.resolver = resolve.Resolver()
         res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
@@ -2690,6 +2696,16 @@ class Composer:
             raise Unsupported("Static VI Reference %s: no statVIRef part harvested" % el.get("uid"))
         node, _, src = got
         vi_ref = refnum_type("LV.VI", plain_class=True)
+        if strict:
+            # a STRICTLY TYPED reference: the VI refnum holds the callee's connector pane - the
+            # same Function type as connectorTM - and the node carries 0x10000000 (NI's
+            # ODE-PredatorPrey.vi: objFlags 268435968 against 512)
+            vi_ref.append(copy.deepcopy(pane))
+            f = node.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                node.insert(0, f)
+            f.text = str(int(f.text or 0) | 0x10000000)
         t = node.find("termList/SL__arrayElement")
         t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(vi_ref)
         node.find("connectorTM").text = "TypeID(%d)" % self.heap_tid(pane)
@@ -3478,6 +3494,47 @@ class Composer:
         self.inplaces.append({"node": node, "diag": d, "parent": parent, "proto": proto, "pairs": []})
         self.report.append("Structure 'In Place Element Structure' <- %s" % src)
 
+    def add_inplace_tunnel(self, el, st_el):
+        """A plain tunnel on an In Place Element Structure: ONE AIXML <Tunnel> with both sides,
+        as on a flat sequence frame. In the heap a decomposeRecomposeTunnel DCO (2048 in, 2049
+        out, termList [inner, outer]) in the structure's termList and
+        tunnelList, its inner terminal in the diagram's sRN. Flags as LabVIEW wrote them in
+        NI's Buffered Stream to Tab-Delimited Text File.vi: outer 0x8040 / inner 0x20000 going
+        in, outer 0x40 / inner 0x28000 going out."""
+        d = "in" if el.get("_id", "").startswith("In") else "out"
+        ip = next((x for x in getattr(self, "inplaces", []) if x["diag"].owner is st_el), None)
+        if ip is None:
+            raise Unsupported("Tunnel %s: no In Place Element Structure %s" % (el.get("uid"), st_el.get("uid")))
+        node, inner, parent = ip["node"], ip["diag"], ip["parent"]
+        src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
+        tree = self.net_type.get(src_net)
+        if tree is None:
+            raise Unsupported("Tunnel %s: the type of %r is not known" % (el.get("uid"), src_net))
+        dco_uid, in_uid = self.alloc(), self.alloc()
+        out_uid = self.claim(el.get("uid"))
+        outer = ET.Element("SL__arrayElement", {"class": "term", "uid": str(out_uid)})
+        ET.SubElement(outer, "objFlags").text = str(0x8040 if d == "in" else 0x40)
+        dco = ET.SubElement(outer, "dco", {"class": "decomposeRecomposeTunnel", "uid": str(dco_uid)})
+        ET.SubElement(dco, "objFlags").text = "2048" if d == "in" else "2049"
+        tl = ET.SubElement(dco, "termList", {"elements": "2"})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(in_uid)})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(out_uid)})
+        ET.SubElement(dco, "typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)   # labelled, as LabVIEW types it
+        ET.SubElement(dco, "termBounds").text = lvheap.fmt_bounds((20, 0, 29, 9))
+        node.find("termList").append(outer)
+        ET.SubElement(node.find("tunnelList"), "SL__arrayElement", {"uid": str(dco_uid)})
+        it = ET.SubElement(inner.srn_terms, "SL__arrayElement", {"class": "term", "uid": str(in_uid)})
+        ET.SubElement(it, "objFlags").text = str(0x20000 if d == "in" else 0x28000)
+        ET.SubElement(it, "dco", {"uid": str(dco_uid)})
+        ip.setdefault("tunnels", []).append((dco, d))
+        for _, net in pairs(el.get("outputs")):
+            if net:
+                self.net_type[net] = tree
+        outer_end, inner_end = (str(out_uid), parent), (str(in_uid), inner)
+        self.ends[(el.get("uid"), "in")] = outer_end if d == "in" else inner_end
+        self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
+        self.report.append("In Place tunnel %s (%s)" % (el.get("_id"), d))
+
     def _claim_into(self, obj, aixml_uid, *refs):
         """Give a heap object the AIXML uid (claim() falls back to a fresh one when it is
         taken or reserved) and point the bare references to it at the new number."""
@@ -3513,7 +3570,7 @@ class Composer:
             tid = self.heap_tid(unlabel(tree))
             lvheap.set_typeids(left, [tid] * len(lvheap.typeid_elements(left)))
             lvheap.set_typeids(right, [tid] * len(lvheap.typeid_elements(right)))
-            # match nodes sit right behind the sRN, before every ordinary node (firstNodeIdx)
+            # match nodes sit right behind the sRN, before every ordinary node, as LabVIEW lists them
             k = 1 + 2 * len(ip["pairs"])
             d.nodes.insert(k, left)
             d.nodes.insert(k + 1, right)
@@ -3936,7 +3993,8 @@ class Composer:
             sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
         for ip in reversed(getattr(self, "inplaces", [])):
             w, h = self._place(ip["diag"], lv, sizes, 30, 30)
-            n = max(1, len(ip["pairs"]))
+            n_t = {d_: sum(1 for _, x in ip.get("tunnels", []) if x == d_) for d_ in ("in", "out")}
+            n = max(1, len(ip["pairs"]) + max(n_t.values()))
             sizes[ip["node"].get("uid")] = (max(h + 40, 23 + 24 * n + 20, 90), max(w + 40, 100))
         frame_dims = {}       # (an Element takes no Python attributes)
         for seq, frames, parent in reversed(getattr(self, "seqs", [])):
@@ -4003,9 +4061,17 @@ class Composer:
                 y = 23 + 24 * k
                 left.find("bounds").text = lvheap.fmt_bounds((y, 0, y + 12, 16))
                 right.find("bounds").text = lvheap.fmt_bounds((y, r - l - 16, y + 12, r - l))
-            fni = d.el.find("firstNodeIdx")
-            if fni is not None:
-                fni.text = str(1 + 2 * len(ip["pairs"]))
+            # tunnels below the pairs: inputs down the left border, outputs down the right
+            slot = {"in": len(ip["pairs"]), "out": len(ip["pairs"])}
+            for tdco, d_ in ip.get("tunnels", []):
+                y = 23 + 24 * slot[d_]
+                slot[d_] += 1
+                x = 0 if d_ == "in" else r - l - 9
+                tdco.find("termBounds").text = lvheap.fmt_bounds((y, x, y + 9, x + 9))
+            # firstNodeIdx is NOT an index into the node list: LabVIEW wrote 3 for an In Place
+            # structure with no pairs and two tunnels, 42 and 69 in NI's examples; written as
+            # 1 + 2 x pairs it was 1 there and the VI went "good to bad after compiling". The
+            # part's value (3, from an AIXML-generated VI) is kept.
             node.find("termList").set("elements", str(len(node.find("termList"))))
             mspf = node.find("multiSegPipeFlange2Size")
             mspf.set("elements", str(len(mspf)))
@@ -4279,6 +4345,8 @@ class Composer:
                 elif e.tag == "Tunnel" and is_case(e.get("uid_parent")):
                     self.add_case_tunnel(e, by_uid[e.get("uid_parent")],
                                          case_halves.get((e.get("uid_parent"), e.get("_id")), {}))
+                elif e.tag == "Tunnel" and by_uid[e.get("uid_parent")].get("_name") == "In Place Element Structure":
+                    self.add_inplace_tunnel(e, by_uid[e.get("uid_parent")])
                 elif e.tag == "Tunnel":
                     self.add_tunnel(e, by_uid[e.get("uid_parent")])
                 else:
@@ -4321,6 +4389,11 @@ class Composer:
             grown.append(seq.find("sequenceList"))
             for fr, _, _ in frames:
                 grown += [fr.find("termList"), fr.find("tunnelList")]
+        # an In Place structure's tunnelList left at the part's 0 dropped both tunnels from the
+        # file and broke the VI (t105) - pylabview writes as many entries as the count says
+        for ip in getattr(self, "inplaces", []):
+            n = ip["node"]
+            grown += [n.find("termList"), n.find("tunnelList"), n.find("multiSegPipeFlange2Size")]
         for lst in grown:
             lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))
