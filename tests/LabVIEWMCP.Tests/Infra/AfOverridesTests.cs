@@ -72,10 +72,11 @@ public sealed class AfOverridesTests
     }
 
     [Fact]
-    public void Handle_Last_Ack_Core_is_marked_unmeasured()
+    public void Handle_Last_Ack_Core_pane_is_measured()
     {
         var pane = PaneFor("Handle Last Ack Core", "Counter")!;
-        Assert.False(pane.Measured);
+        Assert.True(pane.Measured);
+        Assert.Contains(pane.Terminals, t => t is { Name: "Counter in", ConIdx: 7 });
         Assert.Contains(pane.Terminals, t => t.Name == "Last Ack");
     }
 
@@ -150,12 +151,12 @@ public sealed class AfOverridesTests
     }
 
     [Fact]
-    public void Series_after_on_Stop_Core_is_class_only_and_flagged_unmeasured()
+    public void Series_after_on_Stop_Core_is_class_only_and_warns_about_its_error()
     {
         var plan = Plan(Req(Shape.SeriesAfter, "Stop Core"));
         Assert.Empty(plan.Problems);
         Assert.Single(plan.Series);
-        Assert.Contains(plan.Warnings, w => w.Contains("UNMEASURED"));
+        Assert.Contains(plan.Warnings, w => w.Contains("no error terminals"));
     }
 
     [Fact]

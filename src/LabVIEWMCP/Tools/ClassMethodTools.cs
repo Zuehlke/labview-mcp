@@ -257,11 +257,15 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         A LOADED CALLER STILL BREAKS A RE-RUN: when a loaded VI (an override hook, any caller)
         calls the member, the re-add answers Error 56003 AFTER the entry was dropped (measured
         1.7.2-1.8.5). So before anything changes, a re-run asks the project's instance for the
-        member's callers in memory and refuses with `memberHasLoadedCallers`, naming them (this
-        check is NOT yet measured; `checkLoadedCallers: false` skips it). And a re-add puts the
+        member's callers in memory and refuses with `memberHasLoadedCallers`, naming them (measured
+        2026-10-10: an override's series hook was refused naming the override, class file unchanged;
+        after the hook was swapped off, the re-run went through; `checkLoadedCallers: false` skips
+        it). A re-run needs the member's `aixml`: a `vi`-only re-run over a listed member is refused
+        (`rerunNeedsAixml`) - measured, it dropped a wizard accessor from its class (1004). And a re-add puts the
         member at the class root as public; `keepPlacement` (default) writes its old scope and
         virtual folder back in a project-closed window afterwards (`restorePlacement` step; the
-        scope lines follow a measured route, the folder move is UNMEASURED).
+        scope lines are measured on this route 2026-10-10 - protected came back and survived
+        LabVIEW's next save, state 1 cold; the folder move is UNMEASURED).
         AddItemFromMemory's 56002 (already a loose project item) and 1004 (already a member) are
         still tolerated and still reported as `memberAlreadyExisted`, gated on the .lvclass itself
         listing the VI, because 1004 is also what a wrong `Name` input produces.

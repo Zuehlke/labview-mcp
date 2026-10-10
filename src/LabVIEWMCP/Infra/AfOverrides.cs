@@ -13,7 +13,7 @@ namespace LabVIEWMcp.Infra;
 /// (2026-09): Pre Launch Init has NO `error in`, Stop Core has no error terminals at all, Handle
 /// Error takes `error in (no error)` and returns `stop actor?`, and Actor Core's class output is
 /// `Actor out`, typed Actor rather than the child. Handle Last Ack Core's pane was read offline
-/// from production code and is UNMEASURED. The shapes are the four the kit measured by hand:
+/// from production code and measured 2026-10-10. The shapes are the four the kit measured by hand:
 /// A branch (class terminal tapped beside Call Parent), B series before Call Parent, B-after
 /// series after it with the roles swapped, C a branch off a series hook's output.
 /// </summary>
@@ -90,8 +90,9 @@ internal static class AfOverrides
             "Handle Last Ack Core" => new Pane("Handle Last Ack Core",
                 [new("error in (no error)", 4, true), new("Last Ack", 6, true), new(cin, 7, true),
                  new(cout, 3, false), new("error out", 0, false)],
-                cin, cout, "error in (no error)", "error out", false,
-                "UNMEASURED - read offline from production code; confirm with lvai_connector_pane"),
+                cin, cout, "error in (no error)", "error out", true,
+                "read offline from production code, then measured 2026-10-10 on a throwaway actor's " +
+                "override (lvai_connector_pane: pattern 4812, these five terminals)"),
             _ => null,
         };
     }
@@ -250,13 +251,15 @@ internal static class AfOverrides
                 if (method == "Stop Core")
                     plan.Warnings.Add("Stop Core has no error terminals, so the hook's error out goes " +
                         "nowhere: feed it to a log VI or Clear Errors.vi with a branchFromNode hook. " +
-                        "A seriesAfter hook on Stop Core is UNMEASURED.");
+                        "(seriesAfter on Stop Core, class only: measured 2026-10-10 - state 1, and the hook " +
+                        "ran after its Call Parent at the stop.)");
                 if (method == "Handle Error")
-                    plan.Warnings.Add("seriesAfter on Handle Error is UNMEASURED (measured on Pre Launch " +
-                        "Init). `stop actor?` passes from Call Parent untouched.");
+                    plan.Warnings.Add("`stop actor?` passes from Call Parent untouched; the hook sees the " +
+                        "error the parent returns (code 0 at a Normal Stop: the parent has cleared 43 - " +
+                        "measured 2026-10-10).");
                 if (method == "Handle Last Ack Core")
-                    plan.Warnings.Add("Handle Last Ack Core: pane and shape UNMEASURED; read the pane " +
-                        "with lvai_connector_pane first.");
+                    plan.Warnings.Add("Handle Last Ack Core: the pane is measured, a hook shape on it is " +
+                        "UNMEASURED.");
                 break;
         }
 

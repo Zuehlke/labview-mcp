@@ -67,7 +67,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         scope) and dynamic dispatch (from the class file, or from the VI's pane with pylabview -
         no LabVIEW). The answer carries the override's pane for an AF method.
         The helper route is measured (2026-09-17, a message class's Do.vi; four AF overrides on a
-        throwaway actor, 2026-10-09); this tool wrapping it is NOT yet measured. Read the new
+        throwaway actor, 2026-10-09); this tool measured 2026-10-10 - five lifecycle overrides on an
+        actor in no library, five on one in a .lvlib, one plain override (parent's protected scope
+        kept), every one state 1 cold. Read the new
         override cold with lvai_exec_state after closing the project; then hook bodies into it
         with lvai_af_add_hook.
         """)]
@@ -397,7 +399,13 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         lists every wire made and the override's execution state before and after - read in the
         project's instance, so read it again COLD (lvai_exec_state, project closed) before trusting
         it. The kit shapes are measured by hand (branch, series on Actor Core, seriesAfter on Pre
-        Launch Init and a plain override, branchFromNode); THIS TOOL'S HELPERS ARE NOT YET MEASURED.
+        Launch Init and a plain override, branchFromNode). THIS TOOL measured 2026-10-10 on throwaway
+        actors: branch, series and branchFromNode on Actor Core, seriesAfter on Pre Launch Init (its
+        error 5000 came out of Launch), Stop Core and Handle Error (both hooks ran after their Call
+        Parent at the stop), dryRun and the refusals; every override state 1 cold. THE UNSAVED-EDIT
+        CHECK reads the FP/BD Mods Bitsets, and those read 0 after edits made by VI Server scripting
+        (a moved object, a new node, inside an undo transaction too - measured 2026-10-10), so such
+        edits are NOT seen; whether an edit made by hand in the IDE is seen is unmeasured.
         """)]
     public async Task<string> AddHookAsync(
         [Description(@"Absolute path to the override .vi (a member of classPath)")] string overridePath,
@@ -603,7 +611,11 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         a delete: the wire through it is gone, and Remove Bad Wires leaves the override's terminal
         unwired - for a series hook restore the bare override from version control and re-hook
         instead. NEEDS THE PROJECT OPEN AND ACTIVE. The kit's delete + clean route is measured;
-        THIS TOOL'S HELPERS ARE NOT YET MEASURED.
+        Measured 2026-10-10: one hook removed (matches 1, state 1 cold for the override and every
+        sibling), `hookNodeAmbiguous` and `occurrence`. NOT RELIABLE: the unsaved-edit check and the
+        sibling re-save both read the FP/BD Mods Bitsets, which read 0 after edits made by VI Server
+        scripting (measured), so a scripted unsaved edit on a sibling was NOT refused and no sibling
+        is ever re-saved on their word; an edit made by hand in the IDE is unmeasured.
         """)]
     public async Task<string> RemoveHookAsync(
         [Description(@"Absolute path to the override .vi")] string overridePath,
