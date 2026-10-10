@@ -10,6 +10,9 @@ pilot project and on throwaway actors (dates are given per row). The tools and t
 tested without LabVIEW. Treat every answer as unverified until the measurement list in §7 has been
 run.
 
+"The kit" below means the hand-run helper VIs of a companion LabVIEW skill whose measured routes
+these tools automate; its shape letters (A, B, B-after, C, D) are kept so the two can be compared.
+
 ## 1. Why overrides need their own tools
 
 - **AIXML cannot author `Call Parent Class Method`.** A generated override is `eBad` whatever its
