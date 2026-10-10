@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<VI _name="lvai_create_override.vi" description="Creates an override of a parent class method in a child class by driving NI's own CLSUIP_CreateOverride provider\2C then saves the new member to disk. Needs a project open and ACTIVE - it reaches LabVIEW through Project\3AActive Project and answers Error 1055 otherwise.">
+<VI _name="lvai_create_override.vi" description="Creates an override of a parent class method in a child class by driving NI's own CLSUIP_CreateOverride provider\2C then saves the new member to disk. Needs a project open and ACTIVE - it reaches LabVIEW through Project\3AActive Project and answers Error 1055 otherwise. VI NAME IN MEMORY MUST BE LIBRARY-QUALIFIED\3A Lib.lvlib\3ACls.lvclass\3AActor Core.vi for a class in a library\2C Cls.lvclass\3AActor Core.vi only for a class in none\3B a name without the library answers open new vi error and nothing is saved. lvai_create_override wraps this helper and derives the name from the class file.">
   <FreeLabel comment="NI's own override provider" uid="4001" uid_parent="root"/>
   <Control _name="class path" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
   <Control _name="parent method path" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value"/>
