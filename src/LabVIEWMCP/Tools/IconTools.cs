@@ -46,6 +46,12 @@ internal sealed class IconTools(LvaiConnection connection)
         known read-back artefact, which appears on success - is dropped, and only an unexpected
         runner code is kept under runnerErrorCode. Look at the read-back PNG to see what actually
         landed in the VI.
+        IT FLATTENS THE ICON: the icon editor's layers - a class or library template layer and the
+        VI's own editable layer - become plain pixels. On hand-made icons that changed 27-36 % of
+        every icon and lost the editable text. To refresh only the class or library TEMPLATE of a VI
+        whose own layer must survive, pass keepOwnLayer instead of an image: no pixels are set, the
+        owner's icon is re-applied (ApplyIconToVIs) and the VI saved, and the answer reports the
+        layer data before and after. keepOwnLayer is UNMEASURED as a whole - see its parameter.
         """)]
     public async Task<string> SetViIconAsync(
         [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
@@ -96,6 +102,22 @@ internal sealed class IconTools(LvaiConnection connection)
         [Description(@"1 px frame of a drawn icon as RRGGBB. Defaults to black 000000")]
         string? borderColor = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description("""
+            Keep the VI's own icon layer and re-apply only its class or library TEMPLATE, instead of
+            setting pixels and flattening. Pass no image and no lines with it. The owner's current
+            icon is laid over the VI with ApplyIconToVIs (white is transparent) and the VI saved; the
+            project must be closed. The answer reports the VI's icon layer data before and after
+            (read from the file), whether every template pixel landed, and how many pixels outside the
+            template changed. UNMEASURED AS A WHOLE: each step is the measured class-icon route, but
+            re-applying onto a VI that already has a template layer has not been run yet - judge it by
+            iconLayersAfter, templateMissing and pixelsChangedOutsideTemplate.
+            """)]
+        bool keepOwnLayer = false,
+        [Description("""
+            With keepOwnLayer: the .lvclass or .lvlib whose icon is the template. Defaults to the one
+            class or library in the VI's folder or up to three above that lists the VI.
+            """)]
+        string? ownerPath = null,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
         await Rpc.GuardAsync(async () =>
@@ -104,6 +126,26 @@ internal sealed class IconTools(LvaiConnection connection)
                 return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
+
+            // KEEPING THE OWN LAYER MEANS SETTING NO PIXELS AT ALL - an image or lines would be the
+            // very flattening keepOwnLayer exists to avoid, so the combination is refused rather
+            // than one half silently ignored.
+            if (keepOwnLayer)
+            {
+                if (iconImagePath is { Length: > 0 } || HasAnyLine(line1, line2, line3))
+                    return Json.Error("conflictingArguments",
+                        "keepOwnLayer re-applies only the class or library template and sets no pixels; " +
+                        "iconImagePath and line1/line2/line3 set the VI's pixels and flatten its layers. " +
+                        "Pass one or the other.");
+                return await new OwnerIconTools(connection).ReapplyTemplateAsync(
+                    viPath, ownerPath, readBackPath,
+                    helperViPath is { Length: > 0 } ? Path.GetDirectoryName(Path.GetFullPath(helperViPath)) : null,
+                    regenerateHelper, timeoutSeconds, ct);
+            }
+            if (ownerPath is { Length: > 0 })
+                return Json.Error("badArguments",
+                    "ownerPath is only used with keepOwnLayer: true. Setting an icon from an image or " +
+                    "lines needs no owner.");
 
             // Notes gathered while working out the image, folded into `warnings` further down.
             // They are warnings, never errors: a cut line or an undrawable character still
