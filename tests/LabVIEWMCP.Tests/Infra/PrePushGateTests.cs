@@ -218,6 +218,43 @@ public sealed class PrePushGateTests : IDisposable
     /// about a worktree.
     /// </summary>
     [Fact]
+    public void The_gate_only_stops_servers_built_in_the_tree_under_test()
+    {
+        // Measured 2026-10-10: the gate stopped EVERY LabVIEWMCP process, and so killed an
+        // installed plugin serving another Claude session. -ShowStopPlan prints the plan and
+        // stops nothing, so this can run on a machine where such a server is live.
+        if (PowerShell is null) return;
+        var (main, _) = MakeRepoWithWorktree();
+
+        var (code, output) = Run(PowerShell, workingDirectory: main,
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", Path.Combine(main, ".githooks", "run-tests.ps1"), "-ShowStopPlan");
+
+        Assert.Equal(0, code);
+        var buildOutput = Path.Combine(main, "src", "LabVIEWMCP", "bin");
+        Assert.Contains(buildOutput, output, StringComparison.OrdinalIgnoreCase);
+        // The fixture tree builds nothing, so no running server can live under it.
+        Assert.DoesNotContain("would stop", output);
+    }
+
+    /// <summary>
+    /// The suite runs with a TEMP of the gate's own. Measured 2026-10-10: a test run leaves a
+    /// stub runner VI in %TEMP%\LabVIEWMCP\helpers, and an installed server on the same machine
+    /// then answered 1059 on every runner call.
+    /// </summary>
+    [Fact]
+    public void The_gate_runs_the_suite_with_its_own_temp()
+    {
+        var script = File.ReadAllText(RepoTree.Path(".githooks", "run-tests.ps1"));
+        Assert.Contains("'LabVIEWMCP-pre-push'", script);
+        Assert.Contains("$env:TEMP = $testTemp", script);
+        Assert.Contains("$env:TMP = $testTemp", script);
+        Assert.True(script.IndexOf("$env:TEMP = $testTemp", StringComparison.Ordinal) <
+                    script.IndexOf("& $dotnet test", StringComparison.Ordinal),
+                    "TEMP must be set before the suite runs");
+    }
+
+    [Fact]
     public void From_a_plain_checkout_the_gate_aims_at_that_checkout()
     {
         if (PowerShell is null) return;

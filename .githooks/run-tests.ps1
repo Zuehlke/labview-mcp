@@ -68,7 +68,12 @@ param(
     # server and without running the suite. Two uses: a human can check what the
     # gate is aimed at, and PrePushGateTests drives it against a real linked
     # worktree, which is the only way to prove the trap above stays fixed.
-    [switch]$ResolveOnly
+    [switch]$ResolveOnly,
+
+    # Resolve the tree, then print which MCP server processes step 2 WOULD stop, and
+    # exit 0 without stopping anything or running the suite. PrePushGateTests uses it
+    # to prove that a server outside the tree under test is never on that list.
+    [switch]$ShowStopPlan
 )
 
 # Let $LASTEXITCODE — not an exception — carry dotnet's result, even under
@@ -235,7 +240,30 @@ if ($firstOnPath -and (Convert-ToNativePath $firstOnPath) -ne $dotnet) {
 }
 
 # -- 2) free the build output ------------------------------------------------
-$running = @(Get-Process -Name 'LabVIEWMCP' -ErrorAction SilentlyContinue)
+# ONLY THIS TREE'S OWN BUILD. This used to stop every process named LabVIEWMCP on the
+# machine - measured 2026-10-10 killing an INSTALLED plugin that was serving another
+# Claude session, which then reported the server as "failed to connect" until the
+# client was restarted. Only an exe under this tree's src\LabVIEWMCP\bin can lock the
+# build output, so only those are stopped; a process whose path cannot be read is
+# left alone and named.
+$buildOutput = Join-Path $repoRoot 'src\LabVIEWMCP\bin'
+$all = @(Get-Process -Name 'LabVIEWMCP' -ErrorAction SilentlyContinue)
+$running = @($all | Where-Object {
+    $_.Path -and (Convert-ToNativePath $_.Path).StartsWith($buildOutput + '\', [System.StringComparison]::OrdinalIgnoreCase)
+})
+$leftAlone = @($all | Where-Object { $running -notcontains $_ })
+
+if ($ShowStopPlan) {
+    Write-Host ("  build output    : {0}" -f $buildOutput)
+    foreach ($p in $running)   { Write-Host ("  would stop      : pid {0}  {1}" -f $p.Id, $p.Path) }
+    foreach ($p in $leftAlone) { Write-Host ("  would leave     : pid {0}  {1}" -f $p.Id, $p.Path) }
+    Write-Host '  -ShowStopPlan: stopping here without stopping anything or testing.' -ForegroundColor DarkGray
+    exit 0
+}
+
+foreach ($p in $leftAlone) {
+    Write-Host ("  -> leaving pid {0} alone: not this tree's build ({1})" -f $p.Id, $p.Path) -ForegroundColor DarkGray
+}
 if ($running.Count -gt 0) {
     Write-Host ("  -> stopping {0} MCP server process(es) - they lock the build output" -f $running.Count) -ForegroundColor Yellow
     $running | ForEach-Object { Write-Host "     pid $($_.Id)  $($_.Path)" -ForegroundColor DarkGray }
@@ -248,6 +276,17 @@ if ($running.Count -gt 0) {
 # -- 3) run the tests -------------------------------------------------------
 Write-Host '  -> dotnet test (Debug / net8.0) ...' -ForegroundColor Yellow
 Write-Host ''
+
+# THE TESTS GET THEIR OWN TEMP. Measured 2026-10-10: a test run leaves a 14-byte stub
+# lvai_run_and_read_typed.vi in %TEMP%\LabVIEWMCP\helpers, and the helper cache trusts
+# file times, so every runner call of an INSTALLED server on the same machine then
+# answered 1059. Pointing TEMP/TMP at a folder of the gate's own keeps the real cache
+# out of reach; it lives only in this process's environment.
+$testTemp = Join-Path ([System.IO.Path]::GetTempPath()) 'LabVIEWMCP-pre-push'
+New-Item -ItemType Directory -Force -Path $testTemp | Out-Null
+$env:TEMP = $testTemp
+$env:TMP = $testTemp
+Write-Host ("  test TEMP       : {0}" -f $testTemp) -ForegroundColor DarkGray
 
 # Run from the tree under test, so anything resolved relative to the working
 # directory (a nuget.config, a Directory.Build.* probe) belongs to that tree too.
