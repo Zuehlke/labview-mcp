@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Scene%2EDrawable%2EGeometry%2ENew Cone" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\picture\3D Picture Control\Geometries\Create Cone.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Scene.Geometry.New Cone" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0072" HasItem="0" Format="inline" Label="Scene.Geometry.New Cone" /></types><heap><SL__arrayElement class="invokeNode" uid="2717">
+        <objFlags>33620608</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="2719">
+            <dco class="hGrowCItem" uid="2720">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(41)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2722">
+            <dco class="hGrowCItem" uid="2723">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(42)</typeDesc>
+              <termBounds>(0, 189, 9, 202)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2725">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="2726">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(43)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2728">
+            <dco class="hGrowCItem" uid="2729">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(44)</typeDesc>
+              <termBounds>(9, 189, 18, 202)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2731">
+            <dco class="invokeItem" uid="2732">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(18, 0, 34, 101)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2735">
+            <dco class="invokeItem" uid="2736">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(46)</typeDesc>
+              <termBounds>(18, 101, 34, 202)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(452, 1330, 487, 1532)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="2732" />
+          <SL__arrayElement uid="2736" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="2720" />
+          <SL__arrayElement uid="2723" />
+          <SL__arrayElement uid="2726" />
+          <SL__arrayElement uid="2729" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0004</oMId>
+        <methName>"Scene.Drawable.Geometry.New Cone"</methName>
+        <methCode>2168</methCode>
+        <invokeFlags>80000008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

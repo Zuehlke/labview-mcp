@@ -311,6 +311,115 @@ pane lacks; the rest are single targets such as a call into a packed library (`.
 Dynamic-dispatch methods are refused by the composer but are at most 3 calls here (below the
 20 causes the run printed).
 
+### 4d. Template nodes, sequences, disable and event structures, VI Server (2026-10-10)
+
+Measured during the night of 2026-10-09/10; every row has a test in `tests/` that loads with
+`ExecState 1` and computes the expected answer.
+
+**Template nodes** — nodes that are prims or growable nodes with a fixed shape (`Merge Errors`,
+`Concatenate Strings`, `Format Into String`, `Scan From String`, `Compound Arithmetic`,
+`Initialize`/`Delete From`/`Array Subset`/`Replace`/`Insert Into Array`, `Reshape`,
+`Interleave`, `Index & Bundle Cluster Array`, `Build Waveform`, `Get Waveform Components`) are
+harvested from AIXML-generated probes whose every terminal is wired to a labelled
+constant/indicator, so each terminal is NAMED by the wire join (`harvest_templates.py`).
+`Compound Arithmetic`'s operation is the node's objFlags (Add 0, Multiply 0x10000, AND 0x20000,
+OR 0x30000, XOR 0x40000) and `inversions` lists [output, inputs…], an inverted terminal being
+DCO objFlags 0x10000. A MODE ATTRIBUTE the composer does not implement is now REFUSED - an
+`aggregate="true"` that was silently ignored broke `In Range and Coerce`.
+
+**Basic types**: `doublewaveform` is `MeasureData Flavor=Float64Waveform`, `timestamp`
+`MeasureData TimeStamp` (16 zero bytes: AIXML cannot carry a literal), `variant` `LVVariant`,
+`complex*` `NumComplex128/64/Ext` (two doubles), `extended` `NumFloatExt` - IEEE binary128,
+big-endian (100 = `4005 9000 …`). A waveform control without its **embedded images** (positive
+`ImageResID`s, a `DSIM` block in the donor) is *"Could not load the image"* and broken; the
+composer copies them into its own `DSIM`.
+
+**Local variables** (`gRef`): `paramIdx` is the control's position in `ddoList` (absent for 0),
+the label is the VI's name, and the control's fPDCO `termListLength` is incremented - without
+the last one LabVIEW logged `{sub}` insanity and then crashed.
+**Feedback Node** at the top level: `hiddenFBNode` + `slaveFBInputNode`, the hidden node's
+terminals in DIAGRAM coordinates, the diagram objFlags `+0x200`. Inside a loop it is still
+broken and refused.
+**Flat Sequence**: the `flatSequence` is defined in the parent's z list, its frames referenced
+in the parent's `nodeList`; a `seqTun` on a border two frames share sits on the bottom edge.
+**Diagram and Conditional Disable** (`commentNode`): `activeDiag`/`defaultDiag` name the Enabled
+frame; a condition is a prefix tree (`==` → operator `TreeElt` with `activePlot FD`). NI's own
+converter ran the *Disabled* frame of a generated Diagram Disable Structure - our composed one
+runs the Enabled frame.
+
+**Event Structure** (`t88`): `eventStruct` with `eventDynDCO` left/right and `eventTimeOut`
+terminals whose `termList` is [inner per frame…, outer], one `EventSpec` per registration
+(Value Change: source 3, type 1073741826, eFlags 4, ddoUID = the control; Timeout: source 4, type
+1073741825, regFlags 0; read off 40 NI VIs by `event_specs.py`), and an Event Data Node
+(`eventDataNode`, an nMux over `Event Data`) in EVERY frame - LabVIEW does not let one be
+deleted, so the composer synthesises one where the AIXML has none. **The first composed event
+structure killed LabVIEW**: its own terminals kept the DONOR's TypeIDs, which in the composed VI
+named two booleans. Every part instantiated whole must have its TypeIDs mapped (`_t` marking).
+
+**`cond="true"` on a case or event OUTPUT tunnel is "Use Default If Unwired"** - the `selTun`
+DCO's 0x300000 bits (NI's case tunnel 0x300801 exports with `cond="true"`, a converter-written
+one without `cond` is 0x801). Measured: wired in one frame only, `cond="true"` runs (default 0
+in the other frame), without it the VI is broken. `docs/aixml-reference.md` said "not
+established" until then and is corrected.
+
+**Refnum types** (`t90`): a VI Server refnum is `Refnum RefType=LVObjCtl` with the CLASS ID in
+`CtlFlags` - a table of all 166 classes was read off one AIXML-generated probe with one control
+per class (`parts/refnum-classes.tsv`: Application 0x0001, VI 0x0002, Control 0x0006, …,
+Project 0x0049, Library 0x0050, Diagram 0x4000 …). `ref{Visa.Instr}` is `VisaRef Ident=Instr`
+with a Void variant. A refnum constant is the null refnum, `00000000`. **Control refnums** (to a
+Boolean, Numeric, String … control: 43 classes) carry an object of the control's class and are
+refused as control/indicator types for now; as a WIRE type from a `VI Server Reference` they are
+built (below). Refnum parts used to be filed under one key `Refnum` - VISA, user-event, VI Server
+and class refnums together; they are keyed `Refnum.<RefType>` now.
+
+**Property and Invoke Nodes** (`t91`, `t92`): a `propNode` keeps four fixed `hGrowCItem`
+terminals (DCO objFlags 0x10000 reference, 0x40001 reference out, 0x20000 error in, 0x80001
+error out) and one `propItem` per field, rows of 16 px from y = 18, each with a `propItemInfo`:
+`PropItemName`, `PropItemCode` (absent = 0; VI Name 500, VI Path 501, Front Panel Window:Title
+553, Visible 104013824), the data type twice (`typeDesc` labelled with the short name `App.Dir`,
+`dataTypeDesc` bare) and `omidTypeDesc` = `VoidBlock{class refnum}`. The codes are harvested off
+every property node in NI's VIs into `parts/vi-server-props.json`; a property seen only on other
+classes is borrowed when all of them agree on its code AND LabVIEW's catalogue
+(`docs/vi-server-properties.tsv`) lists it for the class - `Value` and `Disabled` carry different
+codes per class and are never borrowed. An Invoke Node's parameter rows are reused whole per
+class and method (`invoke/<class>/<method>` parts).
+
+**`oMId` IS NOT A CLASS NUMBER - it is the CONSOLIDATED (TopLevel) index, in the VI's own type
+table, of the class's bare refnum type.** This cost an hour: a composed node copying NI's `0003`
+was broken (`ExecState 0`, no log line); NI's AIXML export of it read `type="{Generic}"
+fields="read+Property"`, and LabVIEW's own save rewrote `oMId` to `000000`. Every flag, list,
+type and block of the composed VI matched an NI-written one in a normalised diff; the tell was
+that NI's VCTP held the VI and Application refnums exactly at consolidated 3 and 4, the two
+`oMId`s it wrote. A second probe, where they sat at 2 and 4, confirmed it.
+
+**Implicit property nodes** (`link="<control>"`, 291 of NI's 797 property nodes) add a `<ddo
+uid>` naming the control, a `label` with its name, and hide the reference terminals (term
+objFlags 0x800000). **`VI Server Reference`** (`t93`) is a `ctlRefConst` - bound to a control
+(`ddo`) or `This VI` - typed with the STRICTLY TYPED control refnum: the control's class
+(Digital 0x0012 for every numeric, Enum 0x0023, Boolean 0x0008, Array 0x000E, Cluster 0x001E,
+String 0x001B, Path 0x000B) with the data type inside for all but String and Path. A property
+node behind it is typed with that refnum and has objFlags 640, not 0x2000280. **`Static VI
+Reference`** is a `statVIRef` (label = the VI's name, `connectorTM` = its pane) with a link pair -
+`BSVR` in the VI's block typed with the VI refnum, `SVVI` in the diagram's naming the node.
+
+**NI's converter crashes on an unknown property name.** `read+Version Number` on
+`{LV.Application}` (the catalogue name is `Application:Version Number`) killed LabVIEW inside
+`ConvertAIXMLToVI` four times out of four - `Insanity detected in heap BDHP … {id}`, then
+`DAbort … Fatal insanities(0x00000004)` - with reference wired or not, uids spaced or not.
+The probes here use only names NI's own exports use. Flagged as a separate task for the main MCP.
+
+| test | what | result |
+|---|---|---|
+| `t79`–`t83` | fixed constants, template nodes, basic types, more primitives | all exact |
+| `t84` | local variables, read and write | 5, 5 |
+| `t85`, `t86`, `t87` | feedback node, flat sequence, disable structures | 1, 11, 5 / 5 |
+| `t88` | While Loop + Event Structure: Value Change ×2, Timeout, event data | loads clean, NI's export of it reads back every frame |
+| `t89` | `cond="true"` case output tunnel | `sel=1` → 3.5, `sel=7` → 0 |
+| `t90` | VI Server and VISA refnums, Open Application Reference, Close Reference | null → True, local → False, no error |
+| `t91` | property nodes on an opened application and on the VI, an invoke node | `LabVIEW.exe`, its directory, name length, control index 1 |
+| `t92` | implicit property nodes: write and read `Visible`, read a string's `Value` | False, `hello` |
+| `t93` | control reference, This VI, Static VI Reference | True, `Clear Errors.vi` |
+
 ## 4. VI → AIXML, against NI's own exports
 
 `compare_with_nigel.py` compares `vi2aixml.py` with LabVIEW's cached exports of the same VIs
@@ -362,6 +471,20 @@ and fails the run. What fills it is the composer's own wires: **LabVIEW-generate
 Wiretable nxt field disagreed with the joint coordinates` (`dwarn_delta.py` measures it per
 VI). So the gate holds for about seven VIs per LabVIEW start; the 13 tests of §4c were checked
 in two such batches.
+
+**Since 2026-10-10 `selftest.py` restarts LabVIEW itself** (`lv-restart.ps1`: stop the keepers
+and LabVIEW, empty the auto-save store so no recovery dialog appears, start `LabVIEW.exe`, wait
+for its main window before the first COM call so COM does not launch a second one, start a
+keeper) whenever the log is past 40 events, and repeats a test that filled the log on a fresh
+one. Two tests alone (`t78` + `t80`) had filled it. A LabVIEW started this way has **no gRPC
+service** - the converter probes need `lvai_ensure_labview` again afterwards. `cov_load.py`
+likewise records a VI whose load kills LabVIEW as `CRASH`, restarts and goes on; it used to
+stop judging at the first crash and list the rest as "RPC server is unavailable".
+
+**`subprocess.run(timeout=…)` does not stop pylabview**: it kills `cmd.exe`, the python
+grandchild keeps the pipes open and the second `communicate()` waits for ever - a coverage run
+hung that way on a Wovalab VI pylabview cannot read. `lvheap.run_pylabview` kills the whole tree
+(`taskkill /T`), and `_extract_callee` caches each callee (or its failure) per process.
 
 **The wire table format, as far as decoded** (`wire_calibrate.py`: constant → indicator pairs
 at chosen offsets, loaded and saved again by LabVIEW over COM with `lv-save.ps1`):

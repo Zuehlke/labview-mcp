@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/RemoveBreakpoints" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\TargetSupport\NI_TargetHelper\Copy Target Structure To Target VI.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="OwningVI" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="OwningVI" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="RemoveBreakpoints" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="RemoveBreakpoints" /></types><heap><SL__arrayElement class="invokeNode" uid="1286">
+        <objFlags>33555072</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="1292">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="1293">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1295">
+            <dco class="hGrowCItem" uid="1296">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 101, 9, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1298">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="1299">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1301">
+            <dco class="hGrowCItem" uid="1303">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(9, 101, 18, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1305">
+            <dco class="invokeItem" uid="1306">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(18, 0, 34, 57)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1309">
+            <dco class="invokeItem" uid="1310">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(18, 57, 34, 114)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(315, 716, 350, 830)</bounds>
+        <shortCount>40</shortCount>
+        <clumpNum>524294</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="1306" />
+          <SL__arrayElement uid="1310" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="1293" />
+          <SL__arrayElement uid="1296" />
+          <SL__arrayElement uid="1299" />
+          <SL__arrayElement uid="1303" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0006</oMId>
+        <methName>"RemoveBreakpoints"</methName>
+        <methCode>1103</methCode>
+        <invokeFlags>200408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

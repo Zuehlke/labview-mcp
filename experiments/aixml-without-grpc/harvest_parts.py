@@ -342,6 +342,10 @@ class Harvester:
                 self.save("node", "node/ctlRefConst/%s" % ("control" if e.find("ddo") is not None else "thisvi"),
                           source, e, resolve_types(b, e))
                 continue
+            if cls == "exprNode" and not self.only_props:
+                # an Expression Node: input and output bDDCO, the formula in a textNodeLabel
+                self.save("node", "node/exprNode", source, e, resolve_types(b, e))
+                continue
             if cls == "statVIRef":
                 self.save("node", "node/statVIRef", source, e, resolve_types(b, e))
                 continue

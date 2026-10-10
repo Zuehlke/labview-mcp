@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TargetItem/Refresh Dependencies" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\Builds\Installer\CDK_ImportScript_CreateInstaller.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x005F" HasItem="0" Format="inline" Label="My Computer" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x005F" HasItem="0" Format="inline" Label="My Computer" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Refresh Dependencies" /><TypeDesc Type="Void" Format="inline" Label="Refresh Dependencies" /></types><heap><SL__arrayElement class="invokeNode" uid="2092">
+                <objFlags>66176</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="2104">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="2105">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(375)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2107">
+                    <dco class="hGrowCItem" uid="2108">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(376)</typeDesc>
+                      <termBounds>(0, 115, 9, 128)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2110">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="2111">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(377)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2113">
+                    <dco class="hGrowCItem" uid="2114">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(378)</typeDesc>
+                      <termBounds>(9, 115, 18, 128)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2116">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="2117">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(379)</typeDesc>
+                      <termBounds>(18, 0, 34, 64)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2120">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="2121">
+                      <objFlags>196609</objFlags>
+                      <typeDesc>TypeID(380)</typeDesc>
+                      <termBounds>(18, 64, 34, 128)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(384, 221, 419, 349)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>327684</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="2117" />
+                  <SL__arrayElement uid="2121" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="2105" />
+                  <SL__arrayElement uid="2108" />
+                  <SL__arrayElement uid="2111" />
+                  <SL__arrayElement uid="2114" />
+                  </permDCOList>
+                <nodeName>"TargetItem"</nodeName>
+                <oMId>002A</oMId>
+                <methName>"Refresh Dependencies"</methName>
+                <methCode>1750197248</methCode>
+                <invokeFlags>1008</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>

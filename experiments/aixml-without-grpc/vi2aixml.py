@@ -123,7 +123,27 @@ def label_text(ddo):
     return ""
 
 
+INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
+
+
+def unquote(t):
+    if t and t.startswith('"') and t.endswith('"'):
+        return t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return t or ""
+
+
+def esc_attr_items(items):
+    """Case selector items as NI writes them: joined by ', ' with the comma escaped."""
+    return "\\2C ".join(items)
+
+
 class Reader:
+    """Heap -> AIXML. uids follow LabVIEW's own export (uid_survey.py over 200 exports): a
+    control/constant is its ddo, a node its own uid, a Structure the structure node, a CaseFrame
+    the frame's diag, a Tunnel the OUTER terminal (a case frame's half: the frame's inner
+    terminal), a Condition the lTst DCO, a ShiftReg the rSR DCO, its Left the lSR DCO and its
+    Right the rSR's inner terminal, a Call the iUse node."""
+
     def __init__(self, main_xml):
         self.b = lvheap.Bundle(main_xml)
         _, self.term_names = aixml2vi.load_names()
@@ -133,22 +153,62 @@ class Reader:
             for row in csv.reader((l for l in f if not l.startswith("#")), delimiter="\t"):
                 if row and row[0] != "primResID":
                     self.prim_name[row[0]] = html.unescape(row[1])
+        extra = os.path.join(os.path.dirname(os.path.abspath(__file__)), "primitive-names-extra.tsv")
+        if os.path.exists(extra):
+            for row in aixml2vi._tsv(extra):
+                self.prim_name.setdefault(row[0], aixml2vi.unescape(html.unescape(row[1])))
         self.out = ET.Element("VI")
         self.term_owner = {}    # heap term uid -> (aixml element, terminal name, is_sink)
         self.notes = []
+        self.call_targets = self._call_targets()
+        self.diags = []         # every diagram walked, for wiring
 
+    # ---- helpers ---------------------------------------------------------------------------
     def tid_tree(self, el):
         e = lvheap.typeid_elements(el)
         if not e:
             return None
         return self.b.heap_type_tree(int(lvheap.TYPEID_RE.fullmatch(e[0].text.strip()).group(1)))
 
+    def _call_targets(self):
+        """node uid -> AIXML target of a subVI call, from the diagram's IUVI link records."""
+        out = {}
+        bdhp = self.b.main.find("LIbd/Section/BDHP")
+        for rec in (bdhp if bdhp is not None else []):
+            qual = [x.text or "" for x in rec.findall("LinkSaveQualName/String")]
+            if not qual:
+                continue
+            name = ":".join(qual)
+            for off in rec.findall("LinkOffsetList/Offset"):
+                try:
+                    out[str(int(off.text, 16))] = (rec.tag, name)
+                except (TypeError, ValueError):
+                    pass
+        return out
+
+    @staticmethod
+    def node_defs(diag):
+        """The nodes of a diagram, in nodeList order, each resolved to its DEFINITION (often in
+        zPlaneList, referenced from nodeList by a bare uid)."""
+        defs = {}
+        for lst in ("zPlaneList", "nodeList"):
+            for e in (diag.find(lst) if diag.find(lst) is not None else []):
+                if e.get("class"):
+                    defs[e.get("uid")] = e
+        out = []
+        for ref in (diag.find("nodeList") if diag.find("nodeList") is not None else []):
+            n = ref if ref.get("class") else defs.get(ref.get("uid"))
+            if n is not None:
+                out.append(n)
+        return out
+
+    # ---- the whole VI ------------------------------------------------------------------------
     def read(self):
         b = self.b
         self.out.set("_name", b.main.find("LVSR/Section").get("Name"))
         self.out.set("description", b.main.findtext("STRG/Section/String") or "")
         pane = self.pane_flags()
-        fp_by_uid = {}
+        self.fp_by_uid = {}
         for fpdco in b.fp.iter("SL__arrayElement"):
             if fpdco.get("class") != "fPDCO":
                 continue
@@ -163,7 +223,7 @@ class Reader:
             else:
                 el.set("type", t)
             el.set("uid", ddo.get("uid"))
-            el.set("uid_parent", "root")
+            el.set("uid_parent", "?")
             dd = fpdco.findtext("DefaultData")
             el.set("value", self.default_value(tree, dd) if t else "")
             con = fpdco.findtext("conNum")
@@ -171,48 +231,59 @@ class Reader:
             if con != "-1" and con in pane:
                 el.set("conIdx", con)
                 el.set("connection", pane[con])
-            fp_by_uid[fpdco.get("uid")] = el
-        diag = b.bd.find("root")
-        nodes = []
-        # A node is often DEFINED in the diagram's zPlaneList and only REFERENCED from nodeList
-        # as a bare <SL__arrayElement uid=".."/> (FINDINGS 3.5 item 5) - resolve the reference.
-        defs = {e.get("uid"): e for e in diag.find("zPlaneList") if e.get("class")}
-        for ref in diag.find("nodeList"):
-            node = ref if ref.get("class") else defs.get(ref.get("uid"))
-            if node is None:
-                self.notes.append("node %s referenced but not defined on this diagram" % ref.get("uid"))
-                continue
-            cls = node.get("class")
-            if cls == "sRN":
-                for term in node.find("termList"):
-                    tc = term.get("class")
-                    if tc == "fPTerm":
-                        el = fp_by_uid.get(term.find("dco").get("uid"))
-                        if el is not None:
-                            self.term_owner[term.get("uid")] = (el, "value", el.tag == "Indicator")
-                    elif tc == "term" and term.find("dco").get("class") == "bDConstDCO":
-                        nodes.append(self.constant(term))
-                    else:
-                        self.notes.append("root terminal of class %s not read" % (term.find("dco").get("class")))
-            elif cls == "prim":
-                nodes.append(self.prim(node))
-            else:
-                self.notes.append("diagram node of class %s (uid %s) not read" % (cls, node.get("uid")))
-        on_root = {el.get("uid") for el, _, _ in self.term_owner.values()}
-        for el in fp_by_uid.values():
-            if el.get("uid") not in on_root:
-                # its diagram terminal sits inside a structure this reader does not walk yet
-                el.set("uid_parent", "?")
-                self.notes.append("%s %r: terminal is inside a structure" % (el.tag, el.get("_name")))
-            self.out.append(el)
-        for el in nodes:
-            if el is not None:
-                self.out.append(el)
-        self.wire(diag)
+            self.fp_by_uid[fpdco.get("uid")] = el
+        self.fp_placed = set()
+        root = b.bd.find("root")
+        self.walk(root, "root", self.out)
+        for uid, el in self.fp_by_uid.items():
+            if uid not in self.fp_placed:
+                # its terminal sits in a construct this reader does not walk yet
+                el.set("uid_parent", "root")
+                self.out.insert(0, el)
+                self.notes.append("%s %r: its terminal was not found on a walked diagram" % (el.tag, el.get("_name")))
+        for d in self.diags:
+            self.wire(d)
         for n in self.notes:
             self.out.append(ET.Comment(" vi2aixml: " + n + " "))
         return self.out
 
+    def walk(self, diag, parent_uid, container):
+        """One diagram: its sRN terminals (front-panel terminals, constants), then every node;
+        a structure recurses into its diagrams with the structure (or frame) as parent."""
+        self.diags.append(diag)
+        for node in self.node_defs(diag):
+            cls = node.get("class")
+            if cls == "sRN":
+                for term in node.find("termList"):
+                    tc = term.get("class")
+                    d = term.find("dco")
+                    if tc == "fPTerm":
+                        el = self.fp_by_uid.get(d.get("uid"))
+                        if el is not None:
+                            if d.get("uid") not in self.fp_placed:
+                                el.set("uid_parent", parent_uid)
+                                container.append(el)
+                                self.fp_placed.add(d.get("uid"))
+                            self.term_owner[term.get("uid")] = (el, "value", el.tag == "Indicator")
+                    elif tc == "term" and d is not None and d.get("class") == "bDConstDCO":
+                        c = self.constant(term, parent_uid)
+                        container.append(c)
+                continue
+            el = None
+            if cls == "prim":
+                el = self.prim(node, parent_uid)
+            elif cls in ("whileLoop", "forLoop"):
+                el = self.loop(node, parent_uid)
+            elif cls == "select":
+                el = self.case(node, parent_uid)
+            elif cls in ("iUse", "polyIUse"):
+                el = self.call(node, parent_uid)
+            else:
+                self.notes.append("diagram node of class %s (uid %s) not read" % (cls, node.get("uid")))
+            if el is not None:
+                container.append(el)
+
+    # ---- elements ----------------------------------------------------------------------------
     def default_value(self, tree, dd):
         if dd is None:
             return {"Boolean": "false", "String": "", "Path": ""}.get(tree.get("Type"), "0")
@@ -230,7 +301,7 @@ class Reader:
                 i += 1
         return decode_value(tree, out.hex()) or ""
 
-    def constant(self, term):
+    def constant(self, term, parent_uid):
         dco = term.find("dco")
         ddo = dco.find("ddo")
         tree = self.tid_tree(term)
@@ -241,7 +312,7 @@ class Reader:
             el.set("_name", name)
         el.set("type", t or "?" + lvheap.type_key(tree))
         el.set("uid", ddo.get("uid"))
-        el.set("uid_parent", "root")
+        el.set("uid_parent", parent_uid)
         v = decode_value(tree, dco.findtext("ConstValue") or "") if t else None
         el.set("value", v if v is not None else "")
         if v is None:
@@ -249,11 +320,11 @@ class Reader:
         self.term_owner[term.get("uid")] = (el, "value", False)
         return el
 
-    def prim(self, node):
+    def prim(self, node, parent_uid):
         rid = node.findtext("primResID")
         name = self.prim_name.get(rid)
         el = ET.Element("Node", {"_name": name or "?primResID %s" % rid,
-                                 "uid": node.get("uid"), "uid_parent": "root"})
+                                 "uid": node.get("uid"), "uid_parent": parent_uid})
         if name is None:
             self.notes.append("primitive primResID %s has no name in the table" % rid)
         for term in node.find("termList"):
@@ -264,9 +335,209 @@ class Reader:
             self.term_owner[term.get("uid")] = (el, tname, sink)
         return el
 
+    def call(self, node, parent_uid):
+        """A subVI call: target from the diagram's link record naming this node, terminal names
+        from the LABELS of the terminal types (a call node's terminals carry the callee's
+        labelled pane types)."""
+        kind, target = self.call_targets.get(node.get("uid"), (None, None))
+        el = ET.Element("Call", {"uid": node.get("uid"), "uid_parent": parent_uid})
+        if target is None:
+            self.notes.append("call node %s: no link record names it" % node.get("uid"))
+            target = "?"
+        el.set("target", target)
+        for term in node.find("termList"):
+            d = term.find("dco")
+            tree = self.tid_tree(term)
+            if tree is None or tree.get("Type") == "Void":
+                continue
+            out = int(d.findtext("objFlags") or 0) & 1
+            self.term_owner[term.get("uid")] = (el, tree.get("Label") or "?", not out)
+        return el
+
+    def loop(self, node, parent_uid):
+        cls = node.get("class")
+        el = ET.Element("Structure", {"_name": "While Loop" if cls == "whileLoop" else "For Loop",
+                                      "uid": node.get("uid"), "uid_parent": parent_uid})
+        el.set("count", "")
+        if cls == "forLoop":
+            el.set("maxin", "")
+            el.set("maxout", "")
+        inner = node.find("diagramList/SL__arrayElement")
+        srn = next((n for n in self.node_defs(inner) if n.get("class") == "sRN"), None) if inner is not None else None
+        inner_terms = {}
+        for t in (srn.find("termList") if srn is not None else []):
+            d = t.find("dco")
+            if d is not None and t.get("class") == "term":
+                inner_terms.setdefault(d.get("uid"), []).append(t)
+        # loop i and the stop condition are DCOs of the loop with a terminal inside
+        idx = node.find("loopIndexDCO")
+        if idx is not None:
+            for t in inner_terms.get(idx.get("uid"), []):
+                self.term_owner[t.get("uid")] = (el, "#count", False)
+        tst = node.find("loopTestDCO")
+        if tst is not None:
+            cond = ET.Element("Condition", {"uid": tst.get("uid"), "uid_parent": node.get("uid"), "value": "stop"})
+            for t in inner_terms.get(tst.get("uid"), []):
+                self.term_owner[t.get("uid")] = (cond, "value", True)
+            self._pending_children = getattr(self, "_pending_children", [])
+        n_in = n_out = 0
+        sr = []
+        children = []
+        for term in node.find("termList"):
+            d = term.find("dco")
+            if d is None:
+                continue
+            dc = d.get("class")
+            if dc == "lpTun":
+                out = int(d.findtext("objFlags") or 0) & 1
+                if out:
+                    n_out += 1
+                else:
+                    n_in += 1
+                tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
+                                            "uid": term.get("uid"), "uid_parent": node.get("uid")})
+                if d.find("innerLpTunDCO") is not None or d.findtext("TunnelType"):
+                    tun.set("mode", "index")
+                self.term_owner[term.get("uid")] = (tun, "value", not out)
+                for t in inner_terms.get(d.get("uid"), []):
+                    self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+                inner_dco = d.find("innerLpTunDCO")
+                if inner_dco is not None:
+                    for t in inner_terms.get(inner_dco.get("uid"), []):
+                        self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+                children.append(tun)
+            elif dc == "lMax":
+                self.term_owner[term.get("uid")] = (el, "#maxin", True)
+                for t in inner_terms.get(d.get("uid"), []):
+                    self.term_owner[t.get("uid")] = (el, "#maxout", False)
+            elif dc == "rSR":
+                sr.append((term, d))
+        by_dco = {t.find("dco").get("uid"): t for t in node.find("termList") if t.find("dco") is not None}
+        for term, d in sr:
+            reg = ET.Element("ShiftReg", {"uid": d.get("uid"), "uid_parent": node.get("uid")})
+            lefts = [x.get("uid") for x in d.findall("lsrDCOList/SL__arrayElement")]
+            for k, lu in enumerate(lefts):
+                lterm = by_dco.get(lu)
+                left = ET.SubElement(reg, "Left", {"uid": lu, "uid_parent": d.get("uid")})
+                if lterm is not None:
+                    self.term_owner[lterm.get("uid")] = (left, "value", True)
+                for t in inner_terms.get(lu, []):
+                    self.term_owner[t.get("uid")] = (left, "value" if k == 0 else "value%d" % (k + 1), False)
+            rin = inner_terms.get(d.get("uid"), [])
+            right = ET.SubElement(reg, "Right", {"uid": rin[0].get("uid") if rin else d.get("uid"),
+                                                 "uid_parent": d.get("uid")})
+            for t in rin:
+                self.term_owner[t.get("uid")] = (right, "value", True)
+            self.term_owner[term.get("uid")] = (right, "value", False)
+            children.append(reg)
+        if inner is not None:
+            self.walk(inner, node.get("uid"), el)
+        for c in children:
+            el.append(c)
+        if tst is not None:
+            el.append(cond)
+        return el
+
+    def case(self, node, parent_uid):
+        el = ET.Element("Structure", {"_name": "Case Structure", "uid": node.get("uid"), "uid_parent": parent_uid})
+        el.set("selectin", "")
+        frames = list(node.find("diagramList"))
+        frame_srn_terms = []
+        for fr in frames:
+            srn = next((n for n in self.node_defs(fr) if n.get("class") == "sRN"), None)
+            ts = {}
+            for t in (srn.find("termList") if srn is not None else []):
+                d = t.find("dco")
+                if d is not None and t.get("class") == "term":
+                    ts.setdefault(d.get("uid"), []).append(t)
+            frame_srn_terms.append(ts)
+        sel_strings = [bytes.fromhex(x.text).decode("mac_roman") if x.text else ""
+                       for x in node.findall("SelectStringArray/SL__arrayElement")]
+        sel_tree = None
+        frame_els = []
+        for i, fr in enumerate(frames):
+            frame_els.append(ET.Element("CaseFrame", {"selector": "", "selectout": "",
+                                                      "uid": fr.get("uid"), "uid_parent": node.get("uid")}))
+        n_in = n_out = 0
+        outer_tunnels = []
+        for term in node.find("termList"):
+            d = term.find("dco")
+            if d is None:
+                continue
+            dc = d.get("class")
+            if dc == "caseSel":
+                sel_tree = self.tid_tree(term)
+                self.term_owner[term.get("uid")] = (el, "#selectin", True)
+                for i, ts in enumerate(frame_srn_terms):
+                    for t in ts.get(d.get("uid"), []):
+                        self.term_owner[t.get("uid")] = (frame_els[i], "#selectout", False)
+            elif dc == "selTun":
+                f = int(d.findtext("objFlags") or 0)
+                out = f & 1
+                if out:
+                    n_out += 1
+                else:
+                    n_in += 1
+                tid = ("Out%d" % n_out) if out else ("In%d" % n_in)
+                tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
+                if out and f & 0x300000:
+                    tun.set("cond", "true")
+                self.term_owner[term.get("uid")] = (tun, "value", not out)
+                outer_tunnels.append(tun)
+                for i, ts in enumerate(frame_srn_terms):
+                    for t in ts.get(d.get("uid"), []):
+                        half = ET.Element("Tunnel", {"_id": tid, "uid": t.get("uid"), "uid_parent": frames[i].get("uid")})
+                        self.term_owner[t.get("uid")] = (half, "value", bool(out))
+                        frame_els[i].append(half)
+        # selectors
+        items = {i: [] for i in range(len(frames))}
+        st = (sel_tree.get("Type") if sel_tree is not None else "") or ""
+        labels = [e.text or "" for e in sel_tree.findall("EnumLabel")] if sel_tree is not None else []
+        for r in node.findall("SelectRangeArray32/SL__arrayElement"):
+            di = int(r.findtext("diagramIdx") or 0)
+            s, e = int(r.findtext("start") or 0), int(r.findtext("end") or 0)
+            stt, ett = int(r.findtext("startRangeType") or 0), int(r.findtext("endRangeType") or 0)
+            if st == "Boolean":
+                txt = "True" if s else "False"
+            elif st == "Cluster":
+                txt = "No Error" if e == INT_MIN else "Error .."
+            else:
+                def val(v):
+                    if st == "String":
+                        return '"%s"' % sel_strings[v] if 0 <= v < len(sel_strings) else str(v)
+                    if labels:
+                        return labels[v] if 0 <= v < len(labels) else str(v)
+                    return str(v)
+                if stt == 0 and ett == 0:
+                    txt = val(s)
+                else:
+                    txt = "%s..%s" % (val(s) if stt != 3 else "", val(e) if ett != 3 else "")
+            items.setdefault(di, []).append(txt)
+        dflt = node.findtext("SelectDefaultCase")
+        if dflt:
+            try:
+                di = int(dflt, 16)
+                if di != 0xFF:
+                    items.setdefault(di, []).append("Default")
+            except ValueError:
+                pass
+        for i, f in enumerate(frame_els):
+            f.set("selector", esc_attr_items(items.get(i, [])))
+        for t in outer_tunnels:
+            if t.get("_id").startswith("In"):
+                el.append(t)
+        for i, fr in enumerate(frames):
+            self.walk(fr, fr.get("uid"), frame_els[i])
+            el.append(frame_els[i])
+        for t in outer_tunnels:
+            if t.get("_id").startswith("Out"):
+                el.append(t)
+        return el
+
+    # ---- wiring --------------------------------------------------------------------------------
     def wire(self, diag):
-        ins, outs = {}, {}
-        for sig in diag.find("signalList"):
+        sl = diag.find("signalList")
+        for sig in (sl if sl is not None else []):
             ends = [self.term_owner.get(t.get("uid")) for t in sig.find("termList")]
             if any(e is None for e in ends):
                 self.notes.append("signal %s touches an unread terminal" % sig.get("uid"))
@@ -276,25 +547,32 @@ class Reader:
                 self.notes.append("signal %s has %d sources" % (sig.get("uid"), len(srcs)))
                 continue
             src_el, src_term, _ = srcs[0]
-            net = "%s.%s" % (src_el.get("uid"), escape(src_term))
-            outs.setdefault(id(src_el), []).append((src_term, net))
+            if src_term.startswith("#"):
+                net = "%s.value" % src_el.get("uid")
+                if src_term == "#count":
+                    src_el.set("count", net)
+                elif src_term == "#maxout":
+                    src_el.set("maxout", net)
+                elif src_term == "#selectout":
+                    src_el.set("selectout", net)
+            else:
+                net = "%s.%s" % (src_el.get("uid"), escape(src_term))
+                self._add(src_el, "outputs", src_term, net)
             for el, term, sink in ends:
                 if sink:
-                    ins.setdefault(id(el), []).append((term, net))
-        for el in self.out:
-            if not isinstance(el.tag, str):
-                continue
-            i = ins.get(id(el), [])
-            o = outs.get(id(el), [])
-            if el.tag == "Indicator":
-                el.set("inputs", "value:" + (i[0][1] if i else ""))
-            elif el.tag in ("Control", "Constant"):
-                el.set("outputs", "value:" + (o[0][1] if o else ""))
-            elif el.tag == "Node":
-                if i:
-                    el.set("inputs", ",".join("%s:%s" % (escape(t), n) for t, n in i))
-                if o:
-                    el.set("outputs", ",".join("%s:%s" % (escape(t), n) for t, n in o))
+                    if term == "#maxin":
+                        el.set("maxin", net)
+                    elif term == "#selectin":
+                        el.set("selectin", net)
+                    else:
+                        self._add(el, "inputs", term, net)
+        return None
+
+    @staticmethod
+    def _add(el, attr, term, net):
+        cur = el.get(attr)
+        item = "%s:%s" % (escape(term), net)
+        el.set(attr, item if not cur else cur + "," + item)
 
     def pane_flags(self):
         """conIdx (as text) -> connection, read off the pane's Function type."""

@@ -1,0 +1,110 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Project/SuppressChangeNotifications" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\resource\Framework\Providers\SCC\PrjProv_SCC SetPromptedOnEditFlag.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project refnum" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project refnum" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="SuppressChangeNotifications" /><TypeDesc Type="Void" Format="inline" Label="SuppressChangeNotifications" /><TypeDesc Type="Array" Format="inline" Label="ItemIDs"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="ItemIDs" /><TypeDesc Type="Boolean" Format="inline" Label="Suppress" /><TypeDesc Type="Void" Format="inline" Label="Suppress" /></types><heap><SL__arrayElement class="invokeNode" uid="182">
+        <objFlags>66176</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="230">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="260">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(25)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="353">
+            <dco class="hGrowCItem" uid="362">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(0, 153, 9, 166)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="367">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="368">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="372">
+            <dco class="hGrowCItem" uid="379">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(28)</typeDesc>
+              <termBounds>(9, 153, 18, 166)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="382">
+            <dco class="invokeItem" uid="385">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(18, 0, 34, 83)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="388">
+            <dco class="invokeItem" uid="389">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(18, 83, 34, 166)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="402">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="400">
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(34, 0, 50, 83)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="409">
+            <dco class="invokeItem" uid="406">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(34, 83, 50, 166)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="415">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="411">
+              <typeDesc>TypeID(33)</typeDesc>
+              <termBounds>(50, 0, 66, 83)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="422">
+            <dco class="invokeItem" uid="420">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(34)</typeDesc>
+              <termBounds>(50, 83, 66, 166)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(209, 343, 276, 509)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="6">
+          <SL__arrayElement uid="385" />
+          <SL__arrayElement uid="389" />
+          <SL__arrayElement uid="400" />
+          <SL__arrayElement uid="406" />
+          <SL__arrayElement uid="411" />
+          <SL__arrayElement uid="420" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="260" />
+          <SL__arrayElement uid="362" />
+          <SL__arrayElement uid="368" />
+          <SL__arrayElement uid="379" />
+          </permDCOList>
+        <nodeName>"Project"</nodeName>
+        <oMId>0005</oMId>
+        <methName>"SuppressChangeNotifications"</methName>
+        <methCode>655396917</methCode>
+        <invokeFlags>0408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

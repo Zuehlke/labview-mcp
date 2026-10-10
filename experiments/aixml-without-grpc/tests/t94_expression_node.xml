@@ -1,0 +1,8 @@
+<VI _name="T94 Expression Node.vi" description="An expression node on a double and one on an int32.">
+  <Control _name="x" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Node _name="Expression Node" inputs="input:4200.value" outputs="output:4300.output" text="2*x+1" uid="4300" uid_parent="root"/>
+  <Indicator _name="y" inputs="value:4300.output" type="double" uid="4310" uid_parent="root" value="0"/>
+  <Control _name="n" outputs="value:4400.value" type="int32" uid="4400" uid_parent="root" value="0"/>
+  <Node _name="Expression Node" inputs="input:4400.value" outputs="output:4500.output" text="n*n" uid="4500" uid_parent="root"/>
+  <Indicator _name="m" inputs="value:4500.output" type="int32" uid="4510" uid_parent="root" value="0"/>
+</VI>

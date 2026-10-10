@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Get Broken VI List" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\AppBuilder\AB_Get_Detailed_BrokenVI_Message.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="OwningApp" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="OwningApp" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get Broken VI List" /><TypeDesc Type="Void" Format="inline" Label="Get Broken VI List" /><TypeDesc Type="Void" Format="inline" Label="Broken VI List" /><TypeDesc Type="Array" Format="inline" Label="Broken VI List"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="invokeNode" uid="443">
+        <objFlags>33555072</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="450">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="451">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="455">
+            <dco class="hGrowCItem" uid="458">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(0, 91, 9, 104)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="460">
+            <dco class="hGrowCItem" uid="461">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="463">
+            <dco class="hGrowCItem" uid="464">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(9, 91, 18, 104)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="466">
+            <dco class="invokeItem" uid="467">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(18, 0, 34, 52)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="471">
+            <dco class="invokeItem" uid="472">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(13)</typeDesc>
+              <termBounds>(18, 52, 34, 104)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="552">
+            <dco class="invokeItem" uid="546">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(34, 0, 50, 52)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="565">
+            <dco class="invokeItem" uid="557">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(34, 52, 50, 104)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(491, 2046, 542, 2150)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>327684</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="467" />
+          <SL__arrayElement uid="472" />
+          <SL__arrayElement uid="546" />
+          <SL__arrayElement uid="557" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="451" />
+          <SL__arrayElement uid="458" />
+          <SL__arrayElement uid="461" />
+          <SL__arrayElement uid="464" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0005</oMId>
+        <methName>"Get Broken VI List"</methName>
+        <methCode>2429</methCode>
+        <invokeFlags>201408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

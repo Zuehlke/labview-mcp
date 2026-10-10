@@ -859,5 +859,32 @@
     }
    }
   ]
+ },
+ "t94_expression_node": {
+  "cases": [
+   {
+    "inputs": "x=3;n=7",
+    "outputs": {
+     "y": 7,
+     "m": 49
+    }
+   }
+  ]
+ },
+ "t95_feedback_loop": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "sum": 10
+    }
+   },
+   {
+    "inputs": "n=0",
+    "outputs": {
+     "sum": 0
+    }
+   }
+  ]
  }
 }

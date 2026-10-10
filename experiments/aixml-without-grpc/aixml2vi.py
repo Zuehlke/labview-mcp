@@ -257,6 +257,46 @@ def fields(tree):
     return [c for c in tree if c.tag == "TypeDesc"]
 
 
+WIRE_SAFE = {"Boolean", "String", "Path", "LVVariant", "Void", "NumInt8", "NumInt16", "NumInt32", "NumInt64",
+             "NumUInt8", "NumUInt16", "NumUInt32", "NumUInt64", "NumFloat32", "NumFloat64", "NumFloatExt",
+             "NumComplex64", "NumComplex128", "NumComplexExt", "UnitUInt8", "UnitUInt16", "UnitUInt32",
+             "UnitFloat64", "UnitFloat32", "UnitInt32", "UnitInt16"}
+
+
+def unverified_wire_type(tree):
+    """None when every part of a wire's type is one a composed wire has carried in a test that
+    loads clean; otherwise a short name of the first part that is not (a DataLog refnum, a
+    picture ...). Two of the three VIs that KILLED LabVIEW in the 2026-10-10 load check had a
+    wire of such a type."""
+    if tree is None:
+        return None
+    t = tree.get("Type") or ""
+    if t in ("Cluster", "Array"):
+        for f in fields(tree):
+            bad = unverified_wire_type(f)
+            if bad:
+                return bad
+        return None
+    if t == "MeasureData":
+        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp") else "MeasureData." + (tree.get("Flavor") or "")
+    if t == "Refnum":
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef"):
+            return "Refnum." + (tree.get("RefType") or "?")
+        for f in fields(tree):
+            bad = unverified_wire_type(f)
+            if bad:
+                return bad
+        return None
+    return None if t in WIRE_SAFE else t
+
+
+def typedef_inner(tree):
+    """The type a TypeDef wraps (its nested TypeDesc); any other type itself."""
+    while tree is not None and tree.get("Type") == "TypeDef" and fields(tree):
+        tree = fields(tree)[0]
+    return tree
+
+
 def elem_of(tree):
     return fields(tree)[0]
 
@@ -1668,9 +1708,12 @@ class Composer:
             agg, tpl = terms[0], terms[1]
             cin = [n for t, n in ins if t in ("input cluster", "cluster")]
             ctype = wired_type(cin[0] if cin else None, "the cluster")
-            if ctype.get("Type") != "Cluster":
-                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), ctype.get("Type")))
-            fs = fields(ctype)
+            inner = typedef_inner(ctype)
+            if inner.get("Type") != "Cluster":
+                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), inner.get("Type")))
+            # a TYPEDEF'd cluster (a subVI's pane hands one out) keeps the typedef on the
+            # terminal; its fields are the wrapped cluster's
+            fs = fields(inner)
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
             for c in terms[1:]:
                 tl.remove(c)
@@ -1717,9 +1760,9 @@ class Composer:
                 raise Unsupported("%s %s: a cluster input must be wired" % (name, el.get("uid")))
             else:
                 ctype = wired_type(cin[0], "the cluster")
-            if ctype.get("Type") != "Cluster":
-                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), ctype.get("Type")))
-            fs = fields(ctype)
+            if typedef_inner(ctype).get("Type") != "Cluster":
+                raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), typedef_inner(ctype).get("Type")))
+            fs = fields(typedef_inner(ctype))
             labels = [f.get("Label") or "element" for f in fs]
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
             for c in terms[2:]:
@@ -1904,11 +1947,16 @@ class Composer:
         rightFeedback) - built like a shift register. Both sit in the diagram's node and z
         lists and share their bounds."""
         self.check_attrs(el)
+        in_loop = None
         if (el.get("uid_parent") or "root") != "root":
-            # measured: at the top level it computes; inside a For Loop the same pair - LabVIEW's
-            # node order, the diagram's 0x200 flag, a clean loop part - stays "good to bad after
-            # compiling", cause not found yet
-            raise Unsupported("Feedback Node %s inside a structure is not composable yet" % el.get("uid"))
+            # INSIDE A LOOP the initializer is not the hidden node's: LabVIEW moves initFeedback
+            # into the LOOP's termList (a border terminal fed from outside) naming the loop in
+            # iFeedbackLoop - read off NI's "Feedback Node - Building an Array.vi". Composed with
+            # the initializer on the node it was "good to bad after compiling".
+            p = self._by_uid.get(el.get("uid_parent"))
+            in_loop = next((x for x in self.loops if x[1].owner is p), None) if p is not None else None
+            if in_loop is None:
+                raise Unsupported("Feedback Node %s: only at the top level or directly in a loop" % el.get("uid"))
         ins, outs = dict(pairs(el.get("inputs"))), dict(pairs(el.get("outputs")))
         # (an Element with no children is falsy, so no `a or b` here)
         tree = self.net_type.get(ins.get("initializer"))
@@ -1927,6 +1975,17 @@ class Composer:
         if not ins.get("initializer"):
             t = terms["initFeedback"]
             t.find("objFlags").text = str(int(t.findtext("objFlags") or 0) & ~0x8000)
+        if in_loop is not None:
+            loop, inner, outer = in_loop
+            it = terms["initFeedback"]
+            hidden.find("termList").remove(it)
+            hidden.find("termList").set("elements", str(len(hidden.find("termList"))))
+            loop.find("termList").append(it)
+            loop.find("termList").set("elements", str(len(loop.find("termList"))))
+            d = it.find("dco")
+            if d.find("iFeedbackLoop") is None:
+                ET.SubElement(d, "iFeedbackLoop", {"uid": loop.get("uid")})
+            self.ends[(el.get("uid"), "initializer")] = (it.get("uid"), outer)
         for net in outs.values():
             if net:
                 self.net_type[net] = tree
@@ -2356,6 +2415,46 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Call %r <- %s (pane %d, %d slots)" % (target, src, con_id, len(slots)))
+
+    def add_expr_node(self, el):
+        """An Expression Node (exprNode): one input and one output bDDCO typed with the wired
+        numeric type, the formula as the text of its textNodeLabel and errOfst = the formula's
+        length - read off NI's Bandlimited Signal Generation.vi (`n/4.0+0.5`, errOfst 09)."""
+        self.check_attrs(el, ("text",))
+        text = unescape(el.get("text") or "")
+        if not text or len(text.encode("mac_roman", "replace")) > 0xFF:
+            raise Unsupported("Expression Node %s: text %r is not composable" % (el.get("uid"), text))
+        ins, outs = dict(pairs(el.get("inputs"))), dict(pairs(el.get("outputs")))
+        src_net = ins.get("input")
+        tree = self.net_type.get(src_net) if src_net else None
+        if tree is None or not (tree.get("Type") or "").startswith("Num"):
+            raise Unsupported("Expression Node %s: needs a numeric wire into input" % el.get("uid"))
+        diag = self.diag_of(el)
+        got = self.instantiate("node/exprNode", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no exprNode part harvested")
+        node, _, src = got
+        tin, tout = list(node.find("termList"))
+        for t in (tin, tout):
+            t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(lvheap.strip_label(tree))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        tw = max(20, 6 * len(text))
+        lab = node.find("textNodeLabel")
+        lab.find("textRec/text").text = '"%s"' % text
+        lab.find("bounds").text = lvheap.fmt_bounds((0, 8, 17, 8 + tw))
+        tout.find("dco/termBounds").text = lvheap.fmt_bounds((0, 8 + tw, 17, 16 + tw))
+        b = lvheap.parse_bounds(node.find("bounds").text)
+        node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 17, b[1] + 16 + tw))
+        node.find("errOfst").text = "%02X" % len(text.encode("mac_roman", "replace"))
+        self.ends[(el.get("uid"), "input")] = (tin.get("uid"), diag)
+        self.ends[(el.get("uid"), "output")] = (tout.get("uid"), diag)
+        if outs.get("output"):
+            self.net_type[outs["output"]] = lvheap.strip_label(tree)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Expression Node %r <- %s" % (text, src))
 
     def add_vi_server_ref(self, el):
         """VI Server Reference: element="<label>" is a reference to that front-panel object (a
@@ -3209,6 +3308,13 @@ class Composer:
         wrap = got[0]
         outer, innert = list(wrap)
         dco = outer.find("dco")
+        if mode != "index":
+            # a PLAIN tunnel carries no TunnelType: the For Loop part (cut from an NI TDMS
+            # example) had TunnelType 02, a CONCATENATING tunnel, and every plain For Loop
+            # output composed from it was broken (t31, measured 2026-10-10)
+            for tag in ("TunnelType", "DefaultTunnelType"):
+                for tt in dco.findall(tag):
+                    dco.remove(tt)
         src_net = pairs(el.get("inputs"))[0][1] if pairs(el.get("inputs")) else None
         tree = self.net_type.get(src_net)
         if tree is None:
@@ -3271,6 +3377,13 @@ class Composer:
         left = next((c for c in el if isinstance(c.tag, str) and c.tag == "Left"), None)
         right = next((c for c in el if isinstance(c.tag, str) and c.tag == "Right"), None)
         init = [n for _, n in pairs(left.get("inputs"))] if left is not None else []
+        if len(init) > 1 or len(pairs(left.get("outputs") if left is not None else "")) > 1:
+            # a STACKED register (Left with several elements: value, value2, value3) mapped onto
+            # one left terminal put that terminal into several signals - "Insane List {dupe}"
+            # and a FATAL DAbort that killed LabVIEW (measured on NI's Running Average with
+            # Shift Registers.vi). Refused until its heap form is measured.
+            raise Unsupported("ShiftReg %s: a stacked shift register (%d elements) is not composable yet"
+                              % (el.get("uid"), max(len(init), len(pairs(left.get("outputs"))))))
         if not init or init[0] is None or init[0] not in self.net_type:
             raise Unsupported("ShiftReg %s: only an initialized register is composable" % el.get("uid"))
         tree = self.net_type[init[0]]
@@ -3393,6 +3506,19 @@ class Composer:
                 raise Unsupported("net %r has no source" % net)
             if not ends["sinks"]:
                 continue
+            kind0 = self.net_type.get(net)
+            if kind0 is not None and any(t.get("Type") == "TypeDef" for t in kind0.iter("TypeDesc")):
+                # a wire carrying a TYPEDEF needs the caller to link the .ctl; without that link
+                # LabVIEW logged "Insane Wire {sub}" and a FATAL DAbort (NI's Get Item Info.vi,
+                # ItemRef.ctl between two subVI calls). Refused until typedef links are composed.
+                lab = next((x.get("Text") for x in kind0.iter("Label")), "?")
+                raise Unsupported("net %r carries the typedef %s; typedef links are not composed yet" % (net, lab))
+            bad = unverified_wire_type(kind0)
+            if bad:
+                # the same FATAL "Insane Wire {sub}" with a DataLog refnum from a subVI's pane
+                # (NI's Monitoring Keyboard and Mouse Activity.vi): a wire may only carry a type
+                # this composer has carried on a measured wire
+                raise Unsupported("net %r carries a %s, which no composed wire has carried yet" % (net, bad))
             resolved = [self.ends[key] for _, key in [ends["src"]] + ends["sinks"]]
             diags = {id(d) for _, d in resolved}
             if len(diags) != 1:
@@ -3732,6 +3858,8 @@ class Composer:
                     self.add_vi_server_ref(e)
                 elif e.tag == "Node" and nm == "Static VI Reference":
                     self.add_static_ref(e)
+                elif e.tag == "Node" and nm == "Expression Node":
+                    self.add_expr_node(e)
                 elif e.tag == "Node" and nm == "Invoke Node":
                     self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):

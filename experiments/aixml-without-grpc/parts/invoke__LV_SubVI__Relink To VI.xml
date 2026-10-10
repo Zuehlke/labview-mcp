@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SubVI/Relink To VI" source="C:\Program Files (x86)\National Instruments\LabVIEW 2026\vi.lib\printing\PrintingMutation\Relink_Mutation.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4011" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4011" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Relink To VI" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4011" HasItem="0" Format="inline" Label="Relink To VI" /></types><heap><SL__arrayElement class="invokeNode" uid="126">
+                <objFlags>66176</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="132">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="133">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(48)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="136">
+                    <objFlags>24576</objFlags>
+                    <dco class="hGrowCItem" uid="137">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(49)</typeDesc>
+                      <termBounds>(0, 59, 9, 72)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="139">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="140">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(50)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="142">
+                    <dco class="hGrowCItem" uid="143">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(51)</typeDesc>
+                      <termBounds>(9, 59, 18, 72)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="145">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="146">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(52)</typeDesc>
+                      <termBounds>(18, 0, 34, 36)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="149">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="150">
+                      <objFlags>65537</objFlags>
+                      <typeDesc>TypeID(53)</typeDesc>
+                      <termBounds>(18, 36, 34, 72)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(68, 19, 103, 91)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="146" />
+                  <SL__arrayElement uid="150" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="133" />
+                  <SL__arrayElement uid="137" />
+                  <SL__arrayElement uid="140" />
+                  <SL__arrayElement uid="143" />
+                  </permDCOList>
+                <nodeName>"SubVI"</nodeName>
+                <oMId>0003</oMId>
+                <methName>"Relink To VI"</methName>
+                <methCode>104194048</methCode>
+                <invokeFlags>1008</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>
