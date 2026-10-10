@@ -1079,9 +1079,71 @@ user-event frame on purpose - "dynIndex is the registration item's position and 
 has been measured". That mapping is what MGI's VI and this run settle, so the refusal can be lifted
 there; it has not been.
 
-**Not measured, and refused by name**: an event source that is not a user event (a control
-reference - NI's `Dynamic Event Generation.vi` registers five), and a user-event frame without the
-registration routed in through a tunnel.
+A user-event frame without the registration routed in through a tunnel is refused by name. This
+paragraph said until the next section that an event source other than a user event was not
+measured at all; it was refused, and it is composed now.
+
+### Control references as event sources
+
+A `Register For Events` whose source is a VI Server reference - a control, the VI - registers
+ONE EVENT per item, and **NI's AIXML does not say which**: the node is written
+`event source:<net>,event source:<net>` and nothing more, the event being named only by the frame
+that handles it (`<Picture>: Mouse Down`). So the composer reads each source's events off the Event
+Structures the registration reaches - through loop tunnels, shift registers and a case's frames -
+in the order the frames first name them; a source wired twice takes its events in that order.
+NI's `Dynamic Event Generation.vi` is the shape: VI, Picture, Picture registered for Mouse Move,
+Mouse Down, Mouse Up, its frames naming Mouse Down, Mouse Move, Mouse Up.
+
+**The item's code is not derivable**, so it was surveyed: `scan_event_regs.py` read every VI of the
+installation with pylabview alone (40 553 VIs in about 45 minutes, 42 unreadable; 287 with a
+`Register For Events`, only **10** of them with a reference source - the rest register user events),
+NI's converter exported those to name each frame's events, and `build_event_kinds.py` joined the two
+into `parts/control-events.json` - **8** (class, event) pairs, each with the item's code, the item
+dco's objFlags, the frame's EventSpec and the event's data cluster, and the VI it was read off. Four
+of the ten are LOCKED (their export carries no frames), so they give codes without names: a
+Boolean's `0C663C00` - the code Value Change carries on the other classes - a Tree Control's own
+family `6AD4` (`7400`/`7405`), a Multicolumn Listbox's `0C663C06` and the VI's `3903A407`. The
+survey is thin because the installation is: what the table does not hold is refused, not guessed.
+What it settled:
+
+| what | measured |
+|---|---|
+| the item | `eventRegItem` with an 8-digit code: the registration child's `CField2` + `CField4` (`0C663C09` = `0x0C66`, `0x3C09`), `CField0 0x0001`; a user event's stays `03E8` |
+| the code's FAMILY (`CField2`) | names the class that DECLARES the event: `0C66` for events every control has - Value Change is `0C663C00` on an `LV.Control` reference itself and on Array and Digital alike, Mouse Down/Up/Move `0C663C09`/`02`/`06` on a Picture; `3903` for the VI's (Mouse Move `3903A406`); class 0x004B's own Mouse Up is `64AFA801` |
+| the hierarchy | a refnum's `CtlFlags` IS LabVIEW's class id (`LV.Control` 0x0006, `LV.GObject` 0x0024), and `docs/vi-server-classes.tsv` gives each class's parent by that id. So a family declared by `LV.Control` serves every control class, measured below on Path, which no shipped VI registers |
+| the frame | `<Name>: Event` - the source's label; `<#n>` for an UNLABELLED item at position n (`<#5>` is the fifth item of the icon editor's `Buffer for lossless tracking.vi`) |
+| `dynIndex` | the item's position among ALL the registration's items, user events included (that VI's user event is the sixth item and `dynIndex 6`) - the composer counted user events only until now |
+| the spec | source 1, eSource 0, the event's type (Value Change `1073741826`, the static one's), ddoUID 0. **`regFlags` and `eFlags` vary per frame**: Mouse Down reads regFlags 1 on one item and `-2147483647` (bit 0x80000000) on another of the same VI, Mouse Move eFlags 2 and 4 - the table keeps the commonest and lists every variant |
+| the data cluster | `Source`, `Type`, `Time`, then `CtlRef` (`VIRef` for a VI) typed as the item, then the event's own fields. Value Change's `OldVal`/`NewVal` are a strict reference's data type, a Path reference's Path and a String reference's String (LabVIEW's own save of a composed probe; it repairs a Variant there on load) and a generic `LV.Control` reference's Variant |
+| the selector syntax | events separated by `;`, several sources of ONE event by `,` inside it: `<Preview>, <Terminals>: Mouse Down` is two pairs. The composer split event selectors on the comma, which cut that into a bare source and a remainder; `event_items` reads both now |
+
+**Measured in LabVIEW, not just composed**: `t122_ctlref_value_change` registers Value Change on a
+Path reference - a class no shipped VI registers, so the code comes from `LV.Control`'s family - fires
+it with `Value (Signaling)` and reads `NewVal` back as the path it wrote; `t123_ctlref_two_events`
+wires ONE reference twice for Mouse Down and Value Change, fires Value Change only, and the frame that
+ran is the Value Change one, so the item order and `dynIndex` hold; `t124_ctlref_reregister`
+re-registers inside the frame (the refnum input wired, the items mirrored from it, as inside NI's
+example) and only then fires a second event, which arrives. LabVIEW's own save of t123 and t124
+matches the composed VIs in every item, spec, registration type and data cluster.
+
+**`Register For Events` on a front-panel object answers Error 1001, "The VI front panel is not
+open", when the VI's panel is closed** - and the Event Structure then waits for ever. Measured as an
+A/B on a composed probe and on LabVIEW's own save of it alike: closed, the run timed out (twice each);
+open, it finished in 18-35 ms. This is LabVIEW, not the composition, and it hits any run of such a VI
+without a panel - the ActiveX runner's included. The suite tests open their own panel FIRST, with
+`Front Panel Window:Open` on a wired `This VI`, and close it at the end; `lv-fp.ps1` does it from
+outside. (Opening it AFTER the registration does not help: the 1001 rides the error chain into the
+property node, which then does nothing.) Found on the way: a PATH constant
+with a drive was composed with the drive as `C:`, which LabVIEW reads back as `C::\...` - the colon
+is LabVIEW's to add.
+
+**Refused by name**: a (class, event) whose family no measured class declares for an ancestor of
+that class; a frame handling several events (LabVIEW gives it their common fields - not measured);
+a re-registration whose source does not match its item. **NI's own export of `Dynamic Event
+Generation.vi` cannot be composed back by either converter**: the export drops the wire from the
+shift register to the dynamic event terminal and from the terminal out, so its inner
+`Register For Events` reads a net nothing writes. Route the registration in through a tunnel, as the
+user-event skeleton does.
 
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
@@ -1108,6 +1170,8 @@ through `Project:Active Project` should not care, and that is untested.
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
 | `repair_nested_types.py` | resolves a part's typedef type ids against its donor VI - parts harvested before 2026-10-10 carried the donor's numbers (§7a, "Option 1") |
 | `harvest_event_reg.py` | cuts `Register For Events` (`eventRegNode`, which the harvester does not know) out of a VI into a part (§7a, "User events") |
+| `scan_event_regs.py`, `build_event_kinds.py`, `parts/control-events.json` | every event registration of the installation, heap only; joined with NI's exports into the (class, event) table control-reference sources are composed from (§7a, "Control references") |
+| `lv-fp.ps1` | open or close a VI's front panel over COM - registering for a control's events needs it open |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |

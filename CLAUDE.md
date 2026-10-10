@@ -1115,7 +1115,7 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 122 of 122. **No `.ctl` link is needed for a
+own suite at 125 of 125 - control references as event sources included. **No `.ctl` link is needed for a
 typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **`lvai_create_class`
@@ -2194,7 +2194,11 @@ user-event spec, the wire onto the dynamic event terminal and the payload field 
 skeleton runs `Ticks Received = 5`, a variant only the payload can stop stopped on it, and a cluster
 payload is read element by element, and several user events may share one registration - which the
 gRPC route does not finish yet, its finishing script refusing more than one until the `dynIndex`
-mapping was measured (it now is). Only user events as event sources so far; `docs/aixml-backends.md`.
+mapping was measured (it now is). A CONTROL REFERENCE as the source composes too, the event read off
+the frame that names it and the code off a surveyed (class, event) table - and **registering for a
+front-panel object's events needs the VI's panel OPEN**: closed, `Register For Events` answers
+`Error 1001` and the Event Structure waits for ever, LabVIEW's own save of such a VI included.
+`docs/aixml-backends.md`.
 
 **FOR A FRONT-PANEL EVENT THERE IS A CHEAPER ROUTE, AND IT DOES NOT GENERALISE TO A USER EVENT.**
 A control terminal placed inside its own event frame already carries the value the event just

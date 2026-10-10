@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T123 Ctlref Two Events.vi" description="ONE control reference registered for TWO events: the source is wired twice, and the frames name Mouse Down first, Value Change second - so the first item registers Mouse Down, the second Value Change, each frame's dynIndex its item. Only Value Change is fired; the frame that ran says which. LV.Path was read registering neither: both codes come from LV.Control's family, Mouse Down's off a Picture.">
+  <Control _name="File" outputs="value:" type="path" uid="4205" uid_parent="root" value="" />
+  <Constant _name="Signal" outputs="value:4206.value" type="path" uid="4206" uid_parent="root" value="C:\5Cprobe\5Ctwo.txt"/>
+  <Constant _name="Open" outputs="value:4208.value" type="bool" uid="4208" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4209.value" type="bool" uid="4209" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" element="File" outputs="File:4201.File" uid="4201" uid_parent="root"/>
+  <Node _name="VI Server Reference" outputs="This VI:4202.This VI" type="{LV.VI}" uid="4202" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4202.This VI,error in (no error):,Front Panel Window\3AOpen:4208.value" outputs="reference out:,error out:4210.error out" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Register For Events" inputs="event registration refnum:,error in (no error):4210.error out,event source:4201.File,event source:4201.File" outputs="event registration refnum:4203.event registration refnum,error out:4203.error out" uid="4203" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:4201.File,error in (no error):4203.error out,Value (Signaling):4206.value" outputs="reference out:,error out:4207.error out" type="{LV.Path}" uid="4207" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4203.event registration refnum" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" inputs="value:4221.value" uid="4231" uid_parent="4230"/>
+      <CaseFrame selector=" &lt;File&gt;\3A Mouse Down " uid="4280" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4281" uid_parent="4280"/>
+        <Node _name="Event Data Node" fields="Button" outputs="Button:" uid="4284" uid_parent="4280"/>
+        <Constant outputs="value:4286.value" type="bool" uid="4286" uid_parent="4280" value="true"/>
+        <Constant _name="Mouse Down Ran" outputs="value:4287.value" type="int32" uid="4287" uid_parent="4280" value="1"/>
+        <Tunnel _id="Out1" inputs="value:4286.value" uid="4288" uid_parent="4280"/>
+        <Tunnel _id="Out2" inputs="value:4287.value" uid="4289" uid_parent="4280"/>
+      </CaseFrame>
+      <CaseFrame selector=" &lt;File&gt;\3A Value Change " uid="4240" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4241" uid_parent="4240"/>
+        <Node _name="Event Data Node" fields="NewVal" outputs="NewVal:4244.NewVal" uid="4244" uid_parent="4240"/>
+        <Indicator _name="Received" inputs="value:4244.NewVal" type="path" uid="4245" uid_parent="4240" value=""/>
+        <Constant outputs="value:4246.value" type="bool" uid="4246" uid_parent="4240" value="true"/>
+        <Constant _name="Value Change Ran" outputs="value:4247.value" type="int32" uid="4247" uid_parent="4240" value="2"/>
+        <Tunnel _id="Out1" inputs="value:4246.value" uid="4248" uid_parent="4240"/>
+        <Tunnel _id="Out2" inputs="value:4247.value" uid="4249" uid_parent="4240"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="4250" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4251" uid_parent="4250"/>
+        <Control _name="Stop" outputs="value:" style="latched" type="bool" uid="4254" uid_parent="4250" value="false" />
+        <Node _name="Event Data Node" fields="Source" outputs="Source:" uid="4255" uid_parent="4250"/>
+        <Constant outputs="value:4256.value" type="bool" uid="4256" uid_parent="4250" value="true"/>
+        <Constant _name="Stop Ran" outputs="value:4258.value" type="int32" uid="4258" uid_parent="4250" value="3"/>
+        <Tunnel _id="Out1" inputs="value:4256.value" uid="4257" uid_parent="4250"/>
+        <Tunnel _id="Out2" inputs="value:4258.value" uid="4259" uid_parent="4250"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4260.value" uid="4260" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4263.value" uid="4263" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4260.value" uid="4261" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4221.value" outputs="value:4262.value" uid="4262" uid_parent="4220"/>
+    <Tunnel _id="Out2" inputs="value:4263.value" outputs="value:4264.value" uid="4264" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Which Frame" inputs="value:4264.value" type="int32" uid="4265" uid_parent="root" value="0"/>
+  <Node _name="Unregister For Events" inputs="event registration refnum:4262.value,error in:4207.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4202.This VI,error in (no error):4270.error out,Front Panel Window\3AOpen:4209.value" outputs="reference out:,error out:4271.error out" type="{LV.VI}" uid="4271" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4271.error out" type="cluster{bool.status,int32.code,string.source}" uid="4273" uid_parent="root" value="[false,0,]" />
+</VI>

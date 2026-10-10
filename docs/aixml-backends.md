@@ -203,7 +203,22 @@ data node (its elements are fields 4, 5, ...), measured on a two-element one rea
 user events may share one registration (each frame's `dynIndex` is its event's position there, as in
 MGI's shipped `Actor Core.vi`) - which the gRPC route does not finish yet: `pylv-finish-user-events.py`
 refuses more than one user-event frame until that mapping is measured, and it now is.
-Event sources other than user events are refused by name. `scripts/aixml-skeletons/user-event-two-loops.md`.
+`scripts/aixml-skeletons/user-event-two-loops.md`.
+
+**A CONTROL REFERENCE as an event source composes too** (a control, the VI): one registration item
+per (source, event), the event taken from the frame that names it - NI's AIXML writes only
+`event source:<net>`, never which event - and the item's code from `parts/control-events.json`, a
+(class, event) table surveyed off every event registration of the installation and named through
+NI's exports. A code's family names the class that declares the event (`0C66` is `LV.Control`'s), and
+a refnum's `CtlFlags` is LabVIEW's class id, so one family serves every subclass: Value Change on a
+Path reference, which no shipped VI registers, composed and ran. Measured in LabVIEW: the event
+arrives with its `NewVal`, one reference registered for two events runs the right frame, and a
+re-registration inside the handler keeps receiving; LabVIEW's own save matches the composed VIs
+item for item. **Registering for a front-panel object's events needs the VI's panel OPEN** - with it
+closed `Register For Events` answers Error 1001 and the Event Structure waits for ever, LabVIEW's
+own save of the VI included - so a VI run without its panel (the ActiveX runner's way) has to open
+it before it registers. A (class, event) no measured family covers is refused by name, as is a frame
+handling several events. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Control references".
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

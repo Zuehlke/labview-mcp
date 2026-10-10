@@ -1240,5 +1240,40 @@
     }
    }
   ]
+ },
+ "t122_ctlref_value_change": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Received": "C:\\probe\\in.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t123_ctlref_two_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Which Frame": 2,
+     "Received": "C:\\probe\\two.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t124_ctlref_reregister": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Received": "C:\\probe\\second.txt",
+     "Frame Error": "[False,0,]",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

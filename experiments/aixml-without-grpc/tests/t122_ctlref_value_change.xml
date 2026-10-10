@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T122 Ctlref Value Change.vi" description="A CONTROL REFERENCE as an event source: Value Change registered dynamically on a reference to the File path control, fired with Value (Signaling) after the registration, handled in an Event Structure frame that stores the NewVal the event carries and stops the loop. LV.Path was never read registering Value Change: the code comes from LV.Control's family. The VI opens its own front panel FIRST and closes it at the end: with the panel closed, Register For Events answers Error 1001, The VI front panel is not open - LabVIEW's own save of the same VI included.">
+  <Control _name="File" outputs="value:" type="path" uid="4205" uid_parent="root" value="" />
+  <Constant _name="Signal" outputs="value:4206.value" type="path" uid="4206" uid_parent="root" value="C:\5Cprobe\5Cin.txt"/>
+  <Constant _name="Open" outputs="value:4208.value" type="bool" uid="4208" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4209.value" type="bool" uid="4209" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" element="File" outputs="File:4201.File" uid="4201" uid_parent="root"/>
+  <Node _name="VI Server Reference" outputs="This VI:4202.This VI" type="{LV.VI}" uid="4202" uid_parent="root"/>
+  <Node _name="Register For Events" inputs="event registration refnum:,error in (no error):4210.error out,event source:4201.File" outputs="event registration refnum:4203.event registration refnum,error out:4203.error out" uid="4203" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4202.This VI,error in (no error):,Front Panel Window\3AOpen:4208.value" outputs="reference out:,error out:4210.error out" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:4201.File,error in (no error):4203.error out,Value (Signaling):4206.value" outputs="reference out:,error out:4207.error out" type="{LV.Path}" uid="4207" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4203.event registration refnum" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" inputs="value:4221.value" uid="4231" uid_parent="4230"/>
+      <CaseFrame selector=" &lt;File&gt;\3A Value Change " uid="4240" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4241" uid_parent="4240"/>
+        <Node _name="Event Data Node" fields="NewVal" outputs="NewVal:4244.NewVal" uid="4244" uid_parent="4240"/>
+        <Indicator _name="Received" inputs="value:4244.NewVal" type="path" uid="4245" uid_parent="4240" value=""/>
+        <Constant outputs="value:4246.value" type="bool" uid="4246" uid_parent="4240" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4246.value" uid="4248" uid_parent="4240"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Stop&quot;\3A Value Change " uid="4250" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4251" uid_parent="4250"/>
+        <Control _name="Stop" outputs="value:" style="latched" type="bool" uid="4254" uid_parent="4250" value="false" />
+        <Node _name="Event Data Node" fields="Source" outputs="Source:" uid="4255" uid_parent="4250"/>
+        <Constant outputs="value:4256.value" type="bool" uid="4256" uid_parent="4250" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4256.value" uid="4257" uid_parent="4250"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4260.value" uid="4260" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4260.value" uid="4261" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4221.value" outputs="value:4262.value" uid="4262" uid_parent="4220"/>
+  </Structure>
+  <Node _name="Unregister For Events" inputs="event registration refnum:4262.value,error in:4207.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4202.This VI,error in (no error):4270.error out,Front Panel Window\3AOpen:4209.value" outputs="reference out:,error out:4271.error out" type="{LV.VI}" uid="4271" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4271.error out" type="cluster{bool.status,int32.code,string.source}" uid="4273" uid_parent="root" value="[false,0,]" />
+</VI>
