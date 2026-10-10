@@ -45,6 +45,8 @@ def main(argv):
     limit = int(argv[argv.index("--max") + 1]) if "--max" in argv else 10 ** 9
     files = sorted(glob.glob(os.path.join(CACHE, "*.xml")))
     ok, why, first = [], collections.Counter(), collections.Counter()
+    rows = []
+    tsv = argv[argv.index("--tsv") + 1] if "--tsv" in argv else None
     for f in files:
         c = aixml2vi.Composer(os.path.join(HERE, "parts"))
         # a call is resolved as from the ORIGINAL VI's place: siblings and relative links
@@ -58,11 +60,19 @@ def main(argv):
         try:
             c.compose(f)
             ok.append((f, c))
+            rows.append((f, "OK", ""))
         except aixml2vi.Unsupported as ex:
             why[bucket(str(ex))] += 1
+            rows.append((f, "REFUSED", str(ex)))
         except Exception as ex:   # a composer bug, not a refusal - count it apart
             why["COMPOSER ERROR " + type(ex).__name__ + ": " + str(ex)[:50]] += 1
+            rows.append((f, "ERROR", "%s: %s" % (type(ex).__name__, ex)))
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if tsv:
+        # every VI's verdict and full message, for classifying refusals afterwards (parity.py)
+        with open(tsv, "w", encoding="utf-8") as out:
+            for f, st, msg in rows:
+                out.write("%s\t%s\t%s\n" % (os.path.basename(f), st, msg.replace("\t", " ").replace("\n", " ")))
     print("%d of %d cached NI exports compose (%.1f %%)" % (len(ok), len(files), 100.0 * len(ok) / len(files)))
     print("\nwhy the rest is refused (first blocker per VI):")
     for k, n in why.most_common(30):

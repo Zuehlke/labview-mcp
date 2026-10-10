@@ -628,6 +628,10 @@ def _const_value(tree, value):
         return struct.pack(INT_FMT[t], int(float(value or 0))).hex().upper()
     if t == "Boolean":
         return "01" if str(value).lower() in ("true", "1") else "00"
+    if t == "LVVariant" and not value:
+        # an EMPTY variant, the only one NI's exports write (value=""): flattened with the
+        # version stamp of the LabVIEW that wrote it, read off probes/pclean.xml's constant
+        return "2600800000000001000400000001000000000000"
     if t in ("String", "Tag"):
         # a Tag constant (a DAQmx terminal name ...) is flattened like a string: measured
         # 0000000C 4F6E626F617264436C6F636B for "OnboardClock"
@@ -1208,6 +1212,11 @@ class Composer:
             if tree.get("Type") != "Array":
                 raise Unsupported("%s %r: style Table on %s" % (el.tag, name, tree.get("Type")))
             force = "tableControl"
+        elif style and re.fullmatch(r"graph\d+", style):
+            # a graph or chart: stdGraph whose annex rsrcID is the number (harvest_parts.py
+            # keys the parts stdGraphNNNNN); with no part of that kind and type it is refused
+            # rather than shown as a bare array
+            force = "stdGraph" + style[5:]
         elif style == "latched" and (is_ind or tree.get("Type") != "Boolean"):
             raise Unsupported("%s %r: style latched on a %s %s" % (el.tag, name, "indicator" if is_ind else "control", tree.get("Type")))
         elif style not in (None, "", "latched"):
@@ -1650,7 +1659,9 @@ class Composer:
             vb.append(decl)
             info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
             info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(dt)
-            info.find("PropItemName").text = '"%s"' % name
+            # an ALIAS row (alias_props.py) maps NI's export name onto the one LabVIEW stores:
+            # "Block Diagram Window:Open" is "BDWin.Open" in the heap
+            info.find("PropItemName").text = '"%s"' % (row.get("heapName") or name)
             pc = info.find("PropItemCode")
             if row["code"]:
                 if pc is None:

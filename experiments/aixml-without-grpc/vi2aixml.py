@@ -261,6 +261,59 @@ def _decode_value(tree, hexstr):
     return None
 
 
+LINK_TAGS = (b"IUVI", b"PUPV", b"SVVI", b"IUCI", b"CCCI", b"DNDP")
+
+
+def binary_link_records(data):
+    """[(node uid, record tag, qualified name)] read straight out of a binary LIbd block, for
+    the records that name diagram nodes. Read off LUnit's Test Failing.vi: a record is its tag,
+    4 bytes, a uint16 count of Pascal strings (the qualified name), a PTH0 path, more fields,
+    then the LinkOffsetList - a uint32 count and that many uint32 node uids - right before the
+    record's second PTH0 (the library path). Heuristic by construction: a record whose layout
+    differs yields nothing rather than a wrong name."""
+    out = []
+    for tag in LINK_TAGS:
+        start = 0
+        while True:
+            i = data.find(tag, start)
+            if i < 0:
+                break
+            start = i + 4
+            j = i + 8
+            if j + 2 > len(data):
+                continue
+            n = int.from_bytes(data[j:j + 2], "big")
+            j += 2
+            if not 1 <= n <= 6:
+                continue
+            names = []
+            for _ in range(n):
+                if j >= len(data):
+                    break
+                ln = data[j]
+                names.append(data[j + 1:j + 1 + ln].decode("mac_roman", "replace"))
+                j += 1 + ln
+            if len(names) != n or not names[-1].lower().endswith((".vi", ".vim", ".ctl", ".vit")):
+                continue
+            p1 = data.find(b"PTH0", j)
+            if p1 < 0 or p1 - j > 8:
+                continue
+            ln = int.from_bytes(data[p1 + 4:p1 + 8], "big")
+            p2 = data.find(b"PTH0", p1 + 8 + ln)
+            nxt = min([data.find(t, i + 4) for t in LINK_TAGS if data.find(t, i + 4) > 0] or [len(data)])
+            if p2 < 0 or p2 > nxt:
+                continue
+            for k in range(1, 64):
+                at = p2 - 4 * k - 4
+                if at <= p1:
+                    break
+                if int.from_bytes(data[at:at + 4], "big") == k:
+                    offs = [int.from_bytes(data[at + 4 + 4 * m:at + 8 + 4 * m], "big") for m in range(k)]
+                    out.extend((o, tag.decode(), ":".join(names)) for o in offs)
+                    break
+    return out
+
+
 def label_text(ddo):
     parts = ddo.find("partsList")
     for part in (parts if parts is not None else []):
@@ -393,6 +446,14 @@ class Reader:
         qualified name is the bare VI name but whose VILSPathRef names a library gets the
         library in front, as NI's export writes it (LV AI Plugins.lvlib:...)."""
         out = {}
+        sec = self.b.main.find("LIbd/Section")
+        if sec is not None and sec.get("Format") == "bin" and sec.get("File"):
+            # pylabview leaves the block BINARY when one record is of a kind it cannot parse -
+            # a call into a CLASS (LUnit's Test Case.lvclass:Pass If.vi) was "?" for that
+            data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
+            for off, tag, name in binary_link_records(data):
+                out.setdefault(str(off), {})[tag] = name
+            return out
         bdhp = self.b.main.find("LIbd/Section/BDHP")
         for rec in (bdhp if bdhp is not None else []):
             qual = [x.text or "" for x in rec.findall("LinkSaveQualName/String")]
@@ -465,6 +526,11 @@ class Reader:
                 el.set("style", "Ring")
             elif cls == "tableControl":
                 el.set("style", "Table")
+            elif cls == "stdGraph":
+                rid = next((pt.findtext("rsrcID") for pt in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
+                            if pt.get("class") == "annex" and pt.findtext("rsrcID")), None)
+                if rid:
+                    el.set("style", "graph" + rid)
             el.set("uid", ddo.get("uid"))
             el.set("uid_parent", "?")
             dd = fpdco.findtext("DefaultData")

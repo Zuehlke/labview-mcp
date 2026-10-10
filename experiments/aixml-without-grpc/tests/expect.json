@@ -1070,5 +1070,27 @@
     }
    }
   ]
+ },
+ "t108_variant": {
+  "cases": [
+   {
+    "inputs": "x=4.5",
+    "outputs": {
+     "x back": 4.5,
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t109_tdms_refnum": {
+  "cases": [
+   {
+    "inputs": "path=C:\\temp\\aixml-no-grpc\\out\\t109_data.tdms",
+    "outputs": {
+     "path out": "C:\\temp\\aixml-no-grpc\\out\\t109_data.tdms",
+     "error out": "[false,0,]"
+    }
+   }
+  ]
  }
 }

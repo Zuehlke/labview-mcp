@@ -615,10 +615,22 @@ follow NI's export convention, settled by `uid_survey.py` over 200 exports (a Tu
 outer terminal, a case frame's half the frame's inner terminal, a Condition the `lTst` DCO, a
 ShiftReg the `rSR` DCO, its Left the `lSR` DCO, its Right the `rSR`'s inner terminal).
 
-Open, by size: call targets whose link block pylabview stores as an unparsed binary (class
-VIs), malleable and Express VI instances (NI names the `.vim` / the Express VI, the link names
-the instance), In Place Element structures, Timed Loops, and class (`UDClassInst`) property
-nodes.
+Added the same night (2026-10-10, second half): In Place structures with their pairs and
+tunnels, conditional loop tunnels (`cond="<net>"`), `strict="true"` on static VI references,
+`style` (`latched`, `Ring` with `items`, `Table`, `graphNNNNN` - the number is the graph's
+annex `rsrcID`), empty literals where NI writes none (refnums, pictures, variants, waveforms:
+`value=""`; arrays `[]`), and **property names as NI's export writes them** - the heap keeps
+the name the node was saved with (`Diagram`, `BDWin.Open`) and the export the catalogue's
+(`Block Diagram`, `Block Diagram Window:Open`), so the reader maps by code; `alias_props.py`
+learned 76 such pairs by pairing 264 exports with their heaps, field for field, without one
+count mismatch, and the composer now accepts the export's name and writes the heap's. **Calls
+into classes** come out of a link block pylabview leaves BINARY (one unparseable record makes
+the whole block a blob): the reader now reads those records itself - tag, Pascal-string
+qualified name, path, then the node uids right before the record's library path - and
+LUnit's *Test Failing.vi* reads `Test Case.lvclass:Pass If.vi` where it read `?`.
+
+Open, by size: malleable and Express VI instances (NI names the `.vim` / the Express VI, the
+link names the instance), Timed Loops, and class (`UDClassInst`) property nodes.
 
 **The earlier subset measurement**, kept for the record:
 

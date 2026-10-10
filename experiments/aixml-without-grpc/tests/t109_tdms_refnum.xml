@@ -1,0 +1,8 @@
+<VI _name="T109 TDMS Refnum.vi" description="TDMS Open creates or replaces a file, the TDMS file refnum goes into TDMS Close, which returns the path.">
+  <Control _name="path" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="operation" outputs="value:4210.value" type="uint16{open,open or create,create or replace,create,open (read-only)}" uid="4210" uid_parent="root" value="2"/>
+  <Node _name="TDMS Open" inputs="file path:4200.value,operation (0\3Aopen):4210.value,byte order (2\3Alittle-endian):,error in (no error):,file format version (2.0):,create index file? (T):,disable buffering (T):" outputs="tdms file out:4300.tdms file out,error out:4300.error out" uid="4300" uid_parent="root"/>
+  <Node _name="TDMS Close" inputs="tdms file:4300.tdms file out,error in (no error):4300.error out" outputs="file path out:4310.file path out,error out:4310.error out" uid="4310" uid_parent="root"/>
+  <Indicator _name="path out" inputs="value:4310.file path out" type="path" uid="4320" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4310.error out" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+</VI>

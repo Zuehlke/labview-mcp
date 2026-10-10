@@ -18,6 +18,7 @@ Part files are plain XML:
 import copy
 import json
 import os
+import shutil
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -53,6 +54,19 @@ def dsim_images(bundle, ids):
             with open(os.path.join(bundle.dir, sec.get("File")), "rb") as f:
                 out[i] = f.read().hex().upper()
     return out
+
+
+def graph_class(ddo):
+    """A graph or chart is ONE ddo class, stdGraph, for every kind; the kind is the rsrcID of
+    the annex in its partsList - 21703 waveform graph, 21717 waveform chart, 21716 XY graph,
+    21720 intensity graph - which is also the number NI's exports write as style="graphNNNNN".
+    Its parts are keyed stdGraphNNNNN so the composer can ask for the kind."""
+    if ddo.get("class") != "stdGraph":
+        return ddo.get("class")
+    for part in (ddo.find("partsList") if ddo.find("partsList") is not None else []):
+        if part.get("class") == "annex" and part.findtext("rsrcID"):
+            return "stdGraph" + part.findtext("rsrcID")
+    return "stdGraph"
 
 
 def variant_ids(el):
@@ -359,7 +373,7 @@ class Harvester:
                 if not types:
                     continue
                 tk = lvheap.type_key(types[0])
-                self.save("fpdco", "fpdco/%s/%s/%s" % (ddo.get("class"), ind, tk),
+                self.save("fpdco", "fpdco/%s/%s/%s" % (graph_class(ddo), ind, tk),
                           source, fpdco, types)
                 self.array_elements(b, fpdco, "fpdco", source)
         if b.bd is None:
@@ -533,6 +547,9 @@ def main(argv):
             h.harvest(main_xml, src)
         except Exception as ex:  # one bad VI must not stop a sweep
             print("SKIP %s: %s" % (src, ex), file=sys.stderr)
+        finally:
+            shutil.rmtree(os.path.join(tmp, "b%d" % i), ignore_errors=True)
+    shutil.rmtree(tmp, ignore_errors=True)
     json.dump(dict(sorted(h.wiretables.items(), key=lambda kv: int(kv[0]))),
               open(h.wt_path, "w"), indent=1)
     if h.props_new:
