@@ -98,9 +98,10 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         back too and must show every non-white pixel of the owner's icon (`templateMissing` 0).
         SIDE EFFECTS TO REPORT: the owner and every applied member are re-saved, by the LabVIEW
         running - a project saved in an older version is upgraded (`ownerLvVersionBefore/After`).
-        Measured 2026-10-08 on LabVIEW 2026 Q3 (a class, six members, every code 0, read-back 0 px)
-        and 2026-09-25 (plain libraries); the member read-back check and lists over 100 members are
-        unmeasured.
+        Measured through this tool 2026-10-10 on LabVIEW 2026 Q3: a class with nine members and a
+        plain library with two, every code 0, owner read-back 0 px, templateMissing 0 on every member,
+        members executable; with memberPaths only the named member changed on disk. Lists over 100
+        members (the list-file helper) are unmeasured.
         """)]
     public async Task<string> SetOwnerIconAsync(
         [Description(@"Absolute path to the .lvclass or plain .lvlib whose icon is set - it is saved in place")]
@@ -158,6 +159,8 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             var ownerPng = Path.Combine(readBack, Path.GetFileName(owner.Path) + ".png");
             var memberPngs = MemberPngPaths(owner.Path, members, Path.Combine(readBack, "members"));
             if (TooLong([ownerPng, .. memberPngs]) is { } tooLong) return tooLong;
+            if (NotLatin1([owner.Path, Path.GetFullPath(pngPath), .. members, ownerPng, .. memberPngs])
+                is { } notLatin1) return notLatin1;
 
             var warnings = new JsonArray();
             var source = PngPixels.Decode(Path.GetFullPath(pngPath));
@@ -278,9 +281,9 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                 var notMembers = owner.Vis.Count() - members.Count;
                 if (notMembers > 0)
                     warnings.Add($"{notMembers} other .vi member(s) of the owner were NOT applied to and not " +
-                                 "saved. ApplyIconToVIs is an owner-wide method; whether LabVIEW keeps the " +
-                                 "change it made to those members in memory, and offers to save it later, is " +
-                                 "unmeasured - check their files with git status.");
+                                 "saved, so they still carry the old template. Measured 2026-10-10: their files " +
+                                 "stayed unchanged and none of them was left in memory after the call, so " +
+                                 "LabVIEW does not offer to save them later.");
             }
 
             // Read AFTER the apply stage: the apply helper saves the owner a second time.
@@ -397,6 +400,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             var output = Path.GetFullPath(outDir);
             var pngs = items.Select(p => OutputPngFor(p, root, output)).ToList();
             if (TooLong(pngs) is { } tooLong) return tooLong;
+            if (NotLatin1([.. items, .. pngs]) is { } notLatin1) return notLatin1;
 
             string? expected = null;
             if (expectedDir is { Length: > 0 })
@@ -545,15 +549,14 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
     /// <c>lvai_set_vi_icon keepOwnLayer</c>: re-apply the OWNER'S TEMPLATE to one VI and keep the
     /// VI's own layer, instead of setting pixels and flattening.
     ///
-    /// THE ROUTE IS MEASURED PIECE BY PIECE AND UNMEASURED AS A WHOLE. Opening the owner, opening the
-    /// VI, <c>ApplyIconToVIs</c> and a per-member save is the measured member route above, run for
-    /// one VI. What has NOT been measured is the case this exists for: <c>ApplyIconToVIs</c> on a VI
-    /// that ALREADY carries an <c>NI_Library</c> layer and an own layer. The expectation - the old
-    /// template layer is replaced and the own layer kept, so only template pixels change - comes from
-    /// the icon editor's layer model, not from a run. So the answer reports the evidence that would
-    /// show it either way rather than assuming it: the VI's layer data before and after, read from
-    /// the file, and a before/after pixel compare split into pixels under the owner's template and
-    /// pixels outside it.
+    /// It is the member route above, run for one VI: open the owner, open the VI,
+    /// <c>ApplyIconToVIs</c>, save. MEASURED 2026-10-10 on the case it exists for, a VI that already
+    /// carried an <c>NI_Library</c> layer and an own (pixel) layer, after the class icon changed:
+    /// the old template layer was REPLACED, not stacked (two layer objects before and after, VITS the
+    /// same size), the new template landed, and no pixel outside it moved. The answer still reports
+    /// that evidence on every call - layer data before and after, read from the file, and a
+    /// before/after pixel compare split into pixels under the owner's template and outside it -
+    /// because an own layer of editable TEXT, made in the icon editor, has not been run.
     /// </summary>
     internal async Task<string> ReapplyTemplateAsync(string viPath, string? ownerPath,
         string? readBackPath, string? helperDirectory, bool regenerateHelpers, int timeoutSeconds,
@@ -599,6 +602,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         var afterPng = readBackPath is { Length: > 0 } ? Path.GetFullPath(readBackPath) : Path.Combine(folder, stem + "-after.png");
         var ownerPng = Path.Combine(folder, stem + "-owner.png");
         if (TooLong([beforePng, afterPng, ownerPng]) is { } tooLong) return tooLong;
+        if (NotLatin1([vi, owner.Path, beforePng, afterPng, ownerPng]) is { } notLatin1) return notLatin1;
 
         var needed = new List<string>
         {
@@ -660,9 +664,9 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         var ok = codesOk && after.Written[0] && templateMissing == 0 && layersKept;
 
         if (owner.Vis.Count() > 1)
-            warnings.Add("ApplyIconToVIs is an owner-wide method and only this VI was saved. Whether LabVIEW " +
-                         "keeps the change it made to the owner's other members in memory, and offers to " +
-                         "save it later, is unmeasured - check their files with git status.");
+            warnings.Add("Only this VI was saved; the owner's other members keep their current template. " +
+                         "Measured 2026-10-10: none of them was left in memory after the call, so LabVIEW " +
+                         "does not offer to save them later.");
         if (outside is > 0)
             warnings.Add($"{outside} pixel(s) OUTSIDE the owner's template changed. If the template's shape " +
                          "did not change, the VI's own layer did - compare readBackBefore and readBackAfter.");
@@ -695,7 +699,9 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             ["elapsedMs"] = wall.ElapsedMilliseconds,
             ["warnings"] = warnings,
             ["steps"] = steps,
-            ["note"] = "keepOwnLayer is UNMEASURED as a whole (its parts are measured): judge it by " +
+            ["note"] = "keepOwnLayer was measured 2026-10-10 on a VI with a template layer and an own pixel " +
+                       "layer (template replaced, own pixels unchanged); an editable text layer has not been " +
+                       "run. Judge each call by " +
                        "iconLayersAfter (layer data still present), templateMissing (0 = the template " +
                        "landed) and pixelsChangedOutsideTemplate (0 = the VI's own pixels did not move), " +
                        "and look at readBackBefore / readBackPath.",
@@ -1061,6 +1067,21 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             "as two paths that do not exist. Rename or move them first.", new { paths = bad });
     }
 
+    /// <summary>
+    /// The list files are written in Latin-1 (<see cref="WriteListFile"/>), so a character above U+00FF
+    /// arrives in LabVIEW as another one. Measured 2026-10-10 on LabVIEW 2026 Q3: a VI named with U+00F8
+    /// read back fine, the same VI named with U+0141 answered Error 7 and no PNG - and its report line
+    /// named a different path, so the code could not even be matched back. Refused before LabVIEW.
+    /// </summary>
+    internal static string? NotLatin1(IEnumerable<string> paths)
+    {
+        var bad = paths.Where(p => p.Any(c => c > 'ÿ')).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return bad.Count == 0 ? null : Json.Error("pathNotLatin1",
+            "These paths hold characters outside Latin-1. The helpers' path lists are Latin-1 text, and " +
+            "such a path reaches LabVIEW changed: Error 7 and no icon (measured). Rename or move them, or " +
+            "pick an output folder with plain characters.", new { paths = bad.Take(10) });
+    }
+
     // ================================================================== file checks
 
     private static string? CheckOwner(string ownerPath, out IconOwners.Owner? owner, bool forWriting = true)
@@ -1237,8 +1258,8 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
 
     /// <summary>
     /// A list file for a helper that reads its paths from a text file. Latin-1, no BOM: LabVIEW reads
-    /// the bytes in the system code page, and the measured runs used plain ASCII paths - a path with
-    /// characters outside Latin-1 is unmeasured.
+    /// the bytes in the system code page. Measured 2026-10-10: a Latin-1 path (U+00F8) works, a path
+    /// outside Latin-1 (U+0141) answers Error 7 - <see cref="NotLatin1"/> refuses those first.
     /// </summary>
     private static string WriteListFile(string name, string content)
     {

@@ -185,6 +185,19 @@ public sealed class OwnerIconToolsTests : IDisposable
             expectedDir: Path.Combine(_dir, "nothing-here")))));
     }
 
+    [Fact]
+    public void A_path_outside_latin1_is_refused_and_a_latin1_one_is_not()
+    {
+        Assert.Null(OwnerIconTools.NotLatin1(["C:\\p\\PB-\u00f8.vi"]));
+        Assert.Equal("pathNotLatin1", Kind(JsonNode.Parse(OwnerIconTools.NotLatin1(["C:\\p\\PB-\u0141.vi"])!)!.AsObject()));
+
+        var vi = Write("src\\PB-\u0141.vi", "vi");
+        var answer = Answer(Tools().ReadIconsAsync(vi, Path.Combine(_dir, "rb")));
+
+        Assert.Equal("pathNotLatin1", Kind(answer));
+        Assert.False(Directory.Exists(Path.Combine(_dir, "rb")));   // refused before any folder was made
+    }
+
     // ---------------------------------------------------------------- keepOwnLayer
 
     [Fact]
