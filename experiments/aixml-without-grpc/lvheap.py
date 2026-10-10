@@ -86,7 +86,11 @@ class Bundle:
         return self.toplevel[cons]
 
     def tree(self, flat_id):
-        """A flat TypeDesc with every child reference inlined, recursively."""
+        """A flat TypeDesc with every child reference inlined, recursively. A reference past
+        the end of the list (NI's Set Collection - Word Counting.vi: a set type) comes back as
+        an Unknown type, which the reader reports, instead of ending the whole read."""
+        if not 0 <= flat_id < len(self.flat):
+            return ET.Element("TypeDesc", {"Type": "Unknown", "Format": "inline", "ref.TypeID": str(flat_id)})
         src = self.flat[flat_id]
         out = ET.Element("TypeDesc", {k: v for k, v in src.attrib.items()})
         for child in src:

@@ -56,6 +56,32 @@ def dsim_images(bundle, ids):
     return out
 
 
+def picc_ids(el):
+    """The PICC sections a part needs: a graph's plot pictures live in the VI's PICC block, one
+    binary section per picture, named by <ImageInternalsResID> (NI's AIXML-generated graph
+    probe: 42 such ids, 42 sections). Without them the graph VI was broken - "without a
+    BDHeap" and "good to bad after compiling" - for every graph kind."""
+    out = set()
+    for e in el.iter("ImageInternalsResID"):
+        if (e.text or "").strip().lstrip("-").isdigit() and int(e.text) > 0:
+            out.add(int(e.text))
+    return sorted(out)
+
+
+def picc_sections(bundle, ids):
+    """{index: hex} for the PICC sections a part needs, read from the donor bundle."""
+    out = {}
+    blk = bundle.main.find("PICC")
+    if blk is None:
+        return out
+    for sec in blk.findall("Section"):
+        i = int(sec.get("Index"))
+        if i in ids and sec.get("File"):
+            with open(os.path.join(bundle.dir, sec.get("File")), "rb") as f:
+                out[i] = f.read().hex().upper()
+    return out
+
+
 def graph_class(ddo):
     """A graph or chart is ONE ddo class, stdGraph, for every kind; the kind is the rsrcID of
     the annex in its partsList - 21703 waveform graph, 21717 waveform chart, 21716 XY graph,
@@ -95,7 +121,7 @@ def str_sections(bundle, ids):
     return out
 
 
-def part_xml(kind, key, source, el, types, extra=None, images=None, strs=None):
+def part_xml(kind, key, source, el, types, extra=None, images=None, strs=None, piccs=None):
     p = ET.Element("part", {"kind": kind, "key": key, "source": source})
     # A CLEAN part comes from a VI LabVIEW generated from AIXML: default style, no captions,
     # no default data. Parts cut from NI's examples carry the example's styling and were
@@ -116,6 +142,10 @@ def part_xml(kind, key, source, el, types, extra=None, images=None, strs=None):
         st = ET.SubElement(p, "strs")
         for i, sx in sorted(strs.items()):
             st.append(ET.fromstring(sx))
+    if piccs:
+        pc = ET.SubElement(p, "piccs")
+        for i, hx in sorted(piccs.items()):
+            ET.SubElement(pc, "picc", {"index": str(i)}).text = hx
     return p
 
 
@@ -277,7 +307,8 @@ class Harvester:
         b = getattr(self, "bundle", None)
         images = dsim_images(b, image_ids(el)) if b is not None else None
         strs = str_sections(b, variant_ids(el)) if b is not None else None
-        ET.ElementTree(part_xml(kind, key, source, el, types, extra, images, strs)).write(
+        piccs = picc_sections(b, picc_ids(el)) if b is not None else None
+        ET.ElementTree(part_xml(kind, key, source, el, types, extra, images, strs, piccs)).write(
             path, encoding="utf-8", xml_declaration=True)
         self.found.append(key)
 

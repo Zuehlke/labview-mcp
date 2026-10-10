@@ -1,13 +1,13 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="fpterm" key="fpterm/ind" source="C:\temp\aixml-no-grpc\probes\pclean.bundle\pclean.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="10527">
-            <objFlags>163904</objFlags>
-            <dco uid="10525" />
-            <bounds>(4361, 126, 4377, 158)</bounds>
-            <label class="label" uid="10528">
+<part kind="fpterm" key="fpterm/ind" source="C:\temp\aixml-no-grpc\probes\pgraph.bundle\pgraph.xml" clean="1"><types /><heap><SL__arrayElement class="fPTerm" uid="5854">
+            <objFlags>131136</objFlags>
+            <dco uid="5852" />
+            <bounds>(408, 217, 424, 249)</bounds>
+            <label class="label" uid="5855">
               <objFlags>1507650</objFlags>
               <partID>16</partID>
               <howGrow>4096</howGrow>
-              <bounds>(0, 32, 15, 121)</bounds>
+              <bounds>(0, 32, 15, 79)</bounds>
               <image class="Image">
                 <ImageResID>-619</ImageResID>
                 </image>
@@ -19,7 +19,7 @@
                 <bgColor>01000000</bgColor>
                 <fr elements="1">
                   <SL__arrayElement class="fontRun">
-                    <fontid>1</fontid>
+                    <fontid>3</fontid>
                     </SL__arrayElement>
                   </fr>
                 </textRec>

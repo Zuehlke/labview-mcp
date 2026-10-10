@@ -335,7 +335,8 @@ def unverified_wire_type(tree):
     if t == "MeasureData":
         return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata") else "MeasureData." + (tree.get("Flavor") or "")
     if t == "Refnum":
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag"):
+        # TDMSFile: t109, TDMS Open -> TDMS Close, file written and path back (2026-10-10)
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -389,6 +390,17 @@ def signal_kind(tree):
 NUM_RANK = ["NumUInt8", "NumInt8", "NumUInt16", "NumInt16", "NumUInt32", "NumInt32",
             "NumUInt64", "NumInt64", "NumFloat32", "NumFloat64", "NumFloatExt",
             "NumComplex64", "NumComplex128", "NumComplexExt"]
+
+
+def type_sig(tree):
+    """A type's shape with every label and reference annotation dropped - for deciding whether
+    a part was built around exactly this type."""
+    t = plain(tree)
+    for e in t.iter():
+        e.text = e.tail = None      # a part's type carries pylabview's indentation
+        for k in [k for k in e.attrib if k == "Label" or k.startswith("ref.")]:
+            del e.attrib[k]
+    return ET.tostring(t)
 
 
 def plain(tree):
@@ -743,6 +755,8 @@ class Parts:
         images = {int(i.get("index")): i.text for i in root.find("images")} if root.find("images") is not None else {}
         if images:
             heap.set("_images", json.dumps(images))   # carried to instantiate(), removed there
+        if root.find("piccs") is not None:
+            heap.set("_piccs", json.dumps({int(i.get("index")): i.text for i in root.find("piccs")}))
         if root.find("strs") is not None:
             heap.set("_strs", json.dumps({s.get("Index"): ET.tostring(s, encoding="unicode")
                                           for s in root.find("strs")}))
@@ -858,6 +872,25 @@ class Composer:
                 if v in mapping:
                     e.text = str(mapping[v])
             del heap.attrib["_images"]
+        if heap.get("_piccs"):
+            # a graph's plot pictures (PICC sections, named by ImageInternalsResID) come along
+            # under numbers free in this VI, identical pictures sharing one section
+            mapping = {}
+            self.piccs = getattr(self, "piccs", {})
+            for old, hx in json.loads(heap.get("_piccs")).items():
+                same = next((i for i, h in self.piccs.items() if h == hx), None)
+                if same is None:
+                    same = max([1] + list(self.piccs)) + 1
+                    self.piccs[same] = hx
+                mapping[int(old)] = same
+            for e in heap.iter("ImageInternalsResID"):
+                try:
+                    v = int(e.text)
+                except (TypeError, ValueError):
+                    continue
+                if v in mapping:
+                    e.text = str(mapping[v])
+            del heap.attrib["_piccs"]
         if heap.get("_strs") or any(True for _ in heap.iter("variantIndex")):
             # a tag control or refnum names its STR section (displayFilter, typeClass): each
             # object gets a section of its own under a number free in this VI, as LabVIEW's
@@ -1214,9 +1247,25 @@ class Composer:
             force = "tableControl"
         elif style and re.fullmatch(r"graph\d+", style):
             # a graph or chart: stdGraph whose annex rsrcID is the number (harvest_parts.py
-            # keys the parts stdGraphNNNNN); with no part of that kind and type it is refused
-            # rather than shown as a bare array
+            # keys the parts stdGraphNNNNN). Its plots are built around its data type, so a part
+            # is used only for EXACTLY that type; otherwise the data is shown in the plain
+            # control and the report says so (refusing them cost 237 of NI's VIs)
             force = "stdGraph" + style[5:]
+            got = None
+            for d in (("ind", "ctl") if is_ind else ("ctl", "ind")):
+                got = self.parts.get("fpdco/%s/%s/%s" % (force, d, lvheap.type_key(tree)))
+                if got is not None:
+                    break
+            if os.environ.get("AIXML2VI_GRAPHS") != "1":
+                # OFF by default: with its PICC pictures a composed graph VI is executable, but
+                # loading it logged "bad mutex verifier in ThMutexDestroy" and every later COM
+                # call timed out until LabVIEW was restarted - measured twice on 2026-10-10,
+                # NI's own graph VI of the same objects logged nothing
+                got = None
+            if got is None or type_sig(got[1][0]) != type_sig(tree):
+                self.report.append("style %r of %r not composed (no %s part for this type) - shown as a plain %s"
+                                   % (style, name, force, tree.get("Type")))
+                force = None
         elif style == "latched" and (is_ind or tree.get("Type") != "Boolean"):
             raise Unsupported("%s %r: style latched on a %s %s" % (el.tag, name, "indicator" if is_ind else "control", tree.get("Type")))
         elif style not in (None, "", "latched"):
@@ -4480,6 +4529,19 @@ class Composer:
         for lst in grown:
             lst.set("elements", str(len([c for c in lst if c.tag == "SL__arrayElement"])))
         self.cons.set("elements", str(self.pane_codes.get(self.con_id, (0x108, 16))[1]))
+        if self.pane_terms:
+            # the panel root's objFlags 0x10000 means NO TERMINAL ON THE PANE: every
+            # AIXML-generated VI without a pane carries it, NI's own t01 (three terminals) does
+            # not. Left in by the skeleton, a VI with a pane logged "Nonfatal insanity (0x1000)"
+            # on the first control - on a FRESHLY started LabVIEW only, which is why it hid for
+            # weeks behind tests that ran after other VIs (A/B 2026-10-10)
+            f = self.fp.find("root/objFlags")
+            if f is not None:
+                v = int(f.text or 0) & ~0x10000
+                if v:
+                    f.text = str(v)
+                else:
+                    self.fp.find("root").remove(f)
         # a ConpaneConnection without an index attribute means 'previous + 1' - so the list
         # must be in slot order (out of order: Connector Pane insane {index})
         conns = sorted(list(self.cons), key=lambda c: int(c.get("index", "0")))
@@ -4513,6 +4575,15 @@ class Composer:
         sl.set("IndexShift", str(INDEX_SHIFT))
         sl.set("Count", str(heap_count))
         m.find("MUID/Section").set("Value", str(max(self.used_uids)))
+        if getattr(self, "piccs", None):
+            # the PICC block sits right before the front-panel heap, as in LabVIEW's own files
+            blk = ET.Element("PICC")
+            m.insert(list(m).index(m.find("FPHb")), blk)
+            for i, hx in sorted(self.piccs.items()):
+                fn = "%s_PICC%d.bin" % (base, i)
+                with open(os.path.join(out_dir, fn), "wb") as f:
+                    f.write(bytes.fromhex(hx))
+                ET.SubElement(blk, "Section", {"Index": str(i), "Format": "bin", "File": fn})
         if getattr(self, "strs", None):
             # the STR block sits between FPEx and DSIM, as in LabVIEW's own files
             blk = m.find("STR")
