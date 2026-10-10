@@ -1,83 +1,83 @@
 helper	tools	ni_convert	ni_exec_grpc	ni_exec_com	ni_reason	py_compose	py_exec_com	py_reason	ni_s	py_s
-lmock_generate_mock.xml	MockTools					composed	1			5.61
-lvai_active_project.xml	ActionTools					composed	1			0.96
-lvai_add_class_field.xml	ClassFieldTools ClassTools					composed	1			1.79
-lvai_add_class_method.xml	AixmlCheck AixmlTools ClassMethodTools ClassTools ConnectorPane HelperCache LUnitTools MethodTestTools TypedefTools					composed	1			1.91
-lvai_add_one_to_library.xml	LibraryTools					composed	1			2.25
-lvai_bind_pane_typedef.xml	TypedefTools					composed	1			1.09
-lvai_build_message_do.xml						composed	1			4.29
-lvai_class_names.xml						composed	1			0.8
-lvai_close_active_project.xml	AixmlTools BulkTools ClassTools CloseTools Corpus DqmhHeadless GraftTools MalleableTools MockTools TestTools					composed	1			0.58
-lvai_close_own_panel.xml	RunTools					composed	1			0.77
-lvai_close_vi.xml	ClassTools Classes CloseTools ProjectMembership PyLabviewTools					composed	1			0.89
-lvai_create_accessors.xml	ClassBindTools ClassFieldTools ClassTools Classes CloseTools CtlTools LUnitTools LvClass TestTools TypedefTools					composed	1			3.88
-lvai_create_actor_library.xml	LibraryTools					composed	1			1.75
-lvai_create_class.xml	ActorFrameworkTools ClassBindTools ClassFieldTools ClassTools Classes CloseTools DqmhTools HelperCache LUnitTools LvClass LvaiConnection MockTools StatusTools					composed	1			2.14
-lvai_create_interface.xml	ClassTools MockTools					composed	1			1.62
-lvai_create_message_class.xml	ActorFrameworkTools					composed	1			7.14
-lvai_create_override.xml						composed	1			2.39
-lvai_discuss.xml	DiscussTools MonitorTools					composed	1			0.79
-lvai_exec_state.xml	ActorFrameworkTools AixmlTools BulkTools ClassFieldTools DqmhEventEditTools DqmhNewModuleTools EventDataFieldTools ExecStateTools LibraryTools MalleableTools MalleableVi RunTools WireEventTools					composed	1			0.91
-lvai_inventory.xml						composed	1			0.67
-lvai_open_project.xml	ActionTools					composed	1			1.03
-lvai_resave_ctl.xml	CtlTools TypedefCreateTools TypedefTools					composed	1			1.25
-lvai_run_and_read.xml	ClassTools Classes DqmhHeadless DqmhTools DqmhUnitTestTools RunTools					composed	1			0.66
-lvai_run_and_read_typed.xml	DqmhTools RunTools					composed	1			1.34
-lvai_run_for_ms.xml	RunTools					composed	1			1.08
-lvai_swap_subvis.xml	BulkTools CloseTools Json LUnitTools MalleableTools MethodTestTools MockTools PlaceholderTools SwapTools TestTools ToolArguments					composed	1			2.02
-lvai_typedef_bind.xml	TypedefFlattenTools					composed	1			0.83
-lvai_typedef_discon.xml	TypedefFlattenTools					composed	1			1.02
-lvai_typedef_tree.xml	TypedefFlattenTools					composed	1			0.9
-lvai_vis_in_memory.xml						composed	1			0.67
-lvai_wire_dyn_events.xml	CloseTools WireEventTools					composed	1			1.51
-lvbd_bind_constant.xml	TypedefTools					composed	1			1.01
-lvbd_bind_control_refs.xml	BindReferenceTools					composed	1			1.2
-lvbd_broken_reason.xml						composed	1			1.61
-lvbd_broken_wires.xml						composed	1			1.66
-lvbd_coercion_dots.xml	TypedefTools					composed	1			0.74
-lvbd_connect_by_names.xml	DqmhFrameTools					composed	1			0.98
-lvbd_fill_unwired_inputs.xml	DqmhHeadless					composed	1			0.92
-lvbd_graft_clear.xml	GraftTools					composed	1			1.14
-lvbd_graft_paste.xml	GraftTools					composed	1			0.78
-lvbd_graft_rewire.xml	GraftTools					composed	1			1.24
-lvbd_pane_typedefs.xml	TypedefTools					composed	1			0.67
-lvbd_set_constant.xml	ConstantTools					composed	1			0.91
-lvctl_kind.xml	CtlTools					composed	1			0.66
-lvdoc_get_icon.xml						composed	1			0.57
-lvdoc_print.xml	RenderTools					composed	1			0.6
-lvdoc_set_icon.xml	IconTools					composed	1			0.64
-lvdqmh_close_modules.xml	DqmhEventEditTools DqmhHeadless					composed	1			1.78
-lvdqmh_convert_event.xml	DqmhEventEditTools					composed	1			3.49
-lvdqmh_create_rt_tester.xml	DqmhEventEditTools					composed	1			3.51
-lvdqmh_dirty_members.xml	DqmhHeadless					composed	1			1.72
-lvdqmh_find_testers.xml	DqmhEventEditTools					composed	1			1.97
-lvdqmh_module_types.xml	DqmhTemplateTools					composed	1			0.7
-lvdqmh_new_module.xml	DqmhNewModuleTools					composed	1			3.59
-lvdqmh_new_unit_test.xml	DqmhUnitTestTools					composed	1			3.41
-lvdqmh_pick_event.xml	DqmhEventEditTools DqmhHeadless					composed	1			3.12
-lvdqmh_place_frame_handler.xml	DqmhFrameTools					composed	1			2.98
-lvdqmh_remove_do_something.xml	DqmhEventEditTools					composed	1			3.38
-lvdqmh_remove_event.xml	DqmhEventEditTools					composed	1			3.79
-lvdqmh_rename_event.xml	DqmhEventEditTools					composed	1			3.24
+lmock_generate_mock.xml	MockTools					composed	1			3.65
+lvai_active_project.xml	ActionTools					composed	1			2.71
+lvai_add_class_field.xml	ClassFieldTools ClassTools					composed	1			1.6
+lvai_add_class_method.xml	AixmlCheck AixmlTools ClassMethodTools ClassTools ConnectorPane HelperCache LUnitTools MethodTestTools TypedefTools					composed	1			1.58
+lvai_add_one_to_library.xml	LibraryTools					composed	1			2.35
+lvai_bind_pane_typedef.xml	TypedefTools					composed	1			1.18
+lvai_build_message_do.xml						composed	1			4.44
+lvai_class_names.xml						composed	1			0.73
+lvai_close_active_project.xml	AixmlTools BulkTools ClassTools CloseTools Corpus DqmhHeadless GraftTools MalleableTools MockTools TestTools					composed	1			0.95
+lvai_close_own_panel.xml	RunTools					composed	1			0.71
+lvai_close_vi.xml	ClassTools Classes CloseTools ProjectMembership PyLabviewTools					composed	1			0.75
+lvai_create_accessors.xml	ClassBindTools ClassFieldTools ClassTools Classes CloseTools CtlTools LUnitTools LvClass TestTools TypedefTools					composed	1			3.51
+lvai_create_actor_library.xml	LibraryTools					composed	1			1.78
+lvai_create_class.xml	ActorFrameworkTools ClassBindTools ClassFieldTools ClassTools Classes CloseTools DqmhTools HelperCache LUnitTools LvClass LvaiConnection MockTools StatusTools					composed	1			2.22
+lvai_create_interface.xml	ClassTools MockTools					composed	1			1.79
+lvai_create_message_class.xml	ActorFrameworkTools					composed	1			7.4
+lvai_create_override.xml						composed	1			2.15
+lvai_discuss.xml	DiscussTools MonitorTools					composed	1			0.84
+lvai_exec_state.xml	ActorFrameworkTools AixmlTools BulkTools ClassFieldTools DqmhEventEditTools DqmhNewModuleTools EventDataFieldTools ExecStateTools LibraryTools MalleableTools MalleableVi RunTools WireEventTools					composed	1			0.67
+lvai_inventory.xml						composed	1			1.02
+lvai_open_project.xml	ActionTools					composed	1			0.8
+lvai_resave_ctl.xml	CtlTools TypedefCreateTools TypedefTools					composed	1			0.7
+lvai_run_and_read.xml	ClassTools Classes DqmhHeadless DqmhTools DqmhUnitTestTools RunTools					composed	1			1.9
+lvai_run_and_read_typed.xml	DqmhTools RunTools					composed	1			1.12
+lvai_run_for_ms.xml	RunTools					composed	1			1.03
+lvai_swap_subvis.xml	BulkTools CloseTools Json LUnitTools MalleableTools MethodTestTools MockTools PlaceholderTools SwapTools TestTools ToolArguments					composed	1			2.61
+lvai_typedef_bind.xml	TypedefFlattenTools					composed	1			0.77
+lvai_typedef_discon.xml	TypedefFlattenTools					composed	1			0.99
+lvai_typedef_tree.xml	TypedefFlattenTools					composed	1			0.92
+lvai_vis_in_memory.xml						composed	1			0.66
+lvai_wire_dyn_events.xml	CloseTools WireEventTools					composed	1			1.71
+lvbd_bind_constant.xml	TypedefTools					composed	1			0.95
+lvbd_bind_control_refs.xml	BindReferenceTools					composed	1			2.35
+lvbd_broken_reason.xml						composed	1			2.79
+lvbd_broken_wires.xml						composed	1			1.98
+lvbd_coercion_dots.xml	TypedefTools					composed	1			2.45
+lvbd_connect_by_names.xml	DqmhFrameTools					composed	1			1.61
+lvbd_fill_unwired_inputs.xml	DqmhHeadless					composed	1			0.77
+lvbd_graft_clear.xml	GraftTools					composed	1			0.83
+lvbd_graft_paste.xml	GraftTools					composed	1			3.06
+lvbd_graft_rewire.xml	GraftTools					composed	1			1.32
+lvbd_pane_typedefs.xml	TypedefTools					composed	1			0.69
+lvbd_set_constant.xml	ConstantTools					composed	1			2.39
+lvctl_kind.xml	CtlTools					composed	1			1.05
+lvdoc_get_icon.xml						composed	1			0.66
+lvdoc_print.xml	RenderTools					composed	1			0.65
+lvdoc_set_icon.xml	IconTools					composed	1			0.65
+lvdqmh_close_modules.xml	DqmhEventEditTools DqmhHeadless					composed	1			2.33
+lvdqmh_convert_event.xml	DqmhEventEditTools					composed	1			3.48
+lvdqmh_create_rt_tester.xml	DqmhEventEditTools					composed	1			3.42
+lvdqmh_dirty_members.xml	DqmhHeadless					composed	1			1.62
+lvdqmh_find_testers.xml	DqmhEventEditTools					composed	1			1.92
+lvdqmh_module_types.xml	DqmhTemplateTools					composed	1			0.73
+lvdqmh_new_module.xml	DqmhNewModuleTools					composed	1			4.7
+lvdqmh_new_unit_test.xml	DqmhUnitTestTools					composed	1			3.38
+lvdqmh_pick_event.xml	DqmhEventEditTools DqmhHeadless					composed	1			3.14
+lvdqmh_place_frame_handler.xml	DqmhFrameTools					composed	1			3.05
+lvdqmh_remove_do_something.xml	DqmhEventEditTools					composed	1			3.45
+lvdqmh_remove_event.xml	DqmhEventEditTools					composed	1			3.49
+lvdqmh_rename_event.xml	DqmhEventEditTools					composed	1			3.14
 lvdqmh_rename_module.xml	DqmhEventEditTools					composed	1			3.1
-lvdqmh_save_library.xml	DqmhEventEditTools					composed	1			0.61
-lvdqmh_script_new_event.xml	DqmhHeadless					composed	1			4.48
-lvdqmh_wire_tester_event.xml	DqmhHeadless					composed	1			2.05
-lvlu_add_test_method.xml	LUnitTools					composed	1			1.01
-lvlu_run_tests.xml	LUnitTools					composed	1			2.44
+lvdqmh_save_library.xml	DqmhEventEditTools					composed	1			0.59
+lvdqmh_script_new_event.xml	DqmhHeadless					composed	1			4.17
+lvdqmh_wire_tester_event.xml	DqmhHeadless					composed	1			2.08
+lvlu_add_test_method.xml	LUnitTools					composed	1			1.03
+lvlu_run_tests.xml	LUnitTools					composed	1			2.9
 lvpane_probe.xml	PaneTools					composed	1			0.59
-lvpane_sweep.xml	CommandLine ConnectorPanePatterns Panes					composed	1			0.65
+lvpane_sweep.xml	CommandLine ConnectorPanePatterns Panes					composed	1			0.67
 lvpdc_bind_typedef.xml	ClassBindTools					composed	1			0.66
-lvpdc_export.xml	ClassBindTools					composed	1			0.68
-lvpdc_export_original_lv2025.xml						composed	1			0.69
-lvpdc_import.xml	ClassBindTools					composed	1			0.7
-lvpdc_import_original_lv2025.xml						composed	1			0.7
+lvpdc_export.xml	ClassBindTools					composed	1			0.69
+lvpdc_export_original_lv2025.xml						composed	1			0.71
+lvpdc_import.xml	ClassBindTools					composed	1			0.69
+lvpdc_import_original_lv2025.xml						composed	1			0.71
 lvtd_bind_elements.xml	TypedefCreateTools					composed	1			0.76
-lvtd_make_typedef.xml	TypedefCreateTools					composed	1			0.68
-aixml-skeletons/accumulate-across-a-loop.xml						composed	1			1.64
+lvtd_make_typedef.xml	TypedefCreateTools					composed	1			0.66
+aixml-skeletons/accumulate-across-a-loop.xml						composed	1			1.75
 aixml-skeletons/user-event-two-loops.xml						composed	1			0.77
-aixml-skeletons/web-browser-read-page-title.xml						composed	1			0.65
+aixml-skeletons/web-browser-read-page-title.xml						composed	1			0.66
 aixml-skeletons/web-browser-title-poll.xml						composerRefused		type 'ref{LV.String}' is a control refnum (it carries a stdString), not composable yet		0.18
-templates/lunit/defaults.xml	ActorFrameworkTools BulkTools ClassBindTools ClassFieldTools ClassMethodTools ClassTools CommandLine DiagnosingTool DqmhHeadless FlatDefaults LUnitScaffold LUnitTools LibraryTools LvClass MockTools RunTools SwapTools TestTools TypedefTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.2
-templates/lunit/independence.xml	LUnitScaffold LUnitTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.2
+templates/lunit/defaults.xml	ActorFrameworkTools BulkTools ClassBindTools ClassFieldTools ClassMethodTools ClassTools CommandLine DiagnosingTool DqmhHeadless FlatDefaults LUnitScaffold LUnitTools LibraryTools LvClass MockTools RunTools SwapTools TestTools TypedefTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.21
+templates/lunit/independence.xml	LUnitScaffold LUnitTools					composerRefused		type '{{TYPE1}}' is not composable yet		0.19
 templates/lunit/round-trip.xml	AixmlCheck AixmlTools CommandLine Corpus LUnitScaffold LUnitTools PyLabviewTools TestTools					composerRefused		type '{{TYPE}}' is not composable yet		0.2

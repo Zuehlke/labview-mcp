@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T125 Multi Event Frames.vi" description="Frames that handle SEVERAL events: one frame takes Value Change of two path controls, A and B, and reads NewVal - their common type, Path; another takes two user events, Tick and Tock, and reads Time. Both controls are signalled and both user events generated; the loop counts what each frame saw and stops after four. The VI opens its own front panel first and closes it at the end.">
+  <Control _name="A" outputs="value:" type="path" uid="4201" uid_parent="root" value="" />
+  <Control _name="B" outputs="value:" type="path" uid="4202" uid_parent="root" value="" />
+  <Constant _name="Path A" outputs="value:4203.value" type="path" uid="4203" uid_parent="root" value="C:\5Cprobe\5Ca.txt"/>
+  <Constant _name="Path B" outputs="value:4204.value" type="path" uid="4204" uid_parent="root" value="C:\5Cprobe\5Cb.txt"/>
+  <Constant _name="Tick" outputs="value:4205.value" type="bool" uid="4205" uid_parent="root" value="false"/>
+  <Constant _name="Tock" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="false"/>
+  <Constant _name="Open" outputs="value:4207.value" type="bool" uid="4207" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4208.value" type="bool" uid="4208" uid_parent="root" value="false"/>
+  <Constant _name="Zero" outputs="value:4209.value" type="int32" uid="4209" uid_parent="root" value="0"/>
+  <Constant _name="No Path" outputs="value:4210.value" type="path" uid="4210" uid_parent="root" value=""/>
+  <Constant _name="Fired" outputs="value:4212.value" type="bool" uid="4212" uid_parent="root" value="true"/>
+  <Node _name="VI Server Reference" outputs="This VI:4220.This VI" type="{LV.VI}" uid="4220" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="A" outputs="A:4221.A" uid="4221" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="B" outputs="B:4222.B" uid="4222" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4220.This VI,error in (no error):,Front Panel Window\3AOpen:4207.value" outputs="reference out:,error out:4223.error out" type="{LV.VI}" uid="4223" uid_parent="root"/>
+  <Node _name="Create User Event" inputs="user event datatype:4205.value,error in:4223.error out" outputs="user event:4224.user event,error out:4224.error out" uid="4224" uid_parent="root"/>
+  <Node _name="Create User Event" inputs="user event datatype:4206.value,error in:4224.error out" outputs="user event:4225.user event,error out:4225.error out" uid="4225" uid_parent="root"/>
+  <Node _name="Register For Events" inputs="event registration refnum:,error in (no error):4225.error out,event source:4224.user event,event source:4225.user event" outputs="event registration refnum:4226.event registration refnum,error out:4226.error out" uid="4226" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:4221.A,error in (no error):4226.error out,Value (Signaling):4203.value" outputs="reference out:,error out:4227.error out" type="{LV.Path}" uid="4227" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="reference:4222.B,error in (no error):4227.error out,Value (Signaling):4204.value" outputs="reference out:,error out:4228.error out" type="{LV.Path}" uid="4228" uid_parent="root"/>
+  <Node _name="Generate User Event" inputs="user event:4224.user event,event data cluster:4212.value,error in:4228.error out,priority (normal):" outputs="user event out:,error out:4229.error out" uid="4229" uid_parent="root"/>
+  <Node _name="Generate User Event" inputs="user event:4225.user event,event data cluster:4212.value,error in:4229.error out,priority (normal):" outputs="user event out:,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Structure _name="While Loop" count="4240.value" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4226.event registration refnum" outputs="value:4241.value" uid="4241" uid_parent="4240"/>
+    <ShiftReg uid="4242" uid_parent="4240">
+      <Left inputs="value:4209.value" outputs="value:4243.value" uid="4243" uid_parent="4242"/>
+      <Right inputs="value:4272.value" outputs="value:4244.value" uid="4244" uid_parent="4242"/>
+    </ShiftReg>
+    <ShiftReg uid="4245" uid_parent="4240">
+      <Left inputs="value:4209.value" outputs="value:4246.value" uid="4246" uid_parent="4245"/>
+      <Right inputs="value:4273.value" outputs="value:4247.value" uid="4247" uid_parent="4245"/>
+    </ShiftReg>
+    <ShiftReg uid="4248" uid_parent="4240">
+      <Left inputs="value:4210.value" outputs="value:4249.value" uid="4249" uid_parent="4248"/>
+      <Right inputs="value:4274.value" outputs="value:4250.value" uid="4250" uid_parent="4248"/>
+    </ShiftReg>
+    <Structure _name="Event Structure" uid="4260" uid_parent="4240">
+      <Tunnel _id="In1" inputs="value:4241.value" uid="4261" uid_parent="4260"/>
+      <Tunnel _id="In2" inputs="value:4243.value" uid="4262" uid_parent="4260"/>
+      <Tunnel _id="In3" inputs="value:4246.value" uid="4263" uid_parent="4260"/>
+      <Tunnel _id="In4" inputs="value:4249.value" uid="4264" uid_parent="4260"/>
+      <CaseFrame selector=" &quot;A&quot;\2C &quot;B&quot;\3A Value Change " uid="4280" uid_parent="4260">
+        <Tunnel _id="In1" outputs="value:" uid="4281" uid_parent="4280"/>
+        <Tunnel _id="In2" outputs="value:4282.value" uid="4282" uid_parent="4280"/>
+        <Tunnel _id="In3" outputs="value:4283.value" uid="4283" uid_parent="4280"/>
+        <Tunnel _id="In4" outputs="value:" uid="4284" uid_parent="4280"/>
+        <Node _name="Event Data Node" fields="NewVal" outputs="NewVal:4285.NewVal" uid="4285" uid_parent="4280"/>
+        <Node _name="Increment" inputs="x:4282.value" outputs="x+1:4286.x+1" uid="4286" uid_parent="4280"/>
+        <Tunnel _id="Out1" inputs="value:4286.x+1" uid="4287" uid_parent="4280"/>
+        <Tunnel _id="Out2" inputs="value:4283.value" uid="4288" uid_parent="4280"/>
+        <Tunnel _id="Out3" inputs="value:4285.NewVal" uid="4289" uid_parent="4280"/>
+      </CaseFrame>
+      <CaseFrame selector=" &lt;Tick&gt;\3A User Event;  &lt;Tock&gt;\3A User Event " uid="4290" uid_parent="4260">
+        <Tunnel _id="In1" outputs="value:" uid="4291" uid_parent="4290"/>
+        <Tunnel _id="In2" outputs="value:4292.value" uid="4292" uid_parent="4290"/>
+        <Tunnel _id="In3" outputs="value:4293.value" uid="4293" uid_parent="4290"/>
+        <Tunnel _id="In4" outputs="value:4294.value" uid="4294" uid_parent="4290"/>
+        <Node _name="Event Data Node" fields="Time" outputs="Time:" uid="4295" uid_parent="4290"/>
+        <Node _name="Increment" inputs="x:4293.value" outputs="x+1:4296.x+1" uid="4296" uid_parent="4290"/>
+        <Tunnel _id="Out1" inputs="value:4292.value" uid="4297" uid_parent="4290"/>
+        <Tunnel _id="Out2" inputs="value:4296.x+1" uid="4298" uid_parent="4290"/>
+        <Tunnel _id="Out3" inputs="value:4294.value" uid="4299" uid_parent="4290"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4272.value" uid="4272" uid_parent="4260"/>
+      <Tunnel _id="Out2" outputs="value:4273.value" uid="4273" uid_parent="4260"/>
+      <Tunnel _id="Out3" outputs="value:4274.value" uid="4274" uid_parent="4260"/>
+    </Structure>
+    <Constant _name="Four" outputs="value:4211.value" type="int32" uid="4211" uid_parent="4240" value="4"/>
+    <Node _name="Add" inputs="x:4272.value,y:4273.value" outputs="x+y:4275.x+y" uid="4275" uid_parent="4240"/>
+    <Node _name="Greater Or Equal?" inputs="x:4275.x+y,y:4211.value" outputs="x &gt;= y?:4276.x &gt;= y?" uid="4276" uid_parent="4240"/>
+    <Condition inputs="value:4276.x &gt;= y?" uid="4277" uid_parent="4240" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4241.value" outputs="value:4278.value" uid="4278" uid_parent="4240"/>
+  </Structure>
+  <Indicator _name="Value Changes" inputs="value:4244.value" type="int32" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="User Events" inputs="value:4247.value" type="int32" uid="4301" uid_parent="root" value="0"/>
+  <Indicator _name="Last Path" inputs="value:4250.value" type="path" uid="4302" uid_parent="root" value=""/>
+  <Node _name="Unregister For Events" inputs="event registration refnum:4278.value,error in:4230.error out" outputs="error out:4310.error out" uid="4310" uid_parent="root"/>
+  <Node _name="Destroy User Event" inputs="user event:4224.user event,error in:4310.error out" outputs="error out:4311.error out" uid="4311" uid_parent="root"/>
+  <Node _name="Destroy User Event" inputs="user event:4225.user event,error in:4311.error out" outputs="error out:4312.error out" uid="4312" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4220.This VI,error in (no error):4312.error out,Front Panel Window\3AOpen:4208.value" outputs="reference out:,error out:4313.error out" type="{LV.VI}" uid="4313" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4313.error out" type="cluster{bool.status,int32.code,string.source}" uid="4314" uid_parent="root" value="[false,0,]" />
+</VI>

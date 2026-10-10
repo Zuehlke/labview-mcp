@@ -1275,5 +1275,18 @@
     }
    }
   ]
+ },
+ "t125_multi_event_frames": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Value Changes": 2,
+     "User Events": 2,
+     "Last Path": "C:\\probe\\b.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

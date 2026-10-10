@@ -217,8 +217,17 @@ re-registration inside the handler keeps receiving; LabVIEW's own save matches t
 item for item. **Registering for a front-panel object's events needs the VI's panel OPEN** - with it
 closed `Register For Events` answers Error 1001 and the Event Structure waits for ever, LabVIEW's
 own save of the VI included - so a VI run without its panel (the ActiveX runner's way) has to open
-it before it registers. A (class, event) no measured family covers is refused by name, as is a frame
-handling several events. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "Control references".
+it before it registers. A (class, event) no measured family covers is refused by name.
+`experiments/aixml-without-grpc/FINDINGS.md` §7a, "Control references".
+
+**A FRAME HANDLING SEVERAL EVENTS composes too** - several sources of one event, different events,
+user events, dynamic and static mixed. Its event data is the fields every event has, by name; a
+field they all have with different types becomes the common class's plain refnum (CtlRef), a
+Variant (OldVal, NewVal) or a plain u32 (Type), and a user-event reference with differing payloads
+disappears - checked against LabVIEW's own save of two probes, 18 frames, every one identical, and
+run: one frame took Value Change from two controls, another two user events. A static event's
+CtlRef is the control's STRICT refnum, a latched Boolean's plain. FINDINGS §7a, "Frames that
+handle several events".
 
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. **One tool runs its helpers over

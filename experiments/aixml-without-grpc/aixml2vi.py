@@ -3887,9 +3887,10 @@ class Composer:
         for f in frames_el:
             if f.get("uid") not in have:
                 # with one (unwired) field, as LabVIEW draws a fresh frame's node
-                first = event_items(unescape(f.get("selector") or ""))[0]
-                _, kind = self._event_of(first)
-                fld = "Time" if kind in ("Timeout", "User Event") or self._dyn_source(first) else "NewVal"
+                its = event_items(unescape(f.get("selector") or ""))
+                _, kind = self._event_of(its[0])
+                # Time is in every event's data, NewVal only in a lone Value Change's
+                fld = "NewVal" if len(its) == 1 and kind == "Value Change" and not self._dyn_source(its[0]) else "Time"
                 self._synth_event_data.append(ET.Element("Node", {"_name": "Event Data Node", "fields": fld,
                                                                   "outputs": fld + ":", "uid": "0", "uid_parent": f.get("uid")}))
         self.report.append("Structure 'Event Structure' (%d frames) <- %s" % (len(frames_el), src))
@@ -3906,8 +3907,9 @@ class Composer:
         return (u.group(1), "User Event") if u else (None, s)
 
     def _is_user_event_frame(self, frame):
-        items = event_items(unescape(frame.get("selector") or ""))
-        return bool(items) and self._event_of(items[0])[1] == "User Event"
+        """A frame handling a user event - among others, too (NewProjectDialog.vi's `<Resize>:
+        User Event; "Main Pane": Pane Size`)."""
+        return any(self._event_of(it)[1] == "User Event" for it in event_items(unescape(frame.get("selector") or "")))
 
     def _registration_of(self, struct_el):
         """(net, type) of the EVENT REGISTRATION REFNUM wired into an Event Structure through one
@@ -4065,12 +4067,11 @@ class Composer:
                               "wired into the structure through a tunnel" % el.get("uid"))
         have = self._user_events_of(reg)
         for f in frames_el:
-            if self._is_user_event_frame(f):
-                name = self._event_of(event_items(unescape(f.get("selector") or ""))[0])[0]
-                if name not in have:
+            for part in event_items(unescape(f.get("selector") or "")):
+                name, kind = self._event_of(part)
+                if kind == "User Event" and name not in have:
                     raise Unsupported("Event Structure %s: no user event %r in the registration (it has %s)"
                                       % (el.get("uid"), name, ", ".join(sorted(have)) or "none"))
-            for part in event_items(unescape(f.get("selector") or "")):
                 if self._dyn_source(part) is not None:
                     self._dyn_position(el.get("uid"), reg, *self._dyn_source(part))
         dyn = [t for t in node.find("termList") if t.find("dco").get("class") == "eventDynDCO"]
@@ -4306,27 +4307,19 @@ class Composer:
         self.report.append("Register For Events (%s%s) <- %s" % ("re-registering " if reg_in_t is not None else "",
                                                                ", ".join(n or "?" for n in names), src))
 
-    def add_event_data(self, el):
-        """An Event Data Node: Unbundle By Name over the frame's "Event Data" cluster - for a
-        Value Change Source, Type, Time, CtlRef, OldVal, NewVal (NewVal is field 5, measured),
-        OldVal/NewVal typed like the control; for a Timeout Source, Type, Time."""
-        self.check_attrs(el, ("fields",))
-        frame = self._by_uid.get(el.get("uid_parent"))
-        if frame is None or frame.tag != "CaseFrame":
-            raise Unsupported("Event Data Node %s: not in an event frame" % el.get("uid"))
-        sel_items = event_items(unescape(frame.get("selector") or ""))
-        ctl, kind = self._event_of(sel_items[0])
-        dyn = self._dyn_source(sel_items[0])
-        diag = self.diag_of(el)
-        node, donor_types, src = self.instantiate("node/eventData")
-        terms = list(node.find("termList"))
-        agg, tpl = terms[0], terms[1]
-        donor = plain(lvheap.strip_label(donor_types[0]))
-        fs = [copy.deepcopy(f) for f in fields(donor)]
-        if len(sel_items) > 1:
-            # LabVIEW gives such a frame the fields its events have in common - not measured
-            raise Unsupported("Event Data Node %s: a frame handling several events (%s) is not composable yet"
-                              % (el.get("uid"), "; ".join(sel_items)))
+    @staticmethod
+    def _field_label(f):
+        """A data cluster field's name - Source and Type are TYPEDEFS whose label sits on the
+        wrapped type, not on the TypeDef."""
+        return f.get("Label") or (fields(f)[0].get("Label") if f.get("Type") == "TypeDef" and fields(f) else None)
+
+    def _event_fields(self, el, frame, item, fs):
+        """The data cluster of ONE (source, event) item of a frame, as a list of labelled fields.
+        `fs` is the Event Data Node donor's own Value Change cluster: Source, Type, Time, CtlRef,
+        OldVal, NewVal."""
+        ctl, kind = self._event_of(item)
+        dyn = self._dyn_source(item)
+        fs = [copy.deepcopy(f) for f in fs]
         if dyn is not None:
             # a control reference's event: the data cluster LabVIEW wrote for that (class, event),
             # its reference field (CtlRef, VIRef) typed as the registered item - Source, Type and
@@ -4360,24 +4353,36 @@ class Composer:
                     if f.get("Label") in ("OldVal", "NewVal"):
                         fs[i] = lvheap.strip_label(copy.deepcopy(vt))
                         fs[i].set("Label", f.get("Label"))
-        elif kind == "Value Change":
+            return fs
+        if kind in ("Value Change", "Mouse Enter", "Mouse Leave"):
             ctl_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
                            and unescape(e.get("_name") or "") == ctl), None)
             if ctl_el is None:
                 raise Unsupported("Event Data Node %s: no control %r" % (el.get("uid"), ctl))
             ct = type_tree(ctl_el.get("type"))
-            if ct.get("Type") != "Boolean" and "CtlRef" in (el.get("fields") or "") + (el.get("outputs") or ""):
-                # the donor's CtlRef is a BOOLEAN control's refnum (CtlFlags 0x0008; a ring's is
-                # 0x0048 with the ring's type inside) - another class's is not harvested
-                raise Unsupported("Event Data Node %s: CtlRef of a %s control is not composable yet"
-                                  % (el.get("uid"), ct.get("Type")))
-            for i in (4, 5):
-                lab = fs[i].get("Label")
-                fs[i] = copy.deepcopy(ct)
-                fs[i].set("Label", lab)
-        elif kind == "Timeout":
-            fs = fs[:3]
-        elif kind == "User Event":
+            # CtlRef: the control's STRICTLY typed refnum - LabVIEW's save of a composed probe wrote
+            # 0x0008{Boolean} and 0x0012{NumFloat64} for a switch Boolean's and a double's - EXCEPT
+            # a LATCHED Boolean's, which is plain 0x0008: measured as an A/B on one probe, and the
+            # shape of NI's Set Busy Cursor.vi and Manage DataPlugins.vi, all latched (2026-10-10).
+            # A String's and a Path's have nothing inside either way
+            ref = control_ref_type(ct)
+            if (ctl_el.get("style") or "") == "latched":
+                for c in fields(ref):
+                    ref.remove(c)
+            ref.set("Label", "CtlRef")
+            if kind != "Value Change":
+                # Mouse Enter / Mouse Leave: Source, Type, Time, CtlRef and nothing else - LabVIEW's
+                # save of a single one, and NI's Handling Mouse Events.vi with six in one frame
+                return fs[:3] + [ref]
+            out = fs[:3] + [ref]
+            for lab in ("OldVal", "NewVal"):
+                v = copy.deepcopy(ct)
+                v.set("Label", lab)
+                out.append(v)
+            return out
+        if kind == "Timeout":
+            return fs[:3]
+        if kind == "User Event":
             # LabVIEW's own save of the finished skeleton: Source (the typedef), Type and Time as
             # plain u32, UsrEvtRef the user event refnum, then the payload - field 4
             _, reg = self._registration_of(self._by_uid.get(frame.get("uid_parent")))
@@ -4394,7 +4399,94 @@ class Composer:
                 del uref.attrib[k]
             uref.set("Label", "UsrEvtRef")
             typ = ET.Element("TypeDesc", {"Type": "NumUInt32", "Prop1": "0", "Format": "inline", "Label": "Type"})
-            fs = [fs[0], typ, fs[2], uref] + payload
+            return [fs[0], typ, fs[2], uref] + payload
+        raise Unsupported("Event Data Node %s: the data of a %r event is not composable yet" % (el.get("uid"), kind))
+
+    def _common_class_ref(self, uid, refs):
+        """The PLAIN refnum of the nearest class every reference in `refs` descends from - what
+        LabVIEW gives a frame's CtlRef when its sources differ: Ring, Numeric, Ring and Slide give
+        LV.Numeric (2D Interpolation.vi), a Ring and an array LV.Control (Image Compression with
+        DCT.vi), a Boolean and a generic reference LV.Control (NewProjectDialog.vi)."""
+        control_events()                                  # loads the class hierarchy
+        parents = (_CONTROL_EVENTS or {}).get("parents", {})
+
+        def line(c):
+            out = [c]
+            while c in parents and parents[c] not in out:
+                c = parents[c]
+                out.append(c)
+            return out
+        classes = [self._class_of_refnum(r) for r in refs]
+        for cand in line(classes[0]):
+            if all(cand in line(c) for c in classes[1:]):
+                row = _REF_CLASSES.get(cand)
+                if row is None:
+                    break
+                return ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": row[0],
+                                               "HasItem": "0", "Format": "inline", "Label": refs[0].get("Label") or "CtlRef"})
+        raise Unsupported("Event Data Node %s: no common class known for %s" % (uid, ", ".join(classes)))
+
+    def _merge_event_fields(self, uid, clusters):
+        """A frame handling SEVERAL events gets the fields they ALL have, by name, in the first
+        one's order (NI's corpus, 17 frames: Value Change and Panel Close keep Source, Type, Time;
+        Key Down and Key Repeat keep every field). A field all have with DIFFERENT types becomes:
+        CtlRef the nearest common class's plain refnum, OldVal and NewVal a Variant (2D
+        Interpolation.vi, four numerics of three representations), Type a plain u32 (a user event
+        with a Pane Size, NewProjectDialog.vi), and UsrEvtRef is dropped. Any other such field is
+        refused - not measured. Checked against LabVIEW's own save of two probes, 18 frames of
+        single, several, user, dynamic and mixed events: identical in every one."""
+        out = []
+        for f in clusters[0]:
+            lab = self._field_label(f)
+            others = [next((g for g in c if self._field_label(g) == lab), None) for c in clusters[1:]]
+            if any(o is None for o in others):
+                continue
+            if all(type_sig(f) == type_sig(o) for o in others):
+                out.append(f)
+            elif lab in ("CtlRef", "VIRef"):
+                out.append(self._common_class_ref(uid, [f] + others))
+            elif lab in ("OldVal", "NewVal"):
+                out.append(ET.Element("TypeDesc", {"Type": "LVVariant", "Format": "inline", "Label": lab}))
+            elif lab == "Type":
+                out.append(ET.Element("TypeDesc", {"Type": "NumUInt32", "Prop1": "0", "Format": "inline", "Label": "Type"}))
+            elif lab == "UsrEvtRef":
+                # two user events of DIFFERENT payload types: LabVIEW's save drops the reference
+                # (an int32 and a string, 2026-10-10); of ONE payload type it keeps it, labelled
+                # with the first event's payload - which the identical-type branch above writes
+                continue
+            else:
+                raise Unsupported("Event Data Node %s: the frame's events give %r different types - not measured"
+                                  % (uid, lab))
+        return out
+
+    def add_event_data(self, el):
+        """An Event Data Node: Unbundle By Name over the frame's "Event Data" cluster - for a
+        Value Change Source, Type, Time, CtlRef, OldVal, NewVal (NewVal is field 5, measured),
+        OldVal/NewVal typed like the control; for a Timeout Source, Type, Time."""
+        self.check_attrs(el, ("fields",))
+        frame = self._by_uid.get(el.get("uid_parent"))
+        if frame is None or frame.tag != "CaseFrame":
+            raise Unsupported("Event Data Node %s: not in an event frame" % el.get("uid"))
+        sel_items = event_items(unescape(frame.get("selector") or ""))
+        ctl, kind = self._event_of(sel_items[0])
+        diag = self.diag_of(el)
+        node, donor_types, src = self.instantiate("node/eventData")
+        terms = list(node.find("termList"))
+        agg, tpl = terms[0], terms[1]
+        donor = plain(lvheap.strip_label(donor_types[0]))
+        clusters = [self._event_fields(el, frame, it, fields(donor)) for it in sel_items]
+        fs = clusters[0] if len(clusters) == 1 else self._merge_event_fields(el.get("uid"), clusters)
+        asked = [unescape(x) for x in split_top(el.get("fields") or "") if x] or [k for k, _ in pairs(el.get("outputs"))]
+        if "CtlRef" in asked:
+            # the reference LabVIEW writes was measured for these control types only (probes of
+            # 2026-10-10) - reading it off another is refused rather than guessed
+            for it in sel_items:
+                c, k = self._event_of(it)
+                c_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
+                             and unescape(e.get("_name") or "") == c), None) if self._dyn_source(it) is None else None
+                t = type_tree(c_el.get("type")).get("Type", "") if c_el is not None else ""
+                if c_el is not None and not (t in ("Boolean", "String", "Path") or (t.startswith("Num") and not is_enum(type_tree(c_el.get("type"))))):
+                    raise Unsupported("Event Data Node %s: CtlRef of a %s control is not measured yet" % (el.get("uid"), t))
         cl = ET.Element("TypeDesc", dict(donor.attrib))
         for f in fs:
             cl.append(f)
@@ -4402,8 +4494,7 @@ class Composer:
         # Source and Type are TYPEDEFS (eventsource.ctl, eventtype.ctl) whose label sits on the
         # wrapped type, not on the TypeDef: read as None they were "no field 'Source'" in 18
         # of NI's VIs
-        labels = [f.get("Label") or (fields(f)[0].get("Label") if f.get("Type") == "TypeDef" and fields(f) else None)
-                  for f in fs]
+        labels = [self._field_label(f) for f in fs]
         for c in terms[1:]:
             node.find("termList").remove(c)
         dl = node.find("dcoList")

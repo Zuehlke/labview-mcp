@@ -1138,12 +1138,59 @@ with a drive was composed with the drive as `C:`, which LabVIEW reads back as `C
 is LabVIEW's to add.
 
 **Refused by name**: a (class, event) whose family no measured class declares for an ancestor of
-that class; a frame handling several events (LabVIEW gives it their common fields - not measured);
-a re-registration whose source does not match its item. **NI's own export of `Dynamic Event
+that class; a re-registration whose source does not match its item. (A frame handling several
+events was refused here too until the next section measured it.) **NI's own export of `Dynamic Event
 Generation.vi` cannot be composed back by either converter**: the export drops the wire from the
 shift register to the dynamic event terminal and from the terminal out, so its inner
 `Register For Events` reads a net nothing writes. Route the registration in through a tunnel, as the
 user-event skeleton does.
+
+### Frames that handle several events
+
+One frame may handle several events - `"A"\2C "B"\3A Value Change` for one event of several
+sources, `;` between different events - and its Event Data Node then reads a cluster LabVIEW
+derives from all of them. That cluster was measured two ways: off NI's own VIs
+(`find_multi_event_frames.py` found 17 such frames in 13 cached exports, and `event_frame_data.py`
+read each frame's cluster and its sources' types out of the VI), and off **LabVIEW's own save of a
+composed probe** - LabVIEW recomputes a frame's event data on load, so a saved probe says what
+LabVIEW writes for any combination one cares to build (it turned a composed plain refnum into a
+strict one, which is how that was established). Two probes, 18 frames, then a latch A/B; the
+composer now writes every one of them as LabVIEW saves it:
+
+| the frame's events | LabVIEW's event data |
+|---|---|
+| several sources of one event, same type (two doubles, two I32, two Booleans, two Paths) | the single event's cluster, CtlRef included - the identical-type case keeps every field |
+| one event, sources of different types (I32 and double, Boolean and String) | CtlRef the PLAIN refnum of the nearest common class (`0x0012` Digital for I32 and double, `0x0006` Control for Boolean and String, `0x0011` Numeric for NI's Ring, Numeric and Slide); OldVal and NewVal a Variant |
+| different events (Value Change and Mouse Enter on one Boolean; Key Down and Key Repeat in NI's VI) | the fields both have, by name - Source, Type, Time, CtlRef for the first, everything for the second |
+| a Timeout with a Value Change; a Value Change with Panel Close (NI) | Source, Type, Time |
+| two user events of ONE payload type (Tick, Tock: Boolean) | Source, Type as a plain u32, Time, `UsrEvtRef` labelled with the FIRST event's payload - the payloads themselves drop out, their names differ |
+| two user events of DIFFERENT payload types (int32, string) | Source, Type, Time - `UsrEvtRef` drops out too |
+| a user event with a static event (NI: Pane Size; probe: Value Change) | Source, Type as a plain u32, Time |
+| two dynamic Path references / a dynamic Path with a static Boolean | as the static rows: Path kept / Control and Variant |
+
+So the rule: the fields every event has, BY NAME, in the first event's order; a field all have with
+DIFFERENT types becomes the common class's plain refnum (CtlRef), a Variant (OldVal, NewVal), a
+plain u32 (Type), or disappears (UsrEvtRef). Any other field differing in type is refused - none
+was met.
+
+**Two facts about a single event came out of it**: a static event's `CtlRef` is the control's
+STRICTLY typed refnum (`0x0008{Boolean}`, `0x0012{NumFloat64}`) - **except a LATCHED Boolean's,
+which is plain `0x0008`**, measured as an A/B on one probe and the shape of NI's Set Busy Cursor.vi
+and Manage DataPlugins.vi, all latched. The composer wrote the donor's plain Boolean refnum for
+every control until now, and refused `CtlRef` off any other; LabVIEW repaired the first on load,
+which is why no run showed it. And Mouse Enter and Mouse Leave carry Source, Type, Time and
+CtlRef and nothing more - the composer wrote the Value Change donor's cluster for them.
+
+**Measured in LabVIEW**: `t125_multi_event_frames` signals two path controls handled by ONE frame
+and generates two user events handled by another; the frames counted 2 and 2 and `NewVal` arrived
+as a Path. LabVIEW's save of it matches the composed VI frame for frame. Two of NI's own VIs with
+multi-event frames now compose with every frame matching LabVIEW's save: `Set Busy Cursor.vi`
+(executable) and `Manage DataPlugins.vi` - NOT executable, but just as broken with its two-source
+frame cut to one source, against NI's original loading clean, so the frame is not the cause; not
+chased. The other eleven stop on things unrelated to this (classes, a Stacked Sequence, UTF-8
+strings, a ring item with a quote) or on SINGLE events whose data is not composed yet: a static Mouse
+Down, Graph events. Reading `CtlRef` stays refused off an enum, a cluster or an array - not
+measured.
 
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
@@ -1172,6 +1219,7 @@ through `Project:Active Project` should not care, and that is untested.
 | `harvest_event_reg.py` | cuts `Register For Events` (`eventRegNode`, which the harvester does not know) out of a VI into a part (§7a, "User events") |
 | `scan_event_regs.py`, `build_event_kinds.py`, `parts/control-events.json` | every event registration of the installation, heap only; joined with NI's exports into the (class, event) table control-reference sources are composed from (§7a, "Control references") |
 | `lv-fp.ps1` | open or close a VI's front panel over COM - registering for a control's events needs it open |
+| `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
