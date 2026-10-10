@@ -53,6 +53,18 @@ public sealed class MembersAlreadyListedTests : IDisposable
     }
 
     [Fact]
+    public void A_vi_only_rerun_over_a_listed_member_is_singled_out()
+    {
+        // Measured 2026-10-10: a `vi`-only re-run over a listed member was dropped from the class.
+        var methods = ClassMethodTools.MethodRequest.ParseAll(
+            "[{\"vi\":\"C:\\\\x\\\\Test Field Defaults.vi\",\"classTerminals\":[\"a in\"]}," +
+            "{\"aixml\":\"C:\\\\x\\\\b.xml\",\"vi\":\"C:\\\\x\\\\Test Storage GB Round Trip.vi\",\"classTerminals\":[\"a in\"]}," +
+            "{\"vi\":\"C:\\\\x\\\\New Method.vi\",\"classTerminals\":[\"a in\"]}]");
+        var listed = ClassMethodTools.MembersAlreadyListed(Write(), methods.Select(m => m.Vi));
+        Assert.Equal(["Test Field Defaults.vi"], ClassMethodTools.ViOnlyReruns(methods, listed));
+    }
+
+    [Fact]
     public void A_member_the_class_lists_is_reported()
     {
         var listed = ClassMethodTools.MembersAlreadyListed(

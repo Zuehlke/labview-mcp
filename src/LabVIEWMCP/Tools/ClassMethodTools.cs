@@ -261,6 +261,28 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                             "by LabVIEW rather than reported, so this is checked first.");
             }
 
+            // A RE-RUN OVER A LISTED MEMBER NEEDS THE MEMBER'S AIXML. Measured 2026-10-10 on a
+            // wizard accessor passed as `vi` only: the entry was dropped, the re-add of the
+            // unchanged file answered AddItemFromMemory 1004, and the class was saved WITHOUT
+            // the member - its scope and folder gone with it. The drop below is only safe when
+            // the VI is regenerated from AIXML, so a `vi`-only re-run is refused before anything
+            // changes.
+            if (ViOnlyReruns(methods, MembersAlreadyListed(Path.GetFullPath(lvclassPath),
+                    methods.Select(m => m.Vi))) is { Count: > 0 } viOnly)
+                return Json.Error("rerunNeedsAixml",
+                    "The class already lists " + string.Join(", ", viOnly) + ", and no `aixml` was " +
+                    "given to regenerate it. A re-run drops the member's entry first, and re-adding " +
+                    "the unchanged file was measured failing with Error 1004 and leaving the member " +
+                    "out of the class. Nothing was changed.",
+                    new
+                    {
+                        lvclassPath = Path.GetFullPath(lvclassPath),
+                        members = viOnly,
+                        hint = "Pass the method's AIXML together with `vi`, or leave the member alone - " +
+                               "a member the class already lists needs no re-add. A wizard accessor has " +
+                               "no AIXML: rebuild it with lvai_create_accessors instead.",
+                    });
+
             var classPath = Path.GetFullPath(lvclassPath);
             var total = Stopwatch.StartNew();
             var prologue = new JsonArray();
@@ -1286,6 +1308,12 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// name-only comparison <see cref="RemoveMemberEntries"/> makes, so the two can never disagree
     /// about what is about to be dropped.
     /// </summary>
+    /// <summary>The file names of methods given as `vi` only that the class already lists.</summary>
+    internal static List<string> ViOnlyReruns(IEnumerable<MethodRequest> methods, IReadOnlyList<string> alreadyListed) =>
+        [.. methods.Where(m => m.Aixml is null)
+            .Select(m => Path.GetFileName(m.Vi))
+            .Where(n => alreadyListed.Contains(n, StringComparer.OrdinalIgnoreCase))];
+
     internal static IReadOnlyList<string> MembersAlreadyListed(
         string classPath, IEnumerable<string> viPaths)
     {
